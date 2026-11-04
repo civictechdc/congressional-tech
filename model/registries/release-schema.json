@@ -653,7 +653,7 @@
         {
           "name": "identity_note",
           "type": "string",
-          "meaning": "Explanation identifying the recovery",
+          "meaning": "Authored explanation of how the recovery relates to the original; null when the decision recorded none (kind still states the relationship)",
           "nullable": true
         }
       ],
@@ -1160,7 +1160,7 @@
         }
       ],
       "gaps": [
-        "Committee seats cover the 113th–119th Congresses only"
+        "Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end give the published range"
       ],
       "purpose": "Committee and subcommittee seats across published Congresses",
       "row_meaning": "One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id for 113th–119th Congresses as upstream committee_assignments snapshots are populated; currently 119th Congress in the pinned snapshot)",
@@ -2412,7 +2412,7 @@
       "nullable": false,
       "resolution": "unresolved_allowed",
       "match": "equal",
-      "scope": "rosters.congress (113th–119th Congresses)"
+      "scope": "rosters.congress (Congresses populated in the pinned committee_assignments snapshot)"
     },
     {
       "id": "roster_member",
@@ -2433,7 +2433,7 @@
       "nullable": false,
       "resolution": "unresolved_allowed",
       "match": "equal",
-      "scope": "rosters.congress (113th–119th Congresses)"
+      "scope": "rosters.congress (Congresses populated in the pinned committee_assignments snapshot)"
     },
     {
       "id": "bill_sponsor",
@@ -3341,11 +3341,12 @@
           "example": 335321
         }
       ],
-      "sql": "SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,\n  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id),[]) AS witnesses,\n  coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM \"list\" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,\n  coalesce((SELECT list(struct_pack(video_key:=r.video_key,url:=r.url,basis:=r.basis,decision:=r.decision,status:=r.status) ORDER BY r.basis,r.video_key,r.url) FROM recording_matches r WHERE r.event_id=m.event_id),[]) AS recordings\nFROM meetings m WHERE m.event_id=?",
+      "sql": "SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,\n  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id AND w.superseded_by IS NULL),[]) AS witnesses,\n  coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM \"list\" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,\n  coalesce((SELECT list(struct_pack(video_key:=r.video_key,url:=r.url,basis:=r.basis,decision:=r.decision,status:=r.status) ORDER BY r.basis,r.video_key,r.url) FROM recording_matches r WHERE r.event_id=m.event_id),[]) AS recordings\nFROM meetings m WHERE m.event_id=?",
       "result_row": "One hearing with embedded witnesses, visible documents, and recording matches",
       "notes": [
         "Uses correlated subqueries with coalesce(..., []) so nested lists do not Cartesian-multiply rows or drop zero-child hearings.",
-        "Uses m.event_id inside each subquery so only one ? parameter is required."
+        "Uses m.event_id inside each subquery so only one ? parameter is required.",
+        "Lists current appearances only (superseded_by IS NULL); each superseded row restates the same person from a lower-ranked source."
       ]
     },
     {
@@ -3370,7 +3371,8 @@
       "sql": "SELECT w.witness_key,w.name,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key\nFROM witnesses w JOIN \"list\" l ON list_contains(l.witness_keys,w.witness_key) JOIN detail d USING (list_row)\nWHERE NOT coalesce(l.hidden,false) AND w.witness_key=? ORDER BY l.list_row LIMIT 100",
       "result_row": "One submitted document for this appearance",
       "notes": [
-        "Use a witness_key, never a person-name join."
+        "Use a witness_key, never a person-name join.",
+        "Returns documents annotated with exactly this witness_key; pass the current appearance (superseded_by IS NULL) from hearing_dossier or witnesses."
       ]
     },
     {
@@ -3392,10 +3394,11 @@
           "example": "0000b43c099edbc2"
         }
       ],
-      "sql": "SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key\nFROM witnesses w JOIN detail d ON d.package_id=w.package_id JOIN \"list\" l USING (list_row)\nWHERE NOT coalesce(l.hidden,false) AND w.witness_key=? ORDER BY l.list_row LIMIT 100",
+      "sql": "WITH w AS (SELECT witness_key,name FROM witnesses WHERE witness_key=?),\n  packages AS (SELECT DISTINCT p.package_id FROM witnesses p, w WHERE p.package_id IS NOT NULL AND (p.witness_key=w.witness_key OR p.superseded_by=w.witness_key))\nSELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key\nFROM w, packages k JOIN detail d ON d.package_id=k.package_id JOIN \"list\" l USING (list_row)\nWHERE NOT coalesce(l.hidden,false) ORDER BY l.list_row LIMIT 100",
       "result_row": "One retained transcript document for the appearance",
       "notes": [
-        "No package_id means no published package association; submitted documents use a different relationship."
+        "No package_id on the appearance or on the rows it supersedes means no published package association; submitted documents use a different relationship.",
+        "Follows superseded_by: a current appearance from a source without package_id reaches the package its superseded source row carries."
       ]
     },
     {

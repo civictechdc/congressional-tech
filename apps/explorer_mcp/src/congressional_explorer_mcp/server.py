@@ -84,7 +84,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
         Use section='text' with optional page, offset, max_chars, or query (keyword/regex snippet search)
         to read verified PDF, HTML, XML, or plain-text document bodies from the archive.
-        A recovery's kind and identity_note explain its relationship; a related file is not the original.
+        A recovery's kind states its relationship to the original, and identity_note adds an authored explanation when one
+        was recorded (often null); a related file is not the original.
         """
         if query.section == 'text':
             from .body_reader import read_document_body
@@ -130,6 +131,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         All published Parquet tables and the joined documents view are available. Nested types stay native.
         Use SELECT * EXCLUDE (facts) FROM documents when scanning document rows without provenance facts.
         Use hex(blob) for identifiers and unhex(?) for lookups. Fractional numbers return as strings to preserve precision.
+        SQL compares system_code exactly. Codes are lowercase; a full committee usually ends 00 and its subcommittees
+        share its first four letters (hsif00, hsif14), so match a committee family by prefix, e.g. LIKE 'hsif%'.
+        committees.parent_system_code is authoritative where a task force's prefix differs from its parent's.
         Results have typed columns, a row/byte cap and a truncation flag; use SQL for further paging.
         Reads are limited to selected metadata files; network access, writes, extension loading and configuration changes are disabled.
         """

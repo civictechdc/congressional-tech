@@ -476,6 +476,7 @@ def read_document_body(
     )
     if target.get('redirected_from'):
         base['redirected_from'] = target['redirected_from']
+    source_text = pages[query.page - 1] if query.page is not None else '\n\n'.join(p for p in pages if p)
 
     if query.query and query.query.strip():
         snippet_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 4096) // 6))
@@ -528,7 +529,7 @@ def read_document_body(
         result = dict(
             base,
             query=query.query,
-            total_chars=sum(len(t) for _, t in scoped_pages),
+            total_chars=len(source_text),
             match_count=total_matches,
             matches=matches,
             snippets=[m['snippet'] for m in matches],
@@ -551,7 +552,6 @@ def read_document_body(
         return result
 
     char_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 2048) // 2))
-    source_text = pages[query.page - 1] if query.page is not None else '\n\n'.join(p for p in pages if p)
     total_chars = len(source_text)
     window = source_text[query.offset : query.offset + char_budget]
     has_more = (query.offset + len(window)) < total_chars

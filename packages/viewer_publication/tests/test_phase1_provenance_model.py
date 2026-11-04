@@ -23,14 +23,19 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
     def decision(id,body,original,**changes):
         return dict(dict(id=id,body_sha256=body*64,original_url=original,recovered_filename=None,
             recovered_url='https://decision.test/'+id,kind='recovered_document',identity_note=id,
-            decided_at='2026-10-20T12:00:00Z',supersedes=None),**changes)
+            decided_at='2026-10-20T12:00:00Z',supersedes=None,evidence_sha256=None),**changes)
+    pin='7'*64
+    reconciled='Reconciled from pinned accepted mappings '+pin+'; receipt categories preserved'
     decisions=[decision('old','a',rows[0]['original_url']),
         decision('new','a',rows[0]['original_url'],kind='official_report_counterpart_available',supersedes='old'),
         decision('latest','a',rows[0]['original_url'],kind='requested_content_in_official_hearing',decided_at='2026-10-21T12:00:00Z'),
         decision('reject','c',rows[2]['original_url'],kind='rejected'),
         decision('category-priority','e',rows[4]['original_url'],kind='official_report_counterpart_available'),
         decision('wrong-exact','1','https://original.test/exact?a=1',kind='rejected'),
-        decision('ghost','9','https://original.test/unmatched')]
+        decision('ghost','9','https://original.test/unmatched'),
+        decision('reconciled','2','https://original.test/reconciled',identity_note=reconciled,evidence_sha256=pin),
+        decision('authored','3','https://original.test/authored',identity_note='Committee reposted the statement under a new URL',evidence_sha256=pin),
+        decision('other-pin','4','https://original.test/other-pin',identity_note=reconciled,evidence_sha256='8'*64)]
     reviews=[dict(id='body-edge',target='a'*16,verdict='duplicate_of',value_json='"'+('b'*16)+'"',decided_at='2026-10-20T12:00:00Z',supersedes=None),
         dict(id='old-hide',target='a'*16,verdict='hide',value_json='null',decided_at='2026-10-20T12:00:00Z',supersedes=None),
         dict(id='withdraw',target='a'*16,verdict='withdraw',value_json='null',decided_at='2026-10-21T12:00:00Z',supersedes='old-hide')]
@@ -38,7 +43,7 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
         json_input(tmp_path,'raw_captures',rows,receipt_key='Utf8',receipt_line='Int32',capture_index='Int32',mode='Utf8',
             sha_hex='Utf8',original_url='Utf8',recovery_category='Utf8',match_basis='Utf8',recovered_url='Utf8',imported_at='Utf8',bytes='Int64'),
         json_input(tmp_path,'recovery_decisions',decisions,id='Utf8',body_sha256='Utf8',original_url='Utf8',recovered_filename='Utf8',
-            recovered_url='Utf8',kind='Utf8',identity_note='Utf8',decided_at='Utf8',supersedes='Utf8'),
+            recovered_url='Utf8',kind='Utf8',identity_note='Utf8',decided_at='Utf8',supersedes='Utf8',evidence_sha256='Utf8'),
         json_input(tmp_path,'review_records',reviews,id='Utf8',target='Utf8',verdict='Utf8',value_json='Utf8',decided_at='Utf8',supersedes='Utf8'),
         json_input(tmp_path,'source_files',[
             dict(source_id='real-a',body_sha='a'*64,filename='a.pdf',source_url='https://copy.test/a',is_real_file=True),
@@ -62,7 +67,8 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
             dict(name='attachments',sql='SELECT receipt_line,component FROM recovery_attachments ORDER BY receipt_line'),
             dict(name='fatal',sql='SELECT receipt_line,error FROM recovery_diagnostics WHERE is_fatal ORDER BY receipt_line'),
             dict(name='reviews',sql='SELECT id FROM current_reviews ORDER BY id'),
-            dict(name='edges',sql='SELECT left_node,right_node FROM body_review_edges')])
+            dict(name='edges',sql='SELECT left_node,right_node FROM body_review_edges'),
+            dict(name='notes',sql="SELECT id,identity_note FROM remaining_recovery_decisions WHERE id IN ('reconciled','authored','other-pin','latest') ORDER BY id")])
     assert reports['rows']==[
         dict(receipt_line=1,kind='requested_content_in_official_hearing',decision_id='latest',recovered_url='https://retained.test/1'),
         dict(receipt_line=2,kind='recovered_document',decision_id=None,recovered_url='https://retained.test/2'),
@@ -75,6 +81,10 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
     assert reports['fatal']==[dict(receipt_line=4,error='unknown_recovery_kind'),dict(receipt_line=7,error='missing_original_url')]
     assert reports['reviews']==[dict(id='body-edge')]
     assert reports['edges']==[dict(left_node='b:'+'a'*64,right_node='b:'+'b'*64)]
+    # Only a note restating the decision's own evidence pin is withheld.
+    assert reports['notes']==[dict(id='authored',identity_note='Committee reposted the statement under a new URL'),
+        dict(id='latest',identity_note='latest'),dict(id='other-pin',identity_note=reconciled),
+        dict(id='reconciled',identity_note=None)]
 
 
 def test_provenance_inputs_keep_review_values_as_native_json(tmp_path):

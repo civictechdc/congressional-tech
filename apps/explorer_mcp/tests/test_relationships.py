@@ -17,8 +17,11 @@ def test_discovery_uses_producer_definitions_and_stays_bounded(reader):
     assert table['identity']['fields'] == ['witness_key']
     assert 'witness_submitted_documents' in table['incoming']
     assert 'witness_transcript_documents' in table['outgoing']
-    assert reader.dataset_info({'table': 'rosters'})['scope'] == ['Committee seats cover the 113th–119th Congresses only']
-    assert reader.dataset_info({'relationship': 'roster_committee'})['scope'] == 'rosters.congress (113th–119th Congresses)'
+    assert reader.dataset_info({'table': 'rosters'})['scope'] == [
+        'Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; '
+        'congress_start and congress_end give the published range']
+    assert reader.dataset_info({'relationship': 'roster_committee'})['scope'] == \
+        'rosters.congress (Congresses populated in the pinned committee_assignments snapshot)'
     relation = reader.dataset_info({'relationship': 'witness_submitted_documents'})
     assert relation['source']['fields'] == ['witness_keys[]']
     assert 'own document URLs' in relation['meaning']
@@ -123,8 +126,12 @@ def test_transcript_participation_does_not_claim_submitted_documents(reader):
     submitted = reader.dataset_info({'recipe': 'witness_documents'})
     assert reader.query_sql({'sql': transcript['sql'], 'parameters': ['appearance-2']})['rows'][0]['filename'] == 'Hearing excerpt.pdf'
     assert reader.query_sql({'sql': submitted['sql'], 'parameters': ['appearance-2']})['rows'] == []
-    assert reader.query_sql({'sql': transcript['sql'], 'parameters': ['appearance-1']})['rows'] == []
     assert reader.query_sql({'sql': submitted['sql'], 'parameters': ['appearance-1']})['rows'][0]['filename'] == 'Agenda.pdf'
+    # appearance-1 has no package_id; the MODS row it supersedes carries the transcript's package.
+    via_superseded = reader.query_sql({'sql': transcript['sql'], 'parameters': ['appearance-1']})['rows']
+    assert [(r['witness_key'], r['filename']) for r in via_superseded] == [('appearance-1', 'Hearing excerpt.pdf')]
+    assert reader.query_sql({'sql': transcript['sql'], 'parameters': ['mods-appearance-1']})['rows'][0]['filename'] == 'Hearing excerpt.pdf'
+    assert reader.query_sql({'sql': transcript['sql'], 'parameters': ['0001497931f99cd1']})['rows'] == []
 
 
 def test_missing_published_table_is_unavailable_not_empty(tmp_path, phase2):

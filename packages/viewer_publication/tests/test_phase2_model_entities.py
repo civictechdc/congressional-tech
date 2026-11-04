@@ -682,7 +682,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert files_by_name['members.parquet']['coverage']['date_end'] == '2025-01-03'
     assert files_by_name['rosters.parquet']['coverage']['congress_start'] == 118
     assert files_by_name['rosters.parquet']['coverage']['congress_end'] == 118
-    assert files_by_name['rosters.parquet']['coverage']['gaps'] == ['Committee seats cover the 113th–119th Congresses only']
+    assert files_by_name['rosters.parquet']['coverage']['gaps'] == [
+        'Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; '
+        'congress_start and congress_end give the published range']
     assert files_by_name['bills.parquet']['generations'] == {'bill-family': '3' * 64, 'roll-call-votes': '5' * 64, 'amendments': '6' * 64}
     assert files_by_name['bills.parquet']['coverage']['gaps'] == ['Amendments cover the 119th Congress only until spicy-regs backfills']
     assert files_by_name['nominations.parquet']['generations'] == {'nominations': '4' * 64, 'roll-call-votes': '5' * 64}

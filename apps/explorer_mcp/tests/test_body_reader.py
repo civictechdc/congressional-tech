@@ -273,6 +273,9 @@ def test_get_document_text_reads_pdf_gzip_html_xml_and_plain_text_and_caches(tmp
                 assert search_hit['match_count'] == 1
                 assert search_hit['matches'][0]['page'] == 2
                 assert 'commingled customer assets' in search_hit['matches'][0]['snippet']
+                assert search_hit['total_chars'] == full_pdf['total_chars']
+                page_hit = await get_doc(release_id=selected['release_id'], link_key=by_row[0], section='text', page=2, query='commingled')
+                assert page_hit['total_chars'] == page2['total_chars']
 
                 # Cache verification: 4 calls to row 0 only made 1 HTTP request and wrote <data_dir>/bodies/<sha>.json
                 cache_file = selected_dir / 'bodies' / f'{pdf_sha.hex()}.json'

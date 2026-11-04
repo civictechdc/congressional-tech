@@ -229,7 +229,7 @@ Identity: `list_row, ordinal` (primary_key; release).
 | `bytes` | `int64` | no | Original recovered byte count |
 | `imported_at` | `date32` | yes | Recovery import date; unknown when the input has no import record, as in the v5 seed |
 | `recovered_url` | `string` | no | Address where the recovered copy was found |
-| `identity_note` | `string` | yes | Explanation identifying the recovery |
+| `identity_note` | `string` | yes | Authored explanation of how the recovery relates to the original; null when the decision recorded none (kind still states the relationship) |
 
 Nullability: Nullability transcribes data model §8.1 (recoveries.parquet row). A required column is refused at write time.
 
@@ -392,7 +392,7 @@ One member assignment to a committee or subcommittee in a Congress (keyed by con
 
 Identity: `congress, system_code, bioguide_id` (primary_key; published identifier).
 
-Coverage: Committee seats cover the 113th–119th Congresses only.
+Coverage: Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end give the published range.
 
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
@@ -807,13 +807,13 @@ many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. S
 
 `rosters.system_code` → `committees.system_code`. Committee or subcommittee assignment for the roster row's Congress.
 
-many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: rosters.congress (113th–119th Congresses).
+many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: rosters.congress (Congresses populated in the pinned committee_assignments snapshot).
 
 ### `roster_member`
 
 `rosters.bioguide_id` → `members.bioguide_id`. Assigned member for the roster row's Congress.
 
-many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: rosters.congress (113th–119th Congresses).
+many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: rosters.congress (Congresses populated in the pinned committee_assignments snapshot).
 
 ### `bill_sponsor`
 
@@ -1154,7 +1154,7 @@ Parameters, in order: `event_id` (example `335321`).
 
 ```sql
 SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,
-  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id),[]) AS witnesses,
+  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id AND w.superseded_by IS NULL),[]) AS witnesses,
   coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM "list" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,
   coalesce((SELECT list(struct_pack(video_key:=r.video_key,url:=r.url,basis:=r.basis,decision:=r.decision,status:=r.status) ORDER BY r.basis,r.video_key,r.url) FROM recording_matches r WHERE r.event_id=m.event_id),[]) AS recordings
 FROM meetings m WHERE m.event_id=?
@@ -1163,6 +1163,8 @@ FROM meetings m WHERE m.event_id=?
 Uses correlated subqueries with coalesce(..., []) so nested lists do not Cartesian-multiply rows or drop zero-child hearings.
 
 Uses m.event_id inside each subquery so only one ? parameter is required.
+
+Lists current appearances only (superseded_by IS NULL); each superseded row restates the same person from a lower-ranked source.
 
 ### `witness_documents` — Documents submitted by a witness appearance
 
@@ -1180,6 +1182,8 @@ WHERE NOT coalesce(l.hidden,false) AND w.witness_key=? ORDER BY l.list_row LIMIT
 
 Use a witness_key, never a person-name join.
 
+Returns documents annotated with exactly this witness_key; pass the current appearance (superseded_by IS NULL) from hearing_dossier or witnesses.
+
 ### `witness_transcripts` — Printed hearings containing a witness appearance
 
 Requires: `witnesses`, `detail`, `list`.
@@ -1189,12 +1193,16 @@ Result: One retained transcript document for the appearance.
 Parameters, in order: `witness_key` (example `0000b43c099edbc2`).
 
 ```sql
+WITH w AS (SELECT witness_key,name FROM witnesses WHERE witness_key=?),
+  packages AS (SELECT DISTINCT p.package_id FROM witnesses p, w WHERE p.package_id IS NOT NULL AND (p.witness_key=w.witness_key OR p.superseded_by=w.witness_key))
 SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key
-FROM witnesses w JOIN detail d ON d.package_id=w.package_id JOIN "list" l USING (list_row)
-WHERE NOT coalesce(l.hidden,false) AND w.witness_key=? ORDER BY l.list_row LIMIT 100
+FROM w, packages k JOIN detail d ON d.package_id=k.package_id JOIN "list" l USING (list_row)
+WHERE NOT coalesce(l.hidden,false) ORDER BY l.list_row LIMIT 100
 ```
 
-No package_id means no published package association; submitted documents use a different relationship.
+No package_id on the appearance or on the rows it supersedes means no published package association; submitted documents use a different relationship.
+
+Follows superseded_by: a current appearance from a source without package_id reaches the package its superseded source row carries.
 
 ### `committee_roster` — Committee members for a published Congress
 
