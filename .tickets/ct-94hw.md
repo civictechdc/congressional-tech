@@ -1,8 +1,8 @@
 ---
 id: ct-94hw
 status: in_progress
-deps: [ct-kb4w]
-links: [ct-m56x, ct-30fp, ct-kb4w]
+deps: [ct-kb4w, ct-5kk7, ct-vq2a]
+links: [ct-m56x, ct-30fp, ct-kb4w, ct-5kk7, ct-vq2a, ct-kwse]
 created: 2026-11-04T15:19:41Z
 type: bug
 priority: 1
@@ -46,3 +46,7 @@ Run 7 (2b3f20ef): producer preflight passed (record repair held). Failed in the 
 **2026-11-04T20:05:14Z**
 
 Nightly run 8 (20261104T174328Z, main 3afcd141): daily completed and lake heads advanced with producer records. Publish refused at gate 1: 71 groups vs e4538f00 with no recorded cause (candidate ef4c1632...). Candidate, base and release-gate.json saved under .cache/archive-release/nightly/20261104T174328Z/candidate/. Witnesses -35,899/+35,915 investigated in candidate/witness-rekey.md: the same Congress.gov witnesses re-keyed after 18,123 committee-meeting API URLs first fetched 2026-10-30 entered the lake (new record_sha plus a real context_key where e4538f00 had sha256([null,null])). Content equal apart from 79 names, 68 positions, 69 organizations. Open for the owner: witness_key churns on every re-fetch, and the Explorer /witness route looks up by key. launchd left unloaded until a cause record lands. event 118300 committee_records still 0: nightly does not rebuild Explorer tables (ct-717p stays open).
+
+**2026-11-04T20:46:21Z**
+
+Gate 1 cause analysis, nightly 20261104T174328Z (candidate ef4c1632 vs live e4538f00), all groups except the 3 witnesses.parquet ones (ct-kb4w). Draft: .cache/archive-release/nightly/20261104T174328Z/causes/draft-release-causes.json, 56 explained groups, validated with release_gate.load_causes (sha256 babf60b72db6..., 58354 bytes). The gate recomputed over the saved files reproduces all 71 groups exactly. With the draft, verdict() still refuses 15 groups, listed in causes/possible-defects.json. Explained causes: (1) daily growth from the 2026-10-30/31 receipts: 1,128 new documents, 22,004 url_state re-attempts, and 18,123 committee-meeting API records fetched for the first time. Those records add listed_on/link_text to 164,500 congress.gov witness-document source rows (the other 101 rows are agriculture event pages and democrats-* download pages), and change meeting updateDate/transcripts/subjects, 3 CHRG links and nomination 119-pn-1176. (2) Saved-copy swap: 1,689 documents gained a newer identical copy on democrats-naturalresources/homeland, which saved-files.sql (unchanged, first_fetched DESC) now saves. That moves is_saved, filename, kind/family/facts, src_len, measure_keys and date_source. (3) 188 recovery-only documents now hold an original capture. (4) Code: acb8902b ct-nh41 (identity_note 10,772); schema.json from d2545009 ct-m94a, 919258e7 ct-mx3g and acb8902b. Possible defects, held out of the draft: package_id 75 (45 lost and 28 filename-derived non-GovInfo ids after the swap; evidence/05b); document_date 18 detail+list (Batcheller testimony read as 2019-06-23 instead of 2020-06-23 from the bill title, status accepted; evidence/05c); meetings.videos 9, recordings removed -8, recording_matches removed -16 and meeting_coverage state/count/reason/basis (8 meetings lose their videos when the API record is first fetched despite an unchanged updateDate; evidence/10 and 11). detail/list witness_keys 65,924 are held pending ct-kb4w (65,897 documents have the same people under new keys; 27 gain a MODS appearance from the 3 new CHRG links). Re-pin after the rebuild: run causes/scripts/analyse.py, then build_draft.py; both assert the counts.
