@@ -1,7 +1,7 @@
 ---
 id: ct-ud0b
 status: open
-deps: [ct-itcg]
+deps: [ct-itcg, ct-whm2]
 links: [ct-4jms, ct-tk10]
 created: 2026-11-02T13:59:14Z
 type: feature
@@ -55,3 +55,7 @@ Reopened 2026-11-03 (post-release acceptance test): automatic causes work, but t
 **2026-11-04T02:29:12Z**
 
 2026-11-03: ct-itcg closed (specs pinned to archive_r1b); publish binding admits with rss_gb 14. Dropped the ct-r8jd dependency: what remains there is maintenance only. Remaining here: one hosted nightly run that builds from the archive_r1b base, passes Gates 1-5 and publishes (or refuses with a recorded reason).
+
+**2026-11-04T02:33:37Z**
+
+2026-11-03: pushed specs (origin/main 655476f2); publish --check-binding --github-output passes locally. Not dispatched; a hosted run would fail: (1) GitHub has no archive-publish/archive-backfill/archive-maintenance environments and none of ARCHIVE_PUBLISH_ENGINE_CREDENTIALS, ARCHIVE_PUBLISH_R2_ACCESS_KEY_ID, ARCHIVE_PUBLISH_R2_SECRET_ACCESS_KEY (repo has only R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, DOCSPEC_ENGINE_CREDENTIALS); (2) spicy-regs inputs exist only under local .cache (ct-whm2). DOCSPEC_RUNTIME_ARTIFACT matches model/docspec-runtime-pin.json (b0342a73, linux-amd64 9e5cc34f). archive-jobs.yml has never run. The workflow_run trigger also needs capture-archive enabled (ct-4jms).
