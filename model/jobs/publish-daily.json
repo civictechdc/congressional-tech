@@ -5,31 +5,31 @@
   "tables": {
     "captures": {
       "namespace": [
-        "archive"
+        "archive_r1b"
       ],
       "name": "captures"
     },
     "readings": {
       "namespace": [
-        "archive"
+        "archive_r1b"
       ],
       "name": "readings"
     },
     "filename_readings": {
       "namespace": [
-        "archive"
+        "archive_r1b"
       ],
       "name": "filename_readings"
     },
     "meeting_records": {
       "namespace": [
-        "archive"
+        "archive_r1b"
       ],
       "name": "meeting_records"
     },
     "appearance_records": {
       "namespace": [
-        "archive"
+        "archive_r1b"
       ],
       "name": "appearance_records"
     }

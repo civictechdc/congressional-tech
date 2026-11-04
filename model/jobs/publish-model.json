@@ -3,38 +3,52 @@
   "engine_config": "../../.runtime/docspec/runtime.json",
   "captures": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/captures/metadata/00000.metadata.json",
-    "table_uuid": "80c2e091-98ca-5b6f-b48e-b6011d68a17a",
-    "snapshot": null,
-    "schema_id": 0
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures/metadata/00001-01a1a35d-1ab7-7d73-8e11-8e45571baba7.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 3886600029866317702,
+    "table_uuid": "01a1a35c-8940-77f2-a48f-c52881d2ccb2"
   },
   "readings": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/readings/metadata/00000.metadata.json",
-    "table_uuid": "3555c02e-4468-5dab-8ebf-e333606dc6f9",
-    "snapshot": null,
-    "schema_id": 0
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings/metadata/00001-01a1a36c-5d32-74e2-9b18-dfaf319682b6.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 4589273979792420858,
+    "table_uuid": "01a1a35e-550f-79f2-81a2-b7412fd72bc6"
   },
   "filename_readings": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/filename_readings/metadata/00000.metadata.json",
-    "table_uuid": "375dce91-641c-56cb-accd-f0277324d78d",
-    "snapshot": null,
-    "schema_id": 0
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/filename_readings/metadata/00001-01a1a35d-f052-7443-b3de-92d4a5a371d4.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 1994823931800258593,
+    "table_uuid": "01a1a35d-bcfc-7a90-9d0a-a3b2720b9827"
   },
   "meeting_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/meeting_records/metadata/00000.metadata.json",
-    "table_uuid": "b4decbc1-19f4-5b1b-bc79-b216feba5ea8",
-    "snapshot": null,
-    "schema_id": 0
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records/metadata/00001-01a1a35e-450c-7392-92ae-c81f1882214e.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 4939381388824324652,
+    "table_uuid": "01a1a35e-326a-7a31-9723-4ca2ce8f2fc1"
   },
   "appearance_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/appearance_records/metadata/00000.metadata.json",
-    "table_uuid": "8d7adc56-f638-56c5-9f9d-042cd1e7e82c",
-    "snapshot": null,
-    "schema_id": 0
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/appearance_records/metadata/00001-01a1a35c-750a-75f1-8296-5d5802da9681.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 1297563386327530412,
+    "table_uuid": "01a1a35c-5f95-7150-aeb0-30b20296cd34"
+  },
+  "video_records": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/video_records/metadata/00001-01a1a36c-e9e1-7913-8205-3c42a3649aa2.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 5595115807617726608,
+    "table_uuid": "01a1a36c-dac3-70d3-94aa-f571c0017da8"
+  },
+  "committee_records": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/committee_records/metadata/00001-01a1a35d-b011-7091-9486-b49871d34349.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 5973198633862248223,
+    "table_uuid": "01a1a35d-a001-7361-b21d-e1f164695502"
   },
   "spicy_regs": {
     "path": "../../.cache/archive-release/r1b/inputs/spicy_regs/spicy-regs.json",
@@ -66,5 +80,13 @@
   },
   "catalog_version": "6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1",
   "output": "../../output/archive-release",
-  "scratch": "../../output/archive-model"
+  "scratch": "../../output/archive-model",
+  "recording_decision_files": [
+    {
+      "key": "provenance/recording_decisions/8addb2dc.jsonl",
+      "path": "../../.cache/archive-release/r1b-run/candidate-8addb2dc/recording-decisions.jsonl",
+      "sha256": "5afa48eee784c4a43415315e9110fa5c523f233c8875e1126e9737c379be1abb",
+      "size": 5285825
+    }
+  ]
 }
