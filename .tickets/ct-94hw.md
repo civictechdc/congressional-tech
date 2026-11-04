@@ -1,7 +1,7 @@
 ---
 id: ct-94hw
 status: in_progress
-deps: [ct-kb4w, ct-5kk7, ct-vq2a]
+deps: [ct-kb4w, ct-5kk7, ct-vq2a, ct-kwse]
 links: [ct-m56x, ct-30fp, ct-kb4w, ct-5kk7, ct-vq2a, ct-kwse]
 created: 2026-11-04T15:19:41Z
 type: bug
