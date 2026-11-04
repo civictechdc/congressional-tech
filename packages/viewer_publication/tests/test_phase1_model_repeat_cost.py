@@ -46,7 +46,7 @@ REPEAT_COST_TRACKED = {
     'retired_links_export': 31_775_718,         # the links view: ordered x29, prior_links x21 (M16)
     'profile_completeness': 20_462_128,         # query; readings x13 through selected_readings (M28)
     'model_url_keys': 18_289_579,               # url_normalized x11 through mappings (M17)
-    'relationship_invariants': 15_222_527,      # query; details x19, ordered x18 (M16)
+    'relationship_invariants': 16_459_317,      # query; details x19, ordered x18 (M16); witness_key_map x7 (ct-kb4w)
     'source_url_keys': 13_842_862,              # source_url_normalized x11 through mappings (M17)
     'pinned_readings': 11_344_274,              # readings x9 through selected_readings (M28)
     'link_inputs': 11_344_274,                  # readings x9 through selected_readings (M28)

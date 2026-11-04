@@ -276,13 +276,12 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
             WHERE key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=refs.key)) AS missing_document_witness''')
     if 'witnesses' in auxiliary and 'witness_key_map' in auxiliary:
         # An earlier key is never also published, every key it resolves to is, and the status says which
-        # columns are set (ct-kb4w).
-        checks.append('''(SELECT count(*) FROM witness_key_map_export m
-            WHERE EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=m.old_key)) AS witness_old_key_still_published''')
-        checks.append('''(SELECT count(*) FROM witness_key_map_export m WHERE m.witness_key IS NOT NULL
-            AND NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=m.witness_key))
-            +(SELECT count(*) FROM (SELECT unnest(candidate_keys) AS candidate_key FROM witness_key_map_export) candidates
-            WHERE NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=candidates.candidate_key)) AS missing_witness_successor''')
+        # columns are set (ct-kb4w). One pass over each export: every key a map row names, published
+        # exactly when it is not the row's old key.
+        checks.append('''(SELECT count(*) FROM (SELECT m.old_key,unnest(array_concat(make_array(m.old_key),
+                CASE WHEN m.witness_key IS NULL THEN m.candidate_keys ELSE array_append(m.candidate_keys,m.witness_key) END)) AS key
+            FROM witness_key_map_export m) refs LEFT JOIN witnesses_export w ON w.witness_key=refs.key
+            WHERE (refs.key=refs.old_key)=(w.witness_key IS NOT NULL)) AS misplaced_witness_key_map_key''')
         checks.append('''(SELECT count(*) FROM witness_key_map_export
             WHERE (status='unambiguous') <> (witness_key IS NOT NULL) OR (status='unresolved') <> (basis IS NULL)
             OR (status='ambiguous') <> (coalesce(cardinality(candidate_keys),0)>1)

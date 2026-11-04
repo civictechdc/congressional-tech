@@ -144,9 +144,10 @@ def test_native_checks_refuse_a_witness_key_map_that_breaks_its_own_rules(tmp_pa
     result = run_job(tmp_path, engine, inputs=[], steps=steps, outputs=[],
                      queries=publication_checks(schema, {'witnesses', 'witness_key_map'}, keyed_documents=False))
     found = result['relationship_invariants'][0]
-    assert {k: found[k] for k in ('witness_old_key_still_published', 'missing_witness_successor', 'inconsistent_witness_key_map',
+    # 'current' counts twice, as the old key and as its own successor; 'gone' and 'vanished' once each.
+    assert {k: found[k] for k in ('misplaced_witness_key_map_key', 'inconsistent_witness_key_map',
                                   'invalid_witness_key_map_key')} == dict(
-        witness_old_key_still_published=1, missing_witness_successor=2, inconsistent_witness_key_map=2, invalid_witness_key_map_key=0)
+        misplaced_witness_key_map_key=4, inconsistent_witness_key_map=2, invalid_witness_key_map_key=0)
 
 
 def test_every_registry_column_declares_nullability():
