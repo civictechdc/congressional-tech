@@ -52,6 +52,9 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value.get('reason'),str) or not value['reason'].strip():
             raise ValueError('Blocked backfill job requires exactly its reason')
         return dict(value)
+    if 'house_xml_version_transition' in value:
+        from viewer_publication.archive_house_xml_transition import load_transition
+        return load_transition(value, base=path.parent)
     if 'filename_transition' in value:
         from viewer_publication.archive_model_job import _selector
         if set(value) != {'version', 'work', 'engine_config', 'filename_transition'} or value['version'] != 1:
@@ -143,6 +146,9 @@ def _dumps(value):
 
 def plan(spec):
     if spec.get('status')=='blocked':return dict(spec)
+    if 'house_xml_version_transition' in spec:
+        return dict(status='planned', executed=False, work=spec['work'],
+                    model_spec=spec['house_xml_version_transition'])
     if 'filename_transition' in spec:
         return dict(status='planned', executed=False, work=spec['work'],
                     base=spec['filename_transition']['base'], prior_version=FILENAME_PRIOR_VERSION,
@@ -285,6 +291,9 @@ def _filename_transition(spec, runtime_factory):
 def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
     """Run bounded lake backfill batches against the configured remote runtime and raw store."""
     if spec.get('status')=='blocked':return dict(spec)
+    if 'house_xml_version_transition' in spec:
+        from viewer_publication.archive_house_xml_transition import execute_transition
+        return execute_transition(spec, runtime_factory=runtime_factory)
     if 'filename_transition' in spec:
         return _filename_transition(spec, runtime_factory)
     if 'selective' in spec:

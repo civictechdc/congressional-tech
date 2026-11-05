@@ -96,6 +96,28 @@ def test_filename_transition_reuses_values_and_records_the_producer(tmp_path):
     assert snapshot_reasons(model, {'filename_readings': producer}) == []
 
 
+@pytest.mark.parametrize('basename,refused', [
+    ('Protection%20Act%20of%202019.pdf', False),
+    ('Protection_Act%5Fof_2019_6-23-20.pdf', True),
+])
+def test_house_xml_transition_checks_the_normalized_consumer_input(basename, refused):
+    from viewer_publication.archive_house_xml_transition import NEW, OLD, _advance_rows
+
+    source = ['house_xml', 'congress_gov']
+    urls = ['https://example.test/' + basename + '?Act_of_2019=ignored']
+    rows = pa.table(dict(record_sha=[b'house', b'congress'], source=source,
+        parser_version=[OLD[s] for s in source], status=['completed', 'completed'],
+        meetings=[[dict(document_urls=urls)], [dict(document_urls=[])]]))
+    if refused:
+        with pytest.raises(ValueError, match='requires replay'):
+            _advance_rows(rows)
+        return
+    updated, counts = _advance_rows(rows)
+    assert updated['parser_version'].to_pylist() == [NEW[s] for s in source]
+    assert updated.drop_columns(['parser_version']).equals(rows.drop_columns(['parser_version']))
+    assert counts == dict(rows=2, house_xml=1, congress_gov=1, urls_checked=1)
+
+
 @pytest.mark.parametrize('change,message',[
     (dict(catalog_root=None),'local catalog_root'),
     (dict(tables={name:dict(namespace=['archive'],name=name) for name in ('captures','readings','filename_readings','meeting_records','appearance_records')}),'archive namespace'),

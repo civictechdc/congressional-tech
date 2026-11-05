@@ -2,13 +2,13 @@
   "version": 1,
   "model_spec": {
     "path": "publish-model.json",
-    "sha256": "0c1d80d3a110ced286bb72234745b0c8bde7a219902d62ea9ae1c81b3cd8dcff",
-    "size": 4466
+    "sha256": "a092b35129594d406013f8c6fb16b4463001acc8e68a021fbbddb623041dc287",
+    "size": 4479
   },
   "daily": {
     "path": "publish-daily.json",
-    "sha256": "6321635b7d95f5f5970f80209aeb0a692b637865edc36e1a91a87affc7a1d924",
-    "size": 1376
+    "sha256": "49b4f905b1f645b7cc1832f191b8a634e5e63a4d3030effe07359c4049e6742e",
+    "size": 1389
   },
   "bucket": "congressional-tech-raw",
   "work": "../../output/archive-publish",
@@ -42,9 +42,9 @@
       "size": 2129
     },
     "filename_readings": {
-      "path": "producers/filename_readings.json",
-      "sha256": "64e8d518f27bb9e8bc014842a4ee458db287a96bf099fad15b144945661687cc",
-      "size": 2137
+      "path": "producers/filename_readings-act-citation.json",
+      "sha256": "6423670e0883a9ecebbbf1295d843f88452001f0547160762a99e9026596a42f",
+      "size": 2387
     },
     "meeting_records": {
       "path": "producers/meeting_records.json",

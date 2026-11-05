@@ -20,7 +20,7 @@
       "namespace": [
         "archive_r1b"
       ],
-      "name": "filename_readings"
+      "name": "filename_readings_act_citation"
     },
     "meeting_records": {
       "namespace": [
@@ -54,9 +54,9 @@
       "size": 2129
     },
     "filename_readings": {
-      "path": "producers/filename_readings.json",
-      "sha256": "64e8d518f27bb9e8bc014842a4ee458db287a96bf099fad15b144945661687cc",
-      "size": 2137
+      "path": "producers/filename_readings-act-citation.json",
+      "sha256": "6423670e0883a9ecebbbf1295d843f88452001f0547160762a99e9026596a42f",
+      "size": 2387
     },
     "meeting_records": {
       "path": "producers/meeting_records.json",
