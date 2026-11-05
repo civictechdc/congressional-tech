@@ -248,6 +248,7 @@ Identity: `event_id` (primary_key; published identifier).
 | --- | --- | --- | --- |
 | `event_id` | `int64` | no | Congressional meeting event ID |
 | `chamber` | `dict` | yes | House, Senate or joint |
+| `chamber_basis` | `string` | no | source if the meeting record supplies a chamber, source_chamber_unknown if the meeting record has no supported chamber, or meeting_detail_missing if only a document references the event. Earlier releases omit this field. |
 | `title` | `string` | yes | Document or publisher title when known |
 | `meeting_date` | `date32` | yes | Meeting date |
 | `meeting_type` | `dict` | yes | Publisher meeting category |

@@ -175,6 +175,11 @@ WITH keys AS (
 )
 SELECT k.event_id,
  m.chamber,
+ CASE
+  WHEN m.event_id IS NULL THEN 'meeting_detail_missing'
+  WHEN m.chamber IS NULL THEN 'source_chamber_unknown'
+  ELSE 'source'
+ END AS chamber_basis,
  m.title,
  m.meeting_date,
  m.meeting_type,

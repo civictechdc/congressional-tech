@@ -687,6 +687,12 @@
           "nullable": true
         },
         {
+          "name": "chamber_basis",
+          "type": "string",
+          "meaning": "source if the meeting record supplies a chamber, source_chamber_unknown if the meeting record has no supported chamber, or meeting_detail_missing if only a document references the event. Earlier releases omit this field.",
+          "nullable": false
+        },
+        {
           "name": "title",
           "type": "string",
           "meaning": "Document or publisher title when known",

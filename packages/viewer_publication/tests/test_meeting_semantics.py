@@ -32,9 +32,9 @@ def text(value):
     return 'NULL' if value is None else "'" + str(value).replace("'", "''") + "'"
 
 
-def meeting(event_id, date, title, status=None, video=False, kind='Hearing'):
+def meeting(event_id, date, title, status=None, video=False, kind='Hearing', chamber='house'):
     facts = stated_facts(kind, title, status)
-    return (f"SELECT cast({event_id} AS BIGINT) AS event_id,'house' AS chamber,{text(title)} AS title,"
+    return (f"SELECT cast({event_id} AS BIGINT) AS event_id,cast({text(chamber)} AS VARCHAR) AS chamber,{text(title)} AS title,"
             f"cast('{date}' AS DATE) AS meeting_date,'{kind}' AS meeting_type,cast(NULL AS SMALLINT) AS session,"
             f"cast({text(status)} AS VARCHAR) AS status,{EMPTY_SITTINGS} AS sittings,"
             "array_slice(make_array(named_struct('system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0) AS committees,"
@@ -91,6 +91,8 @@ MEETINGS = [
     meeting(23, '2023-11-08', NEVER + ' committee file', 'Scheduled'),
     meeting(24, '2023-11-15', NEVER + ' captions', 'Scheduled'),
     meeting(25, '2023-11-16', NEVER + ' segments', 'Scheduled'),
+    meeting(104064, '2015-11-17', 'Examining Ongoing Challenges at the U.S. Secret Service', chamber=None),
+    meeting(335901, '2024-06-12', 'Source-stated joint hearing control', chamber='joint'),
 ]
 TRACK = "named_struct('body',{body},'suffix','.gz','format','{format}','language','en','production','{production}')"
 SHA = "arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)')"
@@ -104,7 +106,8 @@ RECORDINGS = (f"SELECT 'youtube:abc' AS video_key,arrow_cast(make_array(cast(24 
 ORDERED = ("SELECT arrow_cast(make_array('23'),'List(Utf8)') AS meeting_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS measure_keys,'HHRG-118-VR09-Transcript-20231108.pdf' AS filename,'pdf' AS format,cast(3 AS INT) AS list_row "
            "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HMKP-118-VR09-Transcript-20231108.pdf','pdf',cast(6 AS INT) "
            "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'Hearing-transcript-request-letter.pdf','pdf',cast(4 AS INT) "
-           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf','pdf',cast(5 AS INT)")
+           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf','pdf',cast(5 AS INT) "
+           "UNION ALL SELECT arrow_cast(make_array('119583'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-119-ED00-20261023-SD001.pdf','pdf',cast(8 AS INT)")
 
 
 @pytest.fixture(scope='module')
@@ -133,8 +136,14 @@ def meetings(tmp_path_factory):
     with duckdb.connect() as db:
         found = db.execute(f"""SELECT event_id,rescheduled_to,rescheduled_basis,not_held,
             [concat(t.source,':',coalesce(t.package_id,cast(t.list_row AS VARCHAR),t.video_key||'/'||t.production)) FOR t IN transcripts]
-            FROM read_parquet('{work / 'meetings.parquet'}')""").fetchall()
+            , chamber, chamber_basis FROM read_parquet('{work / 'meetings.parquet'}')""").fetchall()
     return {row[0]: row[1:] for row in found}
+
+
+def test_chamber_basis_distinguishes_missing_detail_unknown_chamber_and_joint(meetings):
+    assert meetings[119583][4:] == (None, 'meeting_detail_missing')
+    assert meetings[104064][4:] == (None, 'source_chamber_unknown')
+    assert meetings[335901][4:] == ('joint', 'source')
 
 
 def test_a_meeting_with_only_a_print_lists_the_print(meetings):
