@@ -43,7 +43,9 @@ The `capture` job runs in the `archive-capture` environment on `ubuntu-24.04` wi
    - Runs `.github/scripts/run-archive-job.py backfill --check-binding`, installs the pinned runtime, and executes `.github/scripts/run-archive-job.py backfill` (`python -I -m viewer_publication.archive_backfill_job --spec <spec> --execute`) to admit and record historical or producer backfill batches into the native dataset tables.
 3. **Maintenance (`maintenance`)**:
    - Runs `.github/scripts/run-archive-job.py maintenance --check-binding`, installs the pinned runtime, and executes `.github/scripts/run-archive-job.py maintenance` (`python -I -m viewer_publication.archive_maintenance --spec <spec> --execute`).
-   - Verifies raw capture custody in `congressional-tech-raw` (`congress_api.retention.raw_verifier`), validates retained receipt evidence (`viewer_publication.receipt_evidence`), and runs derived release retention (`viewer_publication.archive_maintenance`) to keep the current release plus the previous two verified releases while refusing to delete any referenced object.
+   - Verifies raw capture custody against the model's pinned `archive_r1b.captures` snapshot. It copies and checks the bucket's receipts and verification records, then writes their local inventories under `<work>/raw-verification-inputs/`.
+   - Validates rebuild evidence for the live release, its predecessor, and releases pinned by SpicyRegs. It prunes only unpinned derived release keys whose newest object is older than 24 hours.
+   - Use `python -I -m viewer_publication.archive_maintenance --spec model/jobs/maintenance.json --plan` to list retained releases and proposed deletion keys. Use `--dry-run` to also stage raw verification and write the local maintenance report. Both modes use read-only storage access.
 
 ## Local CLI reference
 

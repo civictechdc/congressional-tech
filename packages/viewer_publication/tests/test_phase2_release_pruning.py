@@ -13,7 +13,6 @@ from viewer_publication.archive_maintenance import (
     execute,
     load_spec,
     maintain_releases,
-    plan,
     prunable_release_ids,
     read_archive_release_pins,
 )
@@ -360,11 +359,11 @@ def test_prunable_release_ids_and_maintenance_job_spec_sections():
 
     root = Path(__file__).resolve().parents[3]
     spec = load_spec(root / 'model/jobs/maintenance.json')
-    assert spec.get('external_pins_source') == ARCHIVE_RELEASE_PINS
-    assert 'raw_verification' in spec
-    assert set(spec['raw_verification']) >= {'captures', 'receipt_inventory', 'verification_inventory', 'apply_staged'}
+    assert spec['external_pins_source'] == 'https://data.spicygov.ai/pins/archive-releases.json'
+    raw = spec['raw_verification']
+    assert raw['captures']['kind'] == 'native_table'
+    assert '/archive_r1b/captures/' in raw['captures']['metadata_location']
+    assert raw['apply_staged'] is True
+    assert not raw.keys() & {'receipt_inventory', 'verification_inventory'}
     assert 'lake_maintenance' in spec
     assert set(spec['lake_maintenance']) >= {'observations', 'rebuild', 'purge'}
-    planned = plan(spec)
-    assert planned['raw_verification'] == spec['raw_verification']
-    assert planned['lake_maintenance'] == spec['lake_maintenance']

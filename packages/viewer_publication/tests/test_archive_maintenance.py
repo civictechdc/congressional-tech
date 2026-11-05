@@ -1,14 +1,20 @@
-"""Derived retention validates kept evidence and never addresses raw objects."""
+"""Verify raw custody and protect kept releases during maintenance."""
+import base64
 from copy import deepcopy
 from datetime import datetime,timedelta,timezone
+import gzip
 import hashlib
+import io
 import json
+import os
 from pathlib import Path
+import re
+from types import SimpleNamespace
 from uuid import NAMESPACE_URL,uuid5
 
 import pytest
 
-from viewer_publication.archive_publish import input_digest
+from viewer_publication.archive_publish import POINTER,input_digest
 from viewer_publication.receipt_pins import PREFIX,write_input_receipts
 
 NOW=datetime(2026,10,28,12,tzinfo=timezone.utc)
@@ -80,6 +86,26 @@ def test_execute_rereads_pointer_before_only_old_derived_deletes():
     assert result['status']=='executed' and store.deleted==result['delete_keys']
     assert store.pointer_calls==2
     assert all(key.startswith(PREFIX+OLD+'/') for key in store.deleted)
+
+
+def test_execute_refuses_release_writes_if_external_pins_change_after_listing():
+    from viewer_publication.archive_maintenance import maintain_releases
+    from viewer_publication.archive_publish import SPICY_PINS
+
+    store,_=fixture()
+    pins=[PINNED]
+    original_inventory=store.inventory
+    def inventory():
+        rows=original_inventory()
+        pins.append(OLD)
+        return rows
+    def pin_source():
+        return dict(version=1,updated_at=NOW.isoformat(),releases=pins)
+    store.inventory=inventory
+    with pytest.raises(ValueError,match='External release pins changed'):
+        maintain_releases(store,now=NOW,external_pins_source=pin_source,execute=True)
+    assert store.pointer_calls==2 and store.deleted==[]
+    assert SPICY_PINS not in store.objects
 
 
 @pytest.mark.parametrize('change',[None,{'base_release_id':'invalid'}, {'registry_sha256':None},
@@ -238,15 +264,61 @@ def test_valid_kept_parquet_selectors_require_no_local_payload_reads():
     assert len(result['kept_inputs'])==4 and store.deleted==[]
 
 
-def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys):
+@pytest.mark.parametrize('historical',[True,False])
+def test_kept_entity_parquet_profile_uses_its_original_parser_fields(historical):
+    from viewer_publication import archive_maintenance
+    from viewer_publication.receipt_pins import read_receipt_list
+
+    store,records=fixture()
+    record=deepcopy(records[3])
+    old_digest=record['input_digest']
+    for name in ('meeting_records','appearance_records'):
+        record['snapshots'][name]=dict(kind='parquet',path='/not-opened/'+name+'.parquet',sha256='a'*64,size=17)
+        record['profile']['lake_versions'][name]=dict(schema_sha256='b'*64)
+    record['profile']['file_hashes'][archive_maintenance.PROFILE_SOURCE]=(
+        archive_maintenance.LEGACY_PROFILE_SHA if historical else 'a'*64)
+    prefix=PREFIX+PINNED+'/inputs/'
+    keys=read_receipt_list(record['receipt_keys_sha256'],store.get(
+        prefix+'receipts/'+record['receipt_keys_sha256']+'.json.gz'))
+    record['input_digest']=input_digest(receipt_keys=keys,**{k:record[k] for k in ('profile','provenance','entity_digests')})
+    del store.objects[prefix+old_digest+'.json']
+    write_input_receipts(store,PINNED,record['input_digest'],record,keys)
+    if historical:
+        result=archive_maintenance.maintain_releases(store,now=NOW,external_pins=[PINNED])
+        assert result['kept_releases']==[LIVE,PREVIOUS,PINNED]
+    else:
+        with pytest.raises(ValueError,match='requires pinned meeting_records'):
+            archive_maintenance.maintain_releases(store,now=NOW,external_pins=[PINNED])
+    assert store.deleted==[]
+
+
+def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys,monkeypatch):
     from pathlib import Path
     from congress_api.lake.daily import ALL_TABLE_NAMES
+    from congress_shared import storage
     from viewer_publication import archive_backfill_job,archive_maintenance
+    from urllib import request
     root=Path(__file__).resolve().parents[3]
+    store,_=fixture()
+    client=RecordingS3(store)
+    def fetch_pins(req,*,timeout):
+        assert req.full_url=='https://data.spicygov.ai/pins/archive-releases.json'
+        assert req.get_header('User-agent')=='CongressionalArchiveMaintenance/1.0'
+        return io.BytesIO(json.dumps(dict(version=1,updated_at=NOW.isoformat(),releases=[PINNED])).encode())
+    monkeypatch.setattr(storage,'connect_r2',lambda **_:client)
+    monkeypatch.setattr(request,'urlopen',fetch_pins)
     assert archive_maintenance.main(['--spec',str(root/'model/jobs/maintenance.json'),'--plan'])==0
     maint_plan=json.loads(capsys.readouterr().out)
     assert maint_plan['status']=='planned' and maint_plan['executed'] is False
     assert set(maint_plan['tables'])==set(ALL_TABLE_NAMES)
+    assert maint_plan['raw_verification']['captures']==json.loads(
+        (root/'model/jobs/publish-model.json').read_text())['captures']
+    releases=maint_plan['releases']
+    assert releases['kept_releases']==[LIVE,PREVIOUS,PINNED]
+    assert set(releases['delete_keys'])>={PREFIX+OLD+'/list.parquet',PREFIX+OLD+'/manifest.json'}
+    assert releases['delete_bytes']==sum(len(store.objects[key]) for key in releases['delete_keys'])
+    assert client.calls.count('list_objects_v2')==1
+    assert set(client.calls)=={'get_object','list_objects_v2'}
 
     assert archive_backfill_job.main(['--spec',str(root/'model/jobs/backfill.json'),'--plan'])==0
     backfill_plan=json.loads(capsys.readouterr().out)
@@ -345,3 +417,163 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     assert written['production']['producerreports']['readings']==dict(
         work_list=str(tmp_path/'work-list.parquet'),batches=[dict(readings=str(tmp_path/'readings.parquet'))])
     with pytest.raises(TypeError,match='set'):archive_backfill_job._dumps(dict(production={1}))
+
+
+WRITE_CALL=re.compile('put|delete|copy|write|upload|create|complete|abort|restore',re.IGNORECASE)
+
+
+class RecordingS3:
+    """An S3 SDK fake over a fixture release store that records every operation it is asked for."""
+    meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}))
+    def __init__(self,store):
+        self.store,self.calls=store,[]
+    def __getattr__(self,name):
+        if name.startswith('_'):raise AttributeError(name)
+        def operation(*args,**request):
+            self.calls.append(name)
+            handler=getattr(type(self),'_'+name,None)
+            return handler(self,**request) if handler else {}
+        return operation
+    def _get_object(self,*,Bucket,Key,**_):
+        from botocore.exceptions import ClientError
+        body=json.dumps(self.store.live).encode() if Key==POINTER else self.store.objects.get(Key)
+        if body is None:
+            raise ClientError({'Error':{'Code':'NoSuchKey'},'ResponseMetadata':{'HTTPStatusCode':404}},'GetObject')
+        etag=hashlib.md5(body).hexdigest() if Key.startswith(('bodies/','receipts/','provenance/')) else self.store.etag
+        return dict(Body=io.BytesIO(body),ContentLength=len(body),ETag='"'+etag+'"')
+    def _list_objects_v2(self,*,Bucket,Prefix,**_):
+        keys=sorted(key for key in self.store.objects if key.startswith(Prefix))
+        return dict(Contents=[dict(Key=key,LastModified=self.store.times[key],Size=len(self.store.objects[key]),
+                                  ETag='"'+hashlib.md5(self.store.objects[key]).hexdigest()+'"')
+                              for key in keys],IsTruncated=False)
+    def get_paginator(self,operation):
+        assert operation=='list_objects_v2'
+        return SimpleNamespace(paginate=lambda **request:[self.list_objects_v2(**request)])
+    def _put_object(self,*,ContentMD5=None,**_):
+        md5=base64.b64decode(ContentMD5).hex() if ContentMD5 else 'd'*32
+        return dict(ETag='"'+md5+'"')
+
+
+def _maintenance_run(tmp_path,monkeypatch,*,execute,pin_old_during_verification=False):
+    """One maintenance run whose raw verification is valid and whose lake policy asks for a rebuild and a purge."""
+    import congress_api.lake.maintenance as lake
+    import congress_api.retention.raw_verifier as raw_verifier
+    from congress_api.lake.daily import ALL_TABLE_NAMES
+    from viewer_publication import archive_maintenance
+    store,_=fixture();client=RecordingS3(store);lake_calls=[]
+    if pin_old_during_verification:
+        add_input(store,OLD,'pinned-during-verification')
+    pin_path=tmp_path/'archive-releases.json'
+    def write_pins(releases):
+        pin_path.write_text(json.dumps(dict(version=1,updated_at=NOW.isoformat(),releases=releases)))
+    write_pins([PINNED])
+    def staged_verification(source,*,work,checked_at,**_):
+        # Plant a write in a phase intended to read only. The underlying fake
+        # accepts writes, so the attempt must fail before it reaches that client.
+        with pytest.raises(PermissionError,match='put_object'):
+            source.client.put_object(Bucket=source.bucket,Key='provenance/verification/fault.jsonl',Body=b'{}')
+        work=Path(work);work.mkdir(parents=True)
+        records=work/'verification.jsonl'
+        records.write_text(json.dumps(dict(key='bodies/sha256/aa/'+'a'*64+'.gz',sha256_verified=True))+'\n')
+        report=dict(valid=True,listed=1,checked=1,accepted_records=1,
+            records_sha256=hashlib.sha256(records.read_bytes()).hexdigest(),
+            provenance_key='provenance/verification/20261028T120000Z-fixture.jsonl')
+        (work/'report.json').write_text(json.dumps(report))
+        if pin_old_during_verification:
+            write_pins([PINNED,OLD])
+        return report
+    monkeypatch.setattr(raw_verifier,'verify',staged_verification)
+    monkeypatch.setattr(lake,'rebuild_generation',lambda *a,**k:lake_calls.append('rebuild') or {})
+    monkeypatch.setattr(lake,'purge_generation',lambda *a,**k:lake_calls.append('purge') or {})
+    inputs=tmp_path/'inputs';inputs.mkdir()
+    (inputs/'captures.parquet').write_bytes(b'not read: verification is staged')
+    for name in ('receipt-inventory.json','verification-inventory.json'):(inputs/name).write_text('[]')
+    class OkRuntime:
+        def __enter__(self):return self
+        def __exit__(self,*_):pass
+        def verify_runtime(self):return dict(verified=True)
+    spec=dict(version=1,bucket='archive-fixture',catalog_root=None,work=str(tmp_path/'work'),external_pins=[],
+        external_pins_source=str(pin_path),
+        tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES},
+        thresholds=dict(file_count=256,manifest_count=64,scan_planning_seconds=30.0),
+        engine_config=str(tmp_path/'runtime.json'),
+        raw_verification=dict(captures=str(inputs/'captures.parquet'),
+            receipt_inventory=str(inputs/'receipt-inventory.json'),
+            verification_inventory=str(inputs/'verification-inventory.json'),apply_staged=True),
+        lake_maintenance=dict(observations=dict(captures=dict(file_count=999,manifest_count=0,scan_planning_seconds=0)),
+            rebuild=dict(captures=dict(old_pin={},schema={},location='s3://fixture/new',keys=['k'],definition={})),
+            purge=[dict(table='captures',pin={})]))
+    path=tmp_path/'maintenance.json';path.write_text(json.dumps(spec))
+    result=archive_maintenance.execute(path,runtime_factory=lambda _:OkRuntime(),
+        storage_factory=lambda **_:client,now=NOW,execute=execute)
+    return result,client,store,lake_calls
+
+
+def test_a_dry_run_makes_no_storage_or_lake_writes(tmp_path,monkeypatch):
+    result,client,store,lake_calls=_maintenance_run(tmp_path,monkeypatch,execute=False)
+    assert [call for call in client.calls if WRITE_CALL.search(call)]==[]
+    assert lake_calls==[] and store.deleted==[]
+    assert result['executed'] is False and result['status']=='dry_run'
+    assert result['releases']['delete_keys']==[PREFIX+OLD+'/list.parquet',PREFIX+OLD+'/manifest.json']
+    assert result['raw_verification']['applied'] is None
+
+
+def test_an_executed_run_applies_verification_and_deletes_through_the_same_client(tmp_path,monkeypatch):
+    result,client,_,lake_calls=_maintenance_run(tmp_path,monkeypatch,execute=True)
+    writes=[call for call in client.calls if WRITE_CALL.search(call)]
+    assert writes.count('put_object')==2 and writes.count('delete_object')==2
+    assert lake_calls==['rebuild','purge'] and result['executed'] is True
+    assert result['raw_verification']['applied']['provenance']=='provenance/verification/20261028T120000Z-fixture.jsonl'
+
+
+def test_execute_keeps_release_pinned_during_raw_verification(tmp_path,monkeypatch):
+    result,client,_,_=_maintenance_run(tmp_path,monkeypatch,execute=True,pin_old_during_verification=True)
+    assert OLD in result['releases']['kept_releases']
+    assert result['releases']['pointer']==dict(release_id=LIVE,previous_release_id=PREVIOUS)
+    assert result['releases']['delete_keys']==[] and 'delete_object' not in client.calls
+
+
+def test_cli_dry_run_stages_bucket_receipts_and_verification_for_native_checks(tmp_path,monkeypatch,capsys):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_shared import storage
+    from viewer_publication import archive_maintenance
+
+    store,_=fixture()
+    data=b'archive body'
+    digest=hashlib.sha256(data).hexdigest()
+    body_key=f'bodies/sha256/{digest[:2]}/{digest}'
+    receipt_key='receipts/documents/2026-10-27/run.jsonl.gz'
+    verification_key='provenance/verification/previous.jsonl'
+    store.create(body_key,data)
+    receipt=dict(captures=[dict(body_key=body_key,stored_bytes=len(data))])
+    store.create(receipt_key,gzip.compress((json.dumps(receipt)+'\n').encode()))
+    verification=dict(key=body_key,size=len(data),etag=hashlib.md5(data).hexdigest(),sha256_verified=True,
+        stored_sha256=digest,checked_at=NOW.isoformat(),job='raw-verifier')
+    store.create(verification_key,(json.dumps(verification)+'\n').encode())
+    store.create('provenance/recovery/irrelevant.jsonl',b'invalid')
+    client=RecordingS3(store)
+    monkeypatch.setattr(storage,'connect_r2',lambda **_:client)
+
+    captures=tmp_path/'captures.parquet'
+    pq.write_table(pa.table({'body_key':pa.array([],type=pa.string())}),captures)
+    root=Path(__file__).resolve().parents[3]
+    spec=json.loads((root/'model/jobs/maintenance.json').read_text())
+    spec.pop('external_pins_source')
+    work=tmp_path/'run'
+    spec.update(work=str(work),engine_config=os.environ['DOCSPEC_JOB_CONFIG'],external_pins=[PINNED],
+        raw_verification=dict(captures=str(captures)))
+    spec_path=tmp_path/'maintenance.json'
+    spec_path.write_text(json.dumps(spec))
+    assert archive_maintenance.main(['--spec',str(spec_path),'--dry-run'])==0
+    report=json.loads(capsys.readouterr().out)
+    assert report['status']=='dry_run' and report['raw_verification']['verification']['valid']
+    assert report['raw_verification']['verification']['listed']==1
+    assert report['raw_verification']['applied'] is None
+    assert set(client.calls)=={'get_object','list_objects_v2'}
+    [baseline]=pq.read_table(work/'raw-verify/baseline.parquet').to_pylist()
+    assert baseline['key']==body_key and baseline['has_capture'] and baseline['has_verification']
+    inputs=work/'raw-verification-inputs'
+    for name,key in [('receipt',receipt_key),('verification',verification_key)]:
+        [row]=json.loads((inputs/(name+'-inventory.json')).read_text())
+        assert row['key']==key and Path(row['path']).read_bytes()==store.objects[key]
