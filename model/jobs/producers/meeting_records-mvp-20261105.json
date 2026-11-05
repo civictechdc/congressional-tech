@@ -1,0 +1,65 @@
+{
+ "commit": "52167b94e2507f917d2c102fd2c9c54ff1a712f9",
+ "input": "meeting_records",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/integration-meeting-appearance/meeting_records/producer.json",
+   "sha256": "127eeea7b7dc9eecce4b8ed437e31f3bdce1bceb13c52dde1830c6d970ad3382",
+   "size": 1971
+  },
+  "record": {
+   "appended": 27462,
+   "base_model": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-streaming-repair/model-spec.json",
+    "sha256": "3dba612b64d8d8cb975fac34045845273f566b095cbdeae475e4676578008158",
+    "size": 21136
+   },
+   "base_selector": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_act_citation/metadata/00001-01a1ab9b-7276-7652-9a3f-324a6609b9fb.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 631276425399374834,
+    "table_uuid": "01a1ab9b-1f18-7f52-b4ab-99355df21274"
+   },
+   "commit": "75c992547b2c81127653383398fb45d78bf8974c",
+   "input": "meeting_records",
+   "job": "packages/viewer_publication/src/viewer_publication/archive_backfill_job.py",
+   "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+   "recorded": "with production",
+   "reused_rows": 15089,
+   "selection": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/meeting-record-only-selection.parquet",
+    "sha256": "6f54ce8837f77d8473d37ed6f8ff8046f79542d68f2b58557c5b5552f698a6db",
+    "size": 975149
+   },
+   "selector": {
+    "kind": "parquet",
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/integration-meeting-appearance/meeting_records/meeting_records.parquet",
+    "sha256": "475fa09b5ed1076e5590158245ee13118bff656dc8c95f40533eaaf3bb171523",
+    "size": 18737973
+   },
+   "source": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/house-xml-version-transition/meeting-records.parquet",
+    "sha256": "fe3eb963da2e02e2810077c88fb364adcfa35f25cf0bc016383f44a8fcc7d302",
+    "size": 16312212
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_mvp_20261105/metadata/00001-01a1adb0-f128-7dc1-b744-42fdaadd47ab.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 2803286266824964355,
+  "table_uuid": "01a1adb0-549d-7611-b73c-43123b27949b"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/integration-meeting-appearance/meeting_records/meeting_records.parquet",
+  "sha256": "475fa09b5ed1076e5590158245ee13118bff656dc8c95f40533eaaf3bb171523",
+  "size": 18737973
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}

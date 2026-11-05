@@ -1,0 +1,80 @@
+{
+ "commit": "52167b94e2507f917d2c102fd2c9c54ff1a712f9",
+ "input": "committee_records",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/committee-composition/stage/committee_records/producer.json",
+   "sha256": "4dd3e8807c6eb9f95292c3e4bc9b4419562e97dc0117114cd340a9e8e084d900",
+   "size": 2829
+  },
+  "record": {
+   "appended": 49,
+   "base_model": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/model-spec.json",
+    "sha256": "105f666b0a131594d0c602d2247912434fa31afc9e2b3651b7d9b59c6067c125",
+    "size": 21127
+   },
+   "base_selector": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/committee_records/metadata/00001-01a1a35d-b011-7091-9486-b49871d34349.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 5973198633862248223,
+    "table_uuid": "01a1a35d-a001-7361-b21d-e1f164695502"
+   },
+   "commit": "9d12de852ce21ee677cd672723caf98352c77396",
+   "input": "committee_records",
+   "job": "packages/viewer_publication/src/viewer_publication/archive_backfill_job.py",
+   "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+   "recorded": "with production",
+   "reused_rows": 6186,
+   "scope": "complete retained committee composition",
+   "selector": {
+    "kind": "parquet",
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/committee-composition/stage/committee_records/committee_records.parquet",
+    "sha256": "27465c96f8665e1781b3521f4d5b4cbb8ae5b035413f4b26c92829c4be537953",
+    "size": 888719
+   },
+   "source": {
+    "base": {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/basin-import/committee_records.parquet",
+     "sha256": "d1f470ca21012f37fe84c934b3ca66cb5201b2a4efbd5686010696e8e292f0d1",
+     "size": 862453
+    },
+    "base_producer": {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/committee-composition/e145-committee-import-origin.json",
+     "sha256": "e2b015cae7b95a91e0aed40851f8bcb47e4898ecd623bcb346c6d59bb6d95bee",
+     "size": 2129
+    },
+    "delta": {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/retained-committee/final-stage/committee_records/committee_records.parquet",
+     "sha256": "0915b77706ee89defc4caf0915d07fc4f96c2d15eee5ea1247d629fabc2b568e",
+     "size": 26747
+    },
+    "delta_producer": {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/retained-committee/final-stage/committee_records/producer.json",
+     "sha256": "74a19238346922cc6ed14cdbcf927913181aa3aaa278e2a375f1f41e46aa9169",
+     "size": 2241
+    },
+    "expected_base_rows": 6186,
+    "expected_delta_rows": 49
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/committee_records_mvp_20261105/metadata/00001-01a1adb1-46b9-7f42-ad47-ad27edcc60a0.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 6753352252688846610,
+  "table_uuid": "01a1adb1-3977-7100-aa7f-878e5389dde9"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/committee-composition/stage/committee_records/committee_records.parquet",
+  "sha256": "27465c96f8665e1781b3521f4d5b4cbb8ae5b035413f4b26c92829c4be537953",
+  "size": 888719
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}

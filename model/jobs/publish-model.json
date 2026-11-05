@@ -3,38 +3,38 @@
   "engine_config": "../../.runtime/docspec/runtime.json",
   "captures": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures/metadata/00001-01a1a35d-1ab7-7d73-8e11-8e45571baba7.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures/metadata/00006-01a1adbe-8f3b-72d1-b2a8-d6a598eb6f12.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 3886600029866317702,
+    "snapshot": 3719403341459182653,
     "table_uuid": "01a1a35c-8940-77f2-a48f-c52881d2ccb2"
   },
   "readings": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings/metadata/00001-01a1a36c-5d32-74e2-9b18-dfaf319682b6.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings/metadata/00012-01a1adf3-0079-7b82-8705-8735932a8bd5.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 4589273979792420858,
+    "snapshot": 41537200215124099,
     "table_uuid": "01a1a35e-550f-79f2-81a2-b7412fd72bc6"
   },
   "filename_readings": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/filename_readings_act_citation/metadata/00001-01a1ab92-8588-7702-89b3-c2b4a982c062.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/filename_readings_act_citation/metadata/00002-01a1adc3-3f0f-7b11-ab4f-0ef430876500.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 5614633565531862201,
+    "snapshot": 92077548721946488,
     "table_uuid": "01a1ab92-5b30-7580-9721-aa3b70ef1ee3"
   },
   "meeting_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_act_citation/metadata/00001-01a1ab9b-7276-7652-9a3f-324a6609b9fb.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_mvp_20261105/metadata/00002-01a1adc4-7209-78d3-b311-bc60bdf0aa76.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 631276425399374834,
-    "table_uuid": "01a1ab9b-1f18-7f52-b4ab-99355df21274"
+    "snapshot": 4774524604137558945,
+    "table_uuid": "01a1adb0-549d-7611-b73c-43123b27949b"
   },
   "appearance_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/appearance_records/metadata/00001-01a1a35c-750a-75f1-8296-5d5802da9681.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/appearance_records_mvp_20261105/metadata/00002-01a1adc5-56e6-7802-a9ab-ad60e62b4610.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 1297563386327530412,
-    "table_uuid": "01a1a35c-5f95-7150-aeb0-30b20296cd34"
+    "snapshot": 8326201294940634343,
+    "table_uuid": "01a1adb0-13d1-7bb1-a783-09608e74a3ea"
   },
   "video_records": {
     "kind": "native_table",
@@ -45,10 +45,10 @@
   },
   "committee_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/committee_records/metadata/00001-01a1a35d-b011-7091-9486-b49871d34349.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/committee_records_mvp_20261105/metadata/00002-01a1adc5-a4fc-7071-a5a1-55f2e61b4be5.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 5973198633862248223,
-    "table_uuid": "01a1a35d-a001-7361-b21d-e1f164695502"
+    "snapshot": 6370388124943983332,
+    "table_uuid": "01a1adb1-3977-7100-aa7f-878e5389dde9"
   },
   "spicy_regs": {
     "path": "spicy-regs/spicy-regs.json",
@@ -56,28 +56,31 @@
     "size": 5042
   },
   "parser_versions": {
-    "sniff": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
+    "appearance_records": {
+      "congress_gov": "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
+      "house_xml": "7ecb6f0a62538695c0b5b2b93654cc148e0fb11fcb72c7e189cc8ce328a86abd",
+      "mods": "1775aa40163a47b0c6d07fd5b7d950f8a0580c11ac8d76e4c20c2696107cbcb8",
+      "senate_page": "a8b682c51963a8951253ffcfa39833577ce163f8807f9c3b526c32f7c05cdba2"
+    },
+    "committee_records": {
+      "house_xml": "83d27c2ae65792ef9e00a878329068b6fe4a757386efce09e8beebc4cd54d2f3"
+    },
     "html": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",
-    "xml": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f",
-    "json": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
     "html_metadata": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
+    "json": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
     "meeting_records": {
       "congress_gov": "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
       "house_xml": "684f3663274217a2c24a19a5a71887aa0f5f9f8c61dc5a590959e48ab84dd24b"
     },
-    "appearance_records": {
-      "house_xml": "7ecb6f0a62538695c0b5b2b93654cc148e0fb11fcb72c7e189cc8ce328a86abd",
-      "congress_gov": "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
-      "senate_page": "a8b682c51963a8951253ffcfa39833577ce163f8807f9c3b526c32f7c05cdba2",
-      "mods": "1775aa40163a47b0c6d07fd5b7d950f8a0580c11ac8d76e4c20c2696107cbcb8"
+    "playlist_records": {
+      "hls": "53e6d0904cbc43c20c215505d012fdd054a5eb262d842478dfbdd6891ee4a557"
     },
+    "sniff": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
     "video_records": {
-      "youtube_cache": "6efbae6d2d009baf72e0de5e60eba12307cd427f4900a2c892d36d6cc08ef3ba",
-      "youtube_api": "8a15a14d1921489d4adb5b6f41e594c1d17b67466f716e9cb5994441a0738a4b"
+      "youtube_api": "8a15a14d1921489d4adb5b6f41e594c1d17b67466f716e9cb5994441a0738a4b",
+      "youtube_cache": "6efbae6d2d009baf72e0de5e60eba12307cd427f4900a2c892d36d6cc08ef3ba"
     },
-    "committee_records": {
-      "house_xml": "83d27c2ae65792ef9e00a878329068b6fe4a757386efce09e8beebc4cd54d2f3"
-    }
+    "xml": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f"
   },
   "catalog_version": "c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09",
   "output": "../../output/archive-release",
@@ -89,5 +92,12 @@
       "sha256": "5afa48eee784c4a43415315e9110fa5c523f233c8875e1126e9737c379be1abb",
       "size": 5285825
     }
-  ]
+  ],
+  "playlist_records": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/playlist_records_mvp_20261105/metadata/00001-01a1adb1-29a6-77a3-aab0-2acb3a77b509.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 387616457107628486,
+    "table_uuid": "01a1adb1-19bb-7421-901b-f03c541a3c01"
+  }
 }

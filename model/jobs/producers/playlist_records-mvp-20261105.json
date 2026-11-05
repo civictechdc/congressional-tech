@@ -1,0 +1,54 @@
+{
+ "commit": "52167b94e2507f917d2c102fd2c9c54ff1a712f9",
+ "input": "playlist_records",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/integration-playlist/playlist_records/producer.json",
+   "sha256": "945d62143479f5f5a9125707240b38d91297a8478d5b9bbeaf51eb8ed1e60df2",
+   "size": 1320
+  },
+  "record": {
+   "appended": 4361,
+   "base_model": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-streaming-repair/model-spec.json",
+    "sha256": "3dba612b64d8d8cb975fac34045845273f566b095cbdeae475e4676578008158",
+    "size": 21136
+   },
+   "commit": "75c992547b2c81127653383398fb45d78bf8974c",
+   "input": "playlist_records",
+   "job": "packages/viewer_publication/src/viewer_publication/archive_backfill_job.py",
+   "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+   "recorded": "with production",
+   "reused_rows": 0,
+   "scope": "selected captures",
+   "selector": {
+    "kind": "parquet",
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/integration-playlist/playlist_records/playlist_records.parquet",
+    "sha256": "b3dc83744e0d642be269c113dae8d76ec284de1eae074a63a060da032ffb1db1",
+    "size": 2639606
+   },
+   "source": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/dates-captions-recovery/captions/selected-captures.parquet",
+    "sha256": "254eb9514f58012e12090692c5c905202cbe4e453be04902cd7666c5c3caa506",
+    "size": 695883
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/playlist_records_mvp_20261105/metadata/00001-01a1adb1-29a6-77a3-aab0-2acb3a77b509.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 387616457107628486,
+  "table_uuid": "01a1adb1-19bb-7421-901b-f03c541a3c01"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/integration-playlist/playlist_records/playlist_records.parquet",
+  "sha256": "b3dc83744e0d642be269c113dae8d76ec284de1eae074a63a060da032ffb1db1",
+  "size": 2639606
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}
