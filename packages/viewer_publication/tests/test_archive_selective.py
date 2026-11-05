@@ -712,3 +712,83 @@ def test_records_written_on_a_resume_of_an_older_build_say_so(tmp_path,fixture,m
     report=execute(dict(spec,resume=True))
     records=[json.loads(Path(pin['path']).read_text()) for pin in report['producers'].values()]
     assert records and all(r['recorded']=='after production, on resume' for r in records)
+
+
+def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path):
+    from hashlib import sha256
+
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_backfill_job import load_spec, plan
+    from viewer_publication.archive_record_backfill import MEETING_PRIOR
+    from viewer_publication.archive_selective_records import SELECTION_SCHEMA
+    from viewer_publication.producer_proof import BACKFILL, snapshot_reasons
+
+    def pin(path):
+        return dict(path=str(path), **file_pin(path))
+
+    mirror = tmp_path/'mirror'
+    mirror.mkdir()
+    raw = tmp_path/'raw'
+    raw.mkdir()
+    inline = json.dumps({'committeeMeeting': {'eventId': '100031', 'chamber': 'House',
+        'meetingDocuments': [{'url': 'https://example.test/one.pdf', 'documentType': 'Support Document'}]}}).encode()
+    receipt = mirror/'meeting.jsonl'
+    receipt.write_bytes(inline+b'\n')
+    held = meeting_records.build_meeting_record_row(sha256(inline).hexdigest(), 'congress_gov', inline,
+        parser_version=MEETING_PRIOR['congress_gov'])
+    house = dict(record_sha='aa'*32, source='house_xml', parser_version=MEETING_PRIOR['house_xml'],
+        status='completed', error_type=None, meetings=[])
+    old_meetings = meeting_records.table([house, held])
+    nested = old_meetings.schema.field('meetings').type.value_type
+    fields = pa.struct([field for field in nested if field.name!='document_references'])
+    meetings_schema = old_meetings.schema.set(old_meetings.schema.get_field_index('meetings'),
+        pa.field('meetings', pa.list_(pa.field('element', fields, nullable=False)), nullable=False))
+    meeting_path = tmp_path/'meetings.parquet'
+    pq.write_table(pa.Table.from_pylist(old_meetings.to_pylist(), schema=meetings_schema), meeting_path)
+    selection = tmp_path/'selection.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(receipt_key=receipt.name, receipt_line=1, source_url='')],
+        schema=SELECTION_SCHEMA), selection)
+
+    prior = dict(appearance_records.current_versions(), mods='older-mods', senate_page='older-senate')
+    bodies = {'mods': b'<mods xmlns="http://www.loc.gov/mods/v3"><titleInfo><title>Hearing</title></titleInfo></mods>',
+              'senate_page': b'<html><body><h1>Hearing</h1></body></html>'}
+    appearances = []
+    for source, version in prior.items():
+        if source in bodies:
+            body = bodies[source]
+            digest = sha256(body).hexdigest()
+            dest = mirror/'bodies'/'sha256'/digest[:2]/digest
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(body)
+        else:
+            digest = sha256(source.encode()).hexdigest()
+        appearances.append(dict(record_sha=digest, source=source, parser_version=version,
+            status='completed', appearances=[]))
+    appearance_path = tmp_path/'appearances.parquet'
+    pq.write_table(appearance_records.table(appearances), appearance_path)
+
+    bases = dict(meeting_records=pin(meeting_path), appearance_records=pin(appearance_path))
+    model = tmp_path/'model.json'
+    model.write_text(json.dumps(dict(**{name:dict(kind='parquet', **item) for name,item in bases.items()},
+        parser_versions=dict(meeting_records=MEETING_PRIOR, appearance_records=prior), unreadable_files=[])))
+    work = tmp_path/'work'
+    spec_path = tmp_path/'record-only.json'
+    spec_path.write_text(json.dumps(dict(version=1, work=str(work), engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
+        record_only=dict(base_model=pin(model), bases=bases, raw_root=str(raw), raw_mirror=str(mirror),
+            max_work_items=2, meeting_selection=pin(selection)))))
+    spec = load_spec(spec_path)
+    assert plan(spec)['executed'] is False and not work.exists()
+    result = execute(spec)['tables']
+    assert {name:(item['reused_rows'],item['appended']) for name,item in result.items()} == {
+        'meeting_records': (1,1), 'appearance_records': (4,2)}
+    current_meetings = pq.read_table(result['meeting_records']['selector']['path']).to_pylist()
+    assert next(r for r in current_meetings if r['source']=='congress_gov')['meetings'][0]['document_references'] == [
+        dict(collection='meetingDocuments',ordinal=0,url='https://example.test/one.pdf',role='Support Document',
+             format=None,description=None,name=None)]
+    current_appearances = pq.read_table(result['appearance_records']['selector']['path']).to_pylist()
+    assert all(row in current_appearances for row in appearance_records.table(appearances).to_pylist())
+    records = {name:json.loads(Path(item['producer']['path']).read_text()) for name,item in result.items()}
+    assert all(r['job']==BACKFILL for r in records.values())
+    selected = {name:item['selector'] for name,item in result.items()}
+    assert snapshot_reasons(dict(**selected,parser_versions=dict(meeting_records=meeting_records.current_versions(),
+        appearance_records=appearance_records.current_versions())),records) == []
