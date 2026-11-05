@@ -1,6 +1,6 @@
 ---
 id: ct-kb4w
-status: open
+status: closed
 deps: []
 links: [ct-30fp, ct-94hw]
 created: 2026-11-04T20:12:20Z
@@ -32,3 +32,7 @@ Branch witness-key-map (worktree .claude/worktrees/witness-key-map), head ce7327
 **2026-11-05T01:37:47Z**
 
 Parent review follow-up (witness-key-map head 012251d5). The ArchiveExplorer failure in review came from the harness: without routeArchiveOrigin the built site reads the public origin, so the page showed live e4538f00 (355,608 documents / 172,948 witnesses), where 58f40c03ddf48488 is still a live witness and 0239f68c4b6da262 is unknown. Routed to build-1 (34e4dbd9...), the redirect note and URL replacement, ambiguous candidate links and the unresolved notice all work; no UI change. Added apps/site/scripts/archive-witness-browser.mjs (npm test:archive-witness-browser): current, redirected, ambiguous and unresolved keys in the built site, and it refuses a page that read any other release. verify-archive-contract.py runs it on a copy of the committed contract release extended by archive_fixture.add_witness_key_map (shared with test_archive_reader). Planted the reported behaviour (Workspace drops redirected_from/retired): the check fails waiting for the redirect note. Unrouted run fails the release assertion (actual e4538f00). contract:archive-ci passes (contract, saved, heap, witness). production-offline (full lane): exit 0 at 012251d5. Evidence and screenshots: .cache/archive-release/investigations/witness-key-map-20261104/browser/.
+
+**2026-11-05T15:45:07Z**
+
+All 35,899 keys removed from the e453 witness set have supported one-to-one successor mappings in the verified release bytes. Current, redirected, ambiguous and unresolved witness states passed on the deployed site and actual MCP. Source occurrences are preserved, including duplicate-looking occurrences; name-only matching remains refused. Published and independently verified in e145d24c389e (2026-11-05), replacing e4538f00. Qualified source 7f9ebddd; publication source 0d517fd5. All three offline shards passed (11,497 tests), full native/storage lanes passed, all six data suites passed, and all 26 public assets match the approved bytes. Live checks passed 180 MCP assertions and 57 deployed-browser assertions. Release note: docs/releases/2026-11-05-e145d24c389e.md. Evidence: .cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/.

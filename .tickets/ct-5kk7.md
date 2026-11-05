@@ -1,6 +1,6 @@
 ---
 id: ct-5kk7
-status: open
+status: closed
 deps: []
 links: [ct-94hw]
 created: 2026-11-04T20:47:30Z
@@ -38,3 +38,7 @@ Real data: the maintained meeting steps were run over all 42,551 lake meeting_re
 Lanes: production-offline (full lane): exit 0 (11404 passed, 37 skipped; peak 1.96 GiB). native-loopback (full lane): exit 0 (10 passed, 0 skipped; peak 1.00 GiB).
 
 Evidence: .cache/archive-release/investigations/ct-5kk7-meeting-videos/README.md.
+
+**2026-11-05T15:45:07Z**
+
+The eight affected meetings preserve their two original video locators, recording matches and coverage. Independent raw API comparison locates the omission upstream, and actual public MCP/site checks cover all eight events. Same-stamp omission, later updates, explicit empty and unrecognized states are covered by the qualified fixtures. Published and independently verified in e145d24c389e (2026-11-05), replacing e4538f00. Qualified source 7f9ebddd; publication source 0d517fd5. All three offline shards passed (11,497 tests), full native/storage lanes passed, all six data suites passed, and all 26 public assets match the approved bytes. Live checks passed 180 MCP assertions and 57 deployed-browser assertions. Release note: docs/releases/2026-11-05-e145d24c389e.md. Evidence: .cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/.

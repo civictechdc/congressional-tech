@@ -1,0 +1,2356 @@
+{
+  "base_release_id": "e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd",
+  "candidate_release_id": "e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99",
+  "groups": [
+    {
+      "cause": "Event 115474 (House Agriculture, 2023-03-09): the opening-statement HTML (DocumentID=7563) and hearing PDF HMKP-118-AG00-20230309-SD002 are both listed by agriculture EventID=7556, first fetched 2026-10-30, and the candidate publishes the HTML as the PDF document's alternate; daily growth.",
+      "count": -1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/07-agriculture-event-pages.json",
+          "sha256": "aeea2b3167bd54fe96eb854c81c74f220a8e9d55f63fcddd4790e921d7fb479c",
+          "size": 11667
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|merged rows|previous rows now share one document",
+      "tickets": []
+    },
+    {
+      "cause": "1128 documents first captured 2026-10-30..2026-10-31, after the newest capture in e4538f00 (2026-10-15): daily growth from the 2026-10-30/31 receipts.",
+      "count": 1128,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|added rows|no surviving link key",
+      "tickets": []
+    },
+    {
+      "cause": "CHRG-119hhrg61764, CHRG-119hhrg63968 and CHRG-119hhrg64154 are now linked to House events 118019, 119026 and 119142 because those events' committee-meeting API records, first fetched 2026-10-30, name the printed hearings; daily growth.",
+      "count": 3,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed chambers|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "CHRG-119hhrg61764, CHRG-119hhrg63968 and CHRG-119hhrg64154 are now linked to House events 118019, 119026 and 119142 because those events' committee-meeting API records, first fetched 2026-10-30, name the printed hearings; daily growth.",
+      "count": 3,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed committee_keys|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "260 documents acquire a Congress and 168 use a different Congress. The pinned readings for identical copies supply the preferred convention name and its Congress. Every change agrees with the earlier per-copy replay.",
+      "count": 428,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/copy-transition-checks.json",
+          "sha256": "fb3c1249bc6e0c33ebaef7ddc84cdadb591aaf9ad4405063a40e468c481e7198",
+          "size": 153201
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/document-changes.parquet",
+          "sha256": "498aac88400394c696bfb16199e69e4736ebbc8bd4cf0f07c1e5f61c08d7e920",
+          "size": 46089344
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed congress|value differs on matched key",
+      "tickets": [
+        "ct-vq2a",
+        "ct-kwse"
+      ]
+    },
+    {
+      "cause": "188 documents held only by the 2026-10-16 recovery import now have an original capture of the same bytes, first fetched 2026-10-31 on democrats-homeland/naturalresources.house.gov: saved_kind recovery->original, date_kind import_day->captured, first_captured NULL->2026-10-31; daily growth.",
+      "count": 188,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed date_kind|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Dates use the recorded readings of identical copies and the dated meeting or recovery when the file supplies no accepted date. The EPS statement now matches its January 12, 2016 cover and the printed hearing CHRG-117hhrg49353 matches its June 23, 2022 cover. The Batcheller statement keeps June 25, 2020. The one remaining lost date was the date of an act cited in the filename.",
+      "count": 2033,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/checked-repairs.json",
+          "sha256": "d88daaa966a6154f1d1ec6106287bbfe7ecb8756896d90e46d70af3bb1b8ea4c",
+          "size": 23997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/exact-document-delta.json",
+          "sha256": "7b25243d5a5e8f17a8e92c456dc2e42096cb98f593a7bf9cd3ad4ef85cbc4bdf",
+          "size": 32449
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/copy-transition-checks.json",
+          "sha256": "08ad9da3e2e1931307af215fcf9ea177941024295eb6b6ef2fa17c00fe503ad6",
+          "size": 153100
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/document-changes.parquet",
+          "sha256": "2cdcf7a72c1c7a104d0b495db5b915ca8d081e4fde9ef626670bdc747243f64a",
+          "size": 46089260
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/controls.json",
+          "sha256": "d7051104f4b72f318bb7727e3a1d92730f4d46862dcff7f085d9aaa67de9d2d0",
+          "size": 38698
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/qualified-delta.json",
+          "sha256": "0d5b0e594ec73df8553df84f633e6bada8fc8db66de0816fd4d71a63f20da695",
+          "size": 8310
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/raw-controls.json",
+          "sha256": "240e8ece26e71ed94ab933041dd957f71c280b95f367cf65fe5f974f146267e1",
+          "size": 5331
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/hearing-date-projection.json",
+          "sha256": "46bd0bdcae84c03d1fe516109f40279f54aabb3175387411215cedbae403037f",
+          "size": 719
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/bill-package-projection.json",
+          "sha256": "bbf0588f77bd469e6f9e727a19e4d2efa7b833eb9e503def5782bc8aaf0250e3",
+          "size": 24056
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed document_date|value differs on matched key",
+      "tickets": [
+        "ct-kwse",
+        "ct-vrxc",
+        "ct-rvma"
+      ]
+    },
+    {
+      "cause": "Identical-copy readings change which source supplies the date. The date value agrees with the base for 10,585 of the source changes. The EPS statement recovers its filename date and CHRG-117hhrg49353 recovers the held meeting as its date source. The pinned transition table enumerates the resulting source and value pairs.",
+      "count": 11226,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/checked-repairs.json",
+          "sha256": "d88daaa966a6154f1d1ec6106287bbfe7ecb8756896d90e46d70af3bb1b8ea4c",
+          "size": 23997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/exact-document-delta.json",
+          "sha256": "7b25243d5a5e8f17a8e92c456dc2e42096cb98f593a7bf9cd3ad4ef85cbc4bdf",
+          "size": 32449
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/copy-transition-checks.json",
+          "sha256": "08ad9da3e2e1931307af215fcf9ea177941024295eb6b6ef2fa17c00fe503ad6",
+          "size": 153100
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/document-changes.parquet",
+          "sha256": "2cdcf7a72c1c7a104d0b495db5b915ca8d081e4fde9ef626670bdc747243f64a",
+          "size": 46089260
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/controls.json",
+          "sha256": "d7051104f4b72f318bb7727e3a1d92730f4d46862dcff7f085d9aaa67de9d2d0",
+          "size": 38698
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/qualified-delta.json",
+          "sha256": "0d5b0e594ec73df8553df84f633e6bada8fc8db66de0816fd4d71a63f20da695",
+          "size": 8310
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/raw-controls.json",
+          "sha256": "240e8ece26e71ed94ab933041dd957f71c280b95f367cf65fe5f974f146267e1",
+          "size": 5331
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/hearing-date-projection.json",
+          "sha256": "46bd0bdcae84c03d1fe516109f40279f54aabb3175387411215cedbae403037f",
+          "size": 719
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/bill-package-projection.json",
+          "sha256": "bbf0588f77bd469e6f9e727a19e4d2efa7b833eb9e503def5782bc8aaf0250e3",
+          "size": 24056
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed document_date_source|value differs on matched key",
+      "tickets": [
+        "ct-kwse",
+        "ct-vrxc",
+        "ct-rvma"
+      ]
+    },
+    {
+      "cause": "Annotation follows the saved filename: 145 documents whose saved copy became a newer identical committee-site copy (2026-10-30/31 crawl), 7 recovered documents now saving their original, and publiclandforum.pdf whose new democrats-naturalresources listing names it testimony.",
+      "count": 153,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed document_family|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Annotation follows the saved filename: 1381 saved-copy swaps (mostly witness-statement -> testimony from democrats-* filenames), 29 recovered documents now saving their original, and publiclandforum.pdf named testimony by its new listing.",
+      "count": 1411,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed document_kind|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Relative to the live release, filename facts changed for 1,381 documents using a different saved copy, 31 recovered documents now using their original copy, and one document whose filename cites an Act from 1948. Relative to the prior candidate, the two changes come from filename extraction for the Batcheller statement, counted among the 1,381 saved-copy changes, and the 1948 Act citation.",
+      "count": 1413,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/checked-repairs.json",
+          "sha256": "d88daaa966a6154f1d1ec6106287bbfe7ecb8756896d90e46d70af3bb1b8ea4c",
+          "size": 23997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/exact-document-delta.json",
+          "sha256": "7b25243d5a5e8f17a8e92c456dc2e42096cb98f593a7bf9cd3ad4ef85cbc4bdf",
+          "size": 32449
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/copy-transition-checks.json",
+          "sha256": "08ad9da3e2e1931307af215fcf9ea177941024295eb6b6ef2fa17c00fe503ad6",
+          "size": 153100
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/document-changes.parquet",
+          "sha256": "2cdcf7a72c1c7a104d0b495db5b915ca8d081e4fde9ef626670bdc747243f64a",
+          "size": 46089260
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/controls.json",
+          "sha256": "d7051104f4b72f318bb7727e3a1d92730f4d46862dcff7f085d9aaa67de9d2d0",
+          "size": 38698
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/qualified-delta.json",
+          "sha256": "0d5b0e594ec73df8553df84f633e6bada8fc8db66de0816fd4d71a63f20da695",
+          "size": 8310
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/raw-controls.json",
+          "sha256": "240e8ece26e71ed94ab933041dd957f71c280b95f367cf65fe5f974f146267e1",
+          "size": 5331
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/hearing-date-projection.json",
+          "sha256": "46bd0bdcae84c03d1fe516109f40279f54aabb3175387411215cedbae403037f",
+          "size": 719
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/bill-package-projection.json",
+          "sha256": "bbf0588f77bd469e6f9e727a19e4d2efa7b833eb9e503def5782bc8aaf0250e3",
+          "size": 24056
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed facts|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "1443 of the 1689 documents whose saved copy became a newer identical committee-site copy changed basename (the rest kept it), and 188 recovered documents now save their original URL; saved-files.sql (first_fetched DESC) is unchanged since the base build.",
+      "count": 1631,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed filename|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "188 documents held only by the 2026-10-16 recovery import now have an original capture of the same bytes, first fetched 2026-10-31 on democrats-homeland/naturalresources.house.gov: saved_kind recovery->original, date_kind import_day->captured, first_captured NULL->2026-10-31; daily growth.",
+      "count": 188,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed first_captured|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "188 recovered documents now hold an original capture: in_archive_since 2026-10-16 -> NULL, and the canonical link_key moves to the original body prefix while the old recovery key stays published in links.parquet.",
+      "count": 188,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed in_archive_since|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "188 recovered documents now hold an original capture: in_archive_since 2026-10-16 -> NULL, and the canonical link_key moves to the original body prefix while the old recovery key stays published in links.parquet.",
+      "count": 188,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed link_key|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "All 19 gain one bill key read from the new saved filename (e.g. BILLS-1171833ih.pdf -> BILLS-117hr1833ih-Katko.pdf gives 117-hr-1833) after the saved-copy swap.",
+      "count": 19,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed measure_keys|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "CHRG-119hhrg61764, CHRG-119hhrg63968 and CHRG-119hhrg64154 are now linked to House events 118019, 119026 and 119142 because those events' committee-meeting API records, first fetched 2026-10-30, name the printed hearings; daily growth.",
+      "count": 3,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Package evidence can come from another identical copy. The comparison enumerates added, corrected and cleared IDs, including legacy names that do not identify a package. The candidate clears eight filename-based assignments where identical copies name different bills. The archived H.R. 225 cover supports its identity, which remains unresolved in the release package field under the conflicting-filename rule. Seven cases with versions of the same bill preserve their IDs.",
+      "count": 22533,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/checked-repairs.json",
+          "sha256": "d88daaa966a6154f1d1ec6106287bbfe7ecb8756896d90e46d70af3bb1b8ea4c",
+          "size": 23997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/exact-document-delta.json",
+          "sha256": "7b25243d5a5e8f17a8e92c456dc2e42096cb98f593a7bf9cd3ad4ef85cbc4bdf",
+          "size": 32449
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/copy-transition-checks.json",
+          "sha256": "08ad9da3e2e1931307af215fcf9ea177941024295eb6b6ef2fa17c00fe503ad6",
+          "size": 153100
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/document-changes.parquet",
+          "sha256": "2cdcf7a72c1c7a104d0b495db5b915ca8d081e4fde9ef626670bdc747243f64a",
+          "size": 46089260
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/controls.json",
+          "sha256": "d7051104f4b72f318bb7727e3a1d92730f4d46862dcff7f085d9aaa67de9d2d0",
+          "size": 38698
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/qualified-delta.json",
+          "sha256": "0d5b0e594ec73df8553df84f633e6bada8fc8db66de0816fd4d71a63f20da695",
+          "size": 8310
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/raw-controls.json",
+          "sha256": "240e8ece26e71ed94ab933041dd957f71c280b95f367cf65fe5f974f146267e1",
+          "size": 5331
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/hearing-date-projection.json",
+          "sha256": "46bd0bdcae84c03d1fe516109f40279f54aabb3175387411215cedbae403037f",
+          "size": 719
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/bill-package-projection.json",
+          "sha256": "bbf0588f77bd469e6f9e727a19e4d2efa7b833eb9e503def5782bc8aaf0250e3",
+          "size": 24056
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed package_id|value differs on matched key",
+      "tickets": [
+        "ct-vq2a",
+        "ct-j9o7",
+        "ct-flg9"
+      ]
+    },
+    {
+      "cause": "188 documents held only by the 2026-10-16 recovery import now have an original capture of the same bytes, first fetched 2026-10-31 on democrats-homeland/naturalresources.house.gov: saved_kind recovery->original, date_kind import_day->captured, first_captured NULL->2026-10-31; daily growth.",
+      "count": 188,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed saved_kind|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Source-list length grows by the new saved URL on all 1689 swapped documents and 188 recovered documents, plus BILLS-117SConRes14pp.pdf, whose https docs.house.gov variant was first requested 2026-10-30.",
+      "count": 1878,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed src_len|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "68 documents with no title take the link text of their new agriculture.house.gov event-page listing (13 event pages first fetched 2026-10-30); every change is NULL -> text and equals that link text.",
+      "count": 68,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/07-agriculture-event-pages.json",
+          "sha256": "aeea2b3167bd54fe96eb854c81c74f220a8e9d55f63fcddd4790e921d7fb479c",
+          "size": 11667
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed title|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "After resolving earlier keys, each affected document gains one appearance listed by Congress.gov or the newly linked hearing print. None loses one.",
+      "count": 47,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "detail.parquet|changed witness_keys|value differs on matched key",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    },
+    {
+      "cause": "1128 keys of the added documents plus 188 original-body keys of the recovered documents that now hold an original capture (their old recovery keys stay published).",
+      "count": 1316,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "links.parquet|added keys|no evidence given",
+      "tickets": []
+    },
+    {
+      "cause": "Event 115474 (House Agriculture, 2023-03-09): the opening-statement HTML (DocumentID=7563) and hearing PDF HMKP-118-AG00-20230309-SD002 are both listed by agriculture EventID=7556, first fetched 2026-10-30, and the candidate publishes the HTML as the PDF document's alternate; daily growth.",
+      "count": -1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/07-agriculture-event-pages.json",
+          "sha256": "aeea2b3167bd54fe96eb854c81c74f220a8e9d55f63fcddd4790e921d7fb479c",
+          "size": 11667
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|merged rows|previous rows now share one document",
+      "tickets": []
+    },
+    {
+      "cause": "1128 documents first captured 2026-10-30..2026-10-31, after the newest capture in e4538f00 (2026-10-15): daily growth from the 2026-10-30/31 receipts.",
+      "count": 1128,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|added rows|no surviving link key",
+      "tickets": []
+    },
+    {
+      "cause": "CHRG-119hhrg61764, CHRG-119hhrg63968 and CHRG-119hhrg64154 are now linked to House events 118019, 119026 and 119142 because those events' committee-meeting API records, first fetched 2026-10-30, name the printed hearings; daily growth.",
+      "count": 3,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed chambers|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "CHRG-119hhrg61764, CHRG-119hhrg63968 and CHRG-119hhrg64154 are now linked to House events 118019, 119026 and 119142 because those events' committee-meeting API records, first fetched 2026-10-30, name the printed hearings; daily growth.",
+      "count": 3,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed committee_keys|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "260 documents acquire a Congress and 168 use a different Congress. The pinned readings for identical copies supply the preferred convention name and its Congress. Every change agrees with the earlier per-copy replay.",
+      "count": 428,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/copy-transition-checks.json",
+          "sha256": "fb3c1249bc6e0c33ebaef7ddc84cdadb591aaf9ad4405063a40e468c481e7198",
+          "size": 153201
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/document-changes.parquet",
+          "sha256": "498aac88400394c696bfb16199e69e4736ebbc8bd4cf0f07c1e5f61c08d7e920",
+          "size": 46089344
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed congress|value differs on matched key",
+      "tickets": [
+        "ct-vq2a",
+        "ct-kwse"
+      ]
+    },
+    {
+      "cause": "188 documents held only by the 2026-10-16 recovery import now have an original capture of the same bytes, first fetched 2026-10-31 on democrats-homeland/naturalresources.house.gov: saved_kind recovery->original, date_kind import_day->captured, first_captured NULL->2026-10-31; daily growth.",
+      "count": 188,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed date_kind|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Dates use the recorded readings of identical copies and the dated meeting or recovery when the file supplies no accepted date. The EPS statement now matches its January 12, 2016 cover and the printed hearing CHRG-117hhrg49353 matches its June 23, 2022 cover. The Batcheller statement keeps June 25, 2020. The one remaining lost date was the date of an act cited in the filename.",
+      "count": 2033,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/checked-repairs.json",
+          "sha256": "d88daaa966a6154f1d1ec6106287bbfe7ecb8756896d90e46d70af3bb1b8ea4c",
+          "size": 23997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/exact-document-delta.json",
+          "sha256": "7b25243d5a5e8f17a8e92c456dc2e42096cb98f593a7bf9cd3ad4ef85cbc4bdf",
+          "size": 32449
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/copy-transition-checks.json",
+          "sha256": "08ad9da3e2e1931307af215fcf9ea177941024295eb6b6ef2fa17c00fe503ad6",
+          "size": 153100
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/document-changes.parquet",
+          "sha256": "2cdcf7a72c1c7a104d0b495db5b915ca8d081e4fde9ef626670bdc747243f64a",
+          "size": 46089260
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/causes/controls.json",
+          "sha256": "d7051104f4b72f318bb7727e3a1d92730f4d46862dcff7f085d9aaa67de9d2d0",
+          "size": 38698
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/qualified-delta.json",
+          "sha256": "0d5b0e594ec73df8553df84f633e6bada8fc8db66de0816fd4d71a63f20da695",
+          "size": 8310
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/raw-controls.json",
+          "sha256": "240e8ece26e71ed94ab933041dd957f71c280b95f367cf65fe5f974f146267e1",
+          "size": 5331
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/hearing-date-projection.json",
+          "sha256": "46bd0bdcae84c03d1fe516109f40279f54aabb3175387411215cedbae403037f",
+          "size": 719
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/document-identity-repair/bill-package-projection.json",
+          "sha256": "bbf0588f77bd469e6f9e727a19e4d2efa7b833eb9e503def5782bc8aaf0250e3",
+          "size": 24056
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed document_date|value differs on matched key",
+      "tickets": [
+        "ct-kwse",
+        "ct-vrxc",
+        "ct-rvma"
+      ]
+    },
+    {
+      "cause": "Annotation follows the saved filename: 145 documents whose saved copy became a newer identical committee-site copy (2026-10-30/31 crawl), 7 recovered documents now saving their original, and publiclandforum.pdf whose new democrats-naturalresources listing names it testimony.",
+      "count": 153,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed document_family|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Annotation follows the saved filename: 1381 saved-copy swaps (mostly witness-statement -> testimony from democrats-* filenames), 29 recovered documents now saving their original, and publiclandforum.pdf named testimony by its new listing.",
+      "count": 1411,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed document_kind|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "1443 of the 1689 documents whose saved copy became a newer identical committee-site copy changed basename (the rest kept it), and 188 recovered documents now save their original URL; saved-files.sql (first_fetched DESC) is unchanged since the base build.",
+      "count": 1631,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed filename|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "188 documents held only by the 2026-10-16 recovery import now have an original capture of the same bytes, first fetched 2026-10-31 on democrats-homeland/naturalresources.house.gov: saved_kind recovery->original, date_kind import_day->captured, first_captured NULL->2026-10-31; daily growth.",
+      "count": 188,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed first_captured|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "All 19 gain one bill key read from the new saved filename (e.g. BILLS-1171833ih.pdf -> BILLS-117hr1833ih-Katko.pdf gives 117-hr-1833) after the saved-copy swap.",
+      "count": 19,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed measure_keys|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "CHRG-119hhrg61764, CHRG-119hhrg63968 and CHRG-119hhrg64154 are now linked to House events 118019, 119026 and 119142 because those events' committee-meeting API records, first fetched 2026-10-30, name the printed hearings; daily growth.",
+      "count": 3,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed meeting_keys|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "188 documents held only by the 2026-10-16 recovery import now have an original capture of the same bytes, first fetched 2026-10-31 on democrats-homeland/naturalresources.house.gov: saved_kind recovery->original, date_kind import_day->captured, first_captured NULL->2026-10-31; daily growth.",
+      "count": 188,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed saved_kind|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "68 documents with no title take the link text of their new agriculture.house.gov event-page listing (13 event pages first fetched 2026-10-30); every change is NULL -> text and equals that link text.",
+      "count": 68,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/07-agriculture-event-pages.json",
+          "sha256": "aeea2b3167bd54fe96eb854c81c74f220a8e9d55f63fcddd4790e921d7fb479c",
+          "size": 11667
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed title|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "After resolving earlier keys, each affected document gains one appearance listed by Congress.gov or the newly linked hearing print. None loses one.",
+      "count": 47,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "list.parquet|changed witness_keys|value differs on matched key",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    },
+    {
+      "cause": "Every change follows new meeting evidence. Event 119569 adds a recording and observed captions. New transcript jackets, published transcripts and linked documents account for the other changes. The recording and caption rows of the eight restored events match the live base.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/11-meeting-coverage.json",
+          "sha256": "b89b8969b76a5dd9aa25d457fab0cfc4ecec22953939cf8b47a3133eef281817",
+          "size": 6437
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+      "tickets": [
+        "ct-5kk7"
+      ]
+    },
+    {
+      "cause": "Every change follows new meeting evidence. Event 119569 adds a recording and observed captions. New transcript jackets, published transcripts and linked documents account for the other changes. The recording and caption rows of the eight restored events match the live base.",
+      "count": 23,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/11-meeting-coverage.json",
+          "sha256": "b89b8969b76a5dd9aa25d457fab0cfc4ecec22953939cf8b47a3133eef281817",
+          "size": 6437
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+      "tickets": [
+        "ct-5kk7"
+      ]
+    },
+    {
+      "cause": "Every change follows new meeting evidence. Event 119569 adds a recording and observed captions. New transcript jackets, published transcripts and linked documents account for the other changes. The recording and caption rows of the eight restored events match the live base.",
+      "count": 17,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/11-meeting-coverage.json",
+          "sha256": "b89b8969b76a5dd9aa25d457fab0cfc4ecec22953939cf8b47a3133eef281817",
+          "size": 6437
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+      "tickets": [
+        "ct-5kk7"
+      ]
+    },
+    {
+      "cause": "Every change follows new meeting evidence. Event 119569 adds a recording and observed captions. New transcript jackets, published transcripts and linked documents account for the other changes. The recording and caption rows of the eight restored events match the live base.",
+      "count": 36,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/11-meeting-coverage.json",
+          "sha256": "b89b8969b76a5dd9aa25d457fab0cfc4ecec22953939cf8b47a3133eef281817",
+          "size": 6437
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+      "tickets": [
+        "ct-5kk7"
+      ]
+    },
+    {
+      "cause": "119 meetings carry a later Congress.gov updateDate from their committee-meeting API record, first fetched 2026-10-30; every value moves later.",
+      "count": 119,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "meetings.parquet|changed congress_gov_updated|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Senate meeting 338704 adds nomination 119-pn-1176 from its committee-meeting API record, first fetched 2026-10-30.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "meetings.parquet|changed subject_keys|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "13 meetings gain a transcript from their committee-meeting API record first fetched 2026-10-30: 11 printed-hearing CHRG packages and 2 committee transcripts without a package.",
+      "count": 13,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "meetings.parquet|changed transcripts|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "The first fetch of the Congress.gov record for event 119569 adds its video list. It names the House event page and one YouTube recording. The other eight events retain their original video lists, recordings and matches.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/10-possible-defect-meeting-videos.json",
+          "sha256": "bf072a6c7d01792af52232aa0860328aefddacd85e88720417e7f865059e60f4",
+          "size": 3691
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "meetings.parquet|changed videos|value differs on matched key",
+      "tickets": [
+        "ct-5kk7"
+      ]
+    },
+    {
+      "cause": "Nomination 119-pn-1176 (Coast Guard) is published because meeting 338704 now names it.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/08-meeting-records-20261030.json",
+          "sha256": "8dc00a0c6401255776cd5b9fe49c2e5d923f1a3b298c66d35e5f9f3a99b8a356",
+          "size": 7329
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "nominations.parquet|added keys|no evidence given",
+      "tickets": []
+    },
+    {
+      "cause": "The first fetch of the Congress.gov record for event 119569 adds its video list. It names the House event page and one YouTube recording. The other eight events retain their original video lists, recordings and matches.",
+      "count": 2,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/10-possible-defect-meeting-videos.json",
+          "sha256": "bf072a6c7d01792af52232aa0860328aefddacd85e88720417e7f865059e60f4",
+          "size": 3691
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "recording_matches.parquet|added keys|no evidence given",
+      "tickets": [
+        "ct-5kk7"
+      ]
+    },
+    {
+      "cause": "The first fetch of the Congress.gov record for event 119569 adds its video list. It names the House event page and one YouTube recording. The other eight events retain their original video lists, recordings and matches.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/10-possible-defect-meeting-videos.json",
+          "sha256": "bf072a6c7d01792af52232aa0860328aefddacd85e88720417e7f865059e60f4",
+          "size": 3691
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/controls.json",
+          "sha256": "ac42a9090dc14835cdcfa87baa4ee7a589c5398b5ca71cf458a370e750796ed1",
+          "size": 38797
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "recordings.parquet|added keys|with event_ids; source not traced",
+      "tickets": [
+        "ct-5kk7"
+      ]
+    },
+    {
+      "cause": "5 @AgRepublicans hearing videos (2023, already in videos.parquet) embedded on the agriculture event pages first fetched 2026-10-30; no meeting is stated for them, so event_ids is empty.",
+      "count": 5,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/07-agriculture-event-pages.json",
+          "sha256": "aeea2b3167bd54fe96eb854c81c74f220a8e9d55f63fcddd4790e921d7fb479c",
+          "size": 11667
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+      "tickets": []
+    },
+    {
+      "cause": "acb8902b (ct-nh41) publishes NULL instead of the reconciliation boilerplate \"Reconciled from pinned accepted mappings ...; receipt categories preserved\"; every changed row is exactly that change.",
+      "count": 10772,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/12-recoveries-identity-note.json",
+          "sha256": "050d5a826005798f52383ef4276fc0dd415bae045e2343908ac3fca0e507f0ec",
+          "size": 4074
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "recoveries.parquet|changed identity_note|value differs on matched key",
+      "tickets": [
+        "ct-nh41"
+      ]
+    },
+    {
+      "cause": "The schema describes the published witness key map, how earlier witness URLs resolve, and the recorded document-date and roster coverage and recovery-note changes. The pinned comparison attributes each changed path to code.",
+      "count": 0,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/13-schema-json.json",
+          "sha256": "93aabdeb610fe206e950c888872ab914555cdbcec84fd1553c9fedcc574d6926",
+          "size": 18317
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-recipe-registry-proof.json",
+          "sha256": "d0332f7716e2f7adc6b5813cf7ff7650ac32709049b0dddeb59513f45d61e2f8",
+          "size": 916
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "schema.json|changed file without a comparison|unexplained",
+      "tickets": [
+        "ct-kb4w",
+        "ct-m94a",
+        "ct-mx3g",
+        "ct-9479",
+        "ct-nh41"
+      ]
+    },
+    {
+      "cause": "All new addresses come from receipts after e4538f00: 1,128 saved URLs of added documents, 1,877 newly saved copies on existing documents (1,689 swaps and 188 recovered originals), 188 download URLs on the recovered documents, 7 more committee-site URLs on swapped documents, and 2 https docs.house.gov variants first requested 2026-10-30.",
+      "count": 3202,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/06-recovered-now-original.json",
+          "sha256": "e9fe76060ea4f038f6bb64edfc9baa469aca34db972812962860d5e9bea5c898",
+          "size": 5447
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "sources.parquet|new URLs|no previous row has this address",
+      "tickets": []
+    },
+    {
+      "cause": "1689 documents gained a newer identical copy on democrats-naturalresources/homeland.house.gov (first fetched 2026-10-30/31), which the unchanged saved-copy rule (first_fetched DESC) now saves, so the old saved URL (mostly www.congress.gov) flips true -> false.",
+      "count": 1689,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/05-saved-copy-swap.json",
+          "sha256": "8529334dc42a00e6e22675eb1a0cda1a5d465cb6a325760f2d36093bc276ba26",
+          "size": 100818
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "sources.parquet|changed is_saved|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "Same rows as listed_on: link text arrives with the listing; the 164500 API listings carry an empty link text, the convention e4538f00 already used for API listings (401 rows), and the 101 committee pages carry their anchor text.",
+      "count": 164601,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "sources.parquet|changed link_text|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "164500 congress.gov witness-document rows now name the committee-meeting API record that lists them (18,123 API URLs first fetched 2026-10-30; each names the same congress and event as the URL path) and 101 committee-site rows name newly fetched agriculture event pages or democrats-* download pages; every listing page was fetched with no reading in e4538f00 (8 download pages fetched 2026-10-11/12 had their readings folded from the readings backlog, e4538f00 publishes no download-page listing at all); no reader code changed.",
+      "count": 164601,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "sources.parquet|changed listed_on|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "6 URLs first requested in the 2026-10-30 crawl (e.g. the two https docs.house.gov variants).",
+      "count": 6,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "url_state.parquet|added URLs|new attempts",
+      "tickets": []
+    },
+    {
+      "cause": "54 URLs newly linked from pages fetched 2026-10-30/31 and queued, not yet requested.",
+      "count": 54,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+      "tickets": []
+    },
+    {
+      "cause": "One crawl on 2026-10-30 re-attempted 22,004 known URLs, 18,123 of them committee-meeting API records attempted for the first time; every attempt moved forward.",
+      "count": 22004,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "url_state.parquet|changed attempts|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "One crawl on 2026-10-30 re-attempted 22,004 known URLs, 18,123 of them committee-meeting API records attempted for the first time; every attempt moved forward.",
+      "count": 22004,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "One crawl on 2026-10-30 re-attempted 22,004 known URLs, 18,123 of them committee-meeting API records attempted for the first time; every attempt moved forward (re-attempts that failed, hit the size limit or could not connect keep their old value).",
+      "count": 21195,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "One crawl on 2026-10-30 re-attempted 22,004 known URLs, 18,123 of them committee-meeting API records attempted for the first time; every attempt moved forward (2 re-attempts repeated their previous outcome).",
+      "count": 22002,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "One crawl on 2026-10-30 re-attempted 22,004 known URLs, 18,123 of them committee-meeting API records attempted for the first time; every attempt moved forward (57 re-attempts repeated their previous status).",
+      "count": 21947,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "url_state.parquet|changed last_status|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "One crawl on 2026-10-30 re-attempted 22,004 known URLs, 18,123 of them committee-meeting API records attempted for the first time; every attempt moved forward (6 more were rescheduled without an attempt because their document context changed: the merged agriculture HTML and the newly linked CHRG packages).",
+      "count": 22010,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/03-url-state-crawl-20261030.json",
+          "sha256": "67a4679e35d76340690e9b2b111cfe79e8d2d6c3c0d09a1204cc932cb1bb7ea6",
+          "size": 8680
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/01-run8-receipts.json",
+          "sha256": "9f45bc16cc59eb5cf3364b4c40cfeda42959105ff7e6cbe630daeddcdf8481c8",
+          "size": 2019
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+      "tickets": []
+    },
+    {
+      "cause": "2,087 lookup keys of added documents, 3,161 of documents that gained a new source URL, and 5 on documents whose source gained a listing (download pages and API records now naming their URLs).",
+      "count": 5253,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/02-new-documents-and-keys.json",
+          "sha256": "6a6f7caf6b12dd5b0d354d41a70ef601fbd97c62b45080e0edede04c3b255721",
+          "size": 38589
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/evidence/04-source-listings.json",
+          "sha256": "8e123fbe602185b8941955998bf8a761b1d5acbc61733888fba102d20b535701",
+          "size": 29058
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/nightly-to-rebuild.json",
+          "sha256": "79a50754378bc917b8cb5a79ab0301db4ba6266502d687d04fd35d0ddbaa3951",
+          "size": 15003
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "urls.parquet|keys new|key absent from the previous release",
+      "tickets": []
+    },
+    {
+      "cause": "The release adds witness_key_map, which states the supported successor, possible successors or unresolved status for earlier keys.",
+      "count": 154089,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "witness_key_map.parquet|file added|file absent from the base release",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    },
+    {
+      "cause": "Congress.gov re-fetches list more witnesses at meetings 117761, 117973 and 119049.",
+      "count": 16,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "witnesses.parquet|added keys|no evidence given",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    },
+    {
+      "cause": "Congress.gov reorders the source witness lists. Existing people map to their current occurrence by matching recorded attributes.",
+      "count": 78,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "witnesses.parquet|changed display_order|value differs on matched key",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    },
+    {
+      "cause": "The same newly bound printed appearances gain the meeting event ID.",
+      "count": 10,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "witnesses.parquet|changed event_id|value differs on matched key",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    },
+    {
+      "cause": "Congress.gov changes the honorific in the same Jennifer Manner appearance from Mr. to Ms.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "witnesses.parquet|changed name|value differs on matched key",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    },
+    {
+      "cause": "Three printed hearings now bind their MODS appearances to meetings 118019, 119026 and 119142.",
+      "count": 10,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "witnesses.parquet|changed occasion|value differs on matched key",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    },
+    {
+      "cause": "At the newly bound meetings the Congress.gov appearance takes display precedence over the corresponding printed appearance.",
+      "count": 10,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/causes/witness-rekey-proof.json",
+          "sha256": "944ce7d2bf7f152e204e20006a65104395d7a9ccfb1ff8648139454925157e03",
+          "size": 65521
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-witness-bill-fixes/comparison/release-gate.json",
+          "sha256": "58687e835b3140b40a21df0f406e3ae2733622792296d50068bb94cbba26609b",
+          "size": 38729
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/candidate-final-repairs/comparison/previous-to-final.json",
+          "sha256": "77893a9f7d12998635429b725c00f6500dec711addd35985e5600e181e1e0cfb",
+          "size": 9215
+        }
+      ],
+      "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+      "tickets": [
+        "ct-kb4w"
+      ]
+    }
+  ],
+  "version": 1
+}

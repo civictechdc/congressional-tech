@@ -1,5 +1,7 @@
 # Release notes
 
+Latest: [November 5, 2026 — e145d24c389e](2026-11-05-e145d24c389e.md).
+
 Each published archive release that changes keys or values against the live release gets
 a note here, named `<YYYY-MM-DD>-<release id, first 12>.md`. The publisher's gates write
 the source for each note:
@@ -24,7 +26,10 @@ putting them in the release would force a second model run.
 
 - **Identifiers (ct-ktfe, owner decision 2026-11-02).** Witness IDs changed in release
   448651e7 (2026-11-01). `witness_key` values and `?witness=` links from c94bfedc and earlier
-  no longer resolve. No old-to-new mapping is published.
+  no longer resolve. Release e145d24c389e adds mappings for historical occurrence-v2
+  keys, including all 35,899 keys removed from e4538f00. Unambiguous keys redirect;
+  ambiguous and unresolved mappings retain those states. This does not establish
+  support for the earlier identifier scheme.
 - **Links (ct-tk10).** From the first gated release onward, link keys that earlier releases
   published never vanish. A key redirects to the current document that holds its old
   document's primary key or one of its other keys. Failing that, it redirects to the single
