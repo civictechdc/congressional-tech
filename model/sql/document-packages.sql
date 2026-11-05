@@ -12,19 +12,24 @@ WITH candidates AS (
  JOIN source_annotations a ON s.source_id=a.source_id
  WHERE a.package_id IS NOT NULL
 ), ranked AS (
+ -- Scan from least to most preferred so the last row has both the winning
+ -- package and the complete bill range. Every candidate has a package ID.
  SELECT *,
-  row_number() OVER(PARTITION BY component ORDER BY evidence,saved_rank,first_fetched NULLS LAST,package_id) AS selected,
-  min(bill_measure) OVER(PARTITION BY component) AS min_bill_measure,
-  max(bill_measure) OVER(PARTITION BY component) AS max_bill_measure
+  lead(package_id) OVER w AS next_package,
+  min(bill_measure) OVER w AS min_bill_measure,
+  max(bill_measure) OVER w AS max_bill_measure
  FROM (
   SELECT *,CASE WHEN evidence=2 AND starts_with(package_id,'BILLS-')
    THEN (regexp_match(package_id,'^(BILLS-[0-9]+[a-z]+[0-9]+)'))[1] END AS bill_measure
   FROM candidates
  )
+ WINDOW w AS (PARTITION BY component
+  ORDER BY evidence DESC,saved_rank DESC,first_fetched DESC NULLS FIRST,package_id DESC
+  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 ), preferred AS (
  SELECT component,package_id,
   coalesce(evidence=2 AND starts_with(package_id,'BILLS-') AND min_bill_measure<>max_bill_measure,false) AS bill_package_conflict
- FROM ranked WHERE selected=1
+ FROM ranked WHERE next_package IS NULL
 )
 SELECT c.component,CASE WHEN NOT p.bill_package_conflict THEN p.package_id END AS package_id,
  coalesce(p.bill_package_conflict,false) AS bill_package_conflict

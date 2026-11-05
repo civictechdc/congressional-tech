@@ -40,8 +40,8 @@ def test_source_listing_selects_one_earliest_address_compatible_tuple(tmp_path):
 
 def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_path):
     """ct-vq2a: a newer identical copy saved under a plain name keeps the package an earlier copy's
-    GovInfo filename named; URL packages still precede every filename."""
-    saved=[dict(component='document',source_id=s,saved_rank=i,first_fetched=f'2026-10-0{i}T12:00:00Z') for i,s in enumerate(['saved','second','third'],1)]
+    GovInfo filename named; URL packages still win when filenames name different bills."""
+    saved=[dict(component='document',source_id=s,saved_rank=i,first_fetched=f'2026-10-0{i}T12:00:00Z') for i,s in enumerate(['saved','second','third','fourth'],1)]
     saved+=[dict(component='fallback',source_id='only-filename',saved_rank=1,first_fetched='2026-10-01T12:00:00Z'),
             dict(component='copies',source_id='newer-plain',saved_rank=1,first_fetched='2026-10-20T12:00:00Z'),
             dict(component='copies',source_id='later-named',saved_rank=2,first_fetched='2026-10-15T12:00:00Z'),
@@ -55,9 +55,10 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
     inputs=[json_input(tmp_path,'saved_inputs',saved,component='Utf8',source_id='Utf8',saved_rank='Int64',first_fetched='Utf8'),
         json_input(tmp_path,'source_annotation_addresses',[
             dict(source_id='saved',package_id='PUBLISHER-PACKAGE',publisher=True),
-            dict(source_id='second',package_id='CHRG-119hhrg22222',publisher=False),
-            dict(source_id='third',package_id='CHRG-119hhrg33333',publisher=False)],source_id='Utf8',package_id='Utf8',publisher='Boolean'),
-        json_input(tmp_path,'source_annotations',[dict(source_id='saved',package_id='FILENAME-PACKAGE'),dict(source_id='only-filename',package_id='FILENAME-ONLY'),
+            dict(source_id='second',package_id='BILLS-119hr3ih',publisher=False),
+            dict(source_id='third',package_id='BILLS-119hr2ih',publisher=False)],source_id='Utf8',package_id='Utf8',publisher='Boolean'),
+        json_input(tmp_path,'source_annotations',[dict(source_id='saved',package_id='BILLS-119hr1ih'),
+            dict(source_id='fourth',package_id='BILLS-119hr4ih'),dict(source_id='only-filename',package_id='FILENAME-ONLY'),
             dict(source_id='newer-plain',package_id=None),dict(source_id='later-named',package_id='BILLS-117hr1833rh'),
             dict(source_id='earliest-named',package_id='BILLS-117hr1833ih'),dict(source_id='plain',package_id=None),
             dict(source_id='bill-5255',package_id='BILLS-118hr5255ih'),dict(source_id='bill-5225',package_id='BILLS-118hr5225ih'),
@@ -70,7 +71,7 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
     assert result['packages']==[
         dict(component='conflict',package_id=None,bill_package_conflict=True),
         dict(component='copies',package_id='BILLS-117hr1833ih',bill_package_conflict=False),
-        dict(component='document',package_id='CHRG-119hhrg22222',bill_package_conflict=False),
+        dict(component='document',package_id='BILLS-119hr3ih',bill_package_conflict=False),
         dict(component='fallback',package_id='FILENAME-ONLY',bill_package_conflict=False),
         dict(component='nonbill',package_id='CHRG-119hhrg49353',bill_package_conflict=False),
         dict(component='none',package_id=None,bill_package_conflict=False),

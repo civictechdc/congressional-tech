@@ -85,8 +85,8 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
 
 def test_a_filename_names_only_a_govinfo_package_and_an_act_title_year_dates_nothing(tmp_path):
     """ct-vq2a: committee-site names that look like packages (BILLS-117hr1833ih-Katko) name none; a
-    granule names its package. ct-kwse: a date token starting at an act's title year (the reader takes
-    2019-06-23 from 'Bear Protection Act of 2019_6-23-20') dates nothing, shown or linked."""
+    granule names its package. ct-kwse: a date token starting at an act's title year dates nothing,
+    whether the filename is shown or linked."""
     from viewer_publication.archive_annotations import annotation_steps
     act='AFWA testimony_H.R. 2264_Bear Protection Act of 2019_6-23-20_final.pdf'
     packages={'katko':'BILLS-117hr1833ih-Katko','untyped':'BILLS-1171833ih','bill':'BILLS-117hr1833ih',
@@ -109,7 +109,14 @@ def test_a_filename_names_only_a_govinfo_package_and_an_act_title_year_dates_not
             row=filenames.read_filename(source['filename'],source['source_url'],catalog_version='current')
         rows.append(row)
     rows.append(filenames.read_filename(act,'https://committee.test/requested',catalog_version='current'))
-    assert [str(row['filename_date']) for row in rows if row['filename']==act]==['2019-06-23']*2  # the reading the guard refuses
+    act_readings=[row for row in rows if row['filename']==act]
+    assert len(act_readings)==2
+    for row in act_readings:
+        assert row['status']=='completed'
+        assert row['filename_date'] is None
+        # Reproduce the old misreading under the fixture's admitted version
+        # so both the shown and linked annotation guards have a date to reject.
+        row.update(date_token='2019_6-23',filename_date=date(2019,6,23))
     filename_path=tmp_path/'filename-readings.parquet'
     pq.write_table(pa.Table.from_pylist(rows,schema=filenames.SCHEMA),filename_path)
     inputs=registry_inputs(tmp_path/'registries')+[dict(name='filename_readings',kind='parquet',path=str(filename_path)),
