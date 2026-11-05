@@ -591,6 +591,14 @@ def test_of_two_agreeing_same_day_meetings_the_better_match_keeps_the_print(tmp_
     assert {r['occasion'] for r in got if r['name'] == 'Mary Major'} == {'meeting:9001'}
 
 
+def test_a_same_day_print_tie_keeps_both_print_links_and_one_package_witness(tmp_path):
+    printed = record('tied-print', 'mods', [witness('Jane Witness')], package_id='CHRG-a')
+    rows, links = resolve(tmp_path, [printed], [('CHRG-a', 9001), ('CHRG-a', 9002)], {'CHRG-a': facts()},
+                          meetings=((9001, DAY, TITLE), (9002, DAY, TITLE)), print_links=True)
+    assert [(r['name'], r['occasion'], r['event_id']) for r in rows] == [('Jane Witness', 'package:CHRG-a', None)]
+    assert links == [dict(package_id='CHRG-a', event_id=9001), dict(package_id='CHRG-a', event_id=9002)]
+
+
 def test_a_wrong_eventid_never_vetoes_the_same_witnesses(tmp_path):
     # 29369: GovInfo states another meeting's eventId on the print of this one.
     got = resolve(tmp_path, [OWN_LIST, record('a', 'mods', [witness(n) for n in PANEL], package_id='CHRG-a')],
