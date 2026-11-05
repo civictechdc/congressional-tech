@@ -76,6 +76,9 @@ def phase2(tmp_path_factory):
                 ('0000b43c099edbc2','package:1',NULL::BIGINT,'CHRG-118hhrg1',NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,2::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR,NULL::VARCHAR),
                 ('mods-appearance-1','package:2',335321::BIGINT,'CHRG-118hhrg1',NULL::VARCHAR,'A. Smith','Director','Transit Lab',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,1::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR,'appearance-1')
             )""")
+        write('witness_key_map', """SELECT 'old-appearance-1' AS old_key,'appearance-1' AS witness_key,
+            'unambiguous' AS status,'occurrence' AS basis,[]::VARCHAR[] AS candidate_keys,
+            'meeting:1' AS occasion,'senate_page' AS source""")
         write('recordings', """SELECT 'youtube:abc' AS video_key,[118001::BIGINT, 335321::BIGINT] AS event_ids,
             [struct_pack(body:=unhex(repeat('55',32)),suffix:='.gz',format:='vtt',language:='en',production:='automatic')] AS tracks""")
         write('committees', """SELECT 'hsif00' AS system_code,'Energy and Commerce' AS name,'house' AS chamber,

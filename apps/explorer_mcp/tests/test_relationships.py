@@ -68,7 +68,7 @@ def test_old_release_does_not_reconstruct_relationships(tmp_path):
 
 def test_every_recipe_executes_and_has_the_declared_result_grain(reader):
     expected = dict(bill_documents=1, bill_hearing_transcripts=1, hearing_documents=1, hearing_dossier=1,
-                    witness_documents=1, witness_transcripts=1,
+                    witness_documents=1, witness_transcripts=1, witness_by_any_key=1,
                     committee_roster=1, nomination_transcripts=1, bill_votes=1, nomination_votes=1,
                     recording_tracks=1, document_editions=1, meeting_recordings=1, channel_unmatched_videos=1, coverage_counts=1)
     doc_recipes = {'bill_documents', 'bill_hearing_transcripts', 'hearing_documents',
@@ -79,6 +79,10 @@ def test_every_recipe_executes_and_has_the_declared_result_grain(reader):
         result = reader.query_sql({'sql': recipe['sql'], 'parameters': params})
         assert not result['truncated']
         assert len(result['rows']) == expected[recipe['id']], (recipe['id'], result['rows'])
+        if item['id'] == 'witness_by_any_key':
+            earlier = reader.query_sql({'sql': recipe['sql'], 'parameters': ['old-appearance-1']})
+            assert [(row['witness_key'], row['old_key'], row['status']) for row in earlier['rows']] == [
+                ('appearance-1', 'old-appearance-1', 'unambiguous')]
         if item['id'] in doc_recipes:
             assert 'NOT coalesce(l.hidden,false)' in recipe['sql']
             row = result['rows'][0]

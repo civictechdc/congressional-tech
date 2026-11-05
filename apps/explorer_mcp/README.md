@@ -6,7 +6,7 @@ Explore congressional hearings, witnesses, bills, members, recordings, and relat
 documents from your AI assistant. Free and open source. No data API key required.
 Start with the [setup guide](https://civictechdc.github.io/congressional-tech/mcp/).
 
-A local FastMCP server for the current Congressional Document Archive and its
+A FastMCP server for the current Congressional Document Archive and its
 phase 2 entities. It reads one immutable release: every Parquet table, every
 published column, and native nested lists/structs. DuckDB **2.0.0** and FastMCP
 **4.1.4** are pinned in this app's own `uv.lock`.
@@ -16,16 +16,42 @@ committee catalog, legacy parser imports, review overlays, copied DuckDB databas
 or custom SQL language. The producer owns data assembly and SpicyRegs imports;
 the MCP queries the published result. It stays a separate Congress server.
 
-## Quick setup (macOS or Linux)
+## Quick setup
 
-The same server is available as a Claude Desktop extension and a plugin compatible
+For browser clients, the [Cloudflare deployment](cloudflare/README.md) exposes
+the same six tools at an HTTPS `/mcp` endpoint. It runs the existing Python and
+DuckDB server in Cloudflare Containers behind a Worker; clients need no local
+Python, Node.js, or desktop installation.
+
+### ChatGPT web
+
+Use **Congress Explorer Web** (`congress-explorer-web`) for the hosted connection:
+
+```text
+https://congress-explorer-mcp.mdeeb.workers.dev/mcp
+```
+
+In [ChatGPT Plugins](https://chatgpt.com/plugins), choose **Add custom MCP server**,
+enter this URL, select **No authentication**, and create and install the plugin.
+The [web plugin source](web/README.md) also packages the research skill for
+supported plugin import and submission workflows. Download
+[congress-explorer-web-0.6.0.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.0/congress-explorer-web-0.6.0.plugin.zip)
+for those workflows; connecting the URL directly adds the six tools.
+
+The current plugin format does not define a browser/desktop transport selector.
+We supply separate packages: `congress-explorer-web` uses the hosted endpoint;
+`congress-explorer` uses local stdio on desktop. Select the matching plugin for
+the session. A repository marketplace entry does not register a browser account's
+connection. See the [OpenAI packaging guide](https://developers.openai.com/plugins/build/plugins#bundled-mcp-servers-and-lifecycle-hooks).
+
+For desktop clients on macOS or Linux, the server is available as a Claude Desktop extension and a plugin compatible
 with Claude Code/Cowork and ChatGPT/Codex desktop. The first tool call downloads
 the public metadata snapshot. Tool discovery does not download data; later sessions
-reuse the selected release. No document bodies are bundled or downloaded.
+reuse the selected release. Document bodies are fetched separately when requested.
 
 ### Claude Desktop chat
 
-Download [congress-explorer-0.5.2.mcpb](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.5.2/congress-explorer-0.5.2.mcpb),
+Download [congress-explorer-0.6.0.mcpb](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.0/congress-explorer-0.6.0.mcpb),
 open it with Claude Desktop, and click **Install**. Use a current Claude Desktop
 with support for MCPB 0.4's uv runtime; the host manages Python and dependencies.
 Alternatively, select the file in Settings → Desktop app → Extensions → Advanced
@@ -43,7 +69,7 @@ claude plugin install congress-explorer --marketplace civictechdc/congressional-
 Inside Claude Code, the equivalent is
 `/plugin install congress-explorer --marketplace civictechdc/congressional-tech`.
 In Cowork desktop, open Customize → Plugins and upload
-[congress-explorer-0.5.2.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.5.2/congress-explorer-0.5.2.plugin.zip).
+[congress-explorer-0.6.0.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.0/congress-explorer-0.6.0.plugin.zip).
 Start a local task and run `/congress-explorer:explore-congress`.
 The plugin's local server runs in Claude Code and Cowork desktop; Claude chat uses
 the separate `.mcpb` extension above. Organization policies may restrict installation.
@@ -53,7 +79,7 @@ the separate `.mcpb` extension above. Organization policies may restrict install
 Install uv and the Codex CLI, then:
 
 ```sh
-codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.5.2 --sparse .agents/plugins --sparse apps/explorer_mcp
+codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.6.0 --sparse .agents/plugins --sparse apps/explorer_mcp
 codex plugin add congress-explorer@congressional-tech
 ```
 
@@ -63,13 +89,16 @@ not send it automatically. This is a repository marketplace distribution, not an
 approved public OpenAI directory listing. A public listing for a local MCP server
 requires separate partner approval.
 
-The source plugin root is this directory. `plugin.json` and `mcp.json` describe
+The desktop source plugin root is this directory. `plugin.json` and `mcp.json` describe
 the portable OpenAI package; `.claude-plugin/plugin.json` and `.mcp.json` describe
-the Claude package. Both run `uvx` with `congressional-explorer-mcp==0.5.2` from
+the Claude package. Both run `uvx` with `congressional-explorer-mcp==0.6.0` from
 PyPI. The Claude extension uses a tiny Python launcher with the same pinned
 PyPI dependency. Neither archive contains a copy of the server source.
 `scripts/build_desktop.py` generates the client-specific metadata from `server.json`;
-do not edit the generated manifests by hand.
+do not edit the generated manifests by hand. It also generates the independent
+web plugin under `web/` and emits `congress-explorer-web-VERSION.plugin.zip`.
+The web package contains one remote MCP connection and copies of the shared
+research skill and assets; generation checks keep these copies identical.
 
 ### Install the research skill with npx
 
@@ -97,7 +126,7 @@ run `npx skills add . --skill explore-congress` at the repository root.
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 congressional-explorer-mcp==0.5.2
+uv tool install --python 3.12 congressional-explorer-mcp==0.6.0
 congress-explorer-mcp prepare
 congress-explorer-mcp check
 ```
@@ -160,6 +189,16 @@ Use `--data-dir /absolute/path` on each command or `CONGRESS_MCP_DATA_DIR` to se
 another directory. Desktop extensions, plugins and manual installs share the
 default directory when they run under the same account on the same host.
 `inspect` prints the selected release and published table counts.
+
+This checkout also supports stateless Streamable HTTP:
+
+```sh
+uv run --locked --project apps/explorer_mcp congress-explorer-mcp serve \
+  --transport http --host 127.0.0.1 --port 8080
+```
+
+Connect to `http://127.0.0.1:8080/mcp`. The default transport remains stdio.
+Streamable HTTP is available starting with version 0.6.0.
 
 For a retained or test release:
 

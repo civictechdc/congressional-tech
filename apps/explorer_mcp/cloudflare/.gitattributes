@@ -1,0 +1,2 @@
+# Keep Wrangler's generated runtime declarations byte-identical to its output.
+worker-configuration.d.ts linguist-generated=true -whitespace

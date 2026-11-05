@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "congress-explorer-mcp",
+  "account_id": "174055408ff1560e60601c4d12c561c4",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "upload_source_maps": true,
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  },
+  "containers": [
+    {
+      "class_name": "CongressExplorer",
+      "image": "./Dockerfile",
+      "image_build_context": "..",
+      "instance_type": "basic",
+      "max_instances": 2
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "CONGRESS", "class_name": "CongressExplorer" }]
+  },
+  "exports": {
+    "CongressExplorer": { "type": "durable-object", "storage": "sqlite" }
+  },
+  "vars": {
+    "PUBLICATION": "https://congressional-data.spicygov.ai/viewer-publications/releases/e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99/manifest.json"
+  },
+  "ratelimits": [
+    {
+      "name": "MCP_RATE_LIMITER",
+      "namespace_id": "2026110501",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ]
+}

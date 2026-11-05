@@ -106,11 +106,13 @@ jobs:
           fi
           sha256sum dist/* > dist/SHA256SUMS
           cat > release-notes.md <<'NOTES'
-          Run Congress Explorer locally from your AI assistant. Install congressional-explorer-mcp from PyPI, download the .mcpb for Claude Desktop chat, or use the plugin ZIP for Claude Code/Cowork and ChatGPT/Codex desktop. Every client installs the same versioned PyPI package. The first tool call prepares missing data; later sessions reuse it.
+          Use Congress Explorer Web with the hosted MCP endpoint, or run Congress Explorer locally on desktop. The congress-explorer-web plugin ZIP uses HTTPS and needs no local runtime. The congress-explorer plugin ZIP and .mcpb keep the local PyPI installation for Claude and ChatGPT/Codex desktop. These are separate plugins, not automatic transport switching.
+
+          Hosted MCP: https://congress-explorer-mcp.mdeeb.workers.dev/mcp (no authentication)
 
           Setup: https://civictechdc.github.io/congressional-tech/mcp/
 
-          macOS and Linux; Python 3.12 managed by uv. The plugin requires uv on the host's PATH. Claude Desktop's uv bundle runtime manages it for the .mcpb. Downloaded data is refreshed separately with `congress-explorer-mcp prepare`. Windows is not yet supported. Public plugin directory listings are separate from these downloads.
+          Local installations support macOS and Linux, with Python 3.12 managed by uv. The desktop plugin requires uv on the host's PATH. Claude Desktop's uv bundle runtime manages it for the .mcpb. Local data is refreshed separately with `congress-explorer-mcp prepare`; hosted data is pinned by the service deployment. Local Windows installation is not yet supported. Public plugin directory listings are separate from these downloads.
           NOTES
           gh release create "$RELEASE_TAG" dist/* --verify-tag --title "Congress Explorer MCP ${RELEASE_TAG#congress-mcp-v}" --notes-file release-notes.md --latest=false
 

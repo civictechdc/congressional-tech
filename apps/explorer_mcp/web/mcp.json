@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "congress": {
+      "type": "streamable-http",
+      "url": "https://congress-explorer-mcp.mdeeb.workers.dev/mcp"
+    }
+  }
+}

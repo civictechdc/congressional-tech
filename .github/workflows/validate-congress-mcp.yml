@@ -51,6 +51,27 @@ jobs:
       - run: npx --yes @anthropic-ai/claude-code@2.1.314 plugin validate --strict .
       - run: apps/explorer_mcp/.venv/bin/python apps/explorer_mcp/scripts/check_desktop.py dist --wheel dist/*.whl
 
+  cloudflare:
+    name: Cloudflare gateway and container build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/explorer_mcp/cloudflare
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/explorer_mcp/cloudflare/package-lock.json
+      - run: npm ci --workspaces=false
+      - run: npm run types && git diff --exit-code -- worker-configuration.d.ts
+      - run: npm run typecheck && npm test
+      - run: npx wrangler deploy --dry-run --outdir dist
+
   native-consumer:
     name: Native producer to MCP stdio
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

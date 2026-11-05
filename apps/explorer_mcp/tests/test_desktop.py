@@ -97,3 +97,33 @@ def test_plugin_manifests_supply_gui_path_for_uvx_discovery():
         script = config['args'][1]
         for entry in ('$PATH', '$HOME/.local/bin', '$HOME/.cargo/bin', '/opt/homebrew/bin', '/usr/local/bin'):
             assert entry in script
+
+
+def test_built_plugins_keep_web_and_desktop_transports_separate(tmp_path):
+    import json
+    import subprocess
+    import zipfile
+    root = Path(__file__).parents[1]
+    release = json.loads((root / 'server.json').read_text())
+    subprocess.run([sys.executable, str(root / 'scripts/build_desktop.py'), '--check',
+                    '--output-dir', str(tmp_path)], check=True, capture_output=True)
+    for name, local in [('congress-explorer', True), ('congress-explorer-web', False)]:
+        with zipfile.ZipFile(tmp_path / f'{name}-{release["version"]}.plugin.zip') as archive:
+            manifest = json.loads(archive.read('plugin.json'))
+            config = json.loads(archive.read('mcp.json'))['mcpServers']['congress']
+            extension = manifest['extensions']['com.openai']
+            assert manifest['name'] == name
+            assert extension['requires_local_executor'] is local
+            assert archive.read(extension['onboardingSkill'].removeprefix('./')) == (
+                root / 'skills/explore-congress/SKILL.md').read_bytes()
+            for asset in ('composerIcon', 'logo'):
+                assert archive.read(extension['interface'][asset].removeprefix('./'))
+            assert not any(path.startswith(('src/', 'cloudflare/', 'web/', '.venv/'))
+                           for path in archive.namelist())
+            if local:
+                assert config['type'] == 'stdio' and 'url' not in config
+                assert json.loads(archive.read('.mcp.json'))['mcpServers']['congress'] == config
+            else:
+                assert config == release['remotes'][0]
+                assert config['type'] == 'streamable-http'
+                assert 'command' not in config and '.mcp.json' not in archive.namelist()

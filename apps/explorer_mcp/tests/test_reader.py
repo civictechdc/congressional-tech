@@ -271,7 +271,7 @@ def test_explorer_families_by_their_published_keys(reader):
 
 
 # Tables whose rows carry no display text; a new table must be added here or gain a searchable column.
-NO_TEXT = {'url_state', 'url_variants', 'meeting_coverage'}
+NO_TEXT = {'url_state', 'url_variants', 'meeting_coverage', 'witness_key_map'}
 
 
 def test_every_entity_table_is_text_searchable_or_explicitly_not(reader):

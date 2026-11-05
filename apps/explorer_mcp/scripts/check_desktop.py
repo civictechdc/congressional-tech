@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch every packaged client configuration outside the checkout over real stdio."""
+"""Launch the local desktop packages outside the checkout over real stdio."""
 import argparse
 import asyncio
 import json

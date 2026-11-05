@@ -6,10 +6,12 @@ import { withBase } from '../lib/paths';
 import release from '../../../explorer_mcp/server.json';
 
 const repository = release.repository.url;
+const remoteMcp = release.remotes[0].url;
 const releaseUrl = `${repository}/releases/tag/congress-mcp-v${release.version}`;
 const pypiUrl = `https://pypi.org/project/congressional-explorer-mcp/${release.version}/`;
 const desktopBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.mcpb`;
 const pluginBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.plugin.zip`;
+const webPluginBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-web-${release.version}.plugin.zip`;
 const codexSetup = `codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v${release.version} --sparse .agents/plugins --sparse apps/explorer_mcp\ncodex plugin add congress-explorer@congressional-tech`;
 const claudeSetup = 'claude plugin install congress-explorer --marketplace civictechdc/congressional-tech';
 const skillSetup = 'npx skills add civictechdc/congressional-tech --skill explore-congress';
@@ -27,7 +29,7 @@ const prompts = [
   'Find recordings and saved transcripts for a committee meeting I choose.',
 ];
 ---
-<Base title="Congress Explorer MCP — Use with AI" active="mcp" description="Connect your AI assistant to congressional hearings, witnesses, bills, members and related documents. Free, open-source local MCP server for macOS and Linux.">
+<Base title="Congress Explorer MCP — Use with AI" active="mcp" description="Connect your AI assistant to congressional hearings, witnesses, bills, members and related documents. Use the hosted server in ChatGPT web or a local server on desktop.">
   <section class="mcp-hero anchor-dark">
     <div class="mcp-art" aria-hidden="true"><CapitolArt /></div>
     <div class="container mcp-hero-content">
@@ -36,10 +38,10 @@ const prompts = [
       <p class="mcp-lead">Congressional data.<br />Your questions. Your assistant.</p>
       <p class="mcp-intro">Find hearings, witnesses, bills, members, recordings, and related documents through your AI assistant.</p>
       <div class="mcp-actions">
+        <a class="btn btn--gold" href="#web-plugin-heading">Connect in ChatGPT web</a>
         <a class="btn btn--gold" href={desktopBundle}>Download for Claude Desktop</a>
-        <a class="btn btn--gold" href="#plugins">Get the plugin <span aria-hidden="true">↓</span></a>
       </div>
-      <p class="mcp-platforms">Free &amp; open source · macOS and Linux · No data API key</p>
+      <p class="mcp-platforms">Release {release.version} · Free &amp; open source · Web, macOS and Linux · No data API key</p>
     </div>
   </section>
 
@@ -48,11 +50,20 @@ const prompts = [
       <div>
         <p class="eyebrow">Quick setup</p>
         <h2>One server.<br />Your choice of assistant.</h2>
-        <p>Every setup option installs the same versioned PyPI package. The first question downloads the published metadata snapshot. Later sessions reuse it. Queries run on your computer.</p>
-        <p class="mcp-note">About 65 MiB of data as of October 2026, plus Python and dependencies. Windows is not yet supported.</p>
+        <p>Use the hosted server in ChatGPT web, or install the local plugin on desktop. Both offer the same six tools. Start with dataset information to check which archive release your connection uses.</p>
+        <p class="mcp-note">Desktop installations download a metadata snapshot and reuse it locally. The web connection needs no local installation. Local Windows installations are not yet supported.</p>
         <a href="#setup">Other clients &amp; manual setup ↓</a>
       </div>
       <div class="mcp-steps">
+        <section class="mcp-step" aria-labelledby="web-plugin-heading">
+          <h3 id="web-plugin-heading">ChatGPT web</h3>
+          <p>Open <a href="https://chatgpt.com/plugins">ChatGPT Plugins</a>, choose <strong>Add custom MCP server</strong>, and use this URL with <strong>No authentication</strong>:</p>
+          <CopyCommand command={remoteMcp} label="Copy hosted Congress MCP URL" />
+          <p>Name it Congress Explorer Web, create and install the plugin, then select it in a conversation. Queries run on the hosted server; the first connection after idle shutdown may take longer.</p>
+          <a class="btn btn--gold" href={webPluginBundle}>Download web plugin ZIP</a>
+          <p class="mcp-note">The ZIP includes the research skill for plugin import workflows. Connecting the URL directly adds the six tools.</p>
+          <p class="mcp-note">For desktop sessions, use the local plugin below. Plugins do not automatically switch between hosted and local servers. <a href="https://developers.openai.com/plugins/deploy/connect-chatgpt">Connection guide ↗</a></p>
+        </section>
         <section class="mcp-step" aria-labelledby="claude-extension-heading">
           <h3 id="claude-extension-heading">Claude Desktop chat</h3>
           <p>Download the extension, open it with Claude Desktop, and click <strong>Install</strong>. Use a current version with support for uv-based extensions; the app manages Python and dependencies.</p>
@@ -146,9 +157,9 @@ const prompts = [
       <div class="mcp-details">
         <details open><summary>What can I explore?</summary><p>Meetings, witness appearances, bills, nominations, members, committees, rosters, recordings, and document records. All published tables and columns are queryable. Availability varies by source, Congress, and record; this is a bounded collection, not a complete record of every congressional activity.</p></details>
         <details><summary>Can it read documents?</summary><p>Yes. After finding a document through metadata search, your assistant can call <code>get_document</code> with <code>section: "text"</code> to fetch, cryptographically verify (SHA-256), and read or search extracted text from saved PDF, HTML, XML, and text files on demand. The server does not perform OCR on scanned image-only PDFs or cross-corpus full-text indexing.</p></details>
-        <details><summary>How do I get newer data?</summary><p>With the plugin, ask your assistant to follow the setup skill's data refresh instructions. With a manual install, run <code>congress-explorer-mcp prepare</code> again, then restart the client connection. The extension uses the same default data directory, so a manual install can also refresh its data. Only changed files download. Software updates are separate: install the version linked on this page and restart your client.</p></details>
-        <details><summary>What leaves my computer?</summary><p>The server downloads public data during preparation and queries it locally afterward. Your AI client may send your questions and tool results to its model provider. Fetching linked documents requires an internet connection.</p></details>
-        <details><summary>Need help connecting?</summary><p>Run <code>congress-explorer-mcp check</code> in your terminal. If data is missing, run <code>prepare</code> first. If you chose a custom <code>--data-dir</code>, use that same directory for preparation, checks, and configuration. <a href={`${repository}/issues`}>Report an issue</a> with your operating system, client, and error message.</p></details>
+        <details><summary>How do I get newer data?</summary><p>The hosted service uses a fixed archive release that the service operator updates. Ask for <code>get_dataset_info</code> to check its selected release; local commands do not change hosted data. On desktop, run <code>congress-explorer-mcp prepare</code> with the same data directory, then restart the connection. The plugin's setup skill can guide this refresh. Software updates are separate: install the version linked on this page and restart your client.</p></details>
+        <details><summary>What leaves my computer?</summary><p>The web plugin sends tool queries to the hosted Cloudflare service and returns the results to your AI client. The desktop plugin downloads public metadata and runs queries locally. In either setup, your AI client may send questions and tool results to its model provider. Reading archived document bodies requires an internet connection.</p></details>
+        <details><summary>Need help connecting?</summary><p>For ChatGPT web, check that the URL ends in <code>/mcp</code> and authentication is set to <strong>No authentication</strong>. Allow time for a cold start; retry a temporary <code>503</code> after its <code>Retry-After</code> delay. On desktop, run <code>congress-explorer-mcp check</code>; run <code>prepare</code> first if data is missing. Use the same custom <code>--data-dir</code> for preparation, checks, and configuration. <a href={`${repository}/issues`}>Report an issue</a> with your client and error message.</p></details>
         <p class="mcp-more"><a href={`${repository}/tree/main/apps/explorer_mcp`}>Technical documentation ↗</a><a href={withBase('/archive/')}>Browse the data on the web →</a></p>
       </div>
     </div>
