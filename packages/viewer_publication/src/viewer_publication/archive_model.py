@@ -687,8 +687,9 @@ def entity_track_checks():
         segment_tracks="""(SELECT count(*) FROM
             (SELECT unnest(tracks) AS t FROM recording_tracks) r
             WHERE r.t['body'] IN (SELECT sha256 FROM recording_segment_bodies))""",
-        unread_track_playlists=f"""(SELECT count(DISTINCT t.sha256) FROM recording_track_candidates t WHERE t.format='m3u8'
-            AND lower(encode(t.sha256,'hex')) NOT IN ({explorer_settled_sql('playlist_records')}))""",
+        unread_track_playlists=f"""(SELECT count(DISTINCT f.sha256) FROM recording_fetch_candidates f
+            WHERE f.playlist_candidate
+            AND lower(encode(f.sha256,'hex')) NOT IN ({explorer_settled_sql('playlist_records')}))""",
         duplicate_track_bodies="""(SELECT count(*) FROM (
             SELECT video_key,t['body'] FROM (SELECT video_key,unnest(tracks) AS t FROM recording_tracks)
             GROUP BY video_key,t['body'] HAVING count(*)>1))""",
@@ -1101,6 +1102,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.
         steps += [dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True)]
     if prepared.get('include_entities'):
+        from congress_api.lake.playlist_records import GOOD_FETCH_CAPTURE_SQL,PLAYLIST_CAPTURE_SQL
         steps += [
             dict(name='recording_url_sources',sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),
             dict(name='recording_track_formats',sql="SELECT pattern,format,default_language,default_production FROM recording_sources WHERE kind='track_format'",materialize=True),
@@ -1121,21 +1123,32 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 SELECT DISTINCT vps.page_body,try_cast(a.meeting_key AS BIGINT) AS event_id
                 FROM recording_page_sources vps JOIN source_annotation_addresses a ON a.source_id=vps.source_id
                 WHERE try_cast(a.meeting_key AS BIGINT) IS NOT NULL""",materialize=True),
-            dict(name='recording_fetch_candidates',sql="""SELECT g.receipt_key,g.receipt_line,g.capture_index,g.sha256,
-                coalesce(g.stored_suffix,'.gz') AS suffix,
-                coalesce(g.sniffed_format,CASE lower(split_part(g.media_type,';',1)) WHEN 'text/vtt' THEN 'vtt' WHEN 'application/vnd.apple.mpegurl' THEN 'm3u8' WHEN 'application/x-mpegurl' THEN 'm3u8' END) AS body_format,
-                coalesce(g.url,g.requested_url,g.context_url) AS fetch_url,
-                arrow_cast(try_cast(g.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') AS retrieved_at
-                FROM captures g
-                WHERE g.mode='fetch' AND g.complete AND g.outcome IN ('stored','unchanged') AND g.http_status BETWEEN 200 AND 299
-                 AND g.sha256 IS NOT NULL AND coalesce(g.url,g.requested_url,g.context_url) IS NOT NULL
-                 AND regexp_like(coalesce(g.url,g.requested_url,g.context_url),'(?i)(?:youtube|youtu[.]be|senate)')""",materialize=True),
-            # Resolve each listed segment against every retained address of its parent playlist.
-            dict(name='playlist_segment_urls',sql="""SELECT DISTINCT url_resolve(p.uri,f.fetch_url) AS segment_url
-                FROM (SELECT record_sha,unnest(segments) AS uri FROM selected_playlist_records WHERE status='completed') p
-                JOIN recording_fetch_candidates f ON f.sha256=p.record_sha""",materialize=True),
+            dict(name='recording_fetch_candidates',sql=f"""SELECT c.receipt_key,c.receipt_line,c.capture_index,c.sha256,
+                coalesce(c.stored_suffix,'.gz') AS suffix,
+                coalesce(c.sniffed_format,CASE lower(split_part(c.media_type,';',1)) WHEN 'text/vtt' THEN 'vtt' WHEN 'application/vnd.apple.mpegurl' THEN 'm3u8' WHEN 'application/x-mpegurl' THEN 'm3u8' END) AS body_format,
+                coalesce(c.url,c.requested_url,c.context_url) AS fetch_url,
+                CASE WHEN c.url<>c.requested_url THEN c.requested_url END AS redirected_from,
+                ({PLAYLIST_CAPTURE_SQL}) AS playlist_candidate,
+                arrow_cast(try_cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') AS retrieved_at
+                FROM captures c
+                WHERE {GOOD_FETCH_CAPTURE_SQL} AND coalesce(c.url,c.requested_url,c.context_url) IS NOT NULL
+                 AND regexp_like(coalesce(c.url,c.requested_url,c.context_url),'(?i)(?:youtube|youtu[.]be|senate)')""",materialize=True),
+            # Relative URIs use the final playlist address. Collapse repeat captures before
+            # unnesting segments, so a repeat fetch does not multiply every listed child.
+            dict(name='playlist_segment_urls',sql="""WITH playlist_addresses AS (
+                SELECT DISTINCT p.record_sha,f.fetch_url
+                FROM (SELECT record_sha FROM selected_playlist_records WHERE status='completed') p
+                JOIN recording_fetch_candidates f ON f.sha256=p.record_sha
+            )
+            SELECT DISTINCT url_resolve(p.uri,a.fetch_url) AS segment_url
+            FROM playlist_addresses a JOIN (
+                SELECT record_sha,unnest(segments) AS uri FROM selected_playlist_records WHERE status='completed'
+            ) p ON p.record_sha=a.record_sha""",materialize=True),
+            # The listed URI can redirect. The downloaded bytes are still a segment.
             dict(name='recording_segment_bodies',sql="""SELECT f.sha256
                 FROM playlist_segment_urls s JOIN recording_fetch_candidates f ON s.segment_url=f.fetch_url
+                UNION SELECT f.sha256 FROM playlist_segment_urls s
+                JOIN recording_fetch_candidates f ON s.segment_url=f.redirected_from
                 UNION SELECT sha256 FROM placeholders""",materialize=True),
             # A subtitle media playlist lists caption segments. Masters, empty manifests
             # and media playlists of video/audio segments do not supply subtitle tracks.

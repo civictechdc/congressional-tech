@@ -57,7 +57,8 @@ def test_playlist_track_checks_flag_each_bad_output_independently(tmp_path, defe
         dict(name='recording_tracks', sql="""SELECT 'senate:video' AS video_key,
             array_agg(named_struct('body',decode(body,'hex'),'production',production)) AS tracks FROM output_tracks"""),
         dict(name='recording_segment_bodies', sql=f"SELECT decode('{segment}','hex') AS sha256"),
-        dict(name='recording_track_candidates', sql=f"SELECT decode('{track}','hex') AS sha256,'m3u8' AS format"),
+        # This eligible parent is independent of recording_track_candidates.
+        dict(name='recording_fetch_candidates', sql=f"SELECT decode('{track}','hex') AS sha256,true AS playlist_candidate"),
         dict(name='selected_playlist_records', sql=f"SELECT decode('{track}','hex') AS record_sha,'completed' AS status"
              + (' WHERE false' if defect == 'unread' else '')),
     ]

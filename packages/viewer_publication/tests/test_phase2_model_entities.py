@@ -149,6 +149,8 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     m3u8_bytes = b'#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:12.0,\ntext_1_00001.vtt\n#EXT-X-ENDLIST\n'
     master_bytes = b'#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,URI="text_1.m3u8"\n'
     caption_segment = b'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:183000\n\n00:00:01.000 --> 00:00:02.000\nSegment cue\n'
+    unkeyed_playlist = (b'#EXTM3U\n#EXTINF:12.0,\n'
+        b'https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/unkeyed-child.vtt\n')
     segment_bytes = b'G@\x00\x10' + bytes(184)
     # One retained YouTube cache file on a directory channel: a video whose own text names event 115538,
     # and an upload naming no meeting. The Explorer build parses it through the real video_records parser.
@@ -242,9 +244,21 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             family='senate/captions', retrieved_at='2023-05-22T12:00:00Z',
         ),
         dict(
-            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/text_1_00001.vtt',
+            requested_url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/text_1_00001.vtt',
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/redirected.vtt',
             data=caption_segment, format='vtt', media_type='text/vtt', family='senate/captions',
             retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        dict(
+            url='https://www.senate.gov/captions/unkeyed.m3u8',
+            data=unkeyed_playlist, format='m3u8', media_type='application/vnd.apple.mpegurl',
+            family='senate/captions', retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        dict(
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/unkeyed-child.vtt',
+            data=caption_segment.replace(b'Segment cue', b'Unkeyed parent'),
+            format='vtt', media_type='text/vtt',
+            family='senate/captions', retrieved_at='2023-05-22T12:00:00Z',
         ),
         # A later generic route supplies the same bytes and cannot replace the live label.
         dict(
