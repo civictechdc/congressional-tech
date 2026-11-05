@@ -1757,6 +1757,12 @@
           "nullable": false
         },
         {
+          "name": "subject_id",
+          "type": "string",
+          "meaning": "Original subject identifier, including a stated event number without a meeting",
+          "nullable": false
+        },
+        {
           "name": "event_id",
           "type": "int64",
           "meaning": "Meeting subject; null for a package or a stated number no meeting has",
@@ -1821,6 +1827,12 @@
           "type": "string",
           "meaning": "Evidence reference: the record or decision",
           "nullable": true
+        },
+        {
+          "name": "meeting_links",
+          "type": "list<struct<event_id int64, basis dict, scope dict>>",
+          "meaning": "Supported meeting links ordered by event ID. Empty means no supported link. Absent on older releases.",
+          "nullable": false
         }
       ],
       "gaps": [
@@ -1836,7 +1848,10 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "notes": {},
+      "notes": {
+        "meeting_links[].basis": "direct_event for the observation\u2019s stated event or print_agreement for vetted printed-hearing evidence.",
+        "meeting_links[].scope": "event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting."
+      },
       "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
@@ -3225,9 +3240,30 @@
           "event_id"
         ]
       },
-      "meaning": "The meeting an observation concerns.",
+      "meaning": "The original event subject when the number resolves to a meeting.",
       "cardinality": "many-to-one",
       "nullable": true,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "match_meeting_associations",
+      "source": {
+        "table": "recording_matches",
+        "fields": [
+          "meeting_links[].event_id"
+        ]
+      },
+      "target": {
+        "table": "meetings",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "meaning": "Meetings linked by the observation\u2019s direct event evidence or by print agreement. See basis and scope before drawing conclusions about a sitting.",
+      "cardinality": "many-to-many",
+      "nullable": false,
       "resolution": "required",
       "match": "equal",
       "scope": "selected release"
@@ -3454,7 +3490,7 @@
         "witness_meeting",
         "document_meetings",
         "document_detail",
-        "match_meeting"
+        "match_meeting_associations"
       ],
       "parameters": [
         {
@@ -3462,12 +3498,13 @@
           "example": 335321
         }
       ],
-      "sql": "SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,\n  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id AND w.superseded_by IS NULL),[]) AS witnesses,\n  coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM \"list\" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,\n  coalesce((SELECT list(struct_pack(video_key:=r.video_key,url:=r.url,basis:=r.basis,decision:=r.decision,status:=r.status) ORDER BY r.basis,r.video_key,r.url) FROM recording_matches r WHERE r.event_id=m.event_id),[]) AS recordings\nFROM meetings m WHERE m.event_id=?",
+      "sql": "SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,\n  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id AND w.superseded_by IS NULL),[]) AS witnesses,\n  coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM \"list\" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,\n  coalesce((SELECT list(r ORDER BY r.match_id) FROM (\n   SELECT match_id,subject_kind,subject_id,event_id,package_id,video_key,url,basis,decision,score,recording_scope,status,note,source_ref,\n    list_filter(meeting_links,lambda l:l.event_id=m.event_id) AS meeting_links\n   FROM recording_matches\n   WHERE list_contains(list_transform(meeting_links,lambda l:l.event_id),m.event_id)\n   ORDER BY match_id LIMIT 100\n  ) r),[]) AS recordings\nFROM meetings m WHERE m.event_id=?",
       "result_row": "One hearing with embedded witnesses, visible documents, and recording matches",
       "notes": [
         "Uses correlated subqueries with coalesce(..., []) so nested lists do not Cartesian-multiply rows or drop zero-child hearings.",
         "Uses m.event_id inside each subquery so only one ? parameter is required.",
-        "Lists current appearances only (superseded_by IS NULL); each superseded row restates the same person from a lower-ranked source."
+        "Lists current appearances only (superseded_by IS NULL); each superseded row restates the same person from a lower-ranked source.",
+        "Each recording observation appears once with its matching meeting links. Check association scope separately from recording scope."
       ]
     },
     {
@@ -3695,7 +3732,7 @@
         "recording_matches"
       ],
       "relationships": [
-        "match_meeting"
+        "match_meeting_associations"
       ],
       "parameters": [
         {
@@ -3703,10 +3740,11 @@
           "example": 115538
         }
       ],
-      "sql": "SELECT video_key,url,basis,decision,score,recording_scope,status,note\nFROM recording_matches WHERE event_id=? ORDER BY basis,video_key,url",
+      "sql": "WITH target AS (SELECT CAST(? AS BIGINT) AS event_id), observations AS (\n SELECT r.match_id,r.subject_kind,r.subject_id,r.event_id,r.package_id,r.video_key,r.url,r.basis,r.decision,r.score,r.recording_scope,r.status,r.note,r.source_ref,\n  list_filter(r.meeting_links,lambda l:l.event_id=t.event_id) AS meeting_links\n FROM recording_matches r CROSS JOIN target t\n)\nSELECT * FROM observations WHERE len(meeting_links)>0 ORDER BY match_id LIMIT 100",
       "result_row": "One observation",
       "notes": [
-        "claimed rows are what a video says about itself; conflicting rows are retained, not settled."
+        "claimed rows are what a video says about itself; conflicting rows are retained, not settled.",
+        "A package_context link gives package evidence without establishing coverage for the event. Older releases may omit meeting_links and publish their original recipes."
       ]
     },
     {
@@ -3887,7 +3925,7 @@
         }
       ],
       "row_meaning": "One committee assignment",
-      "limits": "Schema supports 113th–119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound."
+      "limits": "Schema supports 113th\u2013119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound."
     }
   ]
 }

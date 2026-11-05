@@ -39,6 +39,8 @@ def tables(tmp_path_factory):
             decision('8' * 64, 'package', 'CHRG-unattached', 'no_video_found'),
             decision('f' * 64, 'package', 'CHRG-disputed', 'no_video_found', disputed_by='old matcher says full_recording'),
             decision('d' * 64, 'event', '1002', 'found', ['https://example.test/watch']),
+            decision('1' * 64, 'event', '1011', 'no_video_found'),
+            decision('2' * 64, 'package', 'CHRG-qualified', 'found', ['https://example.test/watch']),
         ], id='Utf8', subject_kind='Utf8', subject_id='Utf8', verdict='Utf8', video_refs=_list(),
            note='Utf8', disputed_by='Utf8', decided_at='Utf8', supersedes='Utf8'),
     ]
@@ -55,13 +57,13 @@ def tables(tmp_path_factory):
               'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) END AS transcripts
             FROM (SELECT 1001 AS event_id,'house' AS chamber UNION ALL SELECT 1002,'house' UNION ALL SELECT 1003,'house' UNION ALL SELECT 1004,'house' UNION ALL SELECT 1005,'house'
              UNION ALL SELECT 1006,'house' UNION ALL SELECT 1007,'house' UNION ALL SELECT 1008,'senate' UNION ALL SELECT 1009,'house' UNION ALL SELECT 1010,'house' UNION ALL SELECT 1011,'house')""", materialize=True),
-        dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-sibling',1007 UNION ALL SELECT 'CHRG-no-verdict',1007 UNION ALL SELECT 'CHRG-unattached',1010""", materialize=True),
+        dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-sibling',1007 UNION ALL SELECT 'CHRG-no-verdict',1007 UNION ALL SELECT 'CHRG-unattached',1010 UNION ALL SELECT 'CHRG-qualified',1002 UNION ALL SELECT 'CHRG-qualified',1004""", materialize=True),
         dict(name='package_mods_facts', sql="""SELECT 'CHRG-unattached' AS package_id,arrow_cast(make_array(cast(9999 AS BIGINT)),'List(Int64)') AS named_meetings
             UNION ALL SELECT 'CHRG-unlinked',arrow_cast(make_array(cast(1011 AS BIGINT)),'List(Int64)')""", materialize=True),
         # The packages whose own print stands for their meeting (rule tested in test_meeting_semantics);
         # CHRG-unattached's print names another meeting, and 1003, 1004 and 1007 have no such print.
         dict(name='package_meeting_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id
-            UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006""", materialize=True),
+            UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-qualified',1002 UNION ALL SELECT 'CHRG-qualified',1004""", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(1009 AS BIGINT) AS event_id,'https://docs.house.gov/x.pdf' AS url", materialize=True),
         dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(1003 AS BIGINT),cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption
             UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false""", materialize=True),
@@ -129,15 +131,26 @@ def test_match_ids_are_unique(tables):
     assert len({r['match_id'] for r in found}) == len(found) and all(len(r['match_id']) == 64 for r in found)
 
 
-def test_negative_verdict_on_a_shared_print_is_not_confirmed_absent(tables):
-    assert state(tables, 1004, 'recording') == 'unknown'
+def test_print_agreement_attaches_package_context_without_proving_coverage(tables):
+    found = rows(tables, 'recording_matches')
+    matches = [r for r in found if r['url'] == 'https://example.test/watch']
+    assert len({r['match_id'] for r in matches}) == 2
+    assert {r['subject_id']: r['meeting_links'] for r in matches} == {
+        '1002': [dict(event_id=1002, basis='direct_event', scope='event')],
+        'CHRG-qualified': [dict(event_id=1002, basis='print_agreement', scope='package_context'),
+                           dict(event_id=1004, basis='print_agreement', scope='package_context')],
+    }
+    assert all(not r['meeting_links'] for r in found if r['package_id'] in {SHARED_PKG, 'CHRG-unattached', 'CHRG-sibling'})
+    assert state(tables, 1004, 'recording') == 'unresolved'
+    assert reason(tables, 1004, 'recording') == 'package_context_only'
 
 
-def test_only_a_negative_on_one_meeting_package_is_absence(tables):
+def test_direct_negative_can_confirm_absence(tables):
     # 1002 also has a curated positive, which wins; 1001 has a publisher link.
     assert state(tables, 1002, 'recording') == 'present'
     assert state(tables, 1001, 'recording') == 'present'
-    assert state(tables, 1005, 'recording') == 'confirmed_absent'
+    assert state(tables, 1005, 'recording') == 'unresolved'
+    assert state(tables, 1011, 'recording') == 'confirmed_absent'
 
 
 def test_recording_states_keep_excerpts_claims_and_access_apart(tables):
@@ -167,7 +180,7 @@ def test_coverage_is_meetings_times_aspects_and_states_stay_distinct(tables):
     assert state(tables, 1003, 'transcript') == 'not_stated'
     assert state(tables, 1001, 'captions') == 'present'
     assert state(tables, 1004, 'captions') == 'unknown'  # The recording itself is not settled.
-    assert state(tables, 1005, 'captions') == 'not_stated'  # confirmed_absent
+    assert state(tables, 1011, 'captions') == 'not_stated'  # confirmed_absent
     assert 'empty' not in {r['state'] for r in found if r['aspect'] == 'captions'}
 
 

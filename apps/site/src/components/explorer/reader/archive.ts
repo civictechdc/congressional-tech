@@ -306,7 +306,8 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   const meetingCoverage=(eventId: string)=>/^\d+$/.test(eventId)
     ?read('meeting_coverage.parquet',undefined,undefined,{event_id:{$eq:BigInt(eventId)}})
     :Promise.resolve([]);
-  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,meetingCoverage});
+  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,meetingCoverage,
+    entityHasColumn:async(name,column)=>(await table(name+'.parquet',true)).names.includes(column)});
 
   const reader={releaseId,manifest,metrics,count,
     has:(name: string)=>files.has(name+'.parquet')||shards.has(name),

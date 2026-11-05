@@ -53,6 +53,7 @@ export function HearingDetail({
   const recordings:any[]=Array.isArray(meeting.videos)&&meeting.videos.length
     ?meeting.videos
     :Array.isArray(meeting.recordings)?meeting.recordings:[];
+  const observations:any[]=meeting.recording_observations??[];
   const transcripts:any[]=Array.isArray(meeting.transcripts)?meeting.transcripts:[];
   const sittings:any[]=Array.isArray(meeting.sittings)?meeting.sittings:[];
   const witnesses:any[]=Array.isArray(meeting.witnesses)?meeting.witnesses:[];
@@ -177,6 +178,30 @@ export function HearingDetail({
       </ul>
     </div>}
 
+    <RelationNotice label="Recording associations" state={meeting.recording_associations_state}/>
+    {meeting.recording_associations_state==='ready'&&!observations.length&&
+      <p className="archive-source-meta">The archive lists no supported recording associations for this hearing.</p>}
+    {observations.length>0&&<div className="archive-entity-section">
+      <h3>Recording evidence</h3>
+      <ul className="archive-entity-list">
+        {observations.map((obs:any)=>{
+          const youtube=/^youtube:([a-zA-Z0-9_-]+)$/.exec(obs.video_key??'');
+          const url=obs.url||(youtube?`https://www.youtube.com/watch?v=${youtube[1]}`:null);
+          const scope=obs.meeting_link?.scope;
+          const label=scope==='package_context'?'Related package recording evidence'
+            :scope==='event'?'Recording evidence for this event':'Original recording observation';
+          const describe=[obs.status,obs.decision,obs.recording_scope].filter(Boolean).map(v=>String(v).replaceAll('_',' ')).join(' · ');
+          return <li key={obs.match_id}>
+            {url?<PublicLink url={url}>{label}</PublicLink>:<strong>{label}</strong>}
+            {describe&&<span className="archive-source-meta"> · {describe}</span>}
+            {obs.package_id&&<p className="archive-source-meta"><PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(obs.package_id)}`}>{obs.package_id}</PublicLink></p>}
+            {obs.note&&<p className="archive-source-meta">{obs.note}</p>}
+            {obs.source_ref&&<p className="archive-source-meta">Source <code>{obs.source_ref}</code></p>}
+          </li>;
+        })}
+      </ul>
+    </div>}
+
     {transcripts.length>0&&<div className="archive-entity-section">
       <h3>Official Transcripts</h3>
       <ul className="archive-entity-list">
@@ -186,7 +211,8 @@ export function HearingDetail({
           return <li key={tr.jacket_number||i}>
             {hasRow&&onSelect
               ?<button type="button" className="explorer-text-button" onClick={()=>onSelect(Number(tr.list_row))}>{label}</button>
-              :tr.url?<PublicLink url={tr.url}>{label}</PublicLink>:<span>{label}</span>}
+              :tr.url?<PublicLink url={tr.url}>{label}</PublicLink>
+                :tr.package_id?<PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(tr.package_id)}`}>{label}</PublicLink>:<span>{label}</span>}
             {tr.jacket_number&&tr.title&&<span className="archive-source-meta"> (Jacket {tr.jacket_number})</span>}
           </li>;
         })}

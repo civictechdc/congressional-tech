@@ -15,6 +15,7 @@ export interface ArchiveEntityContext {
   resolve: (key: string) => Promise<number | null>;
   entry: (index: number, signal?: AbortSignal) => Promise<any>;
   versions: (index: number, signal?: AbortSignal) => Promise<any[]>;
+  entityHasColumn?: (name: string, column: string) => Promise<boolean>;
   meetingCoverage?: (eventId: string) => Promise<any[]>;
   witnessKeyMap?: (key: string) => Promise<{ key: string; status: string; successor: string | null; basis: string | null; candidates: string[] } | null>;
 }
@@ -329,6 +330,21 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     return { rows, byEventId };
   });
 
+  const recordingMatchesIndex = () => memoized('recording_matches', async () => {
+    const hasLinks = await ctx.entityHasColumn?.('recording_matches', 'meeting_links');
+    const rows = await entity('recording_matches'), byEventId = new Map<string, any[]>();
+    for (const observation of rows) {
+      if (hasLinks) {
+        for (const link of observation.meeting_links) {
+          pushMap(byEventId, String(link.event_id), { ...observation, meeting_link: link });
+        }
+      } else if (observation.event_id != null) {
+        pushMap(byEventId, String(observation.event_id), observation);
+      }
+    }
+    return { hasLinks, byEventId };
+  });
+
   const committeesIndex = () => memoized('committees', async () => {
     const rows = (await entity('committees')).map(normalizeCommittee), byCode = new Map<string, any>(), subcommitteesByParent = new Map<string, any[]>();
     rows.sort((a: any, b: any) =>
@@ -501,7 +517,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const chamberFilter = hasChamber ? String(chamberOrEventId ?? '').trim().toLowerCase() : null;
     const eventKey = String(hasChamber ? maybeEventId : chamberOrEventId).trim();
     if (!eventKey) return null;
-    const [mIdx, recordings, committees, witnesses, bills, nominations, coverage] = await Promise.all([
+    const [mIdx, recordings, committees, witnesses, bills, nominations, coverage, matches] = await Promise.all([
       awaitShared(meetingsIndex(), actualSignal),
       optional('recordings', recordingsIndex, actualSignal),
       optional('committees', committeesIndex, actualSignal),
@@ -509,6 +525,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       optional('bills', billsIndex, actualSignal),
       optional('nominations', nominationsIndex, actualSignal),
       optional('meeting_coverage', () => ctx.meetingCoverage!(eventKey), actualSignal),
+      optional('recording_matches', recordingMatchesIndex, actualSignal),
     ]);
     const { data: recIdx } = recordings, { data: commIdx } = committees, { data: wIdx } = witnesses;
     const { data: bIdx } = bills, { data: nIdx } = nominations;
@@ -598,6 +615,8 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       recordings: recRows, videos: allVideos, witnesses: mergedWitnesses, documents: baseMeeting.list_rows.map(row),
       relation_states: { recordings: recordings.state, committees: committees.state, witnesses: witnesses.state,
         bills: bills.state, nominations: nominations.state, coverage: coverage.state },
+      recording_observations: matches.data?.byEventId.get(eventKey) ?? [],
+      recording_associations_state: matches.state === 'ready' && !matches.data?.hasLinks ? 'missing' : matches.state,
       coverage: Object.fromEntries((coverage.data ?? []).map(item => [item.aspect, item.state])),
     };
   }

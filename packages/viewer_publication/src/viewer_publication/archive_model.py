@@ -112,7 +112,8 @@ RECORDING_DECISION_FIELDS=dict(id='Utf8',subject_kind='Utf8',subject_id='Utf8',v
 EXPLORER_TABLES=[
     ('videos','entity-videos',['video_key'],['handle','system_code']),
     ('channels','entity-channels',['handle'],['system_code','role','mapping_basis']),
-    ('recording_matches','entity-recording-matches',['match_id'],['subject_kind','basis','decision','recording_scope','status']),
+    ('recording_matches','entity-recording-matches',['match_id'],['subject_kind','basis','decision','recording_scope','status',
+        'meeting_links.list.item.basis','meeting_links.list.item.scope']),
     ('committee_records','entity-committee-records',['record_key'],['kind','sponsor_bioguide','amendment_type']),
     ('meeting_coverage','entity-meeting-coverage',['event_id','aspect'],['aspect','state','basis','reason']),
 ]

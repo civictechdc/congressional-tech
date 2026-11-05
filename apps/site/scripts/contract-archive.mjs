@@ -25,11 +25,43 @@ async function fixtureContext(options={}){
   await routeArchiveOrigin(context,server);
   return context;
 }
+// Use the same browser and release server for the typed candidate and its older schema.
+async function checkRecordingAssociations(eventId){
+  for(const [releaseId,scoped] of [[server.manifest.release_id,true],[server.nextManifest.release_id,false]]){
+    server.state.releaseId=releaseId;
+    const context=await fixtureContext(),page=await context.newPage();page.setDefaultTimeout(15000);
+    try{
+      await page.goto(server.pageUrl+'?tab=hearings&hearing='+encodeURIComponent(eventId));
+      await page.locator(`[data-archive-release="${releaseId}"]`).waitFor();
+      const hearing=page.getByRole('region',{name:'Hearing details'});
+      await hearing.getByRole('heading',{name:'Video Recordings'}).waitFor();
+      const evidence=hearing.getByRole('heading',{name:'Recording evidence'});
+      await evidence.waitFor();
+      const link=(name)=>hearing.getByRole('link',{name,exact:true}).filter({hasText:name});
+      if(scoped){
+        const contextLink=link('Related package recording evidence');
+        assert.equal(await contextLink.getAttribute('href'),'https://example.test/watch');
+        assert.equal(await hearing.locator('a[href="https://example.test/watch"]').count(),2,
+          'Distinct event and package observations sharing a locator must remain visible.');
+        await hearing.getByRole('link',{name:'CHRG-118hhrg55555',exact:true}).waitFor();
+      }else{
+        await hearing.getByText('Recording associations · This release does not include this information.').waitFor();
+        await link('Original recording observation').first().waitFor();
+        assert.equal(await link('Related package recording evidence').count(),0);
+      }
+    }finally{await context.close();}
+  }
+  return {operation:'scoped-recording-associations',status:'passed'};
+}
+
 const results=[];
 const fixtureReader=args.hand==='true'?await openArchive(server.pointerUrl):null;
 const fixtureEntries=fixtureReader?await Promise.all([1,2,5,6].map(index=>fixtureReader.entry(index))):[];
 const hex=value=>Buffer.from(value).toString('hex');
 try{
+  if(args['recording-event']){
+    results.push(await checkRecordingAssociations(args['recording-event']));
+  }else{
   for(const profileKind of ['desktop','phone']){
     const profile=measurementProfiles[profileKind],viewport=profile.viewport;
     server.state.missingFile=null;server.state.flipOnMissing=null;server.state.releaseId=server.manifest.release_id;
@@ -134,5 +166,6 @@ try{
     }finally{await context.close();}
   }
   if(args.hand==='true')assert(fixtureBodyReads.some(read=>read.status===404),'Hand saved-copy checks must exercise the local missing-body store');
+  }
   const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?.status??targetsStatus??'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
 }finally{await browser.close();await server.close();}

@@ -914,8 +914,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         updated='2023-05-10T20:00:00Z', records=[dict(ordinal=0, kind='amendment', bill='H.R. 1234', number='1',
             sponsor_bioguide='S000001', amendment_type='ANS', enbloc=None, description='Amendment in the nature of a substitute; agreed to by voice vote',
             url='https://docs.house.gov/meetings/AG/AG00/20230510/115538/BILLS-118HR1234ih-A001.pdf')])]), committee_path)
-    decisions.write_text(json.dumps(dict(id='a' * 64, subject_kind='event', subject_id='115538', verdict='found',
-        video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n')
+    decisions.write_text(''.join(json.dumps(dict(id=letter * 64, subject_kind=kind, subject_id=subject, verdict='found',
+        video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n'
+        for letter,kind,subject in [('a','event','115538'),('b','package','CHRG-118hhrg55555')]))
     explorer = build_release(**staged, meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
         video_records=video_path, committee_records=committee_path,
         recording_decision_files=[dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions))],
@@ -944,7 +945,10 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         (115538, 'transcript'): ('present', 'meetings.transcripts', 'captions,printed_hearing'),
         (115538, 'witnesses'): ('present', 'appearance_records', None)}
     matches = pq.read_table(tmp_path / 'release-explorer/recording_matches.parquet').to_pylist()
-    assert [(r['event_id'], r['url'], r['status']) for r in matches if r['basis'] == 'curated'] == [(115538, 'https://example.test/watch', 'decided')]
+    assert {r['subject_kind']: r['meeting_links'] for r in matches if r['basis'] == 'curated'} == {
+        'event': [dict(event_id=115538, basis='direct_event', scope='event')],
+        'package': [dict(event_id=115538, basis='print_agreement', scope='package_context')],
+    }
     assert [(r['event_id'], r['video_key'], r['status']) for r in matches if r['basis'] == 'video_states_event_id'] == [
         (115538, 'youtube:agHearing01', 'claimed')]
     assert not any(r['video_key'] == 'youtube:agUpload02' for r in matches)

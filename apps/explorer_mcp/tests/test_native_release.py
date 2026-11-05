@@ -54,7 +54,18 @@ def test_native_producer_release_through_stdio(tmp_path, request):
             video = await call('get_entity', {'table':'videos','id':'youtube:agHearing01'})
             assert (video['rows'][0]['handle'], video['rows'][0]['stated_event_ids']) == ('@AgRepublicans', [115538])
             curated = await call('search_entities', {'table':'recording_matches','filters':{'basis':'curated'}})
-            assert [(r['event_id'], r['url'], r['status']) for r in curated['rows']] == [(115538, 'https://example.test/watch', 'decided')]
+            assert {r['subject_kind']: (r['event_id'], r['url'], r['status']) for r in curated['rows']} == {
+                'event': (115538, 'https://example.test/watch', 'decided'),
+                'package': (None, 'https://example.test/watch', 'decided'),
+            }
+            recording_recipe = await call('get_dataset_info', {'recipe':'meeting_recordings'})
+            hearing_recipe = await call('get_dataset_info', {'recipe':'hearing_dossier'})
+            observations = await sql(recording_recipe['sql'], [115538])
+            assert observations == (await sql(hearing_recipe['sql'], [115538]))[0]['recordings']
+            assert len({r['match_id'] for r in observations}) == len(observations)
+            assert {(r['subject_kind'], r['meeting_links'][0]['scope']) for r in observations if r['basis']=='curated'} == {
+                ('event','event'), ('package','package_context')}
+            assert all(r['meeting_links'][0]['event_id']==115538 for r in observations)
             record = (await call('search_entities', {'table':'committee_records','filters':{'event_id':115538}}))['rows']
             assert [(r['kind'], r['bill']) for r in record] == [('amendment', 'H.R. 1234')]
             assert (await call('get_entity', {'table':'committee_records','id':record[0]['record_key']}))['rows'] == record
