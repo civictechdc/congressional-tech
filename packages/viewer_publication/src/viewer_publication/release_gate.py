@@ -25,6 +25,8 @@ from urllib.request import Request, urlopen
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from congress_api.lake.receipt_metadata import document_status, document_status_sql
+
 from viewer_publication.release_comparison import ADDED_URL_STATE, ATTEMPTED_URLS
 
 DIGEST = re.compile('[0-9a-f]{64}')
@@ -272,8 +274,12 @@ def _raw_document_proof(line):
               if isinstance(entry, dict) and isinstance(entry.get('sha256'), str)} if isinstance(entries, list) else set()
     record = receipt.get('record', {})
     url = None
-    if isinstance(record, dict) and receipt.get('mode', record.get('mode')) == 'fetch':
-        url = receipt.get('requested_url', record.get('requested_url'))
+    if isinstance(record, dict):
+        status = receipt.get('http_status', record.get('http_status'))
+        if (receipt.get('mode', record.get('mode')) == 'fetch'
+                and receipt.get('outcome', record.get('outcome')) in ('stored', 'unchanged')
+                and type(status) is int and document_status(status)):
+            url = receipt.get('requested_url', record.get('requested_url'))
     return bodies, url
 
 
@@ -286,7 +292,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     lines holding those bodies. Each line is then read from raw: its key must be outside the
     live release's receipt set and dated after the newest dated receipt, and the line itself must
     name the body's SHA-256. Source and lookup additions must sit on new documents only.
-    Each added attempted URL needs a fresh document receipt line for every reported attempt.
+    Every attempt for an added URL needs a fresh receipt line that supplied the new document.
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
     new row whose receipts are new while the code that made it changed; the other gates still run.
     """
@@ -333,7 +339,9 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     work.mkdir(parents=True, exist_ok=True)
     pq.write_table(pa.table({'prefix': keys}), work / 'added-keys.parquet')
     source = captures['path'] if captures.get('kind') == 'parquet' else {k: v for k, v in captures.items() if k != 'kind'}
-    request_column = ', c.requested_url' if url_additions else ''
+    request_column = (f", CASE WHEN c.mode='fetch' AND c.complete AND coalesce(c.attempt,0)=0 "
+                      f"AND c.outcome IN ('stored','unchanged') AND {document_status_sql('c.http_status')} "
+                      "THEN c.requested_url END AS requested_url") if url_additions else ''
     lines = run_job(work / 'trace', engine, inputs=[table_input('captures', source),
         dict(name='added_keys', kind='parquet', path=str(work / 'added-keys.parquet'))], steps=[], outputs=[],
         queries=[dict(name='lines', sql=f"""SELECT DISTINCT k.prefix,c.receipt_key,c.receipt_line,lower(encode(c.sha256,'hex')) AS sha{request_column}

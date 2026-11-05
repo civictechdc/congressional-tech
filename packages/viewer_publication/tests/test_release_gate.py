@@ -282,7 +282,7 @@ def url_states(url, attempts):
 
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
-            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS):
+            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=False):
     """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
     import gzip
     import os
@@ -290,8 +290,9 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     from viewer_publication.release_gate import automatic_causes
     base, candidate = tmp_path / 'base', tmp_path / 'candidate'
     states = url_states(url, attempts)
+    failure_url = 'https://www.govinfo.gov/failed-copy.pdf'
     baseline = dict(url_state=states.slice(0, 0))
-    additions = dict(url_state=states)
+    additions = dict(url_state=pa.concat_tables([states, url_states(failure_url, 1)]) if failed_duplicate else states)
     if other_entity:
         additions['meetings'] = pa.table({'event_id': [119123]})
         baseline['meetings'] = additions['meetings'].slice(0, 0)
@@ -307,9 +308,17 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
         (candidate / 'manifest.json').write_text(json.dumps(manifest))
     new = [k for keys in candidate_docs for k in keys if not any(k in b for b in base_docs)]
     bodies = {k: K(k) + sha256(k.encode()).digest()[:24] for k in new}
-    pq.write_table(pa.table({'receipt_key': [receipt] * len(bodies), 'receipt_line': pa.array([1] * len(bodies), pa.int32()),
-                             'sha256': pa.array(list(bodies.values()), pa.binary(32)),
-                             'requested_url': pa.array([capture_url] * len(bodies), pa.string())}), tmp_path / 'captures.parquet')
+    capture_rows = [dict(receipt_key=receipt, receipt_line=1, sha256=body, requested_url=capture_url,
+                         mode='fetch', complete=True, attempt=0, outcome='stored', http_status=200)
+                    for body in bodies.values()]
+    if failed_duplicate:
+        capture_rows.append(dict(capture_rows[0], receipt_line=2, requested_url=failure_url,
+                                 outcome='failed', http_status=403))
+    pq.write_table(pa.Table.from_pylist(capture_rows, schema=pa.schema([
+        ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('sha256', pa.binary(32)),
+        ('requested_url', pa.string()), ('mode', pa.string()), ('complete', pa.bool_()),
+        ('attempt', pa.int32()), ('outcome', pa.string()), ('http_status', pa.int32()),
+    ])), tmp_path / 'captures.parquet')
     sha = next(iter(bodies.values())).hex() if raw_names_body else '0' * 64
     line = dict(record=dict(mode='fetch', outcome='stored', requested_url=raw_url, url=raw_url,
                             http_status=200, retrieved_at=FETCHED.isoformat(), content=dict(sha256=sha)),
@@ -319,7 +328,9 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
         line['notes'] = [b.hex() for b in list(bodies.values())[1:]]
     if not nested:
         line.update(line.pop('record'))
-    unrelated = dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[])
+    unrelated = (dict(record=dict(mode='fetch', requested_url=failure_url, outcome='failed', http_status=403),
+                      captures=line['captures']) if failed_duplicate else
+                 dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[]))
     raw = {receipt: gzip.compress(('\n'.join(map(json.dumps, (line, unrelated))) + '\n').encode(), mtime=0)}
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     def automatic(report):
@@ -421,3 +432,11 @@ def test_a_second_document_hash_in_raw_notes_does_not_ride_an_eligible_attempt(t
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
     assert len(reasons) == 1 and 'does not name body' in reasons[0]
+
+
+def test_a_failed_response_sharing_the_new_documents_body_cannot_qualify_its_url(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], failed_duplicate=True)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
+    assert len(reasons) == 1 and 'failed-copy.pdf has 1 attempts but 0 fresh raw lines' in reasons[0]
