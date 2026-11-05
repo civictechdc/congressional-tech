@@ -224,7 +224,7 @@ def _url_binding(release,engine):
     digest=hashlib.sha256(json.dumps(binding,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
     if release.get('url_key_definition_sha256',digest)!=digest:
         raise ValueError('Capture profile changed within the capture run')
-    return binding,digest
+    return binding,digest,profile
 
 
 def _profile_inputs(release,binding,work):
@@ -259,6 +259,7 @@ def _check_keys(values):
 # that stays bound to the observed row's key.
 ADDRESS_REPAIR_RULES=('download-ampersand-query','senate-notfound','lis-gpo')
 TRAILING_SPACES=r'(?:%20)+$'
+DISCOVERY_URL_SQL='url_resolve(href,coalesce(url_resolve(base_href,context),context))'
 
 
 def _repair_spelling(rules):
@@ -284,7 +285,7 @@ def _campaign_candidates_sql(targets):
         JOIN ({targets}) kt ON kt.url=cc.target_url WHERE kt.url_key IS NOT NULL"""
 
 
-def _reviewed_cutoffs(urls):
+def reviewed_cutoffs(urls):
     urls=tuple(urls)
     if len(urls)>1024 or any(not isinstance(url,str) or not url or len(url.encode('utf-8'))>16384 for url in urls):
         raise ValueError('Reviewed cutoff input exceeds its metadata allowance')
@@ -293,69 +294,124 @@ def _reviewed_cutoffs(urls):
     return urls
 
 
-def _record_attempt(path,url,*,attempted,complete=None,outcome=None,http_status=None,error_type=None):
+def _record_attempt(path,url,*,attempted,complete=None,outcome=None,http_status=None,error_type=None,receipt_key=None):
     import gzip
     with gzip.open(path,'at',encoding='utf-8') as out:
         out.write(json.dumps(dict(url=url,attempted=attempted,complete=complete,outcome=outcome,
-            http_status=http_status,error_type=error_type))+'\n')
+            http_status=http_status,error_type=error_type,receipt_key=receipt_key))+'\n')
 
 
-def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,_keyed_states_cache=None,campaign=None):
+def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discovery_files=(),
+                  _keyed_states_cache=None,campaign=None):
     """Account for every reviewed URL, including deadline/budget/scope deferrals."""
     _require_capture_authority(release)
-    urls=_reviewed_cutoffs(urls)
+    urls=reviewed_cutoffs(urls)
     if not urls:return []
-    binding,_=_url_binding(release,engine)
+    binding,_,profile=_url_binding(release,engine)
     work=Path(work);work.mkdir(parents=True,exist_ok=True)
     policy=CapturePolicy(release['scope'])
     reuse_keyed_states=_keyed_states_cache is not None and Path(_keyed_states_cache).is_file()
-    inputs=[dict(name='keyed_states' if reuse_keyed_states else 'states',kind='parquet',
-                 path=str(Path(_keyed_states_cache if reuse_keyed_states else release['state']).resolve())),
+    state_path=Path(_keyed_states_cache if reuse_keyed_states else release['state']).resolve()
+    state_columns=pq.read_schema(state_path).names
+    inputs=[dict(name='keyed_states' if reuse_keyed_states else 'states',kind='parquet',path=str(state_path)),
         json_input(work,'cutoffs',(dict(url=url) for url in urls),url='Utf8'),
+        dict(name='discovery',kind='json_lines',files=list(discovery_files),
+            schema=dict(fields=[field(k,'Utf8') for k in ('href','base_href','context')],metadata={})),
         dict(name='attempted',kind='json_lines',
             files=[dict(key='attempted',path=str(attempted))] if attempted.exists() else [],
             schema=dict(fields=[field('url','Utf8'),field('attempted','Boolean'),field('complete','Boolean'),
-                field('outcome','Utf8'),field('http_status','Int32'),field('error_type','Utf8')],metadata={}))]
+                field('outcome','Utf8'),field('http_status','Int32'),field('error_type','Utf8'),
+                field('receipt_key','Utf8')],metadata={}))]
     inputs.extend(_profile_inputs(release,binding,work))
-    key_sources=[('attempted','attempted','url'),('cutoffs','cutoff','url')]
+    key_sources=[('attempted','attempted','url'),('cutoffs','cutoff','url'),('discovered_urls','discovery','url')]
     if not reuse_keyed_states:
         key_sources.insert(0,('states','state','requested_url'))
     if campaign is not None:
         inputs.extend([dict(name='campaign_targets',kind='parquet',path=str(campaign.table_path(campaign.target_table))),
                        dict(name='campaign_candidates',kind='parquet',path=str(campaign.table_path(campaign.candidate_table)))])
         key_sources.append(('campaign_targets','target','target_url'))
-    steps=_key_steps(binding,key_sources)
-    selected_states_sql=(f"SELECT s.requested_url,s.next_attempt_at,{policy.sql('s.requested_url')} AS family,s.url_key FROM keyed_states s"
-        if reuse_keyed_states else
-        f"""SELECT s.requested_url,s.next_attempt_at,
-        {policy.sql('s.requested_url')} AS family,k.url_key FROM states s JOIN url_keys k
-        ON k.input_id='state:' || s.requested_url""")
-    steps.extend([dict(name='selected_states',sql=selected_states_sql),
-        dict(name='reviewed_cutoffs',sql="""SELECT DISTINCT c.url,k.url_key FROM cutoffs c JOIN url_keys k
+    steps=[dict(name='discovered_urls',sql=f"SELECT DISTINCT {DISCOVERY_URL_SQL} AS url FROM discovery")]
+    steps.extend(_key_steps(binding,key_sources))
+    state_key, state_source = ('s.url_key', 'keyed_states s') if reuse_keyed_states else (
+        'k.url_key', "states s JOIN url_keys k ON k.input_id='state:' || s.requested_url")
+    state_fields=', '.join(f'cast(s.{name} AS VARCHAR) AS {name}' if name in state_columns and
+        (profile['version']==2 or not name.startswith('capture_')) else f'cast(NULL AS VARCHAR) AS {name}'
+        for name in ('last_outcome','capture_disposition','capture_reason'))
+    last_status='s.last_status' if 'last_status' in state_columns else 'cast(NULL AS INT)'
+    selected_states_sql=f"""SELECT s.requested_url,s.next_attempt_at,{state_fields},
+        {last_status} AS last_status,{policy.sql('s.requested_url')} AS family,{state_key} AS url_key FROM {state_source}"""
+    campaign_target_source="""SELECT t.target_url AS url,k.url_key FROM campaign_targets t JOIN url_keys k
+            ON k.input_id='target:' || t.target_url""" if campaign is not None else 'SELECT url,url_key FROM reviewed_cutoffs WHERE false'
+    alias_sql=_address_repairs_sql("""SELECT requested_url AS url,url_key FROM selected_states
+        UNION SELECT url,url_key FROM keyed_campaign_targets
+        UNION SELECT url,url_key FROM keyed_discovery""")
+    if campaign is not None:
+        alias_sql+=" UNION ALL "+_campaign_candidates_sql("SELECT url,url_key FROM keyed_campaign_targets")
+    steps.extend([dict(name='reviewed_cutoffs',sql="""SELECT DISTINCT c.url,k.url_key FROM cutoffs c JOIN url_keys k
             ON k.input_id='cutoff:' || c.url"""),
+        dict(name='reviewed_keys',sql="SELECT DISTINCT url_key FROM reviewed_cutoffs"),
+        dict(name='selected_states',sql=f"""SELECT s.* FROM reviewed_keys k JOIN ({selected_states_sql}) s
+            ON k.url_key=s.url_key""",materialize=True),
+        dict(name='keyed_campaign_targets',sql=campaign_target_source),
+        dict(name='campaign_keys',sql="SELECT DISTINCT url_key FROM keyed_campaign_targets"),
+        dict(name='keyed_discovery',sql="""SELECT d.url,k.url_key FROM discovered_urls d JOIN url_keys k
+            ON k.input_id='discovery:' || d.url"""),
+        dict(name='discovered_targets',sql="""SELECT c.url AS cutoff_url,
+            coalesce(min(CASE WHEN c.url=d.url THEN d.url END),min(d.url)) AS url FROM keyed_discovery d
+            JOIN reviewed_cutoffs c ON d.url_key=c.url_key GROUP BY c.url"""),
+        dict(name='reviewed_repairs',sql=_address_repairs_sql("SELECT url,url AS url_key FROM reviewed_cutoffs")),
         # Same candidate addresses plan_queue requests on behalf of a key.
-        dict(name='attempt_aliases',sql=_address_repairs_sql("""SELECT url,url_key FROM reviewed_cutoffs
-            UNION SELECT requested_url AS url,url_key FROM selected_states""")+(" UNION ALL "+_campaign_candidates_sql(
-            """SELECT t.target_url AS url,k.url_key FROM campaign_targets t JOIN url_keys k
-            ON k.input_id='target:' || t.target_url""") if campaign is not None else '')),
+        dict(name='attempt_aliases',sql=f"""SELECT arrow_cast(url,'Utf8') AS url,
+            arrow_cast(url_key,'Utf8') AS url_key FROM ({alias_sql})""",materialize=True),
+        dict(name='in_scope_aliases',sql=f"""SELECT DISTINCT a.url_key FROM (
+            SELECT url,url_key FROM attempt_aliases UNION ALL SELECT url,url_key FROM keyed_discovery
+            UNION ALL SELECT url,url_key FROM keyed_campaign_targets
+            UNION ALL SELECT requested_url AS url,url_key FROM selected_states) a
+            WHERE {policy.sql('a.url')} IS NOT NULL"""),
         dict(name='selected_attempts',sql="""SELECT a.*,k.url_key FROM attempted a JOIN url_keys k
                 ON k.input_id='attempted:' || a.url
             UNION SELECT a.*,x.url_key FROM attempted a JOIN attempt_aliases x ON x.url=a.url""")])
+    known_target='(s.requested_url IS NOT NULL OR d.url IS NOT NULL OR c.url_key IS NOT NULL)'
+    outside_scope=f"({known_target} AND sc.url_key IS NULL)"
+    as_of_sql=f"to_timestamp({_literal(_utc(as_of))})"
+    retained_result=f"""(s.capture_disposition IS NULL AND s.last_outcome IN ('stored','unchanged')
+        AND s.next_attempt_at>{as_of_sql})"""
     values=run_job(work,engine,inputs=inputs,outputs=[],steps=steps,
         queries=[*_key_queries(),dict(name='cutoffs',sql=f"""SELECT requested_url,disposition,reason,
-            next_attempt_at,complete,outcome,http_status FROM (SELECT k.url AS requested_url,
-            CASE WHEN a.attempted THEN 'attempted'
-                 WHEN a.url IS NOT NULL OR s.requested_url IS NOT NULL AND s.family IS NULL THEN 'refused'
+            next_attempt_at,complete,outcome,http_status,candidate_url,receipt_key,
+            state_url,discovered_url,retained_outcome,retained_http_status FROM (SELECT k.url AS requested_url,
+            CASE WHEN a.error_type='local_path_in_receipt' THEN 'refused'
+                 WHEN a.attempted THEN 'attempted'
+                 WHEN a.url IS NOT NULL OR s.capture_disposition='excluded' THEN 'refused'
+                 WHEN s.capture_disposition='satisfied' THEN 'retained'
+                 WHEN {outside_scope} THEN 'refused'
+                 WHEN {retained_result} THEN 'retained'
                  ELSE 'deferred' END AS disposition,
             CASE WHEN a.url IS NOT NULL THEN a.error_type
-                 WHEN s.requested_url IS NULL THEN 'not_in_release'
-                 WHEN s.family IS NULL THEN 'outside_capture_scope'
-                 WHEN s.next_attempt_at>to_timestamp({_literal(_utc(as_of))}) THEN 'not_due'
+                 WHEN NOT {known_target} THEN 'not_in_release'
+                 WHEN s.capture_disposition IN ('satisfied','excluded') THEN coalesce(s.capture_reason,s.capture_disposition)
+                 WHEN {outside_scope} THEN 'outside_capture_scope'
+                 WHEN s.next_attempt_at>{as_of_sql} THEN 'not_due'
                  ELSE {_literal(stop_reason or 'not_attempted')} END AS reason,
             s.next_attempt_at,a.complete,a.outcome,a.http_status,
-            row_number() OVER(PARTITION BY k.url ORDER BY CASE WHEN k.url=s.requested_url THEN 0 ELSE 1 END,
-                s.next_attempt_at DESC NULLS LAST,s.requested_url,a.attempted DESC NULLS LAST,a.url) AS ordinal
+            CASE WHEN a.attempted THEN a.url END AS candidate_url,a.receipt_key,
+            s.requested_url AS state_url,d.url AS discovered_url,
+            s.last_outcome AS retained_outcome,s.last_status AS retained_http_status,
+            row_number() OVER(PARTITION BY k.url ORDER BY a.attempted DESC NULLS LAST,
+                CASE WHEN a.receipt_key IS NOT NULL THEN 0 ELSE 1 END,
+                CASE WHEN k.url=a.url THEN 0 ELSE 1 END,a.url,
+                CASE WHEN s.capture_disposition IN ('satisfied','excluded') THEN 0 ELSE 1 END,
+                CASE WHEN repair.url IS NOT NULL AND s.family IS NOT NULL
+                    AND (original.family IS NULL OR original.capture_disposition='eligible'
+                        OR coalesce(original.last_outcome,'') NOT IN ('stored','unchanged')) THEN 0 ELSE 1 END,
+                CASE WHEN k.url=s.requested_url THEN 0 ELSE 1 END,
+                s.next_attempt_at DESC NULLS LAST,s.requested_url) AS ordinal
             FROM reviewed_cutoffs k LEFT JOIN selected_states s ON k.url_key=s.url_key
+            LEFT JOIN selected_states original ON k.url=original.requested_url
+            LEFT JOIN reviewed_repairs repair ON k.url=repair.url_key AND s.requested_url=repair.url
+            LEFT JOIN discovered_targets d ON k.url=d.cutoff_url
+            LEFT JOIN campaign_keys c ON k.url_key=c.url_key
+            LEFT JOIN in_scope_aliases sc ON k.url_key=sc.url_key
             LEFT JOIN selected_attempts a ON k.url_key=a.url_key) WHERE ordinal=1 ORDER BY requested_url""")])
     _check_keys(values)
     if campaign is not None:
@@ -368,8 +424,8 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     """Use shared URL keys for matching, retaining literal requested URL outputs."""
     _require_capture_authority(release)
     _positive(request_budget,'request budget');as_of=_utc(as_of)
-    cutoff_urls=_reviewed_cutoffs(cutoff_urls)
-    binding,definition_sha256=_url_binding(release,engine)
+    cutoff_urls=reviewed_cutoffs(cutoff_urls)
+    binding,definition_sha256,profile=_url_binding(release,engine)
     work=Path(work);work.mkdir(parents=True,exist_ok=True)
     required={'requested_url','attempts','next_attempt_at','last_outcome'}
     schema=pq.read_schema(release['state'])
@@ -381,12 +437,10 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             or not pa.types.is_timestamp(timestamp) or timestamp.unit!='us' or timestamp.tz!='UTC'):
         raise ValueError('url_state has incompatible scheduler column types')
     policy=CapturePolicy(release['scope'])
-    profile=validate_capture_profile(json.loads(Path(release['profile']).read_text()),engine_revision=engine.source_revision)
     recovery_eligibility=profile['version']==2
     if recovery_eligibility and not {'capture_disposition','capture_reason','capture_decision_id'}.issubset(schema.names):
         raise ValueError('Version 2 capture requires explicit eligibility fields')
     if campaign is not None:
-        profile=validate_capture_profile(json.loads(Path(release['profile']).read_text()),engine_revision=engine.source_revision)
         if profile['version'] != 2:
             raise ValueError('Campaign capture requires a recovery-bound version 2 profile')
         requirement_pins=[pin for pin in campaign.tables.values() if pin.sha256 == profile['recovery_policy']['requirements_sha256']]
@@ -424,8 +478,8 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     inputs.append(json_input(work,'cutoffs',(dict(url=url) for url in cutoff_urls),url='Utf8'))
     inputs.extend(_profile_inputs(release,binding,work))
     campaign_seeds = " UNION ALL SELECT target_url AS url,'campaign' AS source,'[]' AS pointer FROM campaign_targets" if campaign is not None else ''
-    steps=[dict(name='seed_rows',sql="""SELECT url,source,pointer FROM seeds UNION ALL
-        SELECT url_resolve(href,coalesce(url_resolve(base_href,context),context)) AS url,source,pointer FROM discovery"""+campaign_seeds)]
+    steps=[dict(name='seed_rows',sql=f"""SELECT url,source,pointer FROM seeds UNION ALL
+        SELECT {DISCOVERY_URL_SQL} AS url,source,pointer FROM discovery"""+campaign_seeds)]
     key_sources=[('seed_rows','seed','url'),('attempted','attempted','url'),('cutoffs','cutoff','url')]
     if not reuse_keyed_states:
         key_sources.insert(0,('states','state','requested_url'))
@@ -536,7 +590,9 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
         ['priority','next_attempt_at','requested_url'])]
     if export_keyed_states:
         outputs.append(parquet_output(work,'keyed_states',
-            f"""SELECT requested_url,attempts,cast(last_outcome AS VARCHAR) AS last_outcome,next_attempt_at,url_key{',capture_disposition,capture_reason,capture_decision_id' if recovery_eligibility else ''}
+            f"""SELECT requested_url,attempts,cast(last_outcome AS VARCHAR) AS last_outcome,
+               {'last_status' if 'last_status' in schema.names else 'cast(NULL AS INT) AS last_status'},
+               next_attempt_at,url_key{',capture_disposition,capture_reason,capture_decision_id' if recovery_eligibility else ''}
                FROM keyed_states ORDER BY url_key,requested_url""",
             ['url_key','requested_url']))
     states_table='keyed_states' if reuse_keyed_states else 'states'
@@ -650,7 +706,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         _positive(value,name)
     if type(max_entity_bytes) is not int or not 0<max_entity_bytes<=16<<20:
         raise ValueError('Capture entity capacity is qualified only through 16MiB')
-    _,url_key_digest=_url_binding(release,engine)
+    _,url_key_digest,_=_url_binding(release,engine)
     release=dict(release,url_key_definition_sha256=url_key_digest)
     if discover is None and worker_factory is None:
         try:
@@ -659,7 +715,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
             if error.name!='congress_api.retention.parser_worker':raise
             raise ValueError('Shared bounded discovery worker is unavailable') from None
         worker_factory=ParserWorker
-    as_of=_utc(as_of);cutoff_urls=_reviewed_cutoffs(cutoff_urls)
+    as_of=_utc(as_of);cutoff_urls=reviewed_cutoffs(cutoff_urls)
     work=Path(work);work.mkdir(parents=True,exist_ok=True)
     from congress_api.acquisition.admission import Admission
     for adapter,cost in ((provider,provider_cost),(firecrawl,firecrawl_cost)):
@@ -682,7 +738,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     stats=dict(release_id=release['release_id'],as_of=as_of,run_id=new_run_id(),requests=0,
         fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],discovery_refused=0,cutoffs=[],cutoff_attempts=[],
         budgets=dict(requests=request_budget,bytes=byte_budget,spool=spool_budget,max_entity_bytes=max_entity_bytes),spool_reserved_bound=0,
-        url_key_definition_sha256=url_key_digest,stop_reason=None)
+        url_key_definition_sha256=url_key_digest,writer=identity,reviewed_cutoff_urls=list(cutoff_urls),stop_reason=None)
     from congress_api.acquisition.capture_journal import DurableCapture,durable_json
     binding=dict(release_id=release['release_id'],as_of=as_of,identity=identity,
                  budgets=stats['budgets'],campaign_id=getattr(campaign,'campaign_id',None),campaign_sha256=getattr(campaign,'descriptor_sha256',None),
@@ -691,6 +747,8 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                  store_destination=str(getattr(store.adapter,'root',getattr(store.adapter,'bucket','unknown'))),
                  archive_limits=vars(archive_limits),workers=workers,max_entity_bytes=max_entity_bytes)
     journal=DurableCapture(work/'attempts',binding)
+    def operation_for(url):
+        return hashlib.sha256(json.dumps([binding,url],sort_keys=True,separators=(',',':')).encode()).hexdigest()
     protected_spool_bytes=sum(path.stat().st_size for path in (work/'attempts').glob('*/quarantine/*.body'))
     stats['protected_scratch_bytes']=protected_spool_bytes
     # A killed receipt writer can leave disposable expansion scratch. Remove
@@ -711,6 +769,20 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         run=dict(run_id=stats['run_id'],write_date=datetime.now(timezone.utc).date().isoformat())
         durable_json(context,run)
     stats['run_id']=run['run_id']
+    summary_path=work/'summary.json'
+    acknowledged={};completed_keys=set();discovery_paths={}
+    if summary_path.exists():
+        previous=json.loads(summary_path.read_text())
+        pending_acknowledgements=previous.get('receipts_pending_completion',[])
+        if pending_acknowledgements and (previous['run_id']!=run['run_id'] or
+                previous['release_id']!=release['release_id'] or previous['as_of']!=as_of):
+            raise ValueError('Pending receipt acknowledgements belong to another capture run')
+        for attempt in pending_acknowledgements:
+            operation=operation_for(attempt['url'])
+            frozen=work/'frozen-receipts'/operation/'receipt.json'
+            if json.loads(frozen.read_text())['key']!=attempt['receipt_key']:
+                raise ValueError('Pending receipt acknowledgement differs from its frozen key')
+            acknowledged[attempt['receipt_key']]=attempt
     writer=ReceiptWriter(store,identity=identity,run_id=run['run_id'],write_date=run['write_date'],archive_limits=archive_limits)
     # A fresh invocation has disposable plans; attempts and frozen receipts stay
     # under the original durable owner. Reconstruct continuation before planning.
@@ -718,21 +790,26 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     while (work/('plan-0' if invocation==0 else f'invocation-{invocation}')).exists():invocation+=1
     plan_work=work if invocation==0 else work/f'invocation-{invocation}'
     plan_work.mkdir(parents=True,exist_ok=True)
-    attempted=plan_work/'attempted.jsonl.gz';discovered=[];generation=0
+    attempted=plan_work/'attempted.jsonl.gz';discovered=[];discovered_receipts=set();generation=0
+    def add_discovery(name,links):
+        entry=json_input(plan_work,name,links,href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
+        discovered.extend(entry['files'])
+        discovered_receipts.update(link['source'] for link in links)
     stats['fetched_bytes']=sum((row.get('transfer',{}).get('wire_bytes') or row.get('transfer',{}).get('size',0))
         for p in (work/'attempts').glob('*/*.json') for row in [json.loads(p.read_text())])
     restored_links=[];disabled_providers=set()
     for committed in sorted((work/'attempts').glob('*/committed.json')):
         journal.cleanup(committed.parent.name)
         completed=json.loads(committed.read_text());line=completed['line'];url=line['requested_url']
+        completed_keys.add(completed['key'])
         if _provider_terminal(line['transport'],line['provider_status'],line.get('error_type')):disabled_providers.add(line['transport'])
         stats['captures']+=1;stats['receipts'].append(completed['key'])
         _record_attempt(attempted,url,attempted=True,complete=completed['result']['final']['complete'],
-            outcome=line['outcome'],http_status=line['http_status'],error_type=completed['result']['final']['error'])
+            outcome=line['outcome'],http_status=line['http_status'],error_type=completed['result']['final']['error'],
+            receipt_key=completed['key'])
         restored_links.extend(completed['links'])
     if restored_links:
-        entry=json_input(plan_work,'restored-discovery',restored_links,href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
-        discovered.extend(entry['files'])
+        add_discovery('restored-discovery',restored_links)
     parser_workers={};worker_stack=ExitStack();parser_lock=threading.Lock()
     worker_version=hashlib.sha256(json.dumps(['capture-discovery',identity['commit'],
         identity['lockfile_digest']],separators=(',',':')).encode()).hexdigest()
@@ -760,13 +837,14 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
             if _provider_terminal(transport,transfer.get('provider_status'),transfer.get('error')):
                 disabled_providers.add(transport)
     provider_state=(threading.Lock(),disabled_providers)
+    acknowledgement_lock=threading.Lock()
 
     def _capture_one(row,url,family,limit,allow_discovery):
         local_stats=dict(requests=0,fetched_bytes=0)
         observations=[dict(url=value[0],source=value[1],pointer=json.loads(value[2]))
                       for value in map(json.loads,row['observations'])]
         links=[];disc_errors=[];disc_refused=0
-        operation_id=hashlib.sha256(json.dumps([binding,url],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        operation_id=operation_for(url)
         spool=journal.directory(operation_id)
         request_path=spool/'request.json'
         if request_path.exists():limit=json.loads(request_path.read_text())['limit']
@@ -796,6 +874,11 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         except LocalPathRefused:
             # This item fails with a recorded reason; the run continues (invariant 3).
             return None,url,result,None,None,local_stats,[],[],0
+        # Acknowledgement precedes discovery and the local completion marker.
+        # Keep its reporting facts even when either later step raises.
+        with acknowledgement_lock:
+            acknowledged[key]=dict(url=url,attempted=True,complete=result.final.complete,outcome=line['outcome'],
+                http_status=line['http_status'],error_type=result.final.error,receipt_key=key)
         body=result.final.body
         parser=line['captures'][0]['sniffed_format'] if body is not None else None
         # The writer's outcome owns "this is a document": no discovery on a 202 or empty page.
@@ -829,7 +912,12 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                         links.append(dict(href=link['href'],base_href=facts['base_href'],context=result.final.url,
                             source=key,pointer=json.dumps([index])))
         from congress_api.acquisition.capture_journal import encode_result
-        durable_json(spool/'committed.json',dict(key=key,line=line,result=encode_result(result),links=links))
+        completion_path=spool/'committed.json'
+        durable_json(completion_path,dict(key=key,line=line,result=encode_result(result),links=links))
+        with acknowledgement_lock:
+            completed_keys.add(key)
+            if links:
+                discovery_paths[key]=completion_path
         journal.cleanup(operation_id)
         return row,url,result,key,line,local_stats,links,disc_errors,disc_refused
 
@@ -842,12 +930,11 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
             _record_attempt(attempted,url,attempted=True,complete=result.final.complete,
                 http_status=result.final.http_status,error_type='local_path_in_receipt')
             return []
+        _record_attempt(attempted,**acknowledged[key])
         stats['receipts'].append(key);stats['captures']+=1
         if row['priority']==1:
             stats['cutoff_attempts'].append(dict(url=url,outcome=line['outcome'],complete=result.final.complete,
                 reason=result.final.error))
-        _record_attempt(attempted,url,attempted=True,complete=result.final.complete,
-            outcome=line['outcome'],http_status=line['http_status'],error_type=result.final.error)
         stats['discovery_errors'].extend(disc_errors)
         stats['discovery_refused']+=disc_refused
         if _provider_terminal(line['transport'],line['provider_status'],line.get('error_type')):
@@ -867,7 +954,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                     exhausted=True
                     if not inflight:stats['stop_reason']='request_budget' if admission.totals()['requests']>=request_budget else 'queue_empty'
                     break
-                operation_id=hashlib.sha256(json.dumps([binding,row['requested_url']],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+                operation_id=operation_for(row['requested_url'])
                 previous_root=work/'attempts'/operation_id
                 continuing=(previous_root/'request.json').exists()
                 if admission.totals()['requests']>=request_budget and not continuing:
@@ -905,8 +992,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                     links=_commit(_capture_one(row,url,family,limit,generation<max_discovery_jobs))
                     if links and generation<max_discovery_jobs:
                         generation+=1
-                        entry=json_input(plan_work,f'discovered-{generation}',links,href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
-                        discovered.extend(entry['files'])
+                        add_discovery(f'discovered-{generation}',links)
                         plan=plan_queue(release,engine=engine,work=plan_work/f'plan-{generation}',as_of=as_of,
                             request_budget=request_budget,seed_files=seed_files,
                             discovery_files=discovered,attempted=attempted,cutoff_urls=cutoff_urls,
@@ -919,7 +1005,8 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                 break
             if not inflight:
                 if exhausted:
-                    stats['stop_reason']='queue_empty';break
+                    stats['stop_reason']='request_budget' if admission.totals()['requests']>=request_budget else 'queue_empty'
+                    break
                 continue
             done,inflight=wait(inflight,return_when=FIRST_COMPLETED)
             batch_links=[]
@@ -934,8 +1021,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                         wire_reservations.pop(fut,None)
                         batch_links.extend(_commit(fut.result()))
                 generation+=1
-                entry=json_input(plan_work,f'discovered-{generation}',batch_links,href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
-                discovered.extend(entry['files'])
+                add_discovery(f'discovered-{generation}',batch_links)
                 plan=plan_queue(release,engine=engine,work=plan_work/f'plan-{generation}',as_of=as_of,
                     request_budget=request_budget,seed_files=seed_files,
                     discovery_files=discovered,attempted=attempted,cutoff_urls=cutoff_urls,
@@ -951,30 +1037,46 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     finally:
         # Drain writers before reading durable completions or closing parsers.
         if pool is not None:pool.shutdown(wait=True)
-        worker_stack.close()
         stats['discovery_jobs']=generation
-        completed=[json.loads(p.read_text()) for p in sorted((work/'attempts').glob('*/committed.json'))]
-        stats['captures']=len(completed);stats['receipts']=[item['key'] for item in completed]
-        for item in completed:
-            final=item['result']['final'];line=item['line']
-            _record_attempt(attempted,line['requested_url'],attempted=True,complete=final['complete'],
-                outcome=line['outcome'],http_status=line['http_status'],error_type=final['error'])
-        stats['fetched_bytes']=sum((row.get('transfer',{}).get('wire_bytes') or row.get('transfer',{}).get('size',0))
-            for p in (work/'attempts').glob('*/*.json') for row in [json.loads(p.read_text())])
-        stats['wire_admission']=wire.totals()
-        stats['admission']=admission.totals()
-        stats['requests']=stats['admission']['requests']
-        stats['resources']=dict(peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if os.uname().sysname=='Darwin' else 1024),
-            retained_scratch_bytes=sum(p.stat().st_size for p in work.rglob('*') if p.is_file()),
-            scope='capture process high water; native/parser child limits are separate')
-        # D discovery replans plus initial planning and this report give D+2
-        # linear input passes (ten at the default D=8), not one per capture.
+        # Include worker acknowledgements even if the dispatcher never received
+        # their results. Committed records from previous invocations are already in stats.
+        recorded=set(stats['receipts'])
+        stats['receipts']=sorted(recorded | acknowledged.keys())
+        stats['captures']=len(stats['receipts'])
+        stats['receipts_pending_completion']=[acknowledged[key] for key in sorted(acknowledged.keys()-completed_keys)]
         try:
+            if cutoff_urls and (unreported:=discovery_paths.keys()-discovered_receipts):
+                # A worker can finish discovery while another fails, before the
+                # dispatcher has copied those links into a plan input.
+                links=(link for key in sorted(unreported)
+                    for link in json.loads(discovery_paths[key].read_text())['links'])
+                terminal_discovery=json_input(plan_work,'unreported-discovery',links,
+                    href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
+                discovered.extend(terminal_discovery['files'])
+            worker_stack.close()
+            if cutoff_urls:
+                for key in sorted(acknowledged.keys()-recorded):
+                    _record_attempt(attempted,**acknowledged[key])
+            stats['fetched_bytes']=sum((row.get('transfer',{}).get('wire_bytes') or row.get('transfer',{}).get('size',0))
+                for p in (work/'attempts').glob('*/*.json') for row in [json.loads(p.read_text())])
+            stats['wire_admission']=wire.totals()
+            stats['admission']=admission.totals()
+            stats['requests']=stats['admission']['requests']
+            stats['resources']=dict(peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if os.uname().sysname=='Darwin' else 1024),
+                retained_scratch_bytes=sum(p.stat().st_size for p in work.rglob('*') if p.is_file()),
+                scope='capture process high water; native/parser child limits are separate')
+            # D discovery replans plus initial planning and this report give D+2
+            # linear input passes (ten at the default D=8), not one per capture.
             stats['cutoffs']=cutoff_report(release,urls=cutoff_urls,attempted=attempted,engine=engine,
                 work=plan_work/'cutoff-report',as_of=as_of,stop_reason=stats['stop_reason'],
-                _keyed_states_cache=keyed_states_cache,campaign=campaign)
+                discovery_files=discovered,_keyed_states_cache=keyed_states_cache,campaign=campaign)
+        except Exception as error:
+            stats['summary_error']=type(error).__name__
+            if stats['stop_reason']!='error':
+                stats.update(stop_reason='error',error_type=type(error).__name__)
+                raise
         finally:
-            (work/'summary.json').write_text(json.dumps(stats,ensure_ascii=False,indent=2)+'\n')
+            durable_json(summary_path,stats)
 
 
 def run_capture(release,**options):

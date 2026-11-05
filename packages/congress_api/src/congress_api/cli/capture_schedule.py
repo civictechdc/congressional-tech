@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from congress_api.acquisition.capture_scheduler import CapturePolicy,load_release,plan_queue,run_capture
+from congress_api.acquisition.capture_scheduler import CapturePolicy,load_release,plan_queue,reviewed_cutoffs,run_capture
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter
 from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
@@ -59,6 +59,10 @@ def main(argv=None):
         parser.error('Configured Firecrawl capture requires FIRECRAWL_API_KEY')
     if args.work.resolve().is_relative_to(ROOT):
         parser.error('Keep capture work outside the clean writer checkout')
+    cutoffs=json.loads(args.cutoff_urls.read_text()) if args.cutoff_urls else []
+    if not isinstance(cutoffs,list):
+        raise ValueError('Cutoff input must be an owner-reviewed URL list')
+    cutoffs=list(reviewed_cutoffs(cutoffs))
     identity=writer_identity(ROOT,'capture-scheduler') if args.apply else None
     args.work.mkdir(parents=True,exist_ok=True)
     from congress_api.acquisition.capture_journal import durable_json
@@ -67,22 +71,26 @@ def main(argv=None):
     if selection.exists():
         selected=json.loads(selection.read_text())
         if selected['source']!=source:raise ValueError('Continuation release selection changed')
+        if 'cutoff_urls' not in selected:
+            # Older selections recorded only the release. Bind the supplied list on first reuse.
+            durable_json(selection,dict(selected,cutoff_urls=cutoffs))
+        elif selected['cutoff_urls']!=cutoffs:
+            raise ValueError('Continuation reviewed cutoff input changed')
         release=selected['release']
         args.as_of=args.as_of or selected['as_of']
     else:
         args.as_of=args.as_of or datetime.now(timezone.utc).isoformat()
         release=load_release(work=args.work/'release',release_root=args.release_root,pointer=args.pointer)
-        durable_json(selection,dict(source=source,as_of=args.as_of,release=json.loads(json.dumps(release,default=str))))
+        durable_json(selection,dict(source=source,as_of=args.as_of,cutoff_urls=cutoffs,
+            release=json.loads(json.dumps(release,default=str))))
     engine=NativeDatasets.from_config(args.engine_config)
     from congress_shared.campaign import load_campaign
     campaign=load_campaign(args.campaign) if args.campaign else None
-    cutoffs=json.loads(args.cutoff_urls.read_text()) if args.cutoff_urls else []
-    if not isinstance(cutoffs,list) or any(not isinstance(url,str) for url in cutoffs):
-        raise ValueError('Cutoff input must be an owner-reviewed URL list')
     if not args.apply:
         result=plan_queue(release,engine=engine,work=args.work/'plan',as_of=args.as_of,
             request_budget=args.request_budget,cutoff_urls=cutoffs,campaign=campaign)
-        result.update(apply=False,budgets=dict(requests=args.request_budget,bytes=args.byte_budget,spool=args.spool_budget))
+        result.update(apply=False,reviewed_cutoff_urls=cutoffs,
+            budgets=dict(requests=args.request_budget,bytes=args.byte_budget,spool=args.spool_budget))
     else:
         CapturePolicy(release['scope']).require_capture()
         import requests

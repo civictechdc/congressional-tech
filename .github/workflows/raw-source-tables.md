@@ -1,11 +1,11 @@
 # Engine-first archive capture, publication, backfill and maintenance
 
-`capture-archive.yml` (**Capture archive sources**) and `archive-jobs.yml` (**Archive publish, backfill and maintenance**) operate the engine-first raw capture and derived release pipeline. Capture schedules bounded raw acquisitions from the live archive release pointer and weekly inventory seeds; `archive-jobs.yml` executes committed `docspec` model specifications to publish verified releases, run producer backfills, and maintain raw and derived storage.
+`capture-archive.yml` (**Capture archive sources**) and `archive-jobs.yml` (**Archive publish, backfill and maintenance**) operate the engine-first raw capture and derived release pipeline. Capture schedules bounded acquisitions from the selected public release's URL state and follows links discovered during the run. `archive-jobs.yml` executes committed `docspec` model specifications to publish verified releases, run producer backfills, and maintain raw and derived storage.
 
 | Workflow | Trigger | Operation |
 | --- | --- | --- |
-| `capture-archive.yml` | Daily at `03:23 UTC` or `workflow_dispatch` (when `vars.ARCHIVE_CAPTURE_ENABLED == 'true'` on `main`) | Run `congress_api.cli.capture_schedule` against the public release pointer and weekly seed inventories |
-| `archive-jobs.yml` (`publish`) | `workflow_run` after successful **Capture archive sources** on `main`, or `workflow_dispatch` with `operation=publish` | Execute the committed model publish specification (`viewer_publication.archive_publish_job`), run local browser contract and HTTPS canary gates, and atomically advance the release pointer |
+| `capture-archive.yml` | Daily at `03:23 UTC` or `workflow_dispatch` (when `vars.ARCHIVE_CAPTURE_ENABLED == 'true'` on `main`) | Run `congress_api.cli.capture_schedule` against the release selected by the public pointer |
+| `archive-jobs.yml` (`publish`) | `workflow_dispatch` on `main` with `operation=publish` | Execute the committed model publish specification (`viewer_publication.archive_publish_job`), run local browser contract and HTTPS canary gates, and atomically advance the release pointer |
 | `archive-jobs.yml` (`backfill`) | `workflow_dispatch` on `main` with `operation=backfill` | Execute the committed producer backfill specification (`viewer_publication.archive_backfill_job`) |
 | `archive-jobs.yml` (`maintenance`) | Weekly on Sundays at `07:17 UTC` or `workflow_dispatch` on `main` with `operation=maintenance` | Verify raw archive integrity, check retained receipt evidence, and prune unreferenced derived releases (`viewer_publication.archive_maintenance`) |
 
@@ -20,14 +20,16 @@ Every job verifies its pinned `docspec` runtime artifact (`vars.DOCSPEC_RUNTIME_
 
 ## Bounded capture batches (`capture-archive.yml`)
 
-The `capture` job runs in the `archive-capture` environment on `ubuntu-24.04` with a 360-minute ceiling. It requires positive integer budgets configured in repository variables:
+The `capture` job runs in the `archive-capture` environment on `ubuntu-24.04` with a 360-minute ceiling. It uses the following Actions variables. All three budgets must be positive integers.
 
 - `ARCHIVE_CAPTURE_REQUEST_BUDGET` (`--request-budget`)
 - `ARCHIVE_CAPTURE_BYTE_BUDGET` (`--byte-budget`)
 - `ARCHIVE_CAPTURE_SPOOL_BUDGET` (`--spool-budget`)
 - `ARCHIVE_POINTER_URL` (`--pointer`)
 
-`congress_api.cli.capture_schedule` compares the live public release at `ARCHIVE_POINTER_URL` with the existing checked-out weekly seed files (`pipeline-data/congress_meetings.jsonl.gz`, `pipeline-data/gpo-evidence.jsonl.gz`, `pipeline-data/meeting-inventory/house.json.gz`, `pipeline-data/meeting-inventory/house-sites.json.gz`, and `pipeline-data/meeting-inventory/senate.json.gz`), plans the bounded batch under `$RUNNER_TEMP/archive-capture`, and applies the capture schedule. Run reports (`*.json`) are uploaded as the `archive-capture-<run_id>-<run_attempt>` workflow artifact.
+The scheduler verifies the selected release and plans the batch under `$RUNNER_TEMP/archive-capture`. To account for specific reviewed targets, set `ARCHIVE_CAPTURE_CUTOFF_URLS` to a JSON array of exact URLs. The workflow passes it as `--cutoff-urls`. The list gives due retries priority and records target dispositions within the selected release's scope, schedule, and run budgets.
+
+The `archive-capture-<run_id>-<run_attempt>` artifact includes `selection.json` with the release input identities and reviewed list, the CLI's `summary.json` when it returns, and the scheduler's `capture/summary.json` when available after a failure. The scheduler reports attempted candidates and acknowledged receipt keys separately from the reviewed URLs. `receipts_pending_completion` identifies acknowledged receipts that still need local completion.
 
 ## Release publication, backfill and maintenance (`archive-jobs.yml`)
 
