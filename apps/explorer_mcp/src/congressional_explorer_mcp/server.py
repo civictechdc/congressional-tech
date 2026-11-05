@@ -7,6 +7,7 @@ import anyio
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from . import __version__
 from .models import DocumentSearch, DocumentQuery, EntitySearch, EntityQuery, SqlQuery, ExplorerError
 from .worker import Worker
 from .release import PUBLICATION, load_selection, prepare
@@ -25,7 +26,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         finally:
             await worker.close()
 
-    mcp = FastMCP('Congress Explorer', lifespan=lifespan, instructions=(
+    mcp = FastMCP('Congress Explorer', version=__version__, lifespan=lifespan, instructions=(
         'Start with get_dataset_info to see available tables and scope. '
         'Use get_dataset_info relationship or recipe selectors for published joins and SQL examples. '
         'Search documents or entities, then follow published identifiers. '

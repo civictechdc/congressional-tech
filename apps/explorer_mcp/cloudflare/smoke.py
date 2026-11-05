@@ -6,10 +6,14 @@ import time
 
 from fastmcp import Client
 
+from congressional_explorer_mcp import __version__
+
 
 async def check(url, release_id):
     timings = {}
     async with Client(url, timeout=120) as client:
+        assert client.server_info is not None
+        assert client.server_info.version == __version__, client.server_info.version
         tools = await client.list_tools()
         assert {tool.name for tool in tools} == {
             'get_dataset_info', 'search_documents', 'get_document',
@@ -41,13 +45,15 @@ async def check(url, release_id):
         denied = await client.call_tool('query_sql', {'query': {'sql': 'DROP VIEW documents'}}, raise_on_error=False)
         assert denied.is_error and 'read-only SELECT' in denied.content[0].text
         async with Client(url, timeout=120) as second:
+            assert second.server_info is not None
+            assert second.server_info.version == __version__, second.server_info.version
             values = await asyncio.gather(*[
                 current.call_tool('query_sql', {'query': {'sql': 'SELECT ? AS n', 'parameters': [n]}})
                 for n, current in enumerate((client, second))
             ])
             assert [value.data['rows'] for value in values] == [[{'n': 0}], [{'n': 1}]]
         return {
-            'status': 'ok', 'url': url, 'release_id': release_id,
+            'status': 'ok', 'url': url, 'release_id': release_id, 'server_version': client.server_info.version,
             'tools': sorted(tool.name for tool in tools),
             'documents': count['rows'][0]['n'], 'seconds': timings,
             'write_rejected': True, 'concurrent_clients': 2,

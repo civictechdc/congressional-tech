@@ -6,6 +6,7 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 import pytest
 
+from congressional_explorer_mcp import __version__
 from congressional_explorer_mcp.models import ExplorerError
 from congressional_explorer_mcp.release import prepare
 from congressional_explorer_mcp.worker import Worker
@@ -64,6 +65,7 @@ def test_real_stdio_tools_and_errors(tmp_path,phase2):
     async def run():
         transport=StdioTransport(sys.executable,['-m','congressional_explorer_mcp.cli','serve','--data-dir',str(tmp_path)],keep_alive=False)
         async with Client(transport) as client:
+            assert client.server_info is not None and client.server_info.version == __version__
             tools=await client.list_tools()
             assert {t.name for t in tools} == {'get_dataset_info','search_documents','get_document','search_entities','get_entity','query_sql'}
             assert all(t.annotations.read_only_hint for t in tools)

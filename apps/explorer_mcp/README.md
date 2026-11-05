@@ -35,7 +35,7 @@ In [ChatGPT Plugins](https://chatgpt.com/plugins), choose **Add custom MCP serve
 enter this URL, select **No authentication**, and create and install the plugin.
 The [web plugin source](web/README.md) also packages the research skill for
 supported plugin import and submission workflows. Download
-[congress-explorer-web-0.6.0.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.0/congress-explorer-web-0.6.0.plugin.zip)
+[congress-explorer-web-0.6.1.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.1/congress-explorer-web-0.6.1.plugin.zip)
 for those workflows; connecting the URL directly adds the six tools.
 
 The current plugin format does not define a browser/desktop transport selector.
@@ -51,7 +51,7 @@ reuse the selected release. Document bodies are fetched separately when requeste
 
 ### Claude Desktop chat
 
-Download [congress-explorer-0.6.0.mcpb](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.0/congress-explorer-0.6.0.mcpb),
+Download [congress-explorer-0.6.1.mcpb](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.1/congress-explorer-0.6.1.mcpb),
 open it with Claude Desktop, and click **Install**. Use a current Claude Desktop
 with support for MCPB 0.4's uv runtime; the host manages Python and dependencies.
 Alternatively, select the file in Settings → Desktop app → Extensions → Advanced
@@ -69,7 +69,7 @@ claude plugin install congress-explorer --marketplace civictechdc/congressional-
 Inside Claude Code, the equivalent is
 `/plugin install congress-explorer --marketplace civictechdc/congressional-tech`.
 In Cowork desktop, open Customize → Plugins and upload
-[congress-explorer-0.6.0.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.0/congress-explorer-0.6.0.plugin.zip).
+[congress-explorer-0.6.1.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.1/congress-explorer-0.6.1.plugin.zip).
 Start a local task and run `/congress-explorer:explore-congress`.
 The plugin's local server runs in Claude Code and Cowork desktop; Claude chat uses
 the separate `.mcpb` extension above. Organization policies may restrict installation.
@@ -79,7 +79,7 @@ the separate `.mcpb` extension above. Organization policies may restrict install
 Install uv and the Codex CLI, then:
 
 ```sh
-codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.6.0 --sparse .agents/plugins --sparse apps/explorer_mcp
+codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.6.1 --sparse .agents/plugins --sparse apps/explorer_mcp
 codex plugin add congress-explorer@congressional-tech
 ```
 
@@ -91,7 +91,7 @@ requires separate partner approval.
 
 The desktop source plugin root is this directory. `plugin.json` and `mcp.json` describe
 the portable OpenAI package; `.claude-plugin/plugin.json` and `.mcp.json` describe
-the Claude package. Both run `uvx` with `congressional-explorer-mcp==0.6.0` from
+the Claude package. Both run `uvx` with `congressional-explorer-mcp==0.6.1` from
 PyPI. The Claude extension uses a tiny Python launcher with the same pinned
 PyPI dependency. Neither archive contains a copy of the server source.
 `scripts/build_desktop.py` generates the client-specific metadata from `server.json`;
@@ -126,7 +126,7 @@ run `npx skills add . --skill explore-congress` at the repository root.
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 congressional-explorer-mcp==0.6.0
+uv tool install --python 3.12 congressional-explorer-mcp==0.6.1
 congress-explorer-mcp prepare
 congress-explorer-mcp check
 ```

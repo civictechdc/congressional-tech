@@ -12,6 +12,7 @@ from fastmcp import Client
 import httpx2 as httpx
 import pytest
 
+from congressional_explorer_mcp import __version__
 from congressional_explorer_mcp.release import prepare
 from congressional_explorer_mcp.server import create_server
 
@@ -68,6 +69,7 @@ def test_http_tools_and_stateless_clients_match_local(tmp_path, phase2, lazy):
             }})
         assert response.status_code == 200
         assert 'mcp-session-id' not in response.headers
+        assert response.json()['result']['serverInfo']['version'] == __version__
 
         async def run():
             config = json.loads((Path(__file__).parents[1] / 'web/mcp.json').read_text())
