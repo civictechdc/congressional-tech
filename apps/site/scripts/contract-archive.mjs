@@ -91,6 +91,22 @@ try{
       results.push({viewport,...sample,publicKey,status:'passed'});
     }finally{try{await sampler.stop();}finally{await context.close();}}
   }
+  if(args.hand==='true'){
+    const context=await fixtureContext(),page=await context.newPage();page.setDefaultTimeout(15000);
+    server.state.missingFile='committees.parquet';
+    try{
+      await page.goto(server.pageUrl+'?key='+results[0].publicKey);
+      const detail=page.locator('[data-archive-detail]');
+      await detail.getByText('Committee details · This information could not be loaded.').waitFor();
+      await detail.getByRole('link',{name:'Open saved PDF'}).waitFor();
+      await page.goto(server.pageUrl+'?tab=hearings&hearing='+String((await fixtureReader.meetings())[0].event_id));
+      const hearing=page.getByRole('region',{name:'Hearing details'});
+      await hearing.getByRole('heading',{name:'Transportation infrastructure hearing'}).waitFor();
+      await hearing.getByText('Committee details · This information could not be loaded.').waitFor();
+      await hearing.getByText('Witnesses · This release does not include this information.').waitFor();
+      results.push({operation:'optional-relation-failure',status:'passed'});
+    }finally{server.state.missingFile=null;await context.close();}
+  }
   if(server.nextManifest){
     server.state.releaseId=server.manifest.release_id;server.state.missingFile=server.manifest.files.find(file=>file.name==='detail.parquet'||file.shard==='detail').name;server.state.flipOnMissing=server.nextManifest.release_id;
     const context=await fixtureContext(),page=await context.newPage();page.setDefaultTimeout(60000);

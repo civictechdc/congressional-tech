@@ -51,16 +51,12 @@ self.onmessage=async({data})=>{
           if('removed' in found){result={removed:found.removed};break;}
           ({index,redirectedFrom}=found);
         }
-        const [opened,allMeetings]=await Promise.all([
-          reader.openDocument(index,controller.signal),
-          reader.meetings(),
-        ]);
+        const opened=await reader.openDocument(index,controller.signal);
         const entry={document:opened.document,detail:opened.detail,sources:opened.sources,recoveries:opened.recoveries};
         const versions=await displayedDates(reader,opened.versions,controller.signal);
         result={
           ...opened,
           entry,
-          meetings:allMeetings.length?allMeetings:opened.meetings,
           meetingDetails:opened.meetings,
           versions,
           redirectedFrom,

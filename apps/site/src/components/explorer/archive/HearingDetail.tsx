@@ -8,7 +8,7 @@ import {
   presentDocument,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
-import {PublicLink, day} from './ArchiveRows.tsx';
+import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
 
 export function HearingDetail({
   meeting,
@@ -63,6 +63,8 @@ export function HearingDetail({
     formatMeetingType(meeting.meeting_type),
     meeting.status?`Status: ${meeting.status}`:null,
   ].filter(Boolean);
+  const relation=meeting.relation_states??{};
+  const coverage=meeting.coverage??{};
   const shownWitnesses=compact?witnesses.slice(0,6):witnesses;
 
   return <section className="archive-entity-card" aria-label="Hearing details" data-archive-entity="hearing">
@@ -84,6 +86,15 @@ export function HearingDetail({
         </>}
       </p>
     </header>
+
+    <RelationNotice label="Committee details" state={relation.committees}/>
+    <RelationNotice label="Bill details" state={relation.bills}/>
+    <RelationNotice label="Nomination details" state={relation.nominations}/>
+    <RelationNotice label="Coverage details" state={relation.coverage}/>
+    <RelationNotice label="Recordings" state={relation.recordings} coverage={coverage.recording}/>
+    <RelationNotice label="Witnesses" state={relation.witnesses} coverage={coverage.witnesses}/>
+    <RelationNotice label="Hearing documents" coverage={coverage.documents}/>
+    <RelationNotice label="Transcripts" coverage={coverage.transcript}/>
 
     {committeeItems.length>0&&<div className="archive-entity-section">
       <h3>Committees</h3>
@@ -189,7 +200,7 @@ export function HearingDetail({
           const wKey=w.witness_key||w.name_key||'';
           const roleParts=[w.position,w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];
-          return <li key={wKey||i} className="archive-witness-item">
+          return <li key={`${wKey}-${i}`} className="archive-witness-item">
             <div className="archive-witness-header">
               {w.panel!=null&&<span className="archive-witness-panel">Panel {String(w.panel)}: </span>}
               {wKey&&onWitness
@@ -200,6 +211,8 @@ export function HearingDetail({
                 <button type="button" className="archive-measure-pill" onClick={()=>onMember(String(w.bioguide_id))}>Member ({w.bioguide_id})</button>
               </>}
             </div>
+            {w.witness_type==='statement_for_record'&&<p className="archive-source-meta">Statement for the record</p>}
+            {w.witness_type==='member_statement'&&<p className="archive-source-meta">Member statement</p>}
             {roleParts.length>0&&<p className="archive-source-meta">{roleParts.join(' — ')}</p>}
             {docs.length>0&&onSelect&&<div className="archive-witness-docs">
               <span className="archive-source-meta">Submitted documents: </span>

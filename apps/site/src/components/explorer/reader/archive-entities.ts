@@ -1,3 +1,7 @@
+import {ArchiveReleaseChangedError, awaitShared} from './cache.ts';
+
+export type RelationState = 'ready' | 'missing' | 'unavailable';
+
 const hex = (value: Uint8Array) => [...value].map(v => v.toString(16).padStart(2, '0')).join('');
 const date = (value: any) => value instanceof Date ? value.toISOString().slice(0, 10) : value == null ? null : String(value).slice(0, 10);
 
@@ -11,6 +15,7 @@ export interface ArchiveEntityContext {
   resolve: (key: string) => Promise<number | null>;
   entry: (index: number, signal?: AbortSignal) => Promise<any>;
   versions: (index: number, signal?: AbortSignal) => Promise<any[]>;
+  meetingCoverage?: (eventId: string) => Promise<any[]>;
   witnessKeyMap?: (key: string) => Promise<{ key: string; status: string; successor: string | null; basis: string | null; candidates: string[] } | null>;
 }
 
@@ -288,6 +293,17 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     return normalizedCache.get(key)!;
   };
 
+  const optional = async <T>(name: string, load: () => Promise<T>, signal?: AbortSignal) => {
+    if (!files.has(name + '.parquet')) return { state: 'missing' as const, data: null };
+    try {
+      return { state: 'ready' as const, data: await awaitShared(load(), signal) };
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (error instanceof ArchiveReleaseChangedError) throw error;
+      return { state: 'unavailable' as const, data: null };
+    }
+  };
+
   const sortSubjects = (a: any, b: any) =>
     String(b.latest_action_date ?? b.introduced_date ?? b.received_date ?? '').localeCompare(String(a.latest_action_date ?? a.introduced_date ?? a.received_date ?? ''))
     || ((b.congress ?? 0) - (a.congress ?? 0))
@@ -330,14 +346,17 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const rows = (await entity('witnesses')).map(normalizeWitness);
     rows.sort((a: any, b: any) => (b.list_rows.length - a.list_rows.length) || (b.appearances.length - a.appearances.length) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
     const byKey = new Map<string, any>(), byEventId = new Map<string, any[]>(), byBioguide = new Map<string, any[]>(), byDocRow = new Map<number, any[]>();
+    const currentRows = rows.filter(w => w.superseded_by == null);
     for (const w of rows) {
       if (w.witness_key) byKey.set(w.witness_key.toLowerCase(), w);
-      if (w.name_key) byKey.set(String(w.name_key).toLowerCase(), w);
+      if (w.name_key && w.superseded_by == null) byKey.set(String(w.name_key).toLowerCase(), w);
       if (w.bioguide_id) pushMap(byBioguide, String(w.bioguide_id).toLowerCase(), w);
-      for (const a of w.appearances) { const ev = String(a.event_id ?? a.meeting_key ?? ''); if (ev) pushMap(byEventId, ev, w); }
+      for (const ev of new Set(w.appearances.map((a: any) => String(a.event_id ?? a.meeting_key ?? '')))) {
+        if (ev) pushMap(byEventId, String(ev), w);
+      }
       for (const r of w.list_rows) pushMap(byDocRow, r, w);
     }
-    return { rows, byKey, byEventId, byBioguide, byDocRow };
+    return { rows, currentRows, byKey, byEventId, byBioguide, byDocRow };
   });
 
   const membersIndex = () => memoized('members', async () => {
@@ -482,7 +501,17 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const chamberFilter = hasChamber ? String(chamberOrEventId ?? '').trim().toLowerCase() : null;
     const eventKey = String(hasChamber ? maybeEventId : chamberOrEventId).trim();
     if (!eventKey) return null;
-    const [mIdx, recIdx, commIdx, wIdx, bIdx, nIdx] = await Promise.all([meetingsIndex(), recordingsIndex(), committeesIndex(), witnessesIndex(), billsIndex(), nominationsIndex()]);
+    const [mIdx, recordings, committees, witnesses, bills, nominations, coverage] = await Promise.all([
+      awaitShared(meetingsIndex(), actualSignal),
+      optional('recordings', recordingsIndex, actualSignal),
+      optional('committees', committeesIndex, actualSignal),
+      optional('witnesses', witnessesIndex, actualSignal),
+      optional('bills', billsIndex, actualSignal),
+      optional('nominations', nominationsIndex, actualSignal),
+      optional('meeting_coverage', () => ctx.meetingCoverage!(eventKey), actualSignal),
+    ]);
+    const { data: recIdx } = recordings, { data: commIdx } = committees, { data: wIdx } = witnesses;
+    const { data: bIdx } = bills, { data: nIdx } = nominations;
     const found = (mIdx.byEventId.get(eventKey.toLowerCase()) ?? []).find((m: any) => !chamberFilter || String(m.chamber ?? '').toLowerCase() === chamberFilter);
     const docRows = rowsForColumn('meeting_keys', eventKey);
     if (!found && !docRows.length) return null;
@@ -495,7 +524,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       subject_keys: docRows.length ? value('measure_keys', docRows[0]) ?? [] : [],
       list_rows: docRows,
     });
-    const recRows = recIdx.byEventId.get(eventKey) ?? [];
+    const recRows = recIdx?.byEventId.get(eventKey) ?? [];
     const seenVideoKeys = new Set<string>();
     const dedupedVideos: any[] = [];
     for (const v of baseMeeting.videos) {
@@ -519,14 +548,15 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       ...dedupedVideos.filter((v: any) => !recRows.some((r: any) => r.url && ((v.video_id && r.video_id === v.video_id) || (v.url && r.url === v.url)))),
     ];
     const enrichedCommittees = (baseMeeting.committee_keys.length ? baseMeeting.committee_keys : baseMeeting.committees.map((c: any) => c.committee_key ?? c.system_code)).map((code: string) => {
-      const lower = String(code ?? '').toLowerCase(), cat = commIdx.byCode.get(lower);
+      const lower = String(code ?? '').toLowerCase(), cat = commIdx?.byCode.get(lower);
       const inline = baseMeeting.committees.find((c: any) => String(c.committee_key ?? c.system_code ?? '').toLowerCase() === lower);
       const resolvedName = cat ? resolveCommitteeHistoricalName(cat, baseMeeting.meeting_date ?? baseMeeting.congress) : (inline?.name ?? lower.toUpperCase());
       return { ...(cat ?? {}), ...(inline ?? {}), committee_key: lower, system_code: lower, name: inline?.name || resolvedName, resolved_name: resolvedName };
     });
     const mergedWitnesses: any[] = [], seenWitnessKeys = new Set<string>();
     for (const inlineW of baseMeeting.witnesses) {
-      const wKey = String(inlineW.witness_key ?? inlineW.name_key ?? inlineW.name ?? '').toLowerCase(), catW = wIdx.byKey.get(wKey);
+      const wKey = String(inlineW.witness_key ?? inlineW.name_key ?? '').toLowerCase(), catW = wIdx?.byKey.get(wKey);
+      if (inlineW.superseded_by != null || catW?.superseded_by != null) continue;
       const app = catW?.appearances?.find((a: any) => String(a.event_id ?? a.meeting_key ?? '') === eventKey);
       const listRows = uniqueInts([...(Array.isArray(inlineW.list_rows) ? inlineW.list_rows : []), ...(Array.isArray(app?.list_rows) ? app.list_rows : []), ...(catW ? catW.list_rows.filter((r: number) => (value('meeting_keys', r) ?? []).map(String).includes(eventKey)) : [])]);
       if (wKey) seenWitnessKeys.add(wKey);
@@ -538,16 +568,18 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
         display_order: inlineW.display_order ?? null, list_rows: listRows, documents: listRows.map(row),
       });
     }
-    for (const catW of wIdx.byEventId.get(eventKey) ?? []) {
-      if (seenWitnessKeys.has(catW.witness_key.toLowerCase())) continue;
-      const app = catW.appearances.find((a: any) => String(a.event_id ?? a.meeting_key ?? '') === eventKey);
-      const listRows = uniqueInts([...(Array.isArray(app?.list_rows) ? app.list_rows : []), ...catW.list_rows.filter((r: number) => (value('meeting_keys', r) ?? []).map(String).includes(eventKey))]);
-      mergedWitnesses.push({
-        ...catW, ...(app ?? {}), witness_key: catW.witness_key, name: catW.name,
-        organization: app?.organization ?? catW.organization, position: app?.position ?? catW.position,
-        panel: app?.panel ?? catW.panel ?? null, panel_order: app?.panel_order ?? app?.panel ?? null,
-        list_rows: listRows, documents: listRows.map(row),
-      });
+    for (const catW of wIdx?.byEventId.get(eventKey) ?? []) {
+      if (catW.superseded_by != null || seenWitnessKeys.has(catW.witness_key.toLowerCase())) continue;
+      for (const app of catW.appearances) {
+        if (app.superseded_by != null || String(app.event_id ?? app.meeting_key ?? '') !== eventKey) continue;
+        const listRows = uniqueInts([...app.list_rows, ...catW.list_rows.filter((r: number) => (value('meeting_keys', r) ?? []).map(String).includes(eventKey))]);
+        mergedWitnesses.push({
+          ...catW, ...app, witness_key: catW.witness_key, name: catW.name,
+          organization: app.organization ?? catW.organization, position: app.position ?? catW.position,
+          panel: app.panel ?? catW.panel ?? null, panel_order: app.panel_order ?? app.panel ?? null,
+          list_rows: listRows, documents: listRows.map(row),
+        });
+      }
     }
     mergedWitnesses.sort((a, b) => {
       const pa = Number(a.panel_order ?? a.panel ?? 999), pb = Number(b.panel_order ?? b.panel ?? 999);
@@ -559,9 +591,15 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const allSubjectKeys = [...new Set([...baseMeeting.subject_keys, ...baseMeeting.list_rows.flatMap((r: number) => value('measure_keys', r) ?? [])].map(String).filter(Boolean))];
     const subjects = allSubjectKeys.map(sk => {
       const lower = sk.toLowerCase();
-      return bIdx.byKey.get(lower) ?? nIdx.byKey.get(lower) ?? { kind: /^(?:\d+-)?pn-/i.test(sk) ? 'nomination' : 'bill', subject_key: sk, title: null, list_rows: rowsForColumn('measure_keys', sk) };
+      return bIdx?.byKey.get(lower) ?? nIdx?.byKey.get(lower) ?? { kind: /^(?:\d+-)?pn-/i.test(sk) ? 'nomination' : 'bill', subject_key: sk, title: null, list_rows: rowsForColumn('measure_keys', sk) };
     });
-    return { ...baseMeeting, subject_keys: allSubjectKeys, subjects, committees: enrichedCommittees, recordings: recRows, videos: allVideos, witnesses: mergedWitnesses, documents: baseMeeting.list_rows.map(row) };
+    return {
+      ...baseMeeting, subject_keys: allSubjectKeys, subjects, committees: enrichedCommittees,
+      recordings: recRows, videos: allVideos, witnesses: mergedWitnesses, documents: baseMeeting.list_rows.map(row),
+      relation_states: { recordings: recordings.state, committees: committees.state, witnesses: witnesses.state,
+        bills: bills.state, nominations: nominations.state, coverage: coverage.state },
+      coverage: Object.fromEntries((coverage.data ?? []).map(item => [item.aspect, item.state])),
+    };
   }
 
   async function getCommittee(committeeKey: string, options: any = {}, signal?: AbortSignal) {
@@ -773,7 +811,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     let items: any[] = [];
     switch (kind) {
       case 'meetings': items = (await meetingsIndex()).rows; break;
-      case 'witnesses': items = (await witnessesIndex()).rows; break;
+      case 'witnesses': items = (await witnessesIndex()).currentRows; break;
       case 'recordings': items = (await recordingsIndex()).rows; break;
       case 'committees': items = (await committeesIndex()).rows; break;
       case 'members': items = (await membersIndex()).rows; break;
@@ -840,21 +878,27 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     signal?.throwIfAborted();
     const index = typeof indexOrKey === 'string' && !/^\d+$/.test(indexOrKey) ? await ctx.resolve(indexOrKey) : Number(indexOrKey);
     if (index === null || !Number.isSafeInteger(index) || index < 0 || index >= count) throw new Error('Archive document not found.');
-    const [entry, versions, mIdx, recIdx, commIdx, wIdx, memIdx, bIdx, nIdx] = await Promise.all([
-      ctx.entry(index, signal), ctx.versions(index, signal), meetingsIndex(), recordingsIndex(), committeesIndex(), witnessesIndex(), membersIndex(), billsIndex(), nominationsIndex(),
+    const [entry, versions, meetings, recordings, committees, witnesses, members, bills, nominations] = await Promise.all([
+      ctx.entry(index, signal), ctx.versions(index, signal),
+      optional('meetings', meetingsIndex, signal), optional('recordings', recordingsIndex, signal),
+      optional('committees', committeesIndex, signal), optional('witnesses', witnessesIndex, signal),
+      optional('members', membersIndex, signal), optional('bills', billsIndex, signal),
+      optional('nominations', nominationsIndex, signal),
     ]);
+    const { data: mIdx } = meetings, { data: recIdx } = recordings, { data: commIdx } = committees;
+    const { data: wIdx } = witnesses, { data: memIdx } = members, { data: bIdx } = bills, { data: nIdx } = nominations;
     const doc = entry.document, seenMeetingEvents = new Set<string>(), docMeetings: any[] = [];
     const addMeeting = (m: any) => {
       const ev = String(m.event_id);
-      if (!seenMeetingEvents.has(ev)) { seenMeetingEvents.add(ev); docMeetings.push({ ...m, recordings: recIdx.byEventId.get(ev) ?? [] }); }
+      if (!seenMeetingEvents.has(ev)) { seenMeetingEvents.add(ev); docMeetings.push({ ...m, recordings: recIdx?.byEventId.get(ev) ?? [] }); }
     };
-    for (const mk of doc.meeting_keys ?? []) for (const m of mIdx.byEventId.get(String(mk).toLowerCase()) ?? []) addMeeting(m);
-    for (const m of mIdx.byDocRow.get(index) ?? []) addMeeting(m);
+    for (const mk of doc.meeting_keys ?? []) for (const m of mIdx?.byEventId.get(String(mk).toLowerCase()) ?? []) addMeeting(m);
+    for (const m of mIdx?.byDocRow.get(index) ?? []) addMeeting(m);
 
     const docCommitteeKeys = new Set([...(doc.committee_keys ?? []).map((k: any) => String(k).toLowerCase()), ...docMeetings.flatMap((m: any) => (m.committee_keys ?? []).map((k: any) => String(k).toLowerCase()))]);
     const seenCommitteeKeys = new Set<string>(), docCommittees: any[] = [];
     for (const ck of docCommitteeKeys) {
-      const c = commIdx.byCode.get(ck);
+      const c = commIdx?.byCode.get(ck);
       if (c && !seenCommitteeKeys.has(c.committee_key)) {
         seenCommitteeKeys.add(c.committee_key);
         docCommittees.push({ ...c, resolved_name: resolveCommitteeHistoricalName(c, doc.document_date ?? doc.congress) });
@@ -864,22 +908,27 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const docSubjectKeys = new Set([...(doc.measure_keys ?? []).map((k: any) => String(k).toLowerCase()), ...docMeetings.flatMap((m: any) => (m.subject_keys ?? []).map((k: any) => String(k).toLowerCase()))]);
     const seenSubjects = new Set<string>(), docSubjects: any[] = [];
     const addSubject = (s: any) => { if (s && !seenSubjects.has(String(s.subject_key).toLowerCase())) { seenSubjects.add(String(s.subject_key).toLowerCase()); docSubjects.push(s); } };
-    for (const sk of docSubjectKeys) addSubject(bIdx.byKey.get(sk));
-    for (const b of bIdx.byDocRow.get(index) ?? []) addSubject(b);
-    for (const sk of docSubjectKeys) addSubject(nIdx.byKey.get(sk));
-    for (const n of nIdx.byDocRow.get(index) ?? []) addSubject(n);
+    for (const sk of docSubjectKeys) addSubject(bIdx?.byKey.get(sk));
+    for (const b of bIdx?.byDocRow.get(index) ?? []) addSubject(b);
+    for (const sk of docSubjectKeys) addSubject(nIdx?.byKey.get(sk));
+    for (const n of nIdx?.byDocRow.get(index) ?? []) addSubject(n);
 
     const seenWitnesses = new Set<string>(), docWitnesses: any[] = [];
     const addWitness = (w: any) => { if (w && !seenWitnesses.has(String(w.witness_key).toLowerCase())) { seenWitnesses.add(String(w.witness_key).toLowerCase()); docWitnesses.push(w); } };
-    for (const wk of doc.witness_keys ?? []) addWitness(wIdx.byKey.get(String(wk).toLowerCase()));
-    for (const w of wIdx.byDocRow.get(index) ?? []) addWitness(w);
+    for (const wk of doc.witness_keys ?? []) addWitness(wIdx?.byKey.get(String(wk).toLowerCase()));
+    for (const w of wIdx?.byDocRow.get(index) ?? []) addWitness(w);
 
     const seenMembers = new Set<string>(), docMembers: any[] = [];
     const addMember = (m: any) => { if (m && !seenMembers.has(String(m.bioguide_id).toLowerCase())) { seenMembers.add(String(m.bioguide_id).toLowerCase()); docMembers.push(m); } };
-    for (const bio of doc.bioguide_ids ?? []) addMember(memIdx.byBioguide.get(String(bio).toLowerCase()));
-    for (const m of memIdx.byDocRow.get(index) ?? []) addMember(m);
+    for (const bio of doc.bioguide_ids ?? []) addMember(memIdx?.byBioguide.get(String(bio).toLowerCase()));
+    for (const m of memIdx?.byDocRow.get(index) ?? []) addMember(m);
 
-    return { ...entry, versions, meetings: docMeetings, committees: docCommittees, subjects: docSubjects, witnesses: docWitnesses, members: docMembers };
+    return {
+      ...entry, versions, meetings: docMeetings, committees: docCommittees, subjects: docSubjects,
+      witnesses: docWitnesses, members: docMembers,
+      relation_states: { meetings: meetings.state, recordings: recordings.state, committees: committees.state,
+        witnesses: witnesses.state, members: members.state, bills: bills.state, nominations: nominations.state },
+    };
   }
 
   return { prepareQuery, getMeeting, getCommittee, getWitness, getMember, getBill, getNomination, getSubject, listEntities, openDocument };
