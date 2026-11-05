@@ -1,6 +1,6 @@
 ---
 id: ct-zpbl
-status: open
+status: closed
 deps: []
 links: [ct-deh9, ct-xt19, ct-6v77]
 created: 2026-11-02T17:45:21Z
@@ -49,3 +49,7 @@ Keep this ticket open. After the final source and worker-policy freeze, the rele
 **2026-11-05T21:42:45Z**
 
 Direct-writer follow-up `e8c9e0acc7cf75c8b1913adceecd8ec44bb107df` is reviewed and locally qualified. The planted mismatch previously let both fresh capture and local recovery record the declared sniff ID and an intact verdict. The fixed callers preserve the raw bytes and record `pdf_reader_unqualified` with no sniff version or intact verdict when the reader is missing or mismatched. The actual pinned reader and trailer-only controls retained the declared ID and verdict. Ten focused checks passed, and independent review confirmed the eight capture and recovery fixture body digests and that the mismatched executable received only the version probe. The final four-control run on the exact commit passed in the pinned local environment. It checked fresh recovery time and metadata, retained-reference lookup without a body read, capture HTML inspection after storage, and selection of a later sniff read when the capture has no accepted facts. That run includes two recovery controls from the earlier ten. The declared IDs and source/runtime pins stay in place. After the final freeze, the release owner still needs to run the exact 25-key refusal proof (9 memory-limit and 16 output-limit cases) with the pinned runtime and one worker, without `--write`, then verify compatibility settlement. [Base reproduction](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/receipts/pdf-reader-before.log) · [Guard checks](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/receipts/pdf-reader-focused.log) · [Final controls](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/receipts/pdf-reader-final-controls.log)
+
+**2026-11-05T22:10:23Z**
+
+Delivered and closed after exact release-input qualification. At frozen source 52167b94, all 25 original refusals reproduced by body key and reason: 9 memory_limit and 16 output_limit, zero missing/extra/unread. One worker took 29.8 seconds at 0.783 GiB peak RSS. The settlement control preserved all 30 selected rows, including legacy sniff selections, retained all 25 original decision IDs, and cleared all 25 pending keys. Under the nightly writer lock, authenticated readback matched all 36 provenance identities, original decision bytes and all eight native heads. The single proof-bound entry is merged at 2f4a267a; all four existing compatibility entries remain. No new readings import or refusal provenance was needed. The ordinary producer subsequently reported zero pending leaf work. This closes the reading-version migration; archive publication remains the release owner's separate task. Evidence: docs/measurements/historical-reading-refusals-20261105.md and .cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/historical-refusals/.
