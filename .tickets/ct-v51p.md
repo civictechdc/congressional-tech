@@ -2,7 +2,7 @@
 id: ct-v51p
 status: closed
 deps: []
-links: [ct-30fp, ct-aapl]
+links: [ct-30fp, ct-aapl, ct-5esu]
 created: 2026-10-30T18:34:43Z
 type: feature
 priority: 1

@@ -2,21 +2,33 @@
 id: ct-nh41
 status: open
 deps: []
-links: [ct-zkzt]
+links: [ct-zkzt, ct-rie2]
 created: 2026-11-04T02:45:03Z
 type: bug
 priority: 3
 assignee: mikewolfd
 tags: [publication, recoveries, mcp, chaos-test]
 ---
-# recoveries.identity_note publishes pipeline provenance instead of an identity explanation
 
-release-schema.json declares recoveries.identity_note as 'Explanation identifying the recovery', but in release e4538f00 every row is either the pipeline string 'Reconciled from pinned accepted mappings <sha256>; receipt categories preserved' (12,391 rows) or NULL (227). No row explains how a recovery relates to the original. The string comes from packages/corpus_recovery/src/corpus_recovery/reconcile.py:164, and the pin it embeds is already published separately as evidence_sha256. The site already treats it as noise: cleanIdentityNote in apps/site/src/components/explorer/archive/archive-metadata.ts maps it to null (pinned by archive-presentation.test.mjs and archive-unit.test.ts). The MCP passes it through raw, and get_document tells agents that 'a recovery's kind and identity_note explain its relationship', so agents read pipeline provenance as an identity statement. The relationship is actually carried by kind (recovered_document, official_updated_revision_available, ...). Found in chaos run chaos-congress-mcp-20261103 and confirmed in review.
+# Record what a recovered document is evidence of
+
+Give archive and Congress MCP users a supported explanation of a recovery's relationship to the original, or no explanation when that relationship is unknown. Release `e145d24c389e` removed generated boilerplate from 10,772 notes; all 12,618 current recovery occurrences now have null `identity_note`. The public symptom is mitigated, while the producer still authors the misleading field.
+
+## Root cause (2026-11-05)
+
+`packages/corpus_recovery/src/corpus_recovery/reconcile.py:161-165` writes `Reconciled from pinned accepted mappings ...; receipt categories preserved` into `identity_note`, duplicating provenance already held in `evidence_sha256`. `model/sql/provenance-remaining-recovery-decisions.sql` strips that exact generated sentence. The reconciler owns cause removal; the compatibility filter remains necessary while supported historical inputs contain the sentinel. The campaign import reason `source_identifiers_match` is a rule result, not a detailed human explanation. Neither a hash nor successful reconciliation proves the recovered document's semantic relationship.
 
 ## Acceptance Criteria
 
-Published identity_note is either a human-readable explanation of the recovery's relationship to the original, or NULL; reconciliation provenance stays in evidence_sha256 (or a separately named provenance field), not in identity_note. The schema meaning matches what is published. Once the release no longer emits the string, the site's cleanIdentityNote special case is removed rather than duplicated in the MCP. The get_document description states which field carries the relationship. A publication test on fixed recovery inputs proves no identity_note contains reconciliation provenance.
+- Future reconciliation emits an evidence-supported relationship explanation or null in `identity_note`; it never generates the provenance sentinel. Keep the reconciliation pin in `evidence_sha256` and preserve the recorded relationship `kind`. Do not fabricate explanations or promote an acceptance reason into additional identity evidence.
+- Exercise the actual producer on fixed accepted mappings with an explanatory note, unknown relationship/null and legacy sentinel. Verify new output no longer authors the sentinel, genuine supported notes survive, and legacy publication still filters only the exact generated sentence. A passing output filter alone does not demonstrate producer repair.
+- Preserve immutable legacy decisions and their evidence. If a historical correction is needed, first verify the maintained append/supersede identity rule and retain old bytes; never overwrite an existing decision ID with changed content. Preserve recovery counts, kinds, bodies, URLs, sizes and attachment for this metadata-only change.
+- Verify schema and `get_document` wording accurately describe an explanation or null. Use the maintained release gates, then read the selected release through MCP and the site: no generated sentinel, supported notes visible and unknown relationships still null. Retire any site special case only when all supported release behavior permits it.
+- Reuse retained metadata and fixtures. No new body fetch, decompression, filename reparse or capture replay is required. Record source-local, candidate and delivered evidence separately.
 
+## Evidence
+
+[November 5 root-cause analysis](../docs/experiments/url-normalization-revalidation-20261105/root-causes.md); `.cache/archive-release/investigations/url-root-cause-20261105/etl-recovery-campaign/report.md`; current release queries in `.cache/archive-release/investigations/url-revalidation-20261105/`. Older notes below retain their original release and population boundaries. Campaign progress/publication-gain reporting is owned by [ct-rie2](ct-rie2.md); this ticket changes explanation authoring.
 
 ## Notes
 

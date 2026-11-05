@@ -2,7 +2,7 @@
 id: ct-j9o7
 status: open
 deps: []
-links: [ct-vq2a]
+links: [ct-vq2a, ct-yci9]
 created: 2026-11-05T02:36:33Z
 type: task
 priority: 3

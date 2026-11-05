@@ -2,7 +2,7 @@
 id: ct-aapl
 status: closed
 deps: []
-links: [ct-v967, cefr-xjsp, cef-vai0, ct-30fp, ct-v51p, ct-adtz, ct-9wl3]
+links: [ct-v967, cefr-xjsp, cef-vai0, ct-30fp, ct-v51p, ct-adtz, ct-9wl3, ct-yci9, ct-5esu, ct-rie2]
 created: 2026-11-01T02:34:11Z
 type: task
 priority: 1
@@ -44,3 +44,7 @@ Evolutionary Refactoring & Recursive Review Swarm Audit (2026-11-01):
 - Refactored by Cluster 5 Engineer (4c90d67e, 99% confidence):
   1. Updated `narrow_address_repairs` in `packages/corpus_recovery/src/corpus_recovery/url_normalization.py:386-388` so `senate_notfound_wrapper_repair` updates `text = repaired`, chaining into `publisher_download_query_fallback` (`download-ampersand-query`) and `trailing_space_trim_repair` in a single call (`test_normalized_pipeline.py:1210-1244`).
 - Recursive Review Swarm Verdicts (Round 2): Red Team PASS (99%), Green Team PASS (100%), Greybeard PASS (99%), Evolutionary Refactoring PASS (95%).
+
+**2026-11-05T20:08:15Z**
+
+November 5 release/root-cause follow-up: preserve this ticket's completed normalization, replay and local scheduler implementation scope. The live e145d24c389e audit and three-agent analysis found separate remaining boundaries, now owned explicitly: [ct-yci9](ct-yci9.md) for content contradicting agreeing filename package/measure claims; [ct-5esu](ct-5esu.md) for additional public lookup spellings; [ct-rie2](ct-rie2.md) for requirements-bound campaign execution and final metrics; ct-umtm for all twelve historical replay dispositions; ct-4jms for the ordinary scheduled run and Ashley download acquisition trace; ct-nh41 for explanation authoring. Current profile version 1 is valid ordinary behavior, and scheduled capture/campaign acceptance remain separate. No new retry-policy defect or distinct-document merge from trailing-space repair was established. The detailed acceptance criteria belong to those owners, not a reopened normalization umbrella. [Root-cause report](../docs/experiments/url-normalization-revalidation-20261105/root-causes.md). Ticket changes only; no implementation or execution.

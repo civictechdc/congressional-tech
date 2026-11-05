@@ -2,7 +2,7 @@
 
 Implement the corrections supported by the [reconciled findings](../url-normalization-defense.md), [lifecycle trace](../url-normalization-trace.md), and [real-data validation](../experiments/url-normalization-validation-20261031/report.md).
 
-**Status: proposed implementation with acceptance checks.** Production readiness has not been demonstrated. The six work items below preserve the evidence requirements and limits established by the audit.
+**Status, November 5, 2026: the core repairs are implemented; publication and identity gaps remain.** The [current-release revalidation](../experiments/url-normalization-revalidation-20261105/report.md) checks all eleven plain-English recommendations against public release `e145d24c389e`, the connected MCP, and current code. The six work items below preserve the original scope and acceptance criteria; they are not a list of entirely unimplemented changes.
 
 ## 1. Correct Wayback discovery while retaining exact replay checks
 
