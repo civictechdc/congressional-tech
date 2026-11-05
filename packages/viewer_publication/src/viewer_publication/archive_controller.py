@@ -37,8 +37,13 @@ def _publication_directory(path,*,fresh):
     return target
 
 
-def _save_continuation(path,value):
+def _continuation_digest(value):
+    return sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+
+def _save_continuation(path,value,*,seal=False):
     """Make a continuation visible only after its complete bytes are durable."""
+    if seal:value=dict(value,continuation_sha256=_continuation_digest(value))
     temporary=path.with_name(path.name+'.'+uuid4().hex+'.tmp')
     with temporary.open('x') as target:
         json.dump(value,target,sort_keys=True,separators=(',',':'))
@@ -57,20 +62,21 @@ def _read_continuation(work, *, daily=False):
         raise ValueError('Publication continuation requires a completed model checkpoint or intent')
     try:checkpoint=json.loads(source.read_text())
     except (ValueError,OSError) as error:raise ValueError('Corrupt publication continuation') from error
+    if not isinstance(checkpoint,dict):raise ValueError('Corrupt publication continuation fields')
+    if daily:
+        expected=checkpoint.pop('continuation_sha256',None)
+        if expected!=_continuation_digest(checkpoint):
+            raise ValueError('Retained nightly continuation checksum differs')
     fields={'version','identity','profile','entity_digests','admitted_names','pointer','pointer_etag'}
-    if isinstance(checkpoint,dict) and 'stage' in checkpoint:fields.add('stage')
+    if 'stage' in checkpoint:fields.add('stage')
     if source==checkpoint_path:fields|={'manifest_pin','result_pin'}
-    if daily:fields|={'daily_summary_sha256','input_digest','input_provenance'}
-    if not isinstance(checkpoint,dict) or set(checkpoint)!=fields:
+    if daily:fields|={'daily_summary_sha256','input_digest'}
+    if set(checkpoint)!=fields:
         raise ValueError('Corrupt publication continuation fields')
     for key in ('identity','daily_summary_sha256','input_digest') if daily else ('identity',):
         value=checkpoint[key]
         if not isinstance(value,str) or not re.fullmatch('[a-f0-9]{64}',value):
             raise ValueError('Corrupt publication continuation digest: '+key)
-    if daily:
-        provenance=checkpoint['input_provenance']
-        if not isinstance(provenance,list) or any(not isinstance(row,dict) or set(row)!={'key','etag'} for row in provenance):
-            raise ValueError('Corrupt nightly publication provenance')
     if checkpoint['version']!=1:
         raise ValueError('Corrupt publication continuation version')
     return source,checkpoint
@@ -212,9 +218,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             raise ValueError('Invalid daily summary digest')
         daily_pin['daily_summary_sha256']=daily_summary_sha256
     work=_publication_directory(work,fresh=not resume)
-    identity=sha256(json.dumps(dict(model=model_spec,receipt_keys=keys,provenance=provenance,run=run,
-        bucket=bucket,public_origin=public_origin,measured_release_id=measured_release_id),
-        sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    identity=_continuation_digest(dict(model=model_spec,receipt_keys=keys,provenance=provenance,run=run,
+        bucket=bucket,public_origin=public_origin,measured_release_id=measured_release_id))
     checkpoint_path=work/'completed-model.json'
     checkpoint=None;pending=None;promote_checkpoint=False
     stage=_stage_paths(None,model_spec=model_spec,work=work)
@@ -223,14 +228,6 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         source,checkpoint=_read_continuation(work,daily=bool(daily_pin))
         if checkpoint.get('daily_summary_sha256')!=daily_summary_sha256:
             raise ValueError('Retained daily summary differs from the model continuation')
-        if daily_pin:
-            try:
-                retained_digest=input_digest(receipt_keys=keys,provenance=checkpoint['input_provenance'],
-                    profile=checkpoint['profile']['profile'],entity_digests=checkpoint['entity_digests'])
-            except (KeyError,TypeError) as error:
-                raise ValueError('Corrupt retained nightly inputs') from error
-            if retained_digest!=checkpoint['input_digest']:
-                raise ValueError('Retained nightly input identity differs from the model continuation')
         if checkpoint['identity']!=identity:
             raise PublicationInputsChanged('Publication continuation inputs differ from the completed model')
         stage=_stage_paths(checkpoint.get('stage'),model_spec=model_spec,work=work)
@@ -313,7 +310,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             if daily_pin:
                 if checkpoint is not None and checkpoint['input_digest']!=digest:
                     raise ValueError('Retained nightly input identity differs from the model continuation')
-                daily_pin.update(input_digest=digest,input_provenance=provenance)
+                daily_pin['input_digest']=digest
             if pointer and live_input is None:live_input=find_live_input(digest)
             if checkpoint is not None:
                 selected_candidate=pointer_matches and live_input is not None
@@ -334,7 +331,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 # exporter finishes and before this controller regains control.
                 _save_continuation(intent_path,dict(version=1,identity=identity,profile=profile,
                     entity_digests=entity_digests,admitted_names=admitted_names,pointer=pointer,pointer_etag=etag,stage=stage,
-                    **daily_pin))
+                    **daily_pin),seal=bool(daily_pin))
                 manifest=build_prepared_release(prepared,engine=engine,output=stage['output'])
                 result=json.loads((prepared['scratch']/'result.json').read_text())
                 reports=_reports(result)
@@ -375,7 +372,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             saved=dict(version=1,identity=identity,profile=profile,entity_digests=entity_digests,
                        admitted_names=admitted_names if checkpoint is None else checkpoint['admitted_names'],
                        pointer=pointer,pointer_etag=etag,stage=stage,**artifacts,**daily_pin)
-            _save_continuation(checkpoint_path,saved)
+            _save_continuation(checkpoint_path,saved,seal=bool(daily_pin))
         delegate=True
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/('candidate-'+uuid4().hex),
             release=Path(stage['output']),**artifacts,input_record=record,receipt_keys=keys,

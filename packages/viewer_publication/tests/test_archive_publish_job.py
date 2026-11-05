@@ -518,7 +518,11 @@ def test_raw_startup_refuses_unqualified_or_unmeasured_targets_before_sdk(tmp_pa
     assert not Path(value['work']).exists()
 
 
-@pytest.mark.parametrize('outcome',['completed','pending','backfill_required','nightly-resume','nightly-changed','nightly-refused','nightly-corrupt','nightly-corrupt-input','nightly-corrupt-status','nightly-reconcile-new'])
+@pytest.mark.parametrize('outcome',[
+    'completed','pending','backfill_required','nightly-resume','nightly-changed','nightly-refused',
+    'nightly-corrupt','nightly-corrupt-input','nightly-corrupt-status','nightly-corrupt-identity',
+    'nightly-corrupt-etag','nightly-pointer-moved','nightly-reconcile-new',
+])
 def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome,producers_recorded,monkeypatch):
     """Only external catalog storage, SDK and browser execution are adapted."""
     from copy import deepcopy
@@ -565,7 +569,7 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
         **{name:dict(kind='native_table',**head) for name,head in heads.items()})
     path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
     path=tmp_path/'daily.json';path.write_text(json.dumps(daily))
-    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[],first_release=outcome!='nightly-refused')
+    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[],first_release=outcome not in {'nightly-refused','nightly-corrupt-etag','nightly-pointer-moved'})
     path=tmp_path/'publish.json';path.write_text(json.dumps(value));spec=load_spec(path)
     assert spec['_daily']['catalog_root'] is None
     class SDK(Store):
@@ -703,12 +707,15 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     evidence=tmp_path/'.cache/archive-release/nightly'
     active=evidence/'candidate'
     pointer='viewer-publications/manifest.json'
-    if outcome=='nightly-refused':
+    def select_fixture_release(directory,documents,previous=None):
         from test_archive_publish import encoded,real_release
-        base,manifest=real_release(tmp_path/'selected',['A'],retired=[])
+        base,manifest=real_release(tmp_path/directory,documents,retired=[])
         for name in [item['name'] for item in manifest['files']]+['manifest.json']:
             store.objects['viewer-publications/releases/'+manifest['release_id']+'/'+name]=(base['release']/name).read_bytes()
-        store.objects[pointer]=encoded(dict(release_id=manifest['release_id'],previous_release_id=None))
+        store.objects[pointer]=encoded(dict(release_id=manifest['release_id'],previous_release_id=previous))
+
+    if outcome in {'nightly-refused','nightly-corrupt-etag','nightly-pointer-moved'}:
+        select_fixture_release('selected',['A'])
     selected=store.objects.get(pointer)
     assert nightly.run(root,False)==2 and store.objects.get(pointer)==selected
     assert not (active/'archive-publish/completed-model.json').exists()
@@ -729,10 +736,17 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
             summary.write_text(json.dumps(daily))
         elif outcome=='nightly-corrupt-status':
             summary.write_text(json.dumps(dict(daily,status='backfill_required')))
+        elif outcome=='nightly-corrupt-etag':
+            assert nightly.run(root,False)==2  # The comparison refuses and leaves a completed checkpoint.
+            checkpoint=active/'archive-publish/completed-model.json'
+            saved=json.loads(checkpoint.read_text())
+            checkpoint.write_text(json.dumps(dict(saved,pointer_etag='"different"')))
         else:
-            intent['input_digest']='0'*64
+            field='identity' if outcome=='nightly-corrupt-identity' else 'input_digest'
+            intent[field]='0'*64
             (active/'archive-publish/model-intent.json').write_text(json.dumps(intent))
-            receipts['receipts/documents/2026-10-29/added.jsonl.gz']=next(iter(receipts.values()))
+            if field=='input_digest':
+                receipts['receipts/documents/2026-10-29/added.jsonl.gz']=next(iter(receipts.values()))
         assert nightly.run(root,False)==2
         assert len(productions)==len(builds)==1 and file_pin(result)==pinned
         assert store.objects.get(pointer)==selected
@@ -747,6 +761,16 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
         assert store.objects[pointer]==selected and ('put',pointer) not in store.events
         [gate]=active.glob('archive-publish/candidate-*/release-gate.json')
         assert json.loads(gate.read_text())['reasons']
+        return
+
+    if outcome=='nightly-pointer-moved':
+        select_fixture_release('external',['A','B'],json.loads(selected)['release_id'])
+        store.etag='external-etag'
+        moved=store.objects[pointer]
+        assert nightly.run(root,False)==2  # The fresh candidate still needs reviewed causes.
+        assert len(productions)==len(builds)==2 and store.objects[pointer]==moved
+        [stale]=evidence.glob('*/superseded-candidate/inputs-changed.json')
+        assert 'Selected release changed' in stale.read_text()
         return
 
     if outcome=='nightly-changed':
