@@ -1,0 +1,48 @@
+{
+ "commit": "ff5eca1bcc9eb6a56af751d3236ed3ffdce2402a",
+ "input": "meeting_records",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/house-xml-version-transition/meeting_records.json",
+   "sha256": "ed971be0e3cb76faaa410911bdf2739046af67a32ea0821bb89bdb91d077719a",
+   "size": 980
+  },
+  "record": {
+   "appended": 0,
+   "commit": "ff5eca1bcc9eb6a56af751d3236ed3ffdce2402a",
+   "house_xml_transition": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/house-xml-version-transition/house-xml-transition.json",
+    "sha256": "fda7b56e9fba47b01aa095efbdb51e2d435569e112bc874c6b093a490737861b",
+    "size": 1672
+   },
+   "input": "meeting_records",
+   "job": "packages/viewer_publication/src/viewer_publication/archive_backfill_job.py",
+   "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+   "recorded": "with production",
+   "reused_rows": 42551,
+   "selector": {
+    "kind": "parquet",
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/house-xml-version-transition/meeting-records.parquet",
+    "sha256": "fe3eb963da2e02e2810077c88fb364adcfa35f25cf0bc016383f44a8fcc7d302",
+    "size": 16312212
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_act_citation/metadata/00001-01a1ab9b-7276-7652-9a3f-324a6609b9fb.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 631276425399374834,
+  "table_uuid": "01a1ab9b-1f18-7f52-b4ab-99355df21274"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/filename-date-repair/house-xml-version-transition/meeting-records.parquet",
+  "sha256": "fe3eb963da2e02e2810077c88fb364adcfa35f25cf0bc016383f44a8fcc7d302",
+  "size": 16312212
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}
