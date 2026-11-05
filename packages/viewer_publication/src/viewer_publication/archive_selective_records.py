@@ -19,6 +19,7 @@ import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,tables,video_records
 from congress_api.lake._record_producer import INLINE_CONGRESS_MEETINGS_SQL,_candidate_rel_paths,stage_record_table
+from congress_api.lake.video_records import NO_INLINE_SQL
 from congress_api.lake.readings import BackfillRequired
 from congress_api.retention.provenance import parquet_output,run_job
 
@@ -111,10 +112,15 @@ def _stage(run,bodies,name,keys,work,*,existing,raw_store,unreadable):
 def stage_selected_records(name,selection,*,engine,work,existing=None,local_root,raw_store,
                            unreadable_files=(),decided_at=None,max_work_items=None):
     """Replay exact captured body keys or inline receipt positions through the maintained producer."""
-    module,build=RECORD_TABLES[name]
+    if name == 'committee_records':
+        module,build=committee_records,committee_records.build_row
+        inline_sql=NO_INLINE_SQL
+    else:
+        module,build=RECORD_TABLES[name]
+        inline_sql='SELECT receipt_key,receipt_line,source_url FROM captures WHERE receipt_key IS NOT NULL ORDER BY receipt_key,receipt_line'
     return stage_record_table(parser_name=name,out_filename=name+'.parquet',
         candidate_sql='SELECT record_sha,stored_suffix,source FROM captures WHERE record_sha IS NOT NULL',
-        inline_sql='SELECT receipt_key,receipt_line,source_url FROM captures WHERE receipt_key IS NOT NULL ORDER BY receipt_key,receipt_line',
+        inline_sql=inline_sql,
         build_row_fn=build,table_fn=module.table,captures=selection,engine=engine,work=work,
         version=module.current_versions(),existing=existing,local_root=local_root,raw_store=raw_store,
         unreadable_files=unreadable_files,decided_at=decided_at,max_work_items=max_work_items,unreadable_store=None)

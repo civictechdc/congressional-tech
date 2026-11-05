@@ -792,3 +792,82 @@ def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path)
     selected = {name:item['selector'] for name,item in result.items()}
     assert snapshot_reasons(dict(**selected,parser_versions=dict(meeting_records=meeting_records.current_versions(),
         appearance_records=appearance_records.current_versions())),records) == []
+
+
+def test_record_only_retained_committee_checks_custody_and_returns_only_append_rows(tmp_path):
+    import gzip
+    from hashlib import sha256
+
+    from congress_api.lake import committee_records
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_backfill_job import load_spec
+    from viewer_publication.archive_record_backfill import HOUSE_XML_PATH, _retained_committee_selection
+
+    def pin(path):
+        return dict(path=str(path), **file_pin(path))
+
+    body = b'''<committee-meeting meeting-id="HMKP118438">
+    <meeting-documents><meeting-document type="CA"><filename-metadata><amdt-num>7</amdt-num></filename-metadata>
+    <files><file doc-url="https://docs.house.gov/meetings/IF/IF00/20250625/118438/amendment.pdf"/></files>
+    </meeting-document></meeting-documents></committee-meeting>'''
+    digest = sha256(body).hexdigest()
+    body_key = f'bodies/sha256/{digest[:2]}/{digest}.gz'
+    stored = tmp_path/'mirror'/body_key
+    stored.parent.mkdir(parents=True)
+    stored.write_bytes(gzip.compress(body,mtime=0))
+    receipt_key = 'receipts/house/meeting-xml/undated/fixture.jsonl.gz'
+    receipt = tmp_path/'raw'/receipt_key
+    receipt.parent.mkdir(parents=True)
+    selection = tmp_path/'selection.json'
+
+    def inputs(event, *, line=2, source_digest=digest, verified=True):
+        path = f'{HOUSE_XML_PATH}{event}.xml'
+        reference = dict(status='verified' if verified else 'missing', reference_kind='retained-file',
+            fidelity='retained-file', resolution='digest_verified', family='house/meeting-xml',
+            original_path=path, source_file=path, sha256=digest, source_sha256=digest, body_key=body_key)
+        retained = dict(captures=[], source_file=path, record=dict(original_path=path), file_references=[reference])
+        receipt.write_bytes(gzip.compress(('{}\n'+json.dumps(retained)+'\n').encode(),mtime=0))
+        selection.write_text(json.dumps([dict(receipt_line=line, event_id=event,
+            original_path=path, record_sha=source_digest)]))
+
+    inputs('118438', line=3)
+    with pytest.raises(ValueError, match='missing receipt lines'):
+        _retained_committee_selection(selection, receipt, 1)
+    inputs('118438', verified=False)
+    with pytest.raises(ValueError, match='does not verify'):
+        _retained_committee_selection(selection, receipt, 1)
+    inputs('118438', source_digest='a'*64)
+    with pytest.raises(ValueError, match='does not verify'):
+        _retained_committee_selection(selection, receipt, 1)
+    inputs('118438')
+    version = committee_records.current_versions()
+    old = tmp_path/'retained.parquet'
+    pq.write_table(committee_records.table([committee_records.build_row('a'*64, committee_records.SOURCE,
+        body,parser_version=version[committee_records.SOURCE])]),old)
+    old_pin = pin(old)
+    model = tmp_path/'model.json'
+    model.write_text(json.dumps(dict(committee_records=dict(kind='parquet', **old_pin),
+        parser_versions=dict(committee_records=version), unreadable_files=[])))
+    path = tmp_path/'job.json'
+
+    def spec(work, key=receipt_key):
+        path.write_text(json.dumps(dict(version=1, work=str(tmp_path/work),
+            engine_config=os.environ['DOCSPEC_JOB_CONFIG'],record_only=dict(base_model=pin(model),bases={},
+                raw_root=str(tmp_path/'raw'),raw_mirror=str(tmp_path/'mirror'),max_work_items=1,
+                retained_committee=dict(receipt_key=key,receipt=pin(receipt),selection=pin(selection),base=old_pin)))))
+        return load_spec(path)
+
+    with pytest.raises(ValueError, match='path does not match its key'):
+        spec('wrong-key', 'receipts/house/meeting-xml/undated/another.jsonl.gz')
+    inputs('118455')  # The path and verified digest are internally consistent, but the body names 118438.
+    with pytest.raises(ValueError, match='does not contain records for its selected event'):
+        execute(spec('wrong-event'))
+    inputs('118438')
+    item = execute(spec('append'))['tables']['committee_records']
+    [row] = pq.read_table(item['selector']['path']).to_pylist()
+    assert row['record_sha'].hex() == digest and row['event_id'] == '118438'
+    assert row['records'][0]['number'] == '7' and row['records'][0]['bill'] is None
+    assert item['delta_only'] and item['appended'] == item['existing_rows_checked'] == 1
+    proof = json.loads(Path(item['producer']['path']).read_text())
+    assert proof['final_reconciliation_required'] and 'base_selector' not in proof
+    assert pin(old) == old_pin
