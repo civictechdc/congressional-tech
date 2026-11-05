@@ -227,13 +227,11 @@ Each fetched body is stored once, at `bodies/sha256/<aa>/<sha>` ([[DATA-MODEL]] 
 
 **Stored bytes** are compressed as [[DATA-MODEL]] §5.1 says, so an HTTP client that honors `Content-Encoding` receives the original bytes. R2 verifies the stored bytes' MD5 on upload and returns it as the ETag, the integrity check; the original's SHA-256 is the identity.
 
-**Write.** For each body it fetches, the writer:
+**Capture writes.** The writer first looks for a saved copy in the run cache, then checks the older `…/<sha>.gz` key with a HEAD request. If neither finds a copy, the writer MUST attempt one create-only PUT (`If-None-Match: *`) with `Content-MD5`. An HTTP 412 response means the suffix-free key already exists.
 
-1. uploads nothing if the body is already in the run's own set;
-2. else checks with one HEAD whether the older copy `…/<sha>.gz` exists, and if so records the attempt as `unchanged` with suffix `.gz`;
-3. else MUST store the body with one create-only PUT (`If-None-Match: *`) carrying `Content-MD5`. A 412 means the body exists: the writer MUST record the attempt as `unchanged` with suffix `''`, with no HEAD, download or comparison.
+For a reused body, including a retained reference, the writer takes the stored size and any single-PUT MD5 from qualified metadata for the exact key. It uses the run cache or the HEAD that found the copy. If it only knows that the copy exists, as can happen after a 412, it makes one HEAD request for that key. The attempted upload's size and checksum apply only to an acknowledged create. A successful capture that reuses a body records `unchanged` and the stored suffix. A missing referenced object, invalid metadata, or a failed lookup stops the write. Legacy multipart gzip uses the reader fallback described in [[DATA-MODEL]] §5.2.
 
-Every capture entry records the suffix its body is stored under. Writers MUST NOT use multipart upload: multipart ETags are not MD5s, and no body approaches the 5 GB single-PUT limit. Every body-store adapter keeps these semantics.
+The Git snapshot writer records `unchanged` and the stored suffix on reuse. It accepts a 412 on the body PUT without a follow-up HEAD. Writers MUST use a single PUT for new bodies. Every capture entry records the suffix of its physical key.
 
 **Nothing is cut off.** The fetcher MUST spool each body to a temporary file, so any size up to the single-PUT limit is stored whole. An attempt is complete only as [[DATA-MODEL]] §5.2 defines it; an incomplete body is kept as evidence, never a real file, and its URL is retried.
 

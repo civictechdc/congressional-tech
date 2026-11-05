@@ -128,8 +128,11 @@ One JSON object of about 1 KB per fetch line or recovery import; a run writes nu
 | `sniff_error` | string, optional | The sniffer's stable error code, such as `pdf_reader_size_limit`; resource failures propagate for retry and never become a damage verdict. |
 | `intact` | bool or null | For a PDF: true when `%%EOF` appears in its last 8 KB, else when the pinned PDF reader opens it within its 16 MiB size limit; false when it rejects the file or that required read exceeds the limit (reported as `pdf_reader_size_limit`). A missing reader or resource failure is a failed reading, not a damage verdict. Null for other formats and for an older gzip PDF whose prefix alone was read. |
 | `stored_suffix` | `''` \| `.gz` | The physical key's suffix ([[ARCHITECTURE]] §7.1). |
-| `stored_md5`, `stored_bytes` | hex, int | Only on the creating line. |
+| `stored_bytes` | int, optional | Byte length of the exact stored object, from an acknowledged write or qualified reuse metadata. |
+| `stored_md5` | hex, optional | MD5 of the exact stored object, from an acknowledged write or the object's single-PUT ETag on reuse. |
 | `fidelity` | `exact-bytes` \| `saved-text` \| `saved-record` \| `retained-file` | How faithful the stored bytes are. |
+
+A capture that reuses a legacy multipart `.gz` object records its verified `stored_bytes` and omits `stored_md5`. The reader uses the ETag from the exact-key listing for a conditional read. Historical receipts and reused Git snapshot entries can omit both fields.
 
 Ended without error means read to its declared end, its final chunk or a clean end of stream, or by ranges each requested with `If-Range` on the first response's strong validator and together covering the declared total.
 
@@ -217,7 +220,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `expansion` | string, nullable | §5.2; the ZIP fingerprint (§6.2) reads `expanded`. |
 | `stored_suffix` | string, nullable | §5.2. |
 | `stored_bytes` | long, nullable | Stored object size. |
-| `stored_md5` | fixed[16], nullable | Creating line only. |
+| `stored_md5` | fixed[16], nullable | Stored-object MD5 from the receipt, including on reuse. |
 | `recovery_category`, `original_url`, `recovered_url`, `match_basis`, `evidence_sha256`, `imported_at` | string, string, string, string, fixed[32], timestamptz; nullable | Recovery rows only. `recovery_category` is `prior_access_category`; the older-line fallbacks set `original_url`, `match_basis` and `imported_at`. |
 | `writer_job`, `writer_commit` | string, nullable | Required on new rows by invariant 3; null on older rows without writer identity. |
 | `mapping_version` | string | The capture mapping identity that produced the row: `captures.current_version()`, the SHA-256 of `captures.py`, `receipt_metadata.py` and both receipt registries. One value per receipt; required on every row by the generation guard (nullable in the schema only because Iceberg cannot add a required column to a populated table). |
