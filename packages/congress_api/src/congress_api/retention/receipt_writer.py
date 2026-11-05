@@ -231,6 +231,7 @@ class ReceiptWriter:
                     or line['url']!=final.url or line['transport']!=final.transport or line['http_status']!=final.http_status
                     or body_identity!=frozen_identity):
                 raise ValueError('Stable receipt operation was reused for another attempt')
+        refuse_local_paths(line)
         try:
             self.store.put(metadata['key'],path,'application/x-ndjson')
         except Exception:

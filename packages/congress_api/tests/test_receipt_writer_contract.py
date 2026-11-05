@@ -128,7 +128,8 @@ def test_provider_partial_response_stays_incomplete_in_published_receipt(tmp_pat
     assert result.final.body.path.read_bytes()==b'ab'
 
 
-def test_frozen_receipt_reconciles_lost_ack_and_reuses_exact_bytes(tmp_path):
+@pytest.mark.parametrize('has_metadata', [True, False], ids=['pinned', 'gzip-only'])
+def test_frozen_receipt_reconciles_lost_ack_and_reuses_exact_bytes(tmp_path, has_metadata):
     from congress_api.models.raw_fetch import FetchResult
     from congress_api.retention.receipt_writer import ReceiptWriter
     from congress_api.retention.body_store import BodyStore, LocalAdapter
@@ -142,11 +143,47 @@ def test_frozen_receipt_reconciles_lost_ack_and_reuses_exact_bytes(tmp_path):
     writer=ReceiptWriter(store,identity=WRITER,run_id='run',write_date='2026-10-27',archive_limits=None)
     key,line=writer.write(FetchResult(attempt(tmp_path)),family='documents',operation_id='op1',freeze_dir=tmp_path/'frozen')
     first=(tmp_path/'raw'/key).read_bytes()
+    frozen = tmp_path/'frozen'/'op1'
+    if not has_metadata:
+        (frozen/'receipt.json').unlink()
     fresh=ReceiptWriter(BodyStore(LocalAdapter(tmp_path/'raw')),identity=WRITER,run_id='different',
-                        write_date='2026-10-28',archive_limits=None)
+                        write_date='2026-10-28' if has_metadata else '2026-10-27',archive_limits=None)
     key2,line2=fresh.write(None,operation_id='op1',freeze_dir=tmp_path/'frozen')
     assert (key2,line2)==(key,line)
-    assert (tmp_path/'raw'/key).read_bytes()==first
+    assert (tmp_path/'raw'/key).read_bytes()==(frozen/'receipt.gz').read_bytes()==first
+    assert json.loads((frozen/'receipt.json').read_bytes()) == dict(key=key, sha256=hashlib.sha256(first).hexdigest())
+
+
+@pytest.mark.parametrize('has_metadata', [True, False], ids=['pinned', 'gzip-only'])
+def test_frozen_receipt_refuses_a_nested_local_path_before_adapter_io(tmp_path, has_metadata):
+    from unittest.mock import Mock
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention.receipt_privacy import LocalPathRefused
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+
+    identity = dict(identity=WRITER, run_id='run', write_date='2026-10-27', archive_limits=None)
+    result = FetchResult(attempt(tmp_path))
+    original = ReceiptWriter(BodyStore(LocalAdapter(tmp_path/'original')), **identity)
+    key, line = original.write(result, family='documents', mode='retained_import',
+                               recovery_evidence=dict(acquisition=dict(body_path='safe.pdf')))
+    operation = '000001'
+    frozen = tmp_path/'frozen'/operation
+    frozen.mkdir(parents=True)
+    line['recovery_evidence']['acquisition']['body_path'] = '/srv/private/example.pdf'
+    payload = gzip.compress((json.dumps(line)+'\n').encode(), mtime=0)
+    (frozen/'receipt.gz').write_bytes(payload)
+    if has_metadata:
+        (frozen/'receipt.json').write_text(json.dumps(dict(key=key, sha256=hashlib.sha256(payload).hexdigest())))
+
+    adapter = Mock(spec=LocalAdapter)
+    # A matching object would let the lost-acknowledgment handler swallow a refusal.
+    adapter.head.return_value = dict(size=len(payload), etag=hashlib.md5(payload).hexdigest())
+    retry = ReceiptWriter(BodyStore(adapter), **identity)
+    with pytest.raises(LocalPathRefused, match=r'recovery_evidence\.acquisition\.body_path'):
+        retry.write(result, operation_id=operation, freeze_dir=frozen.parent)
+    assert adapter.mock_calls == []
+    assert (frozen/'receipt.gz').read_bytes() == payload
 
 
 @pytest.mark.parametrize(('status','data','headers','outcome'), [
