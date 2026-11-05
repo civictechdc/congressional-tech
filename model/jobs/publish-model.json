@@ -78,7 +78,7 @@
       "house_xml": "83d27c2ae65792ef9e00a878329068b6fe4a757386efce09e8beebc4cd54d2f3"
     }
   },
-  "catalog_version": "6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1",
+  "catalog_version": "c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09",
   "output": "../../output/archive-release",
   "scratch": "../../output/archive-model",
   "recording_decision_files": [

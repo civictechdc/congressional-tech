@@ -55,6 +55,47 @@ def sorted_rows(rows):
     return sorted(rows,key=lambda row:repr(sorted(row.items(),key=lambda item:item[0])))
 
 
+def test_filename_transition_reuses_values_and_records_the_producer(tmp_path):
+    from datetime import date
+    from congress_api.lake import filenames, tables
+    from viewer_publication.archive_backfill_job import FILENAME_PRIOR_VERSION, load_spec
+    from viewer_publication.producer_proof import snapshot_reasons
+
+    runtime = os.environ['DOCSPEC_JOB_CONFIG']
+    catalog = tmp_path / 'base-catalog'
+    table = dict(namespace=['fixture'], name='filename_readings')
+    eps = 'FP Opening Statement--EPS Improvement Act of 2016 1-12-16.pdf'
+    afwa = 'AFWA testimony_H.R. 2264_Bear Protection Act of 2019_6-23-20_final.pdf'
+    unaffected = dict(filenames.read_filename('Opening Statement 20160112.pdf', '', catalog_version=FILENAME_PRIOR_VERSION),
+                      date_token='retained reading')
+    old_rows = [unaffected,
+                dict(filenames.read_filename(eps, '', catalog_version=FILENAME_PRIOR_VERSION), date_token='2016 1-12'),
+                dict(filenames.read_filename(afwa, '', catalog_version=FILENAME_PRIOR_VERSION),
+                     date_token='2019_6-23', filename_date=date(2019, 6, 23))]
+    path = tmp_path / 'old-rows.parquet'
+    pq.write_table(pa.Table.from_pylist(old_rows, schema=filenames.SCHEMA), path)
+    with NativeDatasets.from_config(runtime) as engine:
+        filenames.create_table(engine=engine, work=tmp_path / 'create', catalog_root=catalog, table=table,
+                               location=tmp_path / 'base-table', create_namespace=True)
+        filenames.append(dict(catalog_version=FILENAME_PRIOR_VERSION, readings=path), engine=engine,
+                         work=tmp_path / 'append', catalog_root=catalog, table=table)
+        base = tables.resolve_tables(engine=engine, work=tmp_path / 'resolve', catalog_root=catalog,
+                                     tables={'filename_readings': table})['filename_readings']
+    work = tmp_path / 'transition'
+    spec_file = tmp_path / 'transition.json'
+    spec_file.write_text(json.dumps(dict(version=1, work=str(work), engine_config=runtime,
+        filename_transition=dict(base=dict(kind='native_table', **base), engine_config=runtime))))
+    report = execute(load_spec(spec_file))
+    assert report['rows'] == 3 and report['reused'] == 1 and report['recomputed'] == 2
+    rows = {row['filename']: row for row in pq.read_table(work / 'check' / 'filename-readings.parquet').to_pylist()}
+    assert rows[unaffected['filename']] == dict(unaffected, catalog_version=filenames.current_version())
+    assert (rows[eps]['date_token'], rows[eps]['filename_date']) == ('1-12-16', date(2016, 1, 12))
+    assert (rows[afwa]['date_token'], rows[afwa]['filename_date']) == ('6-23-20', None)
+    producer = json.loads(Path(report['producer']['path']).read_text())
+    model = dict(filename_readings=report['selector'], catalog_version=report['catalog_version'], parser_versions={})
+    assert snapshot_reasons(model, {'filename_readings': producer}) == []
+
+
 @pytest.mark.parametrize('change,message',[
     (dict(catalog_root=None),'local catalog_root'),
     (dict(tables={name:dict(namespace=['archive'],name=name) for name in ('captures','readings','filename_readings','meeting_records','appearance_records')}),'archive namespace'),

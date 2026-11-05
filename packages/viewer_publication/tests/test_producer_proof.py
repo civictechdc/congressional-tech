@@ -199,3 +199,13 @@ def test_an_import_record_passes_only_through_a_valid_origin():
     assert 'needs the origin record' in snapshot_reasons(model, imported())[0]
     assert 'origin: producing commit 000000000000 is not reachable' in snapshot_reasons(model, imported(origin=dict(record=dict(origin, commit='0' * 40))))[0]
     assert 'cannot name another import' in snapshot_reasons(model, imported(origin=dict(record=dict(origin, job=IMPORT))))[0]
+
+
+def test_filename_proof_uses_historical_house_naming_bytes():
+    from congress_api.lake import filenames
+    from viewer_publication.producer_proof import versions_at
+
+    # This release predates the Act citation repair, which changed house_naming only.
+    historical = '6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1'
+    assert filenames.current_version() != historical
+    assert versions_at('412e115e')['filename_readings'] == historical

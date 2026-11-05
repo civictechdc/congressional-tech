@@ -33,6 +33,7 @@ commit records, which the engine does not yet write (O9; proposed docspec-rs sna
 summary properties); raw receipts and spicy-regs generations, whose producers are external.
 """
 import json
+import os
 from pathlib import Path
 
 from congress_api.lake.tables import table_input
@@ -144,9 +145,10 @@ def versions_at(commit, *, root=ROOT, cache={}):
     with tempfile.TemporaryDirectory(prefix='producer-versions-') as directory:
         with tarfile.open(fileobj=BytesIO(archive)) as tar:
             tar.extractall(directory, filter='data')
-        src = str(Path(directory) / 'packages/congress_api/src')
+        src = os.pathsep.join(str(Path(directory) / path) for path in
+                             ('packages/congress_api/src', 'packages/house-naming/src'))
         result = subprocess.run([sys.executable, '-c', VERSIONS_AT_COMMIT], cwd=directory, capture_output=True, text=True,
-                                env=dict(__import__('os').environ, PYTHONPATH=src))
+                                env=dict(os.environ, PYTHONPATH=src))
         if result.returncode:
             raise ValueError(f'producer proof: versions could not be computed at {commit[:12]}: {result.stderr.strip()[-300:]}')
         value = json.loads(result.stdout)

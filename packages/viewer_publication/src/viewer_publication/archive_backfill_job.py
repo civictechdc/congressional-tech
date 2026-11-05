@@ -12,6 +12,8 @@ from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
 OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers'}
+FILENAME_PRIOR_VERSION = '6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1'
+FILENAME_ACT_CITATION_VERSION = 'c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09'
 
 
 def _bucket(value):
@@ -50,6 +52,18 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value.get('reason'),str) or not value['reason'].strip():
             raise ValueError('Blocked backfill job requires exactly its reason')
         return dict(value)
+    if 'filename_transition' in value:
+        from viewer_publication.archive_model_job import _selector
+        if set(value) != {'version', 'work', 'engine_config', 'filename_transition'} or value['version'] != 1:
+            raise ValueError('Filename transition requires version 1, work and a local engine config')
+        transition = value['filename_transition']
+        if not isinstance(transition, dict) or set(transition) != {'base', 'engine_config'}:
+            raise ValueError('Filename transition requires a pinned base and its read engine config')
+        source = _selector(transition['base'], path.parent)
+        if source['kind'] != 'native_table' or source['snapshot'] is None:
+            raise ValueError('Filename transition requires an immutable native snapshot')
+        return dict(value, work=_local(value['work'], path.parent), engine_config=_local(value['engine_config'], path.parent),
+                    filename_transition=dict(base=source, engine_config=_local(transition['engine_config'], path.parent)))
     if set(value)-FIELDS-OPTIONAL or not FIELDS<=set(value):
         raise ValueError('Backfill job requires version 1 and all explicit fields')
     if type(value['version']) is not int or value['version']!=1:
@@ -129,6 +143,10 @@ def _dumps(value):
 
 def plan(spec):
     if spec.get('status')=='blocked':return dict(spec)
+    if 'filename_transition' in spec:
+        return dict(status='planned', executed=False, work=spec['work'],
+                    base=spec['filename_transition']['base'], prior_version=FILENAME_PRIOR_VERSION,
+                    catalog_version=FILENAME_ACT_CITATION_VERSION)
     planned=dict(
         status='planned',
         executed=False,
@@ -144,9 +162,131 @@ def plan(spec):
     return planned
 
 
+def _verify_filename_transition(base_path, result_path, replacements, predicate):
+    """Check all output pairs, untouched values and selected replacements in sorted order."""
+    from itertools import pairwise
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    selected, rows, previous_key = 0, 0, None
+    with pq.ParquetFile(base_path) as before, pq.ParquetFile(result_path) as after:
+        for old, new in zip(before.iter_batches(), after.iter_batches(), strict=True):
+            keys = ('filename', 'source_url')
+            key_rows = list(zip(*(new.column(key).to_pylist() for key in keys)))
+            if (previous_key is not None and previous_key >= key_rows[0]
+                    or any(a >= b for a, b in pairwise(key_rows))
+                    or not old.select(keys).equals(new.select(keys))):
+                raise ValueError('Filename transition changed or duplicated source pairs')
+            previous_key = key_rows[-1]
+            if not pc.all(pc.equal(new.column('catalog_version'), FILENAME_ACT_CITATION_VERSION), skip_nulls=False).as_py():
+                raise ValueError('Filename transition wrote an unexpected catalog version')
+            mask = pc.match_substring_regex(old.column('filename'), predicate)
+            keep = pc.invert(mask)
+            columns = [name for name in old.schema.names if name != 'catalog_version']
+            if not old.filter(keep).select(columns).equals(new.filter(keep).select(columns)):
+                raise ValueError('Filename transition changed values outside its predicate')
+            recomputed = new.filter(mask)
+            expected = replacements.slice(selected, recomputed.num_rows)
+            if recomputed.to_pylist() != expected.to_pylist():
+                raise ValueError('Filename transition lost or changed a recomputed row')
+            selected += recomputed.num_rows
+            rows += new.num_rows
+    if selected != replacements.num_rows:
+        raise ValueError('Filename transition did not preserve every recomputed row')
+    return dict(rows=rows, reused=rows - selected, recomputed=selected)
+
+
+def _filename_transition(spec, runtime_factory):
+    """Advance the reviewed Act-citation change using one read-only snapshot and a fresh local lake."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+    from congress_api.lake import filenames, tables
+    from congress_api.retention.provenance import file_pin, parquet_output, run_job
+    from congress_api.retention.writer_identity import writer_identity
+    from docspec_client.client import NativeDatasets
+    from house_naming.extraction import ACT_CITATION
+    from viewer_publication.producer_proof import BACKFILL, ROOT, record
+
+    if filenames.current_version() != FILENAME_ACT_CITATION_VERSION:
+        raise ValueError('Filename transition only supports the reviewed Act citation version')
+    writer = writer_identity(ROOT, BACKFILL)
+    runtime_factory = runtime_factory or NativeDatasets.from_config
+    source = spec['filename_transition']
+    base = {k: v for k, v in source['base'].items() if k != 'kind'}
+    work = Path(spec['work'])
+    catalog = work / 'catalog'
+    target = dict(namespace=['filename_transition'], name='filename_readings')
+    with runtime_factory(spec['engine_config']) as engine, runtime_factory(source['engine_config']) as reader:
+        tables.validate_catalog_authority(engine, catalog)
+        engine.verify_runtime()
+        reader.verify_runtime()
+        if (reader.source_revision, reader.binary_sha256) != (engine.source_revision, engine.binary_sha256):
+            raise ValueError('Filename transition requires the same pinned read and write engine')
+        work.mkdir(parents=True, exist_ok=False)
+        exported = work / 'base'
+        base_path = exported / 'filename-readings.parquet'
+        counts = run_job(exported, reader, inputs=[tables.table_input('base', base)], steps=[],
+            outputs=[parquet_output(exported, 'filename-readings',
+                f"SELECT * FROM base WHERE catalog_version = '{FILENAME_PRIOR_VERSION}'", filenames.PK)],
+            queries=[dict(name='versions', sql=f"""SELECT count(*) AS total,
+                count(*) FILTER (WHERE catalog_version IS DISTINCT FROM '{FILENAME_PRIOR_VERSION}') AS other
+                FROM base""")])['versions'][0]
+        if not counts['total'] or counts['other']:
+            raise ValueError('Filename transition base must have only the reviewed prior version')
+
+        predicate = ACT_CITATION.pattern
+        parser = filenames._parser()
+        replacements = []
+        with pq.ParquetFile(base_path) as inputs:
+            for batch in inputs.iter_batches(columns=filenames.PK[:2]):
+                selected = batch.filter(pc.match_substring_regex(batch.column('filename'), predicate))
+                replacements.extend(filenames.read_filename(row['filename'], row['source_url'],
+                    parser=parser, catalog_version=FILENAME_ACT_CITATION_VERSION) for row in selected.to_pylist())
+        if not replacements:
+            raise ValueError('Filename transition selected no source pairs')
+        new_rows = pa.Table.from_pylist(replacements, schema=filenames.SCHEMA)
+        changed = work / 'recomputed.parquet'
+        pq.write_table(new_rows, changed)
+
+        filenames.create_table(engine=engine, work=work / 'create', catalog_root=catalog,
+                               table=target, location=work / 'lake', create_namespace=True)
+        columns = ','.join(f"'{FILENAME_ACT_CITATION_VERSION}' AS catalog_version" if name == 'catalog_version'
+                           else name for name in filenames.SCHEMA.names)
+        identity = file_pin(base_path)['sha256'] + ':' + file_pin(changed)['sha256']
+        operation = dict(kind='append', name='append', table=target, current_table='existing', work_table='pending',
+            sql=f"SELECT {columns} FROM base WHERE NOT regexp_like(filename, '{predicate}') UNION ALL SELECT * FROM changed",
+            identity_sql=f"SELECT '{identity}' AS identity", layout=tables.PART_LAYOUT)
+        tables._job(engine, work / 'append', catalog_root=catalog,
+                    inputs=[tables.table_input('base', base_path), tables.table_input('changed', changed)], operations=[operation])
+        pin = tables.resolve_tables(engine=engine, work=work / 'head', catalog_root=catalog,
+                                   tables={'filename_readings': target})['filename_readings']
+        checked = work / 'check'
+        run_job(checked, engine, inputs=[tables.table_input('result', pin)], steps=[],
+            outputs=[parquet_output(checked, 'filename-readings', 'SELECT * FROM result', filenames.PK)])
+        proof = _verify_filename_transition(base_path, checked / 'filename-readings.parquet', new_rows, predicate)
+        if proof['rows'] != counts['total'] or writer != writer_identity(ROOT, BACKFILL):
+            raise ValueError('Filename transition source count or writer identity changed')
+
+    selector = dict(kind='native_table', **pin)
+    report = dict(status='tables_built', executed=True, base=source['base'], selector=selector, predicate=predicate,
+                  prior_version=FILENAME_PRIOR_VERSION, catalog_version=FILENAME_ACT_CITATION_VERSION, **proof,
+                  source_export=file_pin(base_path), recomputed_file=file_pin(changed))
+    report_path = work / 'filename-transition.json'
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
+    producer_path = work / 'filename_readings.json'
+    producer = record(producer_path, input='filename_readings', selector=selector, job=BACKFILL)
+    producer.update(recorded='with production', reused_rows=proof['reused'], appended=proof['recomputed'],
+                    filename_transition=dict(path=str(report_path), **file_pin(report_path)))
+    producer_path.write_text(json.dumps(producer, indent=1, sort_keys=True) + '\n')
+    return dict(report, producer=dict(path=str(producer_path), **file_pin(producer_path)))
+
+
 def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
     """Run bounded lake backfill batches against the configured remote runtime and raw store."""
     if spec.get('status')=='blocked':return dict(spec)
+    if 'filename_transition' in spec:
+        return _filename_transition(spec, runtime_factory)
     if 'selective' in spec:
         from viewer_publication.archive_selective import execute_selective
         return execute_selective(spec,runtime_factory=runtime_factory)
