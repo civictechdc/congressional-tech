@@ -277,8 +277,8 @@ def test_get_document_text_reads_pdf_gzip_html_xml_and_plain_text_and_caches(tmp
                 page_hit = await get_doc(release_id=selected['release_id'], link_key=by_row[0], section='text', page=2, query='commingled')
                 assert page_hit['total_chars'] == page2['total_chars']
 
-                # Cache verification: 4 calls to row 0 only made 1 HTTP request and wrote <data_dir>/bodies/<sha>.json
-                cache_file = selected_dir / 'bodies' / f'{pdf_sha.hex()}.json'
+                # Cache verification: 4 calls to row 0 only made 1 HTTP request and wrote a versioned cache entry
+                cache_file = selected_dir / 'bodies' / f'{pdf_sha.hex()}.v2.json'
                 assert cache_file.is_file()
                 assert requests.count(f'/bodies/sha256/{pdf_sha.hex()[:2]}/{pdf_sha.hex()}.pdf') == 1
 
@@ -374,14 +374,14 @@ def test_get_document_text_fails_closed_on_security_and_integrity_faults(tmp_pat
                 mp.setattr(body_reader, 'extract_pages', forbid_extract)
                 with pytest.raises(ExplorerError, match='SHA-256|checksum|digest|mismatch'):
                     read_via_target(0)
-            assert not (selected_dir / 'bodies' / f'{expected_sha.hex()}.json').exists()
+            assert not (selected_dir / 'bodies' / f'{expected_sha.hex()}.v2.json').exists()
 
             # 2. Decompression bomb exceeding cap fails closed without caching
             with pytest.MonkeyPatch.context() as mp:
                 mp.setattr(body_reader, 'MAX_BODY_BYTES', 1 << 20)
                 with pytest.raises(ExplorerError, match='exceeds|size|limit'):
                     read_via_target(1)
-            assert not (selected_dir / 'bodies' / f'{bomb_sha.hex()}.json').exists()
+            assert not (selected_dir / 'bodies' / f'{bomb_sha.hex()}.v2.json').exists()
 
             # 3. Unsupported binary format fails closed
             with pytest.raises(ExplorerError, match='Unsupported|format|binary'):
@@ -462,22 +462,27 @@ def test_redos_zero_length_regex_pdftotext_timeout_and_cache_bounds(tmp_path):
     import subprocess
     from congressional_explorer_mcp import body_reader
     from congressional_explorer_mcp.body_reader import (
+        BODY_CACHE_VERSION,
         _compile_query,
         _extract_pdf_pages,
         _read_cached_pages,
+        _search,
         _write_cached_pages,
         read_document_body,
     )
 
-    # 1. ReDoS nested quantifiers and zero-length regex patterns are neutralized
-    redos_pat = _compile_query('(a+)+$')
-    t0 = time.monotonic()
-    assert redos_pat.search('a' * 40 + '!') is None
-    assert (time.monotonic() - t0) < 0.1
-
-    zero_pat = _compile_query('^')
-    assert zero_pat.search('abc') is None
-    assert zero_pat.search('a^b') is not None
+    # Each regex search uses the remaining request time, including expensive individual matches.
+    pattern = _compile_query('(a|aa)+$', time.monotonic() + 1)
+    assert _search(pattern, 'a' * 8 + '!', 0, time.monotonic() + 1) is None
+    with pytest.raises(TimeoutError):
+        _search(pattern, 'a' * 48 + '!', 0, time.monotonic() + 0.02)
+    ordinary = _compile_query('pha(se|ses) [12]', time.monotonic() + 1)
+    match = _search(ordinary, 'Start Phase 2 now.', 0, time.monotonic() + 1)
+    assert match is not None and (match.start(), match.group()) == (6, 'Phase 2')
+    for query in ('^', '(unclosed', 'a{999999999999}'):
+        literal = _compile_query(query, time.monotonic() + 1)
+        assert _search(literal, 'abc', 0, time.monotonic() + 1) is None
+        assert _search(literal, f'a{query}b', 0, time.monotonic() + 1) is not None
 
     # 2. pdftotext TimeoutExpired raises TimeoutError instead of falling through to BT...ET
     fake_pdf = b'%PDF-1.4\nBT (Should not fall through on timeout) Tj ET\n%%EOF'
@@ -489,12 +494,11 @@ def test_redos_zero_length_regex_pdftotext_timeout_and_cache_bounds(tmp_path):
         with pytest.raises(TimeoutError, match='timed out'):
             _extract_pdf_pages(fake_pdf, deadline=time.monotonic() + 5.0)
 
-    # 3. BT...ET fallback is skipped when len(pdf_data) > 4 MiB
-    oversized_pdf = b'%PDF-1.4\n' + (b' ' * (4 * 1024 * 1024 + 64)) + b'\nBT (Hidden text) Tj ET\n%%EOF'
+    # 3. Unparsed text blocks cannot establish PDF page boundaries.
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(shutil, 'which', lambda name: None)
         with pytest.raises(ExplorerError, match='Unable to extract text'):
-            _extract_pdf_pages(oversized_pdf, deadline=time.monotonic() + 5.0)
+            _extract_pdf_pages(fake_pdf, deadline=time.monotonic() + 5.0)
 
     # 4. Monotonic deadline already expired raises TimeoutError in _extract_pdf_pages and read_document_body
     with pytest.raises(TimeoutError, match='timed out'):
@@ -506,7 +510,7 @@ def test_redos_zero_length_regex_pdftotext_timeout_and_cache_bounds(tmp_path):
     bodies_dir.mkdir(parents=True, exist_ok=True)
     empty_sha = 'a' * 64
     empty_cache = bodies_dir / f'{empty_sha}.json'
-    empty_cache.write_text(json.dumps(dict(version=1, saved_body=empty_sha, format='text', page_count=0, pages=[])))
+    empty_cache.write_text(json.dumps(dict(version=BODY_CACHE_VERSION, saved_body=empty_sha, format='text', page_count=0, pages=[])))
     with pytest.raises(ExplorerError, match='Corrupt cached document body'):
         _read_cached_pages(empty_cache, empty_sha, max_bytes=1024)
 

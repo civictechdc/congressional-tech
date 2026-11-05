@@ -85,6 +85,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
         Use section='text' with optional page, offset, max_chars, or query (keyword/regex snippet search)
         to read verified PDF, HTML, XML, or plain-text document bodies from the archive.
+        Snippet matching uses a case-insensitive regex with a time limit. Invalid patterns are literal.
         Summary includes published_on and modified_on when supplied. They are publisher page dates.
         Use section='page_metadata' for paged declarations, including conflicting values and their source pointers.
         Use section='selected_text' with offset and max_chars for exact publisher-marked text and its citation.
@@ -101,7 +102,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
                         abandon_on_cancel=True,
                     )
             except TimeoutError as error:
-                raise ToolError('Document body fetch or extraction timed out') from error
+                raise ToolError('Document body read timed out') from error
             except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
                 raise ToolError(str(error)) from error
         return await call('get_document', query.model_dump())
@@ -125,6 +126,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         section='documents' follows direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
         use nomination_transcripts, bill_hearing_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         Integer IDs accept leading zeros and surrounding whitespace; decimals, exponents and booleans are rejected.
+        For a saved HLS (m3u8) track, saved_url downloads the retained playlist file.
+        Relative segment paths refer to the publisher's playlist context. Use the publisher recording link for playback.
         """
         return await call('get_entity', query.model_dump())
 
