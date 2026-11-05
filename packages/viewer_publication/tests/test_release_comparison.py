@@ -241,6 +241,21 @@ def test_witnesses_re_keyed_through_the_published_map_are_explained(tmp_path):
         ('witnesses.parquet', 'removed keys'), ('witnesses.parquet', 'added keys'), ('witnesses.parquet', 'changed organization')}
 
 
+@pytest.mark.parametrize('surviving_key', ['w1', 'n1'])
+def test_a_map_that_collapses_distinct_base_occurrences_is_not_explained(tmp_path, surviving_key):
+    previous = rekey_release(tmp_path / 'prev', [('w1', 'r0', 'Ann', 'GAO', None), ('w2', 'r0', 'Ann', 'GAO', None)],
+                             ['w1', 'w2'], [('earlier', 'w1', 'unambiguous', 'content')])
+    mappings = [(key, surviving_key, 'unambiguous', 'content')
+                for key in ('earlier', 'w1', 'w2') if key != surviving_key]
+    current = rekey_release(tmp_path / 'live', [(surviving_key, 'r1', 'Ann', 'GAO', None)],
+                            [surviving_key], mappings)
+    code, report = run(tmp_path, previous, current)
+    assert code == 1
+    assert counts(report, 'witnesses')[('removed keys', 'witness_key_map collapses distinct base occurrences')] == (
+        -1 if surviving_key == 'w1' else -2)
+    assert counts(report, 'list') == {('changed witness_keys', 'value differs on matched key'): 1}
+
+
 def test_a_map_that_names_the_wrong_successor_is_not_explained(tmp_path):
     """The planted case: an unambiguous row whose successor is not published, and a key the map dropped."""
     prev = rekey_release(tmp_path / 'prev', [('w1', 'r0', 'Ann', 'GAO', None), ('w2', 'r0', 'Bob', None, None)], ['w1'],

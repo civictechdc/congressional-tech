@@ -6,7 +6,8 @@
 --  locator: at the same locator of the same occasion, source and print, an edited name of the same
 --   person (family and given name as witness_precedence judges them) with every other attribute equal
 --   and position, organization or Bioguide ID stated.
--- One candidate maps; several are ambiguous and listed, never chosen; none is unresolved.
+-- One paired candidate maps. Several candidates without a unique pair are ambiguous.
+-- A lone content candidate with a different repeat rank leaves the earlier occurrence unresolved.
 WITH pairs AS (
  SELECT k.old_key,c.witness_key,1 AS tier,true AS paired
  FROM witness_key_priors k
@@ -40,7 +41,7 @@ WITH pairs AS (
 ), decided AS (
  -- per_candidate holds one row per (old_key, witness_key), so plain counts need no count(DISTINCT).
  SELECT old_key,min(tier) AS tier,count(witness_key) AS candidates,count(witness_key) FILTER (WHERE paired) AS paired_candidates,
-  min(witness_key) AS only_key,min(witness_key) FILTER (WHERE paired) AS paired_key,
+  min(witness_key) FILTER (WHERE paired) AS paired_key,
   array_agg(witness_key ORDER BY witness_key) AS candidate_keys
  FROM best
  WHERE tier=best_tier
@@ -55,13 +56,14 @@ SELECT
  o.old_key,
  o.occasion,
  o.source,
- CASE WHEN d.candidates=1 THEN d.only_key WHEN d.paired_candidates=1 THEN d.paired_key END AS witness_key,
+ CASE WHEN d.paired_candidates=1 THEN d.paired_key END AS witness_key,
  CASE
-  WHEN d.old_key IS NULL THEN 'unresolved'
-  WHEN d.candidates=1 OR d.paired_candidates=1 THEN 'unambiguous'
-  ELSE 'ambiguous'
+  WHEN d.paired_candidates=1 THEN 'unambiguous'
+  WHEN d.candidates>1 THEN 'ambiguous'
+  ELSE 'unresolved'
  END AS status,
- CASE d.tier WHEN 1 THEN 'occurrence' WHEN 2 THEN 'content' WHEN 3 THEN 'locator' END AS basis,
+ CASE WHEN d.paired_candidates=1 OR d.candidates>1 THEN
+  CASE d.tier WHEN 1 THEN 'occurrence' WHEN 2 THEN 'content' WHEN 3 THEN 'locator' END END AS basis,
  CASE WHEN d.candidates>1 AND d.paired_candidates<>1 THEN d.candidate_keys
   ELSE arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') END AS candidate_keys
 FROM olds o

@@ -251,14 +251,24 @@ def rekeyed(d: Diff):
     """The candidate's unambiguous witness_key_map rows (ct-kb4w) as table `witness_rekey`; False when
     the candidate publishes no map.
 
-    A current key is never an old key (a relationship invariant), so mapping both sides through it
-    changes only base keys that the candidate re-keyed.
+    A successor can carry keys from several historical releases. Within the base release, a re-key
+    must preserve each occurrence, including a witness whose key survives directly.
     """
     if d.witness_rekey is None:
         d.witness_rekey = d.has('candidate', 'witness_key_map') and d.has('candidate', 'witnesses')
         if d.witness_rekey:
-            d.table('witness_rekey', """SELECT old_key,witness_key FROM candidate_witness_key_map
-              WHERE status='unambiguous' AND witness_key IN (SELECT witness_key FROM candidate_witnesses)""")
+            d.table('witness_rekey_candidates', """SELECT m.old_key,m.witness_key
+              FROM candidate_witness_key_map m JOIN candidate_witnesses w USING(witness_key)
+              WHERE m.status='unambiguous'""")
+            collisions = 'SELECT witness_key FROM witness_rekey_candidates WHERE false'
+            if d.has('base', 'witnesses'):
+                collisions = """SELECT r.witness_key FROM witness_rekey_candidates r
+                  JOIN base_witnesses old ON old.witness_key=r.old_key
+                  LEFT JOIN base_witnesses surviving ON surviving.witness_key=r.witness_key
+                  GROUP BY r.witness_key HAVING count(*)>1 OR count(surviving.witness_key)>0"""
+            d.table('witness_rekey_collisions', collisions)
+            d.table('witness_rekey', """SELECT r.* FROM witness_rekey_candidates r
+              ANTI JOIN witness_rekey_collisions USING(witness_key)""")
     return d.witness_rekey
 
 
@@ -454,7 +464,8 @@ def witnesses(d: Diff):
 
     Verified: a removed key whose unambiguous map row names a published witness (a re-key), and an
     added key that is such a successor. A removed key the map states ambiguous or unresolved, or
-    does not list, and any other added key, stay unverified. Rows pair by key or through the map;
+    does not list, a map that collapses distinct base occurrences, and any other added key stay
+    unverified. Rows pair by key or through the map;
     value groups skip the occurrence the key hashes, which a direct match makes equal and a re-key
     changes by definition, and compare superseded_by through the map. Cannot see whether the map
     chose the right successor: the model's matching rules and their fixtures own that.
@@ -462,12 +473,16 @@ def witnesses(d: Diff):
     if not rekeyed(d):
         return generic('witnesses')(d)
     out = []
-    for status, mapped, n in d.rows("""SELECT coalesce(m.status,''),x.old_key IS NOT NULL,count(*)
+    for status, mapped, collision, n in d.rows("""SELECT coalesce(m.status,''),x.old_key IS NOT NULL,
+          c.witness_key IS NOT NULL AND m.status='unambiguous',count(*)
           FROM (SELECT witness_key FROM base_witnesses ANTI JOIN candidate_witnesses USING(witness_key)) b
           LEFT JOIN candidate_witness_key_map m ON m.old_key=b.witness_key LEFT JOIN witness_rekey x ON x.old_key=b.witness_key
+          LEFT JOIN witness_rekey_collisions c ON c.witness_key=m.witness_key
           GROUP BY ALL ORDER BY ALL"""):
         if mapped:
             out.append(group('removed keys', 're-keyed: witness_key_map names the published successor', -n, 'verified'))
+        elif collision:
+            out.append(group('removed keys', 'witness_key_map collapses distinct base occurrences', -n, 'defect'))
         elif status in ('ambiguous', 'unresolved'):
             out.append(group('removed keys', f'witness_key_map states the key {status}', -n))
         elif status:

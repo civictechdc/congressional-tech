@@ -479,6 +479,19 @@ def test_a_repeat_with_no_partner_is_ambiguous_and_lists_its_candidates(refetche
     assert row['candidates'] == [('Lynn Goldman', 'congress_gov:witness[6]'), ('Lynn Goldman', 'congress_gov:witness[7]')]
 
 
+def test_a_repeat_with_no_partner_does_not_map_to_the_only_survivor(tmp_path):
+    newer, older = sorted(['body-1', 'body-2'], key=lambda tag: hashlib.sha256(tag.encode()).hexdigest())
+    entries = [('Lynn Goldman', dict(position='Dean'))]
+    before = record(older, 'congress_gov', listed(entries * 2), event_id=9001)
+    after = record(newer, 'congress_gov', listed(entries), event_id=9001)
+    found = resolve(tmp_path, [before, after], [], {}, keys=True)
+    assert len(found['witnesses']) == 1
+    survivor = found['witnesses'][0]['witness_key']
+    assert sorted((row['status'], row['witness_key'], row['basis'], row['candidate_keys'])
+                  for row in found['map']) == [('unambiguous', survivor, 'content', []),
+                                                ('unresolved', None, None, [])]
+
+
 @pytest.mark.parametrize('old', [
     ('Carl Other', 'congress_gov:witness[10]'),  # no longer listed
     ('Sam Lee', 'congress_gov:witness[4]'),  # the same name with another position: another person
