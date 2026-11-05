@@ -202,13 +202,7 @@ WITH candidate_appearance_shas AS (
    ELSE b.source_url
   END AS resolved_base
  FROM bound_contexts b
- -- The flat MODS witness list covers the entire print. It can name a sitting
- -- only when the print covers a single day and just one vetted event fits.
- LEFT JOIN package_mods_facts pm ON b.source='mods' AND b.package_id=pm.package_id
- LEFT JOIN (
-  SELECT package_id,min(event_id) AS event_id
-  FROM package_meeting_links GROUP BY package_id HAVING count(*)=1
- ) spm ON pm.package_id=spm.package_id AND cardinality(pm.held_dates)=1
+ LEFT JOIN package_meeting_links spm ON b.source='mods' AND b.package_id=spm.package_id AND spm.witness_eligible
  LEFT JOIN senate_page_meeting_links spml ON b.source='senate_page' AND b.record_sha_hex=spml.record_sha_hex
  LEFT JOIN appearance_url_keys pk ON b.source='senate_page' AND b.page_url=pk.url AND pk.error IS NULL
 )

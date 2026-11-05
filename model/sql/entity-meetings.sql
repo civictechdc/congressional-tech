@@ -45,9 +45,8 @@ WITH keys AS (
 ), rescheduled AS (
  SELECT event_id,twin_id AS rescheduled_to,CASE WHEN stated THEN 'publisher_status' ELSE 'recording_on_later_twin' END AS rescheduled_basis FROM first_twin WHERE rn=1
 ), transcript_links AS (
- -- A linked print is this meeting's transcript only if its own MODS records the meeting (the same rule as
- -- witnesses): Congress.gov lists 52109 on 330128, another hearing's print. A package with no MODS held
- -- cannot be judged, so its jacket link stands.
+ -- Use vetted print links when MODS facts are available. Congress.gov lists 52109 on 330128,
+ -- another hearing's print. Without MODS facts the jacket link stands.
  SELECT package_id,event_id FROM package_meeting_links
  UNION
  SELECT l.package_id,l.event_id FROM meeting_transcript_links l
