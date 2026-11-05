@@ -62,3 +62,45 @@ def build_fixture_release(fixture, *, output, scratch, engine):
     return _execute(inputs, steps, output=output, scratch=scratch, engine=engine,
         origin=dict(kind='hand_fixture', source_sha256=sha256(fixture.read_bytes()).hexdigest(),
                     gaps=['Synthetic reader fixture; capture scheduling is disabled']))
+
+
+def add_witness_key_map(release):
+    """Add witnesses.parquet and witness_key_map.parquet (ct-kb4w) to a fixture release in place.
+
+    One current witness, an earlier key mapped to it, an ambiguous key with two candidates and an
+    unresolved key; the cases are written to witness-map-expected.json for the site checks. The
+    tables are written here, not by the native writer: they are reader inputs, not model output.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_format import release_identity
+    release = Path(release)
+    manifest = json.loads((release / 'manifest.json').read_text())
+    label = pa.dictionary(pa.int32(), pa.string())
+    current, twin_a, twin_b = 'a1' * 8, 'a2' * 8, 'a3' * 8
+    witnesses = pa.table(dict(witness_key=[current, twin_a, twin_b], name=['Dr. Jane Smith', 'Pat Lee', 'Pat Lee'],
+        occasion=['meeting:118001'] * 3, source=['congress_gov'] * 3,
+        organization=['National Transit Institute', 'Port Authority', 'Port Authority']))
+    key_map = pa.Table.from_pylist([
+        dict(old_key='b1' * 8, witness_key=current, status='unambiguous', basis='content', candidate_keys=[],
+             occasion='meeting:118001', source='congress_gov'),
+        dict(old_key='b2' * 8, witness_key=None, status='ambiguous', basis='content', candidate_keys=[twin_a, twin_b],
+             occasion='meeting:118001', source='congress_gov'),
+        dict(old_key='b3' * 8, witness_key=None, status='unresolved', basis=None, candidate_keys=[],
+             occasion='meeting:118001', source='congress_gov')],
+        schema=pa.schema([('old_key', pa.string()), ('witness_key', pa.string()), ('status', label), ('basis', label),
+            ('candidate_keys', pa.list_(pa.string())), ('occasion', label), ('source', label)]))
+    added = []
+    for name, table in [('witnesses.parquet', witnesses), ('witness_key_map.parquet', key_map)]:
+        pq.write_table(table, release / name)
+        pin = file_pin(release / name)
+        added.append(dict(name=name, sha256=pin['sha256'], size=pin['size'], rows=table.num_rows, md5='0' * 32,
+                          row_range=None, shard=None, producer='archive', coverage={}))
+    manifest['files'] = [f for f in manifest['files'] if f['name'] not in {a['name'] for a in added}] + added
+    manifest['release_id'] = release_identity(manifest['schema_version'], manifest['files'])
+    (release / 'manifest.json').write_text(json.dumps(manifest))
+    cases = dict(live=dict(key=current, name='Dr. Jane Smith'), redirect=dict(key='b1' * 8),
+                 ambiguous=dict(key='b2' * 8, candidates=[twin_a, twin_b]), unresolved=dict(key='b3' * 8))
+    (release / 'witness-map-expected.json').write_text(json.dumps(cases))
+    return cases

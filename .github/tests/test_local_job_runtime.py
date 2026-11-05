@@ -110,6 +110,7 @@ def test_existing_ci_commands_enroll_all_site_mechanism_checks():
     assert 'scripts/archive-tools.test.mjs' in scripts['test:explorer']
     browser=(ROOT/'.github/scripts/verify-archive-contract.py').read_text()
     assert 'test:archive-saved-browser' in browser and 'test:archive-heap-browser' in browser
+    assert 'test:archive-witness-browser' in browser
 
 
 @pytest.mark.parametrize('failed',[None,'test:archive-saved-browser'])
@@ -131,8 +132,11 @@ def test_actual_browser_wrapper_runs_checked_children_and_stops_at_failure(tmp_p
     if failed:
         assert result.returncode!=0 and len(commands)==2
     else:
-        assert result.returncode==0 and len(commands)==3
+        assert result.returncode==0 and len(commands)==4
         assert 'test:archive-heap-browser' in commands[2]
+        witness=tmp_path/'work/witness-release'
+        assert f'test:archive-witness-browser --workspaces=false -- --release {witness}' in commands[3]
+        assert {'witnesses.parquet','witness_key_map.parquet','witness-map-expected.json'}<={p.name for p in witness.iterdir()}
 
 
 def test_private_validation_runtime_keeps_main_trusted_source_boundary():

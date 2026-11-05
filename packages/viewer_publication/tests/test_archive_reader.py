@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_fixture import build_fixture_release
+from viewer_publication.archive_fixture import add_witness_key_map, build_fixture_release
 
 ROOT = Path(__file__).parents[3]
 
@@ -95,40 +95,10 @@ def test_reader_redirects_retired_keys_and_shows_removal_notices(tmp_path):
 
 def test_reader_opens_earlier_witness_keys_through_the_key_map(tmp_path):
     """ct-kb4w in the site reader: an unambiguous earlier key opens its successor; the others say why not."""
-    import json
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from congress_api.retention.provenance import file_pin
-    from viewer_publication.archive_format import release_identity
     release = tmp_path / 'release'
-    manifest = build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
+    build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
         scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
-    label = pa.dictionary(pa.int32(), pa.string())
-    current, twin_a, twin_b = 'a1' * 8, 'a2' * 8, 'a3' * 8
-    witnesses = pa.table(dict(witness_key=[current, twin_a, twin_b], name=['Dr. Jane Smith', 'Pat Lee', 'Pat Lee'],
-        occasion=['meeting:118001'] * 3, source=['congress_gov'] * 3,
-        organization=['National Transit Institute', 'Port Authority', 'Port Authority']))
-    key_map = pa.Table.from_pylist([
-        dict(old_key='b1' * 8, witness_key=current, status='unambiguous', basis='content', candidate_keys=[],
-             occasion='meeting:118001', source='congress_gov'),
-        dict(old_key='b2' * 8, witness_key=None, status='ambiguous', basis='content', candidate_keys=[twin_a, twin_b],
-             occasion='meeting:118001', source='congress_gov'),
-        dict(old_key='b3' * 8, witness_key=None, status='unresolved', basis=None, candidate_keys=[],
-             occasion='meeting:118001', source='congress_gov')],
-        schema=pa.schema([('old_key', pa.string()), ('witness_key', pa.string()), ('status', label), ('basis', label),
-            ('candidate_keys', pa.list_(pa.string())), ('occasion', label), ('source', label)]))
-    added = []
-    for name, table in [('witnesses.parquet', witnesses), ('witness_key_map.parquet', key_map)]:
-        pq.write_table(table, release / name)
-        pin = file_pin(release / name)
-        added.append(dict(name=name, sha256=pin['sha256'], size=pin['size'], rows=table.num_rows, md5='0' * 32,
-                          row_range=None, shard=None, producer='archive', coverage={}))
-    manifest['files'] = [f for f in manifest['files'] if f['name'] not in {a['name'] for a in added}] + added
-    manifest['release_id'] = release_identity(1, manifest['files'])
-    (release / 'manifest.json').write_text(json.dumps(manifest))
-    (release / 'witness-map-expected.json').write_text(json.dumps(dict(
-        live=dict(key=current, name='Dr. Jane Smith'), redirect=dict(key='b1' * 8),
-        ambiguous=dict(key='b2' * 8, candidates=[twin_a, twin_b]), unresolved=dict(key='b3' * 8))))
+    add_witness_key_map(release)
     result = subprocess.run(['node', '--test', str(ROOT / 'apps/site/scripts/archive-witness-map.test.mjs')],
         cwd=ROOT / 'apps/site', env=dict(os.environ, ARCHIVE_FIXTURE=str(release)),
         capture_output=True, text=True, timeout=90)
