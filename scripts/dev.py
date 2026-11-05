@@ -23,9 +23,26 @@ def declaration():
     return tomllib.loads((ROOT / 'test-suites.toml').read_text())
 
 
-def run(command, *, timeout=15):
-    """Execute a subprocess command in the project root with standard timeouts."""
-    return subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True, timeout=timeout)
+def run(command, *, timeout=15, own_group=False):
+    """Run a command in the project root, owning its group when it launches children."""
+    if not own_group:
+        return subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True, timeout=timeout)
+
+    spec = importlib.util.spec_from_file_location('dev_process_rss', ROOT / 'scripts/measure/process_rss.py')
+    supervisor = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(supervisor)
+    with supervisor.start_owned(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True) as process:
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except BaseException as error:
+            supervisor.stop_owned(process)
+            if isinstance(error, subprocess.TimeoutExpired):
+                error.cmd = command
+            raise
+    result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    result.check_returncode()
+    return result
 
 
 def baseline(config, *, fetch=False):
@@ -140,7 +157,7 @@ def doctor(config, lane_name=None):
     job_runtime(config, lane_name)
     try:
         result = run([sys.executable, '-m', 'congress_api.lake.reading_version_diagnostics'],
-                     timeout=import_timeout)
+                     timeout=import_timeout, own_group=True)
         if result.stdout:
             print(result.stdout, end='')
     except (OSError, subprocess.SubprocessError) as error:

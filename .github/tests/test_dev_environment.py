@@ -1,7 +1,11 @@
 """Prerequisite failures must stop before tests; inventory covers new files."""
+from contextlib import suppress
 import importlib.util
+import os
 from pathlib import Path
+import signal
 import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -27,6 +31,43 @@ def test_inventory_rejects_new_unassigned_test(monkeypatch):
     monkeypatch.setattr(dev, 'run', lambda *a, **kw: SimpleNamespace(stdout='docs/experiments/new/test_new.py\0'))
     with pytest.raises(ValueError, match='Unassigned test: docs/experiments/new/test_new.py'):
         dev.inventory(dev.declaration())
+
+
+def test_owned_diagnostics_timeout_stops_a_term_ignoring_descendant(tmp_path):
+    pid_file = tmp_path / 'native-version-probe.pid'
+    launcher = 'import subprocess, sys; subprocess.run([sys.executable, "-c", *sys.argv[1:]])'
+    descendant = '''
+import os, signal, sys, time
+from pathlib import Path
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+Path(sys.argv[1]).write_text(str(os.getpid()))
+time.sleep(12)
+'''
+
+    def live_descendant():
+        if not pid_file.is_file():
+            return None
+        pid = int(pid_file.read_text())
+        result = subprocess.run(['ps', '-ww', '-p', str(pid), '-o', 'stat=,command='],
+                                capture_output=True, text=True, timeout=5)
+        if result.returncode not in (0, 1):
+            result.check_returncode()
+        state, _, command = result.stdout.strip().partition(' ')
+        if state and not state.startswith('Z') and str(pid_file) in command:
+            return pid
+        return None
+
+    command = [sys.executable, '-c', launcher, descendant, str(pid_file)]
+    try:
+        with pytest.raises(subprocess.TimeoutExpired) as error:
+            dev.run(command, timeout=3, own_group=True)
+        assert error.value.cmd == command
+        assert pid_file.is_file(), 'native version probe never started'
+        assert live_descendant() is None, 'diagnostics timed out but left the native version probe alive'
+    finally:
+        if (pid := live_descendant()) is not None:
+            with suppress(ProcessLookupError):
+                os.kill(pid, signal.SIGKILL)
 
 
 def test_all_fourteen_experiment_files_are_explicit_active_regressions():

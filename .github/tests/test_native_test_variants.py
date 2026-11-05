@@ -72,6 +72,7 @@ def test_prerequisite_budget_also_bounds_advisory_reading_check(monkeypatch, cap
     config['lanes']['production-offline'].pop('required_job_config_env', None)
     dev.doctor(config, 'production-offline')
     assert calls and all(kwargs['timeout'] == expected for _, kwargs in calls)
+    assert calls[-1][1]['own_group'] is True
     assert 'WARNING: reading version drift\nDoctor passed.' in capsys.readouterr().out
 
 
