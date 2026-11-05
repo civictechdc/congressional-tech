@@ -15,6 +15,8 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import zlib
 
+import regex
+
 from . import __version__
 from .models import DocumentQuery, ExplorerError, MAX_BYTES
 from .release import atomic_json, encoded
@@ -408,22 +410,24 @@ def _load_or_extract_pages(
     return pages, fmt, body_hex, saved_url
 
 
-_REDOS_QUANTIFIER_RE = re.compile(
-    r'\([^)]*(?:[+*]|\{[0-9,]+\})[^)]*\)\s*(?:[+*?]|\{[0-9,]+\})|(?:[+*?]|\{[0-9,]+\})\s*(?:[+*]|\{[0-9,]+\})'
-)
+def _search(pattern: regex.Pattern, text: str, offset: int, deadline: float) -> regex.Match | None:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError('Document text read timed out')
+    return pattern.search(text, offset, timeout=remaining)
 
 
-def _compile_query(query: str) -> re.Pattern[str]:
-    if _REDOS_QUANTIFIER_RE.search(query):
-        return re.compile(re.escape(query), re.IGNORECASE)
+def _compile_query(query: str, deadline: float) -> regex.Pattern:
+    flags = regex.IGNORECASE | regex.VERSION0
     try:
-        pattern = re.compile(query, re.IGNORECASE)
-    except re.error:
-        return re.compile(re.escape(query), re.IGNORECASE)
-    if pattern.search('') is not None:
-        return re.compile(re.escape(query), re.IGNORECASE)
+        # Fall back to a literal when the expression is invalid in Python.
+        re.compile(query, re.IGNORECASE)
+        pattern = regex.compile(query, flags)
+    except (re.error, regex.error, OverflowError, RecursionError):
+        return regex.compile(re.escape(query), flags)
+    if _search(pattern, '', 0, deadline) is not None:
+        return regex.compile(re.escape(query), flags)
     return pattern
-
 
 def read_document_body(
     target: dict,
@@ -468,7 +472,7 @@ def read_document_body(
 
     if query.query and query.query.strip():
         snippet_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 4096) // 6))
-        pattern = _compile_query(query.query.strip())
+        pattern = _compile_query(query.query.strip(), deadline)
         scoped_pages = [(query.page, pages[query.page - 1])] if query.page is not None else list(enumerate(pages, start=1))
         matches: list[dict] = []
         total_matches = 0
@@ -479,9 +483,7 @@ def read_document_body(
             pos = query.offset if (query.page is not None or page_num == 1) else 0
             iterations = 0
             while pos <= len(page_text) and iterations < MAX_PAGE_MATCH_ITERATIONS:
-                if (iterations & 0xFF) == 0:
-                    _check_deadline(deadline)
-                m = pattern.search(page_text, pos)
+                m = _search(pattern, page_text, pos, deadline)
                 if m is None:
                     break
                 iterations += 1

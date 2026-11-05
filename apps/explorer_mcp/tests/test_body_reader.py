@@ -466,19 +466,23 @@ def test_redos_zero_length_regex_pdftotext_timeout_and_cache_bounds(tmp_path):
         _compile_query,
         _extract_pdf_pages,
         _read_cached_pages,
+        _search,
         _write_cached_pages,
         read_document_body,
     )
 
-    # 1. ReDoS nested quantifiers and zero-length regex patterns are neutralized
-    redos_pat = _compile_query('(a+)+$')
-    t0 = time.monotonic()
-    assert redos_pat.search('a' * 40 + '!') is None
-    assert (time.monotonic() - t0) < 0.1
-
-    zero_pat = _compile_query('^')
-    assert zero_pat.search('abc') is None
-    assert zero_pat.search('a^b') is not None
+    # Each regex search uses the remaining request time, including expensive individual matches.
+    pattern = _compile_query('(a|aa)+$', time.monotonic() + 1)
+    assert _search(pattern, 'a' * 8 + '!', 0, time.monotonic() + 1) is None
+    with pytest.raises(TimeoutError):
+        _search(pattern, 'a' * 48 + '!', 0, time.monotonic() + 0.02)
+    ordinary = _compile_query('pha(se|ses) [12]', time.monotonic() + 1)
+    match = _search(ordinary, 'Start Phase 2 now.', 0, time.monotonic() + 1)
+    assert match is not None and (match.start(), match.group()) == (6, 'Phase 2')
+    for query in ('^', '(unclosed', 'a{999999999999}'):
+        literal = _compile_query(query, time.monotonic() + 1)
+        assert _search(literal, 'abc', 0, time.monotonic() + 1) is None
+        assert _search(literal, f'a{query}b', 0, time.monotonic() + 1) is not None
 
     # 2. pdftotext TimeoutExpired raises TimeoutError instead of falling through to BT...ET
     fake_pdf = b'%PDF-1.4\nBT (Should not fall through on timeout) Tj ET\n%%EOF'
