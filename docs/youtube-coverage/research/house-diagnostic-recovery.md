@@ -2,7 +2,7 @@
 
 Probe a reviewed list of literal requests before deciding which saved failures to retry. A successful HTTP response establishes availability; it does not establish a new event, a unique event, or a verified document file.
 
-Both the probe script and `house_sites --retry-requests` accept a JSON list:
+Both the diagnostic and `house_sites --retry-requests` accept a JSON list:
 
 ```json
 [
@@ -22,7 +22,13 @@ Copy the entire original `errors[key].request`, including its parent and POST bo
 
 For a retained HTTP 404/410 observation without an error row, use its source URL and kind and the exact POST body encoded in its source key. The collector validates that this key identifies the saved unavailable observation; it does not create a synthetic failure to admit it.
 
-The research script `scripts/probe_house_sites.py --requests manifest.json --output-dir new-evidence-directory` uses the shared HTTP client and discovery parser. It makes one top-level attempt per request, groups work by host, and retains response prefixes and their completeness flags in a new directory. It preserves the full request through interpretation and keys body files by URL and POST body. It does not write collection state, follow discovered targets, or import responses into the archive.
+Run the maintained diagnostic from the checkout with its synced environment.
+
+```sh
+.venv/bin/python -m congress_api.cli.probe_house_sites --requests manifest.json --output-dir new-evidence-directory
+```
+
+The diagnostic uses the shared HTTP client and discovery parser. It makes one top-level attempt per request, groups work by host, and retains response prefixes and their completeness flags in a new directory. It preserves the full request through interpretation and keys body files by URL and POST body. It does not write collection state, follow discovered targets, or import responses into the archive.
 
 For an explicitly authorized collection recovery, add `--retry-requests manifest.json` to the existing House collector invocation with its normal committee directory, state directory, output directory, workers and rate. Stop any other collector using that state first. This mode:
 
