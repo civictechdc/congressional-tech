@@ -2,41 +2,52 @@
 -- evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until the Senate
 -- committee-page links land (ct-gi01 R2): those pages are held but not linked to meetings. Remove the
 -- senate_page_links_pending arms then; old page decisions came from the distrusted old matcher.
-WITH package_meetings AS (
- SELECT package_id,event_id FROM package_meeting_links
+WITH observations AS (
+ SELECT unnest(meeting_links) AS link,basis,status,decision,recording_scope,video_key,coalesce(video_key,url) AS ref
+ FROM recording_matches_export
 ), recording_links AS (
- -- A video reaches a meeting through the meeting itself or a package a raw record ties to that meeting alone.
- SELECT m.event_id,m.basis,m.status,m.decision,m.recording_scope,m.video_key,coalesce(m.video_key,m.url) AS ref FROM recording_matches_export m WHERE m.event_id IS NOT NULL
- UNION ALL
- SELECT p.event_id,m.basis,m.status,m.decision,m.recording_scope,m.video_key,coalesce(m.video_key,m.url) FROM recording_matches_export m JOIN package_meetings p ON m.package_id=p.package_id
+ SELECT link['event_id'] AS event_id,link['scope'] AS scope,basis,status,decision,recording_scope,video_key,ref
+ FROM observations
+), recording_refs AS (
+ -- Each locator counts once, even if independent observations cite it.
+ SELECT m.event_id,m.ref,
+  bool_or(m.scope='event' AND (m.status='asserted' OR (m.status='decided' AND m.recording_scope='full'))) AS full_recording,
+  bool_or(m.scope='event' AND m.status='decided' AND m.recording_scope='excerpt') AS excerpt,
+  bool_or(m.scope='event' AND m.status='claimed') AS claimed,
+  bool_or(m.scope='event' AND m.basis='curated' AND m.status='decided' AND m.decision='not_public') AS not_public,
+  bool_or(m.scope='event' AND m.basis='curated' AND m.status='decided' AND m.decision='no_video_found') AS confirmed_absent,
+  bool_or(m.status IN ('unresolved','conflicting')) AS disputed,
+  bool_or(m.scope='package_context') AS package_context,
+  bool_or(m.scope='event' AND m.video_key IS NOT NULL) AS has_video_record,
+  bool_or(m.scope='event' AND (v.has_caption OR coalesce(array_length(r.tracks),0)>0)) AS has_captions
+ FROM recording_links m
+ LEFT JOIN videos_export v ON m.video_key=v.video_key
+ LEFT JOIN recordings_export r ON m.video_key=r.video_key
+ GROUP BY m.event_id,m.ref
 ), recording_levels AS (
- SELECT event_id,
-  count(DISTINCT CASE WHEN status='asserted' OR (status='decided' AND recording_scope='full') THEN ref END) AS full_n,
-  count(DISTINCT CASE WHEN status='decided' AND recording_scope='excerpt' THEN ref END) AS excerpt_n,
-  count(DISTINCT CASE WHEN status='claimed' THEN ref END) AS claimed_n,
-  sum(CASE WHEN basis='curated' AND decision='not_public' THEN 1 ELSE 0 END) AS not_public_n
- FROM recording_links GROUP BY event_id
-), recording_absent AS (
- -- Absence is only ever curated: an undisputed negative verdict on every package of the meeting,
- -- each tied to this meeting alone. A sibling package with no verdict leaves it open; zero rows prove nothing.
- SELECT p.event_id FROM package_meetings p
- JOIN (SELECT DISTINCT package_id FROM recording_matches_export
-  WHERE basis='curated' AND status='decided' AND decision='no_video_found') n ON n.package_id=p.package_id
- GROUP BY p.event_id
- HAVING count(*)=(SELECT count(DISTINCT l.package_id) FROM meeting_transcript_links l WHERE l.event_id=p.event_id)
-), recording_disputed AS (
- SELECT DISTINCT p.event_id FROM recording_matches_export m JOIN package_meetings p ON m.package_id=p.package_id
- WHERE m.basis='curated' AND m.status='unresolved'
+ SELECT event_id,count(CASE WHEN full_recording THEN ref END) AS full_n,
+  count(CASE WHEN excerpt THEN ref END) AS excerpt_n,
+  count(CASE WHEN claimed THEN ref END) AS claimed_n,
+  bool_or(not_public) AS not_public,bool_or(confirmed_absent) AS confirmed_absent,
+  bool_or(disputed) AS disputed,bool_or(package_context) AS package_context,
+  bool_or(has_video_record) AS has_video_record,
+  count(CASE WHEN has_captions THEN ref END) AS caption_n
+ FROM recording_refs GROUP BY event_id
 ), recording_rows AS (
  SELECT e.event_id,'recording' AS aspect,
   CASE WHEN l.full_n>0 THEN 'present' WHEN l.excerpt_n>0 THEN 'partial' WHEN l.claimed_n>0 THEN 'claimed'
-       WHEN d.event_id IS NOT NULL THEN 'unresolved' WHEN l.not_public_n>0 THEN 'not_public'
-       WHEN a.event_id IS NOT NULL THEN 'confirmed_absent' ELSE 'unknown' END AS state,
+       WHEN l.disputed THEN 'unresolved' WHEN l.not_public THEN 'not_public'
+       WHEN l.confirmed_absent THEN 'confirmed_absent' WHEN l.package_context THEN 'unresolved' ELSE 'unknown' END AS state,
   CASE WHEN l.full_n>0 OR l.excerpt_n>0 OR l.claimed_n>0 THEN 'recording_matches'
-       WHEN d.event_id IS NOT NULL OR l.not_public_n>0 OR a.event_id IS NOT NULL THEN 'curated' ELSE 'none' END AS basis,
-  cast(coalesce(l.full_n,0)+coalesce(l.excerpt_n,0)+coalesce(l.claimed_n,0) AS INT) AS count
- FROM meetings_export e LEFT JOIN recording_levels l ON e.event_id=l.event_id LEFT JOIN recording_absent a ON e.event_id=a.event_id
-  LEFT JOIN recording_disputed d ON e.event_id=d.event_id
+       WHEN l.disputed OR l.not_public OR l.confirmed_absent THEN 'recording_decisions'
+       WHEN l.package_context THEN 'recording_matches' ELSE 'none' END AS basis,
+  cast(coalesce(nullif(l.full_n,0),nullif(l.excerpt_n,0),nullif(l.claimed_n,0),0) AS INT) AS count,
+  l.has_video_record,l.caption_n,
+  CASE WHEN l.full_n>0 THEN NULL WHEN l.excerpt_n>0 THEN 'excerpts_only' WHEN l.claimed_n>0 THEN 'video_text_only'
+       WHEN l.disputed THEN 'recording_decision_unresolved_or_conflicting'
+       WHEN l.not_public OR l.confirmed_absent THEN NULL
+       WHEN l.package_context THEN 'package_context_only' END AS reason
+ FROM meetings_export e LEFT JOIN recording_levels l ON e.event_id=l.event_id
 ), mods_named AS (
  SELECT DISTINCT event_id FROM (SELECT unnest(named_meetings) AS event_id FROM package_mods_facts) WHERE event_id IS NOT NULL
 ), transcript_sources AS (
@@ -93,29 +104,20 @@ WITH package_meetings AS (
        WHEN e.chamber='senate' AND s.event_id IS NULL THEN 'senate_page_links_pending' END AS reason
  FROM meetings_export e LEFT JOIN witness_counts c ON e.event_id=c.event_id LEFT JOIN witness_states s ON e.event_id=s.event_id
   LEFT JOIN unattached_package_witnesses u ON e.event_id=u.event_id
-), linked_videos AS (
- SELECT DISTINCT event_id,video_key FROM recording_links WHERE video_key IS NOT NULL
-), caption_counts AS (
- -- An observation is a retained track or YouTube's own flag. has_caption=false misses
- -- automatic captions, so no flag ever establishes that a recording has none.
- SELECT m.event_id,count(*) AS videos,
-  count(DISTINCT CASE WHEN v.has_caption OR coalesce(array_length(r.tracks),0)>0 THEN m.video_key END) AS observed
- FROM linked_videos m LEFT JOIN videos_export v ON m.video_key=v.video_key LEFT JOIN recordings_export r ON m.video_key=r.video_key
- GROUP BY m.event_id
-), caption_rows AS (
- -- Captions are not stated only when the recording itself is settled absent or not public.
- SELECT e.event_id,'captions' AS aspect,
-  CASE WHEN c.observed>0 THEN 'present' WHEN c.event_id IS NOT NULL THEN 'unknown'
-       WHEN r.state IN ('confirmed_absent','not_public') THEN 'not_stated' ELSE 'unknown' END AS state,
-  'videos.has_caption,recordings.tracks' AS basis,cast(coalesce(c.observed,0) AS INT) AS count,
-  -- A recording held only by address (no video record) cannot show captions; a link still pending is another case.
-  CASE WHEN c.event_id IS NOT NULL OR r.state IN ('confirmed_absent','not_public') THEN NULL
-       WHEN r.state IN ('present','partial','claimed') THEN 'recording_without_video_record'
-       ELSE 'recording_link_pending' END AS reason
- FROM meetings_export e LEFT JOIN caption_counts c ON e.event_id=c.event_id LEFT JOIN recording_rows r ON e.event_id=r.event_id
+), recording_and_caption_rows AS (
+ SELECT event_id,unnest(make_array(
+  named_struct('aspect',aspect,'state',state,'basis',basis,'count',count,'reason',reason),
+  named_struct('aspect','captions',
+   'state',CASE WHEN caption_n>0 THEN 'present' WHEN has_video_record THEN 'unknown'
+        WHEN state IN ('confirmed_absent','not_public') THEN 'not_stated' ELSE 'unknown' END,
+   'basis','videos.has_caption,recordings.tracks','count',cast(coalesce(caption_n,0) AS INT),
+   'reason',CASE WHEN caption_n>0 OR has_video_record OR state IN ('confirmed_absent','not_public') THEN NULL
+        WHEN state IN ('present','partial','claimed') THEN 'recording_without_video_record'
+        ELSE 'recording_link_pending' END)
+ )) AS item FROM recording_rows
 )
-SELECT event_id,aspect,state,basis,count,CASE WHEN state='unresolved' THEN 'old_evidence_disputes_negative_verdict' WHEN state='claimed' THEN 'video_text_only' WHEN state='partial' THEN 'excerpts_only' END AS reason FROM recording_rows
+SELECT event_id,item['aspect'] AS aspect,item['state'] AS state,item['basis'] AS basis,item['count'] AS count,item['reason'] AS reason
+FROM recording_and_caption_rows
 UNION ALL SELECT event_id,aspect,state,basis,count,reason FROM transcript_rows
 UNION ALL SELECT event_id,aspect,state,basis,count,reason FROM document_rows
 UNION ALL SELECT event_id,aspect,state,basis,count,reason FROM witness_rows
-UNION ALL SELECT event_id,aspect,state,basis,count,reason FROM caption_rows

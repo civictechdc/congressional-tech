@@ -25,9 +25,13 @@ def test_compact_pattern_is_an_exact_union_including_optional_suffixes():
 
 def test_batches_stay_below_observed_request_line_limit_without_losing_keys():
     keys = [f'gov,house,example)/files/{n:05d}-some-very-long-document-name.pdf?value={n * 17}' for n in range(600)]
-    batches = list(MODULE.batches('example.house.gov', keys))
+    host, collection = 'example.house.gov', 'congress118th'
+    batches = list(MODULE.batches(host, collection, keys))
     assert sorted(k for batch in batches for k in batch) == sorted(keys)
-    assert all(len(urlencode(MODULE.params('example.house.gov', batch))) <= 3600 for batch in batches)
+    for batch in batches:
+        url = MODULE.job_url({'host': host, 'collection': collection, 'keys': batch})
+        line = f'GET {url.removeprefix("https://webharvest.gov")} HTTP/1.1'
+        assert len(line.encode('ascii')) <= 4094
 
 
 def test_empty_index_is_valid_but_html_is_not():
@@ -99,3 +103,37 @@ def test_host_inventory_covers_targets_only_when_complete_and_falls_back_when_tr
     if truncated:
         assert audit.jobs[0].get('mode') != 'host'
         assert audit.jobs[0]['keys'] == [canonical]
+
+
+def test_rejected_request_line_splits_only_that_query_and_keeps_completed_coverage(tmp_path):
+    from unittest.mock import MagicMock
+
+    host = 'example.house.gov'
+    keys = [MODULE.key(f'https://{host}/{n}.pdf') for n in range(3)]
+    response = MagicMock()
+    response.status_code = 400
+    response.headers = {'Content-Type': 'text/html'}
+    response.iter_content.return_value = [b'Request Line is too large (4207 &gt; 4094)']
+    response.__enter__.return_value = response
+    audit = MODULE.Audit(tmp_path, 0)
+    audit.session.close()
+    audit.session = MagicMock()
+    audit.session.get.return_value = response
+    audit.covered[keys[0]].add('congress118th')
+    job = {'host': host, 'collection': 'congress118th', 'keys': keys[1:]}
+    audit.fetch(job)
+    assert [j['keys'] for j in audit.jobs] == [[keys[1]], [keys[2]]]
+    assert audit.errors[0]['reason'] == 'server_request_line_limit_split'
+    assert dict(audit.covered) == {keys[0]: {'congress118th'}}
+
+
+def test_overlong_single_target_has_no_network_attempt(tmp_path):
+    from unittest.mock import MagicMock
+
+    audit = MODULE.Audit(tmp_path, 0)
+    audit.session.close()
+    audit.session = MagicMock()
+    with pytest.raises(ValueError, match='single_url_exceeds_request_line_limit'):
+        audit.fetch({'host': 'example.house.gov', 'collection': 'congress118th', 'keys': ['x' * 4200]})
+    audit.session.get.assert_not_called()
+    assert not audit.covered

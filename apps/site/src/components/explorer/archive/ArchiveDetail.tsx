@@ -1,3 +1,5 @@
+import type {RelationState} from '../reader/archive-entities.ts';
+import {RelationNotice} from './ArchiveRows.tsx';
 import {dateLabels, recoveryLabel, savedCopy} from '../reader/archive.ts';
 import {formatLabel} from './ArchiveFormats.tsx';
 import {
@@ -56,6 +58,7 @@ export function ArchiveDetail({
   entry,
   meetings=[],
   meetingDetails=[],
+  relationStates={},
   versions=[],
   committees=[],
   subjects=[],
@@ -75,6 +78,7 @@ export function ArchiveDetail({
   entry:any;
   meetings?:any[];
   meetingDetails?:any[];
+  relationStates?:Record<string, RelationState>;
   versions?:any[];
   committees?:any[];
   subjects?:any[];
@@ -114,7 +118,7 @@ export function ArchiveDetail({
   }
   const allMeasures=[...subjectMap.values()];
 
-  const witnessItems:any[]=witnesses.length
+  const witnessItems:any[]=witnesses.length||relationStates.witnesses==='ready'
     ?witnesses
     :(document.witness_keys??[]).map((wk:string)=>({witness_key:wk,name:wk}));
   const memberItems:any[]=members.length
@@ -198,6 +202,13 @@ export function ArchiveDetail({
     {presented.committeeItems.length>0&&<section><h3>Committees</h3><ul>{presented.committeeItems.map(item=><li key={item.code} className="archive-hearing-row">
       {onCommittee?<button type="button" onClick={()=>onCommittee(item.code)}>{item.label}</button>:<span>{item.label}</span>}
     </li>)}</ul></section>}
+    <RelationNotice label="Hearing details" state={relationStates.meetings}/>
+    <RelationNotice label="Recording details" state={relationStates.recordings}/>
+    <RelationNotice label="Committee details" state={relationStates.committees}/>
+    <RelationNotice label="Witness details" state={relationStates.witnesses}/>
+    <RelationNotice label="Member details" state={relationStates.members}/>
+    <RelationNotice label="Bill details" state={relationStates.bills}/>
+    <RelationNotice label="Nomination details" state={relationStates.nominations}/>
     {hearingKeys.length>0&&<section><h3>Hearings</h3><ul>{hearingKeys.map((key:string)=>{
       const m=meetingMap.get(String(key));
       const recs:any[]=Array.isArray(m?.recordings)&&m.recordings.length?m.recordings:Array.isArray(m?.videos)?m.videos:[];

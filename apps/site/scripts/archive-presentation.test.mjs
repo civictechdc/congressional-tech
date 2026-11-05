@@ -184,6 +184,32 @@ test('detail view derives committees from facts and URLs, renders GovInfo packag
   }
 });
 
+test('hearing evidence distinguishes witnesses, statements and publisher link metadata',()=>{
+  const html=renderToStaticMarkup(React.createElement(HearingDetail,{meeting:{
+    event_id:100031,title:'A hearing',witnesses:[
+      {witness_key:'witness',name:'Witness Example',testified:true},
+      {witness_key:'statement',name:'Statement Example',witness_type:'statement_for_record',testified:false},
+    ],
+    document_references:[{collection:'meetingDocuments',ordinal:0,name:'Printed Hearing Record',
+      role:'Support Document',format:'PDF',url:'https://www.congress.gov/example.pdf'}],
+  }}));
+  assert(html.includes('Witnesses and statements (1 witnesses)'));
+  assert(html.includes('Statement for the record'));
+  for(const value of ['Printed Hearing Record','Support Document','Publisher format PDF','https://www.congress.gov/example.pdf']){
+    assert(html.includes(value));
+  }
+});
+
+test('nomination committee actions retain publisher precision and stay separate from floor votes',()=>{
+  const html=renderToStaticMarkup(React.createElement(SubjectDetail,{subject:{
+    nomination_id:'119-pn-1011',kind:'nomination',description:'Charles Baldis',
+    committee_activities:[{system_code:'ssga00',activities:[{name:'Reported By',date:'2026-07-22T14:47:05Z'}]}],
+    floor_votes:[{vote_id:'119-s-1-225',date:'2026-08-07',result:'Confirmed'}],
+  }}));
+  assert(html.includes('2026-07-22T14:47:05Z'));
+  assert(html.indexOf('Committee activities') < html.indexOf('Floor Votes'));
+});
+
 test('Phase-2 entity detail components render hearings, committees, witnesses, members, bills, and nominations with cross-links',()=>{
   const hearingHtml=renderToStaticMarkup(React.createElement(HearingDetail,{
     meeting:{

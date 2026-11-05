@@ -32,9 +32,9 @@ def text(value):
     return 'NULL' if value is None else "'" + str(value).replace("'", "''") + "'"
 
 
-def meeting(event_id, date, title, status=None, video=False, kind='Hearing'):
+def meeting(event_id, date, title, status=None, video=False, kind='Hearing', chamber='house'):
     facts = stated_facts(kind, title, status)
-    return (f"SELECT cast({event_id} AS BIGINT) AS event_id,'house' AS chamber,{text(title)} AS title,"
+    return (f"SELECT cast({event_id} AS BIGINT) AS event_id,cast({text(chamber)} AS VARCHAR) AS chamber,{text(title)} AS title,"
             f"cast('{date}' AS DATE) AS meeting_date,'{kind}' AS meeting_type,cast(NULL AS SMALLINT) AS session,"
             f"cast({text(status)} AS VARCHAR) AS status,{EMPTY_SITTINGS} AS sittings,"
             "array_slice(make_array(named_struct('system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0) AS committees,"
@@ -91,6 +91,8 @@ MEETINGS = [
     meeting(23, '2023-11-08', NEVER + ' committee file', 'Scheduled'),
     meeting(24, '2023-11-15', NEVER + ' captions', 'Scheduled'),
     meeting(25, '2023-11-16', NEVER + ' segments', 'Scheduled'),
+    meeting(104064, '2015-11-17', 'Examining Ongoing Challenges at the U.S. Secret Service', chamber=None),
+    meeting(335901, '2024-06-12', 'Source-stated joint hearing control', chamber='joint'),
 ]
 TRACK = "named_struct('body',{body},'suffix','.gz','format','{format}','language','en','production','{production}')"
 SHA = "arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)')"
@@ -104,7 +106,8 @@ RECORDINGS = (f"SELECT 'youtube:abc' AS video_key,arrow_cast(make_array(cast(24 
 ORDERED = ("SELECT arrow_cast(make_array('23'),'List(Utf8)') AS meeting_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS measure_keys,'HHRG-118-VR09-Transcript-20231108.pdf' AS filename,'pdf' AS format,cast(3 AS INT) AS list_row "
            "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HMKP-118-VR09-Transcript-20231108.pdf','pdf',cast(6 AS INT) "
            "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'Hearing-transcript-request-letter.pdf','pdf',cast(4 AS INT) "
-           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf','pdf',cast(5 AS INT)")
+           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf','pdf',cast(5 AS INT) "
+           "UNION ALL SELECT arrow_cast(make_array('119583'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-119-ED00-20261023-SD001.pdf','pdf',cast(8 AS INT)")
 
 
 @pytest.fixture(scope='module')
@@ -112,7 +115,7 @@ def meetings(tmp_path_factory):
     work = tmp_path_factory.mktemp('meeting-semantics')
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     steps = [
-        dict(name='meetings_resolved', sql=' UNION ALL '.join(MEETINGS), materialize=True),
+        dict(name='meetings_resolved', sql="SELECT *,CASE WHEN false THEN make_array(named_struct('url',cast(NULL AS VARCHAR))) END AS document_references FROM ("+' UNION ALL '.join(MEETINGS)+")", materialize=True),
         dict(name='ordered', sql=ORDERED, materialize=True),
         dict(name='recordings_entity', sql=RECORDINGS, materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
@@ -133,8 +136,14 @@ def meetings(tmp_path_factory):
     with duckdb.connect() as db:
         found = db.execute(f"""SELECT event_id,rescheduled_to,rescheduled_basis,not_held,
             [concat(t.source,':',coalesce(t.package_id,cast(t.list_row AS VARCHAR),t.video_key||'/'||t.production)) FOR t IN transcripts]
-            FROM read_parquet('{work / 'meetings.parquet'}')""").fetchall()
+            , chamber, chamber_basis FROM read_parquet('{work / 'meetings.parquet'}')""").fetchall()
     return {row[0]: row[1:] for row in found}
+
+
+def test_chamber_basis_distinguishes_missing_detail_unknown_chamber_and_joint(meetings):
+    assert meetings[119583][4:] == (None, 'meeting_detail_missing')
+    assert meetings[104064][4:] == (None, 'source_chamber_unknown')
+    assert meetings[335901][4:] == ('joint', 'source')
 
 
 def test_a_meeting_with_only_a_print_lists_the_print(meetings):
@@ -229,7 +238,7 @@ def facts(named=(), held=(DAY,), title=TITLE):
     return dict(named_meetings=list(named), held_dates=list(held), title=title)
 
 
-def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False):
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False, print_links=False):
     """Witness rows per name, from the maintained package-link and appearance SQL; with keys, the
     published rows and witness_key_map."""
     import json
@@ -281,10 +290,15 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
         return run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
             dict(name='witnesses', sql='SELECT witness_key,name,occasion,source_locator,record_sha_hex FROM appearance_records_resolved ORDER BY witness_key'),
             dict(name='map', sql='SELECT * FROM witness_key_map ORDER BY old_key')])
-    found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
-        dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,r.source_locator,s.name AS superseded_by FROM appearance_records_resolved r
+    queries = [dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,r.source_locator,s.name AS superseded_by FROM appearance_records_resolved r
             LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
-            LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')])['rows']
+            LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')]
+    if print_links:
+        queries.append(dict(name='print_links', sql='SELECT * FROM package_meeting_links ORDER BY package_id,event_id'))
+    result = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
+    found = result['rows']
+    if print_links:
+        return found, result['print_links']
     if rows:
         return found
     if full:
@@ -336,11 +350,29 @@ def test_a_print_naming_two_meetings_attaches_only_where_it_was_held(tmp_path):
     assert got == {'A': ('meeting:9001', 9001)}
 
 
-def test_a_multi_day_print_attaches_to_each_day_it_names(tmp_path):
-    # Haaland 328803: one print held on two days stands for each day's meeting.
-    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001), ('CHRG-a', 9002)],
-                  {'CHRG-a': facts(named=[9001, 9002], held=[DAY, '2021-02-24'])}, meetings=((9001, DAY, TITLE), (9002, '2021-02-24', TITLE)), full=True)
-    assert got['A'][0] in ('meeting:9001', 'meeting:9002') and got['A'][1] is None
+@pytest.mark.parametrize('jacket_events', [(100098,), (100098, 100099)])
+def test_two_day_print_links_do_not_assign_individual_witness_dates(tmp_path, jacket_events):
+    # Printed contents III of CHRG-112hhrg72238 puts Pistole on June 2 and
+    # Farmer and Reese on July 12. Its flat MODS list gives no individual dates.
+    package = 'CHRG-112hhrg72238'
+    days = ('2011-06-02', '2011-07-12')
+    pistole = 'John S. Pistole'
+    names = [pistole, 'Thomas L. Farmer', 'Raymond J. Reese']
+    records = [
+        record('two-day-print', 'mods', [witness(name) for name in names], package_id=package),
+        record('june-list', 'congress_gov', [witness(pistole)], event_id=100098),
+    ]
+    rows, links = resolve(
+        tmp_path, records, [(package, event) for event in jacket_events],
+        {package: facts(held=days)},
+        meetings=((100098, days[0], TITLE), (100099, days[1], TITLE)),
+        print_links=True,
+    )
+    assert [(r['package_id'], r['event_id']) for r in links] == [(package, event) for event in jacket_events]
+    assert sorted((r['name'], r['occasion'], r['event_id'], r['source_locator']) for r in rows) == sorted([
+        *((name, f'package:{package}', None, f'w:{name}') for name in names),
+        (pistole, 'meeting:100098', 100098, f'w:{pistole}'),
+    ])
 
 
 PANEL = ['Jane Doe', 'John Roe', 'Mary Major']
@@ -403,6 +435,28 @@ def test_a_witness_listed_twice_in_one_print_is_shown_once(tmp_path):
     got = resolve(tmp_path, [printed], [], {}, rows=True)
     assert sorted((r['source_locator'], r['superseded_by'] is not None) for r in got) == [
         ('mods:witness[1]', False), ('mods:witness[2]', True), ('mods:witness[3]', False), ('mods:witness[4]', False)]
+
+
+def test_one_house_list_keeps_distinct_roles_panels_and_documents(tmp_path):
+    # Event 100520 lists W. Ron Allen in two roles with separate biographies and statements.
+    base = 'http://docs.house.gov/meetings/AP/AP06/20130424/100520/HHRG-113-AP06-'
+    first_links = [base + kind + '-AllenW32499-20130424.pdf' for kind in ('Bio', 'Wstate')]
+    second_links = [base + kind + '-AllenW32500-20130424.pdf' for kind in ('Bio', 'Wstate')]
+    first = dict(witness('W. Ron Allen', first_links), position='Tribal Council Chairman and CEO',
+                 organization="Jamestown S'Klallam Tribe", panel_order=1)
+    second = dict(first, position='United States Commissioner', organization='Pacific Salmon Commissioner',
+                  document_links=second_links)
+    entries = [first, second, dict(first, document_links=second_links), dict(first, panel_order=2),
+               dict(first, document_links=first_links[::-1])]
+    house = record('100520', 'house_xml', [
+        dict(entry, source_locator=f'house_xml:witness[{ordinal}]', display_order=ordinal)
+        for ordinal, entry in enumerate(entries, 1)
+    ], event_id=100520)
+    got = resolve(tmp_path, [house], [], {}, rows=True)
+    assert [(r['source_locator'], r['superseded_by']) for r in sorted(got, key=lambda r: r['source_locator'])] == [
+        ('house_xml:witness[1]', None), ('house_xml:witness[2]', None), ('house_xml:witness[3]', None),
+        ('house_xml:witness[4]', None), ('house_xml:witness[5]', 'W. Ron Allen'),
+    ]
 
 
 # Witness key map (ct-kb4w): a re-fetched body gives every witness at its occasion a new key; the map
@@ -552,9 +606,13 @@ def test_a_print_yields_a_superseded_duplicate_to_the_meeting_that_sat(tmp_path)
 
 
 def test_a_print_stands_for_the_meeting_on_its_second_held_day(tmp_path):
-    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9002)],
-                  {'CHRG-a': facts(held=['2021-02-23', '2021-02-24'])}, meetings=((9002, '2021-02-24', TITLE),))
-    assert got == {'A': ('meeting:9002', 9002)}
+    rows, links = resolve(
+        tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')],
+        [('CHRG-a', 9002)], {'CHRG-a': facts(held=['2021-02-23', '2021-02-24'])},
+        meetings=((9002, '2021-02-24', TITLE),), print_links=True,
+    )
+    assert links == [{'package_id': 'CHRG-a', 'event_id': 9002}]
+    assert [(r['name'], r['occasion'], r['event_id']) for r in rows] == [('A', 'package:CHRG-a', None)]
 
 
 def test_precedence_is_per_person_and_statements_stay_statements(tmp_path):
@@ -621,6 +679,35 @@ def test_senate_page_links_to_meeting_and_outranks_mods_while_preserving_stateme
     assert by_src_name[('mods', 'Jane Doe')] == ('meeting:9001', 'The Honorable Jane Doe')
     assert by_src_name[('mods', 'Chris Harrison')] == ('meeting:9001', None)
     assert by_src_name[('mods', 'American Bankers Association')] == ('meeting:9001', None)
+
+
+@pytest.mark.parametrize('second_title,expected', [
+    ('Unrelated testimony concerning tax revenue', 335901),
+    ('Made in America: The Boom in U.S. Manufacturing Investment', None),
+])
+def test_jec_page_matches_both_committee_codes_without_asserting_chamber(tmp_path, second_title, expected):
+    title = 'Made in America: The Boom in U.S. Manufacturing Investment'
+    day = '2024-06-12'
+    sp = record('jec-page', 'senate_page', [witness('Scott Lincicome')],
+                context_url='https://www.jec.senate.gov/public/index.cfm/2024/6/made-in-america')
+    page = dict(body_hex=sp['record_sha_hex'], status='completed', title=title, heading=title, text_head='', content_date=day)
+    got = resolve(tmp_path, [sp], [], {}, pages=[page], meetings=(
+        (335901, day, title, False, None, 'jjec00'),
+        (335902, day, second_title, False, 'joint', 'jsec00'),
+    ))
+    assert got['Scott Lincicome'][1] == expected
+
+
+def test_jec_unknown_chamber_requires_title_or_witness_evidence(tmp_path):
+    day = '2024-06-12'
+    sp = record('jec-page', 'senate_page', [witness('Scott Lincicome')],
+                context_url='https://www.jec.senate.gov/public/index.cfm/2024/6/made-in-america')
+    page = dict(body_hex=sp['record_sha_hex'], status='completed', title='Manufacturing investments',
+                heading=None, text_head='', content_date=day)
+    got = resolve(tmp_path, [sp], [], {}, pages=[page], meetings=(
+        (335901, day, 'Unrelated testimony concerning tax revenue', False, None, 'jjec00'),
+    ))
+    assert got['Scott Lincicome'][1] is None
 
 
 def test_empty_senate_page_does_not_suppress_mods_witnesses(tmp_path):

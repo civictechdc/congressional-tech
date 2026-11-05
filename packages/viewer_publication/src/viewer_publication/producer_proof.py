@@ -7,7 +7,7 @@ model/registries/compatible-versions.json (ct-deh9).
     stage; cluster e1 adds the column). Every row is consumed, so every row must carry a
     current or compatible mapping. NULL or unknown refuses. v21 captures, written by an
     unrecorded pyarrow writer, carry none and are refused; the ct-kunv rebuild carries it.
-  - readings, filename_readings, meeting/appearance/video/committee records:
+  - readings, filename_readings, meeting/appearance/video/committee/playlist records:
     `parser_version` / `catalog_version`. The publish spec's pins must equal the current
     definitions (archive_model_job.validate_spec) and the model reads only rows at those
     versions (pinned-readings, selected-records). A row with a NULL version refuses here;
@@ -43,7 +43,7 @@ ROOT = Path(__file__).resolve().parents[4]
 REGISTRY = ROOT / 'model/registries/compatible-versions.json'
 ROW_VERSIONED = {'readings': 'parser_version', 'filename_readings': 'catalog_version',
                  'meeting_records': 'parser_version', 'appearance_records': 'parser_version',
-                 'video_records': 'parser_version', 'committee_records': 'parser_version'}
+                 'video_records': 'parser_version', 'committee_records': 'parser_version', 'playlist_records': 'parser_version'}
 
 
 def _lit(value):
@@ -109,6 +109,7 @@ PRODUCERS = {
     'appearance_records': {DAILY, BACKFILL, IMPORT},
     'video_records': {DAILY, BACKFILL, IMPORT},
     'committee_records': {DAILY, BACKFILL, IMPORT},
+    'playlist_records': {DAILY, BACKFILL, IMPORT},
 }
 VERSIONS_AT_COMMIT = """import importlib, json
 def version(module, call):
@@ -120,7 +121,7 @@ out = dict(captures=version('captures', lambda m: m.current_version()),
     readings=version('readings', lambda m: {p: m.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}),
     filename_readings=version('filenames', lambda m: m.current_version()),
     module=importlib.import_module('congress_api.lake.captures').__file__)
-for name in ['meeting_records', 'appearance_records', 'video_records', 'committee_records']:
+for name in ['meeting_records', 'appearance_records', 'video_records', 'committee_records', 'playlist_records']:
     out[name] = version(name, lambda m: m.current_versions())
 print(json.dumps(out))
 """

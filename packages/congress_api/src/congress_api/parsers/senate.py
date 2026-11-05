@@ -4,6 +4,7 @@ import calendar
 import datetime as dt
 import re
 from html import unescape
+from urllib.parse import urljoin, urlsplit
 
 from lxml import html as dom
 
@@ -24,6 +25,12 @@ from congress_api.parsers.senate_page import (
 from congress_api.parsers.text import text
 
 PARSER_VERSION = 20
+
+INTELLIGENCE_SITE = "intelligence.senate.gov"
+INTELLIGENCE_OPEN_HEARINGS = "/category/hearings/open-hearings/"
+_INTELLIGENCE_HEARING_PATH = re.compile(
+    r"/[0-9]{4}/[0-9]{2}/[0-9]{2}/(?:open-hearing|hearings?|nomination-hearing)-[a-z0-9-]+/"
+)
 
 _EVENT = ('contains(concat(" ",normalize-space(@class)," ")," vevent ") '
           'or contains(concat(" ",normalize-space(@class)," ")," h-event ")')
@@ -172,6 +179,32 @@ def parse_listing_details(page: str, site: str) -> dict[str, dict]:
     return details
 
 
+def _intelligence_listing_rows(tree):
+    """Read dated open-hearing cards. The permalink date is a post date."""
+    cards = tree.xpath('//article[contains(concat(" ",normalize-space(@class)," ")," category-open-hearings ")]')
+    rows = []
+    for card in cards:
+        links = card.xpath('./h3[contains(concat(" ",normalize-space(@class)," ")," entry-title ")]/a[@href]')
+        dates = card.xpath('./p/span[contains(concat(" ",normalize-space(@class)," ")," date-display ")]')
+        if len(links) != 1 or len(dates) != 1:
+            continue
+        try:
+            url = urljoin(f"https://www.{INTELLIGENCE_SITE}/", links[0].get("href"))
+            address = urlsplit(url)
+        except ValueError:
+            continue
+        if (address.scheme != "https" or address.netloc != f"www.{INTELLIGENCE_SITE}"
+                or address.query or address.fragment or not _INTELLIGENCE_HEARING_PATH.fullmatch(address.path)):
+            continue
+        title = text(links[0].text_content())
+        displayed = DATE.search(dates[0].text_content())
+        day = written_day(displayed) if displayed else None
+        if title and day:
+            row = ListingRow(day=day, url=url, title=title)
+            rows.append((row.day, row.url, row.title))
+    return rows
+
+
 def parse_listing_page(page, site):
     """(day, url, title) for hearing pages one listing page shows.
 
@@ -183,9 +216,11 @@ def parse_listing_page(page, site):
     rows = []
     if not page.strip():
         return rows
+    tree = dom.fromstring(page)
+    if site == INTELLIGENCE_SITE:
+        return _intelligence_listing_rows(tree)
     # Source row boundaries take precedence over proximity to another row.
     row_days = {}
-    tree = dom.fromstring(page)
     event_rows = _event_rows(tree)
     for anchor in tree.xpath(".//a[@href]"):
         dates = anchor.xpath(".//time")

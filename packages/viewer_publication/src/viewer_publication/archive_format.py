@@ -30,6 +30,12 @@ def _empty_struct(**fields):
     return f'array_slice(make_array(named_struct({args})),1,0)'
 
 
+NULL_MEETING_DOCUMENT_REFERENCES = 'CASE WHEN false THEN ' + _empty_struct(
+    collection='cast(NULL AS VARCHAR)', ordinal='cast(NULL AS INT)', url='cast(NULL AS VARCHAR)',
+    role='cast(NULL AS VARCHAR)', format='cast(NULL AS VARCHAR)', description='cast(NULL AS VARCHAR)',
+    name='cast(NULL AS VARCHAR)') + ' END'
+
+
 EMPTY_ALTERNATES = _empty_struct(format='cast(NULL AS VARCHAR)', body="arrow_cast(NULL,'FixedSizeBinary(32)')",
                                 suffix='cast(NULL AS VARCHAR)', size='cast(NULL AS BIGINT)')
 
@@ -351,14 +357,18 @@ def _auxiliary():
     names = _empty_struct(name='cast(NULL AS VARCHAR)', start='cast(NULL AS DATE)', end='cast(NULL AS DATE)')
     return [
         ('meetings', f"""WITH keys AS (SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered),
-            meta AS (SELECT * FROM meeting_input UNION ALL SELECT event_id,cast(NULL AS VARCHAR) AS chamber,
-                cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date FROM keys WHERE event_id IS NOT NULL)
-            SELECT event_id,max(chamber) AS chamber,max(title) AS title,max(meeting_date) AS meeting_date,
+            meta AS (SELECT *,true AS has_detail FROM meeting_input UNION ALL SELECT event_id,cast(NULL AS VARCHAR) AS chamber,
+                cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date,false AS has_detail FROM keys WHERE event_id IS NOT NULL)
+            SELECT event_id,max(chamber) AS chamber,
+                CASE WHEN max(chamber) IS NOT NULL THEN 'source' WHEN bool_or(has_detail) THEN 'source_chamber_unknown'
+                     ELSE 'meeting_detail_missing' END AS chamber_basis,
+                max(title) AS title,max(meeting_date) AS meeting_date,
                 cast(NULL AS VARCHAR) AS meeting_type,cast(NULL AS SMALLINT) AS session,cast(NULL AS VARCHAR) AS status,
                 {sittings} AS sittings,{committees} AS committees,{EMPTY_STRINGS} AS subject_keys,
                 {transcripts} AS transcripts,{videos} AS videos,cast(NULL AS SMALLINT) AS congress,{TS} AS congress_gov_updated,
                 cast(NULL AS VARCHAR) AS house_xml_updated,cast(NULL AS VARCHAR) AS congress_gov_meeting_type,
-                cast(NULL AS VARCHAR) AS access,cast(NULL AS VARCHAR) AS access_basis,cast(NULL AS BOOLEAN) AS not_held,cast(NULL AS BIGINT) AS rescheduled_to,cast(NULL AS VARCHAR) AS rescheduled_basis FROM meta GROUP BY event_id""", ['event_id'],
+                cast(NULL AS VARCHAR) AS access,cast(NULL AS VARCHAR) AS access_basis,cast(NULL AS BOOLEAN) AS not_held,cast(NULL AS BIGINT) AS rescheduled_to,cast(NULL AS VARCHAR) AS rescheduled_basis,
+                {NULL_MEETING_DOCUMENT_REFERENCES} AS document_references FROM meta GROUP BY event_id""", ['event_id'],
             MEETING_DICTIONARY),
         ('committees', f"""SELECT system_code,name,chamber,cast(NULL AS VARCHAR) AS committee_type,
             cast(NULL AS VARCHAR) AS parent_system_code,{names} AS names,cast(NULL AS VARCHAR) AS website,

@@ -41,6 +41,8 @@ def test_source_listing_selects_one_earliest_address_compatible_tuple(tmp_path):
 def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_path):
     """ct-vq2a: a newer identical copy saved under a plain name keeps the package an earlier copy's
     GovInfo filename named; URL packages still win when filenames name different bills."""
+    from viewer_publication.archive_model import registry_inputs
+
     saved=[dict(component='document',source_id=s,saved_rank=i,first_fetched=f'2026-10-0{i}T12:00:00Z') for i,s in enumerate(['saved','second','third','fourth'],1)]
     saved+=[dict(component='fallback',source_id='only-filename',saved_rank=1,first_fetched='2026-10-01T12:00:00Z'),
             dict(component='copies',source_id='newer-plain',saved_rank=1,first_fetched='2026-10-20T12:00:00Z'),
@@ -52,16 +54,34 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
             dict(component='nonbill',source_id='print-as-bill-1',saved_rank=2,first_fetched='2026-10-10T12:00:00Z'),
             dict(component='nonbill',source_id='print-as-bill-2',saved_rank=3,first_fetched='2026-10-20T12:00:00Z'),
             dict(component='none',source_id='plain',saved_rank=1,first_fetched=None)]
-    inputs=[json_input(tmp_path,'saved_inputs',saved,component='Utf8',source_id='Utf8',saved_rank='Int64',first_fetched='Utf8'),
+    # The reviewed GPO print states the Congress and bill number on page 1
+    # and HR 2899 IH in the footer of page 2. Other bytes must not inherit it.
+    reviewed_sha = '1a9cae0e1043a2a2af6a4f7b187f15ef4cf64d796a23448b26b82a52989e4ed2'
+    saved += [
+        dict(component=component, source_id=f'{component}-pdf', saved_rank=1, format='pdf', body_sha=reviewed_sha)
+        for component in ('reviewed', 'house-senate-collision', 'authoritative')
+    ]
+    saved += [
+        dict(component='pre-introduction', source_id='draft-pdf', saved_rank=1, format='pdf',
+             body_sha='59282bb7d29d214e2f562a6f38ca0b1f901d07a51806bfe01ea88991f7b4e2e1'),
+        dict(component='different-bytes', source_id='different-2899', saved_rank=1, format='pdf',
+             body_sha='f' + reviewed_sha[1:]),
+    ]
+    inputs=registry_inputs(tmp_path/'registries')+[
+        json_input(tmp_path,'saved_inputs',saved,component='Utf8',source_id='Utf8',saved_rank='Int64',
+                   first_fetched='Utf8',format='Utf8',body_sha='Utf8'),
         json_input(tmp_path,'source_annotation_addresses',[
             dict(source_id='saved',package_id='PUBLISHER-PACKAGE',publisher=True),
             dict(source_id='second',package_id='BILLS-119hr3ih',publisher=False),
-            dict(source_id='third',package_id='BILLS-119hr2ih',publisher=False)],source_id='Utf8',package_id='Utf8',publisher='Boolean'),
+            dict(source_id='third',package_id='BILLS-119hr2ih',publisher=False),
+            dict(source_id='authoritative-pdf',package_id='BILLS-116s2899is',publisher=False)],
+            source_id='Utf8',package_id='Utf8',publisher='Boolean'),
         json_input(tmp_path,'source_annotations',[dict(source_id='saved',package_id='BILLS-119hr1ih'),
             dict(source_id='fourth',package_id='BILLS-119hr4ih'),dict(source_id='only-filename',package_id='FILENAME-ONLY'),
             dict(source_id='newer-plain',package_id=None),dict(source_id='later-named',package_id='BILLS-117hr1833rh'),
             dict(source_id='earliest-named',package_id='BILLS-117hr1833ih'),dict(source_id='plain',package_id=None),
             dict(source_id='bill-5255',package_id='BILLS-118hr5255ih'),dict(source_id='bill-5225',package_id='BILLS-118hr5225ih'),
+            dict(source_id='house-senate-collision-pdf',package_id='BILLS-116s2899is'),
             dict(source_id='print',package_id='CHRG-119hhrg49353'),dict(source_id='print-as-bill-1',package_id='BILLS-119hr1ih'),
             dict(source_id='print-as-bill-2',package_id='BILLS-119hr2ih')],
             source_id='Utf8',package_id='Utf8')]
@@ -69,12 +89,17 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
         steps=[dict(name='saved_files',sql='SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM saved_inputs'),
                dict(name='document_packages',sql=(ROOT/'model/sql/document-packages.sql').read_text(),materialize=True)],outputs=[],queries=[dict(name='packages',sql='SELECT * FROM document_packages ORDER BY component')])
     assert result['packages']==[
+        dict(component='authoritative',package_id='BILLS-116s2899is',bill_package_conflict=False),
         dict(component='conflict',package_id=None,bill_package_conflict=True),
         dict(component='copies',package_id='BILLS-117hr1833ih',bill_package_conflict=False),
+        dict(component='different-bytes',package_id=None,bill_package_conflict=False),
         dict(component='document',package_id='BILLS-119hr3ih',bill_package_conflict=False),
         dict(component='fallback',package_id='FILENAME-ONLY',bill_package_conflict=False),
+        dict(component='house-senate-collision',package_id=None,bill_package_conflict=True),
         dict(component='nonbill',package_id='CHRG-119hhrg49353',bill_package_conflict=False),
         dict(component='none',package_id=None,bill_package_conflict=False),
+        dict(component='pre-introduction',package_id=None,bill_package_conflict=False),
+        dict(component='reviewed',package_id='BILLS-116hr2899ih',bill_package_conflict=False),
     ]
 
 
@@ -84,6 +109,9 @@ def test_hearing_date_corrections_preserve_held_days_and_require_package_evidenc
     print_package = 'CHRG-117hhrg49353'
     multi_day_package = 'CHRG-117hhrg50139'
     metadata_error = 'CHRG-119hhrg60403'
+    cover_68347 = '09bd414d3340e2460f48c6894ebdea0d3ee2420456ec1fde19a2e8f75f59a81f'
+    cover_80849 = 'a600af79338071e29eba24fcb61977e89635fc0e6c1de7948013cddb3fe95749'
+    cover_82590 = 'dc3e89f2578626fda386ab7fc85ae735dbeee8b69d6b2801b504b7ba7a88bc56'
     documents = [
         ('repost', print_package, '2023-06-07', 'filename'),
         ('multi-day-held-sitting', multi_day_package, '2022-06-13', 'filename'),
@@ -91,25 +119,34 @@ def test_hearing_date_corrections_preserve_held_days_and_require_package_evidenc
         ('undated', print_package, None, None),
         ('other-date-source', print_package, '2023-06-07', 'meeting'),
         ('uncorroborated-mods', metadata_error, '2025-05-15', 'filename'),
+        ('68347', 'CHRG-112hhrg68347', '2011-06-22', 'meeting', cover_68347),
+        ('80849', 'CHRG-112hhrg80849', '2012-07-25', 'meeting', cover_80849),
+        ('82590', 'CHRG-113hhrg82590', '2013-07-10', 'meeting', cover_82590),
+        ('different-bytes', 'CHRG-112hhrg80849', '2012-07-25', 'meeting', 'f' * 64),
     ]
     inputs = [
         json_input(tmp_path, 'documents', [
-            dict(doc_key=key, package_id=pkg, day=day, document_date_source=source)
-            for key, pkg, day, source in documents
-        ], doc_key='Utf8', package_id='Utf8', day='Utf8', document_date_source='Utf8'),
+            dict(doc_key=key, package_id=pkg, day=day, document_date_source=source, body_hex=body[0] if body else None)
+            for key, pkg, day, source, *body in documents
+        ], doc_key='Utf8', package_id='Utf8', day='Utf8', document_date_source='Utf8', body_hex='Utf8'),
         json_input(tmp_path, 'package_mods_facts', [
             dict(package_id=print_package, held_dates=['2022-06-23']),
             dict(package_id=multi_day_package, held_dates=['2021-07-27', '2022-06-13']),
             dict(package_id=metadata_error, held_dates=['2025-05-14']),
+            dict(package_id='CHRG-112hhrg68347', held_dates=['2011-09-22']),
+            dict(package_id='CHRG-112hhrg80849', held_dates=['2012-06-25']),
+            dict(package_id='CHRG-113hhrg82590', held_dates=['2013-05-09']),
         ], package_id='Utf8', held_dates=list_of('Utf8')),
         json_input(tmp_path, 'package_meeting_links', [
             dict(package_id=print_package, event_id=114899),
             dict(package_id=multi_day_package, event_id=114877),
+            dict(package_id='CHRG-112hhrg68347', event_id=103921),
         ], package_id='Utf8', event_id='Int64'),
         json_input(tmp_path, 'meetings', [
             dict(event_id=114899, day='2022-06-23', not_held=False),
             dict(event_id=114877, day='2022-06-13', not_held=False),
             dict(event_id=118173, day='2025-05-15', not_held=False),
+            dict(event_id=103921, day='2011-09-22', not_held=False),
         ], event_id='Int64', day='Utf8', not_held='Boolean'),
     ]
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[
@@ -121,6 +158,9 @@ def test_hearing_date_corrections_preserve_held_days_and_require_package_evidenc
              FROM document_hearing_date_corrections ORDER BY doc_key'''),
     ])
     assert result['corrections'] == [
+        dict(doc_key='68347', document_date='2011-09-22', document_date_source='meeting'),
+        dict(doc_key='80849', document_date='2012-06-25', document_date_source='content'),
+        dict(doc_key='82590', document_date='2013-05-09', document_date_source='content'),
         dict(doc_key='multi-day-repost', document_date=None, document_date_source=None),
         dict(doc_key='repost', document_date='2022-06-23', document_date_source='meeting'),
     ]
@@ -164,7 +204,7 @@ def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_pat
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,steps=[
         dict(name='saved_files',sql='SELECT component,source_id,body_sha,saved_rank,source_url,filename,cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM copies'),
         dict(name='source_filename_readings',sql="""SELECT source_id,filename AS filename_date_name,filename AS congress_name,
-            cast(filename_date AS DATE) AS filename_date,filename_date_valid,
+            cast(filename_date AS DATE) AS filename_date,filename_date_valid,true AS filename_date_eligible,
             CASE WHEN filename_date IS NULL THEN 'missing' ELSE 'completed' END AS filename_date_status,
             congress,congress_valid,CASE WHEN congress IS NULL THEN 'missing' ELSE 'completed' END AS congress_status FROM copies"""),
         dict(name='document_filename_facts',sql=(ROOT/'model/sql/document-filename-facts.sql').read_text(),materialize=True)],outputs=[],

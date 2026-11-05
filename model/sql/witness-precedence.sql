@@ -4,10 +4,12 @@
 -- one-way nickname, by a shared first three letters, or as an initial; a row with no given name matches only
 -- when that family name is unique among the higher rows (red-f3: Barbara and Joan Smith are not Robert and
 -- John Smith). Print entries labelled statements are matched too: a statement by someone the meeting's own
--- list names is that witness. Within one record, a later line of the same person is the earlier one's (D4 gate).
+-- list names is that witness. Within one record, collapse repeat entries only when their appearance facts agree.
 -- Its own step: as a CTE it re-ran the whole appearance resolution.
 WITH people AS (
- SELECT w.witness_key,w.occasion,s.priority,w.record_sha_hex,w.ordinal,p.statement,p.family,p.given,p.given_canon
+ SELECT w.witness_key,w.occasion,s.priority,w.source,w.record_sha_hex,w.ordinal,p.statement,p.family,p.given,p.given_canon,
+  sha256(json_array(w.position,w.organization,w.on_behalf_of,w.location,w.panel,w.panel_order,
+   w.witness_type,w.testified,w.bioguide_id,array_sort(array_distinct(w.document_urls)))) AS occurrence_facts
  FROM appearance_records_resolved w
  JOIN meeting_sources s ON s.kind='appearance' AND s.source=w.source
  JOIN appearance_people p ON p.record_sha_hex=w.record_sha_hex AND p.source=w.source AND p.ordinal=w.ordinal
@@ -24,9 +26,9 @@ WITH people AS (
   ) AS root_higher
  FROM people a JOIN people b ON a.occasion=b.occasion
   AND ((a.occasion LIKE 'meeting:%' AND (b.priority<a.priority OR (b.priority=a.priority AND b.record_sha_hex<a.record_sha_hex)))
-   -- The same person twice in one record (a print lists a witness, then their answers to submitted questions):
-   -- the later line is the earlier one's, on any occasion. Statements are entries, so two letters stay two.
-   OR (b.record_sha_hex=a.record_sha_hex AND b.ordinal<a.ordinal AND NOT a.statement AND NOT b.statement))
+   -- A list can repeat a witness or list them in separate roles (ct-x78c). Keep distinct facts and statements.
+   OR (b.source=a.source AND b.record_sha_hex=a.record_sha_hex AND b.ordinal<a.ordinal
+    AND b.occurrence_facts=a.occurrence_facts AND NOT a.statement AND NOT b.statement))
  WHERE (a.family=b.family OR (length(a.family)>=5 AND levenshtein(a.family,b.family)<=1))
   AND (a.given IS NULL OR b.given IS NULL OR a.given_canon=b.given_canon
    OR (length(a.given)>=3 AND length(b.given)>=3 AND substr(a.given,1,3)=substr(b.given,1,3))

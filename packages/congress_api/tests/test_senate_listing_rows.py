@@ -157,6 +157,35 @@ def test_route_saved_without_listing_details_does_not_raise():
     assert records.listed(SITE, get, saved=SAVED, since=dt.date(2026, 1, 1))[0] == []
 
 
+def test_intelligence_discovers_only_dated_open_hearing_cards_with_capturable_links():
+    from congress_api.acquisition.capture_scheduler import CapturePolicy
+
+    site = 'intelligence.senate.gov'
+    origin = f'https://www.{site}'
+    listing = origin + '/category/hearings/open-hearings/'
+    link = origin + '/2026/03/17/open-hearing-worldwide-threats-2/'
+    # The retained listing fa9a52fb… displays March 18 on the exact March 17 permalink.
+    card = (
+        '<article class="et_pb_post category-hearings category-open-hearings">'
+        f'<h3 class="entry-title"><a href="{link}">Open Hearing: Worldwide Threats</a></h3>'
+        '<p class="post-meta"><span class="date-display display">Mar 18, 2026 10:00am</span></p></article>'
+    )
+    unrelated = card.replace('category-open-hearings', 'category-closed-meetings')
+    foreign_link = card.replace(origin, 'https://other.example')
+    undated = card.replace('Mar 18, 2026 10:00am', '')
+    get, fetched = pages(card + unrelated + foreign_link + undated)
+    kept, route = records.listed(site, get, saved=SAVED, since=dt.date(2026, 3, 18))
+    assert kept == [(dt.date(2026, 3, 18), link, 'Open Hearing: Worldwide Threats')]
+    assert route['form'] == '/category/hearings/open-hearings/'
+    assert fetched == [listing, listing + 'page/2/?et_blog']
+
+    scope = Path(__file__).parents[3] / 'model/registries/capture-scope.json'
+    policy = CapturePolicy(scope)
+    assert [policy.pattern_family(url) for url in [*fetched, link]] == ['senate/pages'] * 3
+    assert policy.pattern_family(origin + '/2026/05/20/intelligence-authorization-act/') is None
+    assert policy.pattern_family(origin + '/2026/06/10/closed-briefing-intelligence-matters-74/') is None
+
+
 def test_pins_match_the_current_parser_sources():
     import json
     from congress_api.lake import appearance_records, meeting_records, readings

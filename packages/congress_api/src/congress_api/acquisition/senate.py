@@ -50,7 +50,14 @@ from congress_api.models.senate import (
     merged_workflow,
     normalize_senate_state,
 )
-from congress_api.parsers.senate import PARSER_VERSION, parse_listing_details, parse_listing_page, parsed
+from congress_api.parsers.senate import (
+    INTELLIGENCE_OPEN_HEARINGS,
+    INTELLIGENCE_SITE,
+    PARSER_VERSION,
+    parse_listing_details,
+    parse_listing_page,
+    parsed,
+)
 from congress_api.parsers.senate_page import FIRST_RECORD, LISTINGS, SITE, attachment_page, documents
 from congress_api.parsers.text import text
 from congress_api.retention.meetings import all_meetings, read_meetings
@@ -73,7 +80,10 @@ OUTAGE_STOP_AFTER = 10
 
 
 def listing_page(site, form, n, get):
-    return parse_listing_page(get(f"https://www.{site}{form.format(n)}"), site)
+    path = form.format(n)
+    if form == INTELLIGENCE_OPEN_HEARINGS and n > 1:
+        path += f"page/{n}/?et_blog"
+    return parse_listing_page(get(f"https://www.{site}{path}"), site)
 
 
 def wordpress_listed(site, get, posts_out=None):
@@ -113,7 +123,8 @@ def wordpress_listed(site, get, posts_out=None):
 def listed(site, get, saved=None, since=FIRST_RECORD):
     """(day, url, title) for the hearing pages a site lists, back to the first Senate meeting record."""
     wp_posts = {}
-    out = [r for r in wordpress_listed(site, get, wp_posts) if r[0] >= since] if not saved or saved.get("wordpress") else []
+    use_wordpress_api = site != INTELLIGENCE_SITE and (not saved or saved.get("wordpress"))
+    out = [r for r in wordpress_listed(site, get, wp_posts) if r[0] >= since] if use_wordpress_api else []
     if out:
         kept_urls = {r[1] for r in out}
         route = {"wordpress": True}
@@ -126,7 +137,9 @@ def listed(site, get, saved=None, since=FIRST_RECORD):
         body = get(url)
         details.update(parse_listing_details(body, site))
         return body
-    if saved and saved.get("form"):
+    if site == INTELLIGENCE_SITE:
+        form, from_0 = INTELLIGENCE_OPEN_HEARINGS, False
+    elif saved and saved.get("form"):
         form, from_0 = saved["form"], saved["from_0"]
     else:
         first = {f: {r[1] for r in listing_page(site, f, 1, get_html)} for f in LISTINGS}

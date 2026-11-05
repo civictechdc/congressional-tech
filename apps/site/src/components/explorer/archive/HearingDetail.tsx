@@ -8,7 +8,27 @@ import {
   presentDocument,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
-import {PublicLink, day} from './ArchiveRows.tsx';
+import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
+
+function RecordingObservations({observations}:{observations:any[]}){
+  return <ul className="archive-entity-list">
+    {observations.map((obs:any)=>{
+      const youtube=/^youtube:([a-zA-Z0-9_-]+)$/.exec(obs.video_key??'');
+      const url=obs.url||(youtube?`https://www.youtube.com/watch?v=${youtube[1]}`:null);
+      const scope=obs.meeting_link?.scope;
+      const label=scope==='package_context'?'Related package recording evidence'
+        :scope==='event'?'Recording evidence for this event':'Original recording observation';
+      const describe=[obs.status,obs.decision,obs.recording_scope].filter(Boolean).map(v=>String(v).replaceAll('_',' ')).join(' · ');
+      return <li key={obs.match_id}>
+        {url?<PublicLink url={url}>{label}</PublicLink>:<strong>{label}</strong>}
+        {describe&&<span className="archive-source-meta"> · {describe}</span>}
+        {obs.package_id&&<p className="archive-source-meta"><PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(obs.package_id)}`}>{obs.package_id}</PublicLink></p>}
+        {obs.note&&<p className="archive-source-meta">{obs.note}</p>}
+        {obs.source_ref&&<p className="archive-source-meta">Source <code>{obs.source_ref}</code></p>}
+      </li>;
+    })}
+  </ul>;
+}
 
 export function HearingDetail({
   meeting,
@@ -53,9 +73,11 @@ export function HearingDetail({
   const recordings:any[]=Array.isArray(meeting.videos)&&meeting.videos.length
     ?meeting.videos
     :Array.isArray(meeting.recordings)?meeting.recordings:[];
+  const observations:any[]=meeting.recording_observations??[];
   const transcripts:any[]=Array.isArray(meeting.transcripts)?meeting.transcripts:[];
   const sittings:any[]=Array.isArray(meeting.sittings)?meeting.sittings:[];
   const witnesses:any[]=Array.isArray(meeting.witnesses)?meeting.witnesses:[];
+  const publisherDocuments:any[]=meeting.document_references??[];
   const documents:any[]=Array.isArray(meeting.documents)?meeting.documents:[];
   const contextParts=[
     congressLabel(meeting.congress),
@@ -63,6 +85,9 @@ export function HearingDetail({
     formatMeetingType(meeting.meeting_type),
     meeting.status?`Status: ${meeting.status}`:null,
   ].filter(Boolean);
+  const relation=meeting.relation_states??{};
+  const coverage=meeting.coverage??{};
+  const witnessCount=witnesses.filter(w=>!['statement_for_record','member_statement'].includes(w.witness_type)).length;
   const shownWitnesses=compact?witnesses.slice(0,6):witnesses;
 
   return <section className="archive-entity-card" aria-label="Hearing details" data-archive-entity="hearing">
@@ -84,6 +109,15 @@ export function HearingDetail({
         </>}
       </p>
     </header>
+
+    <RelationNotice label="Committee details" state={relation.committees}/>
+    <RelationNotice label="Bill details" state={relation.bills}/>
+    <RelationNotice label="Nomination details" state={relation.nominations}/>
+    <RelationNotice label="Coverage details" state={relation.coverage}/>
+    <RelationNotice label="Recordings" state={relation.recordings} coverage={coverage.recording}/>
+    <RelationNotice label="Witnesses" state={relation.witnesses} coverage={coverage.witnesses}/>
+    <RelationNotice label="Hearing documents" coverage={coverage.documents}/>
+    <RelationNotice label="Transcripts" coverage={coverage.transcript}/>
 
     {committeeItems.length>0&&<div className="archive-entity-section">
       <h3>Committees</h3>
@@ -166,6 +200,20 @@ export function HearingDetail({
       </ul>
     </div>}
 
+    <RelationNotice label="Recording associations" state={meeting.recording_associations_state}/>
+    {meeting.recording_associations_state==='ready'&&!observations.length&&
+      <p className="archive-source-meta">The archive lists no supported recording associations for this hearing.</p>}
+    {observations.length>0&&<div className="archive-entity-section">
+      <h3>Recording evidence</h3>
+      <RecordingObservations observations={observations}/>
+    </div>}
+
+    {(meeting.original_package_observations??[]).map((group:any)=><details key={group.package_id} className="archive-entity-section">
+      <summary>Original package observations for {group.package_id}</summary>
+      <p className="archive-source-meta">These observations describe the package. Hearing associations are unavailable in this release.</p>
+      <RecordingObservations observations={group.observations}/>
+    </details>)}
+
     {transcripts.length>0&&<div className="archive-entity-section">
       <h3>Official Transcripts</h3>
       <ul className="archive-entity-list">
@@ -175,7 +223,8 @@ export function HearingDetail({
           return <li key={tr.jacket_number||i}>
             {hasRow&&onSelect
               ?<button type="button" className="explorer-text-button" onClick={()=>onSelect(Number(tr.list_row))}>{label}</button>
-              :tr.url?<PublicLink url={tr.url}>{label}</PublicLink>:<span>{label}</span>}
+              :tr.url?<PublicLink url={tr.url}>{label}</PublicLink>
+                :tr.package_id?<PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(tr.package_id)}`}>{label}</PublicLink>:<span>{label}</span>}
             {tr.jacket_number&&tr.title&&<span className="archive-source-meta"> (Jacket {tr.jacket_number})</span>}
           </li>;
         })}
@@ -183,13 +232,13 @@ export function HearingDetail({
     </div>}
 
     {witnesses.length>0&&<div className="archive-entity-section">
-      <h3>Witnesses ({witnesses.length})</h3>
+      <h3>{witnessCount===witnesses.length?`Witnesses (${witnessCount})`:`Witnesses and statements (${witnessCount} witnesses)`}</h3>
       <ul className="archive-witness-list">
         {shownWitnesses.map((w:any,i:number)=>{
           const wKey=w.witness_key||w.name_key||'';
           const roleParts=[w.position,w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];
-          return <li key={wKey||i} className="archive-witness-item">
+          return <li key={`${wKey}-${i}`} className="archive-witness-item">
             <div className="archive-witness-header">
               {w.panel!=null&&<span className="archive-witness-panel">Panel {String(w.panel)}: </span>}
               {wKey&&onWitness
@@ -200,6 +249,8 @@ export function HearingDetail({
                 <button type="button" className="archive-measure-pill" onClick={()=>onMember(String(w.bioguide_id))}>Member ({w.bioguide_id})</button>
               </>}
             </div>
+            {w.witness_type==='statement_for_record'&&<p className="archive-source-meta">Statement for the record</p>}
+            {w.witness_type==='member_statement'&&<p className="archive-source-meta">Member statement</p>}
             {roleParts.length>0&&<p className="archive-source-meta">{roleParts.join(' — ')}</p>}
             {docs.length>0&&onSelect&&<div className="archive-witness-docs">
               <span className="archive-source-meta">Submitted documents: </span>
@@ -213,6 +264,20 @@ export function HearingDetail({
             </div>}
           </li>;
         })}
+      </ul>
+    </div>}
+
+    {!compact&&publisherDocuments.length>0&&<div className="archive-entity-section">
+      <h3>Documents listed by Congress.gov</h3>
+      <ul className="archive-entity-list">
+        {publisherDocuments.map((ref:any)=><li key={`${ref.collection}-${ref.ordinal}`}>
+          <PublicLink url={ref.url}>{ref.name||ref.description||ref.url}</PublicLink>
+          <span className="archive-source-meta"> · {ref.collection==='witnessDocuments'?'Witness document':'Meeting document'}
+            {ref.role&&` · ${ref.role}`}
+            {ref.format&&` · Publisher format ${ref.format}`}
+          </span>
+          {ref.description&&ref.name&&<p className="archive-source-meta">{ref.description}</p>}
+        </li>)}
       </ul>
     </div>}
 

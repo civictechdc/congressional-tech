@@ -138,7 +138,29 @@
             {"id": 49, "name": "access_basis", "required": false, "type": "string"},
             {"id": 50, "name": "not_held", "required": false, "type": "boolean"},
             {"id": 51, "name": "title_key", "required": false, "type": "string"},
-            {"id": 52, "name": "reschedule_candidate", "required": false, "type": "boolean"}
+            {"id": 52, "name": "reschedule_candidate", "required": false, "type": "boolean"},
+            {
+              "id": 53,
+              "name": "document_references",
+              "required": false,
+              "type": {
+                "type": "list",
+                "element-id": 54,
+                "element-required": true,
+                "element": {
+                  "type": "struct",
+                  "fields": [
+                    {"id": 55, "name": "collection", "required": true, "type": "string"},
+                    {"id": 56, "name": "ordinal", "required": true, "type": "int"},
+                    {"id": 57, "name": "url", "required": true, "type": "string"},
+                    {"id": 58, "name": "role", "required": false, "type": "string"},
+                    {"id": 59, "name": "format", "required": false, "type": "string"},
+                    {"id": 60, "name": "description", "required": false, "type": "string"},
+                    {"id": 61, "name": "name", "required": false, "type": "string"}
+                  ]
+                }
+              }
+            }
           ]
         }
       }

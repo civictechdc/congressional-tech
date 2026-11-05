@@ -2,7 +2,7 @@
 -- picked for it. The picks are rows of that materialized step, so these joins rescan nothing.
 SELECT w.record_sha_hex,w.source,w.priority,w.retrieved_at,w.event_id,w.chamber,w.congress,w.session,w.updated,
  w.updated_literal,w.title,w.meeting_date,w.meeting_type,w.status,
- s.sittings,c.committees,k.subject_keys,j.transcript_jackets,v.videos,d.document_urls,
+ s.sittings,c.committees,k.subject_keys,j.transcript_jackets,v.videos,d.document_urls,d.document_references,
  w.collection_states,w.access,w.access_basis,w.not_held,w.title_key,w.reschedule_candidate,w.rn,
  s.sittings_state,c.committees_state,k.subjects_state,j.jackets_state,v.videos_state,d.document_urls_state
 FROM meeting_records_ranked w

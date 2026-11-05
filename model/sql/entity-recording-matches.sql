@@ -47,6 +47,29 @@ WITH publisher AS (
  SELECT *,encode(sha256(json_array(subject_kind,subject_id,coalesce(video_key,url,''),basis)),'hex') AS match_id FROM all_rows
 ), ranked AS (
  SELECT *,row_number() OVER(PARTITION BY match_id ORDER BY source_ref,url) AS rn FROM keyed
+), package_links AS (
+ -- The printed hearing can cover several sittings. Its agreement with a meeting
+ -- establishes related package evidence, independent of which sitting a locator covers.
+ SELECT package_id,array_agg(named_struct(
+  'event_id',event_id,
+  'basis',arrow_cast('print_agreement','Dictionary(Int32, Utf8)'),
+  'scope',arrow_cast('package_context','Dictionary(Int32, Utf8)')
+ ) ORDER BY event_id) AS meeting_links
+ FROM package_meeting_links GROUP BY package_id
 )
-SELECT match_id,subject_kind,event_id,package_id,video_key,url,basis,decision,score,recording_scope,status,note,source_ref
-FROM ranked WHERE rn=1
+SELECT r.match_id,r.subject_kind,r.subject_id,r.event_id,r.package_id,r.video_key,r.url,r.basis,
+ r.decision,r.score,r.recording_scope,r.status,r.note,r.source_ref,
+ CASE WHEN e.event_id IS NOT NULL THEN make_array(named_struct(
+  'event_id',e.event_id,
+  'basis',arrow_cast('direct_event','Dictionary(Int32, Utf8)'),
+  'scope',arrow_cast('event','Dictionary(Int32, Utf8)')
+ ))
+ ELSE coalesce(p.meeting_links,array_slice(make_array(named_struct(
+  'event_id',cast(NULL AS BIGINT),
+  'basis',arrow_cast(NULL,'Dictionary(Int32, Utf8)'),
+  'scope',arrow_cast(NULL,'Dictionary(Int32, Utf8)')
+ )),1,0)) END AS meeting_links
+FROM ranked r
+LEFT JOIN meetings_export e ON r.event_id=e.event_id
+LEFT JOIN package_links p ON r.package_id=p.package_id
+WHERE r.rn=1

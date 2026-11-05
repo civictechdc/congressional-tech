@@ -1,3 +1,4 @@
+import type {RelationState} from '../reader/archive-entities.ts';
 import {dateLabels} from '../reader/archive.ts';
 import {validUrl} from '../browse/provenance.ts';
 import {formatLabel} from './ArchiveFormats.tsx';
@@ -57,4 +58,22 @@ export function ArchiveRows({
       </div>
     </li>;
   })}</ul>;
+}
+
+const COVERAGE_LABELS: Record<string,string> = {
+  empty: 'The source lists an empty collection.',
+  unknown: 'Coverage is unknown.',
+  unresolved: 'Source evidence is unresolved.',
+  not_stated: 'The source did not state this information.',
+  confirmed_absent: 'The archive confirmed absence from the available evidence.',
+  not_public: 'The recording is listed as not public.',
+};
+
+export function RelationNotice({label,state,coverage}:{
+  label:string; state?:RelationState; coverage?:string;
+}){
+  const detail=state==='missing'?'This release does not include this information.'
+    :state==='unavailable'?'This information could not be loaded.'
+    :coverage?COVERAGE_LABELS[coverage]:null;
+  return detail?<p className="archive-source-meta"><strong>{label}</strong> · {detail}</p>:null;
 }

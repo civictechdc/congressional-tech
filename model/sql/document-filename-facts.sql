@@ -11,7 +11,7 @@ WITH copies AS (
  FROM saved_files s JOIN saved_files k ON k.component=s.component AND k.saved_rank=1 AND k.body_sha=s.body_sha
 ), named AS (
  SELECT c.*,
-  CASE WHEN f.filename_date_status='completed' THEN f.filename_date END AS filename_date,
+  CASE WHEN f.filename_date_status='completed' AND f.filename_date_eligible THEN f.filename_date END AS filename_date,
   CASE WHEN f.filename_date_valid THEN 2
    WHEN regexp_like(coalesce(f.filename_date_name,''),'(?i)^[0-9a-f]{64}[.](hhrg|hmkp|hmtg)-') THEN 1 ELSE 0 END AS date_convention,
   CASE WHEN f.congress_status='completed' THEN f.congress END AS congress,

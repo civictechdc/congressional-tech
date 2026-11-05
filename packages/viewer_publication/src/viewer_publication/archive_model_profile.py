@@ -19,7 +19,7 @@ MEETING_SOURCES=('congress_gov','house_xml')
 APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
 ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}
 EXPLORER_SOURCES={'video_records':('youtube_cache','youtube_api'),'committee_records':('house_xml',)}
-SELECTED_SOURCES={**ENTITY_SOURCES,**EXPLORER_SOURCES}
+SELECTED_SOURCES={**ENTITY_SOURCES,**EXPLORER_SOURCES,'playlist_records':('hls',)}
 
 
 def current_parser_versions(keys=()):
@@ -28,9 +28,9 @@ def current_parser_versions(keys=()):
     Job specs, the selective job and its model template all build their expected
     pins here, so a new source-scoped table cannot be added to one and not the others.
     """
-    from congress_api.lake import readings,meeting_records,appearance_records,video_records,committee_records
+    from congress_api.lake import readings,meeting_records,appearance_records,video_records,committee_records,playlist_records
     modules=dict(meeting_records=meeting_records,appearance_records=appearance_records,
-                 video_records=video_records,committee_records=committee_records)
+                 video_records=video_records,committee_records=committee_records,playlist_records=playlist_records)
     result={p:readings.current_version(p) for p in PARSERS}
     result.update({name:modules[name].current_versions() for name in SELECTED_SOURCES if name in keys})
     return result
@@ -53,7 +53,8 @@ def validate_parser_versions(parser_versions,*,require_entities=False,require_ex
             raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
     for entity_name,expected_sources in SELECTED_SOURCES.items():
         if entity_name not in parser_versions:
-            if require_explorer if entity_name in EXPLORER_SOURCES else require_entities:
+            if ((require_explorer and entity_name in EXPLORER_SOURCES)
+                    or (require_entities and entity_name in ENTITY_SOURCES)):
                 raise ValueError(f'Model profile with {entity_name} requires pinned {entity_name} parser_versions')
             continue
         val=parser_versions[entity_name]

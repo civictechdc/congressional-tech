@@ -33,6 +33,7 @@ WITH event_keys AS (
        WHEN c.committees_state='present' THEN c.committees END AS raw_committees,
   h.subject_keys AS house_subjects,
   c.subject_keys AS congress_subjects,
+  c.document_references,
   CASE WHEN h.jackets_state='present' THEN h.transcript_jackets
        WHEN h.jackets_state IN ('empty','unrecognized') THEN NULL
        WHEN c.jackets_state='present' THEN c.transcript_jackets END AS raw_jackets,

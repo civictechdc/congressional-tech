@@ -248,6 +248,7 @@ Identity: `event_id` (primary_key; published identifier).
 | --- | --- | --- | --- |
 | `event_id` | `int64` | no | Congressional meeting event ID |
 | `chamber` | `dict` | yes | House, Senate or joint |
+| `chamber_basis` | `string` | no | source if the meeting record supplies a chamber, source_chamber_unknown if the meeting record has no supported chamber, or meeting_detail_missing if only a document references the event. Earlier releases omit this field. |
 | `title` | `string` | yes | Document or publisher title when known |
 | `meeting_date` | `date32` | yes | Meeting date |
 | `meeting_type` | `dict` | yes | Publisher meeting category |
@@ -267,8 +268,9 @@ Identity: `event_id` (primary_key; published identifier).
 | `not_held` | `bool` | yes | Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where the meeting's own print was held that day under its title, or a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record |
 | `rescheduled_to` | `int64` | yes | Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording, transcript file or witnesses of its own and either the publisher states Rescheduled or only the later twin has a recording; a hearing never moves to a markup; derived |
 | `rescheduled_basis` | `dict` | yes | publisher_status or recording_on_later_twin |
+| `document_references` | `list<struct<collection string, ordinal int32, url string, role string, format string, description string, name string>>` | yes | Congress.gov document links in source collection order. Null means the metadata is unavailable or unstated. An empty list means a supplied collection contained no links. |
 
-Nullability: Nullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null. A required column is refused at write time.
+Nullability: Nullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references. A required column is refused at write time.
 
 - `sittings[]`: Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.
 - `committees[]`: Host/participant roles belong to this meeting-committee association.
@@ -276,10 +278,15 @@ Nullability: Nullability transcribes data model §8.1 (meetings.parquet row); ac
 - `transcripts[].formats`: Format names (pdf, html, ...) the package is retained in, in format-preference order; values, not keys.
 - `videos[]`: Publisher recording links; video_key joins retained recordings when available.
 - `meeting_type`: As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label.
+- `document_references[].collection`: Source collection name, meetingDocuments or witnessDocuments. Witness documents are linked to this event without a witness identity claim.
+- `document_references[].ordinal`: Zero-based occurrence within its source collection. Different references to the same URL keep their own values.
+- `document_references[].url`: Publisher link. Use the existing document address lookup to find saved copies.
+- `document_references[].role`: Publisher documentType. Null when omitted.
+- `document_references[].format`: Publisher format, independent of the format of the saved body. Null when omitted.
 
 Outgoing: `meeting_bills`, `meeting_nominations`, `meeting_committees`, `meeting_transcript_documents`, `meeting_recordings`, `meeting_transcript_packages`, `meeting_video_address`, `meeting_treaties`.
 
-Incoming: `document_meetings`, `recording_meetings`, `witness_meeting`, `match_meeting`, `committee_record_meeting`, `coverage_meeting`.
+Incoming: `document_meetings`, `recording_meetings`, `witness_meeting`, `match_meeting`, `match_meeting_associations`, `committee_record_meeting`, `coverage_meeting`.
 
 ## `witnesses` — Witness appearances
 
@@ -496,6 +503,7 @@ Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
 | `latest_action_date` | `date32` | yes | Date of latest action |
 | `latest_action_text` | `string` | yes | Text of latest action |
 | `committees` | `list<dict>` | no | Referred Senate committee system codes |
+| `committee_activities` | `list<struct<system_code string, activities list<struct<name string, date string>>>>` | yes | Committee groups and activity names and dates as supplied, in source order. Null means unavailable or unstated. An empty list means the source supplied no entries. |
 | `transcripts` | `list<string>` | no | Printed hearing package IDs from nomination hearing references |
 | `floor_votes` | `list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>` | no | Senate roll-call votes on the nomination |
 
@@ -503,6 +511,8 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table, except de
 
 - `floor_votes[]`: Embedded Senate roll-call summaries; no individual member positions.
 - `transcripts[]`: GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions.
+- `committee_activities[].activities[].date`: Exact source date or timestamp string, including offset and precision. Null when missing.
+- `committee_activities[].activities`: Null when not supplied or unreadable, empty when the source supplied an empty list.
 
 Outgoing: `nominations_committees`, `nominations_votes`, `nomination_transcript_documents`, `nomination_packages`.
 
@@ -620,6 +630,7 @@ Coverage: Scored date and title matches arrive with the native matcher; gpo_hear
 | --- | --- | --- | --- |
 | `match_id` | `string` | no | Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis] |
 | `subject_kind` | `dict` | no | event or package |
+| `subject_id` | `string` | no | Original subject identifier, including a stated event number without a meeting |
 | `event_id` | `int64` | yes | Meeting subject; null for a package or a stated number no meeting has |
 | `package_id` | `string` | yes | GPO package subject |
 | `video_key` | `string` | yes | Video identity; can lack a video row |
@@ -631,11 +642,14 @@ Coverage: Scored date and title matches arrive with the native matcher; gpo_hear
 | `status` | `dict` | no | asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes |
 | `note` | `string` | yes | Curator note, or the unmatched stated number |
 | `source_ref` | `string` | yes | Evidence reference: the record or decision |
+| `meeting_links` | `list<struct<event_id int64, basis dict, scope dict>>` | no | Supported meeting links ordered by event ID. Empty means no supported link. Absent on older releases. |
 
 Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
+- `meeting_links[].basis`: direct_event for the observation’s stated event or print_agreement for vetted printed-hearing evidence.
+- `meeting_links[].scope`: event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting.
 
-Outgoing: `match_meeting`, `match_recording`.
+Outgoing: `match_meeting`, `match_meeting_associations`, `match_recording`.
 
 Incoming: none.
 
@@ -680,11 +694,11 @@ Identity: `event_id, aspect` (primary_key; published identifier).
 | `state` | `dict` | no | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
 | `basis` | `dict` | no | Which relation states it |
 | `count` | `int32` | no | Rows behind present |
-| `reason` | `dict` | yes | Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions) |
+| `reason` | `dict` | yes | Why a state holds, when known: recording_decision_unresolved_or_conflicting, package_context_only, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions) |
 
 Nullability: The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known. A required column is refused at write time.
 
-- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public.
+- `state`: confirmed_absent only from an undisputed curated negative verdict with event scope; package context alone does not establish absence and zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public.
 
 Outgoing: `coverage_meeting`.
 
@@ -1066,9 +1080,15 @@ many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. 
 
 ### `match_meeting`
 
-`recording_matches.event_id` → `meetings.event_id`. The meeting an observation concerns.
+`recording_matches.event_id` → `meetings.event_id`. The original event subject when the number resolves to a meeting.
 
 many-to-one; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
+
+### `match_meeting_associations`
+
+`recording_matches.meeting_links[].event_id` → `meetings.event_id`. Meetings linked by the observation’s direct event evidence or by print agreement. See basis and scope before drawing conclusions about a sitting.
+
+many-to-many; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
 
 ### `match_recording`
 
@@ -1195,7 +1215,13 @@ Parameters, in order: `event_id` (example `335321`).
 SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,
   coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id AND w.superseded_by IS NULL),[]) AS witnesses,
   coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM "list" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,
-  coalesce((SELECT list(struct_pack(video_key:=r.video_key,url:=r.url,basis:=r.basis,decision:=r.decision,status:=r.status) ORDER BY r.basis,r.video_key,r.url) FROM recording_matches r WHERE r.event_id=m.event_id),[]) AS recordings
+  coalesce((SELECT list(r ORDER BY r.match_id) FROM (
+   SELECT match_id,subject_kind,subject_id,event_id,package_id,video_key,url,basis,decision,score,recording_scope,status,note,source_ref,
+    list_filter(meeting_links,lambda l:l.event_id=m.event_id) AS meeting_links
+   FROM recording_matches
+   WHERE list_contains(list_transform(meeting_links,lambda l:l.event_id),m.event_id)
+   ORDER BY match_id LIMIT 100
+  ) r),[]) AS recordings
 FROM meetings m WHERE m.event_id=?
 ```
 
@@ -1204,6 +1230,8 @@ Uses correlated subqueries with coalesce(..., []) so nested lists do not Cartesi
 Uses m.event_id inside each subquery so only one ? parameter is required.
 
 Lists current appearances only (superseded_by IS NULL); each superseded row restates the same person from a lower-ranked source.
+
+Each recording observation appears once with its matching meeting links. Check association scope separately from recording scope.
 
 ### `witness_documents` — Documents submitted by a witness appearance
 
@@ -1365,11 +1393,17 @@ Result: One observation.
 Parameters, in order: `event_id` (example `115538`).
 
 ```sql
-SELECT video_key,url,basis,decision,score,recording_scope,status,note
-FROM recording_matches WHERE event_id=? ORDER BY basis,video_key,url
+WITH target AS (SELECT CAST(? AS BIGINT) AS event_id), observations AS (
+ SELECT r.match_id,r.subject_kind,r.subject_id,r.event_id,r.package_id,r.video_key,r.url,r.basis,r.decision,r.score,r.recording_scope,r.status,r.note,r.source_ref,
+  list_filter(r.meeting_links,lambda l:l.event_id=t.event_id) AS meeting_links
+ FROM recording_matches r CROSS JOIN target t
+)
+SELECT * FROM observations WHERE len(meeting_links)>0 ORDER BY match_id LIMIT 100
 ```
 
 claimed rows are what a video says about itself; conflicting rows are retained, not settled.
+
+A package_context link gives package evidence without establishing coverage for the event. Older releases may omit meeting_links and publish their original recipes.
 
 ### `channel_unmatched_videos` — Videos of a channel with no recording match
 

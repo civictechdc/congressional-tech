@@ -466,6 +466,19 @@ def test_source_scoped_version_independence_for_meeting_and_appearance_records(m
     assert appearance_records.current_version("senate_page") != a_vers["senate_page"]
 
 
+def test_shared_witness_helper_is_versioned_for_both_callers(monkeypatch):
+    read_bytes = Path.read_bytes
+    before = appearance_records.current_versions()
+
+    def changed_witness_helper(path):
+        original = read_bytes(path)
+        return original + b"\n# version dependency probe" if path.name == "witness_names.py" else original
+
+    monkeypatch.setattr(Path, "read_bytes", changed_witness_helper)
+    after = appearance_records.current_versions()
+    assert {source for source in before if before[source] != after[source]} == {"mods", "senate_page"}
+
+
 # ---------------------------------------------------------------------------
 # 3. `appearance_records` Extraction, Normalization, S2 Fixtures & Anti-Join
 # ---------------------------------------------------------------------------
@@ -1422,6 +1435,28 @@ def test_ct_h1nd_compact_dotted_senate_bills_amendatory_act_years_and_source_sym
     )
 
 
+def test_jec_continuation_keeps_one_witness_and_does_not_merge_shared_file():
+    href = "https://www.jec.senate.gov/public/index.cfm?a=Files.Serve&File_id=D2F941B3-FF5F-4503-B354-5C8BE5D7AF3B"
+    # Source structure from the retained June 12, 2024 JEC page, followed by
+    # two actual person labels sharing another file and an ungrouped link.
+    html = f"""
+    <p><strong>Witnesses:</strong></p>
+    <p><a href="{href}">Mr. Scott Lincicome, Vice President of General Economics and</a></p>
+    <p><a href="{href}">Stiefel Trade Policy Center</a></p>
+    <p>Cato Institute</p>
+    <p>Washington, DC</p>
+    <p><a href="/shared.pdf">Dr. Sam Smith, Professor</a></p>
+    <p><a href="/shared.pdf">Ms. Jane Doe, Researcher</a></p>
+    <p><a href="/flat.pdf">Download testimony</a></p>
+    """
+    apps = appearance_records.extract_senate_page_observation(html)["appearances"]
+    assert [(a["name"], a["position"], a["organization"], a["document_links"]) for a in apps] == [
+        ("Scott Lincicome", "Vice President of General Economics and Stiefel Trade Policy Center", "Cato Institute", [href]),
+        ("Sam Smith", "Professor", None, ["/shared.pdf"]),
+        ("Jane Doe", "Researcher", None, ["/shared.pdf"]),
+    ]
+
+
 def test_ct_30fp_senate_page_repeated_witness_names_and_relative_document_links():
     """ct-30fp:
     - Two witness cards on a Senate hearing page sharing the same normalized name ('John Smith' from 'Org A'
@@ -1716,6 +1751,7 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
             meetings=list_of(struct(updated="Utf8")),
         ),
         json_input(work, "package_meeting_links", [], package_id="Utf8", event_id="Int64"),
+        json_input(work, "package_mods_facts", [], package_id="Utf8", held_dates=list_of("Utf8")),
         json_input(work, "appearance_url_keys", [], url="Utf8", url_key="Utf8", error="Utf8"),
         json_input(
             work,
@@ -1983,6 +2019,32 @@ def test_unset_form_values_state_no_place(placeholder):
     assert sitting["room"] is None and sitting["building"] is None
     congress = meeting_records._convert_congress_meeting_dict({"eventId": "1", "date": "2019-11-13T19:00:00Z", "location": {"room": placeholder, "building": placeholder}})
     assert congress["sittings"][0]["room"] is None and congress["sittings"][0]["building"] is None
+
+
+def test_mods_witness_affiliation_boundaries_keep_source_occurrences():
+    # The named lines are from CHRG-112hhrg72238, whose printed contents III
+    # also show the complete roles, employers and Reese's representative role.
+    lines = [
+        "Mr. Thomas L. Farmer, Assistant Vice President for Security, Safety, and Operations, Association of American Railroads:",
+        "Mr. Raymond J. Reese, Corporate Health, Safety, and Security Leader, Colonial Pipeline Company, On Behalf of The Association of Oil Pipe Lines and the American Petroleum Institute:",
+        "Mr. Martin Rojas, Vice President for Security and Operations, American Trucking Association:",
+        "Mansooreh Mollaghasemi, Ph.D., President, Atria Technologies, LLC",
+        "Ms. Jane Doe, Deputy Director for Finance, Safety, and Operations, Northeast Programs",
+    ]
+    xml = '<mods xmlns="http://www.loc.gov/mods/v3"><extension>' + "".join(
+        f"<witness>{line}</witness>" for line in lines
+    ) + "</extension></mods>"
+    row = appearance_records.build_appearance_record_row(_sha("affiliation"), "mods", xml)
+    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["on_behalf_of"])
+            for a in row["appearances"]] == [
+        ("mods:witness[1]", "Thomas L. Farmer", "Assistant Vice President for Security, Safety, and Operations",
+         "Association of American Railroads", None),
+        ("mods:witness[2]", "Raymond J. Reese", "Corporate Health, Safety, and Security Leader",
+         "Colonial Pipeline Company", "The Association of Oil Pipe Lines and the American Petroleum Institute"),
+        ("mods:witness[3]", "Martin Rojas", "Vice President for Security and Operations", "American Trucking Association", None),
+        ("mods:witness[4]", "Mansooreh Mollaghasemi", "President", "Atria Technologies, LLC", None),
+        ("mods:witness[5]", "Jane Doe", None, None, None),
+    ]
 
 
 def test_mods_print_states_every_held_day_and_labels_statements():

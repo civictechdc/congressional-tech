@@ -21,14 +21,22 @@ WITH unnested_meeting_videos AS (
   arrow_cast(tc.sha256,'FixedSizeBinary(32)') AS body,
   tc.suffix,tc.format,tc.language,tc.production,
   tc.retrieved_at,tc.receipt_key,tc.receipt_line,tc.capture_index
- FROM recording_track_candidates tc
+ FROM caption_playlist_bodies p RIGHT JOIN recording_track_candidates tc ON p.record_sha=tc.sha256
  LEFT JOIN video_key_aliases a ON tc.extracted_key=a.alias_key
  WHERE tc.extracted_key IS NOT NULL AND tc.format IS NOT NULL
+  AND (tc.format<>'m3u8' OR p.record_sha IS NOT NULL)
+), classified_tracks AS (
+ -- A specific route or explicit ASR evidence beats a generic label for the same bytes.
+ -- Equal evidence keeps the latest fetch. Distinct bodies can still supply different tracks.
+ SELECT *,row_number() OVER(PARTITION BY video_key,body ORDER BY
+    CASE production WHEN 'asr' THEN 2 WHEN 'live' THEN 1 WHEN 'archive' THEN 1 ELSE 0 END DESC,
+    retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC,capture_index DESC,
+    format,language,production) AS body_preference FROM resolved_tracks
 ), ranked_tracks AS (
  SELECT *,row_number() OVER(
   PARTITION BY video_key,format,language,production
   ORDER BY retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC,capture_index DESC
- ) AS rn FROM resolved_tracks
+ ) AS rn FROM classified_tracks WHERE body_preference=1
 ), ordered_tracks AS (
  SELECT *,row_number() OVER(
   PARTITION BY video_key

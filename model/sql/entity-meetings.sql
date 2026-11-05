@@ -175,6 +175,11 @@ WITH keys AS (
 )
 SELECT k.event_id,
  m.chamber,
+ CASE
+  WHEN m.event_id IS NULL THEN 'meeting_detail_missing'
+  WHEN m.chamber IS NULL THEN 'source_chamber_unknown'
+  ELSE 'source'
+ END AS chamber_basis,
  m.title,
  m.meeting_date,
  m.meeting_type,
@@ -201,7 +206,8 @@ SELECT k.event_id,
  m.access_basis,
  m.not_held AND pr.event_id IS NULL AS not_held,
  r.rescheduled_to,
- r.rescheduled_basis
+ r.rescheduled_basis,
+ m.document_references
 FROM keys k
 LEFT JOIN meetings_resolved m ON k.event_id=m.event_id
 LEFT JOIN subject_keys_by_event sk ON k.event_id=sk.event_id

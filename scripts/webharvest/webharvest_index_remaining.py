@@ -20,6 +20,7 @@ import requests
 from webharvest_cdx import digest, key, load, parse_cdx, save
 
 COLLECTIONS = [f'congress{n}th' for n in range(109, 119)]
+MAX_REQUEST_LINE_BYTES = 4094
 
 
 def now():
@@ -54,11 +55,22 @@ def job_params(job):
     return params(job['host'], job['keys'])
 
 
-def batches(host, keys):
+def job_url(job):
+    return f"https://webharvest.gov/{job['collection']}/timemap/cdx?" + urlencode(job_params(job))
+
+
+def request_line_bytes(url):
+    # The audit uses a direct HTTPS route with no redirects or environment proxy.
+    target = requests.Request('GET', url).prepare().path_url
+    return len(f'GET {target} HTTP/1.1'.encode('ascii'))
+
+
+def batches(host, collection, keys):
     batch = []
     for item in sorted(set(keys)):
         trial = batch + [item]
-        if batch and len(urlencode(params(host, trial))) > 3600:
+        trial_url = job_url({'host': host, 'collection': collection, 'keys': trial})
+        if batch and request_line_bytes(trial_url) > MAX_REQUEST_LINE_BYTES:
             yield batch
             batch = []
         batch.append(item)
@@ -157,7 +169,7 @@ class Audit:
                 if wanted and self.host_first:
                     self.jobs.append({'host': host, 'collection': collection, 'keys': sorted(wanted), 'mode': 'host'})
                 else:
-                    for batch in batches(host, wanted):
+                    for batch in batches(host, collection, wanted):
                         self.jobs.append({'host': host, 'collection': collection, 'keys': batch})
         save(self.output / 'query-plan.json', self.jobs)
         self.report()
@@ -179,7 +191,7 @@ class Audit:
             for proof in coverage['requests']:
                 receipt = load(Path(proof['metadata']))
                 raw = Path(proof['body_path']).read_bytes()
-                expected_url = f"https://webharvest.gov/{coverage['collection']}/timemap/cdx?" + urlencode(job_params(coverage))
+                expected_url = job_url(coverage)
                 if (receipt.get('status') != 200 or not receipt.get('complete')
                         or receipt['url'] != expected_url or digest(raw) != proof['sha256']
                         or receipt['sha256'] != proof['sha256']):
@@ -207,14 +219,35 @@ class Audit:
                 'replay_url': f"https://webharvest.gov/{collection}/{row['timestamp']}id_/{row['url']}",
                 'availability': 'index_match_not_download_verified'}
 
+    def split_job(self, job):
+        keys = job['keys']
+        if job.get('mode') == 'host':
+            children = [{'host': job['host'], 'collection': job['collection'], 'keys': batch}
+                        for batch in batches(job['host'], job['collection'], keys)]
+        elif len(keys) > 1:
+            midpoint = len(keys) // 2
+            children = [{**job, 'keys': keys[:midpoint]}, {**job, 'keys': keys[midpoint:]}]
+        else:
+            return False
+        self.jobs.extend(children)
+        save(self.output / 'query-plan.json', self.jobs)
+        return True
+
     def fetch(self, job, attempt=0):
+        url = job_url(job)
+        line_bytes = request_line_bytes(url)
+        if line_bytes > MAX_REQUEST_LINE_BYTES:
+            if self.split_job(job):
+                self.errors.append({**job, 'reason': 'request_line_limit_split', 'request_line_bytes': line_bytes})
+                return
+            raise ValueError('single_url_exceeds_request_line_limit')
         time.sleep(max(0, self.delay - (time.monotonic() - self.last)))
         self.request_count += 1
         name = f'{self.request_count:05d}'
         path = self.output / 'requests' / (name + '.body')
         path.parent.mkdir(exist_ok=True)
-        url = f"https://webharvest.gov/{job['collection']}/timemap/cdx?" + urlencode(job_params(job))
-        receipt = {'requested_at': now(), 'url': url, 'attempt': attempt, 'route': 'direct', 'complete': False}
+        receipt = {'requested_at': now(), 'url': url, 'request_line_bytes': line_bytes,
+                   'attempt': attempt, 'route': 'direct', 'complete': False}
         try:
             with self.session.get(url, allow_redirects=False, timeout=(15, 45), stream=True) as response, path.open('wb') as stream:
                 receipt.update(status=response.status_code, headers={k.lower(): v for k, v in response.headers.items() if k.lower() != 'set-cookie'})
@@ -232,13 +265,20 @@ class Audit:
         raw = path.read_bytes() if path.exists() else b''
         receipt.update(bytes=len(raw), sha256=digest(raw), body_path=str(path.resolve()))
         save(path.with_suffix('.json'), receipt)
-        if receipt.get('status') == 429 or b'rate limit reached' in raw[:16384].lower():
+        response_prefix = raw[:16384].lower()
+        if receipt.get('status') == 414 or (receipt.get('status') == 400 and
+                                          b'request line is too large' in response_prefix):
+            if self.split_job(job):
+                self.errors.append({**job, 'reason': 'server_request_line_limit_split', 'request': str(path.with_suffix('.json'))})
+                return
+            raise ValueError('server_rejected_single_url_length')
+        if receipt.get('status') == 429 or b'rate limit reached' in response_prefix:
             if attempt < 2:
                 print(json.dumps({'event': 'rate_limit_cooldown', 'seconds': 60, 'attempt': attempt}), flush=True)
                 time.sleep(60)
                 return self.fetch(job, attempt + 1)
             self.blocked = 'rate_limited_after_two_cooldowns'
-        if receipt.get('status') in {401, 403} or b'session verification' in raw[:16384].lower():
+        if receipt.get('status') in {401, 403} or b'session verification' in response_prefix:
             self.blocked = 'access_verification_required'
         if (not receipt['complete'] or receipt.get('status') in {500, 502, 503, 504}) and attempt < 1:
             return self.fetch(job, attempt + 1)
@@ -255,15 +295,8 @@ class Audit:
         source = 'fresh_host_index' if job.get('mode') == 'host' else 'fresh_targeted_index'
         self.evidence.append({**job, 'source': source, 'complete': resume is None, 'resume': resume, 'requests': [proof], 'rows': len(rows)})
         if resume:
-            if job.get('mode') == 'host':
-                self.jobs.extend([{'host': job['host'], 'collection': job['collection'], 'keys': b}
-                                  for b in batches(job['host'], job['keys'])])
-            elif len(job['keys']) == 1:
+            if not self.split_job(job):
                 raise ValueError('single_url_index_truncated')
-            else:
-                midpoint = len(job['keys']) // 2
-                self.jobs.extend([{**job, 'keys': job['keys'][:midpoint]}, {**job, 'keys': job['keys'][midpoint:]}])
-            save(self.output / 'query-plan.json', self.jobs)
         else:
             for canonical in job['keys']:
                 self.covered[canonical].add(job['collection'])

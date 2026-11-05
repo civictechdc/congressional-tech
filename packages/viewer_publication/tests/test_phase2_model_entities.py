@@ -146,7 +146,11 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     vtt_old = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nOld caption track\n'
     vtt_new = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nNew caption track\n'
     vtt_asr = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nAuto caption track\n'
-    m3u8_bytes = b'#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n'
+    m3u8_bytes = b'#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:12.0,\ntext_1_00001.vtt\n#EXT-X-ENDLIST\n'
+    master_bytes = b'#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,URI="text_1.m3u8"\n'
+    caption_segment = b'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:183000\n\n00:00:01.000 --> 00:00:02.000\nSegment cue\n'
+    unkeyed_playlist = (b'#EXTM3U\n#EXTINF:12.0,\n'
+        b'https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/unkeyed-child.vtt\n')
     segment_bytes = b'G@\x00\x10' + bytes(184)
     # One retained YouTube cache file on a directory channel: a video whose own text names event 115538,
     # and an upload naming no meeting. The Explorer build parses it through the real video_records parser.
@@ -227,12 +231,40 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             retrieved_at='2023-05-21T12:00:00Z',
         ),
         dict(
-            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/master.m3u8',
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/text_1.m3u8',
             data=m3u8_bytes,
             format='m3u8',
             media_type='application/vnd.apple.mpegurl',
             family='senate/captions',
             retrieved_at='2023-05-21T12:00:00Z',
+        ),
+        dict(
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/master.m3u8',
+            data=master_bytes, format='m3u8', media_type='application/vnd.apple.mpegurl',
+            family='senate/captions', retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        dict(
+            requested_url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/text_1_00001.vtt',
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/redirected.vtt',
+            data=caption_segment, format='vtt', media_type='text/vtt', family='senate/captions',
+            retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        dict(
+            url='https://www.senate.gov/captions/unkeyed.m3u8',
+            data=unkeyed_playlist, format='m3u8', media_type='application/vnd.apple.mpegurl',
+            family='senate/captions', retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        dict(
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/unkeyed-child.vtt',
+            data=caption_segment.replace(b'Segment cue', b'Unkeyed parent'),
+            format='vtt', media_type='text/vtt',
+            family='senate/captions', retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        # A later generic route supplies the same bytes and cannot replace the live label.
+        dict(
+            url='https://www.senate.gov/streams/ag051023/text_1.m3u8',
+            data=m3u8_bytes, format='m3u8', media_type='application/vnd.apple.mpegurl',
+            family='senate/captions', retrieved_at='2023-05-23T12:00:00Z',
         ),
         # A stream segment is media, never a track or a document (annex §2), even when fetched.
         dict(
@@ -314,6 +346,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 committees=[dict(system_code='HSAG00', role='host')],
                 subject_keys=['118-hr-1234'],
                 transcript_jackets=['55555'],
+                document_urls=['https://www.congress.gov/112/meeting/house/100031/documents/CHRG-112hhrg72212.pdf'],
+                document_references=[
+                    dict(collection='meetingDocuments',ordinal=0,
+                         url='https://www.congress.gov/112/meeting/house/100031/documents/CHRG-112hhrg72212.pdf',
+                         role='Support Document',format='PDF',description=None,name='Printed Hearing Record'),
+                    dict(collection='witnessDocuments',ordinal=1,
+                         url='https://www.congress.gov/112/meeting/house/100031/documents/CHRG-112hhrg72212.pdf',
+                         role='Witness Statement',format=None,description='Witness supplied',name=None),
+                ],
                 videos=[
                     dict(title='YouTube Stream', url='https://youtu.be/dQw4w9WgXcQ', video_key=None),
                     dict(title='Senate ISVP', url='https://www.senate.gov/isvp/?comm=ag&filename=ag051023', video_key=None),
@@ -648,15 +689,28 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 received_date='2023-02-01',
                 latest_action_date='2023-05-18',
                 latest_action_text='Confirmed by the Senate.',
-                committees_json='[{"system_code":"ssaf00","name":"Agriculture"}]',
+                committees_json=json.dumps([
+                    dict(systemCode='ssaf00',activities=[
+                        dict(name='Hearings By (full committee)',date='2023-04-01T11:22:33.123-04:00'),
+                        dict(name='Hearings By (full committee)',date='2023-04-01T11:22:33.123-04:00'),
+                        dict(name='Publisher wording',date='date unavailable'),
+                    ]),
+                    dict(system_code='ssaf00',activities=[]),
+                    dict(system_code='ssaf00'),
+                ]),
                 hearings_json='[{"package_id":"CHRG-118shrg12345"},{"chamber":"Senate","jacket_number":"67890"}]',
             ),
         ],
     )
 
+    from congress_api.lake import playlist_records
+    playlists = playlist_records.stage(captures=staged['captures'], engine=engine, work=tmp_path / 'playlist-stage',
+                                       local_root=tmp_path / 'raw', decided_at='2026-10-27T12:00:00Z')
+    staged['parser_versions']['playlist_records'] = playlist_records.current_versions()
     release_dir = tmp_path / 'release'
     manifest = build_release(
         **staged,
+        playlist_records=playlists['records'],
         meeting_records=meeting_records,
         appearance_records=appearance_records,
         spicy_regs=spicy_regs,
@@ -752,6 +806,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['status'] == 'Scheduled'
     assert m['sittings'][0]['place'] == '1300, LHOB, Washington, DC'
     assert m['committees'] == [{'system_code': 'hsag00', 'role': 'primary'}]
+    assert m['document_references'] == meeting_records[1]['meetings'][0]['document_references']
     assert m['subject_keys'] == ['115-hr-1', '118-hr-1234', '118-pn-123']
     # The print first, then the recording's two complete caption tracks (ct-1i4q).
     assert [(t['source'], t['package_id'], t['video_key'], t['production']) for t in m['transcripts']] == [
@@ -808,9 +863,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert set(tracks) == {('vtt', 'en', 'asr'), ('vtt', 'en', 'caption')}
     assert tracks[('vtt', 'en', 'caption')]['body'] == hashlib.sha256(vtt_new).digest()
     assert tracks[('vtt', 'en', 'asr')]['body'] == hashlib.sha256(vtt_asr).digest()
-    assert recordings['senate:ag051023']['tracks'][0]['format'] == 'm3u8'
-    assert recordings['senate:ag051023']['tracks'][0]['body'] == hashlib.sha256(m3u8_bytes).digest()
-    assert hashlib.sha256(segment_bytes).digest() not in {t['body'] for t in recordings['senate:ag051023']['tracks']}
+    track, = recordings['senate:ag051023']['tracks']
+    assert (track['format'], track['language'], track['production']) == ('m3u8', 'en', 'live')
+    assert track['body'] == hashlib.sha256(m3u8_bytes).digest()
 
     # 4. Verify committees.parquet (including Eastern date conversion)
     committees = pq.read_table(release_dir / 'committees.parquet').to_pylist()
@@ -872,6 +927,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     nom = nominations[0]
     assert nom['nomination_id'] == '118-pn-123'
     assert nom['committees'] == ['ssaf00']
+    assert nom['committee_activities'] == [
+        dict(system_code='ssaf00',activities=[
+            dict(name='Hearings By (full committee)',date='2023-04-01T11:22:33.123-04:00'),
+            dict(name='Hearings By (full committee)',date='2023-04-01T11:22:33.123-04:00'),
+            dict(name='Publisher wording',date='date unavailable'),
+        ]),
+        dict(system_code='ssaf00',activities=[]),
+        dict(system_code='ssaf00',activities=None),
+    ]
     assert nom['transcripts'] == ['CHRG-118shrg12345', 'CHRG-118shrg67890']
     assert len(nom['floor_votes']) == 1
     assert nom['floor_votes'][0]['vote_id'] == '118-s-1-99'
@@ -897,9 +961,10 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         updated='2023-05-10T20:00:00Z', records=[dict(ordinal=0, kind='amendment', bill='H.R. 1234', number='1',
             sponsor_bioguide='S000001', amendment_type='ANS', enbloc=None, description='Amendment in the nature of a substitute; agreed to by voice vote',
             url='https://docs.house.gov/meetings/AG/AG00/20230510/115538/BILLS-118HR1234ih-A001.pdf')])]), committee_path)
-    decisions.write_text(json.dumps(dict(id='a' * 64, subject_kind='event', subject_id='115538', verdict='found',
-        video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n')
-    explorer = build_release(**staged, meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
+    decisions.write_text(''.join(json.dumps(dict(id=letter * 64, subject_kind=kind, subject_id=subject, verdict='found',
+        video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n'
+        for letter,kind,subject in [('a','event','115538'),('b','package','CHRG-118hhrg55555')]))
+    explorer = build_release(**staged, playlist_records=playlists['records'], meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
         video_records=video_path, committee_records=committee_path,
         recording_decision_files=[dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions))],
         engine=engine, output=tmp_path / 'release-explorer', scratch=tmp_path / 'model-explorer')
@@ -927,7 +992,10 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         (115538, 'transcript'): ('present', 'meetings.transcripts', 'captions,printed_hearing'),
         (115538, 'witnesses'): ('present', 'appearance_records', None)}
     matches = pq.read_table(tmp_path / 'release-explorer/recording_matches.parquet').to_pylist()
-    assert [(r['event_id'], r['url'], r['status']) for r in matches if r['basis'] == 'curated'] == [(115538, 'https://example.test/watch', 'decided')]
+    assert {r['subject_kind']: r['meeting_links'] for r in matches if r['basis'] == 'curated'} == {
+        'event': [dict(event_id=115538, basis='direct_event', scope='event')],
+        'package': [dict(event_id=115538, basis='print_agreement', scope='package_context')],
+    }
     assert [(r['event_id'], r['video_key'], r['status']) for r in matches if r['basis'] == 'video_states_event_id'] == [
         (115538, 'youtube:agHearing01', 'claimed')]
     assert not any(r['video_key'] == 'youtube:agUpload02' for r in matches)
@@ -2705,7 +2773,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 received_date='2025-01-20',
                 latest_action_date='2025-02-12',
                 latest_action_text='Committee on Banking. Hearings held.',
-                committees_json='[{"system_code":"ssbk00","name":"Banking"}]',
+                committees_json=None,
                 hearings_json='[{"chamber":"Senate","citation":"S.Hrg.119-475","date":"2026-06-23","jacketNumber":58025,"number":475}]',
             ),
             dict(
@@ -2717,7 +2785,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 received_date='2025-01-22',
                 latest_action_date='2025-02-12',
                 latest_action_text='Committee on Banking. Hearings held.',
-                committees_json='[{"system_code":"ssbk00","name":"Banking"}]',
+                committees_json='[]',
                 hearings_json='[{"chamber":"Senate","citation":"S.Hrg.119-475","date":"2026-06-23","jacketNumber":58025,"number":475}]',
             ),
         ],
@@ -2748,6 +2816,8 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     assert sorted(nominations) == ['119-pn-12-10', '119-pn-850']
     assert nominations['119-pn-12-10']['transcripts'] == ['CHRG-119shrg58025']
     assert nominations['119-pn-850']['transcripts'] == ['CHRG-119shrg58025']
+    assert nominations['119-pn-12-10']['committee_activities'] is None
+    assert nominations['119-pn-850']['committee_activities'] == []
 
     bills = {b['bill_id']: b for b in pq.read_table(release_dir / 'bills.parquet').to_pylist()}
     assert '118-hr-7521' in bills

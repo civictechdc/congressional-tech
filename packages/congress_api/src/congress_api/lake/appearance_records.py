@@ -192,6 +192,10 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_WITNESS_HEADING",
         "_TESTIFIED_WORDS",
         "mods_entry_kind",
+        "_MODS_REPRESENTATIVE",
+        "_MODS_ROLE",
+        "_MODS_ORGANIZATION",
+        "_mods_witness_fields",
         "extract_mods_observation",
         "extract_mods_appearances",
         *_TABLE_SYMBOLS,
@@ -265,6 +269,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             files={
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "parsers_senate_page": pkg_dir / "parsers/senate_page.py",
+                "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
                 "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
@@ -986,6 +991,58 @@ def mods_held_dates(doc: ModsDocument) -> list[str]:
     return sorted(found)
 
 
+_MODS_REPRESENTATIVE = re.compile(r"(?:^|,\s*)on behalf of\s+", re.I)
+_MODS_ROLE = re.compile(
+    r"\b(?:president|director|officer|chief|leader|manager|counsel|secretary|administrator|"
+    r"advi[sz]er|coordinator|commissioner|professor|chair(?:man|woman)?|representative)\b",
+    re.I,
+)
+_MODS_ORGANIZATION = re.compile(
+    r"^(?:the )?(?:association|department|office|university|institute|federation|"
+    r"council|commission|committee|foundation|center|bureau) of\b"
+    r"|\b(?:association|company|corporation|university|institute|inc\.?|llc|"
+    r"federation|council|commission|committee|foundation|center|agency|union|society)$",
+    re.I,
+)
+
+
+def _mods_witness_fields(line: str) -> dict[str, Any]:
+    parsed = parse_gpo_witness(line)
+    position, organization = parsed["position"], parsed["organization"]
+    affiliation = ", ".join(part for part in (position, organization) if part)
+    representative = _MODS_REPRESENTATIVE.search(affiliation)
+    if representative:
+        parsed["on_behalf_of"] = affiliation[representative.end():].rstrip(":")
+        affiliation = affiliation[:representative.start()]
+    if not affiliation:
+        parsed.update(position=None, organization=None)
+        return parsed
+
+    parts = affiliation.rstrip(":").split(", ")
+    # The final conjunct of a role's list precedes the named institution:
+    # "Vice President for Security, Safety, and Operations, Association of ...".
+    # A recognizable institution before the conjunction instead belongs to
+    # the usual first-comma split. Never pick a boundary from a conjunction alone.
+    conjuncts = [i for i, part in enumerate(parts[1:], 1) if part.lower().startswith("and ")]
+    if conjuncts and not any(_MODS_ORGANIZATION.search(part) for part in parts[1:conjuncts[0]]):
+        candidates = [
+            i + 1 for i in conjuncts
+            if i + 1 < len(parts)
+            and _MODS_ROLE.search(", ".join(parts[:i + 1]))
+            and _MODS_ORGANIZATION.search(parts[i + 1])
+        ]
+        if len(candidates) != 1:
+            # The immutable MODS body and source locator retain the literal
+            # line when the source cannot distinguish the two fields.
+            parsed.update(position=None, organization=None)
+            return parsed
+        split = candidates[0]
+    else:
+        split = 1
+    parsed.update(position=", ".join(parts[:split]), organization=", ".join(parts[split:]))
+    return parsed
+
+
 def extract_mods_observation(
     payload: bytes | str | Mapping[str, Any] | ModsDocument,
     *,
@@ -1009,7 +1066,7 @@ def extract_mods_observation(
         raw_rows: list[dict[str, Any]] = []
         for idx, w in enumerate(raw_witnesses, start=1):
             if isinstance(w, str):
-                parsed = parse_gpo_witness(w)
+                parsed = _mods_witness_fields(w)
                 w_name = _opt_str(parsed.get("name"))
                 if not w_name:
                     continue
@@ -1020,6 +1077,7 @@ def extract_mods_observation(
                         "honorific": _opt_str(parsed.get("honorific")),
                         "position": _opt_str(parsed.get("position")),
                         "organization": _opt_str(parsed.get("organization")),
+                        "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
                         "display_order": idx,
                         "document_links": [],
                     }
@@ -1035,6 +1093,7 @@ def extract_mods_observation(
                         "honorific": _opt_str(w.get("honorific")),
                         "position": _opt_str(w.get("position")),
                         "organization": _opt_str(w.get("organization")),
+                        "on_behalf_of": _opt_str(w.get("on_behalf_of")),
                         "bioguide_id": _opt_str(w.get("bioguide_id") or w.get("bioGuideId")),
                         "display_order": _opt_int(w.get("display_order")) or idx,
                         "document_links": _clean_links(w.get("document_links") or w.get("document_urls")),
@@ -1123,7 +1182,7 @@ def extract_mods_observation(
                 }
             )
             continue
-        parsed = parse_gpo_witness(cleaned_line)
+        parsed = _mods_witness_fields(cleaned_line)
         w_name = _opt_str(parsed.get("name"))
         # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
         if w_name and LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name):
@@ -1142,6 +1201,7 @@ def extract_mods_observation(
                 "honorific": _opt_str(parsed.get("honorific")),
                 "position": _opt_str(parsed.get("position")),
                 "organization": _opt_str(parsed.get("organization")),
+                "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
                 "bioguide_id": bg,
                 "witness_type": mods_entry_kind(cleaned_line, w_name),
                 "display_order": len(raw_rows) + 1,

@@ -2,7 +2,7 @@
 import { withBase } from '../lib/paths';
 
 interface Props {
-  /** Active top-level nav key (e.g. 'home' | 'proposals' | 'projects' | 'subprojects' | 'dashboard' | 'archive' | 'youtube-coverage' | 'mcp' | 'contribute'). */
+  /** Active top-level nav key (e.g. 'home' | 'proposals' | 'projects' | 'subprojects' | 'archive' | 'youtube-coverage' | 'mcp' | 'contribute'). */
   active?: string;
 }
 
@@ -13,8 +13,7 @@ const links = [
   { key: 'proposals', label: 'Proposals', href: withBase('/proposals/') },
   { key: 'projects', label: 'Projects', href: withBase('/projects/') },
   { key: 'subprojects', label: 'Sub-projects', href: withBase('/subprojects/') },
-  { key: 'dashboard', label: 'Committee Explorer', href: withBase('/dashboard/') },
-  { key: 'archive', label: 'Document Archive', href: withBase('/archive/') },
+  { key: 'archive', label: 'Congress Explorer', href: withBase('/archive/') },
   { key: 'youtube-coverage', label: 'YouTube Coverage', href: withBase('/youtube-coverage/') },
   { key: 'mcp', label: 'Use with AI', href: withBase('/mcp/') },
   { key: 'contribute', label: 'Contribute', href: withBase('/contribute/') },

@@ -1,3 +1,5 @@
+export class ArchiveReleaseChangedError extends Error {}
+
 /** Conservative retained-value accounting; transient decoder/clone memory is separate. */
 export function retainedBytes(value: unknown, seen = new Set<object>()): number {
   if (value == null) return 8;

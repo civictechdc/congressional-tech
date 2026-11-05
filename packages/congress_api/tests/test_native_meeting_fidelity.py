@@ -102,3 +102,22 @@ def test_real_document_types_survive_without_changing_material_identity():
     assert seen == set(expected)
     assert meetings.category({'documentType': 'Hearing: Questions for the Record', 'name': 'Witness statement about a bill'}) == 'questions_for_record'
     assert meetings.category({'documentType': 'Support Document', 'name': 'Hearing transcript'}) == 'transcript'
+
+
+def test_archive_meeting_records_keep_document_attributes_and_same_url_references():
+    from congress_api.lake import meeting_records
+
+    source = next(row for row in ROWS if row.get('eventId') == '100031')
+    source_ref = source['meetingDocuments'][0]
+    witness_ref = dict(source_ref, documentType='Witness Statement', name='Submitted testimony', description='Witness supplied')
+    payload = {**source, 'witnessDocuments': [witness_ref]}
+    body = json.dumps({'committeeMeeting': payload}).encode()
+    record = meeting_records.build_meeting_record_row('a' * 64, 'congress_gov', body, parser_version='test')
+    meeting = meeting_records.table([record]).to_pylist()[0]['meetings'][0]
+    assert meeting['document_urls'] == [source_ref['url']]
+    assert meeting['document_references'] == [
+        dict(collection='meetingDocuments', ordinal=0, url=source_ref['url'],
+             role='Support Document', format='PDF', description=None, name='Printed Hearing Record'),
+        dict(collection='witnessDocuments', ordinal=0, url=source_ref['url'],
+             role='Witness Statement', format='PDF', description='Witness supplied', name='Submitted testimony'),
+    ]

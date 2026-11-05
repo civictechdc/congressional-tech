@@ -90,7 +90,9 @@
     {
       "family": "senate/pages",
       "patterns": [
-        "^https://(?:[a-z0-9-]+\\.)+senate\\.gov/(?:hearings?|events?|calendar|meetings?|markups?|committee-activity|wp-json)(?:/|\\?)[^#]*$"
+        "^https://(?:[a-z0-9-]+\\.)+senate\\.gov/(?:hearings?|events?|calendar|meetings?|markups?|committee-activity|wp-json)(?:/|\\?)[^#]*$",
+        "^https://www\\.intelligence\\.senate\\.gov/category/hearings/open-hearings/(?:page/[1-9][0-9]*/(?:[?]et_blog)?)?$",
+        "^https://www\\.intelligence\\.senate\\.gov/[0-9]{4}/[0-9]{2}/[0-9]{2}/(?:open-hearing|hearings?|nomination-hearing)-[a-z0-9-]+/$"
       ],
       "exclusions": [
         "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"

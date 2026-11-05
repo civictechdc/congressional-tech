@@ -8,21 +8,15 @@ WITH referenced_nominations AS (
   CASE WHEN part_number IS NOT NULL AND try_cast(part_number AS INT) IS NOT NULL AND try_cast(part_number AS INT)<>0
        THEN '-'||regexp_replace(trim(part_number),'^0+','') ELSE '' END AS nomination_id,
   congress,number,part_number,description,organization,received_date,
-  latest_action_date,latest_action_text,committees_json,hearings_json
+  latest_action_date,latest_action_text,committee_activities,hearings_json
  FROM spicy_nominations WHERE congress IS NOT NULL AND number IS NOT NULL
 ), matched_nominations AS (
  SELECT k.* FROM keyed_nominations k
  JOIN referenced_nominations r ON k.nomination_id=r.nomination_id
-), committee_chunks AS (
- SELECT nomination_id,unnest(string_to_array(committees_json,'}')) AS chunk
- FROM matched_nominations WHERE committees_json IS NOT NULL
+), committee_groups AS (
+ SELECT nomination_id,unnest(committee_activities) AS committee FROM matched_nominations
 ), committee_extracted AS (
- SELECT nomination_id,
-  lower(coalesce(
-   (regexp_match(chunk,'(?i)"system_?code"\s*:\s*"([^"]+)"'))[1],
-   (regexp_match(chunk,'"([a-zA-Z]{4}[0-9]{2})"'))[1]
-  )) AS system_code
- FROM committee_chunks
+ SELECT nomination_id,lower(trim(committee['system_code'])) AS system_code FROM committee_groups
 ), committees_agg AS (
  SELECT nomination_id,array_sort(array_distinct(array_agg(system_code))) AS committees
  FROM committee_extracted WHERE system_code IS NOT NULL AND system_code<>''
@@ -87,7 +81,7 @@ SELECT m.nomination_id,
  m.description,m.organization,
  coalesce(try_cast(m.received_date AS DATE),cast(arrow_cast(try_cast(m.received_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS received,
  coalesce(try_cast(m.latest_action_date AS DATE),cast(arrow_cast(try_cast(m.latest_action_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS latest_action_date,
- m.latest_action_text,
+ m.latest_action_text,m.committee_activities,
  coalesce(c.committees,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS committees,
  coalesce(t.transcripts,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS transcripts,
  coalesce(v.floor_votes,array_slice(make_array(named_struct(

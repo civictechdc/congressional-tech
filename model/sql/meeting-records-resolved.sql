@@ -253,7 +253,7 @@ WITH sitting_rows AS (
  ) ORDER BY idx) AS videos
  FROM video_matched GROUP BY event_id
 )
-SELECT m.event_id,m.chamber,m.congress,m.session,m.updated,m.congress_gov_updated,m.house_xml_updated,m.congress_gov_meeting_type,m.access,m.access_basis,m.not_held,m.title_key,m.reschedule_candidate,ck.committee_key,m.title,m.meeting_date,m.meeting_type,m.status,
+SELECT m.event_id,m.chamber,m.congress,m.session,m.updated,m.congress_gov_updated,m.house_xml_updated,m.congress_gov_meeting_type,m.access,m.access_basis,m.not_held,m.title_key,m.reschedule_candidate,ck.committee_key,m.title,m.meeting_date,m.meeting_type,m.status,m.document_references,
  coalesce(sa.sittings,array_slice(make_array(named_struct(
   'start',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
   'end',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),

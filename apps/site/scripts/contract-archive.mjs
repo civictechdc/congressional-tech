@@ -25,11 +25,94 @@ async function fixtureContext(options={}){
   await routeArchiveOrigin(context,server);
   return context;
 }
+async function checkSiteCutover(eventId){
+  const context=await fixtureContext(),page=await context.newPage();
+  page.setDefaultTimeout(15000);
+  const base=server.origin+'/congressional-tech/';
+  const mapPath='/congressional-tech/data/explorer/event-meetings.json';
+  const oldId='d6c7189d-ab25-4785-bc4e-fc7284b70fd6';
+  const legacyRequests=[];
+  context.on('request',request=>{
+    const path=new URL(request.url()).pathname;
+    if(path.includes('/data/explorer/'))legacyRequests.push(path);
+  });
+  await context.route(base+'data/explorer/event-meetings.json',
+    route=>route.fulfill({json:{[eventId]:[oldId,118]}}));
+  try{
+    await page.goto(base);
+    const explorer=page.getByRole('navigation',{name:'Main',exact:true}).getByRole('link',{name:'Congress Explorer',exact:true});
+    assert.equal(await explorer.getAttribute('href'),'/congressional-tech/archive/');
+    await explorer.click();
+    const release=page.locator(`[data-archive-release="${server.manifest.release_id}"]`);
+    await release.waitFor();
+    assert.equal(await page.locator('a[href*="/dashboard/"]').count(),0);
+    for(const bookmark of ['?meeting='+eventId,'?view=meetings&kind=meeting&id='+oldId]){
+      await page.goto(base+'dashboard/'+bookmark);
+      await page.waitForURL(server.pageUrl+'?tab=hearings&hearing='+eventId);
+      await release.waitFor();
+      await page.getByRole('region',{name:'Hearing details'}).getByRole('heading',{name:'Transportation infrastructure hearing'}).waitFor();
+    }
+    await page.goto(base+'dashboard/?view=materials&q=record&congress=118');
+    await page.waitForURL(server.pageUrl+'?q=record&congress=118');
+    await release.waitFor();
+    await page.goto(base+'dashboard/?view=coverage');
+    await page.getByText('The former Coverage and Gaps views have closed.',{exact:false}).waitFor();
+    assert.equal(await page.getByRole('link',{name:'Open Congress Explorer',exact:true}).getAttribute('href'),server.pageUrl+'?tab=hearings');
+    await page.goto(base+'dashboard/?kind=meeting&id=unknown');
+    await page.getByText('This bookmark uses an older record identifier.',{exact:false}).waitFor();
+    assert.equal(await page.getByRole('link',{name:'Open Congress Explorer',exact:true}).getAttribute('href'),server.pageUrl+'?tab=hearings');
+    await context.route(base+'data/explorer/event-meetings.json',route=>route.fulfill({status:404}));
+    await page.goto(base+'dashboard/?kind=meeting&id='+oldId);
+    await page.getByText('This bookmark uses an older record identifier.',{exact:false}).waitFor();
+    await page.getByRole('link',{name:'Open Congress Explorer',exact:true}).click();
+    await page.waitForURL(server.pageUrl+'?tab=hearings');
+    await release.waitFor();
+    assert.deepEqual(legacyRequests,[mapPath,mapPath,mapPath]);
+    return {operation:'shared-explorer-entry',status:'passed',eventId,legacyMapRequests:legacyRequests.length};
+  }finally{await context.close();}
+}
+// Use the same browser and release server for the typed candidate and its older schema.
+async function checkRecordingAssociations(eventId){
+  for(const [releaseId,scoped] of [[server.manifest.release_id,true],[server.nextManifest.release_id,false]]){
+    server.state.releaseId=releaseId;
+    const context=await fixtureContext(),page=await context.newPage();page.setDefaultTimeout(15000);
+    try{
+      await page.goto(server.origin+'/congressional-tech/dashboard/?hearing='+encodeURIComponent(eventId));
+      await page.waitForURL(server.pageUrl+'?tab=hearings&hearing='+encodeURIComponent(eventId));
+      await page.locator(`[data-archive-release="${releaseId}"]`).waitFor();
+      const hearing=page.getByRole('region',{name:'Hearing details'});
+      await hearing.getByRole('heading',{name:'Video Recordings'}).waitFor();
+      const evidence=hearing.getByRole('heading',{name:'Recording evidence'});
+      await evidence.waitFor();
+      const link=(name)=>hearing.getByRole('link',{name,exact:true}).filter({hasText:name});
+      if(scoped){
+        const contextLink=link('Related package recording evidence');
+        assert.equal(await contextLink.getAttribute('href'),'https://example.test/watch');
+        assert.equal(await hearing.locator('a[href="https://example.test/watch"]').count(),2,
+          'Distinct event and package observations sharing a locator must remain visible.');
+        await hearing.getByRole('link',{name:'CHRG-118hhrg55555',exact:true}).waitFor();
+      }else{
+        await hearing.getByText('Recording associations · This release does not include this information.').waitFor();
+        await link('Original recording observation').first().waitFor();
+        const packageEvidence=hearing.locator('details').filter({hasText:'Original package observations for CHRG-118hhrg55555'});
+        await packageEvidence.locator('summary').click();
+        assert.equal(await packageEvidence.getByRole('link',{name:'Original recording observation',exact:true}).getAttribute('href'),
+          'https://example.test/watch');
+        assert.equal(await link('Related package recording evidence').count(),0);
+      }
+    }finally{await context.close();}
+  }
+  return {operation:'scoped-recording-associations',status:'passed'};
+}
+
 const results=[];
 const fixtureReader=args.hand==='true'?await openArchive(server.pointerUrl):null;
 const fixtureEntries=fixtureReader?await Promise.all([1,2,5,6].map(index=>fixtureReader.entry(index))):[];
 const hex=value=>Buffer.from(value).toString('hex');
 try{
+  if(args['recording-event']){
+    results.push(await checkRecordingAssociations(args['recording-event']));
+  }else{
   for(const profileKind of ['desktop','phone']){
     const profile=measurementProfiles[profileKind],viewport=profile.viewport;
     server.state.missingFile=null;server.state.flipOnMissing=null;server.state.releaseId=server.manifest.release_id;
@@ -91,6 +174,33 @@ try{
       results.push({viewport,...sample,publicKey,status:'passed'});
     }finally{try{await sampler.stop();}finally{await context.close();}}
   }
+  if(args.hand==='true'){
+    results.push(await checkSiteCutover(String((await fixtureReader.meetings())[0].event_id)));
+    const context=await fixtureContext(),page=await context.newPage();page.setDefaultTimeout(15000);
+    server.state.missingFile='committees.parquet';
+    try{
+      await page.goto(server.pageUrl+'?key='+results[0].publicKey);
+      const detail=page.locator('[data-archive-detail]');
+      await detail.getByText('Committee details · This information could not be loaded.').waitFor();
+      await detail.getByRole('link',{name:'Open saved PDF'}).waitFor();
+      await page.goto(server.pageUrl+'?tab=hearings&hearing='+String((await fixtureReader.meetings())[0].event_id));
+      const hearing=page.getByRole('region',{name:'Hearing details'});
+      await hearing.getByRole('heading',{name:'Transportation infrastructure hearing'}).waitFor();
+      await hearing.getByText('Committee details · This information could not be loaded.').waitFor();
+      await hearing.getByText('Witnesses · This release does not include this information.').waitFor();
+      results.push({operation:'optional-relation-failure',status:'passed'});
+
+      server.state.missingFile='meetings.parquet';
+      await page.goto(server.pageUrl+'?key='+results[0].publicKey);
+      await detail.getByText('Hearing details · This information could not be loaded.').waitFor();
+      await detail.getByRole('link',{name:'Open saved PDF'}).waitFor();
+      await page.goto(server.pageUrl+'?tab=hearings&hearing='+String((await fixtureReader.meetings())[0].event_id));
+      await page.getByRole('alert').filter({hasText:'Archive file not found'}).waitFor();
+      await page.getByRole('button',{name:'Try loading this hearing again'}).waitFor();
+      assert.equal(await page.getByText('No matching hearing found.').count(),0);
+      results.push({operation:'core-hearing-failure',status:'passed'});
+    }finally{server.state.missingFile=null;await context.close();}
+  }
   if(server.nextManifest){
     server.state.releaseId=server.manifest.release_id;server.state.missingFile=server.manifest.files.find(file=>file.name==='detail.parquet'||file.shard==='detail').name;server.state.flipOnMissing=server.nextManifest.release_id;
     const context=await fixtureContext(),page=await context.newPage();page.setDefaultTimeout(60000);
@@ -118,5 +228,6 @@ try{
     }finally{await context.close();}
   }
   if(args.hand==='true')assert(fixtureBodyReads.some(read=>read.status===404),'Hand saved-copy checks must exercise the local missing-body store');
+  }
   const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?.status??targetsStatus??'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
 }finally{await browser.close();await server.close();}

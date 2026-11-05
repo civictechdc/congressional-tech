@@ -17,6 +17,33 @@ def _require_playlist(body: str, url: str) -> None:
         raise IncompleteCaptionsError(f"Missing or invalid HLS playlist: {url}")
 
 
+def playlist_uris(body: str) -> dict:
+    """The URIs an HLS playlist lists (RFC 8216), literal and in order, or an `error_type`.
+
+    `segments` are the URI lines, `#EXTINF` or not; `playlists` are the URI lines after
+    `#EXT-X-STREAM-INF` and the `URI` attributes of `#EXT-X-MEDIA` and
+    `#EXT-X-I-FRAME-STREAM-INF`. Callers resolve them against the playlist's address.
+    """
+    lines = [line.strip() for line in body.lstrip("\ufeff \t\r\n").splitlines()]
+    if not lines or lines[0] != "#EXTM3U":
+        return dict(status="error", error_type="not_m3u8", segments=[], playlists=[])
+    segments: list[str] = []
+    playlists: list[str] = []
+    pending = None
+    for line in lines[1:]:
+        if line.startswith("#EXTINF:"):
+            pending = segments
+        elif line.startswith("#EXT-X-STREAM-INF:"):
+            pending = playlists
+        elif line.startswith(("#EXT-X-MEDIA:", "#EXT-X-I-FRAME-STREAM-INF:")):
+            playlists += re.findall(r'(?:^|,)URI="([^"]*)"', line.split(":", 1)[1])
+        elif line and not line.startswith("#"):
+            # A URI line without #EXTINF is still a segment, as the caption fetcher has always read it.
+            (segments if pending is None else pending).append(line)
+            pending = None
+    return dict(status="completed", error_type=None, segments=segments, playlists=playlists)
+
+
 def _subtitle_uri(master: str) -> str | None:
     """Playlist URI for subtitles: prefer English, then DEFAULT=YES, else the first track."""
     tracks = []

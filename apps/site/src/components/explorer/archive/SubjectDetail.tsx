@@ -50,7 +50,8 @@ export function SubjectDetail({
   const gpoUrl=isNom?null:gpoBillUrl(subject);
   const regsUrl=spicyRegsUrl(label);
   const committees:any[]=Array.isArray(subject.committees)?subject.committees:[];
-  const activities:any[]=Array.isArray(subject.committee_activities)?subject.committee_activities:[];
+  const committeeActivityGroups:any[]=Array.isArray(subject.committee_activities)?subject.committee_activities:[];
+  const activities=isNom?[]:committeeActivityGroups;
   const cboEstimates:any[]=Array.isArray(subject.cbo_estimates)?subject.cbo_estimates:[];
   const votes:any[]=Array.isArray(subject.votes)?subject.votes:Array.isArray(subject.floor_votes)?subject.floor_votes:[];
   const amendments:any[]=Array.isArray(subject.amendments)?subject.amendments:[];
@@ -146,6 +147,25 @@ export function SubjectDetail({
           </li>;
         })}
       </ul>}
+    </div>}
+
+    {isNom&&!compact&&<div className="archive-entity-section">
+      <h3>Committee activities</h3>
+      {subject.committee_activities===undefined?<p>This release does not include nomination committee activities.</p>
+        :subject.committee_activities===null?<p>The source did not supply readable committee activities.</p>
+        :!committeeActivityGroups.length?<p>The source lists no committee activity groups.</p>
+        :committeeActivityGroups.map((group:any,i:number)=>{
+          const code=String(group.system_code??'').toLowerCase();
+          return <div key={i}>
+            <h4>{code?committeeLabel(code,committeesCatalog,subject.congress):'Committee not stated'}</h4>
+            {group.activities==null?<p>The source did not supply readable activities for this committee.</p>
+              :!group.activities.length?<p>The source lists no activities for this committee.</p>
+              :<ul className="archive-entity-list">{group.activities.map((activity:any,j:number)=><li key={j}>
+                <strong>{activity.name??'Activity name not stated'}</strong>
+                <span className="archive-source-meta"> · {activity.date?activity.date:'Date not stated'}</span>
+              </li>)}</ul>}
+          </div>;
+        })}
     </div>}
 
     {cboEstimates.length>0&&<div className="archive-entity-section">

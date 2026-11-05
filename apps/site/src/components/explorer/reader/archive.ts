@@ -1,3 +1,4 @@
+import {ArchiveReleaseChangedError} from './cache.ts';
 /** The release reader is shared by the worker, site and publish canary. */
 import {parquetMetadataAsync, parquetReadObjects} from 'hyparquet';
 import {parquetReadColumn} from 'hyparquet/src/read.js';
@@ -75,12 +76,23 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   const selected=options.releaseId ? {release_id:options.releaseId} : await pointer(), releaseId=selected.release_id;
   if(!/^[a-f0-9]{64}$/.test(releaseId))throw new Error('Invalid archive candidate identity.');
   const base=new URL(`releases/${releaseId}/`,pointerUrl);
-  let staleChecked=false;
+  let pointerCheck: ReturnType<typeof pointer> | undefined, releaseChanged=false;
+  const checkedMissingFiles=new Map<string, ReturnType<typeof pointer>>();
+  const staleError=()=>new ArchiveReleaseChangedError('Archive release changed; reload the archive.');
   const immutableFetch=async(url: string,init: any={})=>{
+    if(releaseChanged)throw staleError();
     const response=await fetcher(url,{...init,signal:options.signal && init.signal ? AbortSignal.any([options.signal,init.signal]) : options.signal??init.signal});
     if(response.status===404){
-      if(!staleChecked){staleChecked=true;const latest=await pointer();
-        if(latest.release_id!==releaseId){options.reload?.(latest.release_id);throw new Error('Archive release changed; reload the archive.');}}
+      const key=new URL(url).pathname;
+      if(!checkedMissingFiles.has(key)){
+        pointerCheck??=pointer().then(latest=>{
+          if(latest.release_id!==releaseId){releaseChanged=true;options.reload?.(latest.release_id);}
+          return latest;
+        }).finally(()=>{pointerCheck=undefined;});
+        checkedMissingFiles.set(key,pointerCheck);
+      }
+      await checkedMissingFiles.get(key);
+      if(releaseChanged)throw staleError();
       throw new Error('Archive file not found.');
     }
     return response;
@@ -291,7 +303,11 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     // One O(N) scan, then O(V log V) ordering of this address's versions.
     return indexes.map(row).sort(captures);
   };
-  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap});
+  const meetingCoverage=(eventId: string)=>/^\d+$/.test(eventId)
+    ?read('meeting_coverage.parquet',undefined,undefined,{event_id:{$eq:BigInt(eventId)}})
+    :Promise.resolve([]);
+  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,meetingCoverage,
+    entityHasColumn:async(name,column)=>(await table(name+'.parquet',true)).names.includes(column)});
 
   const reader={releaseId,manifest,metrics,count,
     has:(name: string)=>files.has(name+'.parquet')||shards.has(name),

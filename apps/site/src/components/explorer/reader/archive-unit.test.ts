@@ -215,3 +215,30 @@ test('a meeting names each transcript source it holds (ct-1i4q)', async () => {
   assert.deepEqual(transcriptSourceLabels([{package_id: 'CHRG-118hhrg1', list_row: 3}]), ['Printed hearing']);
   assert.deepEqual(transcriptSourceLabels(null), []);
 });
+
+test('default hearing, document and member views keep each current witness occurrence',async()=>{
+  const {createArchiveEntities}=await import('./archive-entities.ts');
+  const member='A000001';
+  const table:Record<string,any[]>={
+    witnesses:[
+      {witness_key:'earlier',superseded_by:'current',event_id:100,name:'Alex Smith',bioguide_id:member},
+      {witness_key:'current',superseded_by:null,event_id:100,name:'Alex Smith',bioguide_id:member},
+      {witness_key:'repeated',superseded_by:null,event_id:100,name:'Alex Smith',bioguide_id:member,witness_type:'statement_for_record'},
+    ],
+    meetings:[{event_id:100,title:'Test hearing'}],
+    members:[{bioguide_id:member,name:'Alex Smith'}],
+  };
+  const document={list_row:0,witness_keys:['earlier','repeated']};
+  const reader=createArchiveEntities({
+    count:1,files:new Map(Object.keys(table).map(name=>[name+'.parquet',{}])),columns:new Map(),
+    row:()=>document,value:()=>null,entity:async name=>table[name]??[],
+    resolve:async()=>0,entry:async()=>({document}),versions:async()=>[],
+  });
+  const keys=(rows:any[])=>rows.map(w=>w.witness_key).sort();
+  const meeting=await reader.getMeeting(100);
+  assert.deepEqual(keys(meeting?.witnesses??[]),['current','repeated']);
+  assert.equal(meeting?.witnesses.find(w=>w.witness_key==='repeated').witness_type,'statement_for_record');
+  assert.deepEqual(keys((await reader.openDocument(0)).witnesses),['current','repeated']);
+  assert.deepEqual(keys((await reader.getMember(member))?.witness_records??[]),['current','repeated']);
+  assert.equal((await reader.getWitness('earlier'))?.witness_key,'earlier');
+});

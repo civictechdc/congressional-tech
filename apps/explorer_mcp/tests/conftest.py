@@ -112,8 +112,9 @@ def phase2(tmp_path_factory):
             'Confirmed' AS latest_action_text,['hsif00'] AS committees,['CHRG-118hhrg1'] AS transcripts,
             [] AS floor_votes""")
         write('videos', """SELECT 'youtube:free' AS video_key,'@AgRepublicans' AS handle,'Unmatched upload' AS title,TIMESTAMP '2025-01-03 00:00:00' AS published_at""")
-        write('recording_matches', """SELECT 'a' AS match_id,115538::BIGINT AS event_id,'youtube:abc' AS video_key,NULL::VARCHAR AS url,'publisher_link' AS basis,
-            'linked' AS decision,100::SMALLINT AS score,'unknown' AS recording_scope,'asserted' AS status,NULL::VARCHAR AS note""")
+        write('recording_matches', """SELECT 'a' AS match_id,'event' AS subject_kind,'115538' AS subject_id,115538::BIGINT AS event_id,NULL::VARCHAR AS package_id,'youtube:abc' AS video_key,NULL::VARCHAR AS url,'publisher_link' AS basis,
+            'linked' AS decision,100::SMALLINT AS score,'unknown' AS recording_scope,'asserted' AS status,NULL::VARCHAR AS note,'fixture' AS source_ref,
+            [struct_pack(event_id:=115538::BIGINT,basis:='direct_event',scope:='event')] AS meeting_links""")
         write('meeting_coverage', """SELECT 118001::BIGINT AS event_id,'recording' AS aspect,'present' AS state""")
         write('channels', """SELECT '@AgRepublicans' AS handle,'UC1' AS channel_id,'hsag00' AS system_code,'Agriculture' AS committee_label,
             'primary' AS role,'House Agriculture Republicans' AS title,true AS uploads_scan_complete,'curated_directory' AS mapping_basis""")
