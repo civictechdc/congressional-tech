@@ -437,6 +437,28 @@ def test_a_witness_listed_twice_in_one_print_is_shown_once(tmp_path):
         ('mods:witness[1]', False), ('mods:witness[2]', True), ('mods:witness[3]', False), ('mods:witness[4]', False)]
 
 
+def test_one_house_list_keeps_distinct_roles_panels_and_documents(tmp_path):
+    # Event 100520 lists W. Ron Allen in two roles with separate biographies and statements.
+    base = 'http://docs.house.gov/meetings/AP/AP06/20130424/100520/HHRG-113-AP06-'
+    first_links = [base + kind + '-AllenW32499-20130424.pdf' for kind in ('Bio', 'Wstate')]
+    second_links = [base + kind + '-AllenW32500-20130424.pdf' for kind in ('Bio', 'Wstate')]
+    first = dict(witness('W. Ron Allen', first_links), position='Tribal Council Chairman and CEO',
+                 organization="Jamestown S'Klallam Tribe", panel_order=1)
+    second = dict(first, position='United States Commissioner', organization='Pacific Salmon Commissioner',
+                  document_links=second_links)
+    entries = [first, second, dict(first, document_links=second_links), dict(first, panel_order=2),
+               dict(first, document_links=first_links[::-1])]
+    house = record('100520', 'house_xml', [
+        dict(entry, source_locator=f'house_xml:witness[{ordinal}]', display_order=ordinal)
+        for ordinal, entry in enumerate(entries, 1)
+    ], event_id=100520)
+    got = resolve(tmp_path, [house], [], {}, rows=True)
+    assert [(r['source_locator'], r['superseded_by']) for r in sorted(got, key=lambda r: r['source_locator'])] == [
+        ('house_xml:witness[1]', None), ('house_xml:witness[2]', None), ('house_xml:witness[3]', None),
+        ('house_xml:witness[4]', None), ('house_xml:witness[5]', 'W. Ron Allen'),
+    ]
+
+
 # Witness key map (ct-kb4w): a re-fetched body gives every witness at its occasion a new key; the map
 # carries each key the earlier body published to the current witness, or states it ambiguous or unresolved.
 def listed(entries):
