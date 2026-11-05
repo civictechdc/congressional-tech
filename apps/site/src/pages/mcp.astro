@@ -3,20 +3,10 @@ import Base from '../layouts/Base.astro';
 import CapitolArt from '../components/CapitolArt.astro';
 import CopyCommand from '../components/CopyCommand.astro';
 import { withBase } from '../lib/paths';
-import release from '../../../explorer_mcp/server.json';
+import { release, repository, remoteMcp, releaseUrl, pypiUrl, desktopBundle, pluginBundle, webPluginBundle, codexSetup, claudeSetup, skillSetup, install, agentInstructions } from '../lib/mcp-setup';
 
-const repository = release.repository.url;
-const remoteMcp = release.remotes[0].url;
-const releaseUrl = `${repository}/releases/tag/congress-mcp-v${release.version}`;
-const pypiUrl = `https://pypi.org/project/congressional-explorer-mcp/${release.version}/`;
-const desktopBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.mcpb`;
-const pluginBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.plugin.zip`;
-const webPluginBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-web-${release.version}.plugin.zip`;
-const codexSetup = `codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v${release.version} --sparse .agents/plugins --sparse apps/explorer_mcp\ncodex plugin add congress-explorer@congressional-tech`;
-const claudeSetup = 'claude plugin install congress-explorer --marketplace civictechdc/congressional-tech';
-const skillSetup = 'npx skills add civictechdc/congressional-tech --skill explore-congress';
+const instructionsHref = withBase('/mcp/agent.md');
 const exploreLink = `codex://new?prompt=${encodeURIComponent('[@Congress Explorer](plugin://congress-explorer@congressional-tech) Find hearings about artificial intelligence and list their witnesses and organizations.')}`;
-const install = `uv tool install --python 3.12 congressional-explorer-mcp==${release.version}`;
 const clients = [
   { id: 'claude-desktop', name: 'Claude Desktop', destination: 'Settings → Developer → Edit Config', detail: 'Merge the printed congress entry into mcpServers in your configuration. Keep your existing servers. Quit and reopen Claude Desktop.', url: 'https://modelcontextprotocol.io/docs/develop/connect-local-servers' },
   { id: 'codex', name: 'Codex', destination: '~/.codex/config.toml', detail: 'Add the printed [mcp_servers.congress] section to your config file. Replace an existing congress section rather than adding a duplicate. Restart the client connection.', url: 'https://developers.openai.com/codex/mcp/' },
@@ -29,7 +19,8 @@ const prompts = [
   'Find recordings and saved transcripts for a committee meeting I choose.',
 ];
 ---
-<Base title="Congress Explorer MCP — Use with AI" active="mcp" description="Connect your AI assistant to congressional hearings, witnesses, bills, members and related documents. Use the hosted server in ChatGPT web or a local server on desktop.">
+<Base title="Congress Explorer MCP — Use with AI" active="mcp" description="Ask your AI assistant about congressional hearings, witnesses, bills, members and related documents. Connect through ChatGPT in your browser or install Congress Explorer in your desktop app.">
+  <link slot="head" rel="alternate" type="text/markdown" title="Instructions for AI assistants" href={instructionsHref} />
   <section class="mcp-hero anchor-dark">
     <div class="mcp-art" aria-hidden="true"><CapitolArt /></div>
     <div class="container mcp-hero-content">
@@ -41,7 +32,7 @@ const prompts = [
         <a class="btn btn--gold" href="#web-plugin-heading">Connect in ChatGPT web</a>
         <a class="btn btn--gold" href={desktopBundle}>Download for Claude Desktop</a>
       </div>
-      <p class="mcp-platforms">Release {release.version} · Free &amp; open source · Web, macOS and Linux · No data API key</p>
+      <p class="mcp-platforms">Version {release.version} · Free &amp; open source · Use in your browser or on macOS and Linux</p>
     </div>
   </section>
 
@@ -49,83 +40,79 @@ const prompts = [
     <div class="container mcp-layout">
       <div>
         <p class="eyebrow">Quick setup</p>
-        <h2>One server.<br />Your choice of assistant.</h2>
-        <p>Use the hosted server in ChatGPT web, or install the local plugin on desktop. Both offer the same six tools. Start with dataset information to check which archive release your connection uses.</p>
-        <p class="mcp-note">Desktop installations download a metadata snapshot and reuse it locally. The web connection needs no local installation. Local Windows installations are not yet supported.</p>
-        <a href="#setup">Other clients &amp; manual setup ↓</a>
+        <h2>Choose your<br />AI assistant.</h2>
+        <p>Connect Congress Explorer using the steps for your app, then ask a question in your own words.</p>
+        <p class="mcp-note">Browser setup needs no downloads. Desktop setup is available for macOS and Linux. On Windows, use ChatGPT in your browser.</p>
+        <p>Want help setting up? Give these instructions to your AI assistant.</p>
+        <CopyCommand command={agentInstructions} label="Copy for my AI assistant" instructionsHref={instructionsHref} />
+        <a href="#setup">Other apps &amp; manual setup ↓</a>
       </div>
       <div class="mcp-steps">
         <section class="mcp-step" aria-labelledby="web-plugin-heading">
           <h3 id="web-plugin-heading">ChatGPT web</h3>
-          <p>Open <a href="https://chatgpt.com/plugins">ChatGPT Plugins</a>, choose <strong>Add custom MCP server</strong>, and use this URL with <strong>No authentication</strong>:</p>
-          <CopyCommand command={remoteMcp} label="Copy hosted Congress MCP URL" />
-          <p>Name it Congress Explorer Web, create and install the plugin, then select it in a conversation. Queries run on the hosted server; the first connection after idle shutdown may take longer.</p>
-          <a class="btn btn--gold" href={webPluginBundle}>Download web plugin ZIP</a>
-          <p class="mcp-note">The ZIP includes the research skill for plugin import workflows. Connecting the URL directly adds the six tools.</p>
-          <p class="mcp-note">For desktop sessions, use the local plugin below. Plugins do not automatically switch between hosted and local servers. <a href="https://developers.openai.com/plugins/deploy/connect-chatgpt">Connection guide ↗</a></p>
+          <p>Open <a href="https://chatgpt.com/plugins">ChatGPT Plugins</a> and choose <strong>Add custom MCP server</strong>. Paste this address and select <strong>No authentication</strong>:</p>
+          <CopyCommand command={remoteMcp} label="Copy Congress Explorer address" />
+          <p>Name it <strong>Congress Explorer Web</strong>, create and install the plugin, then select it in a conversation. The first connection may take a moment.</p>
+          <p class="mcp-note">Congress Explorer Web works online. To run it on your computer, follow the desktop instructions below. <a href="https://developers.openai.com/plugins/deploy/connect-chatgpt">ChatGPT connection guide ↗</a></p>
         </section>
         <section class="mcp-step" aria-labelledby="claude-extension-heading">
           <h3 id="claude-extension-heading">Claude Desktop chat</h3>
-          <p>Download the extension, open it with Claude Desktop, and click <strong>Install</strong>. Use a current version with support for uv-based extensions; the app manages Python and dependencies.</p>
-          <a class="btn btn--gold" href={desktopBundle}>Download .mcpb</a>
+          <p>Use the latest version of Claude Desktop. Download the extension below, open it with Claude Desktop, and click <strong>Install</strong>. Claude handles the rest of the software setup.</p>
+          <a class="btn btn--gold" href={desktopBundle}>Download Claude Desktop extension</a>
           <p class="mcp-note">If opening the file does not show an installer, go to Settings → Desktop app → Extensions → Advanced settings → Install Extension.</p>
         </section>
         <section class="mcp-step" aria-labelledby="claude-plugin-heading">
           <h3 id="claude-plugin-heading">Claude Code &amp; Cowork</h3>
-          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> on the computer running the plugin, then use this command with a current Claude Code:</p>
+          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, a tool that manages the software Congress Explorer needs. Then paste this command into a terminal using a current version of Claude Code:</p>
           <CopyCommand command={claudeSetup} label="Copy Claude plugin install command" />
           <p>In Cowork desktop, open Customize → Plugins and upload the plugin ZIP. Start a local task, then run <code>/congress-explorer:explore-congress</code>.</p>
           <a class="btn btn--gold" href={pluginBundle}>Download plugin ZIP</a>
-          <p class="mcp-note">The plugin's local server runs in Claude Code and Cowork desktop. For Claude Desktop chat, use the extension above.</p>
+          <p class="mcp-note">For conversations in Claude Desktop chat, use the extension above.</p>
         </section>
         <section class="mcp-step" aria-labelledby="openai-plugin-heading">
           <h3 id="openai-plugin-heading">ChatGPT &amp; Codex desktop</h3>
-          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and the <a href="https://developers.openai.com/codex/cli/">Codex CLI</a>, then add the marketplace and plugin:</p>
+          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and the <a href="https://developers.openai.com/codex/cli/">Codex command-line app</a>, then paste these commands into a terminal:</p>
           <CopyCommand command={codexSetup} label="Copy ChatGPT and Codex plugin setup commands" />
           <p>Open the desktop app and start a local conversation. The button below prepares a question with Congress Explorer selected; review it and send when ready.</p>
           <a class="btn btn--gold" href={exploreLink}>Explore Congress in Codex</a>
-          <p class="mcp-note">Distributed through our repository marketplace. A public OpenAI directory listing requires separate approval. This server runs in local desktop conversations.</p>
-        </section>
-        <section class="mcp-step" aria-labelledby="skill-heading">
-          <h3 id="skill-heading">Add the research skill</h3>
-          <p>Already using an agent with skills? Add our research and setup guidance with Node.js 22.20 or later:</p>
-          <CopyCommand command={skillSetup} label="Copy research skill install command" />
-          <p>Choose your agent, then ask it to use <code>explore-congress</code>. Add <code>--global</code> to make the skill available across projects.</p>
-          <p class="mcp-note">This installs instructions only. Connect the MCP server using one of the setup paths on this page to query data. The full plugin already includes this skill. <a href="https://github.com/vercel-labs/skills/blob/main/docs/commands.md#skills-add">Skills CLI documentation ↗</a></p>
+          <p class="mcp-note">These commands install Congress Explorer from our project on GitHub. Select a local conversation to use it on your computer.</p>
         </section>
       </div>
     </div>
   </section>
 
   <section class="section section--tint" id="setup">
-    <div class="container mcp-layout">
+    <div class="container">
+    <details class="manual-setup">
+    <summary>Other apps &amp; manual setup</summary>
+    <div class="mcp-layout">
       <aside class="mcp-orientation">
         <p class="eyebrow">Manual setup</p>
-        <h2>Connect another client.</h2>
-        <p>MCP connects an AI assistant to tools and data. This server queries a downloaded snapshot on your computer.</p>
-        <p>Your client starts the server when it needs it. You do not need to leave a terminal running.</p>
+        <h2>Set up another app.</h2>
+        <p>These steps install Congress Explorer on your computer and connect it to your chosen AI app.</p>
+        <p>Your app starts Congress Explorer when you need it. After setup, you can close the terminal.</p>
         <a href={releaseUrl}>Release {release.version} &amp; source code ↗</a>
       </aside>
       <div class="mcp-steps">
         <section class="mcp-step" aria-labelledby="install-heading">
           <p class="step-number">01 / Install</p>
           <h3 id="install-heading">Install Congress Explorer</h3>
-          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, then paste this command into a terminal. It installs the <a href={pypiUrl}>released PyPI package</a> and manages Python 3.12 for you.</p>
+          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, then paste this command into a terminal. It downloads <a href={pypiUrl}>Congress Explorer</a> and the software it needs.</p>
           <CopyCommand command={install} label="Copy install command" />
-          <p class="mcp-note">If your shell cannot find the command afterward, run <code>uv tool update-shell</code> and open a new terminal. Windows is not yet supported.</p>
+          <p class="mcp-note">If you see “command not found” afterward, run <code>uv tool update-shell</code> and open a new terminal. Desktop installation requires macOS or Linux.</p>
         </section>
         <section class="mcp-step" aria-labelledby="prepare-heading">
           <p class="step-number">02 / Prepare</p>
           <h3 id="prepare-heading">Download the data and check it</h3>
           <CopyCommand command={'congress-explorer-mcp prepare\ncongress-explorer-mcp check'} label="Copy prepare and check commands" />
-          <p>The check should report <code>"status": "ok"</code> and six tools. It starts the server and reads a data row over MCP.</p>
-          <p class="mcp-note">The October 30, 2026 snapshot is about 65 MiB. Data goes in <code>~/.cache/congress-explorer-mcp</code>; Python and dependencies need additional space. Document files are fetched separately when your assistant needs them.</p>
+          <p>Look for <code>"status": "ok"</code> in the result. This confirms that Congress Explorer can connect and read the data.</p>
+          <p class="mcp-note">Congress Explorer saves a copy of the records on your computer. Individual documents download when you ask to read them.</p>
         </section>
         <section class="mcp-step" aria-labelledby="connect-heading">
           <p class="step-number">03 / Connect</p>
           <h3 id="connect-heading">Choose your assistant</h3>
           <div id="client-picker" hidden>
-            <label for="mcp-client">AI client</label>
+            <label for="mcp-client">Your AI app</label>
             <select id="mcp-client" aria-controls="client-instructions">
               {clients.map(client => <option value={client.id}>{client.name}</option>)}
             </select>
@@ -136,17 +123,26 @@ const prompts = [
               <CopyCommand command={`congress-explorer-mcp config --client ${client.id}`} label={`Copy ${client.name} configuration command`} />
               <p><strong>{client.destination}</strong></p>
               <p>{client.detail}</p>
-              <p class="mcp-note">The command prints settings with the correct paths. It does not edit your client. <a href={client.url}>Client documentation ↗</a></p>
+              <p class="mcp-note">Copy the settings printed by the command into your app. <a href={client.url}>App setup guide ↗</a></p>
             </section>)}
           </div>
         </section>
+        <section class="mcp-step" aria-labelledby="skill-heading">
+          <h3 id="skill-heading">Optional instructions for your assistant</h3>
+          <p>The plugin already includes research guidance. To add just that guidance to another assistant that supports skills, use Node.js 22.20 or later and run:</p>
+          <CopyCommand command={skillSetup} label="Copy research skill install command" />
+          <p>Choose your assistant, then ask it to use <code>explore-congress</code>. You still need to connect Congress Explorer to search the data. <a href="https://github.com/vercel-labs/skills/blob/main/docs/commands.md#skills-add">Skill installation guide ↗</a></p>
+          <p>If your app asks you to upload a plugin file for the web connection, <a href={webPluginBundle}>download the web plugin ZIP</a>. It includes both the connection settings and research guidance.</p>
+        </section>
       </div>
+    </div>
+    </details>
     </div>
   </section>
 
   <section class="section section--tint" id="try-it">
     <div class="container mcp-layout">
-      <div><p class="eyebrow">Start a conversation</p><h2>Follow a question<br />through Congress.</h2><p>Ask your assistant to use Congress Explorer. It can discover tables, follow documented relationships, and run read-only SQL.</p></div>
+      <div><p class="eyebrow">Start a conversation</p><h2>Follow a question<br />through Congress.</h2><p>Ask your assistant to use Congress Explorer to find records, connect related hearings and people, and read documents.</p></div>
       <div class="mcp-prompts">{prompts.map((prompt, index) => <div class="mcp-prompt"><span aria-hidden="true">0{index + 1}</span><p>“{prompt}”</p></div>)}</div>
     </div>
   </section>
@@ -155,11 +151,11 @@ const prompts = [
     <div class="container mcp-layout">
       <div><p class="eyebrow">Know your data</p><h2>Published records.<br />Clear boundaries.</h2></div>
       <div class="mcp-details">
-        <details open><summary>What can I explore?</summary><p>Meetings, witness appearances, bills, nominations, members, committees, rosters, recordings, and document records. All published tables and columns are queryable. Availability varies by source, Congress, and record; this is a bounded collection, not a complete record of every congressional activity.</p></details>
-        <details><summary>Can it read documents?</summary><p>Yes. After finding a document through metadata search, your assistant can call <code>get_document</code> with <code>section: "text"</code> to fetch, cryptographically verify (SHA-256), and read or search extracted text from saved PDF, HTML, XML, and text files on demand. The server does not perform OCR on scanned image-only PDFs or cross-corpus full-text indexing.</p></details>
-        <details><summary>How do I get newer data?</summary><p>The hosted service uses a fixed archive release that the service operator updates. Ask for <code>get_dataset_info</code> to check its selected release; local commands do not change hosted data. On desktop, run <code>congress-explorer-mcp prepare</code> with the same data directory, then restart the connection. The plugin's setup skill can guide this refresh. Software updates are separate: install the version linked on this page and restart your client.</p></details>
-        <details><summary>What leaves my computer?</summary><p>The web plugin sends tool queries to the hosted Cloudflare service and returns the results to your AI client. The desktop plugin downloads public metadata and runs queries locally. In either setup, your AI client may send questions and tool results to its model provider. Reading archived document bodies requires an internet connection.</p></details>
-        <details><summary>Need help connecting?</summary><p>For ChatGPT web, check that the URL ends in <code>/mcp</code> and authentication is set to <strong>No authentication</strong>. Allow time for a cold start; retry a temporary <code>503</code> after its <code>Retry-After</code> delay. On desktop, run <code>congress-explorer-mcp check</code>; run <code>prepare</code> first if data is missing. Use the same custom <code>--data-dir</code> for preparation, checks, and configuration. <a href={`${repository}/issues`}>Report an issue</a> with your client and error message.</p></details>
+        <details open><summary>What can I explore?</summary><p>Hearings, witnesses, bills, nominations, members, committees, recordings, and related documents. Coverage varies by source and time period. Some records are missing, so an empty search does not mean an event never happened.</p></details>
+        <details><summary>Can it read documents?</summary><p>Yes. Ask your assistant to find a document, then read or search its text. Some scanned documents contain only page images, so their text may be unavailable. You can search document details and the text of individual documents. Searching the text of every document at once is not supported.</p></details>
+        <details><summary>How do I get newer data?</summary><p>For ChatGPT in your browser, we manage the data updates. On desktop, ask your assistant to help refresh your downloaded records using the <a href={instructionsHref}>setup instructions</a>. To update the Congress Explorer software itself, install the latest version linked on this page and restart your app.</p></details>
+        <details><summary>What leaves my computer?</summary><p>Browser connections send your searches to our service, hosted by Cloudflare. Desktop installations search a copy of the records on your computer. In either case, your AI app may share your questions and results with its AI provider. Reading documents requires an internet connection.</p></details>
+        <details><summary>Need help connecting?</summary><p>For ChatGPT in your browser, check that you copied the full address above and selected <strong>No authentication</strong>. If the connection fails, wait a moment and try again. For help with desktop setup, use <strong>Copy for my AI assistant</strong> above and paste the instructions into a conversation. You can also <a href={`${repository}/issues`}>report a problem</a>; include your app's name and the error message you see.</p></details>
         <p class="mcp-more"><a href={`${repository}/tree/main/apps/explorer_mcp`}>Technical documentation ↗</a><a href={withBase('/archive/')}>Browse the data on the web →</a></p>
       </div>
     </div>
@@ -193,6 +189,9 @@ const prompts = [
   .mcp-orientation { position: sticky; top: 2rem; align-self: start; }
   .mcp-orientation p { max-width: 330px; }
   .mcp-steps { min-width: 0; }
+  .manual-setup { border: 0; padding: 0; }
+  .manual-setup > summary { font-size: 1.4rem; }
+  .manual-setup > .mcp-layout { padding-top: 2rem; }
   .mcp-step { padding: 0 0 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--ctdc-hairline-on-light); }
   .mcp-step:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
   .step-number { color: var(--ctdc-primary); text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; font-weight: 700; }

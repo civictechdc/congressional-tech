@@ -1,10 +1,11 @@
 ---
-interface Props { command: string; label?: string }
-const { command, label = 'Copy command' } = Astro.props;
+interface Props { command: string; label?: string; instructionsHref?: string }
+const { command, label = 'Copy command', instructionsHref } = Astro.props;
 ---
-<div class="copy-command">
-  <pre><code>{command}</code></pre>
-  <button type="button" data-copy={command} aria-label={label} hidden>Copy</button>
+<div class:list={['copy-command', { 'copy-instructions': instructionsHref }]}>
+  {!instructionsHref && <pre><code>{command}</code></pre>}
+  <button type="button" data-copy={command} data-instructions={instructionsHref} aria-label={label} hidden>{instructionsHref ? label : 'Copy'}</button>
+  {instructionsHref && <a href={instructionsHref}>Instructions for AI assistants (Markdown)</a>}
   <span class="copy-status" role="status"></span>
 </div>
 <script>
@@ -14,9 +15,9 @@ const { command, label = 'Copy command' } = Astro.props;
       const status = button.parentElement?.querySelector('.copy-status');
       try {
         await navigator.clipboard.writeText(button.dataset.copy ?? '');
-        if (status) status.textContent = 'Copied';
+        if (status) status.textContent = button.dataset.instructions ? 'Copied. Paste this into a conversation with your AI assistant.' : 'Copied';
       } catch {
-        if (status) status.textContent = 'Select the command and copy it manually.';
+        if (status) status.textContent = button.dataset.instructions ? 'Open “Instructions for AI assistants” to copy the text yourself.' : 'Select the command and copy it manually.';
       }
     });
   }
@@ -28,4 +29,8 @@ const { command, label = 'Copy command' } = Astro.props;
   button:hover { background: var(--ctdc-primary); }
   button:focus-visible { outline-color: var(--ctdc-gold); }
   .copy-status { display: block; min-height: 1.4em; font-size: .85rem; color: var(--ctdc-ink-muted); }
+  .copy-instructions button { position: static; display: block; margin: .8rem 0; padding: .7rem 1rem; background: var(--ctdc-primary); color: var(--ctdc-on-dark-strong); border-color: var(--ctdc-primary); font-size: 1rem; }
+  .copy-instructions button:hover { background: var(--ctdc-primary-hover); }
+  .copy-instructions button:focus-visible { outline-color: var(--ctdc-primary); }
+  .copy-instructions a { font-size: .9rem; }
 </style>

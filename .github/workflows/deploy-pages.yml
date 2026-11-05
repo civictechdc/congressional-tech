@@ -8,6 +8,7 @@ on:
     paths:
       - "apps/site/**"
       - "apps/explorer_mcp/server.json"
+      - "apps/explorer_mcp/skills/explore-congress/SKILL.md"
       - ".node-version"
       - ".python-version"
       - "pyproject.toml"
