@@ -123,10 +123,12 @@ async function checkPublisherPage(datedKey, markedKey) {
     const panel = page.locator('[data-archive-detail]');
     assert.match(await panel.innerText(), /Page published 2017-09-13/);
     assert.match(await panel.innerText(), /Page updated 2025-04-01/);
+    const declaration = panel.getByText(/2025-04-01T15:01:50[+]00:00/);
+    assert.equal(await declaration.count(), 0, 'Publisher evidence stays out of the closed disclosure');
     await page.getByText('Publisher declarations and evidence', {exact: true}).click();
     await page.getByRole('link', {name: 'Open original saved page'}).waitFor();
     assert.match(await panel.innerText(), /HTML reading version [a-f0-9]{64}/);
-    assert.match(await panel.innerText(), /2025-04-01T15:01:50[+]00:00/);
+    await declaration.first().waitFor();
 
     assert.equal(await open(markedKey), releaseId);
     await page.getByText('Publisher declarations and evidence', {exact: true}).click();

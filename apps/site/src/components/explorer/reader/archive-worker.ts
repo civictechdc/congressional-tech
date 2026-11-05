@@ -78,6 +78,7 @@ self.onmessage=async({data})=>{
       case '/bill':result=await reader.getBill(args.subjectKey??args.subject_key??args.bill_id??args.key,controller.signal);break;
       case '/nomination':result=await reader.getNomination(args.subjectKey??args.subject_key??args.nomination_id??args.key,controller.signal);break;
       case '/entities':result=await reader.listEntities(args.kind,args,controller.signal);break;
+      case '/pageMetadata':result=await reader.pageMetadata(args.index,controller.signal);break;
       case '/selectedText':result=await reader.selectedText(args.index,controller.signal);break;
       case '/saved':result=await reader.openSaved(args);break;
       default:throw new Error('Unknown archive request.');

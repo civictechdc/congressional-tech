@@ -27,6 +27,12 @@ test('a detail read requests only columns the packed list does not hold',()=>{
   assert.deepEqual(detailProjection(['link_key','saved_body'],['filename']),['link_key','saved_body']);
 });
 
+test('default detail leaves publisher declarations and full text for on-demand reads',()=>{
+  assert.deepEqual(detailProjection(
+    ['link_key','title','description','main_content','page_metadata','selected_text'],['title'],
+  ), ['link_key','description','main_content']);
+});
+
 test('public lookup spelling preserves queries and rejects credentials',()=>{
   assert.equal(lookupUrl('http://www.EXAMPLE.test:80/report.pdf/#old'),'example.test/report.pdf');
   assert.equal(lookupUrl('https://example.test/?file=a.pdf&x=/'),'example.test?file=a.pdf&x=/');
