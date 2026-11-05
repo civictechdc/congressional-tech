@@ -10,6 +10,26 @@ import {
 } from './archive-metadata.ts';
 import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
 
+function RecordingObservations({observations}:{observations:any[]}){
+  return <ul className="archive-entity-list">
+    {observations.map((obs:any)=>{
+      const youtube=/^youtube:([a-zA-Z0-9_-]+)$/.exec(obs.video_key??'');
+      const url=obs.url||(youtube?`https://www.youtube.com/watch?v=${youtube[1]}`:null);
+      const scope=obs.meeting_link?.scope;
+      const label=scope==='package_context'?'Related package recording evidence'
+        :scope==='event'?'Recording evidence for this event':'Original recording observation';
+      const describe=[obs.status,obs.decision,obs.recording_scope].filter(Boolean).map(v=>String(v).replaceAll('_',' ')).join(' · ');
+      return <li key={obs.match_id}>
+        {url?<PublicLink url={url}>{label}</PublicLink>:<strong>{label}</strong>}
+        {describe&&<span className="archive-source-meta"> · {describe}</span>}
+        {obs.package_id&&<p className="archive-source-meta"><PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(obs.package_id)}`}>{obs.package_id}</PublicLink></p>}
+        {obs.note&&<p className="archive-source-meta">{obs.note}</p>}
+        {obs.source_ref&&<p className="archive-source-meta">Source <code>{obs.source_ref}</code></p>}
+      </li>;
+    })}
+  </ul>;
+}
+
 export function HearingDetail({
   meeting,
   committeesCatalog,
@@ -66,6 +86,7 @@ export function HearingDetail({
   ].filter(Boolean);
   const relation=meeting.relation_states??{};
   const coverage=meeting.coverage??{};
+  const witnessCount=witnesses.filter(w=>!['statement_for_record','member_statement'].includes(w.witness_type)).length;
   const shownWitnesses=compact?witnesses.slice(0,6):witnesses;
 
   return <section className="archive-entity-card" aria-label="Hearing details" data-archive-entity="hearing">
@@ -183,24 +204,14 @@ export function HearingDetail({
       <p className="archive-source-meta">The archive lists no supported recording associations for this hearing.</p>}
     {observations.length>0&&<div className="archive-entity-section">
       <h3>Recording evidence</h3>
-      <ul className="archive-entity-list">
-        {observations.map((obs:any)=>{
-          const youtube=/^youtube:([a-zA-Z0-9_-]+)$/.exec(obs.video_key??'');
-          const url=obs.url||(youtube?`https://www.youtube.com/watch?v=${youtube[1]}`:null);
-          const scope=obs.meeting_link?.scope;
-          const label=scope==='package_context'?'Related package recording evidence'
-            :scope==='event'?'Recording evidence for this event':'Original recording observation';
-          const describe=[obs.status,obs.decision,obs.recording_scope].filter(Boolean).map(v=>String(v).replaceAll('_',' ')).join(' · ');
-          return <li key={obs.match_id}>
-            {url?<PublicLink url={url}>{label}</PublicLink>:<strong>{label}</strong>}
-            {describe&&<span className="archive-source-meta"> · {describe}</span>}
-            {obs.package_id&&<p className="archive-source-meta"><PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(obs.package_id)}`}>{obs.package_id}</PublicLink></p>}
-            {obs.note&&<p className="archive-source-meta">{obs.note}</p>}
-            {obs.source_ref&&<p className="archive-source-meta">Source <code>{obs.source_ref}</code></p>}
-          </li>;
-        })}
-      </ul>
+      <RecordingObservations observations={observations}/>
     </div>}
+
+    {(meeting.original_package_observations??[]).map((group:any)=><details key={group.package_id} className="archive-entity-section">
+      <summary>Original package observations for {group.package_id}</summary>
+      <p className="archive-source-meta">These observations describe the package. Hearing associations are unavailable in this release.</p>
+      <RecordingObservations observations={group.observations}/>
+    </details>)}
 
     {transcripts.length>0&&<div className="archive-entity-section">
       <h3>Official Transcripts</h3>
@@ -220,7 +231,7 @@ export function HearingDetail({
     </div>}
 
     {witnesses.length>0&&<div className="archive-entity-section">
-      <h3>Witnesses ({witnesses.length})</h3>
+      <h3>{witnessCount===witnesses.length?`Witnesses (${witnessCount})`:`Witnesses and statements (${witnessCount} witnesses)`}</h3>
       <ul className="archive-witness-list">
         {shownWitnesses.map((w:any,i:number)=>{
           const wKey=w.witness_key||w.name_key||'';

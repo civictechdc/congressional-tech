@@ -111,7 +111,7 @@ WITH observations AS (
    'state',CASE WHEN caption_n>0 THEN 'present' WHEN has_video_record THEN 'unknown'
         WHEN state IN ('confirmed_absent','not_public') THEN 'not_stated' ELSE 'unknown' END,
    'basis','videos.has_caption,recordings.tracks','count',cast(coalesce(caption_n,0) AS INT),
-   'reason',CASE WHEN caption_n>0 OR state IN ('confirmed_absent','not_public') THEN NULL
+   'reason',CASE WHEN caption_n>0 OR has_video_record OR state IN ('confirmed_absent','not_public') THEN NULL
         WHEN state IN ('present','partial','claimed') THEN 'recording_without_video_record'
         ELSE 'recording_link_pending' END)
  )) AS item FROM recording_rows

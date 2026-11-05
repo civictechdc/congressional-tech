@@ -47,6 +47,10 @@ async function checkRecordingAssociations(eventId){
       }else{
         await hearing.getByText('Recording associations · This release does not include this information.').waitFor();
         await link('Original recording observation').first().waitFor();
+        const packageEvidence=hearing.locator('details').filter({hasText:'Original package observations for CHRG-118hhrg55555'});
+        await packageEvidence.locator('summary').click();
+        assert.equal(await packageEvidence.getByRole('link',{name:'Original recording observation',exact:true}).getAttribute('href'),
+          'https://example.test/watch');
         assert.equal(await link('Related package recording evidence').count(),0);
       }
     }finally{await context.close();}
@@ -137,6 +141,16 @@ try{
       await hearing.getByText('Committee details · This information could not be loaded.').waitFor();
       await hearing.getByText('Witnesses · This release does not include this information.').waitFor();
       results.push({operation:'optional-relation-failure',status:'passed'});
+
+      server.state.missingFile='meetings.parquet';
+      await page.goto(server.pageUrl+'?key='+results[0].publicKey);
+      await detail.getByText('Hearing details · This information could not be loaded.').waitFor();
+      await detail.getByRole('link',{name:'Open saved PDF'}).waitFor();
+      await page.goto(server.pageUrl+'?tab=hearings&hearing='+String((await fixtureReader.meetings())[0].event_id));
+      await page.getByRole('alert').filter({hasText:'Archive file not found'}).waitFor();
+      await page.getByRole('button',{name:'Try loading this hearing again'}).waitFor();
+      assert.equal(await page.getByText('No matching hearing found.').count(),0);
+      results.push({operation:'core-hearing-failure',status:'passed'});
     }finally{server.state.missingFile=null;await context.close();}
   }
   if(server.nextManifest){

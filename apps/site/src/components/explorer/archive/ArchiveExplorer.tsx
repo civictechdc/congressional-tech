@@ -225,7 +225,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   const [detail,retryDetail]=useRequest(signal=>selection!==null||nav.key?client.request('entry',nav.key?{key:nav.key}:{index:selection},signal):Promise.resolve(null),[client,nav.key,selection]);
   const [entityView,retryEntityView]=useRequest(async signal=>{
     const [meeting,subject,witness,member,committee]=await Promise.all([
-      nav.hearing?client.getMeeting(nav.hearing,signal).catch(()=>null):Promise.resolve(null),
+      nav.hearing?client.getMeeting(nav.hearing,signal):Promise.resolve(null),
       nav.subject?client.getSubject(nav.subject,signal).catch(()=>null):Promise.resolve(null),
       nav.witness?client.getWitness(nav.witness,signal).catch(()=>null):Promise.resolve(null),
       nav.member?client.getMember(nav.member,signal).catch(()=>null):Promise.resolve(null),

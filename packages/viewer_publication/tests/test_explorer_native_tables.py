@@ -65,7 +65,9 @@ def tables(tmp_path_factory):
         dict(name='package_meeting_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id
             UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-qualified',1002 UNION ALL SELECT 'CHRG-qualified',1004""", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(1009 AS BIGINT) AS event_id,'https://docs.house.gov/x.pdf' AS url", materialize=True),
-        dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(1003 AS BIGINT),cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption
+        dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption
+            UNION ALL SELECT 'youtube:nocaption',arrow_cast(decode(repeat('ac',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(make_array(cast(1003 AS BIGINT)),'List(Int64)'),false
             UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false""", materialize=True),
         dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
@@ -195,6 +197,7 @@ def reason(work, event, aspect):
     (1004, 'documents', 'not_stated', None),
     (1010, 'witnesses', 'unknown', 'package_witnesses_unattached'),
     (1011, 'transcript', 'unknown', 'package_names_meeting_unlinked'),
+    (1003, 'captions', 'unknown', None),
     (1004, 'captions', 'unknown', 'recording_link_pending'),
     (1009, 'transcript', 'present', 'captions,committee_transcript'),
     (1001, 'documents', 'present', None),
