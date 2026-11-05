@@ -5,6 +5,7 @@
 **Authentication:** None.
 
 [Deployment and verification record](../../../docs/measurements/congress-mcp-cloudflare-20261105.md).
+[Version 0.6.1 release verification](../../../docs/measurements/congress-mcp-0.6.1-20261105.md).
 
 The Worker exposes `/mcp` over HTTPS and forwards requests to the existing
 Python FastMCP and DuckDB server in Cloudflare Containers. A browser MCP client
