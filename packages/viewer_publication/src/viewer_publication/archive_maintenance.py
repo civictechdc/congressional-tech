@@ -1,7 +1,7 @@
-"""Validate kept rebuild evidence and retain only old, unkept derived releases.
+"""Verify raw custody and retain only old, unkept derived releases.
 
-The weekly caller holds the shared publish/maintenance exclusion. This helper
-never lists or deletes raw keys and never selects a lake generation to purge.
+The weekly caller holds the shared publish/maintenance exclusion. Raw keys
+are never deleted. Lake maintenance acts only on explicitly supplied pins.
 """
 import argparse
 from datetime import datetime,timedelta,timezone
@@ -17,6 +17,26 @@ from viewer_publication.client import require_publication_client
 from viewer_publication.receipt_pins import PREFIX
 
 ARCHIVE_RELEASE_PINS='viewer-publications/pins/archive-releases.json'
+PROFILE_SOURCE='packages/viewer_publication/src/viewer_publication/archive_model_profile.py'
+# Profile producer at 3f6548e6, before source-scoped pins for entity tables.
+LEGACY_PROFILE_SHA='cad3c0e5c498b495a4911ea9450d0c1ad992dec6eb31d498fcb5a2d52c2f3237'
+
+
+class ReadOnlyClient:
+    """Expose the S3 reads used by maintenance and refuse mutation calls."""
+    READS=frozenset({'meta','get_object','head_object','list_objects_v2'})
+
+    def __init__(self,client):self._client=client
+
+    def get_paginator(self,operation):
+        if operation!='list_objects_v2':
+            raise PermissionError('Read-only maintenance client refused paginator '+operation)
+        return self._client.get_paginator(operation)
+
+    def __getattr__(self,name):
+        if name in self.READS:return getattr(self._client,name)
+        def refused(*_,**__):raise PermissionError('Read-only maintenance client refused '+name)
+        return refused
 
 
 class ArchiveMaintenanceStore:
@@ -105,7 +125,7 @@ class _InventoryEvidence:
 
 def _validate_kept_model(record,receipt_keys):
     from viewer_publication.archive_model_job import TABLES,OPTIONAL_TABLES,_selector
-    from viewer_publication.archive_model_profile import profile_record
+    from viewer_publication.archive_model_profile import ENTITY_SOURCES,PARSERS,profile_record
     snapshots=record['snapshots']
     if (not isinstance(snapshots,dict) or not set(TABLES)<=set(snapshots)
             or not set(snapshots)<=(set(TABLES)|set(OPTIONAL_TABLES))):
@@ -120,10 +140,23 @@ def _validate_kept_model(record,receipt_keys):
     profile=record['profile']
     # None invokes definition hashing in the producer helper. Maintenance must
     # validate recorded definitions, never read the current filesystem instead.
-    if not isinstance(profile,dict) or profile.get('file_hashes') is None:
+    if not isinstance(profile,dict) or not isinstance(profile.get('file_hashes'),dict):
         raise ValueError('Kept model profile requires explicit definition hashes')
-    rebuilt=profile_record(**profile,snapshots=selected)
-    if rebuilt['profile']!=profile:
+    validation=profile
+    parsers=profile.get('parser_versions')
+    lake_versions=profile.get('lake_versions')
+    if (profile['file_hashes'].get(PROFILE_SOURCE)==LEGACY_PROFILE_SHA
+            and isinstance(parsers,dict) and set(parsers)==set(PARSERS)
+            and isinstance(lake_versions,dict) and lake_versions.keys()==selected.keys()
+            and set(selected)==set(TABLES)|set(ENTITY_SOURCES)
+            and all(selected[name]['kind']=='parquet' for name in ENTITY_SOURCES)):
+        # This historical producer used pinned entity Parquet files. Its
+        # original profile has already been checked against the input digest.
+        # Apply the shared shape checks without requiring later parser fields.
+        validation=dict(profile,lake_versions={name:value for name,value in lake_versions.items()
+            if name not in ENTITY_SOURCES})
+    rebuilt=profile_record(**validation,snapshots=selected)
+    if rebuilt['profile']!=validation:
         raise ValueError('Kept model profile has unsupported fields')
 
 
@@ -153,9 +186,10 @@ def read_archive_release_pins(source,*,key=ARCHIVE_RELEASE_PINS):
         else:
             uri=urlsplit(source)
             if uri.scheme in {'http','https','file'}:
-                from urllib.request import urlopen
+                from urllib.request import Request,urlopen
                 try:
-                    with urlopen(source,timeout=30) as response:
+                    request=Request(source,headers={'User-Agent':'CongressionalArchiveMaintenance/1.0'})
+                    with urlopen(request,timeout=30) as response:
                         raw=response.read(CONTROL_BYTES+1)
                     if len(raw)>CONTROL_BYTES:
                         raise ValueError('Archive release pins exceed control byte limit')
@@ -247,13 +281,14 @@ def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,exe
         pins=set(read_archive_release_pins(external_pins))
     else:
         pins={_release(value) for value in external_pins}
-    if external_pins_source is not None:
-        pins.update(read_archive_release_pins(store if external_pins_source is True else external_pins_source))
+    source=store if external_pins_source is True else external_pins_source
+    source_pins=set(read_archive_release_pins(source)) if source is not None else set()
+    pins.update(source_pins)
     pointer,etag=_pointer(store)
     pointer_kept={pointer['release_id']}
     if pointer.get('previous_release_id') is not None:pointer_kept.add(pointer['previous_release_id'])
     kept=pins|pointer_kept
-    objects={};newest={};seen=set();ignored_legacy_objects=0
+    objects={};newest={};sizes={};seen=set();ignored_legacy_objects=0
     for item in store.inventory():
         key=item['Key']
         release=_inventory_release(key)
@@ -263,6 +298,7 @@ def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,exe
         if key in seen:raise ValueError('Archive inventory repeats an object')
         seen.add(key)
         modified=_time(item['LastModified'])
+        sizes[key]=item.get('Size')
         objects.setdefault(release,[]).append(key)
         newest[release]=max(newest.get(release,modified),modified)
     existing_releases=set(objects)
@@ -296,12 +332,16 @@ def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,exe
         records.append(record)
     prunable=set(prunable_release_ids(newest,kept=kept,now=now))
     delete_keys=sorted(key for release in sorted(prunable) for key in objects.get(release,()))
+    delete_sizes=[sizes[key] for key in delete_keys]
+    delete_bytes=sum(delete_sizes) if all(type(size) is int for size in delete_sizes) else None
     spicy_pairs=sorted({(family,digest) for record in records
                         for family,digest in (record.get('entity_digests') or {}).items()})
     spicy_generations=[dict(family=family,digest=digest) for family,digest in spicy_pairs]
     if execute:
         if _pointer(store)!=(pointer,etag):
             raise ValueError('Live pointer changed before maintenance deletion')
+        if source is not None and set(read_archive_release_pins(source))!=source_pins:
+            raise ValueError('External release pins changed before maintenance deletion')
         if callable(getattr(store,'write_spicy_generations',None)):
             store.write_spicy_generations(spicy_generations)
         elif callable(getattr(store,'create',None)):
@@ -314,8 +354,9 @@ def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,exe
             store.delete(key)
     return dict(status='executed' if execute else 'planned',pointer=pointer,pointer_etag=etag,
         kept_releases=sorted(kept),stale_external_pins=stale_external_pins,kept_inputs=records,
-        protected_keys=sorted(protected),delete_keys=delete_keys,spicy_generations=spicy_generations,
-        ignored_legacy_objects=ignored_legacy_objects)
+        retained_releases=sorted(existing_releases-prunable),
+        protected_keys=sorted(protected),delete_releases=sorted(prunable),delete_keys=delete_keys,
+        delete_bytes=delete_bytes,spicy_generations=spicy_generations,ignored_legacy_objects=ignored_legacy_objects)
 
 
 JOB_FIELDS={'version','bucket','catalog_root','work','external_pins','tables','thresholds'}
@@ -384,21 +425,30 @@ def load_spec(path):
     if 'raw_verification' in value and value['raw_verification'] is not None:
         from viewer_publication.archive_model_job import _selector
         raw_cfg=value['raw_verification']
-        if not isinstance(raw_cfg,dict) or not {'captures','receipt_inventory','verification_inventory'}<=set(raw_cfg):
-            raise ValueError('Maintenance raw_verification requires captures, receipt_inventory and verification_inventory')
-        captures_cfg=(_selector(raw_cfg['captures'],base)
-            if isinstance(raw_cfg['captures'],dict) else _local(raw_cfg['captures'],base))
-        receipt_inv=(list(raw_cfg['receipt_inventory'])
-            if isinstance(raw_cfg['receipt_inventory'],list) else _local(raw_cfg['receipt_inventory'],base))
-        verify_inv=(list(raw_cfg['verification_inventory'])
-            if isinstance(raw_cfg['verification_inventory'],list) else _local(raw_cfg['verification_inventory'],base))
+        inventories={'receipt_inventory','verification_inventory'}
+        if not isinstance(raw_cfg,dict) or 'captures' not in raw_cfg:
+            raise ValueError('Maintenance raw_verification requires a captures input')
+        if raw_cfg.keys()&inventories and not inventories<=raw_cfg.keys():
+            raise ValueError('Supply both raw verification inventories or discover both from the bucket')
+        captures=raw_cfg['captures']
+        if isinstance(captures,dict) and set(captures)=={'model_spec'}:
+            model_path=Path(_local(captures['model_spec'],base))
+            model=json.loads(model_path.read_text(encoding='utf-8'))
+            if not isinstance(model,dict) or 'captures' not in model:
+                raise ValueError('Maintenance model spec requires a captures selector')
+            captures_cfg=_selector(model['captures'],model_path.parent)
+        elif isinstance(captures,dict):
+            captures_cfg=_selector(captures,base)
+        else:
+            captures_cfg=_local(captures,base)
         result['raw_verification']=dict(
             captures=captures_cfg,
-            receipt_inventory=receipt_inv,
-            verification_inventory=verify_inv,
             seed=raw_cfg.get('seed'),
             apply_staged=bool(raw_cfg.get('apply_staged',True)),
         )
+        for key in raw_cfg.keys()&inventories:
+            source=raw_cfg[key]
+            result['raw_verification'][key]=source if isinstance(source,list) else _local(source,base)
     if 'lake_maintenance' in value and value['lake_maintenance'] is not None:
         lake_cfg=value['lake_maintenance']
         if not isinstance(lake_cfg,dict):
@@ -407,7 +457,37 @@ def load_spec(path):
     return result
 
 
-def plan(spec):
+def _connect(spec,storage_factory,**options):
+    if storage_factory is None:
+        from congress_shared.storage import connect_r2 as storage_factory
+    return storage_factory(bucket=spec['bucket'],**options)
+
+
+def _engine_config(spec,*,need_engine):
+    """The runtime config a maintenance step uses: the spec's, the remote runtime's, else the local job runtime's."""
+    config=(spec.get('engine_config') or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
+        or (os.environ.get('DOCSPEC_JOB_CONFIG') if need_engine else None))
+    if need_engine and (not isinstance(config,str) or not config.strip()):
+        raise ValueError('Maintenance raw or lake operations require engine_config or DOCSPEC_RUNTIME_CONFIG')
+    return config
+
+
+def _retain_releases(spec,client,*,now,execute=False):
+    store=ArchiveMaintenanceStore(client=client,bucket=spec['bucket'])
+    source=spec.get('external_pins_source')
+    if source==ARCHIVE_RELEASE_PINS:
+        source=store
+    return maintain_releases(store,now=now,external_pins=spec['external_pins'],
+        external_pins_source=source,execute=execute)
+
+
+def plan(spec,*,storage_factory=None,now=None):
+    """List the release keys retention would delete and the releases it keeps, writing nothing.
+
+    Reads the pointer, release pins, one release inventory and the kept input records
+    through a client that refuses every call but a read. Raw verification and lake
+    maintenance run only in a dry run or an execution.
+    """
     if spec.get('status')=='blocked':return dict(spec)
     result=dict(
         status='planned',
@@ -422,10 +502,39 @@ def plan(spec):
     for key in ('external_pins_source','raw_verification','lake_maintenance'):
         if key in spec:
             result[key]=spec[key]
+    client=ReadOnlyClient(_connect(spec,storage_factory,retries={'total_max_attempts':1}))
+    releases=_retain_releases(spec,client,now=_time(now or datetime.now(timezone.utc)))
+    result['releases']={key:releases[key] for key in ('pointer','pointer_etag','kept_releases','retained_releases','stale_external_pins',
+        'delete_releases','delete_keys','delete_bytes','spicy_generations','ignored_legacy_objects')}
+    result['releases']['kept_input_digests']=sorted(record['input_digest'] for record in releases['kept_inputs'])
     return result
 
 
-def _prepare_raw_verification_inputs(raw_cfg):
+def _stage_raw_inventories(client,bucket,work):
+    """Take complete prefix listings and stage only the raw verifier's JSON inputs."""
+    from congress_api.lake.receipt_inventory import R2ReceiptStore,copy_receipts
+    from congress_api.retention.body_store import BodyStore,R2Adapter
+    from congress_api.retention.provenance_inventory import ProvenanceInventory
+    from viewer_publication.archive_model_job import provenance_record_kind
+
+    class VerificationInventory(ProvenanceInventory):
+        prefix='provenance/verification/'
+
+    receipt_store=R2ReceiptStore(client,bucket)
+    listed=list(receipt_store.files('receipts/'))
+    if len({row['key'] for row in listed})!=len(listed):
+        raise ValueError('Duplicate raw verification receipt key')
+    copied=copy_receipts(receipt_store,sorted(listed,key=lambda row:row['key']),work/'receipts')
+    receipts=[dict(key=row['key'],path=row['path']) for row in copied]
+    with VerificationInventory(BodyStore(R2Adapter(client,bucket)),work=work/'verification') as inventory:
+        inventory.qualify(row['key'] for row in inventory.metadata() if provenance_record_kind(row['key'])=='verification')
+        previous=inventory.files()
+    for name,rows in (('receipt',receipts),('verification',previous)):
+        (work/(name+'-inventory.json')).write_text(json.dumps(rows,sort_keys=True)+'\n',encoding='utf-8')
+    return receipts,previous
+
+
+def _prepare_raw_verification_inputs(raw_cfg,*,client,bucket,work):
     for extra_key in ('inventory','baseline','scope'):
         if extra_key in raw_cfg and isinstance(raw_cfg[extra_key],(str,Path)):
             if not Path(raw_cfg[extra_key]).is_file():
@@ -444,25 +553,31 @@ def _prepare_raw_verification_inputs(raw_cfg):
         if not cap_path.is_file():
             raise ValueError('Missing raw_verification captures input')
         captures=cap_path
-    if isinstance(raw_cfg['receipt_inventory'],list):
-        receipts=raw_cfg['receipt_inventory']
-    else:
+    inventory_keys=('receipt_inventory','verification_inventory')
+    supplied=[key for key in inventory_keys if key in raw_cfg]
+    if not supplied:
+        work.mkdir(parents=True,exist_ok=False)
+        receipts,previous=_stage_raw_inventories(client,bucket,work)
+        return captures,receipts,previous
+    if len(supplied)!=len(inventory_keys):
+        raise ValueError('Supply both raw verification inventories or discover both from the bucket')
+    inventories=[]
+    for key in inventory_keys:
+        rows=raw_cfg[key]
         try:
-            receipts=json.loads(Path(raw_cfg['receipt_inventory']).read_text(encoding='utf-8'))
+            if not isinstance(rows,list):
+                rows=json.loads(Path(rows).read_text(encoding='utf-8'))
         except (OSError,UnicodeDecodeError,json.JSONDecodeError) as error:
-            raise ValueError('Missing or unreadable raw_verification receipt_inventory') from error
-    if isinstance(raw_cfg['verification_inventory'],list):
-        previous=raw_cfg['verification_inventory']
-    else:
-        try:
-            previous=json.loads(Path(raw_cfg['verification_inventory']).read_text(encoding='utf-8'))
-        except (OSError,UnicodeDecodeError,json.JSONDecodeError) as error:
-            raise ValueError('Missing or unreadable raw_verification verification_inventory') from error
+            raise ValueError('Missing or unreadable raw_verification '+key) from error
+        if not isinstance(rows,list):
+            raise ValueError('Raw verification inventory must contain a list: '+key)
+        inventories.append(rows)
+    receipts,previous=inventories
     return captures,receipts,previous
 
 
 def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=True):
-    """Execute weekly release retention, raw verification and lake maintenance."""
+    """Stage verification and retention decisions, applying changes only in execute mode."""
     if isinstance(spec,(str,Path)):spec=load_spec(spec)
     if spec.get('status')=='blocked':return dict(spec)
     work=Path(spec['work'])
@@ -473,30 +588,25 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
     from congress_api.lake.maintenance import maintenance_decision,purge_generation,rebuild_generation
     from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
     import congress_api.retention.raw_verifier as raw_verifier
-    from congress_shared.storage import connect_r2
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
-    storage_factory=storage_factory or connect_r2
     current_time=_time(now or datetime.now(timezone.utc))
     need_engine=bool(spec.get('raw_verification') or spec.get('lake_maintenance'))
-    engine_config=(spec.get('engine_config')
-        or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
-        or (os.environ.get('DOCSPEC_JOB_CONFIG') if need_engine else None))
-    if need_engine and (not isinstance(engine_config,str) or not engine_config.strip()):
-        raise ValueError('Maintenance raw or lake operations require engine_config or DOCSPEC_RUNTIME_CONFIG')
+    engine_config=_engine_config(spec,need_engine=need_engine)
     raw_report=None
     lake_report=dict(decisions={},rebuilt={},purged=[])
     with (runtime_factory(engine_config) if engine_config else nullcontext(None)) as engine:
         if engine is not None:
             engine.verify_runtime()
-        raw_inputs=_prepare_raw_verification_inputs(spec['raw_verification']) if spec.get('raw_verification') else None
-        client=storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1})
+        client=_connect(spec,storage_factory,retries={'total_max_attempts':1})
+        reader=ReadOnlyClient(client)
         if spec.get('raw_verification'):
             raw_cfg=spec['raw_verification']
-            raw_captures,raw_receipts,raw_previous=raw_inputs
+            raw_captures,raw_receipts,raw_previous=_prepare_raw_verification_inputs(raw_cfg,
+                client=reader,bucket=spec['bucket'],work=work/'raw-verification-inputs')
             raw_work=work/'raw-verify'
             verified=raw_verifier.verify(
-                R2Source(client,spec['bucket']),
+                R2Source(reader,spec['bucket']),
                 captures=raw_captures,
                 receipts=raw_receipts,
                 previous=raw_previous,
@@ -508,27 +618,17 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
             if execute and not verified.get('valid',False):
                 raise RuntimeError('raw verification failed; refusing release pruning')
             applied=None
-            if raw_cfg.get('apply_staged',True) and verified.get('valid'):
+            if execute and raw_cfg.get('apply_staged',True) and verified.get('valid'):
                 applied=apply_staged(raw_work,BodyStore(R2Adapter(client,spec['bucket'])))
             raw_report=dict(verification=verified,applied=applied)
-        store=ArchiveMaintenanceStore(client=client,bucket=spec['bucket'])
-        pin_src=spec.get('external_pins_source')
-        if pin_src==ARCHIVE_RELEASE_PINS:
-            pin_src=store
-        releases=maintain_releases(
-            store,
-            now=current_time,
-            external_pins=spec['external_pins'],
-            external_pins_source=pin_src,
-            execute=bool(execute),
-        )
+        releases=_retain_releases(spec,client if execute else reader,now=current_time,execute=execute)
         if spec.get('lake_maintenance'):
             lake_cfg=spec['lake_maintenance']
             for table_name,obs in (lake_cfg.get('observations') or {}).items():
                 exceeded=maintenance_decision(obs,spec['thresholds'])
                 lake_report['decisions'][table_name]=exceeded
                 rebuild_spec=(lake_cfg.get('rebuild') or {}).get(table_name)
-                if exceeded and rebuild_spec is not None:
+                if execute and exceeded and rebuild_spec is not None:
                     rebuilt_pin=rebuild_generation(
                         rebuild_spec['old_pin'],
                         engine=engine,
@@ -541,7 +641,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
                         definition=rebuild_spec['definition'],
                     )
                     lake_report['rebuilt'][table_name]=rebuilt_pin
-            for index,purge_spec in enumerate(lake_cfg.get('purge') or ()):
+            purges=lake_cfg.get('purge') or ()
+            for index,purge_spec in enumerate(purges if execute else ()):
                 table_name=purge_spec['table']
                 purged=purge_generation(
                     purge_spec['pin'],
@@ -554,8 +655,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
                 lake_report['purged'].append(dict(table=table_name,result=purged))
     work.mkdir(parents=True,exist_ok=True)
     result=dict(
-        status='executed',
-        executed=True,
+        status='executed' if execute else 'dry_run',
+        executed=bool(execute),
         bucket=spec['bucket'],
         catalog_root=spec['catalog_root'],
         work=spec['work'],
@@ -571,15 +672,16 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--spec',type=Path,required=True)
     mode=parser.add_mutually_exclusive_group()
-    mode.add_argument('--plan',action='store_true')
-    mode.add_argument('--execute',action='store_true')
+    mode.add_argument('--plan',action='store_true',help='List retained releases and deletion keys')
+    mode.add_argument('--dry-run',action='store_true',help='Stage raw verification and retention reports locally')
+    mode.add_argument('--execute',action='store_true',help='Apply verification and maintenance changes')
     args=parser.parse_args(argv)
     try:
         spec=load_spec(args.spec)
         if spec.get('status')=='blocked':
             print(json.dumps(spec,sort_keys=True))
             return 2
-        result=execute(spec) if args.execute else plan(spec)
+        result=execute(spec,execute=args.execute) if args.execute or args.dry_run else plan(spec)
     except (ValueError,OSError,RuntimeError) as error:
         parser.error(str(error))
     print(json.dumps(result,sort_keys=True))

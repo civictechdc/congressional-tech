@@ -1,7 +1,10 @@
 """Receipt metadata discovery; native keys select work before receipt reads."""
+from contextlib import closing
 from datetime import date
+import hashlib
 import json
 from pathlib import Path
+import re
 
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import validate_key
@@ -10,6 +13,7 @@ from congress_api.retention.provenance import json_input, run_job
 
 METADATA_BYTES=64<<20
 ITEM_BYTES=16<<10
+MULTIPART_ETAG=re.compile(r'[0-9a-fA-F]{32}-([1-9][0-9]{0,4})')
 
 
 def _receipt_key(key):
@@ -119,7 +123,7 @@ def discover_receipts(adapter,families,*,existing,engine,work,mode='incremental'
 def copy_receipts(store,rows,directory,*,workers=16):
     """Copy selected receipts into `directory`, each with the qualification staging requires.
 
-    The store verifies each copy against what its listing named (R2: the single-PUT MD5
+    The store verifies each copy against what its listing named (R2: the MD5-based
     ETag, read with If-Match); SHA-256 and size are taken from the bytes copied, once.
     Copies run on `workers` threads; the result keeps the selection's order.
     """
@@ -139,13 +143,22 @@ def copy_receipts(store,rows,directory,*,workers=16):
         return list(pool.map(one,rows))
 
 
-def _copy_stream(read,path):
-    import hashlib
+def _copy_stream(read,path,*,part_size=None):
     sha=hashlib.sha256();md5=hashlib.md5();size=0
+    composite=hashlib.md5() if part_size else None
+    chunk_size=1<<20
     with path.open('xb') as target:
-        while chunk:=read(1<<20):
+        while chunk:=read(min(chunk_size,part_size-size%part_size) if part_size else chunk_size):
             sha.update(chunk);md5.update(chunk);size+=len(chunk);target.write(chunk)
-    return sha.hexdigest(),md5.hexdigest(),size
+            if part_size and size%part_size==0:
+                composite.update(md5.digest())
+                md5=hashlib.md5()
+    if part_size:
+        if size%part_size:composite.update(md5.digest())
+        etag=f'{composite.hexdigest()}-{(size+part_size-1)//part_size}'
+    else:
+        etag=md5.hexdigest()
+    return sha.hexdigest(),etag,size
 
 
 class R2ReceiptStore:
@@ -170,27 +183,45 @@ class R2ReceiptStore:
                 yield item['Prefix']
 
     def files(self,prefix):
-        _receipt_key(prefix.rstrip('/'))
+        if prefix!='receipts/':_receipt_key(prefix.rstrip('/'))
         for page in self._pages(Prefix=prefix):
             for item in page.get('Contents',[]):
-                yield dict(key=item['Key'],size=item['Size'],etag=item['ETag'])
+                key=_receipt_key(item['Key'])
+                if not key.startswith(prefix):
+                    raise ValueError('Receipt adapter returned a file outside its listed prefix')
+                yield dict(key=key,size=item['Size'],etag=item['ETag'])
 
     def describe(self,row):
-        return f"R2 {self.bucket}/{row['key']} read with If-Match {row['etag']}; MD5 and size verified on copy"
+        kind='multipart MD5' if MULTIPART_ETAG.fullmatch(row['etag'].strip('"')) else 'MD5'
+        return f"R2 {self.bucket}/{row['key']} read with If-Match {row['etag']}; {kind} and size verified on copy"
 
     def copy(self,row,path):
         from botocore.exceptions import IncompleteReadError,ReadTimeoutError,ResponseStreamingError
         from congress_shared.storage import single_put_md5
-        expected=single_put_md5(row['etag'])
+        multipart=MULTIPART_ETAG.fullmatch(row['etag'].strip('"'))
+        expected=multipart[0].lower() if multipart else single_put_md5(row['etag'])
+        request=dict(Bucket=self.bucket,Key=row['key'],IfMatch='"'+(multipart[0] if multipart else expected)+'"')
+        part_size=None
+        if multipart:
+            # R2 uses equal-sized parts except for the last one. Ask for the
+            # first part's size and check the composite MD5 during the full GET.
+            first=self.client.head_object(**request,PartNumber=1)
+            part_size=first.get('ContentLength')
+            parts=int(multipart[1])
+            if (first.get('ETag')!=row['etag'] or first.get('PartsCount')!=parts
+                    or not 1<=parts<=10000 or type(part_size) is not int or part_size<=0
+                    or not (parts-1)*part_size<row['size']<=parts*part_size):
+                raise ValueError('Receipt part metadata differs from its listing: '+row['key'])
         for attempt in (1,2,3):
             try:
-                body=self.client.get_object(Bucket=self.bucket,Key=row['key'],IfMatch='"'+expected+'"')['Body']
-                digest,md5,size=_copy_stream(body.read,path)
+                body=self.client.get_object(**request)['Body']
+                with closing(body):
+                    digest,etag,size=_copy_stream(body.read,path,part_size=part_size)
                 break
             except (IncompleteReadError,ReadTimeoutError,ResponseStreamingError):
                 path.unlink(missing_ok=True)
                 if attempt==3:raise
-        if md5!=expected or size!=row['size']:
+        if size!=row['size'] or etag!=expected:
             path.unlink()
             raise ValueError('Receipt copy differs from its listed MD5 or size: '+row['key'])
         return digest,size

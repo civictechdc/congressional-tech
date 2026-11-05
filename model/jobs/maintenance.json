@@ -4,7 +4,7 @@
   "catalog_root": null,
   "work": "../../output/archive-maintenance",
   "external_pins": [],
-  "external_pins_source": "viewer-publications/pins/archive-releases.json",
+  "external_pins_source": "https://data.spicygov.ai/pins/archive-releases.json",
   "tables": {
     "captures": {
       "namespace": [
@@ -43,9 +43,9 @@
     "scan_planning_seconds": 30.0
   },
   "raw_verification": {
-    "captures": "../../output/archive-maintenance-inputs/captures.parquet",
-    "receipt_inventory": "../../output/archive-maintenance-inputs/receipt-inventory.json",
-    "verification_inventory": "../../output/archive-maintenance-inputs/verification-inventory.json",
+    "captures": {
+      "model_spec": "publish-model.json"
+    },
     "apply_staged": true
   },
   "lake_maintenance": {

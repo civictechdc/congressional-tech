@@ -81,3 +81,29 @@ def test_a_copy_that_differs_from_its_listed_md5_refuses(tmp_path):
     assert not (tmp_path / 'copies' / row['key']).exists()
     with pytest.raises(ValueError, match='single-PUT MD5'):
         copy_receipts(store, [dict(row, etag='"abc-2"')], tmp_path / 'multipart')
+
+
+def test_multipart_copy_uses_actual_part_size_and_rejects_changed_bytes(tmp_path):
+    key = 'receipts/documents/2026-10-31/legacy.jsonl'
+    parts = [b'a' * ((5 << 20) + 37), b'final']
+    original = b''.join(parts)
+    composite = hashlib.md5(b''.join(hashlib.md5(part).digest() for part in parts)).hexdigest()
+    row = dict(key=key, size=len(original), etag=f'"{composite}-2"')
+
+    class MultipartBucket(Bucket):
+        def head_object(self, *, Bucket, Key, IfMatch, PartNumber):
+            assert Key == key and IfMatch == row['etag'] and PartNumber == 1
+            return dict(ContentLength=len(parts[0]), PartsCount=2, ETag=IfMatch)
+
+    bucket = MultipartBucket({key: original})
+    store = R2ReceiptStore(bucket, 'raw')
+    path = tmp_path / 'receipt'
+    digest, size = store.copy(row, path)
+    assert digest == hashlib.sha256(original).hexdigest() and size == len(original)
+    assert path.read_bytes() == original
+
+    bucket.objects[key] = original[:-1] + b'X'
+    bad = tmp_path / 'changed'
+    with pytest.raises(ValueError, match='differs from its listed MD5 or size'):
+        store.copy(row, bad)
+    assert not bad.exists()
