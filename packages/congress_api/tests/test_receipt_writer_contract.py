@@ -128,6 +128,41 @@ def test_provider_partial_response_stays_incomplete_in_published_receipt(tmp_pat
     assert result.final.body.path.read_bytes()==b'ab'
 
 
+def test_frozen_receipt_cleanup_failure_precedes_upload_and_leaves_a_retry(tmp_path, monkeypatch):
+    from tempfile import TemporaryDirectory
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention import receipt_writer
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+
+    class CleanupFailure(TemporaryDirectory):
+        def __exit__(self, *exc):
+            super().__exit__(*exc)
+            raise OSError('planted receipt scratch cleanup failure')
+
+    monkeypatch.setattr(receipt_writer, 'TemporaryDirectory', CleanupFailure)
+    root = tmp_path/'raw'
+    writer = receipt_writer.ReceiptWriter(BodyStore(LocalAdapter(root)), identity=WRITER,
+        run_id='run', write_date='2026-10-27', archive_limits=None)
+    result = FetchResult(attempt(tmp_path))
+    options = dict(family='documents', operation_id='op1', freeze_dir=tmp_path/'frozen')
+
+    with pytest.raises(OSError, match='planted receipt scratch cleanup failure'):
+        writer.write(result, **options)
+    frozen = options['freeze_dir']/'op1'
+    metadata = json.loads((frozen/'receipt.json').read_bytes())
+    raw = (frozen/'receipt.gz').read_bytes()
+    assert metadata['sha256'] == hashlib.sha256(raw).hexdigest()
+    published = root/metadata['key']
+    assert not published.exists()
+
+    key, line = writer.write(result, **options)
+    assert key == metadata['key']
+    assert published.read_bytes() == raw
+    assert json.loads(gzip.decompress(raw)) == line
+    assert writer.write(result, **options) == (key, line)
+    assert published.read_bytes() == raw
+
+
 @pytest.mark.parametrize('has_metadata', [True, False], ids=['pinned', 'gzip-only'])
 def test_frozen_receipt_reconciles_lost_ack_and_reuses_exact_bytes(tmp_path, has_metadata):
     from congress_api.models.raw_fetch import FetchResult

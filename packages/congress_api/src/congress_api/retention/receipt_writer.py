@@ -198,8 +198,11 @@ class ReceiptWriter:
                 directory=os.open(frozen.parent,os.O_RDONLY)
                 try:os.fsync(directory)
                 finally:os.close(directory)
-                return self._apply_frozen(frozen)
-            self.store.put(key,path,'application/x-ndjson')
+            else:
+                self.store.put(key,path,'application/x-ndjson')
+        if operation_id is not None:
+            # Finish scratch cleanup before uploading the durable receipt.
+            return self._apply_frozen(frozen)
         return key,line
 
     @staticmethod
