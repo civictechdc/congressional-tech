@@ -103,12 +103,12 @@ def test_hidden_text_is_excluded_and_its_tail_kept():
 
 
 def test_hidden_rule_matches_the_archive_reading():
-    """Both readers drop the same hidden elements: the one rule is held here, as ERROR_TITLE_MARKERS is."""
+    """Both readers recognize ordinary display and visibility declarations."""
     import inspect
     import re
     from congress_api.parsers import archive_readings, main_content
     source = inspect.getsource(archive_readings._markup_facts)
-    assert "'hidden' in node.attrib" in source and main_content.HIDDEN_STYLE.pattern in source
+    assert "'hidden' in node.attrib" in source
     for style in ('display:none', 'DISPLAY : none', 'visibility:hidden', 'display:block', 'visibility: visible', ''):
         assert bool(main_content.HIDDEN_STYLE.search(style)) == bool(re.search(r'(?:display\s*:\s*none|visibility\s*:\s*hidden)', style, re.I))
 
@@ -183,3 +183,29 @@ def test_ref_of_no_text_has_no_digest():
     reference = MainContent(outcome='none', body_sha256='0' * 64, text=None, selector=None, property=None,
                             candidates=[], fallback_reason=None).ref()
     assert reference.text_sha256 is None and reference.snippet is None and reference.text_bytes is None
+
+
+
+def test_hidden_and_rebound_markers_cannot_supply_testimony():
+    text = select(page(f'<div hidden><div property="content:encoded">{LONG}</div></div>'
+                       f'<div prefix="content: https://example.test/fake/" property="content:encoded">{LONG}</div>'))
+    assert text.outcome == 'fallback_required' and text.candidates == []
+    visible = select(page(f'<div property="content:encoded"><p style="--display:none">{LONG}</p></div>'))
+    assert visible.text == LONG.strip()
+
+
+def test_same_text_with_conflicting_links_requires_fallback():
+    text = select(page(f'<div property="content:encoded">{LONG}<a href="/a">Exhibit</a></div>'
+                       f'<div property="content:encoded">{LONG}<a href="/b">Exhibit</a></div>'))
+    assert text.outcome == 'fallback_required' and text.fallback_reason == 'multiple_candidates'
+
+
+def test_empty_then_short_marker_has_consistent_text_reference():
+    from congress_api.parsers.html_metadata import reading_row
+    body = page('<div property="content:encoded"></div><div property="content:encoded">A brief statement.</div>').encode()
+    row = reading_row(body)
+    fields = {item['field']: item['value'] for item in row['fields']}
+    assert fields['main_content:selector'] == '/html/body/div[2]'
+    assert row['text_head'] == fields['main_content:text'] == 'A brief statement.'
+    assert row['text_bytes'] == len(b'A brief statement.')
+    assert fields['main_content:sha256'] == hashlib.sha256(b'A brief statement.').hexdigest()

@@ -277,7 +277,7 @@ def _listed_reads(spec,raw_store):
     return spec.get('body_inventory') is None and isinstance(raw_store.adapter,R2Adapter)
 
 
-def _pending_backlog(spec,engine,raw_store,heads,unreadable_snapshot,work):
+def _pending_backlog(spec,engine,raw_store,heads,unreadable_snapshot,work,*,parser=None):
     """The readings work the current heads already hold, planned without opening a body.
 
     Candidacy never reads the body source, so an R2 run plans over the recorded copies
@@ -287,7 +287,7 @@ def _pending_backlog(spec,engine,raw_store,heads,unreadable_snapshot,work):
             else dict(body_inventory=None,captured_copies=True,local_root=Path(work)/'unopened'))
     return readings.run(engine=engine,work=work,mode='daily',execute=False,max_work_items=spec['max_work_items'],
         existing=heads['readings'],captures=heads['captures'],unreadable_files=unreadable_snapshot.files(),
-        decided_at=spec['decided_at'],**source)
+        decided_at=spec['decided_at'],parser=parser,**source)
 
 
 def _head(client,bucket,key):
@@ -314,7 +314,7 @@ def _head(client,bucket,key):
         time.sleep(delay)
 
 
-def _listed_custody(spec,engine,raw_store,heads,backlog,stage,unreadable_snapshot,work):
+def _listed_custody(spec,engine,raw_store,heads,backlog,stage,unreadable_snapshot,work,*,parser=None):
     """Raw custody, before captures move, for every body the readings run after the append reads.
 
     The bodies are those already pending plus the staged bodies new to captures. Every copy
@@ -354,7 +354,7 @@ def _listed_custody(spec,engine,raw_store,heads,backlog,stage,unreadable_snapsho
     planned=readings.run(engine=engine,work=work/'readings',mode='daily',execute=False,
         max_work_items=spec['max_work_items'],existing=heads['readings'],captures=work/'scoped-captures.parquet',
         unreadable_files=unreadable_snapshot.files(),body_inventory=None,body_listing=listing,raw_ranges=True,
-        local_root=work/'unopened',decided_at=spec['decided_at'])
+        local_root=work/'unopened',decided_at=spec['decided_at'],parser=parser)
     return dict(listing=listing,planned=planned,heads=len(keys),
                 absent=[key for key,row in zip(keys,found) if row is None])
 
@@ -534,6 +534,23 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
     for name in [None,*derived_parsers(spec)]:
         step=name or 'readings'
         try:
+            if name is not None and _listed_reads(spec,raw_store):
+                # The leaf listing only covers bodies that needed a leaf reading. An
+                # older HTML body can still need metadata, so scope its own custody check.
+                derived_heads=dict(heads)
+                derived_heads.update(tables.resolve_tables(**authority,work=work/(name+'-head'),
+                    tables={'readings':spec['tables']['readings']}))
+                pending=_pending_backlog(spec,engine,raw_store,derived_heads,unreadable_snapshot,
+                    work/(name+'-backlog'),parser=name)
+                custody=_listed_custody(spec,engine,raw_store,derived_heads,pending,None,unreadable_snapshot,
+                    work/(name+'-custody'),parser=name)
+                listing=custody['listing']
+                planned=custody['planned']
+                if planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']:
+                    report.update(status='raw_custody_required')
+                    report['producerreports'][step]=dict(planned['raw_custody'],status='missing_raw_custody',
+                        work_list=str(planned['work_list']))
+                    return report
             passes[step]=readings.run(engine=engine,work=work/step,mode='daily',execute=True,
                 max_work_items=spec['max_work_items'],table=spec['tables']['readings'],parser=name,
                 catalog_root=spec['catalog_root'],unreadable_store=raw_store,

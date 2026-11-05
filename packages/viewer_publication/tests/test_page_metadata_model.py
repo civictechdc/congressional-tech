@@ -31,22 +31,30 @@ def json_ld(value):
     return f'<script type="application/ld+json">{json.dumps(value)}</script>'
 
 
-def run(tmp_path, documents, bodies, *, queries):
+def run(tmp_path, documents, bodies, *, queries, extra_contexts=()):
     """documents: (doc_key, body bytes or None, source_url, format); bodies are read once each."""
     from viewer_publication.archive_model import registry_inputs
     readings = []
     for body in bodies:
         row = reading_row(body)
-        readings.append(dict(body_hex=hashlib.sha256(body).hexdigest(), parser='html_metadata', status=row['status'],
+        readings.append(dict(body_hex=hashlib.sha256(body).hexdigest(), parser='html_metadata', parser_version='test-pin', status=row['status'], error_type=row.get('error_type'),
                              title=row.get('title'), base_href=row.get('base_href'), text_bytes=row.get('text_bytes'),
                              text_head=row.get('text_head'), fields=row['fields']))
-    readings.append(dict(body_hex='0' * 64, parser='html', status='completed', title='Other parser', base_href=None,
+    readings.append(dict(body_hex='0' * 64, parser='html', parser_version='test-pin', status='completed', error_type=None, title='Other parser', base_href=None,
                          text_bytes=None, text_head=None, fields=[]))  # another parser's row on a candidate body
     docs = [dict(doc_key=key, format=fmt, source_url=url, body_hex=hashlib.sha256(body).hexdigest() if body else '0' * 64)
             for key, body, url, fmt in documents]
+    contexts = [dict(source_id=doc['doc_key'], body_sha=doc['body_hex'], context_url=doc['source_url'], outcome='stored', is_real_file=True)
+                for doc in docs if doc['source_url']] + list(extra_contexts)
     inputs = registry_inputs(tmp_path / 'registries') + [
+        json_input(tmp_path, 'document_identities', [dict(document_id=d['doc_key'], component=d['doc_key']) for d in docs],
+                   document_id='Utf8', component='Utf8'),
+        json_input(tmp_path, 'document_members', [dict(component=d['doc_key'], source_id=d['doc_key'], body_sha=d['body_hex']) for d in docs],
+                   component='Utf8', source_id='Utf8', body_sha='Utf8'),
+        json_input(tmp_path, 'capture_sources', contexts,
+                   source_id='Utf8', body_sha='Utf8', context_url='Utf8', outcome='Utf8', is_real_file='Boolean'),
         json_input(tmp_path, 'base_normalized', docs, doc_key='Utf8', format='Utf8', source_url='Utf8', body_hex='Utf8'),
-        json_input(tmp_path, 'readings_json', readings, body_hex='Utf8', parser='Utf8', status='Utf8', title='Utf8',
+        json_input(tmp_path, 'readings_json', readings, body_hex='Utf8', parser='Utf8', parser_version='Utf8', status='Utf8', error_type='Utf8', title='Utf8',
                    base_href='Utf8', text_bytes='Int64', text_head='Utf8', fields=list_of(struct(field='Utf8', value='Utf8')))]
     steps = [dict(name='selected_readings', sql="""SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,
                  * EXCLUDE(body_hex,text_bytes),cast(text_bytes AS INT) AS text_bytes FROM readings_json""")]
@@ -57,8 +65,8 @@ def run(tmp_path, documents, bodies, *, queries):
 
 def entries_query(doc_key):
     return dict(name=doc_key, sql=f"""SELECT e['field'] AS field,e['value'] AS value,e['format'] AS format,e['path'] AS path,
-        cast(e['date'] AS VARCHAR) AS date,e['precision'] AS precision,e['resolved'] AS resolved,e['selected'] AS selected
-        FROM (SELECT unnest(page_metadata) AS e FROM document_page_metadata WHERE doc_key='{doc_key}') ORDER BY path""")
+        cast(e['date'] AS VARCHAR) AS date,e['precision'] AS precision,e['resolved'] AS resolved,e['selected'] AS selected,e['context_url'] AS context_url
+        FROM (SELECT unnest(page_metadata) AS e FROM document_page_metadata WHERE doc_key='{doc_key}') ORDER BY path,context_url""")
 
 
 COLUMNS = dict(name='columns', sql="""SELECT doc_key,description,cast(published_on AS VARCHAR) AS published_on,
@@ -67,13 +75,19 @@ COLUMNS = dict(name='columns', sql="""SELECT doc_key,description,cast(published_
     FROM document_page_metadata ORDER BY doc_key""")
 
 
-def test_one_body_at_two_addresses_resolves_against_each_address(tmp_path):
+def test_one_body_at_two_addresses_resolves_in_the_same_document(tmp_path):
     body = page(head='<link rel="canonical" href="../z">')
-    result = run(tmp_path, [('a', body, 'https://one.test/x/y/page', 'html'), ('b', body, 'https://two.test/p/q', 'html'),
-                            ('c', body, None, 'html')], [body], queries=[entries_query(k) for k in 'abc'])
-    assert [(r['field'], r['value'], r['resolved']) for r in result['a']] == [('declared_url', '../z', 'https://one.test/x/z')]
-    assert [r['resolved'] for r in result['b']] == ['https://two.test/z']
-    assert [r['resolved'] for r in result['c']] == [None]  # no address, no resolution
+    digest = hashlib.sha256(body).hexdigest()
+    result = run(tmp_path, [('a', body, 'https://one.test/x/y/page', 'html'), ('c', body, None, 'html')],
+                 [body], queries=[entries_query(k) for k in 'ac'], extra_contexts=[
+                     dict(source_id='a', body_sha=digest, context_url='https://two.test/p/q', outcome='stored', is_real_file=True),
+                     dict(source_id='a', body_sha=digest, context_url='https://fake.test/', outcome='reference', is_real_file=False),
+                 ])
+    assert [(r['value'], r['context_url'], r['resolved']) for r in result['a']] == [
+        ('../z', 'https://one.test/x/y/page', 'https://one.test/x/z'),
+        ('../z', 'https://two.test/p/q', 'https://two.test/z'),
+    ]
+    assert [r['resolved'] for r in result['c']] == [None]
 
 
 def test_declared_base_comes_before_the_document_address(tmp_path):
@@ -148,7 +162,7 @@ def test_sql_dates_equal_reported_time_both_ways(tmp_path):
     assert sql == {value: python(value) for value in DATES}
 
 
-def _release(tmp_path, *, with_metadata):
+def _release(tmp_path, *, with_metadata, extra_pages=()):
     """One html document from a receipt line through the real producers and the model."""
     import gzip
     import pyarrow.parquet as pq
@@ -162,20 +176,22 @@ def _release(tmp_path, *, with_metadata):
                 + og('article:modified_time', '2025-03-04T09:00:00-05:00') + og('article:section', 'Hearings')
                 + '<link rel="canonical" href="/hearing">' + json_ld({'@type': 'Event', 'datePublished': '2017-06-01'}),
                 body='<p>' + 'Hearing record text. ' * 60 + '</p>')
-    digest = hashlib.sha256(html).hexdigest()
-    stored = gzip.compress(html, mtime=0)
-    key = f'bodies/sha256/{digest[:2]}/{digest}.gz'
-    (raw / key).parent.mkdir(parents=True)
-    (raw / key).write_bytes(stored)
-    row = dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents', outcome='stored',
-               requested_url='https://fixture.test/a/hearing.htm', url='https://fixture.test/a/hearing.htm', response_headers={}, http_status=200,
-               complete=True, retrieved_at='2026-10-27T12:00:00Z',
-               captures=[dict(sha256=digest, bytes=len(html), media_type='text/html', fidelity='exact-bytes', sniffed_format='html',
-                              sniff_version=readings.current_version('sniff'), intact=None, stored_suffix='.gz', stored_bytes=len(stored),
-                              stored_md5=hashlib.md5(stored).hexdigest())])
+    records = []
+    for url, data in [('https://fixture.test/a/hearing.htm', html), *extra_pages]:
+        digest = hashlib.sha256(data).hexdigest()
+        stored = gzip.compress(data, mtime=0)
+        key = f'bodies/sha256/{digest[:2]}/{digest}.gz'
+        (raw / key).parent.mkdir(parents=True, exist_ok=True)
+        (raw / key).write_bytes(stored)
+        records.append(dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch',
+            family='documents', outcome='stored', requested_url=url, url=url, response_headers={}, http_status=200,
+            complete=True, retrieved_at='2026-10-27T12:00:00Z',
+            captures=[dict(sha256=digest, bytes=len(data), media_type='text/html', fidelity='exact-bytes',
+                sniffed_format='html', sniff_version=readings.current_version('sniff'), intact=None, stored_suffix='.gz',
+                stored_bytes=len(stored), stored_md5=hashlib.md5(stored).hexdigest())]))
     receipt = raw / 'receipts/documents/2026-10-27/slice.jsonl.gz'
     receipt.parent.mkdir(parents=True)
-    encoded = gzip.compress((json.dumps(row) + '\n').encode(), mtime=0)
+    encoded = gzip.compress(''.join(json.dumps(row) + '\n' for row in records).encode(), mtime=0)
     receipt.write_bytes(encoded)
     pin = tmp_path / 'receipt-pin.json'
     pin.write_text(json.dumps(dict(path=str(receipt), size=len(encoded), sha256=hashlib.sha256(encoded).hexdigest(), producer='fixture creation')))
@@ -193,7 +209,7 @@ def _release(tmp_path, *, with_metadata):
     versions = {p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}
     if with_metadata:
         staged = readings.stage(**common, work=tmp_path / 'metadata-stage', parser='html_metadata')
-        assert staged['work_items'] == 1
+        assert staged['work_items'] == len({hashlib.sha256(data).hexdigest() for _,data in extra_pages}) + 1
         parts.append(staged['readings'])
         versions['html_metadata'] = readings.current_version('html_metadata')
     joined = tmp_path / 'readings'
@@ -227,3 +243,43 @@ def test_page_columns_survive_export_and_change_no_other_column(tmp_path):
     assert (release / 'list.parquet').read_bytes() == (bare / 'list.parquet').read_bytes()
     for name in ('links', 'urls', 'sources', 'meetings', 'url_state'):
         assert pq.read_table(release / f'{name}.parquet').to_pylist() == pq.read_table(bare / f'{name}.parquet').to_pylist(), name
+
+
+
+def test_shared_html_reader_fixture(tmp_path):
+    fixtures = Path(__file__).parents[2] / 'congress_api/tests/fixtures/html_metadata'
+    def original(name):
+        fixture = (fixtures / name).read_bytes()
+        mirror = os.environ.get('RAW_MIRROR')
+        if mirror:
+            import gzip
+            import re
+            digest = re.search(rb'sha256 ([a-f0-9]{64})', fixture).group(1).decode()
+            stored = Path(mirror) / 'bodies/sha256' / digest[:2] / (digest + '.gz')
+            body = gzip.decompress(stored.read_bytes())
+            assert hashlib.sha256(body).hexdigest() == digest
+            return body
+        return fixture
+
+    indian = original('indian-affairs.html')
+    marked = original('marked-testimony.html')
+    indian_url = ('https://www.indian.senate.gov/hearings/'
+                  'oversight-hearing-high-risk-indian-programs-progress-and-efforts-addressing-gaos/')
+    from congress_api.parsers.senate import parse_page
+    source_event = parse_page(indian, indian_url).model_dump()['event']
+    assert source_event['date'] == '2017-09-13'
+    release, pq = _release(tmp_path, with_metadata=True, extra_pages=[
+        (indian_url, indian),
+        ('https://veterans.house.gov/witness-testimony/quinton-d-studer', marked),
+    ])
+    docs = {row['saved_body']: row for row in pq.read_table(release / 'detail.parquet').to_pylist()}
+    event_page = docs[hashlib.sha256(indian).digest()]
+    assert event_page['published_on'].isoformat() == '2017-09-13'
+    assert event_page['modified_on'].isoformat() == '2025-04-01'
+    assert event_page['document_date'] != event_page['modified_on']
+    assert any(value['selected'] and value['field'] == 'modified_time' for value in event_page['page_metadata'])
+    testimony = docs[hashlib.sha256(marked).digest()]
+    expected = (fixtures / 'marked-testimony.txt').read_text().rstrip('\n')
+    assert testimony['selected_text'] == expected
+    assert testimony['main_content']['text_sha256'] == hashlib.sha256(expected.encode()).hexdigest()
+    assert testimony['main_content']['text_available']

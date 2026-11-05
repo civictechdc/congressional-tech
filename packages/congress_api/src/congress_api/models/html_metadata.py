@@ -86,10 +86,13 @@ class MainContent(SourceModel):
     candidates: list[ContentCandidate]
     fallback_reason: str | None
 
-    def ref(self, reader_version: str | None = None) -> MainContentRef:
-        text = self.text
+    def selected_text(self) -> str | None:
         if self.outcome == 'marked_no_content':
-            text = next(candidate.text for candidate in self.candidates if candidate.selector == self.selector)
+            return next((candidate.text for candidate in self.candidates if candidate.selector == self.selector), None)
+        return self.text
+
+    def ref(self, reader_version: str | None = None) -> MainContentRef:
+        text = self.selected_text()
         encoded = text.encode('utf-8') if text is not None else None
         snippet = text
         if snippet and len(snippet) > SNIPPET_CHARS:

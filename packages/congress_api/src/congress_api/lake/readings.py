@@ -62,7 +62,7 @@ def current_version(parser,*,root=ROOT):
         return version_digest(packages={},files={'lock':Path(root)/'uv.lock',
             **{name:source/name for name in ('models/html_metadata.py','parsers/html_metadata.py','parsers/main_content.py')}},
             values=dict(parser=parser,options=dict(formats=list(FORMATS),format_timeout_seconds=FORMAT_TIMEOUT_SECONDS,base_url=None),
-                stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES,policy=worker_limits(parser)))
+                stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES,page_parse_bytes=PAGE_PARSE_MAX_BYTES,policy=worker_limits(parser)))
     if parser not in {'html','xml','json'}:
         raise ValueError('Unsupported reading parser')
     return version_digest(packages={},files={

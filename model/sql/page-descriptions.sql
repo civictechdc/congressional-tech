@@ -18,8 +18,10 @@ WITH docs AS (
  SELECT body_sha,lower(trim(value)) AS folded FROM page_metadata_values WHERE field='site_name'
  UNION SELECT body_sha,lower(trim(title)) FROM html_metadata_readings WHERE title IS NOT NULL
 ), repeats AS (
- SELECT d.host,x.folded,count(DISTINCT d.body_sha) AS bodies
- FROM docs d JOIN described x ON x.body_sha=d.body_sha GROUP BY d.host,x.folded
+ SELECT host,folded,count(*) AS bodies FROM (
+  SELECT DISTINCT d.host,x.folded,d.body_sha
+  FROM docs d JOIN described x ON x.body_sha=d.body_sha
+ ) GROUP BY host,folded
 ), named AS (
  SELECT DISTINCT body_sha,folded FROM names
 ), templated AS (

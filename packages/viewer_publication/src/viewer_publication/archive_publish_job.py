@@ -52,7 +52,8 @@ def completed_daily_inputs(template,production,records):
         raise ValueError('Daily publication requires fresh pins, complete receipt keys and definitions')
     if not isinstance(versions.get('parsers'),dict):
         raise ValueError('Daily publication requires page parser versions')
-    merged_parsers=dict(versions['parsers'])
+    from congress_api.lake.compatible_versions import DERIVED_PARSERS
+    merged_parsers={**versions['parsers'], **{name:versions[name] for name in DERIVED_PARSERS if name in versions}}
     if 'meeting_records' in pins or 'appearance_records' in pins:
         for entity_name,expected_ver in _expected_entity_versions().items():
             ver=versions.get(entity_name)

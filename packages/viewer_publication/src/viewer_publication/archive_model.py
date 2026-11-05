@@ -1275,7 +1275,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             FROM ordered WHERE format='html' GROUP BY 1 ORDER BY 1"""),
         dict(name='page_metadata_conflicts',sql="""SELECT field,count(*) AS documents FROM (
             SELECT list_row,e['field'] AS field FROM (SELECT list_row,unnest(page_metadata) AS e FROM ordered WHERE format='html')
-            GROUP BY list_row,e['field'] HAVING count(DISTINCT e['value'])>1) GROUP BY field ORDER BY field""")]
+            GROUP BY list_row,e['field'] HAVING min(e['value'])<>max(e['value'])) GROUP BY field ORDER BY field""")]
     if prepared.get('include_entities'):
         entity_invariant_sql=""",
             (SELECT count(*) FROM (

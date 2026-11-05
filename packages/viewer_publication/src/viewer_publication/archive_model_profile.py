@@ -33,7 +33,7 @@ def current_parser_versions(keys=()):
     from congress_api.lake import readings,meeting_records,appearance_records,video_records,committee_records,playlist_records
     modules=dict(meeting_records=meeting_records,appearance_records=appearance_records,
                  video_records=video_records,committee_records=committee_records,playlist_records=playlist_records)
-    result={p:readings.current_version(p) for p in PARSERS}
+    result={p:readings.current_version(p) for p in (*PARSERS, *(p for p in OPTIONAL_PARSERS if p in keys))}
     result.update({name:modules[name].current_versions() for name in SELECTED_SOURCES if name in keys})
     return result
 

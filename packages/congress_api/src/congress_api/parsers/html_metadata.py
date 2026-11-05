@@ -304,6 +304,8 @@ def page_facts(metadata: HtmlMetadata) -> tuple[PageFact, ...]:
 
 
 FACT_PREFIX = 'fact:'
+MAX_DETAIL_FACT_BYTES = 48 << 10
+MAX_SELECTED_TEXT_BYTES = 256 << 10
 
 
 def fact_fields(facts) -> list[dict]:
@@ -356,7 +358,16 @@ def reading_row(body: bytes) -> dict:
                         ('candidates', str(len(content.candidates)))):
         if value is not None:
             fields.append(dict(field=f'main_content:{name}', value=value))
-    fields += fact_fields(page_facts(metadata))
-    failed = any(result.status == 'failed' for result in metadata.formats.values())
+    if reference.text_bytes is not None and reference.text_bytes <= MAX_SELECTED_TEXT_BYTES:
+        fields.append(dict(field='main_content:text', value=content.selected_text()))
+    facts = [] if metadata.error_title_hint else fact_fields(page_facts(metadata))
+    # Keep all repeated and conflicting declarations together. Oversize evidence stays
+    # reproducible from the original and the reading explicitly records its omission.
+    fact_bytes = len(json.dumps(facts, ensure_ascii=False).encode())
+    if fact_bytes <= MAX_DETAIL_FACT_BYTES:
+        fields += facts
+    else:
+        fields.append(dict(field='detail_facts_limit', value=str(fact_bytes)))
+    failed = fact_bytes > MAX_DETAIL_FACT_BYTES or any(result.status == 'failed' for result in metadata.formats.values())
     return dict(status='partial' if failed else 'completed', error_type=None, format='html', title=metadata.title,
                 base_href=metadata.declared_base, text_bytes=reference.text_bytes, text_head=reference.snippet, fields=fields)

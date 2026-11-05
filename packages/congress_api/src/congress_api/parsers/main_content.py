@@ -17,13 +17,14 @@ from congress_api.models.html_metadata import ContentCandidate, ContentLink, Htm
 from congress_api.parsers.html_metadata import parse_document
 
 SHORT_MARKED_CHARS = 200
-PROPERTIES = ('content:encoded',)
+CONTENT_PROPERTY = 'content:encoded'
+CONTENT_NAMESPACE = 'http://purl.org/rss/1.0/modules/content/'
+CONTENT_PREFIX = re.compile(r'(?:^|\s)content:\s+(\S+)', re.I)
 _DROPPED = {'script', 'style', 'noscript', 'template'}
 _BLOCKS = {'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'table', 'section', 'article',
            'blockquote', 'ul', 'ol', 'td', 'th', 'dt', 'dd', 'dl', 'hr', 'caption', 'pre', 'figure', 'figcaption'}
-# The hidden-element rule of archive_readings._markup_facts (a byte-hashed reader this one
-# may not import from); a test holds the two equal.
-HIDDEN_STYLE = re.compile(r'(?:display\s*:\s*none|visibility\s*:\s*hidden)', re.I)
+# Match declarations, including !important, without treating custom properties as CSS visibility.
+HIDDEN_STYLE = re.compile(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\s*(?:!important\s*)?(?:;|$)', re.I)
 SOFT_HYPHEN = '\u00ad'
 
 
@@ -64,25 +65,42 @@ def _tokens(name: str) -> str:
 
 
 def _rdfa_confirms(metadata: HtmlMetadata) -> bool:
-    return any(key.endswith('content/encoded') for item in metadata.formats['rdfa'].items for key in item)
+    return any(CONTENT_NAMESPACE + 'encoded' in item for item in metadata.formats['rdfa'].items)
+
+
+def _rebound_content_prefix(elements) -> bool:
+    for element in elements:
+        prefix = CONTENT_PREFIX.search(element.get('prefix', ''))
+        namespace = prefix.group(1) if prefix else element.get('xmlns:content')
+        if namespace is not None:
+            return namespace != CONTENT_NAMESPACE
+    return False
 
 
 def _dom_candidates(tree, metadata: HtmlMetadata) -> list[ContentCandidate]:
-    tests = [(_tokens('property') % name, name) for name in PROPERTIES]
-    named = {}
-    for test, name in tests:
-        for node in tree.xpath(f'//*[{test}]'):
-            named.setdefault(node, name)
+    marked = tree.xpath(f'//*[{_tokens("property") % CONTENT_PROPERTY}]')
+    named = {node for node in marked if not _rebound_content_prefix((node, *node.iterancestors()))}
     roots = tree.getroottree()
     out = []
     confirmed = _rdfa_confirms(metadata)
-    for node, name in named.items():
-        if any(ancestor in named for ancestor in node.iterancestors()):  # nested candidates resolve to the outermost
+    for node in marked:
+        if node not in named:
+            continue
+        ancestors = tuple(node.iterancestors())
+        if _hidden(node) or node.tag in _DROPPED or any(
+            ancestor in named or ancestor.tag in _DROPPED or _hidden(ancestor) for ancestor in ancestors
+        ):
             continue
         body = block_text(node)
-        links = [ContentLink(href=link.get('href'), text=' '.join(link.text_content().split())) for link in node.xpath('.//a[@href]')]
-        out.append(ContentCandidate(selector=roots.getpath(node), property=name, text=body, char_count=len(body), links=links,
-                                    rdfa_confirmed=name == 'content:encoded' and confirmed))
+        links = [
+            ContentLink(href=link.get('href'), text=' '.join(block_text(link).split()))
+            for link in node.xpath('.//a[@href]')
+            if not _hidden(link) and not any(
+                ancestor.tag in _DROPPED or _hidden(ancestor) for ancestor in link.iterancestors()
+            )
+        ]
+        out.append(ContentCandidate(selector=roots.getpath(node), property=CONTENT_PROPERTY, text=body, char_count=len(body), links=links,
+                                    rdfa_confirmed=confirmed))
     return out
 
 
@@ -99,7 +117,12 @@ def select_main_content(body: bytes, metadata: HtmlMetadata) -> MainContent:
     if tree is None:
         return result('fallback_required', reason='unparseable')
     candidates = _dom_candidates(tree, metadata)
-    distinct = list({candidate.text: candidate for candidate in reversed(candidates) if candidate.text}.values())[::-1]
+    distinct = {}
+    for candidate in candidates:
+        if candidate.text:
+            key = (candidate.text, tuple((link.href, link.text) for link in candidate.links))
+            distinct.setdefault(key, candidate)
+    distinct = list(distinct.values())
     if len(distinct) > 1:
         return result('fallback_required', candidates=candidates, reason='multiple_candidates')
     if distinct and distinct[0].char_count >= SHORT_MARKED_CHARS:

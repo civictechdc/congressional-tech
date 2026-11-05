@@ -45,17 +45,19 @@ EMPTY_FACTS = _empty_struct(field='cast(NULL AS VARCHAR)', value='cast(NULL AS V
 
 EMPTY_PAGE_METADATA = _empty_struct(field='cast(NULL AS VARCHAR)', value='cast(NULL AS VARCHAR)', format='cast(NULL AS VARCHAR)',
     path='cast(NULL AS VARCHAR)', date='cast(NULL AS DATE)', precision='cast(NULL AS VARCHAR)', resolved='cast(NULL AS VARCHAR)',
-    selected='cast(NULL AS BOOLEAN)')
+    selected='cast(NULL AS BOOLEAN)', context_url='cast(NULL AS VARCHAR)')
 
 
 # A document with no html reading has no main content: a NULL struct of the declared shape.
 NO_MAIN_CONTENT = ("CASE WHEN false THEN named_struct('outcome',cast(NULL AS VARCHAR),'selector',cast(NULL AS VARCHAR),"
-    "'text_sha256',cast(NULL AS VARCHAR),'text_bytes',cast(NULL AS INT),'snippet',cast(NULL AS VARCHAR)) END")
+    "'text_sha256',cast(NULL AS VARCHAR),'text_bytes',cast(NULL AS INT),'snippet',cast(NULL AS VARCHAR),"
+    "'reader_version',cast(NULL AS VARCHAR),'reading_status',cast(NULL AS VARCHAR),'reason',cast(NULL AS VARCHAR),"
+    "'facts_limited',cast(NULL AS BOOLEAN),'text_available',cast(NULL AS BOOLEAN)) END")
 
 
 PAGE_DEFAULTS = dict(description='cast(NULL AS VARCHAR)', published_on='cast(NULL AS DATE)', modified_on='cast(NULL AS DATE)',
     publisher_labels="arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')",
-    page_metadata=EMPTY_PAGE_METADATA, main_content=NO_MAIN_CONTENT)
+    page_metadata=EMPTY_PAGE_METADATA, main_content=NO_MAIN_CONTENT, selected_text='cast(NULL AS VARCHAR)')
 
 
 LIST_COLUMNS = ['filename', 'title', 'document_kind', 'document_family', 'committee_keys', 'chambers',
@@ -64,7 +66,7 @@ LIST_COLUMNS = ['filename', 'title', 'document_kind', 'document_family', 'commit
 
 
 # Declared page metadata (ct-93zs D5): detail only, selected by model SQL and page-signals.json.
-PAGE_COLUMNS = ['description', 'published_on', 'modified_on', 'publisher_labels', 'page_metadata', 'main_content']
+PAGE_COLUMNS = ['description', 'published_on', 'modified_on', 'publisher_labels', 'page_metadata', 'main_content', 'selected_text']
 
 
 DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 'saved_bytes',

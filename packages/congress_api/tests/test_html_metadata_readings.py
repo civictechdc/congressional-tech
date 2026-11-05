@@ -165,7 +165,8 @@ def test_interrupted_backfill_resumes_without_duplicates_or_touching_other_parse
     from congress_api.lake.tables import resolve_tables
     current = resolve_tables(engine=args['engine'], work=tmp_path / 'read', catalog_root=tmp_path / 'catalog',
                              tables={'readings': table})['readings']
-    assert compatible_versions.preflight(engine=args['engine'], work=tmp_path / 'preflight', inputs={'readings': current}) == {'readings': 0}
+    from congress_api.lake.compatible_proof import preflight
+    assert preflight(engine=args['engine'], work=tmp_path / 'preflight', inputs={'readings': current}) == {'readings': 0}
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
     counts = run_job(tmp_path / 'count', args['engine'], inputs=[table_input('r', current)],

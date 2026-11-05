@@ -20,7 +20,7 @@ TABLES={name:dict(namespace=['archive'],name=name)
 
 def spec(root):
     return dict(work=str(root/'work'),decided_at=STAMP,catalog_root=str(root/'catalog'),
-        tables=TABLES,receipt_inventory=[],body_inventory=str(root/'body-inventory.parquet'),
+        tables=dict(TABLES),receipt_inventory=[],body_inventory=str(root/'body-inventory.parquet'),
         local_root=str(root/'raw'),max_work_items=10,
         provenance={kind:[] for kind in ['recoveries','reviews','unreadable']})
 
