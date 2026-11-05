@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-from congress_api.retention.provenance import json_input,run_job
+from congress_api.retention.provenance import json_input,list_of,run_job
 from docspec_client.client import NativeDatasets
 
 ROOT=Path(__file__).parents[3]
@@ -46,6 +46,11 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
             dict(component='copies',source_id='newer-plain',saved_rank=1,first_fetched='2026-10-20T12:00:00Z'),
             dict(component='copies',source_id='later-named',saved_rank=2,first_fetched='2026-10-15T12:00:00Z'),
             dict(component='copies',source_id='earliest-named',saved_rank=3,first_fetched='2026-10-10T12:00:00Z'),
+            dict(component='conflict',source_id='bill-5255',saved_rank=1,first_fetched='2026-10-20T12:00:00Z'),
+            dict(component='conflict',source_id='bill-5225',saved_rank=2,first_fetched='2026-10-10T12:00:00Z'),
+            dict(component='nonbill',source_id='print',saved_rank=1,first_fetched='2026-10-01T12:00:00Z'),
+            dict(component='nonbill',source_id='print-as-bill-1',saved_rank=2,first_fetched='2026-10-10T12:00:00Z'),
+            dict(component='nonbill',source_id='print-as-bill-2',saved_rank=3,first_fetched='2026-10-20T12:00:00Z'),
             dict(component='none',source_id='plain',saved_rank=1,first_fetched=None)]
     inputs=[json_input(tmp_path,'saved_inputs',saved,component='Utf8',source_id='Utf8',saved_rank='Int64',first_fetched='Utf8'),
         json_input(tmp_path,'source_annotation_addresses',[
@@ -53,13 +58,71 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
             dict(source_id='second',package_id='CHRG-119hhrg22222',publisher=False),
             dict(source_id='third',package_id='CHRG-119hhrg33333',publisher=False)],source_id='Utf8',package_id='Utf8',publisher='Boolean'),
         json_input(tmp_path,'source_annotations',[dict(source_id='saved',package_id='FILENAME-PACKAGE'),dict(source_id='only-filename',package_id='FILENAME-ONLY'),
-            dict(source_id='newer-plain',package_id=None),dict(source_id='later-named',package_id='BILLS-117hr9ih'),
-            dict(source_id='earliest-named',package_id='BILLS-117hr1833ih'),dict(source_id='plain',package_id=None)],source_id='Utf8',package_id='Utf8')]
+            dict(source_id='newer-plain',package_id=None),dict(source_id='later-named',package_id='BILLS-117hr1833rh'),
+            dict(source_id='earliest-named',package_id='BILLS-117hr1833ih'),dict(source_id='plain',package_id=None),
+            dict(source_id='bill-5255',package_id='BILLS-118hr5255ih'),dict(source_id='bill-5225',package_id='BILLS-118hr5225ih'),
+            dict(source_id='print',package_id='CHRG-119hhrg49353'),dict(source_id='print-as-bill-1',package_id='BILLS-119hr1ih'),
+            dict(source_id='print-as-bill-2',package_id='BILLS-119hr2ih')],
+            source_id='Utf8',package_id='Utf8')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=[dict(name='saved_files',sql='SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM saved_inputs'),
                dict(name='document_packages',sql=(ROOT/'model/sql/document-packages.sql').read_text(),materialize=True)],outputs=[],queries=[dict(name='packages',sql='SELECT * FROM document_packages ORDER BY component')])
-    assert result['packages']==[dict(component='copies',package_id='BILLS-117hr1833ih'),dict(component='document',package_id='CHRG-119hhrg22222'),
-                                dict(component='fallback',package_id='FILENAME-ONLY'),dict(component='none',package_id=None)]
+    assert result['packages']==[
+        dict(component='conflict',package_id=None,bill_package_conflict=True),
+        dict(component='copies',package_id='BILLS-117hr1833ih',bill_package_conflict=False),
+        dict(component='document',package_id='CHRG-119hhrg22222',bill_package_conflict=False),
+        dict(component='fallback',package_id='FILENAME-ONLY',bill_package_conflict=False),
+        dict(component='nonbill',package_id='CHRG-119hhrg49353',bill_package_conflict=False),
+        dict(component='none',package_id=None,bill_package_conflict=False),
+    ]
+
+
+def test_hearing_date_corrections_preserve_held_days_and_require_package_evidence(tmp_path):
+    # The 49353 cover says June 23, 2022. Its repost's filename says June 7, 2023.
+    # The 60403 cover and its own meeting say May 15, despite MODS saying May 14.
+    print_package = 'CHRG-117hhrg49353'
+    multi_day_package = 'CHRG-117hhrg50139'
+    metadata_error = 'CHRG-119hhrg60403'
+    documents = [
+        ('repost', print_package, '2023-06-07', 'filename'),
+        ('multi-day-held-sitting', multi_day_package, '2022-06-13', 'filename'),
+        ('multi-day-repost', multi_day_package, '2023-06-07', 'filename'),
+        ('undated', print_package, None, None),
+        ('other-date-source', print_package, '2023-06-07', 'meeting'),
+        ('uncorroborated-mods', metadata_error, '2025-05-15', 'filename'),
+    ]
+    inputs = [
+        json_input(tmp_path, 'documents', [
+            dict(doc_key=key, package_id=pkg, day=day, document_date_source=source)
+            for key, pkg, day, source in documents
+        ], doc_key='Utf8', package_id='Utf8', day='Utf8', document_date_source='Utf8'),
+        json_input(tmp_path, 'package_mods_facts', [
+            dict(package_id=print_package, held_dates=['2022-06-23']),
+            dict(package_id=multi_day_package, held_dates=['2021-07-27', '2022-06-13']),
+            dict(package_id=metadata_error, held_dates=['2025-05-14']),
+        ], package_id='Utf8', held_dates=list_of('Utf8')),
+        json_input(tmp_path, 'package_meeting_links', [
+            dict(package_id=print_package, event_id=114899),
+            dict(package_id=multi_day_package, event_id=114877),
+        ], package_id='Utf8', event_id='Int64'),
+        json_input(tmp_path, 'meetings', [
+            dict(event_id=114899, day='2022-06-23', not_held=False),
+            dict(event_id=114877, day='2022-06-13', not_held=False),
+            dict(event_id=118173, day='2025-05-15', not_held=False),
+        ], event_id='Int64', day='Utf8', not_held='Boolean'),
+    ]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[
+        dict(name='base_normalized', sql='SELECT * EXCLUDE(day),cast(day AS DATE) AS document_date FROM documents'),
+        dict(name='meetings_resolved', sql='SELECT * EXCLUDE(day),cast(day AS DATE) AS meeting_date FROM meetings'),
+        dict(name='document_hearing_date_corrections', sql=(ROOT/'model/sql/document-hearing-date-corrections.sql').read_text(), materialize=True),
+    ], outputs=[], queries=[
+        dict(name='corrections', sql='''SELECT doc_key,cast(document_date AS VARCHAR) AS document_date,document_date_source
+             FROM document_hearing_date_corrections ORDER BY doc_key'''),
+    ])
+    assert result['corrections'] == [
+        dict(doc_key='multi-day-repost', document_date=None, document_date_source=None),
+        dict(doc_key='repost', document_date='2022-06-23', document_date_source='meeting'),
+    ]
 
 
 def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_path):

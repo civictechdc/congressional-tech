@@ -35,7 +35,7 @@ SELECT d.document_id AS doc_key,true AS body_expected,
  m.in_archive_since,cast(NULL AS DATE) AS removed_on,cast(NULL AS VARCHAR) AS review_note,cast(NULL AS DATE) AS review_decided_at,
  coalesce(alt.alternates,array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR),
  'body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'size',cast(NULL AS BIGINT))),1,0)) AS alternates,
- coalesce(pk.package_id,x.package_id) AS package_id,
+ CASE WHEN NOT coalesce(pk.bill_package_conflict,false) THEN coalesce(pk.package_id,x.package_id) END AS package_id,
  CASE WHEN coalesce(array_length(a.facts),0)=0 THEN coalesce(x.facts,a.facts) ELSE a.facts END AS facts,bodies.link_bodies
 FROM document_witness_keys wk RIGHT JOIN (
  component_meeting_links ml RIGHT JOIN (
