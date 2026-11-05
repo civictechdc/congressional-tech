@@ -457,6 +457,26 @@ def run_scope(files, roots, paths, pytest_args, shard):
     return f'partial: {" ".join(sorted(narrowed))} narrowed; not a lane result' if narrowed else 'full lane'
 
 
+def clean_proof_work(work, *, dry_run):
+    """Retire only the compatibility proof's disposable lock attestation tree."""
+    from congress_api.lake.compatible_proof import attestation_lock
+
+    if work.is_symlink():
+        raise ValueError('Expected the original compatibility proof work directory')
+    work = work.resolve()
+    target = work / 'lock-attestation'
+    with attestation_lock(work):
+        if target.is_symlink() or (target.exists() and not target.is_dir()):
+            raise ValueError('Expected a private compatibility proof attestation directory')
+        if not target.exists():
+            print(f'No disposable attestation scratch in {work}')
+            return
+        action = '[DRY-RUN] Would remove' if dry_run else 'Removing'
+        print(f'{action}: {target}')
+        if not dry_run:
+            shutil.rmtree(target)
+
+
 def clean(*, dry_run=True):
     """Scan and reclaim stale build directories, egg-info, and bytecode caches."""
     targets = []
@@ -539,6 +559,8 @@ def main(argv=None):
     clean_p = sub.add_parser('clean', help='Scan and reclaim stale build, egg-info, and cache artifacts')
     clean_p.add_argument('--execute', action='store_true', help='Execute deletion of stale artifacts (default is dry-run)')
     clean_p.add_argument('--dry-run', action='store_true', default=True, help='Simulate cleanup without deleting (default)')
+    clean_p.add_argument('--proof-work', type=Path,
+                         help='Inspect only disposable attestation scratch in this compatibility proof work directory')
     tests = sub.add_parser('test')
     tests.add_argument('lane', choices=config['lanes'], nargs='?', default='production-offline')
     tests.add_argument('--path', action='append', default=[], help='Restrict to a path or node within this lane (repeatable)')
@@ -567,7 +589,10 @@ def main(argv=None):
             inventory(config)
         elif args.command == 'clean':
             is_dry_run = not getattr(args, 'execute', False)
-            clean(dry_run=is_dry_run)
+            if args.proof_work is None:
+                clean(dry_run=is_dry_run)
+            else:
+                clean_proof_work(args.proof_work, dry_run=is_dry_run)
         elif args.command == 'prepare-baseline':
             print('Baseline verified: ' + baseline(config, fetch=True))
         else:

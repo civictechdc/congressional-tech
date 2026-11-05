@@ -1,28 +1,34 @@
 """Prove one compatible readings entry over local bodies, and optionally write it to the registry.
 
-    python -m congress_api.lake.compatible_proof --parser html --old <pin> --old-lock <uv.lock> \
+    python -m congress_api.lake.compatible_proof --parser sniff --old <pin> --old-lock <uv.lock> \
         --base <readings.parquet> --captures <captures.parquet> --raw-root <mirror> --work <dir> \
-        [--sample 2000 | --sample-keys <csv with a sha column>] [--evidence <file>]... [--write]
+        [--sample 2000 | --sample-keys <csv with a sha column>] [--mirror-inventory <inventory.parquet>]
+        [--evidence <file>]... [--write]
     python -m congress_api.lake.compatible_proof --parser readings --old <bundle pin> \
         --decisions <unreadable.jsonl>... --captures ... --raw-root ... --work <dir> [--write]
 
+Pass the retained proof inventory as --mirror-inventory to reuse an immutable mirror.
+The operator keeps the selected keys stable throughout the run. Targets must be read-only
+and match the original key and stored size. For other inputs, the default uses a private copy.
+
 Kept apart from compatible_versions (which the readings bundle hashes), with the comparison
-(prove_unchanged) and the raw-key preflight, so tooling edits move no pin. Every recompute runs the current producer (readings.stage_once)
-over a pinned subset; the comparison is compatible_versions.prove_unchanged, so the proof is
-over lake rows, not a reader's in-process output.
+(prove_unchanged) and the raw-key preflight, so tooling edits move no pin. Every recompute
+runs the current producer (readings.stage_once) over a pinned subset and compares lake rows.
 
 Cost: the base readings column scan is O(N) narrow; the local-body listing is O(files in the
 mirror); ranking is O(L log L) over local candidates; recompute is O(sample) body reads.
 """
 import argparse
 import contextlib
-from hashlib import sha256
+import fcntl
+from hashlib import file_digest, sha256
 import json
+import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
-import tempfile
 import tomllib
 
 import pyarrow as pa
@@ -31,10 +37,14 @@ import pyarrow.parquet as pq
 from congress_api.lake import compatible_versions as cv
 from congress_api.lake import readings, tables
 from congress_api.lake.tables import TABLE_SPECS, table_input
+from congress_api.retention.body_keys import body_object_digest
+from congress_api.retention.body_store import validate_key
 from congress_api.retention.provenance import file_pin, parquet_output, run_job
+from congress_shared.custody import custody_identity
 
 SUFFIXES = ('', '.gz', '.pdf')
 ATTEST_BODIES = 20
+ATTESTATION_OWNER = b'congress-api compatibility proof lock attestation v1\n'
 
 
 def local_bodies(raw_root):
@@ -94,7 +104,37 @@ def write_keys(path, bodies):
     return path
 
 
-def recompute(*, bodies, local, captures, raw_root, engine, work, decided_at):
+def _mirror_sizes(inventory, bodies, local):
+    """Bind each selected original mirror key to its retained stored size."""
+    selected = {bytes.fromhex(body) for body in bodies}
+    pinned = pq.read_table(inventory, columns=['body_sha', 'physical_key', 'relative_path', 'stored_bytes'],
+                          filters=[('body_sha', 'in', selected)]).to_pylist() if selected else []
+    sizes = {}
+    for row in pinned:
+        body = row['body_sha'].hex()
+        validate_key(row['physical_key'])
+        if (body in sizes or row['physical_key'] != local[body] or row['relative_path'] != local[body]
+                or body_object_digest(row['physical_key']) != body
+                or type(row['stored_bytes']) is not int or row['stored_bytes'] < 0):
+            raise ValueError(f'Mirror inventory does not pin the original key and stored size for {body}')
+        sizes[body] = row['stored_bytes']
+    if len(sizes) != len(selected):
+        raise ValueError('Mirror inventory is missing selected proof bodies')
+    return sizes
+
+
+def _mirror_identity(path):
+    target = path.resolve(strict=True)
+    return target, custody_identity(target)
+
+
+def _require_mirror_custody(sources):
+    for path, pin in sources.items():
+        if _mirror_identity(path) != pin:
+            raise ValueError(f'Mirror body changed while proving: {path}')
+
+
+def recompute(*, bodies, local, captures, raw_root, engine, work, decided_at, mirror_inventory=None):
     """Stage the current producer over exactly these bodies. Capture sniff facts are dropped so
     every body gets a fresh sniff reading; bodies settle on nothing older."""
     keys = write_keys(work / 'keys.parquet', bodies)
@@ -103,16 +143,41 @@ def recompute(*, bodies, local, captures, raw_root, engine, work, decided_at):
             'SELECT c.* EXCLUDE(sniffed_format,sniff_version,intact),cast(NULL AS VARCHAR) AS sniffed_format,'
             'cast(NULL AS VARCHAR) AS sniff_version,cast(NULL AS BOOLEAN) AS intact FROM c JOIN k ON c.sha256=k.body_sha',
             ['receipt_key', 'receipt_line', 'capture_index'])])
-    # The mirror's bodies are symlinks into a shared object store, and the producer refuses a
-    # path that resolves outside its root, so the sample is copied into a private root: O(sample).
-    root = work / 'bodies'
-    for b in bodies:
-        target = root / local[b]
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(Path(raw_root) / local[b], target)
+    # The reader accepts mirror-relative paths through symlinks and checks the
+    # original key. Direct reuse requires the caller's custody and immutability guarantee.
+    root = Path(raw_root).resolve()
+    if mirror_inventory is None:
+        root = work / 'bodies'
+        for b in bodies:
+            target = root / local[b]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(Path(raw_root) / local[b], target)
     inventory = work / 'inventory.parquet'
-    rows = [dict(body_sha=bytes.fromhex(b), physical_key=local[b], relative_path=local[b],
-                 stored_bytes=(root / local[b]).stat().st_size) for b in bodies]
+    sizes = _mirror_sizes(mirror_inventory, bodies, local) if mirror_inventory is not None else None
+    sources = {}
+    rows = []
+    for body in bodies:
+        key = local[body]
+        path = root / key
+        target = path
+        if sizes is not None:
+            target, identity = _mirror_identity(path)
+            sources[path] = target, identity
+        source = target.stat()
+        if not stat.S_ISREG(source.st_mode):
+            raise ValueError(f'Proof body is not a regular file: {key}')
+        if sizes is not None:
+            if source.st_mode & 0o222 or source.st_size != sizes[body]:
+                raise ValueError(f'Mirror body must be read-only and match its pinned size: {key}')
+            # The maintained reader verifies gzip bodies. Its plain sniff path
+            # trusts a pinned size, so verify the plain entity before reuse.
+            with target.open('rb') as stream:
+                if stream.read(2) != b'\x1f\x8b':
+                    stream.seek(0)
+                    if file_digest(stream, 'sha256').hexdigest() != body:
+                        raise ValueError(f'Mirror body digest differs from its key: {key}')
+        rows.append(dict(body_sha=bytes.fromhex(body), physical_key=key, relative_path=key,
+                         stored_bytes=source.st_size))
     # No storage encoding here: the reader decides it from the body's hash, never from a name.
     pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema([('body_sha', pa.binary(32)), ('physical_key', pa.string()),
         ('relative_path', pa.string()), ('stored_bytes', pa.int64())])), inventory)
@@ -122,6 +187,11 @@ def recompute(*, bodies, local, captures, raw_root, engine, work, decided_at):
     empty.write_text(json.dumps(dict(version=2, entries=[])))
     staged = readings.stage_once(captures=work / 'subset/captures.parquet', body_inventory=inventory, local_root=root,
         engine=engine, work=work / 'stage', decided_at=decided_at, registry=empty)
+    if sizes is not None:
+        _require_mirror_custody(sources)
+        if staged['pending_reads']:
+            raise ValueError(f'Mirror proof has {staged["pending_reads"]} unread selected bodies')
+        staged['mirror_sources'] = sources
     return keys, staged
 
 
@@ -156,20 +226,50 @@ def _locked(path):
     return {p['name'].lower(): p.get('version') for p in tomllib.loads(Path(path).read_text()).get('package', [])}
 
 
-def attest_lock_only(*, parser, old, old_lock, raw_root, local, bodies, work):
+@contextlib.contextmanager
+def attestation_lock(work, *, create=False):
+    """Hold ownership of the disposable source tree across attestation subprocesses."""
+    lock = Path(work) / 'lock-attestation.lock'
+    mode = os.O_RDWR | os.O_CREAT | os.O_EXCL if create else os.O_RDONLY
+    with os.fdopen(os.open(lock, mode | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600), 'r+b' if create else 'rb') as handle:
+        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+            raise ValueError('Invalid compatibility proof attestation lock')
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ValueError('Compatibility proof attestation is still active') from None
+        if create:
+            handle.write(ATTESTATION_OWNER)
+            handle.flush()
+        elif handle.read(len(ATTESTATION_OWNER) + 1) != ATTESTATION_OWNER:
+            raise ValueError('Unowned compatibility proof attestation lock')
+        yield handle.fileno()
+
+
+def attest_lock_only(*, parser, old, old_lock, raw_root, local, bodies, work, mirror_sources=None):
     """A different tool family: the committed tree plus the old lock must recompute the old pin,
     and parsing real bodies must load none of the distributions the lock change touched."""
     root = Path(readings.ROOT)
-    tree = Path(tempfile.mkdtemp(dir=work))
-    archive = subprocess.run(['git', '-C', str(root), 'archive', 'HEAD', 'packages', 'model', 'uv.lock'], check=True, capture_output=True).stdout
-    subprocess.run(['tar', '-x', '-C', str(tree)], input=archive, check=True)
-    (tree / 'uv.lock').write_bytes(Path(old_lock).read_bytes())
-    paths = [str(p) for p in sorted((tree / 'packages').glob('*/src'))]
+    raw_root = Path(raw_root).resolve()
+    source_paths = [raw_root / local[b] for b in bodies[:ATTEST_BODIES]]
     # The old tree may predate the hash rule, so the encoding is decided here, by the current one.
-    payloads = [dict(path=str(Path(raw_root) / local[b]), parser=parser, stored_bytes=(Path(raw_root) / local[b]).stat().st_size,
-                     stored_gzip=_stored_gzip(Path(raw_root) / local[b], b)) for b in bodies[:ATTEST_BODIES]]
-    done = subprocess.run([sys.executable, '-I', '-c', ATTEST, json.dumps(paths), json.dumps(dict(parser=parser, payloads=payloads))],
-        capture_output=True, text=True, cwd=tree)
+    payloads = [dict(path=str(path), parser=parser, stored_bytes=path.stat().st_size,
+                     stored_gzip=_stored_gzip(path, body)) for path, body in zip(source_paths, bodies)]
+    tree = Path(work) / 'lock-attestation'
+    with attestation_lock(work, create=True) as fd:
+        tree.mkdir(mode=0o700)
+        try:
+            archive = subprocess.run(['git', '-C', str(root), 'archive', 'HEAD', 'packages', 'model', 'uv.lock'],
+                check=True, capture_output=True, pass_fds=(fd,)).stdout
+            subprocess.run(['tar', '-x', '-C', str(tree)], input=archive, check=True, pass_fds=(fd,))
+            (tree / 'uv.lock').write_bytes(Path(old_lock).read_bytes())
+            paths = [str(p) for p in sorted((tree / 'packages').glob('*/src'))]
+            done = subprocess.run([sys.executable, '-I', '-c', ATTEST, json.dumps(paths), json.dumps(dict(parser=parser, payloads=payloads))],
+                capture_output=True, text=True, cwd=tree, pass_fds=(fd,))
+        finally:
+            shutil.rmtree(tree)
+    if mirror_sources is not None:
+        _require_mirror_custody({path: mirror_sources[path] for path in source_paths})
     if done.returncode:
         raise ValueError('Lock-only attestation failed in the committed tree: ' + done.stderr[-2000:])
     result = json.loads(done.stdout.strip().splitlines()[-1])
@@ -190,7 +290,7 @@ def _counts(values):
     return counts
 
 
-def prove_bundle(*, old, decisions, captures, raw_root, engine, work, decided_at, current):
+def prove_bundle(*, old, decisions, captures, raw_root, engine, work, decided_at, current, mirror_inventory=None):
     """Re-read every decision body under the current producer; each must reach the same reason."""
     old_rows = [json.loads(line) for f in decisions for line in Path(f).read_text().splitlines() if line.strip()]
     old_rows = [r for r in old_rows if r['parser'] == 'readings' and r['parser_version'] == old]
@@ -199,7 +299,7 @@ def prove_bundle(*, old, decisions, captures, raw_root, engine, work, decided_at
     if not old_rows or missing:
         raise ValueError(f'Bundle proof needs every decision body local; missing {len(missing)}: {missing}')
     _, staged = recompute(bodies=sorted({r['body_sha256'] for r in old_rows}), local=local, captures=captures,
-        raw_root=raw_root, engine=engine, work=work, decided_at=decided_at)
+        raw_root=raw_root, engine=engine, work=work, decided_at=decided_at, mirror_inventory=mirror_inventory)
     path = Path(staged['work_list']).parent / 'parsed/unreadable.jsonl'
     new = {r['body_sha256']: r['reason'] for r in map(json.loads, path.read_text().splitlines())} if path.exists() else {}
     before = {r['body_sha256']: r['reason'] for r in old_rows}
@@ -281,6 +381,8 @@ def main(argv=None):
     parser.add_argument('--decisions', action='append', default=[])
     parser.add_argument('--sample', type=int, default=2000)
     parser.add_argument('--sample-keys', help='CSV with a sha column: only these local bodies may be sampled')
+    parser.add_argument('--mirror-inventory', type=Path,
+        help='Read a mirror kept immutable for this proof using its retained inventory of original keys and stored sizes')
     parser.add_argument('--full', action='store_true', help='Compare every kept row (always, for a predicate entry)')
     parser.add_argument('--evidence', action='append', default=[], help='Supporting files recorded by sha256')
     parser.add_argument('--decided-at', default='2026-11-02T00:00:00Z')
@@ -289,7 +391,6 @@ def main(argv=None):
     parser.add_argument('--write', action='store_true')
     args = parser.parse_args(argv)
     from docspec_client.client import NativeDatasets
-    import os
     pins = cv.current_pins()
     work = Path(args.work).resolve()
     work.mkdir(parents=True, exist_ok=False)
@@ -297,7 +398,8 @@ def main(argv=None):
         if args.parser == 'readings':
             basis, recompute_sql = 'bundle', cv.WHOLE
             proof = prove_bundle(old=args.old, decisions=args.decisions, captures=args.captures, raw_root=args.raw_root,
-                engine=engine, work=work, decided_at=args.decided_at, current=pins['readings'])
+                engine=engine, work=work, decided_at=args.decided_at, current=pins['readings'],
+                mirror_inventory=args.mirror_inventory)
             report = dict(proof=proof)
         else:
             recompute_sql = cv.reader_recompute_sql(args.parser) or cv.WHOLE
@@ -313,7 +415,7 @@ def main(argv=None):
                 local = {b: k for b, k in local.items() if b in given}
             bodies, strata = choose_sample(rows, local=local, size=args.sample, full=full)
             keys, staged = recompute(bodies=bodies, local=local, captures=args.captures, raw_root=args.raw_root,
-                engine=engine, work=work, decided_at=args.decided_at)
+                engine=engine, work=work, decided_at=args.decided_at, mirror_inventory=args.mirror_inventory)
             counts, differing = prove_unchanged(engine=engine, work=work / 'proof', old=args.base, new=staged['readings'], captures=args.captures,
                 parser=args.parser, version=args.old, current=pins[args.parser], recompute_sql=recompute_sql, sample_keys=keys)
             if args.parser in cv.PAGE_PARSERS:proof_bound = dict(page_parse_max_bytes=cv.page_parse_max_bytes())
@@ -323,7 +425,8 @@ def main(argv=None):
                 sample_keys_sha256=file_pin(keys)['sha256'], **counts)
             if basis == 'lock_only':
                 proof['lock_only'] = attest_lock_only(parser=args.parser, old=args.old, old_lock=args.old_lock,
-                    raw_root=args.raw_root, local=local, bodies=bodies, work=work)
+                    raw_root=args.raw_root, local=local, bodies=bodies, work=work,
+                    mirror_sources=staged.get('mirror_sources'))
             report = dict(proof=proof, differing=differing, sampled=len(bodies))
         if args.evidence:
             proof['evidence'] = {Path(f).name: file_pin(f)['sha256'] for f in args.evidence}

@@ -3,9 +3,13 @@ import gzip
 import hashlib
 import json
 import os
+from pathlib import Path
+import subprocess
+import sys
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from congress_api.lake import compatible_proof, compatible_versions as cv, readings
 from congress_api.retention.provenance import parquet_output, run_job
@@ -25,7 +29,11 @@ def mirror(tmp_path):
         suffix = '.gz' if i == 0 else ''
         path = raw / 'bodies/sha256' / digest[:2] / (digest + suffix)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(gzip.compress(body, mtime=0) if i < 2 else body)
+        original = tmp_path / 'objects' / path.name
+        original.parent.mkdir(exist_ok=True)
+        original.write_bytes(gzip.compress(body, mtime=0) if i < 2 else body)
+        original.chmod(0o444)
+        path.symlink_to(original)
         rows.append(dict(receipt_key='r', receipt_line=i + 1, capture_index=0, sha256=bytes.fromhex(digest), bytes=len(body),
             media_type='text/html', fidelity='exact-bytes', sniffed_format='html', sniff_version='x', intact=None,
             stored_suffix=suffix, stored_bytes=path.stat().st_size))
@@ -59,20 +67,65 @@ def test_a_full_page_proof_over_local_bodies_binds_its_entry(tmp_path, monkeypat
     stale = dict(parser='html', version='old-html', current='superseded', basis='whole', recompute_sql='none', reason='stale', proof={})
     registry.write_text(json.dumps(dict(version=2, entries=[stale])))
     monkeypatch.setattr(cv, 'REGISTRY', registry)
+    mirror_pin = tmp_path / 'base-work/inventory.parquet'
     compatible_proof.main(['--parser', 'html', '--old', 'old-html', '--base', str(base / 'readings.parquet'), '--captures', str(captures),
-        '--raw-root', str(raw), '--work', str(tmp_path / 'proof'), '--write',
+        '--raw-root', str(raw), '--work', str(tmp_path / 'proof'), '--write', '--mirror-inventory', str(mirror_pin),
         '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])
     [entry] = json.loads(registry.read_text())['entries']
     assert entry['basis'] == 'predicate' and entry['current'] == readings.current_version('html')
     assert entry['proof']['scope'] == 'full' and entry['proof']['page_parse_max_bytes'] == readings.PAGE_PARSE_MAX_BYTES
     assert entry['proof']['rows'] == 3 and entry['proof']['strata'] == dict(completed=dict(population=3, local=3, sampled=3)) and entry['proof']['differences'] == entry['proof']['only_old'] == entry['proof']['only_new'] == 0
+    assert entry['proof']['new_input_sha256'] == hashlib.sha256(staged['readings'].read_bytes()).hexdigest()
+    assert not (tmp_path / 'proof/bodies').exists()
     assert cv.load_registry() == [entry]
     # A predicate entry compares every kept row: with one kept body not local, it refuses.
-    import pytest
     next(path for path in (raw / 'bodies').rglob('*') if path.is_file()).unlink()
     with pytest.raises(ValueError, match='needs every kept body local'):
         compatible_proof.main(['--parser', 'html', '--old', 'old-html', '--base', str(base / 'readings.parquet'), '--captures', str(captures),
-            '--raw-root', str(raw), '--work', str(tmp_path / 'missing'), '--write', '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])
+            '--raw-root', str(raw), '--work', str(tmp_path / 'missing'), '--write', '--mirror-inventory', str(mirror_pin),
+            '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])
+
+
+def test_pinned_mirror_refuses_a_wrong_body_with_the_right_size(tmp_path, monkeypatch):
+    raw, captures = mirror(tmp_path)
+    local = compatible_proof.local_bodies(raw)
+    body = hashlib.sha256(PAGES[2]).hexdigest()
+    key = local[body]
+    pin = tmp_path / 'pin.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(body_sha=bytes.fromhex(body), physical_key=key,
+        relative_path=key, stored_bytes=len(PAGES[2]))]), pin)
+    source = (raw / key).resolve()
+    source.chmod(0o644)
+    source.write_bytes(b'x' * len(PAGES[2]))
+    source.chmod(0o444)
+    monkeypatch.setattr(compatible_proof, 'run_job', lambda *args, **kwargs: None)
+    with pytest.raises(ValueError, match='digest differs from its key'):
+        compatible_proof.recompute(bodies=[body], local=local, captures=captures, raw_root=raw,
+            engine=None, work=tmp_path, decided_at='2026-11-02T00:00:00Z', mirror_inventory=pin)
+
+
+def test_pinned_mirror_refuses_a_target_swap_during_staging(tmp_path, monkeypatch):
+    raw, captures = mirror(tmp_path)
+    local = compatible_proof.local_bodies(raw)
+    body = hashlib.sha256(PAGES[2]).hexdigest()
+    key = local[body]
+    pin = tmp_path / 'pin.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(body_sha=bytes.fromhex(body), physical_key=key,
+        relative_path=key, stored_bytes=len(PAGES[2]))]), pin)
+
+    def swap(**kwargs):
+        replacement = tmp_path / 'replacement'
+        replacement.write_bytes(PAGES[2])
+        replacement.chmod(0o444)
+        (raw / key).unlink()
+        (raw / key).symlink_to(replacement)
+        return {'pending_reads': 0}
+
+    monkeypatch.setattr(compatible_proof, 'run_job', lambda *args, **kwargs: None)
+    monkeypatch.setattr(readings, 'stage_once', swap)
+    with pytest.raises(ValueError, match='Mirror body changed while proving'):
+        compatible_proof.recompute(bodies=[body], local=local, captures=captures, raw_root=raw,
+            engine=None, work=tmp_path, decided_at='2026-11-02T00:00:00Z', mirror_inventory=pin)
 
 
 def test_a_bundle_proof_states_strata_the_registry_accepts(tmp_path, monkeypatch):
@@ -92,3 +145,40 @@ def test_a_bundle_proof_states_strata_the_registry_accepts(tmp_path, monkeypatch
     entry = dict(parser='readings', version='b-old', current=pins['readings'], basis='bundle', recompute_sql=cv.WHOLE, reason='r', proof=proof)
     assert proof['strata'] == dict(memory_limit=dict(population=1, local=1, sampled=1), output_limit=dict(population=1, local=1, sampled=1))
     assert cv.validate_entries([entry], current=pins) == [entry]
+
+
+def test_clean_retires_only_abandoned_attestation_after_last_consumer(tmp_path):
+    # The inherited lock keeps the scratch live even after the proof parent closes its handle.
+    checkpoint = tmp_path / 'completed-model.json'
+    checkpoint.write_text('keep this')
+    spill = tmp_path / 'lock-attestation'
+    with compatible_proof.attestation_lock(tmp_path, create=True) as fd:
+        spill.mkdir()
+        (spill / 'partial.tar').write_bytes(b'disposable')
+        worker = subprocess.Popen([sys.executable, '-c', 'import sys; sys.stdin.read()'],
+                                  stdin=subprocess.PIPE, pass_fds=(fd,))
+    cli = [sys.executable, str(Path(compatible_proof.readings.ROOT) / 'scripts/dev.py'), 'clean',
+           '--proof-work', str(tmp_path)]
+    try:
+        active = subprocess.run(cli, capture_output=True, text=True)
+        assert active.returncode == 1 and 'still active' in active.stderr
+        assert (spill / 'partial.tar').is_file()
+    finally:
+        worker.communicate(timeout=10)
+    preview = subprocess.run(cli, check=True, capture_output=True, text=True)
+    assert f'[DRY-RUN] Would remove: {spill.resolve()}' in preview.stdout
+    assert (spill / 'partial.tar').is_file()
+    subprocess.run([*cli, '--execute'], check=True, capture_output=True)
+    assert not spill.exists()
+    assert checkpoint.read_text() == 'keep this'
+    (tmp_path / 'lock-attestation.lock').write_text('unrelated lock')
+    spill.mkdir()
+    unowned = subprocess.run([*cli, '--execute'], capture_output=True, text=True)
+    assert unowned.returncode == 1 and 'Unowned' in unowned.stderr
+    assert spill.is_dir()
+    spill.rmdir()
+    (tmp_path / 'lock-attestation.lock').write_bytes(compatible_proof.ATTESTATION_OWNER)
+    spill.symlink_to(checkpoint.parent)
+    refused = subprocess.run([*cli, '--execute'], capture_output=True, text=True)
+    assert refused.returncode == 1 and 'private compatibility proof attestation directory' in refused.stderr
+    assert checkpoint.read_text() == 'keep this'
