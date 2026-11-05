@@ -423,6 +423,7 @@ def load_spec(path):
         else:
             raise ValueError('Maintenance external_pins_source must be a valid source')
     if 'raw_verification' in value and value['raw_verification'] is not None:
+        from congress_api.retention.raw_verifier import MAX_BODY_WORKERS
         from viewer_publication.archive_model_job import _selector
         raw_cfg=value['raw_verification']
         inventories={'receipt_inventory','verification_inventory'}
@@ -430,6 +431,9 @@ def load_spec(path):
             raise ValueError('Maintenance raw_verification requires a captures input')
         if raw_cfg.keys()&inventories and not inventories<=raw_cfg.keys():
             raise ValueError('Supply both raw verification inventories or discover both from the bucket')
+        body_workers=raw_cfg.get('body_workers',1)
+        if type(body_workers) is not int or not 1<=body_workers<=MAX_BODY_WORKERS:
+            raise ValueError(f'Maintenance raw_verification body_workers must be an integer from 1 to {MAX_BODY_WORKERS}')
         captures=raw_cfg['captures']
         if isinstance(captures,dict) and set(captures)=={'model_spec'}:
             model_path=Path(_local(captures['model_spec'],base))
@@ -445,6 +449,7 @@ def load_spec(path):
             captures=captures_cfg,
             seed=raw_cfg.get('seed'),
             apply_staged=bool(raw_cfg.get('apply_staged',True)),
+            body_workers=body_workers,
         )
         for key in raw_cfg.keys()&inventories:
             source=raw_cfg[key]
@@ -514,11 +519,11 @@ def _stage_raw_inventories(client,bucket,work):
     """Take complete prefix listings and stage only the raw verifier's JSON inputs."""
     from congress_api.lake.receipt_inventory import R2ReceiptStore,copy_receipts
     from congress_api.retention.body_store import BodyStore,R2Adapter
-    from congress_api.retention.provenance_inventory import ProvenanceInventory
+    from congress_api.retention.provenance_inventory import ProvenanceInventory,VERIFICATION_PREFIX
     from viewer_publication.archive_model_job import provenance_record_kind
 
     class VerificationInventory(ProvenanceInventory):
-        prefix='provenance/verification/'
+        prefix=VERIFICATION_PREFIX
 
     receipt_store=R2ReceiptStore(client,bucket)
     listed=list(receipt_store.files('receipts/'))
@@ -526,7 +531,8 @@ def _stage_raw_inventories(client,bucket,work):
         raise ValueError('Duplicate raw verification receipt key')
     copied=copy_receipts(receipt_store,sorted(listed,key=lambda row:row['key']),work/'receipts')
     receipts=[dict(key=row['key'],path=row['path']) for row in copied]
-    with VerificationInventory(BodyStore(R2Adapter(client,bucket)),work=work/'verification') as inventory:
+    with VerificationInventory(BodyStore(R2Adapter(client,bucket)),work=work/'verification',
+            include_verification_history=True) as inventory:
         inventory.qualify(row['key'] for row in inventory.metadata() if provenance_record_kind(row['key'])=='verification')
         previous=inventory.files()
     for name,rows in (('receipt',receipts),('verification',previous)):
@@ -587,6 +593,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
     from congress_api.cli.raw_verify import apply_staged
     from congress_api.lake.maintenance import maintenance_decision,purge_generation,rebuild_generation
     from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
+    from congress_api.retention.r2 import configure_read_retries
     import congress_api.retention.raw_verifier as raw_verifier
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
@@ -601,6 +608,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
         client=_connect(spec,storage_factory,retries={'total_max_attempts':1})
         reader=ReadOnlyClient(client)
         if spec.get('raw_verification'):
+            configure_read_retries(reader)
             raw_cfg=spec['raw_verification']
             raw_captures,raw_receipts,raw_previous=_prepare_raw_verification_inputs(raw_cfg,
                 client=reader,bucket=spec['bucket'],work=work/'raw-verification-inputs')
@@ -614,6 +622,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
                 work=raw_work,
                 checked_at=current_time.isoformat(),
                 seed=raw_cfg.get('seed'),
+                body_workers=raw_cfg.get('body_workers',1),
             )
             if execute and not verified.get('valid',False):
                 raise RuntimeError('raw verification failed; refusing release pruning')

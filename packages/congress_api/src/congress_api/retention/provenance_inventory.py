@@ -14,6 +14,10 @@ from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,v
 PREFIX='provenance/unreadable/'
 MAX_OBJECT_BYTES=32<<20
 MAX_CACHE_BYTES=256<<20
+VERIFICATION_PREFIX='provenance/verification/'
+# A first verification baseline can contain a record for every listed body.
+# Match the raw writer's single-PUT size and bound the history cache as a whole.
+VERIFICATION_HISTORY_BYTES=5<<30
 PUBLIC_FIELDS={'key','path','etag','sha256','size'}
 
 
@@ -39,13 +43,16 @@ class ProvenanceInventory:
     """
     prefix='provenance/'
 
-    def __init__(self,store,*,work,max_file_bytes=MAX_OBJECT_BYTES,max_total_bytes=MAX_CACHE_BYTES):
+    def __init__(self,store,*,work,max_file_bytes=MAX_OBJECT_BYTES,max_total_bytes=MAX_CACHE_BYTES,
+                 include_verification_history=False):
         if (not isinstance(store,BodyStore) or not isinstance(store.adapter,(LocalAdapter,R2Adapter))
-                or any(type(v) is not int or v<=0 for v in (max_file_bytes,max_total_bytes))):
+                or any(type(v) is not int or v<=0 for v in (max_file_bytes,max_total_bytes))
+                or type(include_verification_history) is not bool):
             raise ValueError('Provenance inventory needs a supported raw store and positive byte limits')
         self.store,self.work,self.epoch=store,Path(work).resolve(),store._provenance_epoch
         self.remote=isinstance(store.adapter,R2Adapter)
         self.max_file_bytes,self.max_total_bytes=max_file_bytes,max_total_bytes
+        self.include_verification_history=include_verification_history
         if self.remote:
             listed=list(store.adapter.listing(self.prefix,preserve_etags=True))
         else:
@@ -77,6 +84,11 @@ class ProvenanceInventory:
         return [dict(key=key,etag=self._listed[key]['etag'],size=self._listed[key]['size'])
                 for key in sorted(self._listed)]
 
+    def _require_size(self,keys,*,max_file_bytes,max_total_bytes):
+        if (any(self._listed[k]['size']>max_file_bytes for k in keys)
+                or sum(self._listed[k]['size'] for k in keys)>max_total_bytes):
+            raise ValueError('Selected provenance exceeds its file or total byte limit')
+
     def qualify(self,record_keys,*,qualified=(),verified=None):
         """Cache only explicit selected keys; no record policy or JSON parsing."""
         keys=list(record_keys)
@@ -84,9 +96,11 @@ class ProvenanceInventory:
             raise ValueError('Selected provenance keys must be unique strings')
         if set(keys)-self._listed.keys():raise ValueError('Selected provenance key is missing')
         selected=self._keys|set(keys)
-        if (any(self._listed[k]['size']>self.max_file_bytes for k in selected)
-                or sum(self._listed[k]['size'] for k in selected)>self.max_total_bytes):
-            raise ValueError('Selected provenance exceeds its file or total byte limit')
+        if self.include_verification_history:
+            history={key for key in selected if key.startswith(VERIFICATION_PREFIX)}
+            self._require_size(history,max_file_bytes=VERIFICATION_HISTORY_BYTES,max_total_bytes=VERIFICATION_HISTORY_BYTES)
+            selected-=history
+        self._require_size(selected,max_file_bytes=self.max_file_bytes,max_total_bytes=self.max_total_bytes)
         metadata={k:dict(self._listed[k],request_etag=self._listed[k]['etag'],
                     etag=single_put_md5(self._listed[k]['etag']) if self.remote else None)
                   for k in keys}

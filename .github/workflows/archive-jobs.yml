@@ -127,7 +127,7 @@ jobs:
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-        run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
+        run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV" --host-limits .github/docspec-maintenance-limits.json
       - name: Run raw checks, retained receipt evidence and catalog maintenance
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

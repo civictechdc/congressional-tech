@@ -1,6 +1,8 @@
 """Raw inventory checks. Native SQL owns joins; storage adapters only LIST and GET."""
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from datetime import datetime, timezone
+from functools import partial
 import gzip
 import hashlib
 import json
@@ -13,8 +15,11 @@ import pyarrow.parquet as pq
 
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import BODY
+from congress_api.retention.concurrency import completed_map
 from congress_api.retention.provenance import (field, parquet_output, parquet_records,
                                                file_pin, run_job)
+
+MAX_BODY_WORKERS = 32
 
 D1_CAPTURE_SCHEMA = pa.schema([
     ('sha256', pa.binary(32)),
@@ -25,6 +30,7 @@ D1_CAPTURE_SCHEMA = pa.schema([
     ('receipt_line', pa.int64()),
     ('capture_index', pa.int32()),
 ])
+DIGEST_ORDER = ('key','receipt_key','receipt_line','pointer_json','capture_index')
 
 
 def json_input(name, files, columns):
@@ -88,10 +94,26 @@ def check_body(store, listing, *, checked_at):
         return dict(result,error=type(error).__name__)
 
 
-def verify(store, *, captures, receipts, previous, engine, work, checked_at, seed=None, full_rehash=False):
-    """Stage reports and accepted verification records; never repair or upload implicitly."""
+def _check_bodies(store, rows, *, checked_at, body_workers):
+    measure = partial(check_body, store, checked_at=checked_at)
+    if body_workers == 1:
+        yield from map(measure, rows)
+        return
+    with ThreadPoolExecutor(max_workers=body_workers, thread_name_prefix='raw-verify') as pool:
+        yield from completed_map(pool, measure, rows, max_pending=body_workers)
+
+
+def verify(store, *, captures, receipts, previous, engine, work, checked_at, seed=None,
+           full_rehash=False, body_workers: int = 1):
+    """Stage audit reports and accepted verification records locally.
+
+    body_workers limits simultaneous body reads to 1 through MAX_BODY_WORKERS.
+    A store used with more than one worker must support concurrent GETs.
+    """
     if type(full_rehash) is not bool:
         raise ValueError('full_rehash must be an explicit boolean')
+    if type(body_workers) is not int or not 1 <= body_workers <= MAX_BODY_WORKERS:
+        raise ValueError(f'body_workers must be an integer from 1 to {MAX_BODY_WORKERS}')
     work=Path(work)
     work.mkdir(parents=True,exist_ok=False)
     seed=seed or secrets.token_hex(32)
@@ -145,7 +167,10 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
         steps.append(dict(name=name,sql=sql,materialize=materialize))
     if old_native:step('old',captures['sql'])
     step('listed','SELECT key,size,etag FROM listing',True)
-    step('index_refs',f"SELECT {index_key} AS key,{column('stored_bytes','BIGINT')} AS size,{column('stored_md5')} AS md5,{column('stored_sha256')} AS stored_sha256,{column('receipt_key')} AS receipt_key,{column('receipt_line','BIGINT')} AS receipt_line,{column('pointer_json')} AS pointer_json FROM old",True)
+    step('index_refs',f"""SELECT {index_key} AS key,{column('stored_bytes','BIGINT')} AS size,
+        {column('stored_md5')} AS md5,{column('stored_sha256')} AS stored_sha256,{column('receipt_key')} AS receipt_key,
+        {column('receipt_line','BIGINT')} AS receipt_line,{column('pointer_json')} AS pointer_json,
+        {column('capture_index','INTEGER')} AS capture_index FROM old""",True)
     step('receipt_entries',"""SELECT __source_key AS receipt_key,__source_line AS receipt_line,
         unnest(array_concat(coalesce(captures,make_array()),coalesce(file_references,make_array()))) AS c FROM receipts""")
     step('receipt_refs',"""SELECT coalesce(c['body_key'],CASE WHEN regexp_like(c['sha256'],'^[a-f0-9]{64}$') THEN concat('bodies/sha256/',substr(c['sha256'],1,2),'/',c['sha256'],coalesce(c['stored_suffix'],'.gz')) END) AS key,c['stored_bytes'] AS size,c['stored_md5'] AS md5,c['stored_sha256'] AS stored_sha256,receipt_key,receipt_line FROM receipt_entries""",True)
@@ -181,7 +206,7 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
         FROM receipt_refs WHERE key IS NOT NULL AND stored_sha256 IS NOT NULL GROUP BY key,receipt_key,receipt_line""")
     step('digest_totals',"""SELECT key,count(DISTINCT stored_sha256) AS key_hashes
         FROM receipt_refs WHERE key IS NOT NULL GROUP BY key""")
-    step('digest_evidence',"""SELECT r.*,t.key_hashes,i.pointer_json,i.stored_sha256 AS old_stored_sha256,
+    step('digest_evidence',"""SELECT r.*,t.key_hashes,i.pointer_json,i.capture_index,i.stored_sha256 AS old_stored_sha256,
         i.size AS old_stored_bytes,i.receipt_key IS NOT NULL AS indexed,
         i.receipt_key IS NOT NULL AND ((i.stored_sha256 IS DISTINCT FROM r.receipt_stored_sha256)
         OR (r.receipt_stored_bytes IS NOT NULL AND (i.size IS DISTINCT FROM r.receipt_stored_bytes))) AS candidate
@@ -193,7 +218,7 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
                  output('anomalies',work/'anomalies.parquet','SELECT * FROM compared WHERE missing OR mismatch'),
                  output('work',work/'work.parquet','SELECT * FROM work'),
                  output('orphans',work/'orphans.parquet','SELECT * FROM orphans'),
-                 output('digest-evidence',work/'digest-evidence.parquet','SELECT * FROM digest_evidence',('key','receipt_key','receipt_line','pointer_json'))],
+                 output('digest-evidence',work/'digest-evidence.parquet','SELECT * FROM digest_evidence',DIGEST_ORDER)],
         queries=[dict(name='counts',sql="SELECT count(*) AS listed,count(*) FILTER(WHERE etag LIKE '%-%') AS multipart FROM listed"),
                  dict(name='issues',sql='SELECT count(*) FILTER(WHERE missing) AS missing,count(*) FILTER(WHERE mismatch AND NOT missing) AS mismatches FROM compared'),
                  dict(name='orphans',sql='SELECT count(*) AS orphans FROM orphans'),
@@ -203,9 +228,10 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
     counts=dict(reports['counts'][0],**reports['issues'][0],**reports['orphans'][0])
     checks=work/'checked.jsonl.gz'
     checked=errors=0
-    with gzip.open(checks,'wt',encoding='utf-8') as out:
-        for row in parquet_records(work/'work.parquet'):
-            measured=check_body(store,row,checked_at=checked_at)
+    with (closing(parquet_records(work/'work.parquet')) as rows,
+          gzip.open(checks,'wt',encoding='utf-8') as out,
+          closing(_check_bodies(store,rows,checked_at=checked_at,body_workers=body_workers)) as measurements):
+        for measured in measurements:
             checked+=1
             errors+=not measured['sha256_verified']
             out.write(json.dumps(measured,separators=(',',':'))+'\n')
@@ -238,7 +264,7 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
         dict(name='digest_conflicts',sql="""SELECT *,CASE WHEN measurement_conflict THEN 'contradictory_measurements'
             WHEN hashes<>1 OR sizes>1 OR key_hashes>1 THEN 'conflicting_receipt_assertions'
             ELSE 'receipt_measurement_mismatch' END AS reason FROM qualified_evidence WHERE conflicting"""),
-        dict(name='digest_repairs',sql="""SELECT DISTINCT key,receipt_key,receipt_line,pointer_json,old_stored_sha256,
+        dict(name='digest_repairs',sql="""SELECT DISTINCT key,receipt_key,receipt_line,pointer_json,capture_index,old_stored_sha256,
             measured_stored_sha256 AS stored_sha256,size AS stored_bytes,
             receipt_stored_sha256,receipt_stored_bytes,measured_stored_sha256,true AS sha256_verified,
             size,etag,checked_at,evidence_source FROM qualified_evidence
@@ -255,9 +281,9 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
         json_input('checked',[dict(key='checked',path=str(checks.resolve()))],fresh_schema)],steps=final_steps,
         outputs=[output('accepted',work/'accepted.parquet','SELECT * FROM accepted'),
                  output('measurement-conflicts',work/'measurement-conflicts.parquet','SELECT * FROM measurements WHERE measurement_conflict'),
-                 output('digest-conflicts',work/'digest-conflicts.parquet','SELECT * FROM digest_conflicts',('key','receipt_key','receipt_line','pointer_json')),
-                 output('digest-repairs',work/'digest-repairs.parquet','SELECT * FROM digest_repairs',('key','receipt_key','receipt_line','pointer_json','old_stored_sha256')),
-                 output('unmeasured-digests',work/'unmeasured-digests.parquet','SELECT * FROM unmeasured',('key','receipt_key','receipt_line','pointer_json'))],
+                 output('digest-conflicts',work/'digest-conflicts.parquet','SELECT * FROM digest_conflicts',DIGEST_ORDER),
+                 output('digest-repairs',work/'digest-repairs.parquet','SELECT * FROM digest_repairs',DIGEST_ORDER+('old_stored_sha256',)),
+                 output('unmeasured-digests',work/'unmeasured-digests.parquet','SELECT * FROM unmeasured',DIGEST_ORDER)],
         queries=[dict(name='counts',sql="""SELECT (SELECT count(*) FROM digest_conflicts) AS digest_conflicts,
             (SELECT count(*) FROM digest_repairs) AS digest_repairs,
             (SELECT count(*) FROM unmeasured) AS unmeasured_candidates,

@@ -46,7 +46,8 @@
     "captures": {
       "model_spec": "publish-model.json"
     },
-    "apply_staged": true
+    "apply_staged": true,
+    "body_workers": 8
   },
   "lake_maintenance": {
     "observations": {},

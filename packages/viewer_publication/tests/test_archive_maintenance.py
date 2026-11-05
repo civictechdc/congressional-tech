@@ -313,6 +313,7 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys,mon
     assert set(maint_plan['tables'])==set(ALL_TABLE_NAMES)
     assert maint_plan['raw_verification']['captures']==json.loads(
         (root/'model/jobs/publish-model.json').read_text())['captures']
+    assert maint_plan['raw_verification']['body_workers']==8
     releases=maint_plan['releases']
     assert releases['kept_releases']==[LIVE,PREVIOUS,PINNED]
     assert set(releases['delete_keys'])>={PREFIX+OLD+'/list.parquet',PREFIX+OLD+'/manifest.json'}
@@ -378,12 +379,13 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         def verify_runtime(self):return dict(verified=True)
     from types import SimpleNamespace
     hooks=[]
-    class EmptyPaginatedR2:
+    class BackfillR2:
         meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}),
             events=SimpleNamespace(register_first=lambda *a,**k:hooks.append(k.get('unique_id'))))
         def get_paginator(self,op):
             assert op=='list_objects_v2'
-            return SimpleNamespace(paginate=lambda **_: [dict(Contents=[],IsTruncated=False)])
+            history=dict(Key='provenance/verification/baseline.jsonl',Size=400<<20,ETag='"'+'a'*32+'"')
+            return SimpleNamespace(paginate=lambda **_: [dict(Contents=[history],IsTruncated=False)])
     observed_daily={}
     anchor=tmp_path/'appearance_records.json';anchor.write_bytes(b'{"selector":{}}\n')
     def fake_producer(daily_spec,*,engine,raw_store,producer_records):
@@ -406,7 +408,7 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     report=archive_backfill_job.execute(
         backfill_spec,
         runtime_factory=lambda _:OkRuntime(),
-        storage_factory=lambda **_:EmptyPaginatedR2(),
+        storage_factory=lambda **_:BackfillR2(),
         producer=fake_producer,
     )
     assert report['status']=='executed' and report['production']['status']=='completed'
@@ -424,9 +426,10 @@ WRITE_CALL=re.compile('put|delete|copy|write|upload|create|complete|abort|restor
 
 class RecordingS3:
     """An S3 SDK fake over a fixture release store that records every operation it is asked for."""
-    meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}))
     def __init__(self,store):
-        self.store,self.calls=store,[]
+        self.store,self.calls,self.retry_hooks=store,[],[]
+        self.meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}),
+            events=SimpleNamespace(register_first=lambda *a,**k:self.retry_hooks.append(k['unique_id'])))
     def __getattr__(self,name):
         if name.startswith('_'):raise AttributeError(name)
         def operation(*args,**request):
@@ -467,7 +470,8 @@ def _maintenance_run(tmp_path,monkeypatch,*,execute,pin_old_during_verification=
     def write_pins(releases):
         pin_path.write_text(json.dumps(dict(version=1,updated_at=NOW.isoformat(),releases=releases)))
     write_pins([PINNED])
-    def staged_verification(source,*,work,checked_at,**_):
+    def staged_verification(source,*,work,checked_at,body_workers,**_):
+        assert body_workers==8
         # Plant a write in a phase intended to read only. The underlying fake
         # accepts writes, so the attempt must fail before it reaches that client.
         with pytest.raises(PermissionError,match='put_object'):
@@ -499,7 +503,7 @@ def _maintenance_run(tmp_path,monkeypatch,*,execute,pin_old_during_verification=
         engine_config=str(tmp_path/'runtime.json'),
         raw_verification=dict(captures=str(inputs/'captures.parquet'),
             receipt_inventory=str(inputs/'receipt-inventory.json'),
-            verification_inventory=str(inputs/'verification-inventory.json'),apply_staged=True),
+            verification_inventory=str(inputs/'verification-inventory.json'),apply_staged=True,body_workers=8),
         lake_maintenance=dict(observations=dict(captures=dict(file_count=999,manifest_count=0,scan_planning_seconds=0)),
             rebuild=dict(captures=dict(old_pin={},schema={},location='s3://fixture/new',keys=['k'],definition={})),
             purge=[dict(table='captures',pin={})]))
@@ -516,6 +520,7 @@ def test_a_dry_run_makes_no_storage_or_lake_writes(tmp_path,monkeypatch):
     assert result['executed'] is False and result['status']=='dry_run'
     assert result['releases']['delete_keys']==[PREFIX+OLD+'/list.parquet',PREFIX+OLD+'/manifest.json']
     assert result['raw_verification']['applied'] is None
+    assert client.retry_hooks==['r2-http-429']
 
 
 def test_an_executed_run_applies_verification_and_deletes_through_the_same_client(tmp_path,monkeypatch):
@@ -562,7 +567,7 @@ def test_cli_dry_run_stages_bucket_receipts_and_verification_for_native_checks(t
     spec.pop('external_pins_source')
     work=tmp_path/'run'
     spec.update(work=str(work),engine_config=os.environ['DOCSPEC_JOB_CONFIG'],external_pins=[PINNED],
-        raw_verification=dict(captures=str(captures)))
+        raw_verification=dict(captures=str(captures),body_workers=8))
     spec_path=tmp_path/'maintenance.json'
     spec_path.write_text(json.dumps(spec))
     assert archive_maintenance.main(['--spec',str(spec_path),'--dry-run'])==0
@@ -577,3 +582,32 @@ def test_cli_dry_run_stages_bucket_receipts_and_verification_for_native_checks(t
     for name,key in [('receipt',receipt_key),('verification',verification_key)]:
         [row]=json.loads((inputs/(name+'-inventory.json')).read_text())
         assert row['key']==key and Path(row['path']).read_bytes()==store.objects[key]
+
+
+def test_maintenance_can_stage_a_verifier_baseline_above_the_unreadable_file_limit(tmp_path):
+    from congress_api.retention.provenance_inventory import MAX_OBJECT_BYTES
+    from viewer_publication.archive_maintenance import ReadOnlyClient,_stage_raw_inventories
+
+    store=Store()
+    key='provenance/verification/baseline.jsonl'
+    line=b'{"key":"bodies/sha256/aa/'+b'a'*64+b'","sha256_verified":false}\n'
+    data=line*(MAX_OBJECT_BYTES//len(line)+1)
+    store.create(key,data)
+    client=RecordingS3(store)
+    receipts,[baseline]=_stage_raw_inventories(ReadOnlyClient(client),'archive-fixture',tmp_path)
+    assert receipts==[] and baseline['key']==key
+    assert Path(baseline['path']).stat().st_size==len(data)
+    assert set(client.calls)=={'get_object','list_objects_v2'}
+
+
+@pytest.mark.parametrize('workers',[False,0,33,8.0,'8'])
+def test_maintenance_spec_rejects_invalid_raw_body_worker_count(tmp_path,workers):
+    from viewer_publication.archive_maintenance import load_spec
+
+    root=Path(__file__).resolve().parents[3]
+    spec=json.loads((root/'model/jobs/maintenance.json').read_text())
+    spec['raw_verification'].update(captures='captures.parquet',body_workers=workers)
+    path=tmp_path/'maintenance.json'
+    path.write_text(json.dumps(spec))
+    with pytest.raises(ValueError,match='body_workers'):
+        load_spec(path)
