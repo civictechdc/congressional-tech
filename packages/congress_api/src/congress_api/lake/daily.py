@@ -9,7 +9,7 @@ import time
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,readings,tables
+from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,readings,tables,video_records
 from congress_api.lake.producer_records import DAILY_JOB
 from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStore,copy_receipts,
     discover_receipts,select_receipts)
@@ -25,7 +25,7 @@ ROOT=Path(__file__).resolve().parents[5]
 TABLE_NAMES=('captures','readings','filename_readings')
 OPTIONAL_TABLE_NAMES=('meeting_records','appearance_records')
 ALL_TABLE_NAMES=TABLE_NAMES+OPTIONAL_TABLE_NAMES
-DAILY_CAPTURE_RECORDS={'committee_records':committee_records,'playlist_records':playlist_records}
+DAILY_CAPTURE_RECORDS={'committee_records':committee_records,'playlist_records':playlist_records,'video_records':video_records}
 PROVENANCE_KINDS=('recoveries','reviews','unreadable')
 QUALIFIED_FIELDS={'key','etag','path','sha256','size'}
 LISTING_SCHEMA=pa.schema([('key',pa.string()),('size',pa.int64()),('etag',pa.string())])
