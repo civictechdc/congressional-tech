@@ -66,11 +66,15 @@ def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_pat
     """ct-vq2a/ct-kwse: identical bytes saved first under a dated HHRG name, then under a plain name,
     keep the HHRG name's date and Congress; a structured name outranks an earlier plain one; bytes posted
     for two meetings date from the first meeting whichever was fetched first; a copy of other bytes in
-    the same document never dates it; a plain name alone still dates it."""
+    the same document never dates it; a plain name alone still dates it. A committee site's
+    '<sha256>.hhrg-...' copy outranks a plain name but not the House name (it can carry the day it was
+    posted); a date it misreads (the truncated '-2070906', after its capture or outside its Congress)
+    never outranks a plausible one."""
     same,other='a'*64,'b'*64
-    def copy(component,source,body,rank,fetched,date=None,valid=False,congress=None):
+    def copy(component,source,body,rank,fetched,date=None,valid=False,congress=None,name=None):
         return dict(component=component,source_id=source,body_sha=body,saved_rank=rank,first_fetched=fetched,source_url='https://x.test/'+source,
-            filename=source+'.pdf',filename_date=date,filename_date_valid=valid,congress=congress,congress_valid=valid)
+            filename=name or source+'.pdf',filename_date=date,filename_date_valid=valid,congress=congress,congress_valid=valid)
+    hashed=lambda tail: '287CDD43'+'0'*56+'.'+tail
     rows=[copy('moved','plain-newer',same,1,'2026-10-20T12:00:00Z','2019-06-23',congress=None),
           copy('moved','hhrg',same,2,'2026-10-10T12:00:00Z','2020-06-25',True,116),
           copy('moved','other-bytes',other,3,'2026-10-01T12:00:00Z','2001-01-01',True,107),
@@ -80,19 +84,33 @@ def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_pat
           copy('reused','later-meeting',same,2,'2026-10-01T12:00:00Z','2024-05-15',True,118),
           copy('reused','first-meeting',same,1,'2026-10-09T12:00:00Z','2024-04-16',True,118),
           copy('reused','plain-earliest',same,3,'2026-09-01T12:00:00Z','2023-01-01'),
-          copy('undated','bare',same,1,None)]
+          copy('undated','bare',same,1,None),
+          copy('webster','plain-statement',same,1,'2026-10-01T12:00:00Z','2012-04-23',name='2012 04 23 Webster testimony.pdf'),
+          copy('webster','hashed-hhrg',same,2,'2026-10-20T12:00:00Z','2012-04-25',congress=112,name=hashed('hhrg-112-sy21-wstate-websterj-20120425.pdf')),
+          copy('bus','hashed-truncated',same,1,'2026-10-01T12:00:00Z','2070-09-06',congress=115,name=hashed('hhrg-115-sy18-wstate-jbus-2070906.pdf')),
+          copy('bus','house',same,2,'2026-10-20T12:00:00Z','2017-09-06',True,115,name='HHRG-115-SY18-Wstate-BusJ-20170906.pdf'),
+          copy('off-congress','hashed-early',same,1,'2026-10-01T12:00:00Z','2010-09-06',congress=115,name=hashed('hhrg-115-sy18-wstate-jbus-2010906.pdf')),
+          copy('off-congress','plain-dated',same,2,'2026-10-20T12:00:00Z','2017-09-06',name='2017 09 06 Bus testimony.pdf'),
+          copy('upload-day','hashed-posted',same,1,'2026-10-01T12:00:00Z','2016-09-13',congress=114,name=hashed('hhrg-114-sy-wstate-jturley-20160913.pdf')),
+          copy('upload-day','house-hearing',same,2,'2026-10-20T12:00:00Z','2016-09-14',True,114,name='HHRG-114-SY00-Wstate-TurleyP-20160914.pdf'),
+          copy('future','hashed-future',same,1,'2026-10-01T12:00:00Z','2070-09-06',name=hashed('hhrg-115-sy18-wstate-jbus-2070906.pdf')),
+          copy('future','plain-statement-2017',same,2,'2026-10-20T12:00:00Z','2017-09-06',name='2017 09 06 Bus testimony.pdf')]
     inputs=[json_input(tmp_path,'copies',rows,component='Utf8',source_id='Utf8',body_sha='Utf8',saved_rank='Int64',first_fetched='Utf8',source_url='Utf8',
         filename='Utf8',filename_date='Utf8',filename_date_valid='Boolean',congress='Int64',congress_valid='Boolean')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,steps=[
         dict(name='saved_files',sql='SELECT component,source_id,body_sha,saved_rank,source_url,filename,cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM copies'),
-        dict(name='source_filename_readings',sql="""SELECT source_id,cast(filename_date AS DATE) AS filename_date,filename_date_valid,
+        dict(name='source_filename_readings',sql="""SELECT source_id,filename AS filename_date_name,filename AS congress_name,
+            cast(filename_date AS DATE) AS filename_date,filename_date_valid,
             CASE WHEN filename_date IS NULL THEN 'missing' ELSE 'completed' END AS filename_date_status,
             congress,congress_valid,CASE WHEN congress IS NULL THEN 'missing' ELSE 'completed' END AS congress_status FROM copies"""),
         dict(name='document_filename_facts',sql=(ROOT/'model/sql/document-filename-facts.sql').read_text(),materialize=True)],outputs=[],
         queries=[dict(name='facts',sql='SELECT component,cast(filename_date AS VARCHAR) AS filename_date,congress FROM document_filename_facts ORDER BY component')])
-    assert result['facts']==[dict(component='moved',filename_date='2020-06-25',congress=116),dict(component='plain',filename_date='2021-03-03',congress=None),
+    assert result['facts']==[dict(component='bus',filename_date='2017-09-06',congress=115),dict(component='future',filename_date='2017-09-06',congress=None),
+                             dict(component='moved',filename_date='2020-06-25',congress=116),dict(component='off-congress',filename_date='2017-09-06',congress=115),
+                             dict(component='plain',filename_date='2021-03-03',congress=None),
                              dict(component='ranked',filename_date='2020-02-02',congress=116),dict(component='reused',filename_date='2024-04-16',congress=118),
-                             dict(component='undated',filename_date=None,congress=None)]
+                             dict(component='undated',filename_date=None,congress=None),dict(component='upload-day',filename_date='2016-09-14',congress=114),
+                             dict(component='webster',filename_date='2012-04-25',congress=112)]
 
 
 def test_document_removals_use_each_pages_latest_timestamp_and_require_all_removed(tmp_path):

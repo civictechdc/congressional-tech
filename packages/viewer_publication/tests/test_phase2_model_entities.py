@@ -1971,13 +1971,20 @@ def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     pdf = lambda text: f'%PDF-1.7\n{text}\n%%EOF\n'.encode()
     act = 'AFWA%20testimony_H.R.%202264_Bear%20Protection%20Act%20of%202019_6-23-20_final.pdf'
+    # Committee-site copies of House names behind a sha256 prefix; the Bus one truncates its date to 2070-09-06.
+    webster = '287CDD43' + '0' * 56 + '.hhrg-112-sy21-wstate-websterj-20120425.pdf'
+    bus = '93A38B30' + '1' * 56 + '.hhrg-115-sy18-wstate-jbus-2070906.pdf'
     captures = [
         ('https://docs.house.gov/meetings/II/II13/20200625/110838/HHRG-116-II13-Wstate-BatchellerG-20200625.pdf', 'Batcheller statement', '2026-10-01T12:00:00Z'),
         (f'https://naturalresources.house.gov/uploadedfiles/{act}', 'Batcheller statement', '2026-10-20T12:00:00Z'),
         ('https://homeland.house.gov/files/BILLS-117hr1833ih.pdf', 'H.R. 1833 introduced', '2026-10-01T12:00:00Z'),
         ('https://homeland.house.gov/files/hr1833-text.pdf', 'H.R. 1833 introduced', '2026-10-20T12:00:00Z'),
         ('https://homeland.house.gov/files/BILLS-117hr1833ih-Katko.pdf', 'Katko amendment', '2026-10-01T12:00:00Z'),
-        ('https://naturalresources.house.gov/uploadedfiles/Wildlife%20Act%20of%202019_6-23-20_testimony.pdf', 'Wildlife testimony', '2026-10-01T12:00:00Z')]
+        ('https://naturalresources.house.gov/uploadedfiles/Wildlife%20Act%20of%202019_6-23-20_testimony.pdf', 'Wildlife testimony', '2026-10-01T12:00:00Z'),
+        (f'https://science.house.gov/uploadedfiles/{webster}', 'Webster testimony', '2026-10-01T12:00:00Z'),
+        ('https://science.house.gov/uploadedfiles/2012%2004%2023%20Webster%20testimony.pdf', 'Webster testimony', '2026-10-20T12:00:00Z'),
+        ('https://docs.house.gov/meetings/SY/SY18/20170906/106360/HHRG-115-SY18-Wstate-BusJ-20170906.pdf', 'Bus testimony', '2026-10-01T12:00:00Z'),
+        (f'https://science.house.gov/uploadedfiles/{bus}', 'Bus testimony', '2026-10-20T12:00:00Z')]
     staged = _stage_raw_fixture(tmp_path, engine, [dict(url=url, data=pdf(text), format='pdf', compress=False, retrieved_at=at)
                                                    for url, text, at in captures])
     build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
@@ -1989,7 +1996,9 @@ def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
         'AFWA testimony_H.R. 2264_Bear Protection Act of 2019_6-23-20_final.pdf': (None, '2020-06-25', 'filename', 116),
         'hr1833-text.pdf': ('BILLS-117hr1833ih', None, None, 117),
         'BILLS-117hr1833ih-Katko.pdf': (None, None, None, 117),
-        'Wildlife Act of 2019_6-23-20_testimony.pdf': (None, None, None, None)}, facts
+        'Wildlife Act of 2019_6-23-20_testimony.pdf': (None, None, None, None),
+        '2012 04 23 Webster testimony.pdf': (None, '2012-04-25', 'filename', 112),
+        bus: (None, '2017-09-06', 'filename', 115)}, facts
 
 
 def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
