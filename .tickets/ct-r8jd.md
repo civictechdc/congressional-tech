@@ -60,3 +60,7 @@ Owner decision 2026-11-04: hosted runner capacity is moot: the nightly runs on t
 **2026-11-04T16:39:47Z**
 
 2026-11-04: document_witness_keys fix 2d76d689 lowers full-build peak to 8.59-9.39 GiB (margin >= 4.6 GiB under the 14 GiB publish limit).
+
+**2026-11-05T12:02:36Z**
+
+2026-11-05 Codex continuation: maintenance completed as a full read-only audit plus maintained staged-apply and retention execution, without repeating307,033 completed body reads. Native audit peak5.989 GiB; apply/retention peak0.169 GiB. Configured maintenance rss_gb10 in .github/archive-jobs.json (7240b36d); --check-binding passed.10 GiB is a deliberate runaway allowance, not a measured hosted peak. All three operations now have limits. Final integration qualification pending. See ct-3szv and durable full-readonly/completed-maintenance watchdog reports.
