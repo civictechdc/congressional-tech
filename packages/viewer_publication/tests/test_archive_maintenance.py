@@ -398,15 +398,16 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         bucket='archive-fixture',
         catalog_root=None,
         work=str(tmp_path/'backfill-work'),
-        tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES},
+        tables={name:dict(namespace=['archive'],name=name) for name in (*ALL_TABLE_NAMES,'committee_records','playlist_records')},
         batch_size=100,
         max_batches=2,
         engine_config=str(tmp_path/'runtime.json'),
         producers=dict(appearance_records=dict(path=str(anchor),sha256=hashlib.sha256(anchor.read_bytes()).hexdigest(),
             size=anchor.stat().st_size)),
     )
+    spec_path=tmp_path/'backfill.json';spec_path.write_text(json.dumps(backfill_spec))
     report=archive_backfill_job.execute(
-        backfill_spec,
+        archive_backfill_job.load_spec(spec_path),
         runtime_factory=lambda _:OkRuntime(),
         storage_factory=lambda **_:BackfillR2(),
         producer=fake_producer,
@@ -414,6 +415,7 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     assert report['status']=='executed' and report['production']['status']=='completed'
     assert hooks==['r2-http-429']
     assert observed_daily['max_work_items']==200
+    assert {'committee_records','playlist_records'}<=observed_daily['tables'].keys()
     assert observed_daily['producer_records'].anchors==dict(appearance_records=anchor.read_bytes())
     written=json.loads((tmp_path/'backfill-work/backfill-report.json').read_text())
     assert written['production']['producerreports']['readings']==dict(

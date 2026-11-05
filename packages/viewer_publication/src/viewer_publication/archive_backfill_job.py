@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 from urllib.parse import urlsplit
 
-from congress_api.lake.daily import ALL_TABLE_NAMES
+from congress_api.lake.daily import ALL_TABLE_NAMES,DAILY_CAPTURE_RECORDS
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
@@ -35,13 +35,14 @@ EXPLORER_TABLE_NAMES=('video_records','committee_records')
 
 
 def _tables(value):
-    # The core tables, optionally both Explorer tables and an independent playlist table.
-    if not isinstance(value,dict) or set(value)-{'playlist_records'} not in (
-            set(ALL_TABLE_NAMES),set(ALL_TABLE_NAMES)|set(EXPLORER_TABLE_NAMES)):
-        raise ValueError('Backfill job requires all five archive lake table references, and both Explorer tables or neither')
+    core=set(ALL_TABLE_NAMES)
+    if not isinstance(value,dict) or not core<=value.keys() or set(value)-core-set(DAILY_CAPTURE_RECORDS)-set(EXPLORER_TABLE_NAMES):
+        raise ValueError('Backfill job requires all five archive lake table references and supported optional tables')
+    if 'video_records' in value and 'committee_records' not in value:
+        raise ValueError('Selective backfill video records require the committee records table')
     refs={name:_table_ref(value[name]) for name in value}
     if len({json.dumps(t,sort_keys=True) for t in refs.values()})!=len(refs):
-        raise ValueError('Backfill tables must name five distinct explicit targets')
+        raise ValueError('Backfill tables must name distinct explicit targets')
     return refs
 
 
@@ -119,7 +120,7 @@ def load_spec(path):
     if 'selective' in value:
         from viewer_publication.archive_selective import validate_selective
         result['selective']=validate_selective(value['selective'],base=base,catalog_root=catalog_root,tables=result['tables'])
-    elif result['resume'] or 'through' in value or set(result['tables'])&(set(EXPLORER_TABLE_NAMES)|{'playlist_records'}):
+    elif result['resume'] or 'through' in value or set(result['tables'])-set(ALL_TABLE_NAMES)-set(DAILY_CAPTURE_RECORDS):
         raise ValueError('Only a selective backfill can resume, stop early or build the Explorer tables')
     if 'through' in value:
         from viewer_publication.archive_selective import THROUGH

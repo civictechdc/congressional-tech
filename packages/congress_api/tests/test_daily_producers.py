@@ -476,26 +476,34 @@ def test_native_daily_producer_refreshes_and_pins_all_five_tables(tmp_path):
     assert second['producerreports']['appearance_records']['work_items']==0
 
 
-def test_native_daily_appends_held_playlist_once(tmp_path):
+def test_native_daily_retries_playlist_work_after_budget_refusal(tmp_path):
     from congress_api.lake import playlist_records
     from congress_api.lake.daily import produce_daily
 
-    payload = b'#EXTM3U\n#EXTINF:8.0,\ntext_1.vtt\n#EXT-X-ENDLIST\n'
-    value, engine, store = native_fixture(tmp_path, payloads=[payload],
+    payloads = [f'#EXTM3U\n#EXTINF:8.0,\ntext_{i}.vtt\n#EXT-X-ENDLIST\n'.encode() for i in range(2)]
+    value, engine, store = native_fixture(tmp_path, count=2, payloads=payloads,
         url_prefix='https://www.senate.gov/streams/ag051023/text_', url_suffix='.m3u8', family='senate/captions')
+    # Put both receipts in captures first so the small budget is tested at the playlist stage.
+    base = produce_daily(value, engine=engine, raw_store=store)
+    assert base['status'] == 'completed'
+
     table = dict(namespace=['archive'], name='playlist_records')
     playlist_records.create_table(engine=engine, work=tmp_path/'create-playlists', catalog_root=value['catalog_root'],
         table=table, location=tmp_path/'lake-playlists')
     value['tables']['playlist_records'] = table
+    limited = produce_daily(dict(value, work=str(tmp_path/'limited'), max_work_items=1), engine=engine, raw_store=store)
+    assert limited['status'] == 'backfill_required'
+    assert limited['producerreports']['playlist_records']['work_items'] == 2
 
-    first = produce_daily(value, engine=engine, raw_store=store)
+    first = produce_daily(dict(value, work=str(tmp_path/'backfill'), max_work_items=2), engine=engine, raw_store=store)
     assert first['status'] == 'completed'
+    assert first['pins']['captures'] == base['pins']['captures']
     assert first['currentversions']['playlist_records'] == playlist_records.current_versions()
     records = first['producerreports']['playlist_records']
-    assert records['produced'] == 1 and records['append'] is not None
-    row, = pq.read_table(records['records']).to_pylist()
-    assert row['record_sha'] == hashlib.sha256(payload).digest()
-    assert row['segments'] == ['text_1.vtt']
+    assert records['produced'] == 2 and records['append'] is not None
+    rows = pq.read_table(records['records']).to_pylist()
+    assert {row['record_sha'] for row in rows} == {hashlib.sha256(payload).digest() for payload in payloads}
+    assert {tuple(row['segments']) for row in rows} == {('text_0.vtt',), ('text_1.vtt',)}
 
     second = produce_daily(dict(value, work=str(tmp_path/'second')), engine=engine, raw_store=store)
     assert second['status'] == 'completed'
