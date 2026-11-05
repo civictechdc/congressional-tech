@@ -104,7 +104,8 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
     validate_daily(daily,engine,raw_store)
     work=Path(daily['work']).resolve()
     if work.exists() or work.is_symlink():raise ValueError('Daily production work must be fresh')
-    snapshot=provenance_inventory(raw_store,work=work.with_name(work.name+'-provenance'))
+    snapshot=provenance_inventory(raw_store,work=work.with_name(work.name+'-provenance'),
+        include_verification_history=True)
     full={row['key']:row for row in snapshot.metadata()}
     records=snapshot.qualify([key for key in full if provenance_record_kind(key) is not None])
     selected=dict(daily,provenance={kind:[row for row in records if provenance_record_kind(row['key'])==kind]

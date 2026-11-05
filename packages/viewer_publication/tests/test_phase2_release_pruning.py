@@ -201,13 +201,14 @@ def test_partially_pruned_external_pin_without_input_record_is_treated_as_stale_
 
 
 def test_execute_fails_closed_before_deleting_releases_when_raw_verification_inputs_missing(tmp_path):
+    from botocore.hooks import HierarchicalEmitter
     from congress_api.lake.daily import ALL_TABLE_NAMES
 
     deleted_keys = []
     release_list_calls = []
 
     class TrackingR2Client:
-        meta = SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts': 1}))
+        meta = SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts': 1}), events=HierarchicalEmitter())
 
         def get_object(self, **request):
             raise AssertionError(f'Unexpected release GET before raw_verification: {request}')

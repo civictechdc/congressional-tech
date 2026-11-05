@@ -379,12 +379,13 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         def verify_runtime(self):return dict(verified=True)
     from types import SimpleNamespace
     hooks=[]
-    class EmptyPaginatedR2:
+    class BackfillR2:
         meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}),
             events=SimpleNamespace(register_first=lambda *a,**k:hooks.append(k.get('unique_id'))))
         def get_paginator(self,op):
             assert op=='list_objects_v2'
-            return SimpleNamespace(paginate=lambda **_: [dict(Contents=[],IsTruncated=False)])
+            history=dict(Key='provenance/verification/baseline.jsonl',Size=400<<20,ETag='"'+'a'*32+'"')
+            return SimpleNamespace(paginate=lambda **_: [dict(Contents=[history],IsTruncated=False)])
     observed_daily={}
     anchor=tmp_path/'appearance_records.json';anchor.write_bytes(b'{"selector":{}}\n')
     def fake_producer(daily_spec,*,engine,raw_store,producer_records):
@@ -407,7 +408,7 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     report=archive_backfill_job.execute(
         backfill_spec,
         runtime_factory=lambda _:OkRuntime(),
-        storage_factory=lambda **_:EmptyPaginatedR2(),
+        storage_factory=lambda **_:BackfillR2(),
         producer=fake_producer,
     )
     assert report['status']=='executed' and report['production']['status']=='completed'
@@ -425,9 +426,10 @@ WRITE_CALL=re.compile('put|delete|copy|write|upload|create|complete|abort|restor
 
 class RecordingS3:
     """An S3 SDK fake over a fixture release store that records every operation it is asked for."""
-    meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}))
     def __init__(self,store):
-        self.store,self.calls=store,[]
+        self.store,self.calls,self.retry_hooks=store,[],[]
+        self.meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}),
+            events=SimpleNamespace(register_first=lambda *a,**k:self.retry_hooks.append(k['unique_id'])))
     def __getattr__(self,name):
         if name.startswith('_'):raise AttributeError(name)
         def operation(*args,**request):
@@ -518,6 +520,7 @@ def test_a_dry_run_makes_no_storage_or_lake_writes(tmp_path,monkeypatch):
     assert result['executed'] is False and result['status']=='dry_run'
     assert result['releases']['delete_keys']==[PREFIX+OLD+'/list.parquet',PREFIX+OLD+'/manifest.json']
     assert result['raw_verification']['applied'] is None
+    assert client.retry_hooks==['r2-http-429']
 
 
 def test_an_executed_run_applies_verification_and_deletes_through_the_same_client(tmp_path,monkeypatch):

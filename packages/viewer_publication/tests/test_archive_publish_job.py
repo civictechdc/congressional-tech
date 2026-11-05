@@ -116,9 +116,11 @@ def test_daily_handoff_refuses_incomplete_or_inconsistent_evidence(tmp_path,chan
     assert not (tmp_path/'release').exists() and not (tmp_path/'publish').exists()
 
 
-def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
+def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path,monkeypatch):
     from archive_job_fixture import real_model_spec,native_daily_spec
     from docspec_client.client import NativeDatasets
+    from hashlib import md5
+    from congress_api.retention import provenance_inventory
     from congress_api.retention.body_store import BodyStore,R2Adapter
     from viewer_publication.archive_model_job import load_spec
     from viewer_publication.archive_publish_job import produce_daily_inputs
@@ -127,12 +129,31 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
     from test_archive_publish import Store
     model,_,_=real_model_spec(tmp_path)
     path=tmp_path/'template.json';path.write_text(json.dumps(model));model=load_spec(path)
+    verification_key='provenance/verification/baseline.jsonl'
+    baseline=(json.dumps(dict(key='bodies/sha256/aa/'+'a'*64,size=1,etag='b'*32,sha256_verified=False,
+        stored_sha256=None,checked_at='2026-10-28T12:00:00Z',job='raw-verifier'))+'\n').encode()
+    verification_etag='"'+md5(baseline).hexdigest()+'"'
+    inventory_factory=provenance_inventory.provenance_inventory
+    monkeypatch.setattr(provenance_inventory,'provenance_inventory',
+        lambda *args,**options:inventory_factory(*args,**options,max_file_bytes=64,max_total_bytes=64))
     class PaginatedStore(Store):
         def get_paginator(self,operation):
             assert operation=='list_objects_v2'
             from types import SimpleNamespace
             return SimpleNamespace(paginate=lambda **request:[self.list_objects_v2(**request)])
+        def get_object(self,*,Bucket,Key,IfMatch=None):
+            response=super().get_object(Bucket=Bucket,Key=Key)
+            if Key==verification_key:
+                assert IfMatch==verification_etag
+                response['ETag']=verification_etag
+            return response
+        def list_objects_v2(self,**request):
+            page=super().list_objects_v2(**request)
+            for item in page['Contents']:
+                if item['Key']==verification_key:item.update(Size=len(baseline),ETag=verification_etag)
+            return page
     store=PaginatedStore();probes=[]
+    store.objects[verification_key]=baseline
     def probe(**context):
         probes.append(context['release_id'])
         return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
@@ -141,6 +162,8 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
         result=produce_daily_inputs(model,daily,engine=native,raw_store=BodyStore(R2Adapter(store,'derived-fixture')))
         assert result['status']=='ready' and result['receipt_keys']==['receipts/documents/2026-10-27/slice.jsonl.gz']
         assert all(result['model'][name]['kind']=='native_table' for name in ['captures','readings','filename_readings'])
+        [history]=result['model']['verification_files']
+        assert history['key']==verification_key and Path(history['path']).read_bytes()==baseline
         published=run_publish(result['model'],first_release=True,client=store,engine=Runtime(native,store),bucket='derived-fixture',
             work=tmp_path/'publish',receipt_keys=result['receipt_keys'],provenance=result['provenance'],
             verified_files=result['verified_files'],run={'id':'daily'},public_origin='https://archive.fixture.test',

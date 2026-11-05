@@ -174,10 +174,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
         client=configure_read_retries(storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1}))
         raw_store=BodyStore(R2Adapter(client,spec['bucket']))
         snapshot=provenance_inventory(raw_store,work=work/'provenance')
-        full={row['key']:row for row in snapshot.metadata()}
-        records=snapshot.qualify([key for key in full if provenance_record_kind(key) is not None])
+        decision_kinds=('recoveries','reviews','unreadable')
+        records=snapshot.qualify(row['key'] for row in snapshot.metadata()
+            if provenance_record_kind(row['key']) in decision_kinds)
         provenance={kind:[row for row in records if provenance_record_kind(row['key'])==kind]
-            for kind in ('recoveries','reviews','unreadable')}
+            for kind in decision_kinds}
         daily_spec=dict(
             work=str(work/'producer'),
             decided_at=decided_at,

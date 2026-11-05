@@ -100,6 +100,23 @@ def test_selected_file_and_total_bounds_refuse_before_get(tmp_path,limits):
     assert len(client.list_calls)==1 and not client.get_calls and not client.head_calls
 
 
+def test_opted_in_verification_history_has_a_separate_bound(tmp_path,monkeypatch):
+    from congress_api.retention import provenance_inventory as module
+
+    verification='provenance/verification/baseline.jsonl'
+    next_verification='provenance/verification/next.jsonl'
+    unreadable='provenance/unreadable/oversized.jsonl'
+    client=R2([(verification,b'baseline'),(next_verification,b'next'),(unreadable,b'too big')])
+    monkeypatch.setattr(module,'VERIFICATION_HISTORY_BYTES',10)
+    snapshot=module.provenance_inventory(BodyStore(R2Adapter(client,'bucket')),work=tmp_path/'snapshot',
+        max_file_bytes=4,max_total_bytes=4,include_verification_history=True)
+    [row]=snapshot.qualify([verification])
+    assert Path(row['path']).read_bytes()==b'baseline'
+    with pytest.raises(ValueError,match='byte limit'):snapshot.qualify([next_verification])
+    with pytest.raises(ValueError,match='byte limit'):snapshot.qualify([unreadable])
+    assert len(client.list_calls)==1 and [call['Key'] for call in client.get_calls]==[verification]
+
+
 def test_conditional_get_keeps_the_exact_listed_etag_representation(tmp_path):
     from congress_api.retention.provenance_inventory import provenance_inventory
     key='provenance/reviews/one.jsonl';payload=b'opaque';etag='"'+hashlib.md5(payload).hexdigest().upper()+'"'

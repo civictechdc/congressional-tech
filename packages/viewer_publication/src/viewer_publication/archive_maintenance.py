@@ -519,11 +519,11 @@ def _stage_raw_inventories(client,bucket,work):
     """Take complete prefix listings and stage only the raw verifier's JSON inputs."""
     from congress_api.lake.receipt_inventory import R2ReceiptStore,copy_receipts
     from congress_api.retention.body_store import BodyStore,R2Adapter
-    from congress_api.retention.provenance_inventory import ProvenanceInventory
+    from congress_api.retention.provenance_inventory import ProvenanceInventory,VERIFICATION_PREFIX
     from viewer_publication.archive_model_job import provenance_record_kind
 
     class VerificationInventory(ProvenanceInventory):
-        prefix='provenance/verification/'
+        prefix=VERIFICATION_PREFIX
 
     receipt_store=R2ReceiptStore(client,bucket)
     listed=list(receipt_store.files('receipts/'))
@@ -531,11 +531,8 @@ def _stage_raw_inventories(client,bucket,work):
         raise ValueError('Duplicate raw verification receipt key')
     copied=copy_receipts(receipt_store,sorted(listed,key=lambda row:row['key']),work/'receipts')
     receipts=[dict(key=row['key'],path=row['path']) for row in copied]
-    # The first successful verifier run can write one baseline for the entire
-    # archive. Allow the raw writer's single-PUT size and bound the local cache.
-    history_limit=5<<30
     with VerificationInventory(BodyStore(R2Adapter(client,bucket)),work=work/'verification',
-            max_file_bytes=history_limit,max_total_bytes=history_limit) as inventory:
+            include_verification_history=True) as inventory:
         inventory.qualify(row['key'] for row in inventory.metadata() if provenance_record_kind(row['key'])=='verification')
         previous=inventory.files()
     for name,rows in (('receipt',receipts),('verification',previous)):
@@ -596,6 +593,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
     from congress_api.cli.raw_verify import apply_staged
     from congress_api.lake.maintenance import maintenance_decision,purge_generation,rebuild_generation
     from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
+    from congress_api.retention.r2 import configure_read_retries
     import congress_api.retention.raw_verifier as raw_verifier
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
@@ -610,6 +608,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
         client=_connect(spec,storage_factory,retries={'total_max_attempts':1})
         reader=ReadOnlyClient(client)
         if spec.get('raw_verification'):
+            configure_read_retries(reader)
             raw_cfg=spec['raw_verification']
             raw_captures,raw_receipts,raw_previous=_prepare_raw_verification_inputs(raw_cfg,
                 client=reader,bucket=spec['bucket'],work=work/'raw-verification-inputs')
