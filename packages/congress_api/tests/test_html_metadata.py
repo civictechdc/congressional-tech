@@ -222,38 +222,22 @@ def test_legacy_roots_cover_the_installed_mf2py_rules():
     assert rules and rules <= set(reader.MICROFORMAT_LEGACY_ROOTS)
 
 
-def test_version_tracks_lock_options_and_source(monkeypatch, tmp_path):
-    version = readings.current_version('html_metadata')
-    monkeypatch.setattr(reader, 'FORMAT_TIMEOUT_SECONDS', 99.0)
-    assert readings.current_version('html_metadata') != version
-    monkeypatch.undo()
-    source = Path('packages/congress_api/src/congress_api')
-    (tmp_path / 'uv.lock').write_bytes((ROOT / 'uv.lock').read_bytes())
-    for name in ('models/html_metadata.py', 'parsers/html_metadata.py', 'parsers/main_content.py'):
-        target = tmp_path / source / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes((ROOT / source / name).read_bytes())
-    assert readings.current_version('html_metadata', root=tmp_path) == version
-    target.write_bytes(target.read_bytes() + b'\n')
-    moved = readings.current_version('html_metadata', root=tmp_path)
-    assert moved != version
-    (tmp_path / 'uv.lock').write_bytes(b'other')
-    assert readings.current_version('html_metadata', root=tmp_path) != moved
-
-
-def test_the_worker_policy_is_in_the_version_and_the_bundle_is_not(monkeypatch):
-    version, bundle = readings.current_version('html_metadata'), readings.current_version('html')
+def test_html_metadata_policy_drift_is_advisory(monkeypatch):
+    from congress_api.lake import reading_version_diagnostics as diagnostics
+    before = diagnostics.snapshot()
     monkeypatch.setattr(readings, 'WORKER_TIMEOUT_SECONDS', 16)
-    assert readings.current_version('html_metadata') != version
-    assert readings.current_version('html') == bundle
-    assert readings.worker_limits('html_metadata')['timeout_seconds'] == len(FORMATS) * reader.FORMAT_TIMEOUT_SECONDS + 16
+    after = diagnostics.snapshot()
+    assert after['html_metadata']['version'] == before['html_metadata']['version']
+    assert after['html_metadata']['policy']['timeout_seconds'] == len(FORMATS) * reader.FORMAT_TIMEOUT_SECONDS + 16
+    assert any('html_metadata reading version evidence changed (policy)' in warning
+               for _, warning in diagnostics.drift_messages(before, after))
 
 
-def test_a_main_content_change_moves_only_the_html_metadata_pin(monkeypatch, tmp_path):
+def test_a_declared_main_content_bump_moves_only_the_html_metadata_pin(monkeypatch):
     from congress_api.lake import compatible_versions
+    from congress_api.lake.reading_versions import READING_VERSIONS
     before = compatible_versions.current_pins()
-    real = readings.current_version
-    monkeypatch.setattr(readings, 'current_version', lambda p, **k: 'moved' if p == 'html_metadata' else real(p, **k))
+    monkeypatch.setitem(READING_VERSIONS, 'html_metadata', 'moved')
     after = compatible_versions.current_pins()
     assert {p for p in before if before[p] != after[p]} == {'html_metadata'}
 

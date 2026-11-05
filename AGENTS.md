@@ -77,12 +77,6 @@ other than the rule's author confirms the planted case.
 Several producers compute `parser_version` by hashing their own source bytes:
 
 - `captures.py` (`packages/congress_api/tests/test_captures_version.py` pins `APPROVED_MAPPING`)
-- `readings.py` (`document_links.py`, `pdf_tools.py`, `qualification.py`, `html.py`)
-- the `readings` bundle version (`readings.bundle_version`): `readings.py`,
- `retention/parser_worker.py`, `retention/process_resources.py`, `compatible_versions.py`
- and `model/sql/{pinned-readings,sniff-observations,sniff-conflicts,sniff-facts,body-admissions}.sql`.
- A byte change re-stamps the bundle and orphans unreadable decisions recorded under the old one
- (`profile_completeness` then reports missing sniff/page readings).
 - `packages/congress_api/src/congress_api/lake/filenames/__init__.py` (`parser_version` hashes the `house_naming` package)
 - `meeting_records.py` and `appearance_records.py` (`house_xml`, `congress_gov`, `senate_page`, `mods`)
 
@@ -90,6 +84,13 @@ Never reformat or touch byte-hashed parser files unless intentionally changing
 extraction semantics. When a parser change is intentional, update
 `model/jobs/publish-model.json` (`parser_versions`), recompute the `model_spec`
 `sha256` and `size` in `model/jobs/publish.json`, and update any pinned test hash.
+
+Readings use declared versions in `congress_api.lake.reading_versions`.
+`doctor` and CI warn when source, dependency, tool, or policy evidence changes.
+Review the drift using a bounded sample and record the maintainer's equivalence
+decision or deliberate version bump. Keep qualified compatibility entries
+until a retained-table comparison preserves selected rows, active refusals,
+and pending work. See [reading version changes](docs/development.md#reading-version-changes).
 
 # Archive ETL & DataFusion SQL
 

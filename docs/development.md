@@ -98,6 +98,44 @@ syncs the lock, prepares the historical object and runs doctor/inventory. The
 devcontainer uses the same sync and checks. Native lane success still requires
 reviewing pytest's reported skips.
 
+## Reading version changes
+
+The lake keys reading rows by body digest, parser, and the declared version in
+`congress_api.lake.reading_versions`. The combined unreadable-decision version
+also depends on the four leaf versions and the combined worker limits.
+`html_metadata` has its own version and runs separately.
+
+`doctor` and the shared CI setup compare source, locked package, tool, and
+worker policy evidence with `model/reading-version-diagnostics.json`.
+A warning reports the result of a fixed fixture and leaves saved rows eligible.
+The import check follows static imports,
+including function-local imports, and may conservatively include shared code.
+Dynamic imports and externally supplied inputs need separate review.
+
+On drift, inspect the change and run the relevant bounded reading fixtures. For
+an original-backed comparison, fix the body keys and local copies in advance.
+Use `compatible_proof.recompute` for the combined producer or the derived
+readings pass for HTML metadata, then compare the selected rows with
+`compatible_proof.prove_unchanged`.
+Inspect both changed values and missing rows. An unchanged sample covers only
+its chosen bodies. Record the maintainer's equivalence or version bump decision
+in the change review, with the sample and any limitations. Then use
+`.venv/bin/python -m congress_api.lake.reading_version_diagnostics --snapshot`
+to print updated evidence for review and commit it with the decision.
+
+For a deliberate semantic bump, update the affected declaration and the model's
+leaf pin in `model/jobs/publish-model.json` when applicable. Refresh the model
+specification hash and size in `model/jobs/publish.json`. Qualify compatible
+rows outside an exact recompute set and reconcile the selected reading and
+unreadable inputs with the release owner before publication. Keep the existing
+sniff compatibility entry and predicate entries until retained-table
+comparisons establish that their selected rows, refusals, and pending work
+are preserved.
+
+The historical `--old-lock` attestation reconstructs a byte-derived version.
+Run it from the pre-declaration source revision that owns that proof. The
+committed compatibility entries retain their evidence and selection behavior.
+
 ## Lock migration and preserved research
 
 The root lock replaces `packages/congress_api/uv.lock` and

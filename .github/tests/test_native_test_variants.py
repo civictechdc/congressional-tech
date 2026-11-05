@@ -45,7 +45,7 @@ def test_emulation_prerequisite_budget_stays_bounded(monkeypatch, value):
 
 
 @pytest.mark.parametrize('value,expected', [(None, 15), ('60', 60)])
-def test_prerequisite_budget_changes_only_bounded_import_checks(monkeypatch, value, expected):
+def test_prerequisite_budget_also_bounds_advisory_reading_check(monkeypatch, capsys, value, expected):
     import importlib.util
     from pathlib import Path
     path = Path(__file__).resolve().parents[2] / 'scripts/dev.py'
@@ -63,6 +63,8 @@ def test_prerequisite_budget_changes_only_bounded_import_checks(monkeypatch, val
         calls.append((command, kwargs))
         if 'import pyarrow' in command[2]:
             return SimpleNamespace(stdout='25.0.1')
+        if command[-1] == 'congress_api.lake.reading_version_diagnostics':
+            return SimpleNamespace(stdout='WARNING: reading version drift\n')
         name = command[-1]
         return SimpleNamespace(stdout=str(root / config['environment']['imports'][name] / '__init__.py'))
     monkeypatch.setattr(dev, 'run', run)
@@ -70,6 +72,7 @@ def test_prerequisite_budget_changes_only_bounded_import_checks(monkeypatch, val
     config['lanes']['production-offline'].pop('required_job_config_env', None)
     dev.doctor(config, 'production-offline')
     assert calls and all(kwargs['timeout'] == expected for _, kwargs in calls)
+    assert 'WARNING: reading version drift\nDoctor passed.' in capsys.readouterr().out
 
 
 def test_native_prerequisite_skips_only_when_unconfigured_and_absent(monkeypatch):

@@ -360,7 +360,11 @@ admission path rather than adding an independent validation pipeline (`ct-kw9b`,
 daily handoff `ct-yymr`, source-scoped version work `ct-h1nd`).
 
 - It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6) with its table's exact metadata location, each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1); until the engine's export meets [[ARCHITECTURE]] §10.2 by itself (spicy-stack ss-iwqu), also the runner class and the engine's limits (threads, batch rows, batch bytes).
-- A parser or catalog version is the SHA-256 of its source files, the vocabularies it reads and its locked dependencies.
+- Readings use declared versions for row semantics. Source and locked
+  dependency fingerprints, tool versions, and worker policy are recorded
+  separately. The combined unreadable-decision version also depends on the
+  four leaf versions and combined worker limits. Other parser and catalog
+  versions continue to hash their source, vocabularies, and locked dependencies.
 - A new version is backfilled while the profile still pins the old one; the profile moves only when the new version's work list is empty. The daily run produces every pinned version for new inputs.
 
 A **registry** is a versioned list a rule depends on.

@@ -6,10 +6,6 @@ archive reader. No URL, media type, capture decision or borrowed PDF check enter
 this parser. The caller supplies immutable exact byte ranges.
 """
 
-from functools import lru_cache
-import hashlib
-from importlib.metadata import version
-import json
 from pathlib import Path
 import re
 import zlib
@@ -17,27 +13,18 @@ from zipfile import BadZipFile
 
 from lxml.html.defs import tags as HTML_TAGS
 
+from congress_api.lake.reading_versions import READING_VERSIONS
 from congress_api.parsers.document_links import response_kind
 from congress_api.retention.archive_members import ArchiveReadError, ZipLimits, inspect_office_zip
 from congress_api.retention.image_tools import image_kind
-from congress_api.retention.pdf_tools import BODY_LIMIT, PdfToolError, check_pdf, reader_versions
+from congress_api.retention.pdf_tools import BODY_LIMIT, PdfToolError, check_pdf
 
 PREFIX_BYTES = 8192
 
 
-@lru_cache(maxsize=1)
 def sniff_version():
-    """Pin the implementation and reused format/reader helpers, once per run."""
-    root = Path(__file__).parents[1]
-    digest = hashlib.sha256()
-    for name in ('retention/sniff.py', 'retention/archive_members.py',
-                 'retention/pdf_tools.py', 'retention/image_tools.py',
-                 'parsers/document_links.py'):
-        digest.update(name.encode() + b'\0' + (root / name).read_bytes())
-    digest.update(json.dumps({'readers': reader_versions(), 'lxml': version('lxml')},
-                             sort_keys=True, separators=(',', ':')).encode())
-    digest.update((Path(__file__).parents[5] / 'uv.lock').read_bytes())
-    return digest.hexdigest()
+    """Return the declared version shared with the lake planner."""
+    return READING_VERSIONS['sniff']
 
 
 class SniffRefusal(ValueError):
