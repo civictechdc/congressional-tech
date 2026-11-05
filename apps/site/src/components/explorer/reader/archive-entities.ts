@@ -279,6 +279,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       congress: n.congress != null ? Number(n.congress) : (parsedCong ? Number(parsedCong) : null),
       received_date: date(n.received_date ?? n.received), received: date(n.received ?? n.received_date),
       latest_action_date: date(n.latest_action_date), nominees: Array.isArray(n.nominees) ? n.nominees : [], committees: Array.isArray(n.committees) ? n.committees : [],
+      committee_activities: Object.hasOwn(n, 'committee_activities') ? n.committee_activities ?? null : undefined,
       transcripts, votes, floor_votes: Array.isArray(n.floor_votes) ? n.floor_votes : votes,
       meeting_keys: Array.isArray(n.meeting_keys) ? n.meeting_keys.map(String) : [], list_rows: listRows,
     };
@@ -786,16 +787,17 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     signal?.throwIfAborted();
     const clean = String(subjectKey ?? '').trim().toLowerCase();
     if (!clean) return null;
-    const [sIdx, mIdx] = await Promise.all([indexLoader(), meetingsIndex()]);
+    const sIdx = await awaitShared(indexLoader(), signal);
     const found = sIdx.byKey.get(clean);
     if (!found) return null;
+    const { data: mIdx } = await optional('meetings', meetingsIndex, signal);
     const canonical = found.subject_key.toLowerCase(), seenEvents = new Set<string>(), normMeetings: any[] = [];
-    for (const m of [...(mIdx.bySubjectKey.get(canonical) ?? []), ...(mIdx.bySubjectKey.get(clean) ?? [])]) {
+    for (const m of [...(mIdx?.bySubjectKey.get(canonical) ?? []), ...(mIdx?.bySubjectKey.get(clean) ?? [])]) {
       const ev = String(m.event_id);
       if (!seenEvents.has(ev)) { seenEvents.add(ev); normMeetings.push(m); }
     }
     for (const ev of found.meeting_keys) {
-      const m = (mIdx.byEventId.get(String(ev).toLowerCase()) ?? [])[0];
+      const m = mIdx?.byEventId.get(String(ev).toLowerCase())?.[0];
       if (m && !seenEvents.has(String(m.event_id))) { seenEvents.add(String(m.event_id)); normMeetings.push(m); }
     }
     const meetingKeys = [...new Set([...found.meeting_keys, ...normMeetings.map((m: any) => String(m.event_id))])];
@@ -809,24 +811,28 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     signal?.throwIfAborted();
     const clean = String(subjectKey ?? '').trim();
     if (!clean) return null;
-    const bill = await getBill(clean, signal);
-    if (bill) return bill;
+    const isNom = /^(?:\d+-)?pn[- ]?\d/i.test(clean);
+    if (!isNom) {
+      const bill = await getBill(clean, signal);
+      if (bill) return bill;
+    }
     const nomination = await getNomination(clean, signal);
     if (nomination) return nomination;
-    const lower = clean.toLowerCase(), docRows = rowsForColumn('measure_keys', lower), mIdx = await meetingsIndex();
+    const lower = clean.toLowerCase(), docRows = rowsForColumn('measure_keys', lower);
+    const { data: mIdx } = await optional('meetings', meetingsIndex, signal);
     const seenEvents = new Set<string>(), hearings: any[] = [];
-    for (const m of [...(mIdx.bySubjectKey.get(lower) ?? []), ...docRows.flatMap(r => mIdx.byDocRow.get(r) ?? [])]) {
+    for (const m of [...(mIdx?.bySubjectKey.get(lower) ?? []), ...docRows.flatMap(r => mIdx?.byDocRow.get(r) ?? [])]) {
       const ev = String(m.event_id);
       if (!seenEvents.has(ev)) { seenEvents.add(ev); hearings.push(m); }
     }
     if (!docRows.length && !hearings.length) return null;
-    const isNom = /^(?:\d+-)?pn-/i.test(clean), congMatch = /^(\d+)-/.exec(clean);
+    const congMatch = /^(\d+)-/.exec(clean);
     return {
       kind: isNom ? ('nomination' as const) : ('bill' as const), subject_key: clean,
       bill_id: isNom ? undefined : clean, nomination_id: isNom ? clean : undefined,
       congress: congMatch ? Number(congMatch[1]) : (docRows.length ? value('congress', docRows[0]) : null),
       title: null, status: null, committees: [...new Set(docRows.flatMap(r => value('committee_keys', r) ?? []))],
-      committee_activities: [], cbo_estimates: [], votes: [], floor_votes: [], amendments: [], amendment_count: 0,
+      cbo_estimates: [], votes: [], floor_votes: [], amendments: [], amendment_count: 0,
       related_bills: [], nominees: [], meeting_keys: hearings.map((m: any) => String(m.event_id)), hearings,
       list_rows: docRows, documents: docRows.map(row),
     };

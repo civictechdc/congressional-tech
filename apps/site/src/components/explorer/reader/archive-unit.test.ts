@@ -20,7 +20,7 @@ import {
 } from '../archive/archive-metadata.ts';
 import {rangeFile} from './range-file.ts';
 import {readFile} from 'node:fs/promises';
-import {byteCache} from './cache.ts';
+import {ArchiveReleaseChangedError,byteCache} from './cache.ts';
 
 test('a detail read requests only columns the packed list does not hold',()=>{
   assert.deepEqual(detailProjection(['link_key','saved_body','filename','title'],['filename','title','hidden']),['link_key','saved_body']);
@@ -241,4 +241,39 @@ test('default hearing, document and member views keep each current witness occur
   assert.deepEqual(keys((await reader.openDocument(0)).witnesses),['current','repeated']);
   assert.deepEqual(keys((await reader.getMember(member))?.witness_records??[]),['current','repeated']);
   assert.equal((await reader.getWitness('earlier'))?.witness_key,'earlier');
+});
+
+test('a nomination keeps its own data when optional hearings fail',async()=>{
+  const {createArchiveEntities}=await import('./archive-entities.ts');
+  const reads:string[]=[];
+  const nomination={nomination_id:'119-pn-850',citation:'PN850',committee_activities:[]};
+  const unreadable={nomination_id:'119-pn-12-10',committee_activities:undefined};
+  let loadMeetings=async ():Promise<any[]>=>{throw new Error('Hearings unavailable');};
+  const reader=createArchiveEntities({
+    count:0,files:new Map(['bills','meetings','nominations'].map(name=>[name+'.parquet',{}])),columns:new Map(),
+    row:()=>null,value:()=>null,resolve:async()=>null,entry:async()=>null,versions:async()=>[],
+    entity:async name=>{
+      reads.push(name);
+      if(name==='nominations')return [nomination,unreadable];
+      if(name==='meetings')return loadMeetings();
+      throw new Error('Bills unavailable');
+    },
+  });
+  const found=await reader.getSubject(nomination.citation);
+  assert.equal(found?.nomination_id,nomination.nomination_id);
+  assert.deepEqual(found?.committee_activities,[]);
+  assert.deepEqual(reads,['nominations','meetings']);
+  assert.equal((await reader.getSubject(unreadable.nomination_id))?.committee_activities,null);
+
+  loadMeetings=async ()=>{throw new ArchiveReleaseChangedError('Release changed');};
+  await assert.rejects(reader.getSubject(nomination.nomination_id),ArchiveReleaseChangedError);
+
+  let markStarted!:()=>void;
+  const started=new Promise<void>(resolve=>{markStarted=resolve;});
+  loadMeetings=()=>{markStarted();return new Promise(()=>{});};
+  const controller=new AbortController();
+  const pending=reader.getSubject(nomination.nomination_id,controller.signal);
+  await started;
+  controller.abort();
+  await assert.rejects(pending,{name:'AbortError'});
 });
