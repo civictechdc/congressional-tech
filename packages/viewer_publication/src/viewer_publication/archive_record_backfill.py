@@ -1,13 +1,15 @@
-"""Replay the reviewed meeting and appearance changes into importable Parquet files."""
+"""Replay reviewed record changes into importable Parquet files."""
+import gzip
 import json
 from pathlib import Path
+import re
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records, committee_records, meeting_records, playlist_records
 from congress_api.lake._record_producer import _candidate_rel_paths
-from congress_api.retention.body_store import BodyStore, LocalAdapter
+from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.provenance import file_pin
 from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
@@ -18,6 +20,8 @@ from viewer_publication.producer_proof import BACKFILL, ROOT, record
 FILE = {'path', 'size', 'sha256'}
 RECORD_TABLES = {'meeting_records', 'appearance_records'}
 CAPTURE_PRODUCERS = {'committee_records': committee_records, 'playlist_records': playlist_records}
+HOUSE_XML_RECEIPTS = 'receipts/house/meeting-xml/'
+HOUSE_XML_PATH = 'external-sources/hearing-text/docs_house_xml/meeting/'
 MEETING_PRIOR = {
     'congress_gov': 'ecc51fcdb572b426da01a9135b467bf3f9a85e91d268ff895a56e2dda5ef716e',
     'house_xml': '8a2417a2c876b2cd3f202ed92dfbc48bca580f7fa2848d6644310771484617c8',
@@ -33,7 +37,7 @@ def load_record_only(value, *, base):
         raise ValueError('Record-only backfill requires version 1, work and a local engine config')
     job = value['record_only']
     fields = {'base_model', 'bases', 'raw_root', 'raw_mirror', 'max_work_items'}
-    if not isinstance(job, dict) or not fields <= job.keys() or job.keys() - fields - {'meeting_selection', 'capture_inputs'}:
+    if not isinstance(job, dict) or not fields <= job.keys() or job.keys() - fields - {'meeting_selection', 'capture_inputs', 'retained_committee'}:
         raise ValueError('Record-only backfill requires pinned bases, raw locations and a work limit')
     if not isinstance(job['bases'], dict) or job['bases'].keys() - RECORD_TABLES:
         raise ValueError('Record-only backfill bases must name meeting_records or appearance_records')
@@ -49,7 +53,19 @@ def load_record_only(value, *, base):
     captures = job.get('capture_inputs', {})
     if not isinstance(captures, dict) or captures.keys() - CAPTURE_PRODUCERS.keys():
         raise ValueError('Record-only capture inputs must name committee_records or playlist_records')
-    if not captures and not job['bases']:
+    retained = job.get('retained_committee')
+    if 'retained_committee' in job:
+        if (not isinstance(retained, dict) or set(retained) != {'receipt_key', 'receipt', 'selection', 'base'}
+                or not isinstance(retained['receipt_key'], str) or 'committee_records' in captures):
+            raise ValueError('Retained committee input requires its receipt, selection and base without a second committee input')
+        key = retained['receipt_key']
+        validate_key(key)
+        if not key.startswith(HOUSE_XML_RECEIPTS) or not key.endswith('.jsonl.gz'):
+            raise ValueError('Retained committee receipt must be House meeting XML')
+        retained = dict(retained, **{k: local_pin(retained[k]) for k in ('receipt', 'selection', 'base')})
+        if not retained['receipt']['path'].endswith('/' + key):
+            raise ValueError('Retained committee receipt path does not match its key')
+    if not captures and not job['bases'] and retained is None:
         raise ValueError('Record-only backfill requires at least one table')
     for item in captures.values():
         if (not isinstance(item, dict) or set(item) != {'capture', 'expected_rows'}
@@ -61,6 +77,8 @@ def load_record_only(value, *, base):
         capture_inputs={name: dict(item, capture=local_pin(item['capture'])) for name,item in captures.items()})
     if 'meeting_selection' in job:
         job['meeting_selection'] = local_pin(job['meeting_selection'])
+    if retained is not None:
+        job['retained_committee'] = retained
     return dict(value, work=_local(value['work'], base), engine_config=_local(value['engine_config'], base), record_only=job)
 
 
@@ -171,6 +189,70 @@ def _from_captures(name, capture, expected, *, engine, work, raw_root, mirror, u
     return table, dict(reused_rows=0, appended=table.num_rows)
 
 
+def _retained_committee_selection(selection, receipt, limit):
+    targets = json.loads(selection.read_text())
+    if not isinstance(targets, list) or not 0 < len(targets) <= limit:
+        raise ValueError('Retained committee selection exceeds its work limit or is empty')
+    by_line = {}
+    events = {}
+    event_ids = set()
+    for item in targets:
+        if not isinstance(item, dict) or set(item) != {'receipt_line', 'event_id', 'original_path', 'record_sha'}:
+            raise ValueError('Retained committee selection requires receipt line, event, path and digest')
+        line, event, digest = item['receipt_line'], item['event_id'], item['record_sha']
+        if (type(line) is not int or line <= 0 or line in by_line
+                or not isinstance(event, str) or not re.fullmatch(r'[0-9]+', event) or event in event_ids
+                or not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest) or digest in events
+                or item['original_path'] != f'{HOUSE_XML_PATH}{event}.xml'):
+            raise ValueError('Invalid retained committee line, event, path or digest')
+        by_line[line] = item
+        events[digest] = event
+        event_ids.add(event)
+
+    with gzip.open(receipt, 'rb') as stream:
+        for number, raw in enumerate(stream, 1):
+            if number not in by_line:
+                continue
+            target = by_line.pop(number)
+            line = json.loads(raw)
+            path, digest = target['original_path'], target['record_sha']
+            reference = dict(status='verified', reference_kind='retained-file', fidelity='retained-file',
+                resolution='digest_verified', family='house/meeting-xml', original_path=path, source_file=path,
+                sha256=digest, source_sha256=digest, body_key=f'bodies/sha256/{digest[:2]}/{digest}.gz')
+            refs = line.get('file_references') if isinstance(line, dict) else None
+            if (not isinstance(line, dict) or line.get('captures') != [] or line.get('source_file') != path
+                    or line.get('record') != {'original_path': path}
+                    or not isinstance(refs, list) or len(refs) != 1
+                    or not isinstance(refs[0], dict) or any(refs[0].get(k) != v for k,v in reference.items())):
+                raise ValueError(f'Retained committee receipt line {number} does not verify its selected file')
+            if not by_line:
+                break
+    if by_line:
+        raise ValueError('Retained committee selection names missing receipt lines')
+    return events
+
+
+def _from_retained_committee(item, model, directory, **stage):
+    name = 'committee_records'
+    versions = committee_records.current_versions()
+    if model['parser_versions'].get(name) != versions:
+        raise ValueError('Retained committee input requires the current committee parser pin')
+    events = _retained_committee_selection(_verified(item['selection']), _verified(item['receipt']), stage['limit'])
+    base = pq.read_table(_verified(item['base']), columns=['record_sha','source','parser_version'])
+    expected = {(bytes.fromhex(sha), committee_records.SOURCE) for sha in events}
+    if any(_key(row) in expected and row['parser_version'] == versions[committee_records.SOURCE] for row in base.to_pylist()):
+        raise ValueError('Retained committee selection overlaps existing current producer rows')
+    selection = directory/'selection.parquet'
+    pq.write_table(pa.Table.from_pylist(
+        [dict(record_sha=sha, source=committee_records.SOURCE, stored_suffix='.gz') for sha in events],
+        schema=SELECTION_SCHEMA), selection)
+    table = _replay(name, selection, expected, versions, **stage)
+    if any(row['event_id'] != events[row['record_sha'].hex()] or not row['records'] for row in table.to_pylist()):
+        raise ValueError('Retained committee body does not contain records for its selected event')
+    return table, dict(reused_rows=0, appended=table.num_rows, existing_rows_checked=base.num_rows,
+        delta_only=True, final_reconciliation_required=True)
+
+
 def execute_record_only(spec, *, runtime_factory=None):
     writer = writer_identity(ROOT, BACKFILL)
     job = spec['record_only']
@@ -178,6 +260,7 @@ def execute_record_only(spec, *, runtime_factory=None):
     model = json.loads(model_path.read_text())
     bases = {name: _verified(pin) for name, pin in job['bases'].items()}
     captures = {name: _verified(item['capture']) for name,item in job['capture_inputs'].items()}
+    retained = job.get('retained_committee')
     selection = _verified(job['meeting_selection']) if 'meeting_selection' in job else None
     unreadable = [dict(key=item['key'], path=str(_verified(dict(path=_local(item['path'], model_path.parent),
         sha256=item['sha256'], size=item['size'])))) for item in model['unreadable_files']]
@@ -192,7 +275,7 @@ def execute_record_only(spec, *, runtime_factory=None):
         engine.verify_runtime()
         if engine.remote is not None:
             raise ValueError('Record-only backfill requires the local engine and held sources')
-        for name in (*bases, *captures):
+        for name in (*bases, *captures, *(('committee_records',) if retained is not None else ())):
             directory = work / name
             directory.mkdir()
             stage = dict(engine=engine, work=directory/'replay', raw_root=Path(job['raw_root']),
@@ -201,6 +284,9 @@ def execute_record_only(spec, *, runtime_factory=None):
                 item = job['capture_inputs'][name]
                 rows, counts = _from_captures(name, captures[name], item['expected_rows'], **stage)
                 lineage = dict(source=item['capture'], scope='selected captures')
+            elif name == 'committee_records':
+                rows, counts = _from_retained_committee(retained, model, directory, **stage)
+                lineage = dict(source=retained, scope='selected retained House meeting XML')
             else:
                 base = pq.read_table(bases[name])
                 versions = model['parser_versions'][name]
