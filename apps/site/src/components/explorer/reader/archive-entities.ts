@@ -745,7 +745,8 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const clean = String(bioguideId ?? '').trim().toLowerCase();
     if (!clean) return null;
     const [memIdx, rostIdx, wIdx, mIdx, bIdx, commIdx] = await Promise.all([membersIndex(), rostersIndex(), witnessesIndex(), meetingsIndex(), billsIndex(), committeesIndex()]);
-    const found = memIdx.byBioguide.get(clean), rawRosterEntries = rostIdx.byBioguide.get(clean) ?? [], witnessRecords = wIdx.byBioguide.get(clean) ?? [], sponsoredBills = bIdx.bySponsor.get(clean) ?? [], colRows = rowsForColumn('bioguide_ids', clean);
+    const witnessRecords = (wIdx.byBioguide.get(clean) ?? []).filter(w => w.superseded_by == null);
+    const found = memIdx.byBioguide.get(clean), rawRosterEntries = rostIdx.byBioguide.get(clean) ?? [], sponsoredBills = bIdx.bySponsor.get(clean) ?? [], colRows = rowsForColumn('bioguide_ids', clean);
     if (!found && !rawRosterEntries.length && !witnessRecords.length && !colRows.length && !sponsoredBills.length) return null;
     const rosterEntries = rawRosterEntries.map((r: any) => {
       const c = commIdx.byCode.get(r.committee_key) ?? commIdx.byCode.get(`${r.committee_key}00`);
@@ -933,7 +934,18 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     for (const n of nIdx?.byDocRow.get(index) ?? []) addSubject(n);
 
     const seenWitnesses = new Set<string>(), docWitnesses: any[] = [];
-    const addWitness = (w: any) => { if (w && !seenWitnesses.has(String(w.witness_key).toLowerCase())) { seenWitnesses.add(String(w.witness_key).toLowerCase()); docWitnesses.push(w); } };
+    const addWitness = (w: any) => {
+      const visited = new Set<string>();
+      while (w?.superseded_by != null) {
+        const successor = String(w.superseded_by).toLowerCase();
+        if (visited.has(successor)) return;
+        visited.add(successor);
+        w = wIdx?.byKey.get(successor);
+      }
+      if (!w) return;
+      const key = String(w.witness_key).toLowerCase();
+      if (!seenWitnesses.has(key)) { seenWitnesses.add(key); docWitnesses.push(w); }
+    };
     for (const wk of doc.witness_keys ?? []) addWitness(wIdx?.byKey.get(String(wk).toLowerCase()));
     for (const w of wIdx?.byDocRow.get(index) ?? []) addWitness(w);
 

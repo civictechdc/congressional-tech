@@ -118,7 +118,7 @@ export function ArchiveDetail({
   }
   const allMeasures=[...subjectMap.values()];
 
-  const witnessItems:any[]=witnesses.length
+  const witnessItems:any[]=witnesses.length||relationStates.witnesses==='ready'
     ?witnesses
     :(document.witness_keys??[]).map((wk:string)=>({witness_key:wk,name:wk}));
   const memberItems:any[]=members.length
