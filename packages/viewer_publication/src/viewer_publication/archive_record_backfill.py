@@ -146,7 +146,7 @@ def _appearances(base, versions, *, directory, **stage):
     new = {_versioned_key(row) for row in replay.select(['record_sha', 'source', 'parser_version']).to_pylist()}
     if history & new:
         raise ValueError('Record-only replay overlaps an already retained appearance version')
-    output = pa.concat_tables([base, replay], promote_options='default').sort_by(['record_sha', 'source', 'parser_version'])
+    output = pa.concat_tables([base, replay], promote_options='default').sort_by([('record_sha', 'ascending'), ('source', 'ascending'), ('parser_version', 'ascending')])
     return output, dict(reused_rows=base.num_rows, appended=replay.num_rows)
 
 
