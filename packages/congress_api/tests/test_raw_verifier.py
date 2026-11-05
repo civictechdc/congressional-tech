@@ -272,3 +272,24 @@ def test_d1_captures_schema_with_stored_suffix_and_binary_digests(tmp_path):
                   engine=engine(),work=tmp_path/'d1-job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
     assert result['valid'] and result['listed']==2 and result['missing']==0 and result['orphans']==0
     assert result['mismatches']==0
+
+
+def test_d1_digest_evidence_preserves_repeated_captures_at_distinct_indexes(tmp_path):
+    from congress_api.retention.raw_verifier import D1_CAPTURE_SCHEMA
+
+    body=b'one object captured twice on the same receipt line'
+    body_key=key(body,'')
+    digest=hashlib.sha256(body)
+    captures,receipts,previous=inputs(tmp_path,[],receipts=[dict(captures=[
+        dict(body_key=body_key,stored_bytes=len(body),stored_sha256=digest.hexdigest())])])
+    pq.write_table(pa.Table.from_pylist([
+        dict(sha256=digest.digest(),stored_suffix='',stored_bytes=len(body),stored_md5=hashlib.md5(body).digest(),
+             receipt_key=receipts[0]['key'],receipt_line=1,capture_index=index)
+        for index in (0,1)
+    ],schema=D1_CAPTURE_SCHEMA),captures)
+    work=tmp_path/'job'
+    result=verify(Store({body_key:(body,None)}),captures=captures,receipts=receipts,previous=previous,
+        engine=engine(),work=work,checked_at='2026-10-27T00:00:00Z',seed='same-line')
+    assert result['valid'] and result['digest_repairs']==2
+    for file in ('digest-evidence','digest-repairs'):
+        assert pq.read_table(work/(file+'.parquet'))['capture_index'].to_pylist()==[0,1]
