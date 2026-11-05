@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import CapitolArt from '../components/CapitolArt.astro';
 import CopyCommand from '../components/CopyCommand.astro';
 import { withBase } from '../lib/paths';
-import { release, repository, remoteMcp, releaseUrl, pypiUrl, desktopBundle, pluginBundle, webPluginBundle, codexSetup, claudeSetup, skillSetup, install, agentInstructions } from '../lib/mcp-setup';
+import { release, repository, remoteMcp, releaseUrl, pypiUrl, desktopBundle, pluginBundle, webPluginBundle, codexSetup, claudeSetup, skillSetup, install, agentInstructions, setupDocs } from '../lib/mcp-setup';
 
 const instructionsHref = withBase('/mcp/agent.md');
 const exploreLink = `codex://new?prompt=${encodeURIComponent('[@Congress Explorer](plugin://congress-explorer@congressional-tech) Find hearings about artificial intelligence and list their witnesses and organizations.')}`;
@@ -19,7 +19,7 @@ const prompts = [
   'Find recordings and saved transcripts for a committee meeting I choose.',
 ];
 ---
-<Base title="Congress Explorer MCP — Use with AI" active="mcp" description="Ask your AI assistant about congressional hearings, witnesses, bills, members and related documents. Connect through ChatGPT in your browser or install Congress Explorer in your desktop app.">
+<Base title="Congress Explorer MCP — Use with AI" active="mcp" description="Ask your AI assistant about congressional hearings, witnesses, bills, members and related documents. Set up Claude or Codex on desktop, or Claude or ChatGPT in your browser.">
   <link slot="head" rel="alternate" type="text/markdown" title="Instructions for AI assistants" href={instructionsHref} />
   <section class="mcp-hero anchor-dark">
     <div class="mcp-art" aria-hidden="true"><CapitolArt /></div>
@@ -28,10 +28,22 @@ const prompts = [
       <h1>Congress Explorer <span>MCP</span></h1>
       <p class="mcp-lead">Congressional data.<br />Your questions. Your assistant.</p>
       <p class="mcp-intro">Find hearings, witnesses, bills, members, recordings, and related documents through your AI assistant.</p>
-      <div class="mcp-actions">
-        <a class="btn btn--gold" href="#web-plugin-heading">Connect in ChatGPT web</a>
-        <a class="btn btn--gold" href={desktopBundle}>Download for Claude Desktop</a>
-      </div>
+      <nav class="setup-choices" aria-label="Choose your setup">
+        <div>
+          <h2>Desktop apps</h2>
+          <div class="mcp-actions">
+            <a class="btn btn--gold" href="#claude-desktop">Claude desktop</a>
+            <a class="btn btn--gold" href="#codex-desktop">Codex desktop</a>
+          </div>
+        </div>
+        <div>
+          <h2>Web browsers</h2>
+          <div class="mcp-actions">
+            <a class="btn btn--gold" href="#claude-web">Claude web</a>
+            <a class="btn btn--gold" href="#chatgpt-web">ChatGPT web</a>
+          </div>
+        </div>
+      </nav>
       <p class="mcp-platforms">Version {release.version} · Free &amp; open source · Use in your browser or on macOS and Linux</p>
     </div>
   </section>
@@ -42,40 +54,68 @@ const prompts = [
         <p class="eyebrow">Quick setup</p>
         <h2>Choose your<br />AI assistant.</h2>
         <p>Connect Congress Explorer using the steps for your app, then ask a question in your own words.</p>
-        <p class="mcp-note">Browser setup needs no downloads. Desktop setup is available for macOS and Linux. On Windows, use ChatGPT in your browser.</p>
+        <p class="mcp-note">Browser setup needs no downloads. Desktop setup is available for macOS and Linux. On Windows, choose one of the web options.</p>
         <p>Want help setting up? Give these instructions to your AI assistant.</p>
         <CopyCommand command={agentInstructions} label="Copy for my AI assistant" instructionsHref={instructionsHref} />
         <a href="#setup">Other apps &amp; manual setup ↓</a>
+        <p class="mcp-note setup-reviewed">Instructions checked against the official guides on <time datetime="2026-11-05">November 5, 2026</time>.</p>
       </div>
       <div class="mcp-steps">
-        <section class="mcp-step" aria-labelledby="web-plugin-heading">
-          <h3 id="web-plugin-heading">ChatGPT web</h3>
-          <p>Open <a href="https://chatgpt.com/plugins">ChatGPT Plugins</a> and choose <strong>Add custom MCP server</strong>. Paste this address and select <strong>No authentication</strong>:</p>
-          <CopyCommand command={remoteMcp} label="Copy Congress Explorer address" />
-          <p>Name it <strong>Congress Explorer Web</strong>, create and install the plugin, then select it in a conversation. The first connection may take a moment.</p>
-          <p class="mcp-note">Congress Explorer Web works online. To run it on your computer, follow the desktop instructions below. <a href="https://developers.openai.com/plugins/deploy/connect-chatgpt">ChatGPT connection guide ↗</a></p>
+        <section class="setup-group" aria-labelledby="desktop-heading">
+          <h2 id="desktop-heading">Desktop apps</h2>
+          <p class="mcp-note">Install Congress Explorer on your computer. These downloads support macOS and Linux.</p>
+          <section class="mcp-step" id="claude-extension-heading" aria-labelledby="claude-desktop">
+            <h3 id="claude-desktop" tabindex="-1">Claude desktop</h3>
+            <ol class="setup-list">
+              <li>Download the Congress Explorer extension below.</li>
+              <li>In Claude Desktop, open <strong>Settings → Desktop app</strong> and select <strong>Manage</strong> next to <strong>Extensions</strong>.</li>
+              <li>Open <strong>Advanced settings → Install Extension…</strong>, select the downloaded file, and follow the installation prompts.</li>
+              <li>Start a chat. Open <strong>+ → Connectors</strong> to check that Congress Explorer is available, then ask a question.</li>
+            </ol>
+            <a class="btn btn--gold" href={desktopBundle}>Download Claude Desktop extension</a>
+            <p class="mcp-note">Use the latest Claude Desktop. In older layouts, look for <strong>Settings → Extensions</strong>. <a href={setupDocs.claudeDesktop}>Official Claude desktop guide ↗</a></p>
+          </section>
+          <section class="mcp-step" id="openai-plugin-heading" aria-labelledby="codex-desktop">
+            <h3 id="codex-desktop" tabindex="-1">Codex desktop</h3>
+            <ol class="setup-list">
+              <li>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and the <a href="https://developers.openai.com/codex/cli/">Codex command-line app</a>. These handle the one-time setup.</li>
+              <li>Paste these commands into a terminal:
+                <CopyCommand command={codexSetup} label="Copy Codex desktop setup commands" />
+              </li>
+              <li>Open Codex in the ChatGPT desktop app and start a new local conversation.</li>
+              <li>Type <strong>@</strong>, select <strong>Congress Explorer</strong>, and ask a question.</li>
+            </ol>
+            <a class="btn btn--gold" href={exploreLink}>Open a question in Codex</a>
+            <p class="mcp-note">The commands install Congress Explorer from our GitHub project. The button prepares a question for you to review and send. <a href={setupDocs.codex}>Official Codex plugin guide ↗</a> · <a href={setupDocs.codexMarketplace}>Setup command reference ↗</a></p>
+          </section>
         </section>
-        <section class="mcp-step" aria-labelledby="claude-extension-heading">
-          <h3 id="claude-extension-heading">Claude Desktop chat</h3>
-          <p>Use the latest version of Claude Desktop. Download the extension below, open it with Claude Desktop, and click <strong>Install</strong>. Claude handles the rest of the software setup.</p>
-          <a class="btn btn--gold" href={desktopBundle}>Download Claude Desktop extension</a>
-          <p class="mcp-note">If opening the file does not show an installer, go to Settings → Desktop app → Extensions → Advanced settings → Install Extension.</p>
-        </section>
-        <section class="mcp-step" aria-labelledby="claude-plugin-heading">
-          <h3 id="claude-plugin-heading">Claude Code &amp; Cowork</h3>
-          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, a tool that manages the software Congress Explorer needs. Then paste this command into a terminal using a current version of Claude Code:</p>
-          <CopyCommand command={claudeSetup} label="Copy Claude plugin install command" />
-          <p>In Cowork desktop, open Customize → Plugins and upload the plugin ZIP. Start a local task, then run <code>/congress-explorer:explore-congress</code>.</p>
-          <a class="btn btn--gold" href={pluginBundle}>Download plugin ZIP</a>
-          <p class="mcp-note">For conversations in Claude Desktop chat, use the extension above.</p>
-        </section>
-        <section class="mcp-step" aria-labelledby="openai-plugin-heading">
-          <h3 id="openai-plugin-heading">ChatGPT &amp; Codex desktop</h3>
-          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and the <a href="https://developers.openai.com/codex/cli/">Codex command-line app</a>, then paste these commands into a terminal:</p>
-          <CopyCommand command={codexSetup} label="Copy ChatGPT and Codex plugin setup commands" />
-          <p>Open the desktop app and start a local conversation. The button below prepares a question with Congress Explorer selected; review it and send when ready.</p>
-          <a class="btn btn--gold" href={exploreLink}>Explore Congress in Codex</a>
-          <p class="mcp-note">These commands install Congress Explorer from our project on GitHub. Select a local conversation to use it on your computer.</p>
+        <section class="setup-group" aria-labelledby="web-heading">
+          <h2 id="web-heading">Web browsers</h2>
+          <p class="mcp-note">Connect online without installing software on your computer. The first connection may take a moment.</p>
+          <section class="mcp-step" aria-labelledby="claude-web">
+            <h3 id="claude-web" tabindex="-1">Claude web</h3>
+            <ol class="setup-list">
+              <li>In <a href="https://claude.ai/">Claude</a>, open <strong>Customize → Connectors</strong>. Choose <strong>Add → Custom → Web</strong>, or <strong>Add custom connector</strong> if that is the option shown.</li>
+              <li>Name it <strong>Congress Explorer</strong>. Paste this address and select <strong>Continue</strong>:
+                <CopyCommand command={remoteMcp} label="Copy address for Claude web" />
+              </li>
+              <li>Continue through the settings, choosing <strong>No sign in</strong> under Authentication. You do not need an API key. Select <strong>Add</strong> to finish.</li>
+              <li>Start a chat, open <strong>+ → Connectors</strong>, and turn on Congress Explorer.</li>
+            </ol>
+            <p class="mcp-note">For a work account, an organization owner may need to add the connector first. <a href={setupDocs.claudeWeb}>Official Claude custom connector guide ↗</a> · <a href={setupDocs.claudeConnectors}>Connector menu guide ↗</a></p>
+          </section>
+          <section class="mcp-step" id="web-plugin-heading" aria-labelledby="chatgpt-web">
+            <h3 id="chatgpt-web" tabindex="-1">ChatGPT web</h3>
+            <ol class="setup-list">
+              <li>Open <a href="https://chatgpt.com/plugins">ChatGPT Plugins</a>. Select <strong>+ → Add custom MCP server</strong>.</li>
+              <li>Name it <strong>Congress Explorer Web</strong>. Under Connection, paste this server address:
+                <CopyCommand command={remoteMcp} label="Copy address for ChatGPT web" />
+              </li>
+              <li>Choose <strong>No authentication</strong>. Review and acknowledge the warning, then select <strong>Create as a plugin</strong>.</li>
+              <li>Review the available tools and install the plugin. Start a new conversation, type <strong>@</strong>, and select <strong>Congress Explorer Web</strong>.</li>
+            </ol>
+            <p class="mcp-note">If the option is unavailable, check your account or workspace permissions. <a href={setupDocs.chatgpt}>Official ChatGPT setup guide ↗</a></p>
+          </section>
         </section>
       </div>
     </div>
@@ -94,6 +134,14 @@ const prompts = [
         <a href={releaseUrl}>Release {release.version} &amp; source code ↗</a>
       </aside>
       <div class="mcp-steps">
+        <section class="mcp-step" aria-labelledby="claude-plugin-heading">
+          <h3 id="claude-plugin-heading">Claude Code &amp; Cowork</h3>
+          <p>For Claude Code, install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, then paste this command into a terminal:</p>
+          <CopyCommand command={claudeSetup} label="Copy Claude plugin install command" />
+          <p>In Cowork desktop, open Customize → Plugins and upload the plugin ZIP. Start a local task, then run <code>/congress-explorer:explore-congress</code>.</p>
+          <a class="btn btn--gold" href={pluginBundle}>Download plugin ZIP</a>
+          <p class="mcp-note">For Claude Desktop chat, follow the <a href="#claude-desktop">Claude desktop instructions</a>.</p>
+        </section>
         <section class="mcp-step" aria-labelledby="install-heading">
           <p class="step-number">01 / Install</p>
           <h3 id="install-heading">Install Congress Explorer</h3>
@@ -153,9 +201,9 @@ const prompts = [
       <div class="mcp-details">
         <details open><summary>What can I explore?</summary><p>Hearings, witnesses, bills, nominations, members, committees, recordings, and related documents. Coverage varies by source and time period. Some records are missing, so an empty search does not mean an event never happened.</p></details>
         <details><summary>Can it read documents?</summary><p>Yes. Ask your assistant to find a document, then read or search its text. Some scanned documents contain only page images, so their text may be unavailable. You can search document details and the text of individual documents. Searching the text of every document at once is not supported.</p></details>
-        <details><summary>How do I get newer data?</summary><p>For ChatGPT in your browser, we manage the data updates. On desktop, ask your assistant to help refresh your downloaded records using the <a href={instructionsHref}>setup instructions</a>. To update the Congress Explorer software itself, install the latest version linked on this page and restart your app.</p></details>
+        <details><summary>How do I get newer data?</summary><p>For either web connection, we manage the data updates. With a desktop installation, ask your assistant to help refresh your downloaded records using the <a href={instructionsHref}>setup instructions</a>. To update the Congress Explorer software itself, install the latest version linked on this page and restart your app.</p></details>
         <details><summary>What leaves my computer?</summary><p>Browser connections send your searches to our service, hosted by Cloudflare. Desktop installations search a copy of the records on your computer. In either case, your AI app may share your questions and results with its AI provider. Reading documents requires an internet connection.</p></details>
-        <details><summary>Need help connecting?</summary><p>For ChatGPT in your browser, check that you copied the full address above and selected <strong>No authentication</strong>. If the connection fails, wait a moment and try again. For help with desktop setup, use <strong>Copy for my AI assistant</strong> above and paste the instructions into a conversation. You can also <a href={`${repository}/issues`}>report a problem</a>; include your app's name and the error message you see.</p></details>
+        <details><summary>Need help connecting?</summary><p>For a web connection, check that you copied the full address. Choose <strong>No sign in</strong> in Claude or <strong>No authentication</strong> in ChatGPT. If the connection fails, wait a moment and try again. For help with desktop setup, use <strong>Copy for my AI assistant</strong> above and paste the instructions into a conversation. You can also <a href={`${repository}/issues`}>report a problem</a>; include your app's name and the error message you see.</p></details>
         <p class="mcp-more"><a href={`${repository}/tree/main/apps/explorer_mcp`}>Technical documentation ↗</a><a href={withBase('/archive/')}>Browse the data on the web →</a></p>
       </div>
     </div>
@@ -184,6 +232,16 @@ const prompts = [
   .mcp-intro { max-width: 440px; color: var(--ctdc-on-dark); font-size: 1.13rem; margin-bottom: 1.5rem; }
   .mcp-platforms { font-size: .9rem; margin-top: 1rem; color: var(--ctdc-on-dark); }
   .mcp-actions { display: flex; flex-wrap: wrap; gap: .8rem; }
+  .setup-choices { display: grid; grid-template-columns: repeat(2, max-content); gap: 1.3rem 2rem; margin-top: 1.5rem; }
+  .setup-choices h2 { font-size: 1rem; margin-bottom: .6rem; color: var(--ctdc-on-dark); }
+  .setup-choices .btn { touch-action: manipulation; }
+  .setup-reviewed { margin-top: 1.5rem; }
+  .setup-group + .setup-group { margin-top: 3rem; }
+  .setup-group > .mcp-note { margin-bottom: 1.8rem; }
+  .setup-list { padding-left: 1.3rem; margin: 1rem 0; }
+  .setup-list > li { padding-left: .25rem; margin-bottom: .85rem; }
+  .setup-list .copy-command { margin-top: .5rem; }
+  .mcp-step, .mcp-step h3, .setup-group h2, #setup { scroll-margin-top: 9rem; }
   .mcp-layout { display: grid; grid-template-columns: 1fr 1.75fr; gap: clamp(2rem, 6vw, 6rem); }
   .mcp-layout h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); margin-bottom: 1rem; }
   .mcp-orientation { position: sticky; top: 2rem; align-self: start; }
@@ -212,6 +270,7 @@ const prompts = [
   .mcp-more { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
   @keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
   @media (prefers-reduced-motion: no-preference) { .mcp-hero-content { animation: arrive .5s ease-out; } }
-  @media (prefers-reduced-motion: reduce) { .client-guide { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .client-guide { animation: none; } :global(html) { scroll-behavior: auto; } }
+  @media (max-width: 1000px) { .setup-choices { grid-template-columns: 1fr; } }
   @media (max-width: 760px) { .mcp-layout { grid-template-columns: 1fr; gap: 2rem; } .mcp-orientation { position: static; } .mcp-hero-content { padding-top: 2.5rem; padding-bottom: 2rem; } .mcp-art { width: 110vw; right: -45%; opacity: .18; } }
 </style>
