@@ -1587,7 +1587,9 @@ def _resolved_meetings(tmp_path, records, pins=(), conflicts=()):
         steps=[dict(name='captures', sql=captures), selected_record_step('meeting_records', 'meeting_records_input'), *meeting_steps()],
         queries=[dict(name='rows', sql=f"""SELECT event_id,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,
             sittings[1]['start'] AS s_start,sittings[1]['end'] AS s_end,sittings[1]['place'] AS place,sittings[1]['room'] AS room,
-            coalesce(array_length(sittings),0) AS sitting_count,status,not_held FROM meetings_resolved ORDER BY event_id""")])
+            coalesce(array_length(sittings),0) AS sitting_count,status,not_held,
+            coalesce(array_length(videos),0) AS video_count,videos[1]['url'] AS video_url,
+            array_to_string(transcript_jackets,' ') AS jackets FROM meetings_resolved ORDER BY event_id""")])
     return result['rows']
 
 
@@ -1634,6 +1636,36 @@ def test_explicit_empty_house_sittings_never_fall_back(tmp_path, state):
     rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', states=dict(sittings=state)),
         _record('22', 'congress_gov', sittings=[CONGRESS_SITTING])])
     assert rows[0]['sitting_count'] == 0
+
+
+STAMP = '2024-05-17T15:48:16Z'
+STATED_VIDEO = dict(url='https://www.youtube.com/watch?v=fczBew_ooZ8', title='Hearing')
+
+
+@pytest.mark.parametrize('omitting,stating', [('11', '22'), ('22', '11')])
+def test_a_record_omitting_a_collection_under_the_same_updated_keeps_the_stated_one(tmp_path, omitting, stating):
+    """ct-5kk7: event 102827 was re-served with its updateDate unchanged and no videos key, and won the tie."""
+    rows = _resolved_meetings(tmp_path, [
+        _record(omitting, 'congress_gov', updated=STAMP, states=dict(videos='absent', transcript_jackets='present'),
+            transcript_jackets=[94939]),
+        _record(stating, 'congress_gov', updated=STAMP, states=dict(videos='present', transcript_jackets='absent'),
+            videos=[STATED_VIDEO])])
+    assert (rows[0]['video_count'], rows[0]['video_url'], rows[0]['jackets']) == (1, STATED_VIDEO['url'], '94939')
+
+
+def test_a_later_updated_that_omits_videos_removes_them(tmp_path):
+    rows = _resolved_meetings(tmp_path, [
+        _record('11', 'congress_gov', updated=STAMP, states=dict(videos='present'), videos=[STATED_VIDEO]),
+        _record('22', 'congress_gov', updated='2024-06-01T00:00:00Z', states=dict(videos='absent'))])
+    assert rows[0]['video_count'] == 0
+
+
+@pytest.mark.parametrize('state', ['empty', 'unrecognized'])
+def test_explicit_empty_videos_under_the_same_updated_never_fall_back(tmp_path, state):
+    rows = _resolved_meetings(tmp_path, [
+        _record('11', 'congress_gov', updated=STAMP, states=dict(videos=state)),
+        _record('22', 'congress_gov', updated=STAMP, states=dict(videos='present'), videos=[STATED_VIDEO])])
+    assert rows[0]['video_count'] == 0
 
 
 def test_congress_is_only_what_a_record_states(tmp_path):

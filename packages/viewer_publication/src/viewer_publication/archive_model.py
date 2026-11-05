@@ -675,7 +675,7 @@ def selected_record_step(table,record_input,*,root=ROOT):
 
 def meeting_steps(*,root=ROOT):
     """Select once, merge once, then resolve: CTEs are inlined per reader, so these must be steps."""
-    return _sql_steps(['meeting-records-current','meeting-records-merged'],root=root)+[
+    return _sql_steps(['meeting-records-ranked','meeting-records-current','meeting-records-merged'],root=root)+[
         dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
 
 
