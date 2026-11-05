@@ -83,7 +83,7 @@ Several producers compute `parser_version` by hashing their own source bytes:
  and `model/sql/{pinned-readings,sniff-observations,sniff-conflicts,sniff-facts,body-admissions}.sql`.
  A byte change re-stamps the bundle and orphans unreadable decisions recorded under the old one
  (`profile_completeness` then reports missing sniff/page readings).
-- `filename_readings.py` (`document_cover.py`)
+- `packages/congress_api/src/congress_api/lake/filenames/__init__.py` (`parser_version` hashes the `house_naming` package)
 - `meeting_records.py` and `appearance_records.py` (`house_xml`, `congress_gov`, `senate_page`, `mods`)
 
 Never reformat or touch byte-hashed parser files unless intentionally changing

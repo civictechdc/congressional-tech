@@ -379,6 +379,10 @@ vite.config.ts.timestamp-*
 !apps/site/src/lib/
 .playwright-mcp/
 .playwright-cli/
+
+# OpenCode local config (machine-specific absolute paths written by `opencode mcp add`)
+/opencode.json
+/opencode.jsonc
 apps/site/public/data/explorer/
 docs/youtube-coverage/research/scripts/as_run/cache/
 docs/youtube-coverage/research/scripts/as_run/.ratelimit.*
