@@ -8,10 +8,12 @@ from functools import lru_cache
 from importlib.metadata import version
 from pathlib import Path
 import selectors
+import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
 import time
+import tomllib
 
 
 class PdfToolError(ValueError):
@@ -94,17 +96,41 @@ def _run(command, *, output_limit=OUTPUT_LIMIT, timeout=TIMEOUT, memory_limit=No
         process.stderr.close()
 
 
+def _version_line(executable):
+    try:
+        stdout, stderr = _run([executable, '-v'], output_limit=65536)
+        return (stdout + stderr).decode('utf-8', errors='replace').splitlines()[0]
+    except (PdfToolError, IndexError):
+        return 'unavailable'
+
+
 @lru_cache(maxsize=1)
 def reader_versions():
-    """Include external reader identity in new readings; old readings stay valid."""
-    result = {'pypdf': version('pypdf')}
-    for tool in ('pdfinfo', 'pdftotext'):
-        try:
-            stdout, stderr = _run([tool, '-v'], output_limit=65536)
-            result[tool] = (stdout + stderr).decode('utf-8', errors='replace').splitlines()[0]
-        except (PdfToolError, IndexError):
-            result[tool] = 'unavailable'
-    return result
+    """Report installed reader versions for diagnostics."""
+    return {'pypdf': version('pypdf'), 'pdfinfo': _version_line('pdfinfo'),
+            'pdftotext': _version_line('pdftotext')}
+
+
+@lru_cache(maxsize=1)
+def _pdfinfo_pin():
+    config = Path(__file__).resolve().parents[5] / 'test-suites.toml'
+    try:
+        environment = tomllib.loads(config.read_text())['environment']
+        return environment['native']['pdfinfo']['first_line'].format(
+            poppler=environment['poppler']['version'])
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise PdfToolError('PDF reader pin unavailable') from exc
+
+
+def require_pinned_pdfinfo():
+    """Qualify the executable the raw-file sniffer will use."""
+    executable = shutil.which('pdfinfo')
+    if executable is None:
+        raise PdfToolError('PDF reader unavailable')
+    executable = str(Path(executable).absolute())
+    if _version_line(executable) != _pdfinfo_pin():
+        raise PdfToolError('PDF reader does not match the configured pin')
+    return executable
 
 
 def _read(data, tool, args):
@@ -127,7 +153,7 @@ def readable_pdf(data):
     return pages is not None
 
 
-def check_pdf(data):
+def check_pdf(data, *, executable='pdfinfo'):
     """Check a bounded PDF; infrastructure and resource failures stay errors.
 
     The file reader supplies the shared CPU, RSS, time and output bounds. A
@@ -140,7 +166,7 @@ def check_pdf(data):
         path = Path(directory) / 'source.pdf'
         path.write_bytes(data)
         try:
-            info = _read_file(path, 'pdfinfo', [])
+            info = _read_file(path, executable, [])
         except PdfToolRejectedError:
             return False
     return re.search(rb'^Pages:\s+([1-9][0-9]*)\s*$', info, re.M) is not None
@@ -196,7 +222,7 @@ if __name__ == '__main__':
     # Avoid preexec_fn, which is unsafe when metadata workers have threads.
     import os
     import resource
-    if len(sys.argv) < 3 or sys.argv[1] not in ('pdfinfo', 'pdftotext'):
+    if len(sys.argv) < 3 or Path(sys.argv[1]).name not in ('pdfinfo', 'pdftotext'):
         raise SystemExit('Expected a supported PDF reader and arguments')
     resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
     if sys.platform == 'linux':

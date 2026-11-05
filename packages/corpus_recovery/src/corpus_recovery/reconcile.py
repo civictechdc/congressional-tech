@@ -16,7 +16,6 @@ from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
 from congress_api.retention.provenance import (
     file_pin,finish_stage,instant,json_input,parquet_output,parquet_records,run_job,stage_records,
 )
-from congress_api.retention.sniff import read_sniff_file
 from congress_api.retention.receipt_privacy import basename
 from congress_api.retention.body_store import validate_record
 from congress_api.retention.recovery_facts import project_legacy
@@ -61,9 +60,8 @@ def import_retained(writer,source,*,operation_id=None,freeze_dir=None,verified_b
             with path.open('rb') as body:
                 digest=file_digest(body,'sha256').hexdigest()
         if digest!=source['body_sha256']:raise ValueError('Recovery body changed')
-        reading=read_sniff_file(path)
-        body=BodyFile(path,digest,path.stat().st_size,source.get('media_type'),
-            reading['format'],reading['parser_version'],reading['intact'],reading.get('error_type'))
+        # The writer inspects fresh bytes after retaining them, as for a capture.
+        body=BodyFile(path,digest,path.stat().st_size,source.get('media_type'),None,None,None)
         return _write_import(writer,source,body,operation_id=operation_id,freeze_dir=freeze_dir)
 
 
