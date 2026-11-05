@@ -30,6 +30,11 @@ QUERY = re.compile(r'[?&](?:[^?&=\s]+=[^&\s]*)(?:&[^?&=\s]+=[^&\s]*)*\Z')
 MALFORMED_DATE_NOTE = 'Date-shaped text with unsupported numeric component length; source digits are not repaired and no event date is established.'
 MONTHS = {name: number for number, name in enumerate(
     ('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'), 1)}
+ACT_CITATION = re.compile(r'[Aa][Cc][Tt][ _]+[Oo][Ff][ _]+')
+ACT_DATED_SUFFIX = re.compile(
+    r'(?P<title_year>[12][0-9]{3})[ _]+(?P<date>(?P<month>[0-9]{1,2})-'
+    r'(?P<day>[0-9]{1,2})-(?P<short_year>[0-9]{2}))\Z')
+ACT_CITATION_DATE_REASON = 'Overlaps the printed date or year in an Act citation.'
 
 
 def subject_separator(char):
@@ -1061,6 +1066,8 @@ class Extractor:
         observations: list[dict],
         ignored: list[dict],
         measure_spans: list[tuple[int, int]],
+        act_references: list[tuple[int, int]],
+        act_suffix_dates: dict[tuple[int, int], str],
     ) -> list[tuple[int, int]]:
         """Stage 4: Scan free-text slots for references, dates, measures, and qualifiers.
 
@@ -1190,11 +1197,19 @@ class Extractor:
                 raw = hit.groupdict().get('date_token', hit.groupdict().get('short_date_token'))
                 if not date_candidates(raw)[1]:
                     reason = 'No valid supported calendar reading.'
+            if (rule['id'] in date_rules or rule.get('candidate_group') == 'named-date'
+                    or 'malformed-date' in rule.get('processors', ())):
+                if self._overlaps(a, b, act_references):
+                    reason = ACT_CITATION_DATE_REASON
             if reason:
                 ignored.append({'rule': rule['id'], 'raw': hit[0], 'start': a, 'end': b, 'reason': reason,
                                 'fields': self._match(rule, hit, start)['fields']})
                 continue
             observed = self._match(rule, hit, start)
+            for field in observed['fields']:
+                if field['name'] == 'date_token' and (day := act_suffix_dates.get((field['start'], field['end']))):
+                    field['candidates'] = [day]
+                    field['note'] = 'Trailing month-day-year token repeats the four-digit year printed beside it.'
             if 'revision-date' in rule.get('processors', ()) and hit.groupdict().get('revision_number') and len(hit['revision_marker']) > 1:
                 possible_date = next((d for rx in revision_dates
                                       if (d := rx.match(stem, hit.start('revision_number')))
@@ -1317,6 +1332,7 @@ class Extractor:
         stem: str,
         stem_end: int,
         observations: list[dict],
+        act_references: list[tuple[int, int]],
     ) -> None:
         """Stage 5: Apply date/unmatched fallbacks, remainders, and iterative refinement.
 
@@ -1335,6 +1351,7 @@ class Extractor:
         def fallback_date_allowed(hit, offset):
             span = offset + hit.start('date_token'), offset + hit.end('date_token')
             return (date_candidates(hit['date_token'])[1]
+                    and not self._overlaps(*span, act_references)
                     and (span in selected_dates or not self._overlaps(*span, protected)))
 
         def fallback(left, right):
@@ -1592,6 +1609,42 @@ class Extractor:
         observations.extend(self._role_subject_remainders(filename, observations))
         observations.extend(source_readings)
 
+    def _act_dates(self, stem, start):
+        """Separate printed law citations from a terminal, independently printed date token."""
+        references = []
+        suffix_dates = {}
+        year_rule = self.by_id.get('act-year-reference')
+        for citation in ACT_CITATION.finditer(stem):
+            if citation.start() and stem[citation.start() - 1].isalpha():
+                continue
+            pos = citation.end()
+            if year_rule and (year := year_rule[1].match(stem, citation.start())):
+                references.append(tuple(start + i for i in year.span('reference_year_token')))
+                suffix = ACT_DATED_SUFFIX.match(stem, pos)
+                if suffix and suffix['title_year'].endswith(suffix['short_year']):
+                    try:
+                        day = date(int(suffix['title_year']), int(suffix['month']), int(suffix['day']))
+                    except ValueError:
+                        continue
+                    suffix_dates[(start + suffix.start('date'), start + suffix.end('date'))] = day.isoformat()
+                continue
+            named = [hit for rule_id in ('named-month-date', 'day-named-month-date')
+                     if (entry := self.by_id.get(rule_id)) and (hit := entry[1].match(stem, pos))]
+            if named:
+                references.append((start + pos, start + max(hit.end() for hit in named)))
+        return references, suffix_dates
+
+    def _exclude_act_citation_dates(self, observations, ignored, act_references):
+        if not act_references:
+            return
+        for match in observations:
+            fields = [field for field in match['fields'] if field['name'] in {'date_token', 'short_date_token'}
+                      and self._overlaps(field['start'], field['end'], act_references)]
+            if fields:
+                ignored.extend(dict(rule=match['rule'], raw=field['raw'], start=field['start'],
+                    end=field['end'], reason=ACT_CITATION_DATE_REASON, fields=[field]) for field in fields)
+                match['fields'] = [field for field in match['fields'] if field not in fields]
+
     def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
                 source_url: str | None = None) -> dict:
         """Extract metadata from congressional document filenames preserving source evidence.
@@ -1610,18 +1663,22 @@ class Extractor:
         stem = filename[start:stem_end]
         measure_regex = self.roles['measure'][1]
         measure_spans = [(start + m.start(), start + m.end()) for m in measure_regex.finditer(stem)]
+        act_references, act_suffix_dates = self._act_dates(stem, start)
 
         payloads = self._match_stem_and_payloads(
             filename, start, stem_end, stem, source_url, source_host, observations, source_readings
         )
         self._refine_payload_slots(filename, stem_end, payloads, observations, ignored)
+        self._exclude_act_citation_dates(observations, ignored, act_references)
         self._scan_free_text_and_qualifiers(
-            filename, start, stem, stem_end, payloads, observations, ignored, measure_spans
+            filename, start, stem, stem_end, payloads, observations, ignored, measure_spans,
+            act_references, act_suffix_dates
         )
-        self._apply_fallbacks_and_remainders(filename, start, stem, stem_end, observations)
+        self._apply_fallbacks_and_remainders(filename, start, stem, stem_end, observations, act_references)
         self._apply_supplemental_and_transports(
             filename, start, stem, stem_end, payloads, observations, member_surnames, measure_spans, source_readings
         )
+        self._exclude_act_citation_dates(observations, ignored, act_references)
 
         pieces = [{'kind': hit.lastgroup, 'raw': hit[0], 'start': hit.start(), 'end': hit.end()}
                   for hit in TOKEN.finditer(filename)]

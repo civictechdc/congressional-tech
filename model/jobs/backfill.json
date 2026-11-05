@@ -20,13 +20,13 @@
       "namespace": [
         "archive_r1b"
       ],
-      "name": "filename_readings"
+      "name": "filename_readings_act_citation"
     },
     "meeting_records": {
       "namespace": [
         "archive_r1b"
       ],
-      "name": "meeting_records"
+      "name": "meeting_records_act_citation"
     },
     "appearance_records": {
       "namespace": [
@@ -54,14 +54,14 @@
       "size": 2129
     },
     "filename_readings": {
-      "path": "producers/filename_readings.json",
-      "sha256": "64e8d518f27bb9e8bc014842a4ee458db287a96bf099fad15b144945661687cc",
-      "size": 2137
+      "path": "producers/filename_readings-act-citation.json",
+      "sha256": "6423670e0883a9ecebbbf1295d843f88452001f0547160762a99e9026596a42f",
+      "size": 2387
     },
     "meeting_records": {
-      "path": "producers/meeting_records.json",
-      "sha256": "522a721073ab75ea30bc431bf7002291786801ab3fe4fa80928e06670343386f",
-      "size": 2118
+      "path": "producers/meeting_records-act-citation.json",
+      "sha256": "77b09ff247182e0b21873bb5fc90066dfb51849dfa74c11525618c4213db336f",
+      "size": 2324
     },
     "readings": {
       "path": "producers/readings.json",

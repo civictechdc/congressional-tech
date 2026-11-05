@@ -19,13 +19,13 @@
       "namespace": [
         "archive_r1b"
       ],
-      "name": "filename_readings"
+      "name": "filename_readings_act_citation"
     },
     "meeting_records": {
       "namespace": [
         "archive_r1b"
       ],
-      "name": "meeting_records"
+      "name": "meeting_records_act_citation"
     },
     "appearance_records": {
       "namespace": [

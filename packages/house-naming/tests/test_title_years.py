@@ -91,3 +91,20 @@ def test_reference_year_is_not_an_event_date_or_congress(engine):
     assert len(references(engine, name)) == 2
     fields = [f for m in engine.extract(name)['observations'] for f in m['fields']]
     assert not any(f['name'] in {'date_token', 'short_date_token', 'congress'} for f in fields)
+
+
+@pytest.mark.parametrize('name,token,candidate', [
+    ('FP Opening Statement--EPS Improvement Act of 2016 1-12-16.pdf', '1-12-16', '2016-01-12'),
+    ('AFWA testimony_H.R. 2264_Bear Protection Act of 2019_6-23-20_final.pdf', '6-23-20', None),
+    ('Opening Statement Bear Protection Act of 2019_06-23-20.pdf', '06-23-20', None),
+    ('A bill to amend the Act of June 22, 1948..pdf', None, None),
+    ('Opening Statement Bear Protection Act of 2019 20200625.pdf', '20200625', '2020-06-25'),
+    ('Statement Impact of 2019-01-12.pdf', '2019-01-12', '2019-01-12'),
+    ('Opening Statement 1-12-16.pdf', '1-12-16', None),
+])
+def test_act_citation_keeps_the_separate_document_date(engine, name, token, candidate):
+    result = engine.extract(name)
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    assert parse_filename(name).model_dump(mode='json')['suppressed'] == result['suppressed']
+    assert result['metadata'].get('date_token', []) == ([token] if token else [])
+    assert result['metadata'].get('date_token_candidates', []) == ([candidate] if candidate else [])

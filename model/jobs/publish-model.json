@@ -17,17 +17,17 @@
   },
   "filename_readings": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/filename_readings/metadata/00001-01a1a35d-f052-7443-b3de-92d4a5a371d4.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/filename_readings_act_citation/metadata/00001-01a1ab92-8588-7702-89b3-c2b4a982c062.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 1994823931800258593,
-    "table_uuid": "01a1a35d-bcfc-7a90-9d0a-a3b2720b9827"
+    "snapshot": 5614633565531862201,
+    "table_uuid": "01a1ab92-5b30-7580-9721-aa3b70ef1ee3"
   },
   "meeting_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records/metadata/00001-01a1a35e-450c-7392-92ae-c81f1882214e.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_act_citation/metadata/00001-01a1ab9b-7276-7652-9a3f-324a6609b9fb.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 4939381388824324652,
-    "table_uuid": "01a1a35e-326a-7a31-9723-4ca2ce8f2fc1"
+    "snapshot": 631276425399374834,
+    "table_uuid": "01a1ab9b-1f18-7f52-b4ab-99355df21274"
   },
   "appearance_records": {
     "kind": "native_table",
@@ -62,7 +62,7 @@
     "json": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
     "meeting_records": {
       "congress_gov": "ecc51fcdb572b426da01a9135b467bf3f9a85e91d268ff895a56e2dda5ef716e",
-      "house_xml": "d0ee8e7c35edf620c0aaf1b46c2c7bc4145619cb9abd1c6e45e8aa5b658f9089"
+      "house_xml": "8a2417a2c876b2cd3f202ed92dfbc48bca580f7fa2848d6644310771484617c8"
     },
     "appearance_records": {
       "house_xml": "7ecb6f0a62538695c0b5b2b93654cc148e0fb11fcb72c7e189cc8ce328a86abd",
@@ -78,7 +78,7 @@
       "house_xml": "83d27c2ae65792ef9e00a878329068b6fe4a757386efce09e8beebc4cd54d2f3"
     }
   },
-  "catalog_version": "6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1",
+  "catalog_version": "c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09",
   "output": "../../output/archive-release",
   "scratch": "../../output/archive-model",
   "recording_decision_files": [
