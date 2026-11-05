@@ -138,7 +138,7 @@ def daily_chain(tmp_path, lineage, *, anchor_in_store=False):
     metadata.write_text(json.dumps({'snapshots': [{'snapshot-id': s, 'parent-snapshot-id': p, 'summary': {'operation': o}}
                                                   for s, (p, o) in lineage.items()]}))
     pin = lambda s: {'kind': 'native_table', 'metadata_location': str(metadata), 'table_uuid': 'abcdef01', 'snapshot': s, 'schema_id': 0}
-    origin = dict(version=1, input='meeting_records', selector={'kind': 'native_table', 'snapshot': 9}, job=JOB, commit=head())
+    origin = dict(version=1, input='meeting_records', selector=pin(9), job=JOB, commit=head())
     anchor = encode(dict(version=1, input='meeting_records', selector=pin(1), job=IMPORT, commit=head(), origin=dict(record=origin)))
     ledger = ProducerRecords({} if anchor_in_store else {'meeting_records': anchor}, root=tmp_path / 'ledger')
     if anchor_in_store:
@@ -193,7 +193,7 @@ def test_an_import_record_passes_only_through_a_valid_origin():
     from congress_api.lake import meeting_records
     selector = {'kind': 'native_table', 'metadata_location': 's3://x/m.json', 'table_uuid': 'u', 'snapshot': 1, 'schema_id': 0}
     model = {'meeting_records': selector, 'parser_versions': {'meeting_records': meeting_records.current_versions()}}
-    origin = dict(version=1, input='meeting_records', selector={'kind': 'native_table', 'snapshot': 9}, job=JOB, commit=head())
+    origin = dict(version=1, input='meeting_records', selector=dict(selector, snapshot=9), job=JOB, commit=head())
     imported = lambda **o: {'meeting_records': dict(version=1, input='meeting_records', selector=selector, job=IMPORT, commit=head(), **o)}
     assert snapshot_reasons(model, imported(origin=dict(record=origin))) == []
     assert 'needs the origin record' in snapshot_reasons(model, imported())[0]
@@ -227,6 +227,10 @@ def test_a_committee_delta_is_not_a_complete_snapshot_or_import_origin():
         native, imported(origin, dict(source, sha256='b'*64)))[0]
     unrelated = dict(origin, input='video_records', selector={'kind': 'native_table', 'snapshot': 7})
     assert 'the import origin names another table' in reasons(native, imported(unrelated, source))[0]
+    assert 'must name a Parquet artifact or native snapshot' in reasons(
+        native, imported(dict(origin, selector=dict(selector, kind='unknown')), source))[0]
+    assert 'needs an exact native table pin' in reasons(
+        native, imported(dict(origin, selector={'kind': 'native_table'}), source))[0]
     assert reasons(native, imported(origin, dict(source, path='/fixture/relocated.parquet'))) == []
 
 
@@ -253,7 +257,7 @@ def test_readings_import_origin_must_support_selected_html_metadata():
     current = current_version('html_metadata')
 
     def reasons(origin_commit, parser_versions):
-        origin = dict(version=1, input='readings', selector={'kind': 'native_table', 'snapshot': 9},
+        origin = dict(version=1, input='readings', selector=dict(selector, snapshot=9),
                       job=JOB, commit=origin_commit)
         record = dict(version=1, input='readings', selector=selector, job=IMPORT, commit=capable,
                       origin=dict(record=origin))

@@ -74,6 +74,9 @@ def test_import_refuses_a_changed_origin_before_any_effect(tmp_path):
     ('final_reconciliation_required', 'a staged delta cannot be the origin'),
     ('different_bytes', 'the Parquet origin does not match the import source pin'),
     ('different_table', 'the import origin names another table'),
+    ('missing_selector', 'must name a Parquet artifact or native snapshot'),
+    ('unknown_selector_kind', 'must name a Parquet artifact or native snapshot'),
+    ('incomplete_native_selector', 'needs an exact native table pin'),
 ])
 def test_import_refuses_incomplete_or_mismatched_origin_before_any_effect(tmp_path, problem, expected):
     from viewer_publication.archive_import_job import execute, load_spec
@@ -88,6 +91,12 @@ def test_import_refuses_incomplete_or_mismatched_origin_before_any_effect(tmp_pa
         origin['selector']['sha256'] = '0'*64
     elif problem == 'different_table':
         origin.update(input='video_records', selector={'kind': 'native_table', 'snapshot': 7})
+    elif problem == 'missing_selector':
+        origin.pop('selector')
+    elif problem == 'unknown_selector_kind':
+        origin['selector']['kind'] = 'unknown'
+    elif problem == 'incomplete_native_selector':
+        origin['selector'] = {'kind': 'native_table'}
     else:
         origin[problem] = True
     origin_path = tmp_path/'origin.json'
@@ -132,9 +141,11 @@ def test_import_writes_a_producer_record_that_carries_the_producing_jobs_record(
     from viewer_publication.archive_import_job import IMPORT_JOB,execute,load_spec
     monkeypatch.setattr(identity,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
     source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)
-    origin=tmp_path/'origin.json';origin.write_text(json.dumps(dict(version=1,input='meeting_records',job='daily',commit='e'*40)))
     path=_spec(tmp_path,source);value=json.loads(path.read_text())
-    value['tables']['meeting_records']['producer']=dict(path=str(origin),**file_pin(origin));path.write_text(json.dumps(value))
+    item=value['tables']['meeting_records']
+    origin=tmp_path/'origin.json';origin.write_text(json.dumps(dict(version=1,input='meeting_records',job='daily',commit='e'*40,
+        selector=dict(kind='parquet',**item['source']))))
+    item['producer']=dict(path=str(origin),**file_pin(origin));path.write_text(json.dumps(value))
     report=execute(load_spec(path))
     record=json.loads(open(report['producers']['meeting_records']['path']).read())
     assert record['job']==IMPORT_JOB and record['commit']=='c'*40
@@ -154,7 +165,8 @@ def test_import_accepts_explorer_tables_and_chains_their_producers(tmp_path,monk
     meeting=value['tables'].pop('meeting_records')
     for name in ('video_records','committee_records'):
         origin=tmp_path/(name+'-origin.json')
-        origin.write_text(json.dumps(dict(version=1,input=name,job='archive_backfill_job.py',commit='e'*40)))
+        origin.write_text(json.dumps(dict(version=1,input=name,job='archive_backfill_job.py',commit='e'*40,
+            selector=dict(kind='parquet',**meeting['source']))))
         value['tables'][name]=dict(meeting,table=dict(namespace=['archive'],name=name+'_fixture'),
             producer=dict(path=str(origin),**file_pin(origin)))
     path.write_text(json.dumps(value))
