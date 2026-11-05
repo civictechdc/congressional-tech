@@ -231,6 +231,7 @@ class ReceiptWriter:
                     or line['url']!=final.url or line['transport']!=final.transport or line['http_status']!=final.http_status
                     or body_identity!=frozen_identity):
                 raise ValueError('Stable receipt operation was reused for another attempt')
+        refuse_local_paths(line)
         try:
             self.store.put(metadata['key'],path,'application/x-ndjson')
         except Exception:
@@ -251,6 +252,8 @@ class ReceiptWriter:
             sniff_version=body.sniff_version,intact=body.intact,stored_suffix=stored.suffix,fidelity=fidelity)
         if body.sniff_error is not None:
             capture['sniff_error'] = body.sniff_error
-        if stored.outcome == 'stored':
-            capture.update(stored_md5=stored.md5,stored_bytes=stored.size)
+        if stored.md5 is not None:
+            capture['stored_md5'] = stored.md5
+        if stored.size is not None:
+            capture['stored_bytes'] = stored.size
         return capture

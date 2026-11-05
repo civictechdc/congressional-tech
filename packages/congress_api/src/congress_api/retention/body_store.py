@@ -20,6 +20,7 @@ from congress_api.retention.receipt_privacy import credential_parameters
 
 RAW_PREFIXES = ('bodies/', 'receipts/', 'provenance/')
 BODY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})(\.gz|\.pdf)?')
+LEGACY_MULTIPART_ETAG = re.compile(r'("?)[0-9a-fA-F]{32}-[1-9][0-9]{0,4}\1')
 
 
 class RawNameCollision(RuntimeError):
@@ -128,6 +129,7 @@ def compressible(media):
 class BodyStore:
     def __init__(self, adapter):
         self.adapter, self.known, self._lock = adapter, {}, threading.Lock()
+        self._other_body_copies = {}
         self._provenance_cache,self._provenance_acks,self._provenance_epoch={},{},0
 
     def remember_provenance(self,public,custody):
@@ -149,32 +151,67 @@ class BodyStore:
                 raise ValueError('Provenance cache differs from its durable acknowledgment')
             self._provenance_cache[public['key']]=(dict(public),custody,epoch)
 
+    def _remember_body(self, key, result):
+        with self._lock:
+            if result.size is None:
+                # The snapshot writer can establish presence without qualifying metadata.
+                self.known.setdefault(key, result)
+                return result
+            previous = self.known.get(key)
+            if previous is not None and previous.suffix != result.suffix and previous.size is not None:
+                self._other_body_copies[key] = previous
+            self.known[key] = result
+        return result
+
+    def _remember_existing(self, key, suffix, metadata):
+        size = metadata.get('size')
+        if type(size) is not int or size < 0:
+            raise ValueError(f'Invalid stored body size: {key}{suffix}')
+        etag = metadata.get('etag')
+        if suffix == '.gz' and isinstance(etag, str) and LEGACY_MULTIPART_ETAG.fullmatch(etag):
+            # Older multipart objects use the reader's listed ETag for conditional reads.
+            md5 = None
+        else:
+            try:
+                md5 = single_put_md5(etag)
+            except ValueError as error:
+                raise ValueError(f'Invalid stored body MD5: {key}{suffix}') from error
+        return self._remember_body(key, WriteResult('unchanged', suffix, md5, size))
+
+    def _reference_body(self, key, suffix, *, missing='Missing stored body'):
+        with self._lock:
+            known = self.known.get(key)
+            other = self._other_body_copies.get(key)
+        if known is not None and known.suffix == suffix and known.size is not None:
+            return replace(known, outcome='unchanged')
+        if other is not None and other.suffix == suffix:
+            return replace(self._remember_body(key, other), outcome='unchanged')
+        metadata = self.adapter.head(key + suffix)
+        if metadata is None:
+            raise ValueError(f'{missing}: {key}{suffix}')
+        return self._remember_existing(key, suffix, metadata)
+
     def reference(self, key, *, stored_suffix):
         """Verify an existing raw reference; recovery imports need no whole reread."""
         validate_key(key)
         if not key.startswith('bodies/') or key.endswith(('.gz','.pdf')) or stored_suffix not in {'','.gz'}:
             raise ValueError('Invalid retained body reference')
-        with self._lock:
-            if key in self.known and self.known[key].suffix==stored_suffix:
-                return replace(self.known[key],outcome='unchanged',md5=None,size=None)
-        if self.adapter.head(key+stored_suffix) is None:
-            raise ValueError('Missing retained body reference')
-        result=WriteResult('unchanged',stored_suffix)
-        with self._lock:
-            self.known[key]=result
-        return result
+        return self._reference_body(key, stored_suffix, missing='Missing retained body reference')
 
-    def existing(self, key):
-        """The run set and one legacy-key HEAD, without reading body bytes."""
+    def existing(self, key, *, qualify_metadata=False):
+        """Reuse the run cache or the legacy-key HEAD before attempting a create."""
         with self._lock:
-            if key in self.known:
-                return replace(self.known[key], outcome='unchanged', md5=None, size=None)
-        if self.adapter.head(key + '.gz') is not None:
-            result = WriteResult('unchanged', '.gz')
-            with self._lock:
-                self.known[key] = result
-            return result
-        return None
+            known = self.known.get(key)
+        if known is not None:
+            if qualify_metadata:
+                return self._reference_body(key, known.suffix)
+            return WriteResult('unchanged', known.suffix)
+        metadata = self.adapter.head(key + '.gz')
+        if metadata is None:
+            return None
+        if qualify_metadata:
+            return self._remember_existing(key, '.gz', metadata)
+        return self._remember_body(key, WriteResult('unchanged', '.gz'))
 
     def put_prepared(self, key, file, media, *, encoding=None, expected_md5=None, expected_size=None):
         """Use a caller's streaming compression without another compression pass."""
@@ -186,8 +223,7 @@ class BodyStore:
             with Path(file).open('rb') as source:
                 result = create_stored(self.adapter, key, source, media, encoding=encoding,
                                        expected_md5=expected_md5, expected_size=expected_size)
-            with self._lock:
-                self.known[key] = result
+            return self._remember_body(key, result)
         return result
 
     def put_pdf_copy(self, key, file, *, expected_md5, expected_size, operation='create'):
@@ -221,7 +257,7 @@ class BodyStore:
             return result
         if key.endswith(('.gz', '.pdf')):
             raise ValueError('New body writes require a suffix-free identity')
-        result = self.existing(key)
+        result = self.existing(key, qualify_metadata=True)
         if result is None:
             if compressible(media):
                 with Path(file).open('rb') as source, tempfile.TemporaryFile() as prepared:
@@ -251,8 +287,9 @@ class BodyStore:
                     created = self.adapter.create(key, source, media=media, encoding=None,
                                                   md5=md5.hexdigest(), size=size)
                     result = write_result(key, created, md5=md5.hexdigest(), size=size)
-            with self._lock:
-                self.known[key] = result
+            if result.outcome == 'unchanged':
+                return self._reference_body(key, result.suffix)
+            return self._remember_body(key, result)
         return result
 
 
@@ -282,7 +319,14 @@ class R2Adapter(R2Source):
             if error.response['Error']['Code'] in {'404', 'NoSuchKey', 'NotFound'}:
                 return None
             raise
-        return dict(size=value['ContentLength'], etag=value['ETag'].strip('"'))
+        if 'ContentLength' not in value or 'ETag' not in value:
+            raise ValueError(f'Missing HEAD metadata: {key}')
+        etag = value['ETag']
+        if not isinstance(etag, str):
+            raise ValueError(f'Invalid HEAD ETag: {key}')
+        if etag.startswith('"') and etag.endswith('"') and etag.count('"') == 2:
+            etag = etag[1:-1]
+        return dict(size=value['ContentLength'], etag=etag)
 
     def parameters(self, key, source, *, media, encoding, md5, size):
         options = dict(ContentEncoding=encoding) if encoding else {}

@@ -148,11 +148,10 @@ def test_legacy_projection_uses_native_capture_rows_and_recovery_fallbacks(tmp_p
 
 
 def test_existing_reference_import_uses_key_presence_without_body_reads(tmp_path):
-    from congress_api.retention.body_store import WriteResult
     digest='a'*64
     class Adapter:
         def __init__(self):self.calls=[]
-        def head(self,key):self.calls.append(('head',key));return dict(size=10,etag='stored')
+        def head(self,key):self.calls.append(('head',key));return dict(size=10,etag='b'*32)
         def create(self,key,source,**kwargs):
             self.calls.append(('create',key))
             assert key.startswith('receipts/')
@@ -168,6 +167,7 @@ def test_existing_reference_import_uses_key_presence_without_body_reads(tmp_path
     key,line=import_retained(writer,source)
     assert adapter.calls==[('head',f'bodies/sha256/aa/{digest}.gz'),('create',key)]
     assert line['captures'][0]['stored_suffix']=='.gz'
+    assert (line['captures'][0]['stored_md5'], line['captures'][0]['stored_bytes']) == ('b'*32, 10)
     assert line['captures'][0]['bytes']==100 and line['captures'][0]['sniffed_format'] is None
     assert line['captures'][0]['fidelity']=='retained-file'
 

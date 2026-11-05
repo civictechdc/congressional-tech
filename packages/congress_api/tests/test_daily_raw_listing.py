@@ -1,4 +1,5 @@
 """Daily reads R2 against an exact-key listing of its candidates, settled before captures move."""
+import gzip
 import hashlib
 import io
 import json
@@ -66,8 +67,7 @@ def payload(n):
 def fixture(tmp_path,payloads,*,unpinned=()):
     """Receipts and bodies written by the maintained writer into a local root that a fake R2 serves.
 
-    An `unpinned` body's object was PUT earlier by a writer that never wrote its receipt, so the
-    receipt here records `unchanged` with no stored MD5 or size (the 2026-10-31 shape).
+    Model historical `unpinned` receipts by omitting both stored-byte fields.
     """
     from capture_qualification_helpers import write_qualified_bytes
     from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
@@ -90,8 +90,12 @@ def fixture(tmp_path,payloads,*,unpinned=()):
         body=BodyFile(entity,hashlib.sha256(data).hexdigest(),len(data),'application/json',None,None,None)
         url='https://docs.house.gov/listed'+str(i)+'.json'
         key,line=writer.write(FetchResult(FetchAttempt(url,url,STAMP,'direct',200,None,{},(),True,body)),family='documents')
-        capture=line['captures'][0]
-        assert ('stored_md5' not in capture)==(i in unpinned or data in payloads[:i])
+        if i in unpinned:
+            assert line['outcome']=='unchanged'
+            capture=line['captures'][0]
+            del capture['stored_md5'],capture['stored_bytes']
+            historical=gzip.compress((json.dumps(line)+'\n').encode(),mtime=0)
+            qualifications[key]=write_qualified_bytes(root/key,historical)
         receipts.append(dict(key=key,path=str(root/key),qualification=qualifications[key]))
     assert [r['key'] for r in receipts]==sorted(r['key'] for r in receipts)
     value=dict(work=str(tmp_path/'work'),decided_at=STAMP,catalog_root=str(tmp_path/'catalog'),tables=TABLES,
@@ -125,6 +129,86 @@ def body_gets(bucket):
     return [get for get in bucket.gets if get['Key'].startswith('bodies/')]
 
 
+@pytest.mark.parametrize('reuse', ['collision', 'legacy', 'reference', 'legacy-reference',
+                                    'legacy-multipart', 'cache'])
+def test_reused_body_metadata_survives_receipt_normalization(tmp_path, reuse):
+    import base64
+    from capture_qualification_helpers import write_qualified_bytes
+    from congress_api.lake.capture_staging import stage_captures
+    from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from docspec_client.client import NativeDatasets
+
+    data = payload(0)
+    url = 'https://docs.house.gov/listed0.json'
+    entity = tmp_path/'body'
+    entity.write_bytes(data)
+    root = tmp_path/'raw'
+    key = body_key(data)
+    suffix = '.gz' if 'legacy' in reuse else ''
+    physical_key = key + suffix
+    physical_path = root/physical_key
+    retained = 'reference' in reuse
+    if reuse != 'cache':
+        # Encode the same entity differently from the writer's attempted gzip.
+        physical_path.parent.mkdir(parents=True)
+        physical_path.write_bytes(gzip.compress(data, compresslevel=0, mtime=0))
+
+    attempted = []
+
+    class RecordingBucket(Bucket):
+        def put_object(self, **kwargs):
+            assert kwargs['IfNoneMatch'] == '*'
+            if kwargs['Key'] == physical_key:
+                attempted.append((kwargs['ContentLength'], base64.b64decode(kwargs['ContentMD5'])))
+            return super().put_object(**kwargs)
+
+    bucket = RecordingBucket(root)
+    if reuse == 'legacy-multipart':
+        bucket.head_override[physical_key] = dict(ETag='"'+'a'*32+'-2"')
+    writer = ReceiptWriter(BodyStore(R2Adapter(bucket, 'bucket')),
+        identity=dict(job='capture',commit='a'*40,lockfile_digest='b'*64),
+        run_id='reuse',write_date='2026-10-28',archive_limits=None)
+    body = BodyFile(None if retained else entity, hashlib.sha256(data).hexdigest(), len(data),
+                    'application/json', 'json', 'v1', True, stored_suffix=suffix)
+    result = FetchResult(FetchAttempt(url,url,STAMP,'direct',200,None,{},(),True,body))
+    options = dict(mode='retained_import', recovery_evidence=dict(original_url=url)) if retained else {}
+    if reuse == 'cache':
+        writer.write(result, family='documents')
+        bucket.heads.clear()
+        bucket.puts.clear()
+        attempted.clear()
+        entity.unlink()
+    stored = physical_path.read_bytes()
+    md5 = hashlib.md5(stored)
+    receipt_key, line = writer.write(result, family='documents', **options)
+    assert line['outcome'] == 'unchanged'
+    if reuse == 'legacy-multipart':
+        assert 'stored_md5' not in line['captures'][0]
+    else:
+        assert line['captures'][0]['stored_md5'] == md5.hexdigest()
+    assert line['captures'][0]['stored_bytes'] == len(stored)
+    assert physical_path.read_bytes() == stored and not bucket.gets
+    if reuse == 'collision':
+        assert bucket.heads == [key+'.gz', key]
+        assert bucket.puts == [key, receipt_key]
+        [(attempted_size, attempted_md5)] = attempted
+        assert attempted_size != len(stored) and attempted_md5 != md5.digest()
+    else:
+        assert bucket.heads == ([] if reuse == 'cache' else [physical_key])
+        assert bucket.puts == [receipt_key]
+
+    path = root/receipt_key
+    receipt = path.read_bytes()
+    qualification = write_qualified_bytes(path, receipt)
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        stage = stage_captures([dict(key=receipt_key,path=str(path),qualification=qualification)],
+                               engine=engine, work=tmp_path/'stage')
+    [row] = pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (row['outcome'], row['stored_suffix'], row['stored_bytes'], row['stored_md5']) == (
+        'unchanged', suffix, len(stored), None if reuse == 'legacy-multipart' else md5.digest())
+
+
 def test_unpinned_capture_is_read_through_its_listed_etag_and_listing_covers_only_candidates(tmp_path):
     from congress_api.lake.daily import produce_daily
     payloads=[payload(0),payload(1)]
@@ -148,7 +232,6 @@ def test_unpinned_capture_is_read_through_its_listed_etag_and_listing_covers_onl
 def test_a_receipt_holding_several_candidate_captures_is_listed_and_read(tmp_path):
     # Production receipts carry many lines; the scoped captures export is ordered by the
     # captures key (receipt_key, receipt_line, capture_index), not by receipt alone.
-    import gzip
     from capture_qualification_helpers import write_qualified_bytes
     from congress_api.lake.daily import produce_daily
     payloads=[payload(0),payload(1)]
@@ -212,7 +295,7 @@ def test_a_candidate_absent_from_r2_refuses_before_any_append(tmp_path,where):
 def test_an_absent_object_of_a_body_already_read_has_no_effect(tmp_path):
     from congress_api.lake.daily import produce_daily
     read,new=payload(0),payload(1)
-    # The second receipt refetches the read body (unchanged, unpinned); the third is new.
+    # The second receipt refetches the read body; the third is new.
     value,engine,bucket,store=fixture(tmp_path,[read,read,new])
     receipts=value['receipt_inventory']
     first=produce_daily(dict(value,receipt_inventory=receipts[:1]),engine=engine,raw_store=store)
