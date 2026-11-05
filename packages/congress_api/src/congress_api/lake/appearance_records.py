@@ -269,6 +269,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             files={
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "parsers_senate_page": pkg_dir / "parsers/senate_page.py",
+                "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
                 "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },

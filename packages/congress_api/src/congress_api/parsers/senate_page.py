@@ -1,6 +1,6 @@
 """Pure parsing for Senate/joint sites: seven witness layouts and linked files.
 
-Witness headings exclude senators' statements. JEC running text is not interpreted. Listings
+Witness headings exclude senators' statements. Listings
 locate pages; only a page's own date and subject establish which meeting it is.
 """
 
@@ -147,7 +147,7 @@ def witnesses(page_html, url, *, plain=False, deduplicate=True):
         card_nodes = {node for node in root.iter() if participant_card_identity(node)}
         out += [
             {**witness(line), 'page': url}
-            for anchor, line in plain_witness_links(root)
+            for anchor, line, _ in plain_witness_links(root)
             if not any(parent in card_nodes for parent in anchor.iterancestors())
         ]
     valid = [w for w in out if is_name(w["name"])]
@@ -852,6 +852,36 @@ def related_page(anchor, page_url):
     return None
 
 
+def _jec_witness_continuation(anchor, line):
+    """A linked title continues in the next JEC paragraph under the same file."""
+    href = anchor.get("href", "")
+    if (urlsplit(href).hostname not in {"jec.senate.gov", "www.jec.senate.gov"}
+            or "," not in line or not re.search(r"\b(?:and|or|of|for)$", line, re.I)):
+        return None
+    block = anchor.getparent()
+    if block.tag != "p" or _node_value(block) != line:
+        return None
+    following = block.getnext()
+    if following is None or following.tag != "p":
+        return None
+    links = following.xpath("./a[@href]")
+    if len(links) != 1 or links[0].get("href") != href:
+        return None
+    continuation = _node_value(links[0])
+    # A second person's name may link to the same file. Require an
+    # institutional title fragment and its own unlinked employer line.
+    if (_node_value(following) != continuation
+            or not re.fullmatch(r"[\w .’'-]+ (?:Center|Institute|Program|Initiative)", continuation)):
+        return None
+    organization = following.getnext()
+    if organization is None or organization.tag != "p" or organization.xpath(".//a[@href]"):
+        return None
+    employer = _node_value(organization)
+    if not re.fullmatch(r"[\w .’'-]+ (?:Center|Institute|Association|Foundation|University|Company)", employer):
+        return None
+    return links[0], f"{line} {continuation}, {employer}"
+
+
 def plain_witness_links(root):
     """Explicit witness sections with a name on the link or its local line.
 
@@ -859,7 +889,10 @@ def plain_witness_links(root):
     only. Never search backwards across another paragraph or section. Keep the
     publisher's complete line; shared name parsing supplies the compact fields.
     """
+    continuations = set()
     for anchor in root.xpath('.//a[@href]'):
+        if anchor in continuations:
+            continue
         headings = link_headings(anchor)
         if len(headings) != 1 or not re.fullmatch(r'witness(?:es| list)?\s*:?', headings[0], re.I):
             continue
@@ -880,7 +913,11 @@ def plain_witness_links(root):
             return is_name(name) and all(word[:1].isupper() or word in {'de', 'del', 'van', 'von', 'da', 'di', 'la'} for word in name.split())
         line = next((line for line in candidates if named(line)), None)
         if line:
-            yield anchor, line
+            continuation = None
+            if split_title := _jec_witness_continuation(anchor, line):
+                continuation, line = split_title
+                continuations.add(continuation)
+            yield anchor, line, continuation
 
 
 def century_year(year: int) -> int:
@@ -1126,12 +1163,15 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
             index = matches[0]
             witness_metadata[str(index)] = metadata
             witnesses_by_node[card] = index
+    plain_continuations = {}
     if plain:
-        for anchor, line in plain_witness_links(root):
+        for anchor, line, continuation in plain_witness_links(root):
             if any(parent in cards_by_node for parent in anchor.iterancestors()):
                 continue
             metadata = dict(layout='plain-witness-line', name=line, text=line, attributes=dict(anchor.attrib), fields=[])
             cards_by_node[anchor] = metadata
+            if continuation is not None:
+                plain_continuations[continuation] = anchor
             matches = by_name.get(witness(line)['name'], [])
             if len(matches) == 1:
                 witnesses_by_node[anchor] = matches[0]
@@ -1157,6 +1197,10 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
     repeated = {index for index, count in Counter(witnesses_by_node.values()).items() if count > 1}
     witnesses_by_node = {card: index for card, index in witnesses_by_node.items() if index not in repeated}
     witness_metadata = {index: metadata for index, metadata in witness_metadata.items() if int(index) not in repeated}
+    for continuation, anchor in plain_continuations.items():
+        cards_by_node[continuation] = cards_by_node[anchor]
+        if anchor in witnesses_by_node:
+            witnesses_by_node[continuation] = witnesses_by_node[anchor]
     files, file_nodes = {}, set()
     page_url = http_url(url)
     for anchor in root.xpath(".//a[@href]"):

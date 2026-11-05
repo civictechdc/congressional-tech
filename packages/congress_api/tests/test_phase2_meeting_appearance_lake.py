@@ -466,6 +466,19 @@ def test_source_scoped_version_independence_for_meeting_and_appearance_records(m
     assert appearance_records.current_version("senate_page") != a_vers["senate_page"]
 
 
+def test_shared_witness_helper_is_versioned_for_both_callers(monkeypatch):
+    read_bytes = Path.read_bytes
+    before = appearance_records.current_versions()
+
+    def changed_witness_helper(path):
+        original = read_bytes(path)
+        return original + b"\n# version dependency probe" if path.name == "witness_names.py" else original
+
+    monkeypatch.setattr(Path, "read_bytes", changed_witness_helper)
+    after = appearance_records.current_versions()
+    assert {source for source in before if before[source] != after[source]} == {"mods", "senate_page"}
+
+
 # ---------------------------------------------------------------------------
 # 3. `appearance_records` Extraction, Normalization, S2 Fixtures & Anti-Join
 # ---------------------------------------------------------------------------
@@ -1420,6 +1433,28 @@ def test_ct_h1nd_compact_dotted_senate_bills_amendatory_act_years_and_source_sym
         )
         == ["114-hr-1732"]
     )
+
+
+def test_jec_continuation_keeps_one_witness_and_does_not_merge_shared_file():
+    href = "https://www.jec.senate.gov/public/index.cfm?a=Files.Serve&File_id=D2F941B3-FF5F-4503-B354-5C8BE5D7AF3B"
+    # Source structure from the retained June 12, 2024 JEC page, followed by
+    # two actual person labels sharing another file and an ungrouped link.
+    html = f"""
+    <p><strong>Witnesses:</strong></p>
+    <p><a href="{href}">Mr. Scott Lincicome, Vice President of General Economics and</a></p>
+    <p><a href="{href}">Stiefel Trade Policy Center</a></p>
+    <p>Cato Institute</p>
+    <p>Washington, DC</p>
+    <p><a href="/shared.pdf">Dr. Sam Smith, Professor</a></p>
+    <p><a href="/shared.pdf">Ms. Jane Doe, Researcher</a></p>
+    <p><a href="/flat.pdf">Download testimony</a></p>
+    """
+    apps = appearance_records.extract_senate_page_observation(html)["appearances"]
+    assert [(a["name"], a["position"], a["organization"], a["document_links"]) for a in apps] == [
+        ("Scott Lincicome", "Vice President of General Economics and Stiefel Trade Policy Center", "Cato Institute", [href]),
+        ("Sam Smith", "Professor", None, ["/shared.pdf"]),
+        ("Jane Doe", "Researcher", None, ["/shared.pdf"]),
+    ]
 
 
 def test_ct_30fp_senate_page_repeated_witness_names_and_relative_document_links():

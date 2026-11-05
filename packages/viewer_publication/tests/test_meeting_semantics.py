@@ -650,6 +650,35 @@ def test_senate_page_links_to_meeting_and_outranks_mods_while_preserving_stateme
     assert by_src_name[('mods', 'American Bankers Association')] == ('meeting:9001', None)
 
 
+@pytest.mark.parametrize('second_title,expected', [
+    ('Unrelated testimony concerning tax revenue', 335901),
+    ('Made in America: The Boom in U.S. Manufacturing Investment', None),
+])
+def test_jec_page_matches_both_committee_codes_without_asserting_chamber(tmp_path, second_title, expected):
+    title = 'Made in America: The Boom in U.S. Manufacturing Investment'
+    day = '2024-06-12'
+    sp = record('jec-page', 'senate_page', [witness('Scott Lincicome')],
+                context_url='https://www.jec.senate.gov/public/index.cfm/2024/6/made-in-america')
+    page = dict(body_hex=sp['record_sha_hex'], status='completed', title=title, heading=title, text_head='', content_date=day)
+    got = resolve(tmp_path, [sp], [], {}, pages=[page], meetings=(
+        (335901, day, title, False, None, 'jjec00'),
+        (335902, day, second_title, False, 'joint', 'jsec00'),
+    ))
+    assert got['Scott Lincicome'][1] == expected
+
+
+def test_jec_unknown_chamber_requires_title_or_witness_evidence(tmp_path):
+    day = '2024-06-12'
+    sp = record('jec-page', 'senate_page', [witness('Scott Lincicome')],
+                context_url='https://www.jec.senate.gov/public/index.cfm/2024/6/made-in-america')
+    page = dict(body_hex=sp['record_sha_hex'], status='completed', title='Manufacturing investments',
+                heading=None, text_head='', content_date=day)
+    got = resolve(tmp_path, [sp], [], {}, pages=[page], meetings=(
+        (335901, day, 'Unrelated testimony concerning tax revenue', False, None, 'jjec00'),
+    ))
+    assert got['Scott Lincicome'][1] is None
+
+
 def test_empty_senate_page_does_not_suppress_mods_witnesses(tmp_path):
     # ct-j2yo guard: an empty/absent senate_page container never attaches as 'empty' to suppress mods witnesses.
     empty_sp = record('sp_empty', 'senate_page', [], collection_state='empty',

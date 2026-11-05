@@ -29,9 +29,10 @@ WITH stopwords AS (
 ), senate_hosts AS (
  SELECT DISTINCT
   lower((regexp_match(website_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]senate[.]gov'))[1]) AS host,
-  substr(lower(system_code),1,4)||'00' AS parent_committee
+  CASE WHEN lower(system_code)='jsec00' THEN 'jjec00'
+   ELSE substr(lower(system_code),1,4)||'00' END AS parent_committee
  FROM spicy_committees
- WHERE parent_system_code IS NULL AND lower(system_code)<>'jjec00'
+ WHERE parent_system_code IS NULL
   AND regexp_like(coalesce(website_url,''),'(?i)^https?://(?:www[.])?[a-z0-9-]+[.]senate[.]gov')
  UNION
  SELECT 'aging' AS host,'spag00' AS parent_committee
@@ -56,7 +57,7 @@ WITH stopwords AS (
  UNION SELECT 'rules','ssra00'
  UNION SELECT 'sbc','sssb00'
  UNION SELECT 'veterans','ssva00'
- UNION SELECT 'jec','jsec00'
+ UNION SELECT 'jec','jjec00'
 ), senate_pages_raw AS (
  SELECT
   sc.record_sha_hex,
@@ -112,34 +113,34 @@ WITH stopwords AS (
  FROM senate_pages_grouped g
  CROSS JOIN stopwords sw
  WHERE g.page_date IS NOT NULL
-), raw_meeting_committees AS (
- SELECT DISTINCT
-  m.event_id,
-  m.meeting_date,
-  m.title,
-  substr(lower(c['system_code']),1,4)||'00' AS parent_committee
+), meeting_committee_codes AS (
+ SELECT event_id,meeting_date,title,chamber,substr(lower(c['system_code']),1,4)||'00' AS parent_committee
  FROM (
-  SELECT event_id,meeting_date,title,unnest(committees) AS c
+  SELECT event_id,meeting_date,title,chamber,unnest(committees) AS c
   FROM meetings_resolved
-  WHERE chamber IN ('senate','joint') AND meeting_date IS NOT NULL
+  WHERE (chamber IN ('senate','joint') OR chamber IS NULL) AND meeting_date IS NOT NULL
    AND NOT coalesce(not_held,false) AND committees IS NOT NULL
- ) m
+ )
  WHERE c['system_code'] IS NOT NULL AND trim(c['system_code'])<>''
- UNION
- SELECT DISTINCT
-  m.event_id,
-  m.meeting_date,
-  m.title,
-  substr(lower(m.committee_key),1,4)||'00' AS parent_committee
- FROM meetings_resolved m
- WHERE m.chamber IN ('senate','joint') AND m.meeting_date IS NOT NULL
-  AND NOT coalesce(m.not_held,false)
-  AND m.committee_key IS NOT NULL AND trim(m.committee_key)<>''
+ UNION ALL
+ SELECT event_id,meeting_date,title,chamber,substr(lower(committee_key),1,4)||'00' AS parent_committee
+ FROM meetings_resolved
+ WHERE (chamber IN ('senate','joint') OR chamber IS NULL) AND meeting_date IS NOT NULL
+  AND NOT coalesce(not_held,false) AND committee_key IS NOT NULL AND trim(committee_key)<>''
+), raw_meeting_committees AS (
+ -- The JEC site and reference data use both codes for the same committee.
+ -- Keep that equivalence local to page matching, including source-backed
+ -- events with no stated chamber. Require corroboration for those events.
+ SELECT DISTINCT event_id,meeting_date,title,chamber IS NULL AS requires_overlap,
+  CASE WHEN parent_committee='jsec00' THEN 'jjec00' ELSE parent_committee END AS parent_committee
+ FROM meeting_committee_codes
+ WHERE chamber IS NOT NULL OR parent_committee IN ('jjec00','jsec00')
 ), meeting_parent_committees AS (
  SELECT
   m.event_id,
   m.meeting_date,
   m.parent_committee,
+  m.requires_overlap,
   array_distinct(array_except(
    string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')),'[^a-z0-9]+',' ','g'),'\b(?:[a-z0-9]{1,2}|[0-9]+)\b',' ','g')),' '),
    sw.sw
@@ -173,6 +174,7 @@ WITH stopwords AS (
   m.event_id,
   s.single_url_on_date,
   m.single_event_on_date,
+  m.requires_overlap,
   coalesce(cast(cardinality(array_intersect(sp.families,mp.families)) AS BIGINT),cast(0 AS BIGINT)) AS shared_surnames,
   cast(cardinality(array_intersect(s.words,m.words)) AS BIGINT) AS shared_words
  FROM senate_pages s
@@ -188,7 +190,7 @@ WITH stopwords AS (
   shared_surnames,
   shared_surnames*cast(100 AS BIGINT)+shared_words AS score
  FROM dated_candidates
- WHERE (single_event_on_date AND single_url_on_date)
+ WHERE (single_event_on_date AND single_url_on_date AND NOT requires_overlap)
   OR shared_surnames>0
   OR shared_words>=2
 ), sha_ranked AS (
