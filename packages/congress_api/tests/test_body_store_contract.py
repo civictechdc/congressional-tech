@@ -78,21 +78,58 @@ def test_body_create_legacy_hit_and_run_dedup(tmp_path):
     assert (key, media, encoding, size) == (KEY, 'text/html', 'gzip', len(payload))
     assert gzip.decompress(payload) == DATA and hashlib.md5(payload).hexdigest() == md5
     assert first.md5 == md5
-    assert store.put(KEY, Path('/no/read/for/repeat'), 'text/html').outcome == 'unchanged'
+    again = store.put(KEY, Path('/no/read/for/repeat'), 'text/html')
+    assert (again.outcome, again.suffix, again.md5, again.size) == ('unchanged', '', md5, size)
     assert len(adapter.calls) == 2
-    adapter = Adapter(old={'size': 99, 'etag': 'old'})
+    adapter = Adapter(old={'size': 99, 'etag': '"' + 'A'*32 + '"'})
     result = BodyStore(adapter).put(KEY, Path('/no/read/for/legacy'), 'text/html')
-    assert (result.outcome, result.suffix) == ('unchanged', '.gz')
+    assert (result.outcome, result.suffix, result.md5, result.size) == ('unchanged', '.gz', 'a'*32, 99)
     assert adapter.calls == [('head', KEY + '.gz')]
 
 
-def test_body_collision_no_followup_read(tmp_path):
+def test_prepared_snapshot_collision_needs_no_followup_head(tmp_path):
     path = tmp_path / 'body'
     path.write_bytes(DATA)
     adapter = Adapter(collision=True)
-    result = BodyStore(adapter).put(KEY, path, 'application/pdf')
+    store = BodyStore(adapter)
+    result = store.put_prepared(KEY, path, 'application/pdf')
     assert (result.outcome, result.suffix, result.md5, result.size) == ('unchanged', '', None, None)
     assert [c[0] for c in adapter.calls] == ['head', 'create']
+
+    # A capture sharing this store needs the exact object's metadata.
+    adapter.old = dict(size=32, etag='a'*32)
+    result = store.put(KEY, Path('/no/read/for/cached-key'), 'application/pdf')
+    assert (result.outcome, result.suffix, result.md5, result.size) == ('unchanged', '', 'a'*32, 32)
+    assert adapter.calls[2:] == [('head', KEY)]
+
+
+@pytest.mark.parametrize(('metadata', 'error', 'message'), [
+    (None, ValueError, 'Missing stored body'),
+    ({'ETag': 'a'*32}, ValueError, 'Missing HEAD metadata'),
+    ({'ContentLength': -1, 'ETag': 'a'*32}, ValueError, 'Invalid stored body size'),
+    ({'ContentLength': True, 'ETag': 'a'*32}, ValueError, 'Invalid stored body size'),
+    ({'ContentLength': 9}, ValueError, 'Missing HEAD metadata'),
+    ({'ContentLength': 9, 'ETag': None}, ValueError, 'Invalid HEAD ETag'),
+    ({'ContentLength': 9, 'ETag': '"'+'a'*32}, ValueError, 'Invalid stored body MD5'),
+    ({'ContentLength': 9, 'ETag': '""'+'a'*32+'""'}, ValueError, 'Invalid stored body MD5'),
+    ({'ContentLength': 9, 'ETag': 'a'*32+'-2'}, ValueError, 'Invalid stored body MD5'),
+    (OSError('HEAD unavailable'), OSError, 'HEAD unavailable'),
+])
+def test_body_collision_distinguishes_missing_invalid_and_unavailable_metadata(tmp_path, metadata, error, message):
+    from unittest.mock import Mock
+
+    path = tmp_path / 'body'
+    path.write_bytes(DATA)
+    missing = ClientError({'Error': {'Code': '404'}}, 'HeadObject')
+    client = Mock()
+    client.head_object.side_effect = [missing, missing if metadata is None else metadata]
+    client.put_object.side_effect = ClientError({'Error': {'Code': '412'}}, 'PutObject')
+    store = BodyStore(R2Adapter(client, 'raw'))
+    with pytest.raises(error, match=message):
+        store.put(KEY, path, 'application/pdf')
+    assert [(call[0], call.kwargs['Key']) for call in client.mock_calls] == [
+        ('head_object', KEY+'.gz'), ('put_object', KEY), ('head_object', KEY)]
+    assert KEY not in store.known
 
 
 @pytest.mark.parametrize('key', [RECEIPT, PROVENANCE])
@@ -193,14 +230,24 @@ def test_original_input_must_match_the_content_address_before_create(tmp_path):
     assert [c[0] for c in adapter.calls] == ['head']
 
 
-def test_retained_reference_uses_exact_recorded_key_without_body_read():
-    adapter=Adapter(old={'size':99,'etag':'old'})
-    store=BodyStore(adapter)
-    result=store.reference(KEY,stored_suffix='.gz')
-    assert result.outcome=='unchanged' and result.suffix=='.gz'
-    assert adapter.calls==[('head',KEY+'.gz')]
-    assert store.reference(KEY,stored_suffix='.gz').suffix=='.gz'
-    assert len(adapter.calls)==1
+def test_retained_references_keep_both_qualified_copies_in_the_run_cache():
+    class PhysicalCopies(Adapter):
+        def head(self, key):
+            super().head(key)
+            if key == KEY:
+                return dict(size=123, etag='b'*32)
+            return dict(size=99, etag='a'*32)
+
+    adapter = PhysicalCopies()
+    store = BodyStore(adapter)
+    bare = store.reference(KEY, stored_suffix='')
+    legacy = store.reference(KEY, stored_suffix='.gz')
+    assert (bare.outcome, bare.suffix, bare.md5, bare.size) == ('unchanged', '', 'b'*32, 123)
+    assert (legacy.outcome, legacy.suffix, legacy.md5, legacy.size) == ('unchanged', '.gz', 'a'*32, 99)
+    assert store.reference(KEY, stored_suffix='') == bare
+    assert store.reference(KEY, stored_suffix='.gz') == legacy
+    assert store.put(KEY, Path('/no/read/for/cached-key'), 'text/html') == legacy
+    assert adapter.calls == [('head', KEY), ('head', KEY+'.gz')]
 
 
 def test_missing_retained_reference_never_fabricates_a_body():
