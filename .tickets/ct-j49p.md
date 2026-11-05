@@ -10,32 +10,28 @@ assignee: mikewolfd
 parent: ct-gi01
 tags: [nominations, model, source-parity, chaos-test]
 ---
-# Preserve supplied nomination committee activity dates in the public nomination record
 
-The pinned nomination input already supplies committee referral, hearing, markup and reporting activities, but the public nomination record drops them. Users reading a nomination can see its committee codes and latest action without the supplied committee chronology. Related meetings can recover some dates, but do not replace the source activity list.
+# Show the committee chronology already supplied for nominations
 
-Verified on release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd, follow-up cases P5Q1/P5Q7. For 119-pn-1011 (Charles Baldis), pinned upstream nominations generation d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3 retains committees_json for ssga00 with Referred To (2026-05-20T20:46:11Z), Hearings By (full committee) (2026-06-17T13:43:22Z), Markup By (2026-07-22T13:30:00Z), and Reported By (2026-07-22T14:47:05Z). The public record contains committees=[ssga00], transcript CHRG-119shrg64122, and two floor votes, with no committee activities field. Meetings 338565 and 338666 independently locate the hearing and business meeting.
+A researcher opening a nomination should be able to see its supplied committee referral, hearing, markup and reporting actions. The selected nomination input contains those details for Charles Baldis, PN1011. Release `e145d24c389e` shows committee codes, latest action, transcript and floor votes but omits the committee chronology.
 
-This is a confirmed supplied-field loss, not evidence of missing committee vote tallies or complete floor scheduling history. The inspected upstream table has neither tallies nor a complete action/calendar history. Missing floor roll calls cannot imply no floor consideration: PN247 and PN271 were confirmed by voice vote.
+## Root cause (2026-11-05)
 
-Narrow reproduction: inspect the named pinned nominations.parquet row's committees_json; compare get_dataset_info(table='nominations') and query_sql SELECT nomination_id,committees,latest_action_text FROM nominations WHERE nomination_id='119-pn-1011'. Inspect entity-nominations.sql committee_chunks/committee_extracted/committees_agg and final SELECT, which reduce committees_json to committee codes.
+The pinned nomination input `d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3` carries the actions and exact timestamp strings in `committees_json`. The input adapter keeps the JSON, but `entity-nominations.sql` extracts only distinct committee codes. The public schema has no activity field. The shared subject view also displays existing activity dates at day precision.
 
-Evidence: .cache/archive-release/chaos-personas-20261104/investigation-legislative/baldis-upstream.json; calls.jsonl calls 1,10,14,24,25; voice-vote-upstream.json; report.md. The 95,904-byte pinned input is .cache/archive-release/r1b/inputs/spicy_regs/generations/nominations/d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3/nominations.parquet. Source inspected at HEAD 730a2d8e0c55880fc058d13cc74d265fc315f41f; this source revision is separate from the served release.
+## Smallest useful change
 
-## Design
-
-Owner: archive nomination modeling and published schema metadata: model/sql/entity-nominations.sql, packages/viewer_publication/src/viewer_publication/archive_model.py as needed, model/registries/release-schema.json, and existing generic readers/consumers. Preserve the supplied activity name, committee identity and date/time precision in a typed published collection using the maintained schema/reader path. Keep committee codes, hearing packages and floor votes distinct. Do not fetch new upstream data or create a new complete procedural-history service for this repair.
-
-No blocking ticket dependency established: the pinned input already holds the required values. Related context: ct-mj9f covers meeting subject links and bill activity modeling; ct-sw5t covers nomination transcript discovery. Neither ticket covers this nomination field loss.
+Decode the structured data once from the pinned input with the existing model adapter path. Publish nullable `committee_activities` grouped by `system_code`, with a nullable list of activities containing the source `name` and exact `date` string. Align the type, aliases and missing-value meanings in the model and registry. Reuse the generic MCP read. Have the existing subject view display the supplied precision and separate committee actions from floor votes.
 
 ## Acceptance Criteria
 
-- A fixture from the retained PN1011 source preserves all four supplied committee activities, ssga00 identity, exact labels and source date/time precision through the native model output and published schema.
-- Published nomination lookup and read-only SQL expose the same typed activities through the maintained generic reader; existing committee codes, transcript references and floor votes retain their meanings.
-- Missing or empty activities remain explicit source availability, with no inferred votes, floor scheduling or no-action claims. A negative control with no floor roll calls and a voice-confirmation latest action remains correctly described.
-- Validation distinguishes local/model evidence from a new release actually consumed by MCP/site. Record final release identity and replay PN1011 when delivered; do not call an unchanged live release repaired.
-- No committee tally, individual ballot or complete floor scheduling-history claim is added by this change.
+- The native fixture and published schema retain all four PN1011 `ssga00` actions at their exact timestamps. The source lists Referred To at `2026-05-20T20:46:11Z`, Hearings By (full committee) at `2026-06-17T13:43:22Z`, Markup By at `2026-07-22T13:30:00Z`, and Reported By at `2026-07-22T14:47:05Z`. Preserve source order, repeated actions, nomination-part separation, and unresolved or unrecognized values. Check absent or unavailable versus explicitly empty at both collection levels.
+- The selected release returns typed activities through nomination lookup and read-only SQL. Existing committee codes, transcript links and floor votes remain available. A voice confirmation without a roll call, such as PN247 or PN271, is still described as such. Committee activities establish the reported steps, with separate evidence required for tallies, ballots or a complete floor calendar.
+- Record native fixture and candidate results separately from the final release ID and PN1011 readback through the installed reader and applicable site display.
 
+## Coordination and evidence
+
+Reuse the pinned nomination input and recompute the affected model outputs. Retained source values and consumer results are in `.cache/archive-release/chaos-personas-20261104/investigation-legislative/`. [ct-t915](ct-t915.md) owns the site integration, [ct-mj9f](ct-mj9f.md) other meeting and bill links, and [ct-sw5t](ct-sw5t.md) nomination transcript discovery. [Root-cause evidence](../docs/plans/production-mvp-root-causes-20261105.md).
 
 ## Notes
 
@@ -48,3 +44,7 @@ Frozen interface/owner: nomination model and shared schema publish nullable comm
 The first loss is known: entity-nominations.sql:16-29 reduces committees_json to codes and final projection 86-100 omits activities. Use the already-pinned 95,904-byte nominations input; no acquisition, reference-history mirror or capture parser replay. Add the retained PN1011 four-activity fixture to maintained owning/native tests, plus committee-level absent/empty and unresolved fields. All four ssga00 labels and literal timestamps, including 2026-05-20T20:46:11Z referral, must survive. Do not truncate to date32, guess missing timestamps, collapse duplicate activities or merge nomination parts. Existing committee code, transcript and vote meanings remain; voice confirmation does not require a floor roll call, and no tallies or full calendar history is implied.
 
 Exact nested shape/missingness semantics are the hard prerequisite to projection/registry/consumer edits. This model-only field preservation can proceed in parallel with other producers and upstream roster history. Reuse pinned inputs; regenerate nominations and only dependents whose declared inputs changed using the existing publication path. Closure separates source fixture/native schema+values, qualified candidate/gates, and actual stdio/site selected-release exposure.
+
+**2026-11-05T20:18:06Z**
+
+Integrated ordered nomination committee activities with publisher names and timestamp precision, displayed separately from floor votes. The retained PN1011 case and MCP readback preserve all four activities, with null and empty states distinguished. Combined-candidate and live acceptance remains due; the full build/publication is held for all waves.

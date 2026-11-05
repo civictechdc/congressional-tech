@@ -1,8 +1,8 @@
 ---
 id: ct-pocg
-status: open
+status: closed
 deps: [ct-73oe, ct-deh9]
-links: [ct-30fp, ct-kw9b, ct-vpo2, ct-h1nd, ct-77zb, cef-96wc, ct-1mbc, ct-9gmr]
+links: [ct-30fp, ct-kw9b, ct-vpo2, ct-h1nd, ct-77zb, cef-96wc, ct-1mbc, ct-9gmr, ct-c5xf, ct-082q]
 created: 2026-10-30T14:10:02Z
 type: feature
 priority: 1
@@ -10,28 +10,16 @@ assignee: mikewolfd
 parent: ct-082q
 tags: [html-metadata, extruct, congress-api, retention]
 ---
-# Retain versioned HTML metadata and selectively replay saved bodies
+# Read useful metadata and testimony once from each retained HTML body
 
-Metadata improvements should benefit historical captures without another publisher crawl or a full archive rebuild.
-
-User value: historical records improve faster and at lower processing cost, while the evidence behind prior results remains available.
-
-Evidence: docs/experiments/extruct-metadata-20261030/report.md and summary.json. Full extraction and comparison artifacts are under output/extruct-metadata-20261030/ (local, Git-ignored); preserve portable fixtures and manifests needed for tests rather than relying solely on these local paths.
-
-## Design
-
-Owner: congress_api/lake/readings.py, its reading schema, parser-version calculation, and the maintained retention interfaces. Append versioned extraction results through the existing bounded workers and immutable storage. Plan work by body hash plus extractor version. Preserve raw literal URL values and resolve separately for each capture URL/base context, so identical bytes under different URLs do not acquire the wrong links.
-
-Extend existing schema/version handling rather than adding a parallel metadata store. Keep format-level partial results and error codes. Work from a frozen selection with explicit counts of missing bodies, excluded formats, error pages, and completed/partial readings. Reuse owned local verified bodies and measure actual reads/reprocessing; do not equate selective inserts with a selective job.
+Give older captures the same useful metadata and cleaner testimony as new ones. Run the existing bounded readings producer for HTML metadata and publisher-marked content. Keep body-level extraction keyed by body and parser version, then resolve links per capture. The Round 2 branch carries implementation work for the combined scope.
 
 ## Acceptance Criteria
 
-- Unchanged body/version pairs are reused; an extractor change selects the intended HTML bodies without rereading unrelated PDFs, transcripts, or source families.
-- A fixture with identical HTML at different capture URLs resolves relative links correctly while sharing body extraction; missing context remains unresolved.
-- Interrupted work resumes without duplicate readings, deleting originals, or replacing unrelated versions; older schema parts remain readable.
-- A selected retained replay records body hashes, reader versions, completeness, partial-format failures, bytes read/downloaded, elapsed time, and peak resource use under existing limits.
-- No publisher refetch is necessary for available retained bodies; unavailable body references are reported as gaps, never successful empty extraction.
-
+- Reuse unchanged body/version pairs. Select intended HTML inputs and report missing bodies, excluded formats, error pages and partial-format outcomes. Preserve originals, unrelated earlier readings and older readable schema parts, avoid unrelated reads, and resume without duplicate output.
+- A fixture with the same HTML at distinct URLs shares extraction and resolves links per URL. Missing context remains unresolved. Measure exact body/version selection, reads or downloads, elapsed time and peak resources on the retained replay.
+- Prove supported marked content removes unrelated text without dropping testimony. Preserve the independent two-way cohort comparison and the existing fallback, including marked-empty, nested or multiple blocks, malformed, boilerplate and unannotated cases. Record selected, fallback and failure counts and output sizes.
+- Preserve safe text, meaningful order and links, exact selectors and retained body evidence. Provide bounded snippets and content references for publication without copying full text into every document row. Preserve the owner’s review conditions in the absorbed `ct-c5xf` evidence. If integrating Round 2’s replacement-character normalization, check the affected GovInfo fingerprints and link continuity under the existing release gates.
 
 ## Notes
 
@@ -42,3 +30,17 @@ Extend existing schema/version handling rather than adding a parallel metadata s
 **2026-11-02T13:15:40Z**
 
 2026-11-02 (lead): add to Round 2: normalize Unicode replacement characters (U+FFFD and its double-encoded form) out of the html text fingerprint, so copies differing only by them merge (7 GovInfo packages). Round 2 re-reads all html bodies anyway.
+
+**2026-11-05T17:11:15Z**
+
+Consolidation accepted 2026-11-05: absorb ct-c5xf.
+
+User outcome: Versioned HTML extraction, content selection and selective replay.
+
+Remaining acceptance: Independent no-dropped-testimony comparison; safe ordered text and exact selectors; explicit fallback counts; bounded snippets; body/version reuse; capture-context URL resolution; resume and unread-gap accounting.
+
+Source evidence and full original criteria remain in: .tickets/ct-pocg.md:27; .tickets/ct-c5xf.md:38; .cache/rounds/r2/html/plan.md:120. The superseded records remain available; completed work is reused and unfinished criteria stay with this owner.
+
+**2026-11-05T19:53:12Z**
+
+Closed as superseded on 2026-11-05. ct-082q owns all remaining scope, acceptance and evidence as one HTML delivery feature across extraction, native publication, site, MCP and shared verification. This is consolidation, not a claim that implementation or publication is complete. Original criteria and historical notes remain here; ct-082q links back to them.

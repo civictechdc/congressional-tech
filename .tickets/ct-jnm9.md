@@ -1,6 +1,6 @@
 ---
 id: ct-jnm9
-status: open
+status: closed
 deps: [ct-93zs]
 links: [ct-082q, ct-m104, ct-0a37, ct-93zs, ct-o7t4, ct-c5xf]
 created: 2026-10-30T14:10:03Z
@@ -10,31 +10,22 @@ assignee: mikewolfd
 parent: ct-082q
 tags: [html-metadata, extruct, mcp, explorer]
 ---
-# Expose published HTML metadata and its meaning through Congress Explorer MCP
+# Give Congress MCP the same cited page facts as the site
 
-Assistant users need the same document dates, descriptions, classifications, and evidence as site users.
-
-User value: assistants can answer what a document is and when its page changed without guessing from a title or treating a page update as the hearing date.
-
-Evidence: docs/experiments/extruct-metadata-20261030/report.md and summary.json. Full extraction and comparison artifacts are under output/extruct-metadata-20261030/ (local, Git-ignored); preserve portable fixtures and manifests needed for tests rather than relying solely on these local paths.
-
-## Design
-
-Owner: apps/explorer_mcp, reconciling with its current in-progress implementation before editing. Consume one pinned published release; keep extraction and metadata selection upstream. Update schema descriptions and document-detail/evidence output only where the current generic published-column access does not already cover the new data. Add targeted query support when it serves the existing tools, rather than duplicating the schema in a second parser.
-
-Preserve bounded result size, paging, date precision, and missing/partial/conflicting metadata status. Detail retrieval should expose original source pointers and selected content references without dumping the entire raw metadata payload.
+Help assistants distinguish when a hearing happened, when a document was published, and when a webpage changed. Read the fields from one pinned shared release. Extend the existing discovery or detail tools only where their generic field access is insufficient.
 
 ## Acceptance Criteria
 
-- Actual-release integration checks retrieve the same description, source type, publication/modification dates, and conflict evidence as the site fixture.
-- Dataset/schema information explains the new field meanings and identifies the pinned release.
-- Tests cover old releases, absent fields, partial extraction, and large metadata/content without unbounded responses.
-- Hearing date remains distinct from page publication/modification in tool output; citations resolve to the selected source reading.
-- Existing generic support is reused where sufficient; no extraction logic or independent identity policy is added to MCP.
-
+- Against an actual release, retrieve the same description, source type, publication/modification dates and conflict evidence as the site fixture. Discovery explains field meanings and names the selected release.
+- Preserve date precision and the difference between event and page dates. Citations resolve to the selected source reading. Tests cover older releases, absent and partial fields, conflicts, and large metadata or text with bounded responses and paging.
+- Keep extraction, field selection and identity decisions upstream. Reuse the MCP result in `ct-0a37` and `ct-m104`.
 
 ## Notes
 
 **2026-10-30T20:37:07Z**
 
 Link selected HTML metadata acceptance to ct-m104 and PHASE-2 §4.6. Consume the shared native release through existing generic discovery/query support; keep extraction and field selection upstream. This ticket does not own the broader channel/video/research inventory.
+
+**2026-11-05T19:53:12Z**
+
+Closed as superseded on 2026-11-05. ct-082q owns all remaining scope, acceptance and evidence as one HTML delivery feature across extraction, native publication, site, MCP and shared verification. This is consolidation, not a claim that implementation or publication is complete. Original criteria and historical notes remain here; ct-082q links back to them.

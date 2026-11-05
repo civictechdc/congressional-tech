@@ -351,7 +351,7 @@ coverage of every retained source or upstream table.
 | Legislative records and reference history | SpicyRegs remains upstream owner (`ct-u01c` / `ss-vhi2`). `ct-gi01` maps the retained committee records and identifies exactly which upstream detail is published or externally pinned; summary fields are not full histories or ballots. |
 | Recordings, channels and research evidence | `ct-gi01` maps retained channel/video metadata, matching decisions, tracks and completeness into the shared release or stable evidence references; `ct-m104` checks their discoverability and queryability. |
 | Other retained reference data | `ct-gi01` inventories archive routes, session dates and chamber control alongside the old reference inputs. No unassigned omission is treated as completed migration. |
-| HTML dates, descriptions and labels | `ct-082q`: mapping `ct-w8dc`, publication `ct-93zs`, MCP `ct-jnm9`, site `ct-4thc`, and full-path qualification `ct-0a37`. These add selected metadata; they do not replace the broader migration. |
+| HTML dates, descriptions and labels | `ct-082q` owns extraction, source mapping, native publication, site/MCP presentation and shared verification. Its checklist preserves the accepted requirements of the absorbed stage tickets. These add selected metadata; the broader migration retains its own scope. |
 | Replay, rebuild and production acceptance | `ct-gi01` supplies preservation/parity evidence, `ct-m104` verifies the shared release, `cef-96wc` records the live switch, and `ct-5kto` retires the old route. |
 
 ### 4.4 Native relationship metadata — execution order
@@ -467,9 +467,9 @@ scope decision; it cannot silently satisfy migration acceptance.
 | Recording matches: `gpo_hearing_videos.csv`, `meeting_recordings_found.csv` and retained match evidence under `apps/committee_youtube/data/` | Typed links and decisions with their basis, score where present, full-recording/excerpt distinction, unresolved/conflicting status and source references. Preserve observations and adjudication history; old derived matches are a parity oracle, not silently promoted to publisher assertions. | `ct-gi01` |
 | Hearing completeness: `apps/committee_youtube/data/meeting_completeness.csv`, Explorer issues and coverage | Typed coverage/issue facts with scope, denominator, date and reason. Unknown, missing, unresolved and confirmed absent remain distinct. Coverage/Gaps and MCP read these same meanings. Owner decision, 2026-11-02: where evidence is held but not yet linked, coverage is unknown, never not_stated, and every present value has a link the user can open. A Senate meeting with no linked document or witness is unknown until Senate committee-page links land; old page decisions are not imported (DATA-MODEL §7.11). | `ct-gi01`, `ct-t915`, `ct-m104` |
 | Retained committee amendments/votes: `apps/committee_youtube/data/house_amendments_found.csv` and source records | Preserve the actual record kind, meeting/document references, outcome and evidence where supplied. Document links and vote records must not be described as complete member ballots or tallies. New acquisition/reconstruction remains deferred. | `ct-gi01` |
-| Meeting attributes already read internally, including `congress` and source `updated` | Carry useful attributes into typed release fields with origin and date meaning. Keep hearing dates, publisher updates and capture times distinct; reconcile overlapping HTML date work. | `ct-gi01`, `ct-w8dc`, `ct-93zs` |
+| Meeting attributes already read internally, including `congress` and source `updated` | Carry useful attributes into typed release fields with origin and date meaning. Keep hearing dates, publisher updates and capture times distinct; reconcile overlapping HTML date work. | `ct-gi01`, `ct-082q` |
 | Full bill action histories, cosponsors, member votes, historical nominations/amendments/rosters | Inventory the exact available SpicyRegs tables, columns and generation pins. Identify local summaries separately from accessible detailed upstream records; expose supported relationships and access limits in discovery. Do not mirror all upstream tables or infer that a vote summary contains ballots. | `ct-gi01`, `ct-m104`; upstream `ct-u01c` / `ss-vhi2` |
-| HTML descriptions, dates, classifications and source evidence | Publish the selected typed fields through the maintained model, with stable evidence references and field meanings shared by site and MCP. | `ct-082q`, `ct-93zs`, `ct-jnm9`, `ct-0a37` |
+| HTML descriptions, dates, classifications and source evidence | Publish the selected typed fields through the maintained model, with stable evidence references and field meanings shared by site and MCP. | `ct-082q` |
 | Remaining old Explorer fields and reference inputs | Inventory all six old entity/research tables and their source inputs, including archive routes, session dates and chamber control where retained. The named rows above are a minimum, not an exhaustive field list. | `ct-gi01` |
 
 The exact additions are pending implementation: §3 includes accepted target
@@ -499,7 +499,7 @@ The frozen-input comparison and field inventory evidence is in
    representative queries, missingness and evidence links; demonstrate any
    supported external pinned access and state what is unavailable. Retain the
    earlier performance/recovery evidence and repeat affected checks as needed.
-   Selected HTML metadata qualification remains owned by `ct-0a37`.
+   Selected HTML metadata qualification is part of `ct-082q` and is reused here.
 4. **Live switch — `cef-96wc`.** Record exact production job bindings, release
    identity, live site/MCP readback, and previous-release rollback references.
    Local success and merged code remain separate from live acceptance.

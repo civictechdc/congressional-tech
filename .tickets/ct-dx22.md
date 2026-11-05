@@ -10,14 +10,32 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [release, model, phase2]
 ---
-# Witnesses attach to the wrong hearing on events with several packages
 
-single_package_meetings (appearance-records-resolved.sql:107-111) checks that a package has one event, not that an event has one package. On 17 events with two or three linked packages, raw MODS titles show v21 chose worse on 3 (100202, 101167, 335827) and tied on 6. Traced to 959c23ee; 86 events are exposed. Evidence: docs/measurements/release-diff-c94bfedc-448651e7-20261101.md.
+# Keep witnesses off a hearing date their source does not support
+
+People researching a hearing should see a witness on an individual sitting only when the evidence supports that date. In `e145d24c389e`, the archive puts Thomas L. Farmer and Raymond J. Reese from `CHRG-112hhrg72238` on June 2, 2011 (event `100098`). The retained hearing print places both under July 12 (event `100099`).
+
+## Root cause (2026-11-05)
+
+The exact retained GovInfo metadata (MODS) and parsed appearance record describe a print with two held dates and carry no event for either witness. The join in `model/sql/appearance-observations.sql:179,196,205` uses a print-to-meeting edge to supply an individual appearance’s occasion. It makes that decision without checking whether the two-date print supports the individual assignment. The published transcript list showed the package on June 2 only among the two checked events. The print independently establishes the July sitting. Admission of a July edge in the private agreement data remains unverified.
+
+## Smallest useful change
+
+Use the retained held dates and vetted print links in the existing appearance model. Keep a multi-date print’s package-wide appearances visible at package scope when the source leaves the individual sitting unresolved. Keep explicit sitting assignments and supported print links. Use the July contents as the counterexample for Farmer and Reese. Reuse the existing pinned appearance and meeting inputs for a model-only repair where they supply the needed facts. Recompute affected bindings and downstream keys and links.
 
 ## Acceptance Criteria
 
-Every event's selected package is justified by a raw record, or no package-sourced witnesses attach; a test covers an event with two packages.
+- In the two-date fixture, neither named witness is assigned to June 2 solely through the print. An independently supported June witness stays there. An unresolved appearance has `event_id=NULL` and remains visible at package scope without being copied to either sitting.
+- The two-date control retains both legitimate print links when the links have supporting evidence. For the named package, preserve supported links and trace the missing public July link through the existing print agreement separately. Require individual evidence before using either link as a witness date.
+- Keep the two-package and same-day collision controls. Preserve source occurrences, locators, panels, document links and literal affiliations.
+- Account for any changed occurrence keys and document-witness links in the existing gate 1 cause records. Preserve public document link continuity under its separate gate.
+- Verify the named records against the retained source, owning model output and installed selected release. Record the affected scope, relevant pins and candidate qualification.
 
+## Coordination and evidence
+
+The independently read contents are on PDF page 3, printed page III. The witness keys in the checked release are `c91a7472a2a51731` and `9fb4f01557e8b8b6`. [Root-cause analysis](../docs/plans/production-mvp-root-causes-20261105.md) · [Earlier release comparison](../docs/measurements/release-diff-c94bfedc-448651e7-20261101.md)
+
+Share the retained print with the affiliation work and coordinate package-association meaning with the recording work. Each repair can proceed independently. [Affiliation parsing](ct-lx67.md) · [Recording scope](ct-j78x.md)
 
 ## Notes
 
@@ -94,3 +112,7 @@ Owner: appearance model binding in model/sql/appearance-observations.sql:171-198
 Add decisive cases to maintained owning/native tests: the retained two-date print with Farmer/Reese, a source-explicit June witness, a package-only unresolved witness, and the existing multi-package/same-day collision controls. Retain every source occurrence/locator/context, panels, links and literal affiliations. Under occurrence-v2, changing occasion changes witness_key; account for each key and downstream document-witness-link change in gate-1 cause/disposition evidence. Do not force key stability or invent witness redirects; gate2 separately protects document public link continuity.
 
 Retained held_dates should permit a model-only binding repair, reusing appearance records without parser replay. Prove the exact affected interpretation closure before claiming selective output reuse; final validation/export may still read inherited populations. Fixture work can proceed alongside affiliation, nomination and recording work. No hard dependency on those fixes or new acquisition. Finish source/native values, existing candidate gates and installed selected-release replay; local passing output does not repair unchanged e4538f00.
+
+**2026-11-05T20:18:06Z**
+
+Integrated package-scoped handling for witnesses from multi-date MODS hearing prints. The bounded refresh produced all 35,020 current MODS rows while retaining every prior row. Named multi-day and single-sitting controls passed. Final candidate checks must confirm package context is not promoted to an individual appearance date. Full build/publication waits all waves.

@@ -1,8 +1,8 @@
 ---
 id: ct-4thc
-status: open
+status: closed
 deps: [ct-93zs]
-links: []
+links: [ct-082q]
 created: 2026-10-30T14:10:03Z
 type: feature
 priority: 2
@@ -10,25 +10,18 @@ assignee: mikewolfd
 parent: ct-082q
 tags: [html-metadata, extruct, site, explorer]
 ---
-# Show clear hearing, publication, and update dates with useful document descriptions
+# Show hearing dates, page dates and document descriptions clearly
 
-Users should understand when a hearing happened, when a document was published, and when its page changed without inspecting raw metadata.
-
-User value: clearer search results and detail pages, useful document-type labels, and inspectable evidence for disputed facts.
-
-Evidence: docs/experiments/extruct-metadata-20261030/report.md and summary.json. Full extraction and comparison artifacts are under output/extruct-metadata-20261030/ (local, Git-ignored); preserve portable fixtures and manifests needed for tests rather than relying solely on these local paths.
-
-## Design
-
-Owner: apps/site Explorer/archive readers and presentation components. Consume the published typed fields. Use separately labeled Hearing date, Published, and Page updated values when applicable, preserving date/time precision. Show selected descriptions, publisher document labels, and cleaner text previews; load larger text/evidence only when requested.
-
-Expose consequential conflicts with the retained source and alternatives. Empty optional values remain omitted. Keep established date filters tied to their documented meaning. Preview-image selection/social-account browsing are deferred. This is the requested evidence-backed metadata feature; no separate performance redesign under ct-2wsw is included.
+Help site users find the right hearing and understand what a document is. Use the published fields from `ct-93zs` for separately labeled hearing, publication, and page-update dates. Show selected descriptions, publisher labels, and bounded previews. Load larger content and source evidence on demand.
 
 ## Acceptance Criteria
 
-- Browser checks use an actual release from the publication task and cover a hearing/page-update split, a date conflict, an advisory, a testimony page, and missing optional fields.
-- The displayed dates and document labels match published values and meaning; no missing timezone or precision is invented for display.
-- Users can open the relevant source evidence and selected text; unsafe publisher HTML is not executed.
-- Search/filter/deep-link behavior remains coherent, and existing supported releases still render.
-- Capture representative UI evidence and verify browse requests do not download full raw metadata or full text merely to list results.
+- Browser checks on an actual generated release cover a hearing/page-update split, a conflict with alternatives and source evidence, an advisory, a testimony page, and missing optional fields.
+- Keep the published precision and timezone meaning. Show labels and dates faithfully, omit missing optional values, and let users open source evidence and selected text safely. Publisher markup never executes.
+- Existing search, filter and deep links work with their documented meanings. Older supported releases render, and browse requests avoid full raw metadata and text. Record representative browser evidence. Image and social discovery stay deferred.
 
+## Notes
+
+**2026-11-05T19:53:12Z**
+
+Closed as superseded on 2026-11-05. ct-082q owns all remaining scope, acceptance and evidence as one HTML delivery feature across extraction, native publication, site, MCP and shared verification. This is consolidation, not a claim that implementation or publication is complete. Original criteria and historical notes remain here; ct-082q links back to them.

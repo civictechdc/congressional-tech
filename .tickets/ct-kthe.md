@@ -9,28 +9,39 @@ priority: 2
 assignee: mikewolfd
 tags: [phase-2, senate, parsers, witnesses, etl-workflow]
 ---
-# Add second-layout Senate hearing page parsers for intelligence, environment, and jec
 
-Per the D4 measurement in `docs/plans/phase-2-annex-20261028.md` §4.2.1, after ColdFusion `[?&]download=1` normalization, three Senate committee sites still have low witness-card coverage because they use alternative HTML page layouts: `intelligence.senate.gov` (51.0%, 25/49 testimony docs), `environment.senate.gov` (15.0%, 3/20), and `jec.senate.gov` (0.0%, 0/1 across 56 candidate pages).
+# Find witnesses and their testimony from three Senate committee sites
 
-## Design
+Readers should be able to open the testimony a committee page assigns to a witness. The earlier Phase 2 D4 check associated 25 of 49 Intelligence testimony documents, 3 of 20 Environment documents, and none of one across 56 candidate Joint Economic Committee (JEC) pages. These counts describe that sample. The current audit traced the JEC failure.
 
-Owners: `packages/congress_api/src/congress_api/parsers/senate_page.py` and `packages/congress_api/src/congress_api/lake/appearance_records.py`.
+## Root cause (2026-11-05)
 
-1. **Decouple Phase 2 Senate witness/card extraction from unversioned Phase 1 `document_links` side effects (`etl-workflow` §4):**
-   - `parsers/senate_page.py:source_details()` currently calls `retention/document_links.py:link_records()`, which is a Phase 1 crawler module not tracked in `appearance_records.current_version("senate_page")`.
-   - Extract or self-contain the witness-card link binding helper in `parsers/senate_page.py` so `appearance_records` depends only on versioned Phase 2 parser files, and builds on `ct-h1nd`'s source-scoped `current_version("senate_page")` so updating `senate_page.py` never invalidates `mods` (34,559 rows), `congress_gov` (18,140 rows), or `house_xml` (3,398 rows).
-2. **Inspect bounded samples of retained HTML captures:**
-   - Visually inspect bounded samples of retained original HTML captures for `intelligence.senate.gov`, `environment.senate.gov`, and `jec.senate.gov` in the raw corpus.
-3. **Add layout extraction rules:**
-   - Add extraction rules for witness names, titles/organizations, panels, and testimony `document_urls` where the HTML structure binds each link to its witness.
-   - Preserve the invariant (`DATA-MODEL` §7.2) that `witness_keys` come only from source-stated witness links (never guessed across flat ungrouped page links).
-4. **Selectively replay `senate_page` in `appearance_records`:**
-   - Run selective lake replay for `senate_page` (or the three target Senate hosts) without re-parsing `mods`, `congress_gov`, or `house_xml`.
+The retained June 12, 2024 JEC page “Made in America: The Boom in U.S. Manufacturing Investment” shows two separate failures.
+
+- The plain witness parser treats adjacent parts of Scott Lincicome’s title as separate people. Both anchors refer to file `D2F941B3-FF5F-4503-B354-5C8BE5D7AF3B`. The release publishes “Stiefel Trade Policy Center” as another witness with the same testimony.
+- The retained page already supplies the same title and date as event `335901`. The model maps the JEC host to `jsec00`, while this event has `jjec00`. A separate candidate filter excludes the event because its chamber is null. Both rules run before the title and date checks can link the page.
+
+The old `retention/document_links.py` diagnosis is stale. `senate_page.py` now calls `source_details_tree` directly. The actual versioning gap is that the plain parser calls `witness_names.witness` but the Senate version omits the helper. The current failure paths for Intelligence and Environment remain untraced.
+
+## Smallest useful change
+
+Keep a source-supported continuation in one witness card, with its title, organization, panel and evidence. Let the existing matcher consider event `335901` through the supported local JEC identity, correcting the alias and eligibility rules while keeping the date, title and ambiguity checks. Preserve source committee codes and the raw unknown chamber. Reuse existing page facts for the model repair. Trace one exact retained miss on each of the other two hosts before deciding whether admission, extraction or matching needs a change.
 
 ## Acceptance Criteria
 
-- `parsers/senate_page.py` witness and card-link extraction no longer depends on unversioned Phase 1 `retention/document_links.py` internals.
-- Retained HTML fixtures from `intelligence.senate.gov`, `environment.senate.gov`, and `jec.senate.gov` extract witness appearances and witness-bound `document_urls`.
-- Pages that list documents flat without per-witness grouping do not fabricate witness-document ownership.
-- Updating `parsers/senate_page.py` advances only `appearance_records.current_version("senate_page")`, leaving `mods`, `congress_gov`, and `house_xml` parser versions untouched.
+- The JEC fixture publishes one Scott Lincicome occurrence with the complete title and the source-bound testimony, and links it to `335901`. Keep genuinely distinct witnesses that share a file, and preserve ambiguity when page evidence does not resolve a meeting.
+- The retained Intelligence, Environment and JEC fixtures recover witness appearances and source-bound `document_urls`. Flat or ungrouped links stay unassigned to individuals.
+- Keep the extractor independent of `retention/document_links.py` internals. Account for the shared witness helper in the Senate version before carrying readings across a helper change. A Senate-only extractor edit advances its source version while the MODS, Congress.gov and House XML versions stay stable.
+- Record the exact replay scope, version and resulting lake output. Keep the three-host counts tied to their measured sample.
+
+## Coordination and evidence
+
+The retained JEC HTML SHA-256 is `b4c3127548dbf19424641b714dfc301050797c164a8ce20e3e11d087ecc8cc0f`. [Root-cause analysis](../docs/plans/production-mvp-root-causes-20261105.md) · [Phase 2 annex, §4.2.1](../docs/plans/phase-2-annex-20261028.md)
+
+Use the existing Senate version work and coordinate any shared helper edit with the MODS owner. The local JEC match can ship independently of explaining chamber gaps across the release. [ct-h1nd](ct-h1nd.md) · [ct-lx67](ct-lx67.md) · [ct-opy0](ct-opy0.md)
+
+## Notes
+
+**2026-11-05T20:18:06Z**
+
+Integrated the JEC continuation repair, source-specific committee matching and shared-helper version tracking. All 9,818 Senate records replayed successfully; independent comparison found exactly the named JEC list changing from five rows to four, with Scott Lincicome's role and testimony URL preserved. Intelligence discovery is fixed, but its exact detail request returned 403; the exact Environment source fixture remains unavailable. These gaps and final selected-release acceptance keep the ticket open.

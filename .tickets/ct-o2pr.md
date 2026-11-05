@@ -2,7 +2,7 @@
 id: ct-o2pr
 status: closed
 deps: []
-links: [ct-qg8e, ct-64el, ct-1i4q, ct-t915, ct-9s7b, ct-gi01]
+links: [ct-qg8e, ct-64el, ct-1i4q, ct-t915, ct-9s7b, ct-gi01, ct-082q]
 created: 2026-11-02T00:36:42Z
 type: bug
 priority: 2

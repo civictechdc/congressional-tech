@@ -10,19 +10,42 @@ assignee: mikewolfd
 parent: ct-gi01
 tags: [data-model, source-evidence]
 ---
-# Resolve three existing hearing dates that disagree with printed covers
 
-Independent cover review found three existing date disagreements. Their values are identical in live release e4538f0064e1, the earlier candidate, and final candidate e145d24c389e. These are separate from the repaired later-reposting case in ct-rvma.
+# Correct three hearing dates that disagree with the printed covers
 
-| GovInfo package | Current meeting-derived date | Printed cover date |
+Researchers should see when the printed proceeding occurred and still be able to follow related meeting records. In release `e145d24c389e`, three document dates disagree with hash-matched covers. In these cases, the retained MODS dates agree with the covers.
+
+| GovInfo package | Published date | Printed cover |
 | --- | --- | --- |
-| CHRG-112hhrg68347 | 2011-06-22 | 2011-09-22 |
-| CHRG-112hhrg80849 | 2012-07-25 | 2012-06-25 |
-| CHRG-113hhrg82590 | 2013-07-10 | 2013-05-09 |
+| `CHRG-112hhrg68347` | 2011-06-22 | 2011-09-22 |
+| `CHRG-112hhrg80849` | 2012-07-25 | 2012-06-25 |
+| `CHRG-113hhrg82590` | 2013-07-10 | 2013-05-09 |
 
-The body hashes and comparisons are retained in `.cache/archive-release/handoffs/cursor-resume-20261105/final-acceptance/acceptance.json`; independently checked cover evidence is in `final-acceptance/independent-covers.json` in the same handoff. The final source is 7f9ebddd2cb632f97bc0214ffd44beaf72b0a5a6.
+## Root cause (2026-11-05)
+
+`component-meeting-links.sql` takes the earliest date across broad component links. `document-normalized.sql` uses that date as a document-date fallback.
+
+- `68347` is listed by June event `103916` and September event `103921`. Only `103921` publishes the print as a vetted transcript. The fallback takes the June attachment date.
+- `80849` and `82590` each have one attached event, `100054` and `101108` respectively. The retained Congress.gov and House records agree on the attached meeting's date and list the print. The cover and MODS establish a different print date. The publisher's reason for each attachment remains unknown.
+
+The evidence identifies a document-date selection error. The linked events have their own dates, which are independently supported by their retained records.
+
+## Smallest useful change
+
+Choose the print date from evidence that supports that proceeding. Reuse the vetted September relation for `68347` and the independently corroborated cover and MODS evidence for the other two. Keep the publisher's document attachments and meeting dates. Preserve a conflict or an unknown date where no candidate has adequate support. Qualify the exact affected print fallback cases before applying a broader selection rule.
 
 ## Acceptance Criteria
 
-Trace each wrong date to its original meeting or package evidence and correct the responsible rule or source reading. Verify each resulting date against the retained cover and independent meeting evidence. Preserve the multiday hearing control and the CHRG-119hhrg60403 control, whose actual May 15, 2025 hearing date disagrees with a May 14 MODS date. If extraction changes, follow the existing parser-version and selective-reprocessing controls. Add focused regression coverage and an independent wrong-date plant before accepting the repair.
+- Verify the three date values against the retained covers and independent meeting evidence. Retain the two June and September document links for `68347` and preserve both other attachments.
+- Keep the multiday control and `CHRG-119hhrg60403`, whose May 15, 2025 cover contradicts its May 14 MODS date. Add an independently checked wrong-date plant.
+- Reuse accepted source readings for a selection-only change. If extraction changes, follow the existing parser pin and selective replay controls. Verify the resulting date in the selected release.
 
+## Coordination and evidence
+
+Use the exact body hashes and cover checks under `.cache/archive-release/handoffs/cursor-resume-20261105/final-acceptance/` and the [MVP root-cause plan](../docs/plans/production-mvp-root-causes-20261105.md). Preserve the later-reposting repair in [ct-rvma](ct-rvma.md). Coordinate release verification with [ct-m94a](ct-m94a.md), which qualifies dates from URL aliases.
+
+## Notes
+
+**2026-11-05T20:18:06Z**
+
+Integrated three exact-body, cover-supported hearing-date corrections through the existing date decision owner: CHRG-112hhrg68347, CHRG-112hhrg80849 and CHRG-113hhrg82590. Existing multi-day and named contrary controls remain intact. Retained reader checks passed. The combined candidate must verify the final date changes before publication; the full build is held for all waves.

@@ -2,7 +2,7 @@
 id: ct-5kto
 status: open
 deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz, ct-4jms, ct-gi01, ct-m104, cef-96wc, ct-x78c]
-links: [cefr-vnw8, cef-jh7i, cef-96wc, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-gi01]
+links: [cefr-vnw8, cef-jh7i, cef-96wc, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-gi01, ct-8kl2, ct-a3le, ct-082q]
 created: 2026-10-30T14:32:31Z
 type: task
 priority: 1
@@ -10,30 +10,19 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [phase2, f5, cleanup, deletions, track6]
 ---
-# T6.1 (F5): Execute 18-group post-switch legacy code deletions (~40k LoC) and retire seed_v5 & pipeline-data paths
 
-Per docs/plans/bindings-20261025.md §6 and docs/plans/engine-first-switch.md item 7:
-- Once deployment and new workflows are confirmed, run scripts/measure/cxb_switch_deletions.py and delete the 18 superseded congressional-tech groups (Python incremental catalog, Python rebuild path, legacy raw index, legacy viewer publication journal/v6 preparer, F0 converter, legacy e2e tests, etc.) one commit per group with before/after wc -l.
-- Remove remaining seed_v5 / display_only branches (archive_seed_profile.py, archive_gate.py, archive_publish.py, archive_maintenance.py, archive-targets.mjs).
-- Retire legacy pipeline-data/committee-explorer/public staging in .github/workflows/deploy-pages.yml and publish-explorer.yml.
-- Rewrite apps/site/FILENAME-VIEWER.md and .github/workflows/raw-source-tables.md.
+# Retire the old Explorer after the shared release is accepted
 
-## Remaining scope — 2026-10-30 reconciliation
-
-Reopened at the user's request. Keep the completed G01-G18 deletion evidence;
-there is no instruction to repeat those deletions. The remaining failure is
-pipeline-data/committee-explorer/public staging in both publish-explorer.yml and
-deploy-pages.yml, together with the separate Explorer publishing route. The
-required sequence and preservation checks are in docs/plans/phase-2-annex-20261028.md §4.6 and
-docs/plans/engine-first-switch.md, Remaining phase-2 Explorer switch.
+Remove the old Explorer publishing and Pages dependencies once users can get the retained research data from the shared archive release. The original 18 deletion groups and seed cleanup are complete. At the November 5 audit, GitHub reported the old writer workflow disabled. The active Pages build still stages its retained output, and the deployed dashboard still reads the old pointer. The narrow retirement is to remove those callers and the superseded publication wiring after the accepted replacement is live.
 
 ## Acceptance Criteria
 
-- Retain the earlier G01-G18, seed_v5/display_only and documentation results; verify any remaining applicable criteria without repeating completed work.
-- ct-gi01's field-preservation mapping and native producer, ct-t915's unified consumer, ct-m104's data coverage and cef-96wc's live switch have accepted evidence before deleting their old replacements.
-- Remove the separate Explorer writer/pointer consumption and pipeline-data/committee-explorer/public staging from both publishing workflows. Check active imports, commands and callers rather than only the deletion-group count.
-- Preserve raw inputs, provenance, legacy-only facts now retained by the replacement, and rollback references. Do not erase historical releases merely to remove their live consumers.
-- Update maintained workflow/reader documentation and verify the shared site/MCP release after retirement, with focused checks and the required combined regression for implementation changes.
+- Use the preservation and production evidence from `ct-gi01`, old witness row dispositions from `ct-x78c`, shared site and MCP reads from `ct-t915` and `ct-m104`, and live switch and rollback handoff from `cef-96wc`. Retire the old path immediately after accepted live cutover under the existing switch order. [Phase 2 order](../docs/plans/phase-2-annex-20261028.md#46-explorer-migration-and-data-coverage)
+- Remove the superseded writer and its active callers, scratch paths, second pointer consumption, and `pipeline-data/committee-explorer/public` staging in `publish-explorer.yml` and `deploy-pages.yml`. Check actual workflow commands and remaining consumers of `CURRENT.json` and the event map. Old dashboard record links keyed by UUID must show the existing policy's removal notice.
+- Preserve raw inputs, provenance, legacy-only facts, protected historical releases, and the exact artifacts and application revision needed for rollback. Trace mixed files to their current callers. Keep the independent YouTube coverage page, its report data, and required utilities. Check broader workspace package deletion separately where it changes `uv.lock` and thereby lake parser pins. Keep that parser-version decision separate from removing the old publication wiring.
+- Update the maintained workflow and reader instructions. Record focused checks and the required combined regression for implementation changes. Verify the shared site and MCP against the accepted release after retirement, including old UUID behavior and the retained YouTube report.
+
+[November 5 root-cause analysis and source evidence](../docs/plans/production-mvp-root-causes-round2-20261105.md).
 
 ## Notes
 
@@ -88,3 +77,7 @@ Owner decision 2026-11-02: retire the old Explorer right after live acceptance, 
 **2026-11-04T12:46:09Z**
 
 Owner decision 2026-11-04: retire the old Explorer route and staging as soon as /dashboard/ moves to the release (ct-t915); no overlap period.
+
+**2026-11-05T17:11:15Z**
+
+Consolidated ownership from ct-8kl2/ct-98sm: retain completed G01/G02 and later deletion evidence, then retire only remaining old writers, pointer consumption, scratch/call paths and staging after native/site/MCP/live acceptance. Preserve source data, evidence and rollback references; archived tracker closures are not a new live-switch or retirement proof. ct-a3le's diagnostic research import remains standalone and linked, not an added Phase 2 exit gate.

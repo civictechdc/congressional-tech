@@ -2,7 +2,7 @@
 id: ct-x78c
 status: open
 deps: []
-links: [ct-kthe, ct-j2yo, ct-5w9u, ct-dx22, ct-egg6]
+links: [ct-kthe, ct-j2yo, ct-5w9u, ct-dx22, ct-egg6, ct-m104, ct-t915]
 created: 2026-11-02T00:40:43Z
 type: task
 priority: 1
@@ -10,14 +10,30 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [explorer, witnesses, phase2]
 ---
-# Migrate or explain every old Explorer witness row with no new-table match
 
-Owner decision 2026-11-01: keep these facts. 6,955 old Explorer witness rows are labelled old_state_only. Raw reads of 6,201 show House rows are 579 distinct, each counted in both old CSVs; 43 are unread and 118 have no held page; surname matches are leads only. Old Explorer retirement (ct-5kto) waits for this.
+# Preserve distinct witness appearances and account for legacy rows
+
+Researchers should retain the witness roles, documents and links supported by the original sources when the old Explorer retires.
+
+In event `100520`, one House witness list records W. Ron Allen in two active roles. One represents the Jamestown S'Klallam Tribe and the other the Pacific Salmon Commissioner. The entries have the same publication time and separate biographies and statements. Release `e145d24c389e` preserves both rows, but the model marks key `2a0208241fb6a49d` superseded by `db779668e63d56bb`. The same-list rule uses name and XML order and misses the distinct roles and document evidence. Default readers that rely on the published marker can omit the second role.
+
+The older comparison's 19,475 groups combine rows by event and normalized name. Those groups help find cases and cannot establish that each distinct legacy appearance or role survived. House receipt-path binding already works for at least the exact published `meeting:100346` case, Stephen T. Ayers, key `e0ca0e7375ff80be`.
+
+## Smallest useful change
+
+First correct the existing witness precedence rule for source-supported distinct occurrences from the same list. Preserve evidenced duplicate suppression and existing keys. Verify the two roles and their evidence through the maintained site and MCP readers on the same selected release. Coordinate the site case with [ct-t915](ct-t915.md) and MCP with [ct-m104](ct-m104.md).
+
+Then reuse the frozen inputs and comparison to account for original occurrence evidence. Preserve meaningful role, organization, panel, source locator and document distinctions. Names can guide investigation. Match using supported occurrence evidence, keep package or page scope where that is all the publisher establishes, and reuse `ct-kthe` and `ct-dx22` results where they resolve named rows.
 
 ## Acceptance Criteria
 
-Every distinct row is migrated with evidence, or has a named reason and owner; duplicates are counted once; site and MCP checks cover the migrated rows.
+- The `100520` source case preserves both active roles and their distinct document links. Existing duplicate controls, exact historical keys, genuine repeated occurrences and the testimony versus statement distinction still work.
+- Every distinct legacy witness row has a supported migrated occurrence or a named reason and owner. Count proven duplicate rows once and identify unread and unavailable records separately.
+- The site and MCP demonstrate migrated House witnesses on the same selected release, including the receipt-path case at `100346`. Record release identity and evidence. [ct-5kto](ct-5kto.md) keeps legacy retirement conditional on the full result.
 
+Evidence includes the retained House XML digest `84b319d68aea2a55393ea355e682c4e672614dbca9e67802cac7bfa0da1c9ea7`, `model/sql/witness-precedence.sql` and the [legacy comparison](../docs/measurements/explorer-native-comparison-20261101.md).
+
+[November 5 root-cause analysis and source evidence](../docs/plans/production-mvp-root-causes-round2-20261105.md).
 
 ## Notes
 
@@ -44,3 +60,7 @@ Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/rel
 **2026-11-04T02:21:36Z**
 
 Reopened 2026-11-03 (post-release acceptance test): witness churn is categorized (explorer-native-comparison-20261101.md), but the per-row disposition ledger against live e4538f00 and a site/MCP check of migrated House witness rows are not recorded. r3-site (unmerged) carries the archive reader for the Explorer families.
+
+**2026-11-05T20:18:07Z**
+
+Integrated the narrow same-list precedence repair at 2b130952. The exact event 100520 House XML supports two active W. Ron Allen roles with distinct biographies and statements; both existing keys remain active. Seventy-four focused native tests passed. Root independently checked all four source links and rejected planted wrong-suppression and wrong-role results. The full legacy occurrence audit and same-selected-release site/MCP checks remain open. Full build/publication waits all waves.

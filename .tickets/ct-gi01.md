@@ -2,55 +2,36 @@
 id: ct-gi01
 status: open
 deps: [ct-sh4j, ct-30fp, ct-kw9b, ct-wx65, ct-h1nd, ct-v51p]
-links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a, ct-64el, ct-asdg, ct-n61r, ct-66ns, ct-n6fz, ct-o2pr, ct-1i4q, ct-9s7b]
+links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a, ct-64el, ct-asdg, ct-n61r, ct-66ns, ct-n6fz, ct-o2pr, ct-1i4q, ct-9s7b, ct-7uit, ct-082q]
 created: 2026-10-21T20:53:31Z
 type: feature
 priority: 1
 assignee: mikewolfd
 external-ref: ss-023x,ss-65bz,ss-6gwu
-parent: ct-7uit
+parent: ct-77zb
 tags: [committee_explorer, congress_api, docspec, parquet]
 ---
-# Migrate committee_explorer (apps/committee_youtube) and the 9 weekly .json.gz/CSV retention modules onto incremental docspec-rs tables & ExportPins (eliminating the 15.3 GB RAM / 20 GB swap CI bottleneck)
 
-While news_lake and raw/catalog use docspec-rs, congress_api/retention still writes 9 weekly state modules as custom .json.gz and CSV snapshots (meetings.py, gpo.py, house.py, senate.py, tables.py, jsonl.py, captions.py, transcripts.py, rejected_pages.py), and apps/committee_youtube/src/committee_explorer loads 1,071,000 frozen Pydantic objects into Python RAM (peaking at 15.3 GB RSS and requiring a 20 GB Linux swap file in .github/workflows/publish-explorer.yml:76-83) on every run.
+# Preserve Explorer data in the shared native release
+
+Give researchers and staff one maintained release with the facts and evidence they use in the older Explorer. Release `e145d24c389e` already ships native meetings, witnesses, videos, channels, recording observations, committee records, and meeting coverage from pinned lake and SpicyRegs inputs. Reuse its verified inputs, release checks, and completed `ct-7uit` archive/catalog work. The public dashboard still selects its separate legacy publication. [e145 release](../docs/releases/2026-11-05-e145d24c389e.md)
+
+The remaining producer work is to preserve unresolved legacy facts, finish the named source corrections, and make refreshes of the Explorer inputs repeatable. Use the frozen comparisons and existing producer entry points. The daily job advances five lake tables while the model carries pinned video and committee-record snapshots and recording decisions. Determine which existing production step advances those pins when qualifying inputs change, and fill any missing handoff. [Field inventory](../docs/plans/phase-2-annex-20261028.md#46-explorer-migration-and-data-coverage) · [Frozen comparison](../docs/measurements/explorer-native-comparison-20261101.md)
+
+## Acceptance Criteria
+
+- Reconcile every retained field and input against the selected release. Include channel and video inventory, matching decisions, completeness and issues, committee amendments and votes, meeting attributes, reference inputs, and SpicyRegs detail. Record each input snapshot, identity, row meaning, missingness, provenance, and destination. Preserve facts and decisions held only in legacy files. Give every omitted, conflicting, or unresolved field or row an evidence-backed disposition. Keep `ct-x78c` responsible for the old witness row ledger.
+- Finish the named producer corrections in the existing model. `ct-j78x` owns the shared meeting association for recording evidence. Version the typed fields, keys, and provenance with the producer and registry. Distinguish source facts, inferred matches, and summaries. Use pinned upstream relations for detailed SpicyRegs research and stable evidence references for bulky retained material. Keep identities stable when their inputs and rules are unchanged. Apply the existing value/cause and public link-continuity checks to approved changes.
+- Verify the maintained production job selects pinned lake meeting and appearance records, the applicable Explorer refresh outputs, and pinned SpicyRegs generations through native model/export. Compare with frozen old inputs. Reuse exact-match measurements and record runtime, peak memory, objects, and bytes read/written for the affected run under the approved watchdog limit. The native production path must avoid full-corpus legacy JSON/CSV assembly and a 20 GB swap dependency.
+- Record source-local, candidate, and delivered evidence separately. Give `ct-t915` and `ct-m104` the same produced release. `cef-96wc` owns the live switch and rollback evidence. `ct-5kto` owns retirement after acceptance.
+
+[November 5 root-cause analysis and source evidence](../docs/plans/production-mvp-root-causes-round2-20261105.md).
 
 ## Original design (superseded implementation approach)
 
 1. Migrate the 9 weekly retention state modules (congress_meetings, house_events, senate_events, gpo_hearings, youtube_videos, captions, transcripts, rejected_pages) to incremental docspec-rs tables.
 2. Model multi-source Committee Explorer entity resolution (committees, meetings, materials, witnesses, issues, sources) as incremental docspec-rs RefreshSpec AggregateTransform views using FirstValueBy and CollectDistinctWithProvenance (ss-023x), while keeping domain conflict dismissal (_review_old_label_conflict, 'unknown' access transitions, DataIssue emission) in committee_meeting / committee_explorer domain policy.
 3. Materialize the 6 browser Parquet tables (committees, meetings, materials, witnesses, issues, sources) via chained RefreshSpec (ss-65bz) + ExportSpec (ss-6gwu), and retire assemble.py's 15.3 GB in-memory accumulator, the 20 GB swap file in publish-explorer.yml, and the legacy .json.gz sharded writer/reader (export.py:556-651, query.py:write_query_partitions, parquet.py:migrate, and apps/site/src/components/explorer/reader/data-source.ts:174-381).
-
-## Current scope — 2026-10-30 reconciliation
-
-Reopened at the user's request. Complete the move to the native model and shared
-publication; the old weekly-mirror/RefreshSpec design above is historical, not an
-instruction to restore duplicate tables. The current scope and field inventory
-are in docs/plans/phase-2-annex-20261028.md §4.6. Preserve the earlier fixes and measurements.
-
-Own the inventory and native mappings for all retained Explorer inputs, including
-committee channels, collected videos, recording-match decisions, hearing
-completeness, retained committee amendment/vote records, omitted meeting fields,
-and the detailed SpicyRegs records needed by existing research uses. Record exact
-snapshots, row meanings, identities, provenance, conflicts and missingness. Use
-typed shared release data, stable evidence references, or explicitly described
-pinned upstream relations. Any deferral of existing user-facing data needs an
-explicit scope decision; an unimplemented field remains an acceptance gap.
-
-Production evidence still shows publish-explorer.yml selecting legacy JSON/CSV
-inputs and producing a separate publication. Commit 909b9c72's optional lake
-arguments and local tests are useful implementation, not production cut-over.
-Reuse DocSpec's native jobs/table/export operations. Missing generic engine
-capabilities belong under ss-oxg1; no engine gap is established by this audit.
-
-## Acceptance Criteria
-
-- Complete the field inventory and preservation mapping in docs/plans/phase-2-annex-20261028.md §4.6; no populated field or unresolved record disappears without a recorded disposition and evidence.
-- Preserve facts or decisions held only in derived files before retiring their readers; distinguish reported source facts from derived matching decisions.
-- Version typed release schemas/keys/provenance with the producer and shared release registry. Include channel/video research, completeness/issues, retained committee records and useful meeting attributes; identify summaries separately from pinned upstream detail.
-- The actual production job configuration selects pinned lake meeting/appearance records and SpicyRegs generations and runs native model/export jobs. Optional CLI flags or a native re-export of legacy Python assembly do not satisfy this criterion.
-- A frozen-input comparison accounts for old/new records, missingness, conflicts and exclusions by reason. Record runtime, peak memory and objects/bytes read and written; meet the existing bounded-memory target (<2 GB RSS) without full-corpus legacy JSON/CSV assembly or a 20 GB swap file, or record an explicit approved revision to that target before closure.
-- The shared native release supports ct-t915's site and ct-m104's MCP checks. Record local, integrated and live evidence separately; ct-5kto owns retirement after live acceptance.
 
 ## Audit 2026-10-24
 
@@ -139,3 +120,15 @@ Root causes are corrected at their owners: no new general relationship engine, s
 Reuse identity-valid retained inputs/results. A changed parser requires its actual digest closure, one selected source version, exact predicate proof or measured family replay, coherent pins and authoritative lake/catalog continuity. Record changed occurrence keys and document-witness links in gate-1 causes; gate-2 public document redirects are separate. Existing gates, native fixtures, stdio/site checks and rollback path remain. Each heavy job needs measured watchdog admission; no new cost/performance guarantee is asserted. Use fresh owned pytest attempt directories because explicit basetemp is recursively removed.
 
 Completion has three separately recorded boundaries: source-local truth, candidate/publication, installed/site selection. ct-m104/ct-t915 carry corresponding acceptance; cef-96wc remains live-switch ownership. No reinstall repairs old immutable data, and no ticket closes merely because local source or counts look correct. The full plan and owner tickets name source evidence, acceptance cases, exclusions and dependency distinctions.
+
+**2026-11-05T17:11:15Z**
+
+Consolidation preserves this as the active congressional producer owner. ct-7uit's earlier archive/catalog implementation and G01/G02 deletions are historical completed work; its only remaining Explorer migration is carried here. Keep exact retained input/field inventory, per-row preservation/dispositions, stable source/document identities, real native production bindings, and measured parity/resource use without legacy full-corpus JSON/CSV assembly or swap dependence. ct-t915/ct-m104/cef-96wc/ct-5kto remain distinct site/MCP/live-switch/retirement owners. Use the maintained value/cause and link-continuity release checks, not historical storage-transition totals as a permanent population freeze.
+
+Consolidation accepted 2026-11-05: absorb ct-7uit.
+
+User outcome: One owner for the remaining Explorer producer migration.
+
+Remaining acceptance: Completed archive/catalog and G01/G02 evidence; full retained-field inventory; row dispositions; actual native job bindings; measured comparison. Repoint umbrella dependencies to ct-gi01.
+
+Source evidence and full original criteria remain in: .tickets/ct-7uit.md:26; .tickets/ct-gi01.md:46; docs/plans/phase-2-annex-20261028.md:481. The superseded records remain available; completed work is reused and unfinished criteria stay with this owner.

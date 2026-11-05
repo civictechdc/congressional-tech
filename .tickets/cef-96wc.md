@@ -2,26 +2,25 @@
 id: cef-96wc
 status: open
 deps: [ct-itcg, ct-9gmr, ct-qg8e, ct-2c0w, ct-31e2, ct-kn6d, ct-r8jd]
-links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, ct-64el, ct-n2cy, ct-tk10, ct-qg8e, ct-d0o0]
+links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, ct-64el, ct-n2cy, ct-tk10, ct-qg8e, ct-d0o0, ct-8kl2, ct-082q]
 created: 2026-10-28T05:00:43Z
 type: task
 priority: 1
 assignee: mikewolfd
 ---
-# Prepare the engine-first cut-over checklist
 
-Record ordered owner cut-over gates, exact plan commands, rollback and deletion preparation without disabling live capture or deleting imported code.
+# Verify the live switch to one Explorer release
 
+Give site and Congress MCP users the same release and preserve a known rollback point. The approved `e145d24c389e` publication verified the archive pointer flip, archive browser and MCP reads, and prior release `e4538f0064e1`. The public `/dashboard/` still selects the legacy Explorer publication. The remaining switch is to put that route on the qualified shared release and verify both live consumers. [e145 release](../docs/releases/2026-11-05-e145d24c389e.md) · [Cutover checklist](../docs/plans/engine-first-switch.md)
 
-## Additional live switch acceptance — 2026-10-30 reconciliation
+## Acceptance Criteria
 
-Keep the existing R2/Basin/device gates. Also execute and record the remaining
-Explorer switch in docs/plans/phase-2-annex-20261028.md §4.6 and docs/plans/engine-first-switch.md:
-ct-gi01's actual native production inputs and candidate release, ct-t915's shared
-site, ct-m104's MCP coverage/readback, exact live workflow bindings and release
-identity, and previous-release rollback references. Local tests, optional input
-flags and closed deletion groups are not live acceptance. Coordinate ct-5kto's
-retirement only after replacement acceptance; preserve data while switching.
+- Identify the actual native inputs from `ct-gi01`, immutable release, active workflow bindings and commands, and deployed site revision. Preserve the exact catalog, receipt inventory, producer evidence, and SpicyRegs pins where required. Carry forward the accepted e145 and Basin evidence wherever the release, inputs, and job pins still match.
+- Record the live `/dashboard/` and archive site readback from `ct-t915` and the `ct-m104` MCP readback against that exact live release. Record local checks separately. Use the existing five checks in `ct-tk10` and the checked-in publication path for a data change. Carry forward `ct-te1p` worker and logical body-key evidence within its storage-only scope.
+- Account for B0 disposition, B7/B8 provenance, B9 listing baseline, active raw locks, scheduled capture, and Basin smoke, table binding, and maintenance validation through the cutover checklist and their owning records. `ct-1l1h` owns the raw lock readback and `ct-4jms` owns scheduled capture. Reuse the owners' evidence where its inputs and scope apply. B10 full rehash, B13 PDF copies, and the site performance gate remain deferred.
+- Record the prior archive pointer, protected raw inputs, application revision, and any retained legacy artifacts needed for rollback. Hand off to `ct-5kto` after live acceptance and protection of those references. Keep the retirement and post-retirement verification in the same switch window under the existing cutover order. [Phase 2 order](../docs/plans/phase-2-annex-20261028.md#46-explorer-migration-and-data-coverage)
+
+[November 5 root-cause analysis and source evidence](../docs/plans/production-mvp-root-causes-round2-20261105.md).
 
 ## Notes
 
@@ -70,3 +69,7 @@ Progress update 2026-11-03: Release e4538f0064e18168089a77891c93a16e175af18ed75e
 **2026-11-04T12:46:09Z**
 
 Owner decision 2026-11-04: B10 (full re-hash) and B13 (PDF copy) are deferred as post-switch work with no date; they are not exit conditions for phase 2.
+
+**2026-11-05T17:11:15Z**
+
+Consolidated ownership from ct-8kl2/ct-98sm: retain actual production bindings, live selected release/site/MCP readback, raw provenance and previous-release rollback evidence. Use ct-tk10's maintained value/cause and link-continuity gates for current source/document changes. Preserve ct-te1p worker and storage-only logical body_key proof without treating its historical population totals as fixed across later semantic releases. Closing superseded trackers does not satisfy this live cutover gate.

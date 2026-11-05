@@ -1,8 +1,8 @@
 ---
 id: ct-w8dc
-status: open
+status: closed
 deps: [ct-5w9u, ct-c5xf]
-links: [ct-93zs, ct-m104, ct-t915, ct-5kto, ct-gi01]
+links: [ct-93zs, ct-m104, ct-t915, ct-5kto, ct-gi01, ct-082q]
 created: 2026-10-30T14:10:02Z
 type: feature
 priority: 2
@@ -38,3 +38,11 @@ Retain publisher document labels and article sections separately from normalized
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-ae42a8cf7a429ba24 @ 180a49b1. Review verdict: merge. Real material-page data waits on ct-pocg; one context per run is required.
+
+**2026-11-05T17:11:18Z**
+
+Closed as superseded on 2026-11-05. Remaining scope, acceptance and evidence are explicitly transferred to ct-93zs. This is consolidation, not a claim that unfinished implementation or publication has passed. Original criteria and historical notes remain here. See the surviving owner and the reviewed consolidation report under .cache/archive-release/investigations/open-ticket-clusters-20261105T161237Z/consolidation-review/REPORT.md.
+
+**2026-11-05T19:53:12Z**
+
+Follow-up consolidation on 2026-11-05: ct-082q is now the surviving owner of the unfinished HTML mapping scope previously transferred to ct-93zs. Its checklist retains field semantics, exact source citations, date precision, identity controls and compatibility. This ticket remains closed as superseded.

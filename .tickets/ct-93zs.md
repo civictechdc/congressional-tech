@@ -1,8 +1,8 @@
 ---
 id: ct-93zs
-status: open
-deps: [ct-pocg, ct-w8dc]
-links: [ct-w8dc, ct-m104, ct-t915, ct-5kto, ct-gi01, ct-jnm9, ct-o7t4, ct-c5xf]
+status: closed
+deps: [ct-pocg]
+links: [ct-w8dc, ct-m104, ct-t915, ct-5kto, ct-gi01, ct-jnm9, ct-o7t4, ct-c5xf, ct-082q]
 created: 2026-10-30T14:10:03Z
 type: feature
 priority: 2
@@ -10,28 +10,16 @@ assignee: mikewolfd
 parent: ct-082q
 tags: [html-metadata, extruct, viewer-publication, model, committee-explorer]
 ---
-# Publish useful HTML metadata through the maintained archive and Explorer outputs
+# Publish cited HTML dates, descriptions and labels in the shared release
 
-Metadata has no user benefit if it stops at extraction. Carry selected fields and evidence into the actual release tables used by readers.
-
-User value: richer descriptions and reliable source dates appear in real search/detail results, while stable document links and bounded browsing continue to work.
-
-Evidence: docs/experiments/extruct-metadata-20261030/report.md and summary.json. Full extraction and comparison artifacts are under output/extruct-metadata-20261030/ (local, Git-ignored); preserve portable fixtures and manifests needed for tests rather than relying solely on these local paths.
-
-## Design
-
-Owners: model/ reading/release schemas and SQL, viewer_publication, and apps/committee_youtube/src/committee_explorer only while it remains an active separate consumer. Extend the maintained native publication path. Related ticket ct-gi01 owns the broader Explorer migration; coordinate its current ownership and do not create another writer or resurrect retired routes.
-
-Publish compact typed descriptions, distinct publication/modification dates with precision, and publisher labels. Put raw metadata and large text behind detail/evidence references. Resolve declared URLs in their capture context and keep original addresses. Record metadata selection and conflict evidence. Update release-schema meanings and compatibility fixtures together.
+Make retained page facts available to both readers through the existing native publication. Map the selected readings into the six detail fields `description`, `published_on`, `modified_on`, `publisher_labels`, `page_metadata`, and `main_content`. Keep the list output compact. The Round 2 branch carries the native implementation. `ct-gi01` owns the broader field inventory and `ct-5kto` owns legacy publisher retirement.
 
 ## Acceptance Criteria
 
-- One actual generated release contains the selected enriched values, source references, and explicit conflicts; no populated field is silently dropped by an exporter.
-- Every active consumer path is inventoried; the archive and any still-active committee Explorer tables agree on the meaning of the new fields.
-- A webpage modification does not change hearing/document identity, archive capture dates, or existing stable links.
-- Older releases remain readable under the declared compatibility policy; new schema changes are versioned and validated.
-- Browse operations do not load raw HTML/full article text. Measure release/browse-column size changes and prove evidence is available on demand through the maintained release format.
-
+- An actual generated release exposes compact typed descriptions, publication and modification dates, publisher labels, alternatives and cited main-content references. Preserve date precision, reject template descriptions, resolve declared URLs in capture context and keep literal addresses. Explain any absent facts.
+- Preserve event, document and capture date meanings, stable IDs and links. The 2017 Indian Affairs hearing keeps its event date beside its 2025 page update. The Banking Powell fixture keeps the actual witness without promoting committee officials or a CMS author. Internal admin-host canonicals and conflicting dates cannot change identity.
+- Verify the mapping and optional-field fixtures on the maintained native path. Version the release schema and validate old-release reads, generated-client compatibility and old-record round trips. Keep date-only and unzoned precision. Inventory active consumers and verify agreement on field meaning without adding a second publisher.
+- Measure changed release and browse sizes. Keep raw metadata and larger text behind on-demand evidence references. Cite exact body and source location for dates, advisory or press-release labels, descriptions and text.
 
 ## Notes
 
@@ -46,3 +34,17 @@ Coordinate with reopened ct-gi01 under PHASE-2 §4.6. The end state is one nativ
 **2026-11-02T13:14:11Z**
 
 2026-11-02 (lead): publication: six new detail.parquet columns, list unchanged; selection logic moves into model SQL and page-signals.json; adapters/page_metadata.py does not survive (it's deleted with ct-5kto).
+
+**2026-11-05T17:11:15Z**
+
+Consolidation accepted 2026-11-05: absorb ct-w8dc.
+
+User outcome: Map and publish useful HTML fields in the maintained native model.
+
+Remaining acceptance: Hearing versus page-update dates; person-card negative controls; precision, conflicts, canonical-URL safeguards and citations; actual generated release; stable IDs; compatibility and bounded browse reads.
+
+Source evidence and full original criteria remain in: .tickets/ct-w8dc.md:27; .tickets/ct-93zs.md:27; .cache/rounds/r2/html/plan.md:89. The superseded records remain available; completed work is reused and unfinished criteria stay with this owner.
+
+**2026-11-05T19:53:12Z**
+
+Closed as superseded on 2026-11-05. ct-082q owns all remaining scope, acceptance and evidence as one HTML delivery feature across extraction, native publication, site, MCP and shared verification. This is consolidation, not a claim that implementation or publication is complete. Original criteria and historical notes remain here; ct-082q links back to them.

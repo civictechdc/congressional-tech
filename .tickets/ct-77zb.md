@@ -2,31 +2,22 @@
 id: ct-77zb
 status: open
 deps: [ct-gi01, ct-t915, ct-m104, ct-5kto, cef-96wc, ct-sh4j, ct-30fp, ct-kw9b, ct-yymr, ct-vpo2, ct-aapl, ct-v51p, ct-jinw, ct-l9g0, ct-cov3, ct-vnkf, ct-h1nd, ct-wx65, ct-9wl3]
-links: [cef-96wc, cef-jh7i, ct-t906, ct-8kl2, ct-98sm, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, cef-nkzp, ct-h1nd, ct-d0o0, ct-sh4j, cefr-7sar, ct-kac4, ct-3vub, cef-zrhq]
+links: [cef-96wc, cef-jh7i, ct-t906, ct-8kl2, ct-98sm, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, cef-nkzp, ct-h1nd, ct-d0o0, ct-sh4j, cefr-7sar, ct-kac4, ct-3vub, cef-zrhq, ct-a3le, ct-v967, ct-082q]
 created: 2026-10-30T14:32:30Z
 type: epic
 priority: 0
 assignee: mikewolfd
 tags: [phase2, engine-first, site, master-list]
 ---
-# Phase 2 & Engine-First Post-Switch Completion (25-item master list)
+# Complete Phase 2 with one live Explorer release
 
-Unified 25-item master task list across Data Model & Schema Alignment (1-4), Website & Phase-2 Explorer Refactor (5-10), Daily Producer & CI Bindings (11-14), Deferred Raw/Corpus Jobs (15-19), Operational Cut-Over & Infrastructure (20-22), Post-Switch Legacy Code Deletion F5 (23), and External Repos spicy-regs/docspec-rs (24-25).
-
-## Current status — 2026-10-30 reconciliation
-
-The 17:46 all-complete note is historical and superseded by the later audits.
-In addition to the 19:29 runtime/schema/operational gaps, active work includes
-ct-gi01 (native Explorer model and data preservation), ct-t915 (unified site),
-ct-m104 (shared-release MCP coverage) and ct-5kto (old route retirement).
-docs/plans/phase-2-annex-20261028.md §4.6 is their common inventory and closure checklist. Existing
-metadata tasks remain under ct-082q; do not create duplicate delivery tickets.
+Track the switch to one native release for the site and Congress MCP. Keep the archive's retained facts and evidence accessible as the legacy publisher is retired. The original 25-item checklist and its delivered work are recorded below. The [Phase 2 annex §4.6](../docs/plans/phase-2-annex-20261028.md#46-explorer-migration-and-data-coverage) defines the remaining closure order.
 
 ## Acceptance Criteria
 
-- Every applicable child/linked task across the seven tracks is complete with its stated evidence; a closed superseded task does not prove deployment or consumer adoption.
-- PHASE-2 §4.6 is satisfied: preserved field inventory, native production inputs, one shared site/MCP publication, live acceptance and retirement of the separate Explorer route.
-- Existing runtime/schema/operational audit gaps remain tracked until their own acceptance passes. Preserve completed work and explicitly separate local, integrated and live evidence.
+- Record `ct-gi01`'s retained-field inventory, dispositions and actual native production inputs, then `ct-t915` and `ct-m104` acceptance on the same selected release. The selected HTML metadata stays under `ct-082q`.
+- Record `cef-96wc`'s live switch, workflow bindings and rollback evidence, then `ct-5kto`'s retirement of the separate writer, pointer and staging.
+- Account for applicable linked work in the original seven tracks and the remaining runtime, raw-safety, schema and operations checks under their owners, including lock readback on `ct-1l1h` and scheduled capture on `ct-4jms`. The parked News Lake and standalone classifier and diagnostic cleanup have separate owners. Keep local qualification, integrated work and live acceptance separate. Reuse completed evidence when the inputs, code and release still match.
 
 ## Notes
 
@@ -116,6 +107,10 @@ Owner decision 2026-11-02: runner fixes (r4-rca: refuse another checkout's code 
 **2026-11-03T22:53:52Z**
 
 Progress update 2026-11-03: Release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd is LIVE at https://congressional-data.spicygov.ai/viewer-publications/manifest.json (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419). All 5 publish gates passed (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), 7 gated lake snapshots exported and imported to Basin with producer proofs, full production-offline lane passed (10,967 passed on release-train), contract:archive and live canary:archive passed, and congressional-explorer-mcp (v0.5.1, 22 tables) verified live against the published pointer.
+
+**2026-11-05T17:11:15Z**
+
+2026-11-05 ticket consolidation: remain the single Phase 2 coordination index. Superseded trackers ct-7uit, ct-mi03, ct-a1aa, ct-8kl2, ct-98sm and ct-v967 retain history and named successors. Active congressional producer/site/MCP/live-switch/retirement remain ct-gi01, ct-t915, ct-m104, cef-96wc and ct-5kto; raw lock/capture checks remain ct-1l1h and ct-4jms. Keep ct-082q as the scoped HTML milestone. Parked ct-d8cf/news and standalone classifier/diagnostic cleanup do not become new Phase 2 gates. Public roster wording and archive keyed-document delivery are recorded on ct-mx3g/ct-mt0h, with installation readback under ct-m104 and actual SpicyEngine adoption under ss-7ih1. Closed superseded records never prove their successors' acceptance.
 
 **2026-11-05T20:08:15Z**
 
