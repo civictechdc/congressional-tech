@@ -64,8 +64,9 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
 
 def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_path):
     """ct-vq2a/ct-kwse: identical bytes saved first under a dated HHRG name, then under a plain name,
-    keep the HHRG name's date and Congress; a structured name outranks an earlier plain one; a copy of
-    other bytes in the same document never dates it; a plain name alone still dates it."""
+    keep the HHRG name's date and Congress; a structured name outranks an earlier plain one; bytes posted
+    for two meetings date from the first meeting whichever was fetched first; a copy of other bytes in
+    the same document never dates it; a plain name alone still dates it."""
     same,other='a'*64,'b'*64
     def copy(component,source,body,rank,fetched,date=None,valid=False,congress=None):
         return dict(component=component,source_id=source,body_sha=body,saved_rank=rank,first_fetched=fetched,source_url='https://x.test/'+source,
@@ -76,6 +77,9 @@ def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_pat
           copy('ranked','plain-earlier',same,2,'2026-10-01T12:00:00Z','2020-01-01',congress=115),
           copy('ranked','structured',same,1,'2026-10-02T12:00:00Z','2020-02-02',True,116),
           copy('plain','only',same,1,'2026-10-02T12:00:00Z','2021-03-03'),
+          copy('reused','later-meeting',same,2,'2026-10-01T12:00:00Z','2024-05-15',True,118),
+          copy('reused','first-meeting',same,1,'2026-10-09T12:00:00Z','2024-04-16',True,118),
+          copy('reused','plain-earliest',same,3,'2026-09-01T12:00:00Z','2023-01-01'),
           copy('undated','bare',same,1,None)]
     inputs=[json_input(tmp_path,'copies',rows,component='Utf8',source_id='Utf8',body_sha='Utf8',saved_rank='Int64',first_fetched='Utf8',source_url='Utf8',
         filename='Utf8',filename_date='Utf8',filename_date_valid='Boolean',congress='Int64',congress_valid='Boolean')]
@@ -87,7 +91,8 @@ def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_pat
         dict(name='document_filename_facts',sql=(ROOT/'model/sql/document-filename-facts.sql').read_text(),materialize=True)],outputs=[],
         queries=[dict(name='facts',sql='SELECT component,cast(filename_date AS VARCHAR) AS filename_date,congress FROM document_filename_facts ORDER BY component')])
     assert result['facts']==[dict(component='moved',filename_date='2020-06-25',congress=116),dict(component='plain',filename_date='2021-03-03',congress=None),
-                             dict(component='ranked',filename_date='2020-02-02',congress=116),dict(component='undated',filename_date=None,congress=None)]
+                             dict(component='ranked',filename_date='2020-02-02',congress=116),dict(component='reused',filename_date='2024-04-16',congress=118),
+                             dict(component='undated',filename_date=None,congress=None)]
 
 
 def test_document_removals_use_each_pages_latest_timestamp_and_require_all_removed(tmp_path):
