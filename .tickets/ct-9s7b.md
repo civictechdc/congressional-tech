@@ -13,19 +13,19 @@ tags: [recordings, captions, phase2]
 
 # Publish complete Senate caption tracks with one supported production label
 
-People opening captions should get a complete track or subtitle playlist with a supported production label. In `e145d24c389e`, retained analysis counted 1,538 Senate WebVTT track rows across 773 videos and 4,367 duplicate-production body/video pairs across formats, mostly playlists.
+People opening captions should get a complete track or subtitle playlist with a supported production label. In baseline `e145d24c389e`, retained analysis counted 1,538 Senate WebVTT track rows across 773 videos and 4,367 duplicate-production body/video pairs across formats, mostly playlists.
 
 ## Root cause (2026-11-05)
 
-Track selection has two independent failures. The model can admit a playlist-listed WebVTT segment as a complete track and then choose it because its fetch is newest. Separately, the registry join emits both a generic `caption` match and a more specific `live` or `archive` match for the same fetch. Ranking by production lets both labels survive. In the selected release, `senate:govtaff061726` carries the same playlist hash and same WebVTT hash under both `caption` and `live`.
+Track selection has two independent failures. The model can admit a playlist-listed WebVTT segment as a complete track and then choose it because its fetch is newest. Separately, the registry join emits both a generic `caption` match and a more specific `live` or `archive` match for the same fetch. Ranking by production lets both labels survive. In that baseline, `senate:govtaff061726` carries the same playlist hash and same WebVTT hash under both `caption` and `live`.
 
-The retained `r4-tracks` commits add the playlist reading and segment check. The current release job does not select that table. The branch also leaves production label selection open.
+## Merged repair and release checks
 
-## Smallest useful change
+Local `main` includes the playlist producer and release wiring from `2ec1f30d`, `393754ae` and `528b6adb` through merge `18049548`. The model resolves playlist child addresses, excludes listed segments and known placeholders, and ranks one supported label per recording and body.
 
-Reuse the compatible playlist work and retained bodies. Resolve child references against each fetched playlist address and exclude listed segments and known placeholders before ranking. Resolve overlapping source labels through disjoint matching or deterministic precedence grounded in source evidence. Preserve genuinely distinct supported tracks and their evidence.
+The record-only backfill ran at `75c99254` and recorded its producer origin alongside the output. All 4,361 completed HLS playlist rows match the intended keys and prior replay payloads. The local verification found zero missing or extra keys and zero rows with an absent or different parser version. In the retained `senate:govtaff061726` check, the model selected the declared live subtitle playlist. [Backfill verification](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/integration-playlist.verification.json) · [Producer origin](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/reader-metadata/integration-playlist/playlist_records/producer.json) · [Senate track evidence](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/dates-captions-recovery/captions/govtaff/check.json).
 
-Complete the existing daily, backfill, Basin, model and publication bindings for the playlist table, including the model job and producer proof at gate 5. Read only selected missing or changed playlist body/version pairs.
+After the all-wave hold, the release coordinator owns final input reconciliation, the guarded native import with a two-way comparison, and the segment and label checks on the same combined candidate. Confirm representative tracks through the site and MCP on the selected release. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md).
 
 ## Acceptance Criteria
 
@@ -35,7 +35,7 @@ Complete the existing daily, backfill, Basin, model and publication bindings for
 
 ## Coordination and evidence
 
-[ct-sulv](ct-sulv.md) retains the original label-overlap finding. [ct-j78x](ct-j78x.md) owns recording-to-meeting associations. The [MVP root-cause plan](../docs/plans/production-mvp-root-causes-20261105.md) traces candidate eligibility, registry matching and the missing input binding. Reuse `e4ebdddf` and `6e495a74` where compatible with the selected release path.
+[ct-sulv](ct-sulv.md) retains the original label-overlap finding. [ct-j78x](ct-j78x.md) owns recording-to-meeting associations. The [MVP root-cause plan](../docs/plans/production-mvp-root-causes-20261105.md) traces the original eligibility and label failures and the prior playlist work.
 
 ## Notes
 

@@ -13,9 +13,9 @@ tags: [data-model, source-evidence]
 
 # Correct three hearing dates that disagree with the printed covers
 
-Researchers should see when the printed proceeding occurred and still be able to follow related meeting records. In release `e145d24c389e`, three document dates disagree with hash-matched covers. In these cases, the retained MODS dates agree with the covers.
+Researchers should see when the printed proceeding occurred and still be able to follow related meeting records. In baseline release `e145d24c389e`, three document dates disagree with hash-matched covers. In these cases, the retained MODS dates agree with the covers.
 
-| GovInfo package | Published date | Printed cover |
+| GovInfo package | e145 date | Printed cover |
 | --- | --- | --- |
 | `CHRG-112hhrg68347` | 2011-06-22 | 2011-09-22 |
 | `CHRG-112hhrg80849` | 2012-07-25 | 2012-06-25 |
@@ -30,9 +30,13 @@ Researchers should see when the printed proceeding occurred and still be able to
 
 The evidence identifies a document-date selection error. The linked events have their own dates, which are independently supported by their retained records.
 
-## Smallest useful change
+## Merged repair and release checks
 
-Choose the print date from evidence that supports that proceeding. Reuse the vetted September relation for `68347` and the independently corroborated cover and MODS evidence for the other two. Keep the publisher's document attachments and meeting dates. Preserve a conflict or an unknown date where no candidate has adequate support. Qualify the exact affected print fallback cases before applying a broader selection rule.
+Local `main` includes `315145ca` through merge `18049548`. The model selects the vetted September event for `68347` and the corroborated print dates for the other two exact bodies. It reuses the retained readings.
+
+The native cover check matched all three corrected dates and retained all four meeting links and their event dates. It rejected all four planted wrong dates, including the May 14 MODS value for `CHRG-119hhrg60403`, whose cover reads May 15. The multiday and later-repost controls passed. [Cover evidence](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/dates-captions-recovery/covers/check.json).
+
+After the all-wave hold, the release coordinator owns verification of the dates and attachments in the combined candidate and selected release. The broader ambiguous-print fallback remains open. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md).
 
 ## Acceptance Criteria
 

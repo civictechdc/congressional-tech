@@ -17,11 +17,15 @@ Readers should be able to tell whether an event is joint, whether the source lea
 
 ## Root cause (2026-11-05)
 
-The meeting export deliberately retains event references from linked documents, even without a meeting record, so users can still open the document. It publishes those references with the same bare null chamber as source-backed meeting rows. House event `119583` is the document-only example. It links to `HHRG-119-ED00-20261023-SD001.pdf`, and the exact House ByEvent URL had zero attempts in the checked release. Dated event `104064` already has a null chamber in the retained producer rows and has both House and Senate committee keys. Its exact raw body was unavailable locally, so whether the publisher omitted a chamber or the parser failed to recognize it remains open.
+The meeting export deliberately retains event references from linked documents, even without a meeting record, so users can still open the document. The `e145` export gives those references the same bare null chamber as source-backed meeting rows. House event `119583` is the document-only example. It links to `HHRG-119-ED00-20261023-SD001.pdf`, and the exact House ByEvent URL had zero attempts in the checked release. Dated event `104064` already has a null chamber in the retained producer rows and has both House and Senate committee keys. The exact raw body was unavailable in that audit. Whether the publisher supplied a chamber remains unresolved.
 
-## Smallest useful change
+## Implementation and remaining checks
 
-Use the existing meeting and document evidence to publish a supported chamber or a clear reason for its absence. Distinguish supported joint identity, a source whose chamber is unstated or unverified, and an event reference without meeting detail. Preserve source values and links. Use Congress.gov detail for an exact missing event when it supplies the needed evidence. Otherwise record the specific gap. Compare the selected release through the existing `ss-ikn9` `coverage_archive_to_committee_meetings` check.
+The first-wave merge `18049548` adds `chamber_basis` to explain the published chamber. It distinguishes `source` for a stated value, `source_chamber_unknown` for a source-backed meeting with a null chamber, and `meeting_detail_missing` for a document-backed event reference.
+
+The retained `e145` census accounts for all 713 nulls, with 166 source-backed unknowns and 547 missing meeting details. The SpicyRegs comparison matched 72 null-chamber events. Twenty-three focused model and schema checks passed, including unknown source chamber, absent meeting detail and an explicit joint chamber.
+
+After the build hold clears, the release coordinator will run the maintained `ss-ikn9` comparison on the exact selected archive and account for changes from the baseline. Check `104064` for a source-backed unknown and `119583` for a listed detail gap or a supported recovery. Preserve both event IDs and the document link for `119583`. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md)
 
 ## Acceptance Criteria
 

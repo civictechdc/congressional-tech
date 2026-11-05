@@ -17,13 +17,15 @@ Witness searches and employer groupings should use the affiliation the source su
 
 ## Root cause (2026-11-05)
 
-The exact retained GovInfo metadata (MODS) contains both full affiliation lines. The shared `witness_names.py` helper treats the first comma after the name as the title boundary, and the MODS caller accepts that split. The wrong employer is already present in the retained parsed appearance, before publication. The MODS version hashes this helper. The Senate page parser also consumes its full result for plain witness lines, but its version omits the helper. That is a confirmed gap in invalidation. The audit established no published drift from a later helper edit.
+The exact retained GovInfo metadata (MODS) contains both full affiliation lines. The earlier `witness_names.py` helper treated the first comma after the name as the title boundary, and the MODS caller accepted that split. The wrong employer is already present in the retained parsed appearance, before publication. The MODS version hashes this helper. At the time of the audit, the Senate page parser used the helper for plain witness lines and omitted it from its version. The audit found a missing version dependency. A published impact from a later helper edit remained unverified.
 
-## Smallest useful change
+## Implementation and remaining checks
 
-Interpret supported affiliation boundaries in the MODS path and keep the change within its versioned inputs where feasible. Preserve the full title, employer and on-behalf-of context. When a flat line leaves the boundary ambiguous, keep the literal evidence and carry that uncertainty through. If a shared helper change is necessary, make the affected Senate version include that dependency and coordinate the transition with [ct-kthe](ct-kthe.md).
+The first-wave merge `18049548` includes the MODS affiliation fix. It keeps a supported title and employer together and retains ambiguous wording in the source record. The exact staged rows show Farmer’s full security, safety and operations title at the Association of American Railroads and Reese’s corporate health, safety and security title at Colonial Pipeline Company. Reese’s record also names the Association of Oil Pipe Lines and the American Petroleum Institute as the groups he represented. The focused parser and producer checks passed 86 tests.
 
-Replay from retained originals. Carry forward unaffected readings only after establishing an exact affected-input selector. The two named records alone cannot define it. If an exact selector remains unproven, replay the retained candidates for each affected source family under its new pin. Select one applicable pinned reading per record and source before joining or carrying rows forward.
+The MODS appearance pin advanced from `6288a5f5` to `1775aa40`. The independent replay check covers all 35,020 MODS records and found 4,835 witness lists with changed values and the same number of entries. The combined replay evidence is linked from [ct-kthe](ct-kthe.md).
+
+After the build hold clears, the release coordinator will verify the imported pin and both corrected witness records in `witnesses.parquet` and the installed MCP. The separate sitting repair owns the old hearing-key disposition. [ct-dx22](ct-dx22.md) · [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md)
 
 ## Acceptance Criteria
 

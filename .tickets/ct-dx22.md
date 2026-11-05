@@ -17,11 +17,15 @@ People researching a hearing should see a witness on an individual sitting only 
 
 ## Root cause (2026-11-05)
 
-The exact retained GovInfo metadata (MODS) and parsed appearance record describe a print with two held dates and carry no event for either witness. The join in `model/sql/appearance-observations.sql:179,196,205` uses a print-to-meeting edge to supply an individual appearance’s occasion. It makes that decision without checking whether the two-date print supports the individual assignment. The published transcript list showed the package on June 2 only among the two checked events. The print independently establishes the July sitting. Admission of a July edge in the private agreement data remains unverified.
+The exact retained GovInfo metadata (MODS) and parsed appearance record describe a print with two held dates and carry no event for either witness. The previous join in `model/sql/appearance-observations.sql` used a print-to-meeting link to date each appearance without evidence for the individual assignment. The published transcript list showed the package on June 2 only among the two checked events. The print independently establishes the July sitting. Admission of a July edge in the private agreement data remains unverified.
 
-## Smallest useful change
+## Implementation and remaining checks
 
-Use the retained held dates and vetted print links in the existing appearance model. Keep a multi-date print’s package-wide appearances visible at package scope when the source leaves the individual sitting unresolved. Keep explicit sitting assignments and supported print links. Use the July contents as the counterexample for Farmer and Reese. Reuse the existing pinned appearance and meeting inputs for a model-only repair where they supply the needed facts. Recompute affected bindings and downstream keys and links.
+The first-wave merge `18049548` includes the model fix. When a hearing print covers more than one date, the archive keeps the print’s undated witness list under its package and preserves separately supported sitting assignments and print links.
+
+The bounded native check moved all 10 appearances from the exact `CHRG-112hhrg72238` metadata off June 2 and kept the supported June print link. The July sitting has a separate retained jacket (`72257`). Eight focused checks passed, including controls for a single sitting and two supported print links.
+
+After the build hold clears, the release coordinator will trace the named July link separately and verify package scope, document links and the disposition of the former Farmer and Reese keys `c91a7472a2a51731` and `9fb4f01557e8b8b6`. Record appearance key and witness-link changes under gate 1 and document link continuity under gate 2. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md)
 
 ## Acceptance Criteria
 

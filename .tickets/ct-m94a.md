@@ -13,15 +13,19 @@ tags: [data-model, dates, coverage, chaos-test]
 
 # Keep unsupported download-alias dates out of archive coverage
 
-Researchers should see the document date range the archive can support and why individual dates are uncertain. Release `e145d24c389e` reports observed dates from 1901-02-27 through 2026-10-23. Three accepted 1901 dates point to 2019 proceedings.
+Researchers should see the observed dates the archive can support and why individual dates are uncertain. Baseline release `e145d24c389e` reports observed dates from 1901-02-27 through 2026-10-23. Three accepted 1901 dates point to 2019 proceedings.
 
 ## Root cause (2026-11-05)
 
 The selected readings leave the displayed filename tokens `02 27 19`, `03 26 19` and `06 19 19` unresolved. The model fills their dates from linked Senate download names `transcript-02271901`, `transcript-03261901` and `transcript-06191901`, even though each supplied date has `filename_date_valid=false`. Document date ranking accepts those candidates as plausible because they precede capture and have no Congress value. Publication labels them accepted and includes them in the observed bounds. The three confirmed failures are in alias-date selection. The earlier stale displayed-name diagnosis is retired for these cases.
 
-## Smallest useful change
+## Merged repair and release checks
 
-Qualify a linked name as a date source where the model still has its supplier URL, validity and fill origin. Keep the literal date and its source as evidence. An opaque alias without evidence of what its date means remains unresolved or suspect for coverage. Use supported content, event or filename evidence when available, including valid historical dates with no Congress tag. Feed the model's qualification into the existing publication status and bounds and reuse the pinned filename readings.
+Local `main` includes `315145ca` and `b57c02ad` through merge `18049548`. The model excludes the demonstrated opaque Foreign Relations alias dates from selection while retaining the literal names, dates and source URLs. It reuses the pinned filename readings.
+
+The seven-document native fixture read back through MCP over standard I/O and the site. The three unsupported aliases were undated. The genuine `1901-03-02` date without a Congress tag and both supported alternate-name dates survived. The literal `2303-05-04` remained suspect. MCP counted three accepted, one suspect and three undated documents, with accepted bounds of `1901-03-02` to `2021-03-17` for this fixture. [MCP evidence](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/dates-captions-recovery/date-reader-stdio.json) · [Site evidence](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/dates-captions-recovery/date-reader-browser.json).
+
+After the all-wave hold, the release coordinator owns the combined candidate's independent bounds and unresolved-date accounting, followed by selected-release MCP and site readback. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md).
 
 ## Acceptance Criteria
 

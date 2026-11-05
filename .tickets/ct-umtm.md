@@ -13,19 +13,25 @@ tags: [recovery, phase2]
 
 # Recover documents behind the archive's removal notices
 
-Start with the selected release's removal notices, then the remaining dead links. Release `e145d24c389e` retained 429 notices. Account explicitly for the twelve replay target/body pairs in the October 31 Wayback audit, including pairs outside that notice population. Reuse completed searches and verified recoveries before reopening historical batches. The earlier NARA run verified ten Veterans Affairs transcripts and left other batches unfinished.
+Researchers following retired links need a supported recovery or a clear account of the missing document. Baseline release `e145d24c389e` retained 429 notices. Account explicitly for the twelve replay target/body pairs in the October 31 Wayback audit, including pairs outside that notice population. Reuse completed searches and verified recoveries before reopening historical batches. The earlier NARA run verified ten Veterans Affairs transcripts and left other batches unfinished.
 
 ## Root causes (2026-11-05)
 
-The historical NARA worker batched escaped URL keys before adding the complete query and encoding its separators. One retained direct response rejected a 4,207-byte request line against a 4,094-byte limit. Shorter retained requests succeeded, and proxies also rejected the oversized requests. This is a confirmed failure before index lookup; HTTP 429, verification pages and proxy errors are separate access conditions. Overlap with the current 429 notices remains unmeasured.
+The historical NARA worker batched escaped URL keys before adding the complete query and encoding its separators. One retained direct response rejected a 4,207-byte request line against a 4,094-byte limit. Shorter retained requests succeeded, and proxies also rejected the oversized requests. The failure happened before index lookup. HTTP 429, verification pages and proxy errors are separate access conditions.
 
 The twelve audited Wayback hashes are absent earlier than public rendering: none occurs in selected capture evidence or the two selected October 27 recovery-decision files (24,028 and 57 records, both hash-verified). No selected recovery decision names their exact targets. Their recorded temporary body paths are unavailable. This does not establish deletion, absence in another store, or that no import occurred elsewhere. The October 31 replay experiment verified bodies and recorded qualification digests; it did not itself author identity-acceptance decisions or import them. `campaign.import_candidate`, retained-import ingestion and model input selection own these successive handoffs.
 
 An official `CHRG-110hhrg41994` document is a possible counterpart to one target, with different bytes; content equivalence remains unproved. Twelve body hashes are not twelve demonstrated missing semantic documents or twelve ready-to-publish recoveries.
 
-## Smallest useful change
+## Merged repair and remaining recovery
 
-Join notices, original targets and the twelve audited pairs to durable custody, qualification, acceptance, import acknowledgements and selected input records. Resolve the first missing handoff for each pair. Reuse held bodies and completed stages when their pins match. Shorten only applicable oversized NARA requests; reacquire only a bounded unresolved cohort after locating existing evidence. Keep source-identity decisions separate from successful downloads.
+Local `main` includes `9bb626d9` through merge `18049548`. The Web Harvest worker bounds the fully encoded request line and splits batches on explicit length refusals.
+
+The audit accounted for all 429 notices. It found 417 original addresses, of which 375 point to current documents with different bytes. None of the addresses overlaps the unfinished historical National Archives batches. Of the 42 addresses without a current document, 40 exact historical bodies were held JSON, HTML or markup. The other two original PDF requests returned publisher homepages. [Notice audit](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/dates-captions-recovery/removal-notices/summary.json) · [Held-body checks](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/dates-captions-recovery/removal-notices/priority-local-bodies.json).
+
+The Duke paper and USAID fact sheet mirror copies passed all-page qualification. The campaign reports two pending candidates and zero importable records. Each needs a complete timestamped receipt for the mirror bytes and source evidence tying the literal original request to the publication's identity. The old homepage keys retain null successors. [PDF evidence and proposed relations](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/dates-captions-recovery/removal-notices/qualification-handoff/REVIEW.md).
+
+The release coordinator owns disposition of the two PDF candidates, the twelve historical Wayback pairs and the remaining edition and address gaps. Keep accepted relationships separate from incomplete evidence in the final comparison and selected-release reader checks. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md).
 
 ## Acceptance Criteria
 

@@ -16,11 +16,15 @@ Researchers should see the recording evidence the archive has for a hearing. In 
 
 ## Root cause (2026-11-05)
 
-The released observation for `CHRG-118shrg52706` has package scope and no event ID. Coverage finds it through a qualified print-to-meeting join. Both recipes filter only the observation's `event_id`, and the release provides no reusable event association. The broader transcript list also admits weaker jacket links, which carry different evidence.
+The released observation for `CHRG-118shrg52706` has package scope and no event ID. Coverage finds it through a qualified print-to-meeting join. In e145, both recipes filtered on the observation's `event_id`. Coverage could therefore find an observation that the recipes omitted. The transcript list also admits weaker jacket links, which carry different evidence.
 
-## Smallest useful change
+## Merged implementation and remaining acceptance
 
-Resolve the association once in the native recording model using direct event evidence and vetted print agreement. Publish `recording_matches.meeting_links` as a non-null, deterministically sorted list of unique `{event_id: int64, basis: dict, scope: dict}` tuples. Basis is `direct_event` or `print_agreement`. Scope is `event` or `package_context`. Use it in coverage, both recipes and the existing site detail. An empty list means no supported link. An older schema without the field means association data is unavailable and original observation lookups remain available. Reuse the pinned recording observations and meeting evidence; this repair needs model and public-schema changes, with no media download or parser replay.
+Local `main` includes the implementation at merge `18049548`. The native model publishes `recording_matches.meeting_links` for coverage, both hearing recipes, and site detail. Each link identifies the event, basis (`direct_event` or `print_agreement`), and scope (`event` or `package_context`). Older releases label the association unavailable and retain access to original observations.
+
+Twenty-five focused native tests passed. Built browser and actual MCP standard input/output checks agreed on typed fixture `aaaa08c543e4f22b0544768a0f60e76a25399cb0f448af070b0b24b7c76ad6e1`. The retained Judiciary curator note supports the Altman player locator as evidence related to the package and hearing date. The association stays at `package_context`.
+
+The release coordinator owns the combined candidate and selected-release comparison across native coverage, both installed MCP recipes, and the site. Check that the Altman observation and source reference survive with package scope. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md)
 
 ## Acceptance Criteria
 

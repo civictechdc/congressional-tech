@@ -17,11 +17,15 @@ Readers should be able to find a saved bill through its GovInfo package when the
 
 ## Root cause (2026-11-05)
 
-The existing model deliberately rejects a filename-derived bill identity without a type in `model/sql/source-annotations-final.sql:10–19`. No supported candidate reached package selection for the checked document. In `e145d24c389e`, document `1a9cae0e1043a2a2` remains listed with direct source links, but both recorded source names omit type and neither it nor event `109907` carries a measure key. The audit could not locate that exact body in the two inspected local mirrors, so its identity remains unverified. The retained saved-copy replay recorded 1,587 dropped type-less IDs. That count describes exposure to the rule. The recoverable subset is unknown.
+The existing model deliberately rejects a filename-derived bill identity without a type in `model/sql/source-annotations-final.sql:10–19`. No supported candidate reached package selection for the checked document. In `e145d24c389e`, document `1a9cae0e1043a2a2` remains listed with direct source links, but both recorded source names omit type and neither it nor event `109907` carries a measure key. The initial audit found no copy of the exact body in the two inspected local mirrors. The later saved-object readback supplied it. The retained saved-copy replay recorded 1,587 dropped type-less IDs. That count describes exposure to the rule. The recoverable subset is unknown.
 
-## Smallest useful change
+## Implementation and remaining checks
 
-Start with an exact retained type-less document. Use an authoritative typed GovInfo address, a typed copy of the same bytes, an explicit measure relationship to that document, or the document’s own text or title when it establishes bill type and number. Require evidence for the exact package version before publishing it. Reuse the existing package candidate selection and conflict handling. If held evidence is enough, limit recomputation to the affected document groups. Keep a package ID empty when corroboration is absent or conflicts.
+The first-wave merge `18049548` includes a reviewed package candidate tied to the saved PDF’s SHA-256 digest. The verified 376,799-byte PDF for `1a9cae0e1043a2a2` supplies the bill type, number, Congress and introduced version on its cover and footer, supporting `BILLS-116hr2899ih`.
+
+Thirteen focused checks passed, covering typed candidate precedence, conflicting House and Senate identities, insufficient evidence and the existing H.R. 1776 same-bytes correction. The H.R. 1443 and H.R. 2062 committee PDFs carry unfinished report and date placeholders. Those cases and the H.R. 4791 draft remain unresolved.
+
+After the build hold clears, the release coordinator will verify the named package and stable document key on the candidate and selected release. Check that the saved PDF stays usable and that `BILLS-118hr1776ih` remains the correct typed-copy result. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md)
 
 ## Acceptance Criteria
 

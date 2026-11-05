@@ -17,11 +17,15 @@ A researcher opening a nomination should be able to see its supplied committee r
 
 ## Root cause (2026-11-05)
 
-The pinned nomination input `d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3` carries the actions and exact timestamp strings in `committees_json`. The input adapter keeps the JSON, but `entity-nominations.sql` extracts only distinct committee codes. The public schema has no activity field. The shared subject view also displays existing activity dates at day precision.
+The pinned nomination input `d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3` carries the actions and exact timestamp strings in `committees_json`. The e145 nomination SQL extracted committee codes and omitted activities. Its public schema omitted the activity field, and its subject view showed activity dates at day precision.
 
-## Smallest useful change
+## Merged implementation and remaining acceptance
 
-Decode the structured data once from the pinned input with the existing model adapter path. Publish nullable `committee_activities` grouped by `system_code`, with a nullable list of activities containing the source `name` and exact `date` string. Align the type, aliases and missing-value meanings in the model and registry. Reuse the generic MCP read. Have the existing subject view display the supplied precision and separate committee actions from floor votes.
+Local `main` includes the implementation at merge `18049548`. The shared model publishes nullable `committee_activities` grouped by `system_code`, with each publisher-supplied activity name and exact date or timestamp in source order. The site displays committee chronology separately from floor votes.
+
+On the retained-input fixture, nomination lookup and parameterized read-only SQL agreed on all four PN1011 activities and exact timestamps over MCP standard input/output. The retained PN247 and PN271 controls preserve the publisher’s voice-vote descriptions.
+
+The release coordinator owns rebuilding nominations and affected outputs from the final pinned inputs and verifying PN1011 on the exact candidate and selected archive through the installed MCP and site. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md)
 
 ## Acceptance Criteria
 
@@ -31,7 +35,7 @@ Decode the structured data once from the pinned input with the existing model ad
 
 ## Coordination and evidence
 
-Reuse the pinned nomination input and recompute the affected model outputs. Retained source values and consumer results are in `.cache/archive-release/chaos-personas-20261104/investigation-legislative/`. [ct-t915](ct-t915.md) owns the site integration, [ct-mj9f](ct-mj9f.md) other meeting and bill links, and [ct-sw5t](ct-sw5t.md) nomination transcript discovery. [Root-cause evidence](../docs/plans/production-mvp-root-causes-20261105.md).
+Retained source values and consumer results are in `.cache/archive-release/chaos-personas-20261104/investigation-legislative/`. [ct-t915](ct-t915.md) owns the site integration, [ct-mj9f](ct-mj9f.md) other meeting and bill links, and [ct-sw5t](ct-sw5t.md) nomination transcript discovery. [Root-cause evidence](../docs/plans/production-mvp-root-causes-20261105.md).
 
 ## Notes
 

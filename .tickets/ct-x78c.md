@@ -15,15 +15,17 @@ tags: [explorer, witnesses, phase2]
 
 Researchers should retain the witness roles, documents and links supported by the original sources when the old Explorer retires.
 
-In event `100520`, one House witness list records W. Ron Allen in two active roles. One represents the Jamestown S'Klallam Tribe and the other the Pacific Salmon Commissioner. The entries have the same publication time and separate biographies and statements. Release `e145d24c389e` preserves both rows, but the model marks key `2a0208241fb6a49d` superseded by `db779668e63d56bb`. The same-list rule uses name and XML order and misses the distinct roles and document evidence. Default readers that rely on the published marker can omit the second role.
+In event `100520`, one House witness list records W. Ron Allen in two active roles. One represents the Jamestown S'Klallam Tribe and the other the Pacific Salmon Commissioner. The entries have the same publication time and separate biographies and statements. Release `e145d24c389e` preserves both rows, but the model marks key `2a0208241fb6a49d` superseded by `db779668e63d56bb`. The prior same-list rule used name and XML order and missed the distinct roles and document evidence. Default readers that rely on the published marker can omit the second role.
 
 The older comparison's 19,475 groups combine rows by event and normalized name. Those groups help find cases and cannot establish that each distinct legacy appearance or role survived. House receipt-path binding already works for at least the exact published `meeting:100346` case, Stephen T. Ayers, key `e0ca0e7375ff80be`.
 
-## Smallest useful change
+## Implementation and remaining checks
 
-First correct the existing witness precedence rule for source-supported distinct occurrences from the same list. Preserve evidenced duplicate suppression and existing keys. Verify the two roles and their evidence through the maintained site and MCP readers on the same selected release. Coordinate the site case with [ct-t915](ct-t915.md) and MCP with [ct-m104](ct-m104.md).
+The first-wave merge `18049548` includes the narrow same-list fix (`2b130952`). It preserves roles with distinct source evidence and still collapses repeated entries that agree on their role, panel and document links. The 74 focused model checks passed, including repeated entries and distinct panel and document controls.
 
-Then reuse the frozen inputs and comparison to account for original occurrence evidence. Preserve meaningful role, organization, panel, source locator and document distinctions. Names can guide investigation. Match using supported occurrence evidence, keep package or page scope where that is all the publisher establishes, and reuse `ct-kthe` and `ct-dx22` results where they resolve named rows.
+The digest-checked House XML gives both W. Ron Allen roles in event `100520` a biography and a statement link. The bounded native check kept both keys active and assigned all four source-listed links to their respective roles. The installed MCP baseline on `e145` carries three of those four documents.
+
+After the build hold clears, the release coordinator will verify both roles, the available documents and the receipt-path control at event `100346` on the same selected site and MCP. The broader legacy audit remains open. Use frozen source evidence to account for each distinct legacy occurrence, with a reason and owner for gaps. [Site](ct-t915.md) · [MCP](ct-m104.md) · [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md)
 
 ## Acceptance Criteria
 
