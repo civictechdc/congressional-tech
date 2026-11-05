@@ -5,43 +5,55 @@
   "work": "../../output/archive-backfill",
   "tables": {
     "captures": {
+      "name": "captures",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "captures"
+      ]
     },
     "readings": {
+      "name": "readings",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "readings"
+      ]
     },
     "filename_readings": {
+      "name": "filename_readings_act_citation",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "filename_readings_act_citation"
+      ]
     },
     "meeting_records": {
+      "name": "meeting_records_mvp_20261105",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "meeting_records_act_citation"
+      ]
     },
     "appearance_records": {
+      "name": "appearance_records_mvp_20261105",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "appearance_records"
+      ]
+    },
+    "committee_records": {
+      "name": "committee_records_mvp_20261105",
+      "namespace": [
+        "archive_r1b"
+      ]
+    },
+    "playlist_records": {
+      "name": "playlist_records_mvp_20261105",
+      "namespace": [
+        "archive_r1b"
+      ]
     }
   },
   "batch_size": 5000,
   "max_batches": 20,
   "producers": {
     "appearance_records": {
-      "path": "producers/appearance_records.json",
-      "sha256": "93fd28b255c36e8528bf62f49d233678f2a251378e818b16acd4f92fb76a318c",
-      "size": 2138
+      "path": "producers/appearance_records-mvp-20261105.json",
+      "sha256": "f3b6b08d4b778b23166ea49d4503db67326ebf11a76619968bfc20851ec05366",
+      "size": 3046
     },
     "captures": {
       "path": "producers/captures.json",
@@ -49,9 +61,9 @@
       "size": 2084
     },
     "committee_records": {
-      "path": "producers/committee_records.json",
-      "sha256": "e2b015cae7b95a91e0aed40851f8bcb47e4898ecd623bcb346c6d59bb6d95bee",
-      "size": 2129
+      "path": "producers/committee_records-mvp-20261105.json",
+      "sha256": "1087306f3c5b02e6cfce55bd01834adf1ddcdb7d8e356d4767b1f46519f35065",
+      "size": 4207
     },
     "filename_readings": {
       "path": "producers/filename_readings-act-citation.json",
@@ -59,9 +71,9 @@
       "size": 2387
     },
     "meeting_records": {
-      "path": "producers/meeting_records-act-citation.json",
-      "sha256": "77b09ff247182e0b21873bb5fc90066dfb51849dfa74c11525618c4213db336f",
-      "size": 2324
+      "path": "producers/meeting_records-mvp-20261105.json",
+      "sha256": "60a469e8ca88073249bebd52f39f3c4ba1a87be8100fc55af8bfe0f140070ecc",
+      "size": 3346
     },
     "readings": {
       "path": "producers/readings.json",
@@ -72,6 +84,11 @@
       "path": "producers/video_records.json",
       "sha256": "5a5a8bb9c7095c9ebd6f4a8fcee848548294e9736674b0d42e01d5e1633ac065",
       "size": 2105
+    },
+    "playlist_records": {
+      "path": "producers/playlist_records-mvp-20261105.json",
+      "sha256": "b91a49c7f748c3cdf95f1441e85024a3d8bb9f3f2bb88e4a2f7ba11404694512",
+      "size": 2675
     }
   }
 }

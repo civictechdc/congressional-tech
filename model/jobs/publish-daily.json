@@ -4,34 +4,46 @@
   "catalog_root": null,
   "tables": {
     "captures": {
+      "name": "captures",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "captures"
+      ]
     },
     "readings": {
+      "name": "readings",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "readings"
+      ]
     },
     "filename_readings": {
+      "name": "filename_readings_act_citation",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "filename_readings_act_citation"
+      ]
     },
     "meeting_records": {
+      "name": "meeting_records_mvp_20261105",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "meeting_records_act_citation"
+      ]
     },
     "appearance_records": {
+      "name": "appearance_records_mvp_20261105",
       "namespace": [
         "archive_r1b"
-      ],
-      "name": "appearance_records"
+      ]
+    },
+    "committee_records": {
+      "name": "committee_records_mvp_20261105",
+      "namespace": [
+        "archive_r1b"
+      ]
+    },
+    "playlist_records": {
+      "name": "playlist_records_mvp_20261105",
+      "namespace": [
+        "archive_r1b"
+      ]
     }
   },
   "receipt_inventory": [],
