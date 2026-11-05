@@ -45,6 +45,7 @@ The `capture` job runs in the `archive-capture` environment on `ubuntu-24.04` wi
    - Runs `.github/scripts/run-archive-job.py maintenance --check-binding`, installs the pinned runtime, and executes `.github/scripts/run-archive-job.py maintenance` (`python -I -m viewer_publication.archive_maintenance --spec <spec> --execute`).
    - Verifies raw capture custody against the model's pinned `archive_r1b.captures` snapshot. It copies and checks the bucket's receipts and verification records, then writes their local inventories under `<work>/raw-verification-inputs/`.
    - Uses `.github/docspec-maintenance-limits.json` to admit historical receipt lines up to 256 MiB. Use the same limits file when preparing a local runtime for a full-corpus dry run.
+   - Uses eight concurrent readers for body checks. It checks every unverified orphan and the regular sample. A successful execution saves verification evidence for the next run.
    - Validates rebuild evidence for the live release, its predecessor, and releases pinned by SpicyRegs. It prunes only unpinned derived release keys whose newest object is older than 24 hours.
    - Use `python -I -m viewer_publication.archive_maintenance --spec model/jobs/maintenance.json --plan` to list retained releases and proposed deletion keys. Use `--dry-run` to also stage raw verification and write the local maintenance report. Both modes use read-only storage access.
 

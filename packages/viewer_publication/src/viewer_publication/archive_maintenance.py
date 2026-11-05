@@ -423,6 +423,7 @@ def load_spec(path):
         else:
             raise ValueError('Maintenance external_pins_source must be a valid source')
     if 'raw_verification' in value and value['raw_verification'] is not None:
+        from congress_api.retention.raw_verifier import MAX_BODY_WORKERS
         from viewer_publication.archive_model_job import _selector
         raw_cfg=value['raw_verification']
         inventories={'receipt_inventory','verification_inventory'}
@@ -430,6 +431,9 @@ def load_spec(path):
             raise ValueError('Maintenance raw_verification requires a captures input')
         if raw_cfg.keys()&inventories and not inventories<=raw_cfg.keys():
             raise ValueError('Supply both raw verification inventories or discover both from the bucket')
+        body_workers=raw_cfg.get('body_workers',1)
+        if type(body_workers) is not int or not 1<=body_workers<=MAX_BODY_WORKERS:
+            raise ValueError(f'Maintenance raw_verification body_workers must be an integer from 1 to {MAX_BODY_WORKERS}')
         captures=raw_cfg['captures']
         if isinstance(captures,dict) and set(captures)=={'model_spec'}:
             model_path=Path(_local(captures['model_spec'],base))
@@ -445,6 +449,7 @@ def load_spec(path):
             captures=captures_cfg,
             seed=raw_cfg.get('seed'),
             apply_staged=bool(raw_cfg.get('apply_staged',True)),
+            body_workers=body_workers,
         )
         for key in raw_cfg.keys()&inventories:
             source=raw_cfg[key]
@@ -618,6 +623,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
                 work=raw_work,
                 checked_at=current_time.isoformat(),
                 seed=raw_cfg.get('seed'),
+                body_workers=raw_cfg.get('body_workers',1),
             )
             if execute and not verified.get('valid',False):
                 raise RuntimeError('raw verification failed; refusing release pruning')

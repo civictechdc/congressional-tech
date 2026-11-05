@@ -313,6 +313,7 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys,mon
     assert set(maint_plan['tables'])==set(ALL_TABLE_NAMES)
     assert maint_plan['raw_verification']['captures']==json.loads(
         (root/'model/jobs/publish-model.json').read_text())['captures']
+    assert maint_plan['raw_verification']['body_workers']==8
     releases=maint_plan['releases']
     assert releases['kept_releases']==[LIVE,PREVIOUS,PINNED]
     assert set(releases['delete_keys'])>={PREFIX+OLD+'/list.parquet',PREFIX+OLD+'/manifest.json'}
@@ -467,7 +468,8 @@ def _maintenance_run(tmp_path,monkeypatch,*,execute,pin_old_during_verification=
     def write_pins(releases):
         pin_path.write_text(json.dumps(dict(version=1,updated_at=NOW.isoformat(),releases=releases)))
     write_pins([PINNED])
-    def staged_verification(source,*,work,checked_at,**_):
+    def staged_verification(source,*,work,checked_at,body_workers,**_):
+        assert body_workers==8
         # Plant a write in a phase intended to read only. The underlying fake
         # accepts writes, so the attempt must fail before it reaches that client.
         with pytest.raises(PermissionError,match='put_object'):
@@ -499,7 +501,7 @@ def _maintenance_run(tmp_path,monkeypatch,*,execute,pin_old_during_verification=
         engine_config=str(tmp_path/'runtime.json'),
         raw_verification=dict(captures=str(inputs/'captures.parquet'),
             receipt_inventory=str(inputs/'receipt-inventory.json'),
-            verification_inventory=str(inputs/'verification-inventory.json'),apply_staged=True),
+            verification_inventory=str(inputs/'verification-inventory.json'),apply_staged=True,body_workers=8),
         lake_maintenance=dict(observations=dict(captures=dict(file_count=999,manifest_count=0,scan_planning_seconds=0)),
             rebuild=dict(captures=dict(old_pin={},schema={},location='s3://fixture/new',keys=['k'],definition={})),
             purge=[dict(table='captures',pin={})]))
@@ -562,7 +564,7 @@ def test_cli_dry_run_stages_bucket_receipts_and_verification_for_native_checks(t
     spec.pop('external_pins_source')
     work=tmp_path/'run'
     spec.update(work=str(work),engine_config=os.environ['DOCSPEC_JOB_CONFIG'],external_pins=[PINNED],
-        raw_verification=dict(captures=str(captures)))
+        raw_verification=dict(captures=str(captures),body_workers=8))
     spec_path=tmp_path/'maintenance.json'
     spec_path.write_text(json.dumps(spec))
     assert archive_maintenance.main(['--spec',str(spec_path),'--dry-run'])==0
@@ -593,3 +595,16 @@ def test_maintenance_can_stage_a_verifier_baseline_above_the_unreadable_file_lim
     assert receipts==[] and baseline['key']==key
     assert Path(baseline['path']).stat().st_size==len(data)
     assert set(client.calls)=={'get_object','list_objects_v2'}
+
+
+@pytest.mark.parametrize('workers',[False,0,33,8.0,'8'])
+def test_maintenance_spec_rejects_invalid_raw_body_worker_count(tmp_path,workers):
+    from viewer_publication.archive_maintenance import load_spec
+
+    root=Path(__file__).resolve().parents[3]
+    spec=json.loads((root/'model/jobs/maintenance.json').read_text())
+    spec['raw_verification'].update(captures='captures.parquet',body_workers=workers)
+    path=tmp_path/'maintenance.json'
+    path.write_text(json.dumps(spec))
+    with pytest.raises(ValueError,match='body_workers'):
+        load_spec(path)
