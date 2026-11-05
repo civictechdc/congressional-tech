@@ -57,11 +57,8 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
           themes, with working tools already shipping.
         </p>
         <div class="hero-actions">
-          <a class="btn btn--gold" href={withBase('/dashboard/')}>
-            Explore committee data
-          </a>
-          <a class="btn btn--ghost-dark" href={withBase('/archive/')}>
-            Browse document archive
+          <a class="btn btn--gold" href={withBase('/archive/')}>
+            Open Congress Explorer
           </a>
           <a class="btn btn--ghost-dark" href={withBase('/proposals/')}>
             Browse the proposals
@@ -76,14 +73,13 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
     <div class="container">
       <div class="section-head">
         <h2 class="section-heading">Congressional Data Explorers</h2>
-        <a class="slide-link" href={withBase('/dashboard/')}>
-          Open Committee Explorer
+        <a class="slide-link" href={withBase('/archive/')}>
+          Open Congress Explorer
         </a>
       </div>
       <p class="section-intro">
-        Live interactive workspaces for exploring congressional committee
-        meetings, preserved hearing documents, witness records, and video
-        coverage across Congresses.
+        Browse congressional records, use the same archive with an AI
+        assistant, or check the separate YouTube Event ID report.
       </p>
       <div class="explorer-cards-grid">
         <article class="card card--gold project-card">
@@ -95,34 +91,18 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
           </div>
         </article>
         <article class="card card--gold project-card">
-          <h3 class="card-title">Committee Explorer</h3>
+          <h3 class="card-title">Congress Explorer</h3>
           <p>
-            Search and cross-reference 16,600+ committee meetings, recordings,
-            published documents, witness appearances, coverage metrics, and
-            known source gaps across Congresses.
+            Browse hearings, committees, witnesses, members, bills, nominations,
+            and preserved documents. Follow available links to recordings, original
+            sources, and saved copies.
           </p>
           <div class="project-links">
-            <a class="slide-link" href={withBase('/dashboard/')}>
-              Open Committee Explorer
+            <a class="slide-link" href={withBase('/archive/?tab=hearings')}>
+              Browse hearings
             </a>
-            <a class="slide-link" href={withBase('/dashboard/?view=coverage')}>
-              View source coverage
-            </a>
-          </div>
-        </article>
-        <article class="card card--gold project-card">
-          <h3 class="card-title">Document Archive</h3>
-          <p>
-            Browse and verify 367,000+ preserved committee hearing documents,
-            witness statements, transcripts, and recovered files with
-            cryptographic checksums and provenance records.
-          </p>
-          <div class="project-links">
             <a class="slide-link" href={withBase('/archive/')}>
-              Open Document Archive
-            </a>
-            <a class="slide-link" href={withBase('/dashboard/?view=materials')}>
-              Browse recordings &amp; materials
+              Browse documents
             </a>
           </div>
         </article>
@@ -217,7 +197,7 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
                     </a>
                   )}
                   {project.data.id === 'I.2' && (
-                    <a class="slide-link" href={withBase('/dashboard/')}>
+                    <a class="slide-link" href={withBase('/archive/?tab=hearings')}>
                       Explore committee records
                     </a>
                   )}

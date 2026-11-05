@@ -16,13 +16,11 @@ flipping the release pointer. A failure leaves the previous release selected.
 `npm run measure:archive` and `npm run targets:archive` maintain the archive measurement
 harness and its targets. Device and live-publication gates remain owner-run steps.
 
-The unified archive and entity explorer at `/archive/` serves both the document archive and
-the six committee explorer workspaces (`meetings`, `committees`, `materials`, `witnesses`,
-`issues`, and `coverage`) from the same immutable engine release Parquets (`documents`,
-`sources`, `meetings`, `committees`, `materials`, `witnesses`, `issues`, and search/detail
-sidecars). It retains direct file links, saved-body links, source evidence, filtering,
-coverage, witnesses, and issues, and no longer opens a separate weekly committee publication
-or the retired filename catalog. The `/dashboard/` route coexists for coverage and issues views rather than redirecting to `/archive/`.
+Congress Explorer at `/archive/` browses documents, hearings, committees, witnesses,
+members, bills, and nominations in the same immutable engine release. It provides direct
+file links, saved copies, and source evidence where available. The old `/dashboard/`
+route forwards supported bookmarks to Congress Explorer. Its former Coverage and Gaps
+views have closed. Readers can find source evidence on individual hearing pages.
 
 Pages builds run the explorer checks and the native archive contract before
 uploading the static site. Archive releases publish separately through the engine

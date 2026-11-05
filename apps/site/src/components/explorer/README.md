@@ -1,6 +1,12 @@
-# Committee Explorer data
+# Congress Explorer and the retained committee reader
 
-`Explorer.tsx` is the page. The rest of this folder is split by the question it answers:
+The public site uses `archive/ArchiveExplorer.tsx` at `/archive/`. It opens one native
+release through `reader/archive.ts`. The old `/dashboard/` page forwards supported
+bookmarks to that explorer. The retained event map translates old opaque meeting IDs
+when it contains a single matching event.
+
+The remaining notes describe the retained committee reader and publisher.
+`Explorer.tsx` contains the former dashboard workspace. Its supporting modules include:
 
 - `view/` — coverage, record detail, related materials, and paging
 - `reader/` — opening a release. `data-source.ts` reads JSON releases; `parquet-source.ts` reads the current Parquet tables
@@ -10,11 +16,7 @@ The UI receives one `ExplorerReader` with `search`, `getRecord`, `getRelated` an
 `getCoverage`. React components know nothing about Parquet or HTTP ranges.
 `openPublicationReader` chooses the reader from the release manifest.
 
-The document archive at `/archive/` uses `archive/ArchiveExplorer.tsx` and
-`reader/archive.ts`. The committee explorer retains its own published weekly
-tables until the phase-2 consumers move. It does not open the retired filename catalog.
-
-Production exports six logical tables:
+The weekly committee publisher exports six logical tables:
 
 | Table | Contents |
 | --- | --- |

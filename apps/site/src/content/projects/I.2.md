@@ -18,4 +18,4 @@ descriptions, so proceedings can be linked back to Congress.gov records.
 
 - **Source:** [`apps/committee_youtube`](https://github.com/civictechdc/congressional-tech/tree/main/apps/committee_youtube)
 - **Live dashboard:** [YouTube Event ID coverage](https://civictechdc.github.io/congressional-tech/youtube-coverage/)
-- **Related records:** [Committee Explorer](https://civictechdc.github.io/congressional-tech/dashboard/)
+- **Related records:** [Congress Explorer](https://civictechdc.github.io/congressional-tech/archive/?tab=hearings)

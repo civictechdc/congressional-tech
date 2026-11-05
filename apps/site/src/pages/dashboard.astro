@@ -1,23 +1,75 @@
 ---
 import Base from '../layouts/Base.astro';
-import Explorer from '../components/explorer/Explorer';
 import { withBase } from '../lib/paths';
-import '../styles/explorer.css';
 ---
 
-<Base title="Committee Explorer" active="dashboard" description="Explore congressional committee meetings, recordings, documents, witnesses, source evidence, and known gaps.">
-  <section class="explorer-page">
+<Base title="Committee Explorer has moved" description="Browse congressional records in Congress Explorer.">
+  <section class="section">
     <div class="container">
-      <div class="explorer-page-heading">
-        <div><p class="eyebrow">Committee records</p><h1>Committee Explorer</h1></div>
-        <div class="explorer-page-links">
-          <a href={withBase('/mcp/')}>Use this data with your AI assistant</a>
-          <span class="explorer-page-sep" aria-hidden="true">·</span>
-          <a href={withBase('/archive/')}>Browse 367,000+ preserved hearing documents in the Document Archive</a>
-        </div>
-      </div>
-      <Explorer pointerUrl={withBase('/data/explorer/CURRENT.json')} client:load />
-      <noscript><p>The interactive explorer requires JavaScript. Browse the <a href="https://github.com/civictechdc/congressional-tech/tree/pipeline-data">retained source data</a> on GitHub.</p></noscript>
+      <h1>Committee Explorer has moved</h1>
+      <p id="dashboard-move-note" role="status">Congress Explorer brings committee records and the document archive together.</p>
+      <a id="dashboard-destination" href={withBase('/archive/?tab=hearings')}>Open Congress Explorer</a>
     </div>
   </section>
 </Base>
+
+<script>
+  import { withBase } from '../lib/paths';
+
+  const tabs = new Map([
+    ['committees', 'committees'],
+    ['materials', 'documents'],
+    ['witnesses', 'witnesses'],
+  ]);
+
+  async function findLegacyEvent(id: string) {
+    try {
+      const response = await fetch(withBase('/data/explorer/event-meetings.json'));
+      if (!response.ok) return;
+      const events = Object.entries(await response.json());
+      // The old Explorer used opaque IDs. Translate only an unambiguous entry.
+      const matches = events.filter(([, record]) => Array.isArray(record) && record[0] === id);
+      if (matches.length === 1) return matches[0][0];
+    } catch {
+      // The fallback link remains available when the retained map cannot be read.
+    }
+  }
+
+  async function forwardBookmark() {
+    const previous = new URLSearchParams(location.search);
+    const view = previous.get('view');
+    const kind = previous.get('kind');
+    const id = previous.get('id')?.trim();
+    let hearing = (previous.get('hearing') || previous.get('meeting') || previous.get('event_id'))?.trim();
+    const tab = hearing || kind === 'meeting' ? 'hearings' : tabs.get(view ?? '') ?? 'hearings';
+    const destination = new URL(withBase('/archive/'), location.origin);
+    if (tab !== 'documents') destination.searchParams.set('tab', tab);
+    const { searchParams } = destination;
+    const q = previous.get('q');
+    const congress = previous.get('congress');
+    const chamber = previous.get('chamber');
+    const committee = previous.get('committee');
+    if (q) searchParams.set('q', q);
+    if (congress && /^\d+$/.test(congress)) searchParams.set('congress', congress);
+    if (chamber && ['hearings', 'committees'].includes(tab)) searchParams.set('chamber', chamber);
+    if (committee && /^[a-z]{4}\d{2}$/i.test(committee)) searchParams.set('committee', committee);
+    destination.hash = location.hash;
+
+    const link = document.querySelector<HTMLAnchorElement>('#dashboard-destination')!;
+    const note = document.getElementById('dashboard-move-note')!;
+    link.href = destination.href;
+    if (!hearing && kind === 'meeting' && id) hearing = await findLegacyEvent(id);
+    if (hearing) {
+      searchParams.set('hearing', hearing);
+    } else if (view === 'coverage' || view === 'gaps') {
+      note.textContent = 'The former Coverage and Gaps views have closed. Open a hearing to see its available sources and evidence.';
+      return;
+    } else if (kind && id) {
+      note.textContent = 'This bookmark uses an older record identifier. Open Congress Explorer to search the current release.';
+      return;
+    }
+    location.replace(destination.href);
+  }
+
+  void forwardBookmark();
+</script>
