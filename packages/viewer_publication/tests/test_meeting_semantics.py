@@ -437,6 +437,16 @@ def test_a_witness_listed_twice_in_one_print_is_shown_once(tmp_path):
         ('mods:witness[1]', False), ('mods:witness[2]', True), ('mods:witness[3]', False), ('mods:witness[4]', False)]
 
 
+def test_one_list_distinguishes_close_names_and_collapses_a_normalized_repeat(tmp_path):
+    entries = [dict(witness(name), source_locator=f'house_xml:witness[{ordinal}]')
+               for ordinal, name in enumerate(('Jane Miller', 'Janet Miller', 'JANE MILLER'), 1)]
+    house = record('close-names', 'house_xml', entries, event_id=9001)
+    got = resolve(tmp_path, [house], [], {}, rows=True)
+    assert {r['source_locator']: r['superseded_by'] for r in got} == {
+        'house_xml:witness[1]': None, 'house_xml:witness[2]': None, 'house_xml:witness[3]': 'Jane Miller',
+    }
+
+
 def test_one_house_list_keeps_distinct_roles_panels_and_documents(tmp_path):
     # Event 100520 lists W. Ron Allen in two roles with separate biographies and statements.
     base = 'http://docs.house.gov/meetings/AP/AP06/20130424/100520/HHRG-113-AP06-'
