@@ -179,10 +179,12 @@ def _is_delta(record):
     return record.get('delta_only') is True or record.get('final_reconciliation_required') is True
 
 
-def import_origin_problem(source, origin):
+def import_origin_problem(name, source, origin):
     """Check that a pinned origin can account for the complete file being imported."""
     if not isinstance(origin, dict):
         return 'an import needs a producer record object'
+    if origin.get('input') != name:
+        return 'the import origin names another table'
     if _is_delta(origin):
         return 'a staged delta cannot be the origin of a complete table'
     selector = origin.get('selector')
@@ -229,7 +231,7 @@ def _import_reasons(name, record, model, mapping_current, root, *, label, versio
         return [f'producer proof: {label}: an import record needs the origin record of the job that produced the rows']
     if origin['record'].get('job') == IMPORT:
         return [f'producer proof: {label}: an import cannot name another import as its origin']
-    if problem := import_origin_problem(record.get('source'), origin['record']):
+    if problem := import_origin_problem(name, record.get('source'), origin['record']):
         return [f'producer proof: {label} origin: {problem}']
     return _record_reasons(name, origin['record'], model, mapping_current, root, label=f'{label} origin', versions=versions)
 

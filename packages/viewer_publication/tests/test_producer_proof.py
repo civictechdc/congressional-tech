@@ -225,6 +225,8 @@ def test_a_committee_delta_is_not_a_complete_snapshot_or_import_origin():
     assert 'a staged delta cannot be the origin' in reasons(native, imported(delta, source))[0]
     assert 'does not match the import source pin' in reasons(
         native, imported(origin, dict(source, sha256='b'*64)))[0]
+    unrelated = dict(origin, input='video_records', selector={'kind': 'native_table', 'snapshot': 7})
+    assert 'the import origin names another table' in reasons(native, imported(unrelated, source))[0]
     assert reasons(native, imported(origin, dict(source, path='/fixture/relocated.parquet'))) == []
 
 

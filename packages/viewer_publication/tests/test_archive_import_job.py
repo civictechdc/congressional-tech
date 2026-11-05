@@ -73,6 +73,7 @@ def test_import_refuses_a_changed_origin_before_any_effect(tmp_path):
     ('delta_only', 'a staged delta cannot be the origin'),
     ('final_reconciliation_required', 'a staged delta cannot be the origin'),
     ('different_bytes', 'the Parquet origin does not match the import source pin'),
+    ('different_table', 'the import origin names another table'),
 ])
 def test_import_refuses_incomplete_or_mismatched_origin_before_any_effect(tmp_path, problem, expected):
     from viewer_publication.archive_import_job import execute, load_spec
@@ -85,6 +86,8 @@ def test_import_refuses_incomplete_or_mismatched_origin_before_any_effect(tmp_pa
     origin = dict(input='meeting_records', selector=dict(kind='parquet', **item['source']))
     if problem == 'different_bytes':
         origin['selector']['sha256'] = '0'*64
+    elif problem == 'different_table':
+        origin.update(input='video_records', selector={'kind': 'native_table', 'snapshot': 7})
     else:
         origin[problem] = True
     origin_path = tmp_path/'origin.json'
