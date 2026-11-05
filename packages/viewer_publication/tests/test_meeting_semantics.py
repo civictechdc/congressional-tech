@@ -294,7 +294,7 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
             LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
             LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')]
     if print_links:
-        queries.append(dict(name='print_links', sql='SELECT * FROM package_meeting_links ORDER BY package_id,event_id'))
+        queries.append(dict(name='print_links', sql='SELECT package_id,event_id FROM package_meeting_links ORDER BY package_id,event_id'))
     result = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
     found = result['rows']
     if print_links:
@@ -728,6 +728,27 @@ def test_jec_unknown_chamber_requires_title_or_witness_evidence(tmp_path):
     assert got['Scott Lincicome'][1] is None
 
 
+@pytest.mark.parametrize('held,link_events,expected', [
+    (('2024-06-12',), (335901,), 335901),
+    (('2024-06-11', '2024-06-12'), (335901,), None),
+    (('2024-06-12',), (335901, 335902), None),
+], ids=['single-event', 'two-held-days', 'two-vetted-events'])
+def test_jec_surname_evidence_requires_a_print_witness_eligible_for_the_event(tmp_path, held, link_events, expected):
+    day, title, package = '2024-06-12', 'Rural Credit Access', 'CHRG-a'
+    page_url = 'https://www.jec.senate.gov/public/index.cfm/2024/6/marine-habitats'
+    sp = record('jec-page', 'senate_page', [witness('Jane Witness')], context_url=page_url)
+    printed = record('print', 'mods', [witness('Jane Witness')], package_id=package)
+    page = dict(body_hex=sp['record_sha_hex'], status='completed', title='State of Marine Habitats',
+                heading=None, text_head='', content_date=day)
+    rows, links = resolve(tmp_path, [sp, printed], [(package, event) for event in link_events],
+                          {package: facts(held=held, title=title)}, pages=[page], print_links=True,
+                          meetings=((335901, day, title, False, None, 'jjec00'),
+                                    (335902, day, title, False, 'house', 'hsag00')))
+    assert [r['event_id'] for r in rows if r['source'] == 'senate_page'] == [expected]
+    assert [r['event_id'] for r in rows if r['source'] == 'mods'] == [expected]
+    assert links == [dict(package_id=package, event_id=event) for event in link_events]
+
+
 def test_empty_senate_page_does_not_suppress_mods_witnesses(tmp_path):
     # ct-j2yo guard: an empty/absent senate_page container never attaches as 'empty' to suppress mods witnesses.
     empty_sp = record('sp_empty', 'senate_page', [], collection_state='empty',
@@ -1030,7 +1051,7 @@ def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(t
         dict(name='page_facts', sql="SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,status,title,heading,text_head,content_date FROM page_inputs", materialize=True),
         dict(name='spicy_committees', sql="SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,cast(NULL AS VARCHAR) AS website_url WHERE false", materialize=True),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
-        dict(name='package_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false', materialize=True),
+        dict(name='package_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,false AS witness_eligible WHERE false', materialize=True),
     ]
     explained = run_job(tmp_path / 'plan', engine, inputs=inputs, steps=steps, outputs=[],
                         queries=[dict(name='plan', sql='EXPLAIN ' + sql('senate-page-meeting-links'))])['plan']

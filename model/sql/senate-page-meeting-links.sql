@@ -160,7 +160,7 @@ WITH stopwords AS (
   SELECT pml.event_id,ap.family
   FROM package_meeting_links pml
   JOIN appearance_people ap ON ap.source='mods' AND ap.package_id=pml.package_id
-  WHERE ap.family IS NOT NULL AND NOT ap.statement
+  WHERE pml.witness_eligible AND ap.family IS NOT NULL AND NOT ap.statement
   UNION ALL
   SELECT ap.event_id,ap.family
   FROM appearance_people ap
