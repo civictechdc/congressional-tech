@@ -3,10 +3,12 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import re
+from shutil import copyfile
 import subprocess
 import time
 
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,readings,tables,video_records
@@ -16,7 +18,7 @@ from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStor
 from congress_api.retention.writer_identity import writer_identity
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
-from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory,run_job
+from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory,parquet_output,run_job
 from congress_api.retention.provenance_inventory import UnreadableInventory,unreadable_inventory
 from congress_shared.custody import custody_identity,VerifiedFile
 
@@ -398,9 +400,8 @@ def _producer_bases(records,heads):
     return dict(writer=writer,bases=bases),None
 
 
-def _record_moved(records,chain,initial,*,authority,work,tables_spec,decided_at):
+def _record_moved(records,chain,initial,final,*,decided_at):
     """One record per table whose head moved during this run, written before returning."""
-    final=tables.resolve_tables(**authority,work=work,tables=tables_spec)
     if writer_identity(ROOT,DAILY_JOB)['commit']!=chain['writer']['commit']:
         raise ValueError('Application commit changed during daily production')
     written={}
@@ -411,6 +412,126 @@ def _record_moved(records,chain,initial,*,authority,work,tables_spec,decided_at)
             base=dict(selector=dict(kind='native_table',**initial[name]),record=chain['bases'][name]))
         written[name]=records.write(record)
     return written
+
+
+def _copy_html_input(pin, target):
+    if (not isinstance(pin, dict) or set(pin) != {'path', 'sha256', 'size'}
+            or not isinstance(pin['path'], (str, Path))
+            or not isinstance(pin['sha256'], str) or re.fullmatch('[0-9a-f]{64}', pin['sha256']) is None
+            or type(pin['size']) is not int or pin['size'] <= 0):
+        raise ValueError('HTML metadata inputs require path, SHA-256 and size pins')
+    source = Path(pin['path'])
+    if custody_identity(source)[2] != pin['size']:
+        raise ValueError('Pinned HTML metadata input size changed')
+    copyfile(source, target)
+    if file_pin(target) != {k: pin[k] for k in ('sha256', 'size')}:
+        raise ValueError('Pinned HTML metadata input bytes changed')
+    return target
+
+
+def _scope_html_inputs(scope, heads, *, engine, work):
+    keys = pq.read_table(scope, columns=['body_sha']).column('body_sha')
+    if (not pa.types.is_string(keys.type) or not len(keys) or keys.null_count
+            or not pc.all(pc.match_substring_regex(keys, '^[0-9a-f]{64}$')).as_py()
+            or pc.count_distinct(keys).as_py() != len(keys)):
+        raise ValueError('HTML metadata scope requires distinct lowercase hexadecimal body_sha values')
+    inputs = [tables.table_input('scope_keys', scope),
+              tables.table_input('captures', heads['captures']),
+              tables.table_input('readings', heads['readings'])]
+    steps = [
+        dict(name='candidate_shas', materialize=True,
+             sql="SELECT arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)') AS body_sha FROM scope_keys"),
+        dict(name='scoped_captures', materialize=True, sql='''
+            SELECT c.sha256,c.sniffed_format,c.sniff_version,c.intact,c.media_type,c.bytes,
+                c.stored_suffix,c.stored_bytes,c.stored_md5,c.receipt_key,c.receipt_line,c.capture_index
+            FROM candidate_shas k JOIN captures c ON k.body_sha=c.sha256'''),
+    ]
+    checks = run_job(work, engine, inputs=inputs, steps=steps, outputs=[
+        parquet_output(work, 'captures', 'SELECT * FROM scoped_captures',
+                       ['receipt_key', 'receipt_line', 'capture_index']),
+        parquet_output(work, 'readings', """SELECT r.* FROM candidate_shas k
+            JOIN readings r ON k.body_sha=r.body_sha WHERE r.parser IN ('sniff','html_metadata')""", readings.PK),
+    ], queries=[dict(name='coverage', sql='SELECT count(DISTINCT sha256) AS bodies FROM scoped_captures')])
+    if checks['coverage'][0]['bodies'] != len(keys):
+        raise ValueError('HTML metadata scope contains bodies missing from the pinned captures')
+    return len(keys)
+
+
+def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, work, decided_at,
+                          tables_spec, expected_heads, scope, unreadable_snapshot, batch_size,
+                          parser_workers=1, max_get_workers=64, body_listing=None):
+    """Append missing HTML metadata for a pinned body scope in bounded batches.
+
+    The caller holds the archive writer lock across this call and supplies the complete
+    qualified unreadable inventory. The scope Parquet names unique lowercase body hashes
+    in body_sha. It limits the work considered by the maintained readings selection.
+    An optional pinned R2 listing (key, size, etag) must cover the recorded copies
+    of bodies to be read.
+    Otherwise reads use the capture's own stored size and MD5 for conditional GETs.
+    The result describes this scope only. The maintained cache limit applies to each
+    batch. After a stop that unwinds this call, resolve fresh heads and replan.
+    """
+    names = {'captures', 'readings'}
+    if (not isinstance(tables_spec, dict) or tables_spec.keys() != names
+            or not isinstance(expected_heads, dict) or expected_heads.keys() != names
+            or any(not isinstance(pin, dict) for pin in expected_heads.values())):
+        raise ValueError('HTML metadata requires explicit captures and readings tables and expected heads')
+    for name in names:
+        tables.table_input(name, expected_heads[name])
+    if (producer_records is None or not isinstance(raw_store, BodyStore)
+            or not isinstance(raw_store.adapter, (LocalAdapter, R2Adapter))
+            or not isinstance(unreadable_snapshot, UnreadableInventory)
+            or unreadable_snapshot.store is not raw_store):
+        raise ValueError('HTML metadata requires a producer ledger and qualified unreadable inventory')
+    if body_listing is not None and not isinstance(raw_store.adapter, R2Adapter):
+        raise ValueError('HTML metadata body listings require an R2 raw store')
+    readings._positive(batch_size, 'batch_size')
+    instant(decided_at)
+    authority = dict(engine=engine, catalog_root=catalog_root)
+    tables.validate_catalog_authority(**authority)
+    work = Path(work)
+    if work.is_symlink():
+        raise ValueError('HTML metadata requires a fresh work directory')
+    work = work.resolve()
+    work.mkdir(parents=True, exist_ok=False)
+    heads = tables.resolve_tables(**authority, work=work/'initial-heads', tables=tables_spec)
+    if heads != expected_heads:
+        raise ValueError('HTML metadata expected captures or readings head changed')
+    base = {'readings': heads['readings']}
+    chain, refusal = _producer_bases(producer_records, base)
+    report = dict(scope=scope, source=heads, pins=None)
+    if chain is None:
+        return dict(report, status='producer_unrecorded', producers=refusal)
+
+    scoped = work/'scope'
+    scope_file = _copy_html_input(scope, work/'body-scope.parquet')
+    report['scope_bodies'] = _scope_html_inputs(scope_file, heads, engine=engine, work=scoped)
+    listing = _copy_html_input(body_listing, work/'body-listing.parquet') if body_listing is not None else None
+    reading_work = work/'html_metadata'
+    source = _body_source({}, raw_store, reading_work, listing)
+    source['captured_copies'] = listing is None
+
+    current = tables.resolve_tables(**authority, work=work/'scoped-heads', tables=tables_spec)
+    if current != heads:
+        raise ValueError('HTML metadata expected captures or readings head changed during scoping')
+
+    try:
+        result = readings.run(engine=engine, work=reading_work, mode='backfill', execute=True,
+            table=tables_spec['readings'], catalog_root=catalog_root, parser='html_metadata',
+            captures=scoped/'captures.parquet', read_current=lambda **_: scoped/'readings.parquet',
+            batch_size=batch_size,
+            decided_at=decided_at, unreadable_store=raw_store, unreadable_snapshot=unreadable_snapshot,
+            parser_workers=parser_workers, max_get_workers=max_get_workers, **source)
+        report.update(status=result['status'], readings=result)
+    except readings.RawCustodyRequired as error:
+        report.update(status='raw_custody_required', readings=error.as_dict())
+    finally:
+        final = tables.resolve_tables(**authority, work=work/'producer-heads', tables=tables_spec)
+        report['producers'] = _record_moved(producer_records, chain, base,
+            {'readings': final['readings']}, decided_at=decided_at)
+    if final['captures'] != heads['captures']:
+        raise ValueError('HTML metadata captures head changed during production')
+    return dict(report, pins=final, unreadable=unreadable_snapshot.rows())
 
 
 def produce_daily(spec,*,engine,raw_store,producer_records=None):
@@ -453,8 +574,8 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
     try:
         _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapshot,authority,heads,versions,report)
     finally:
-        report['producers']=_record_moved(producer_records,chain,initial,authority=authority,
-            work=work/'producer-heads',tables_spec=spec['tables'],decided_at=spec['decided_at'])
+        final=tables.resolve_tables(**authority,work=work/'producer-heads',tables=spec['tables'])
+        report['producers']=_record_moved(producer_records,chain,initial,final,decided_at=spec['decided_at'])
     return report
 
 
