@@ -323,14 +323,18 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
                 field('outcome','Utf8'),field('http_status','Int32'),field('error_type','Utf8'),
                 field('receipt_key','Utf8')],metadata={}))]
     inputs.extend(_profile_inputs(release,binding,work))
-    key_sources=[('attempted','attempted','url'),('cutoffs','cutoff','url'),('discovered_urls','discovery','url')]
+    key_sources=[('attempted','attempted','url'),('cutoffs','cutoff','url'),
+        ('discovered_urls','discovery','url'),('reviewed_repairs','repair','candidate_url')]
     if not reuse_keyed_states:
         key_sources.insert(0,('states','state','requested_url'))
     if campaign is not None:
         inputs.extend([dict(name='campaign_targets',kind='parquet',path=str(campaign.table_path(campaign.target_table))),
                        dict(name='campaign_candidates',kind='parquet',path=str(campaign.table_path(campaign.candidate_table)))])
         key_sources.append(('campaign_targets','target','target_url'))
-    steps=[dict(name='discovered_urls',sql=f"SELECT DISTINCT {DISCOVERY_URL_SQL} AS url FROM discovery")]
+    repairs_sql=_address_repairs_sql("SELECT url,url AS url_key FROM cutoffs")
+    steps=[dict(name='discovered_urls',sql=f"SELECT DISTINCT {DISCOVERY_URL_SQL} AS url FROM discovery"),
+        dict(name='reviewed_repairs',sql=f"""SELECT DISTINCT url_key AS cutoff_url,
+            arrow_cast(url,'Utf8') AS candidate_url FROM ({repairs_sql})""",materialize=True)]
     steps.extend(_key_steps(binding,key_sources))
     state_key, state_source = ('s.url_key', 'keyed_states s') if reuse_keyed_states else (
         'k.url_key', "states s JOIN url_keys k ON k.input_id='state:' || s.requested_url")
@@ -349,9 +353,16 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
         alias_sql+=" UNION ALL "+_campaign_candidates_sql("SELECT url,url_key FROM keyed_campaign_targets")
     steps.extend([dict(name='reviewed_cutoffs',sql="""SELECT DISTINCT c.url,k.url_key FROM cutoffs c JOIN url_keys k
             ON k.input_id='cutoff:' || c.url"""),
-        dict(name='reviewed_keys',sql="SELECT DISTINCT url_key FROM reviewed_cutoffs"),
-        dict(name='selected_states',sql=f"""SELECT s.* FROM reviewed_keys k JOIN ({selected_states_sql}) s
-            ON k.url_key=s.url_key""",materialize=True),
+        # A different-key repair may have its own state. Look it up by key,
+        # then require the literal candidate so its other aliases cannot supply the state.
+        dict(name='reviewed_state_keys',sql="""SELECT url AS cutoff_url,url_key,cast(NULL AS VARCHAR) AS candidate_url
+            FROM reviewed_cutoffs
+            UNION ALL SELECT r.cutoff_url,k.url_key,r.candidate_url FROM reviewed_repairs r
+            JOIN reviewed_cutoffs c ON c.url=r.cutoff_url
+            JOIN url_keys k ON k.input_id='repair:' || r.candidate_url WHERE k.url_key<>c.url_key"""),
+        dict(name='selected_states',sql=f"""SELECT s.*,k.cutoff_url FROM reviewed_state_keys k
+            JOIN ({selected_states_sql}) s ON k.url_key=s.url_key
+            WHERE k.candidate_url IS NULL OR s.requested_url=k.candidate_url""",materialize=True),
         dict(name='keyed_campaign_targets',sql=campaign_target_source),
         dict(name='campaign_keys',sql="SELECT DISTINCT url_key FROM keyed_campaign_targets"),
         dict(name='keyed_discovery',sql="""SELECT d.url,k.url_key FROM discovered_urls d JOIN url_keys k
@@ -359,7 +370,6 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
         dict(name='discovered_targets',sql="""SELECT c.url AS cutoff_url,
             coalesce(min(CASE WHEN c.url=d.url THEN d.url END),min(d.url)) AS url FROM keyed_discovery d
             JOIN reviewed_cutoffs c ON d.url_key=c.url_key GROUP BY c.url"""),
-        dict(name='reviewed_repairs',sql=_address_repairs_sql("SELECT url,url AS url_key FROM reviewed_cutoffs")),
         # Same candidate addresses plan_queue requests on behalf of a key.
         dict(name='attempt_aliases',sql=f"""SELECT arrow_cast(url,'Utf8') AS url,
             arrow_cast(url_key,'Utf8') AS url_key FROM ({alias_sql})""",materialize=True),
@@ -376,6 +386,8 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
     as_of_sql=f"to_timestamp({_literal(_utc(as_of))})"
     retained_result=f"""(s.capture_disposition IS NULL AND s.last_outcome IN ('stored','unchanged')
         AND s.next_attempt_at>{as_of_sql})"""
+    repair_governs="""(s.family IS NOT NULL AND (original.family IS NULL OR original.capture_disposition='eligible'
+        OR coalesce(original.last_outcome,'') NOT IN ('stored','unchanged')))"""
     values=run_job(work,engine,inputs=inputs,outputs=[],steps=steps,
         queries=[*_key_queries(),dict(name='cutoffs',sql=f"""SELECT requested_url,disposition,reason,
             next_attempt_at,complete,outcome,http_status,candidate_url,receipt_key,
@@ -401,14 +413,15 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
                 CASE WHEN a.receipt_key IS NOT NULL THEN 0 ELSE 1 END,
                 CASE WHEN k.url=a.url THEN 0 ELSE 1 END,a.url,
                 CASE WHEN s.capture_disposition IN ('satisfied','excluded') THEN 0 ELSE 1 END,
-                CASE WHEN repair.url IS NOT NULL AND s.family IS NOT NULL
-                    AND (original.family IS NULL OR original.capture_disposition='eligible'
-                        OR coalesce(original.last_outcome,'') NOT IN ('stored','unchanged')) THEN 0 ELSE 1 END,
+                CASE WHEN repair.candidate_url IS NOT NULL AND {repair_governs} THEN 0 ELSE 1 END,
                 CASE WHEN k.url=s.requested_url THEN 0 ELSE 1 END,
                 s.next_attempt_at DESC NULLS LAST,s.requested_url) AS ordinal
-            FROM reviewed_cutoffs k LEFT JOIN selected_states s ON k.url_key=s.url_key
-            LEFT JOIN selected_states original ON k.url=original.requested_url
-            LEFT JOIN reviewed_repairs repair ON k.url=repair.url_key AND s.requested_url=repair.url
+            FROM reviewed_cutoffs k LEFT JOIN selected_states original
+                ON k.url=original.cutoff_url AND k.url=original.requested_url
+            LEFT JOIN selected_states s ON k.url=s.cutoff_url AND (k.url_key=s.url_key OR
+                (original.requested_url IS NOT NULL AND {repair_governs}
+                 AND (original.capture_disposition IS NULL OR original.capture_disposition='eligible')))
+            LEFT JOIN reviewed_repairs repair ON k.url=repair.cutoff_url AND s.requested_url=repair.candidate_url
             LEFT JOIN discovered_targets d ON k.url=d.cutoff_url
             LEFT JOIN campaign_keys c ON k.url_key=c.url_key
             LEFT JOIN in_scope_aliases sc ON k.url_key=sc.url_key
