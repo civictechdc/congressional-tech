@@ -1,5 +1,6 @@
--- GovInfo source and container addresses outrank filenames. A filename can
--- identify a bill package only when the copies agree on the bill itself.
+-- GovInfo source and container addresses outrank filenames. A reviewed PDF
+-- can supply a missing package when the document holds those exact bytes.
+-- All non-authoritative bill candidates must agree on the measure itself.
 -- Different versions of the same bill keep the existing filename order.
 WITH candidates AS (
  SELECT DISTINCT s.component,1 AS evidence,s.saved_rank,
@@ -11,6 +12,11 @@ WITH candidates AS (
   arrow_cast(s.first_fetched,'Timestamp(Microsecond, Some("UTC"))') AS first_fetched,a.package_id FROM saved_files s
  JOIN source_annotations a ON s.source_id=a.source_id
  WHERE a.package_id IS NOT NULL
+ UNION ALL
+ SELECT DISTINCT pdf.component,3 AS evidence,0 AS saved_rank,
+  arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))') AS first_fetched,e.package_id
+ FROM bill_package_evidence e
+ JOIN saved_files pdf ON e.pdf_sha=pdf.body_sha AND pdf.format='pdf'
 ), ranked AS (
  -- Scan from least to most preferred so the last row has both the winning
  -- package and the complete bill range. Every candidate has a package ID.
@@ -19,7 +25,7 @@ WITH candidates AS (
   min(bill_measure) OVER w AS min_bill_measure,
   max(bill_measure) OVER w AS max_bill_measure
  FROM (
-  SELECT *,CASE WHEN evidence=2 AND starts_with(package_id,'BILLS-')
+  SELECT *,CASE WHEN evidence>1 AND starts_with(package_id,'BILLS-')
    THEN (regexp_match(package_id,'^(BILLS-[0-9]+[a-z]+[0-9]+)'))[1] END AS bill_measure
   FROM candidates
  )
@@ -28,7 +34,7 @@ WITH candidates AS (
   ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 ), preferred AS (
  SELECT component,package_id,
-  coalesce(evidence=2 AND starts_with(package_id,'BILLS-') AND min_bill_measure<>max_bill_measure,false) AS bill_package_conflict
+  coalesce(evidence>1 AND starts_with(package_id,'BILLS-') AND min_bill_measure<>max_bill_measure,false) AS bill_package_conflict
  FROM ranked WHERE next_package IS NULL
 )
 SELECT c.component,CASE WHEN NOT p.bill_package_conflict THEN p.package_id END AS package_id,

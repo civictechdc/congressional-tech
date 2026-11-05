@@ -41,6 +41,8 @@ def test_source_listing_selects_one_earliest_address_compatible_tuple(tmp_path):
 def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_path):
     """ct-vq2a: a newer identical copy saved under a plain name keeps the package an earlier copy's
     GovInfo filename named; URL packages still win when filenames name different bills."""
+    from viewer_publication.archive_model import registry_inputs
+
     saved=[dict(component='document',source_id=s,saved_rank=i,first_fetched=f'2026-10-0{i}T12:00:00Z') for i,s in enumerate(['saved','second','third','fourth'],1)]
     saved+=[dict(component='fallback',source_id='only-filename',saved_rank=1,first_fetched='2026-10-01T12:00:00Z'),
             dict(component='copies',source_id='newer-plain',saved_rank=1,first_fetched='2026-10-20T12:00:00Z'),
@@ -52,16 +54,34 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
             dict(component='nonbill',source_id='print-as-bill-1',saved_rank=2,first_fetched='2026-10-10T12:00:00Z'),
             dict(component='nonbill',source_id='print-as-bill-2',saved_rank=3,first_fetched='2026-10-20T12:00:00Z'),
             dict(component='none',source_id='plain',saved_rank=1,first_fetched=None)]
-    inputs=[json_input(tmp_path,'saved_inputs',saved,component='Utf8',source_id='Utf8',saved_rank='Int64',first_fetched='Utf8'),
+    # The reviewed GPO print states the Congress and bill number on page 1
+    # and HR 2899 IH in the footer of page 2. Other bytes must not inherit it.
+    reviewed_sha = '1a9cae0e1043a2a2af6a4f7b187f15ef4cf64d796a23448b26b82a52989e4ed2'
+    saved += [
+        dict(component=component, source_id=f'{component}-pdf', saved_rank=1, format='pdf', body_sha=reviewed_sha)
+        for component in ('reviewed', 'house-senate-collision', 'authoritative')
+    ]
+    saved += [
+        dict(component='pre-introduction', source_id='draft-pdf', saved_rank=1, format='pdf',
+             body_sha='59282bb7d29d214e2f562a6f38ca0b1f901d07a51806bfe01ea88991f7b4e2e1'),
+        dict(component='different-bytes', source_id='different-2899', saved_rank=1, format='pdf',
+             body_sha='f' + reviewed_sha[1:]),
+    ]
+    inputs=registry_inputs(tmp_path/'registries')+[
+        json_input(tmp_path,'saved_inputs',saved,component='Utf8',source_id='Utf8',saved_rank='Int64',
+                   first_fetched='Utf8',format='Utf8',body_sha='Utf8'),
         json_input(tmp_path,'source_annotation_addresses',[
             dict(source_id='saved',package_id='PUBLISHER-PACKAGE',publisher=True),
             dict(source_id='second',package_id='BILLS-119hr3ih',publisher=False),
-            dict(source_id='third',package_id='BILLS-119hr2ih',publisher=False)],source_id='Utf8',package_id='Utf8',publisher='Boolean'),
+            dict(source_id='third',package_id='BILLS-119hr2ih',publisher=False),
+            dict(source_id='authoritative-pdf',package_id='BILLS-116s2899is',publisher=False)],
+            source_id='Utf8',package_id='Utf8',publisher='Boolean'),
         json_input(tmp_path,'source_annotations',[dict(source_id='saved',package_id='BILLS-119hr1ih'),
             dict(source_id='fourth',package_id='BILLS-119hr4ih'),dict(source_id='only-filename',package_id='FILENAME-ONLY'),
             dict(source_id='newer-plain',package_id=None),dict(source_id='later-named',package_id='BILLS-117hr1833rh'),
             dict(source_id='earliest-named',package_id='BILLS-117hr1833ih'),dict(source_id='plain',package_id=None),
             dict(source_id='bill-5255',package_id='BILLS-118hr5255ih'),dict(source_id='bill-5225',package_id='BILLS-118hr5225ih'),
+            dict(source_id='house-senate-collision-pdf',package_id='BILLS-116s2899is'),
             dict(source_id='print',package_id='CHRG-119hhrg49353'),dict(source_id='print-as-bill-1',package_id='BILLS-119hr1ih'),
             dict(source_id='print-as-bill-2',package_id='BILLS-119hr2ih')],
             source_id='Utf8',package_id='Utf8')]
@@ -69,12 +89,17 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
         steps=[dict(name='saved_files',sql='SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM saved_inputs'),
                dict(name='document_packages',sql=(ROOT/'model/sql/document-packages.sql').read_text(),materialize=True)],outputs=[],queries=[dict(name='packages',sql='SELECT * FROM document_packages ORDER BY component')])
     assert result['packages']==[
+        dict(component='authoritative',package_id='BILLS-116s2899is',bill_package_conflict=False),
         dict(component='conflict',package_id=None,bill_package_conflict=True),
         dict(component='copies',package_id='BILLS-117hr1833ih',bill_package_conflict=False),
+        dict(component='different-bytes',package_id=None,bill_package_conflict=False),
         dict(component='document',package_id='BILLS-119hr3ih',bill_package_conflict=False),
         dict(component='fallback',package_id='FILENAME-ONLY',bill_package_conflict=False),
+        dict(component='house-senate-collision',package_id=None,bill_package_conflict=True),
         dict(component='nonbill',package_id='CHRG-119hhrg49353',bill_package_conflict=False),
         dict(component='none',package_id=None,bill_package_conflict=False),
+        dict(component='pre-introduction',package_id=None,bill_package_conflict=False),
+        dict(component='reviewed',package_id='BILLS-116hr2899ih',bill_package_conflict=False),
     ]
 
 
