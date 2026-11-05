@@ -1,4 +1,5 @@
 """Gates 1 and 2 at publish: every difference needs its recorded cause; no link key may vanish."""
+from datetime import datetime, timezone
 from hashlib import md5, sha256
 from io import BytesIO
 import json
@@ -16,7 +17,7 @@ K = lambda letter: (letter * 8).encode()
 SCOPE = {'version': 1, 'entries': []}
 
 
-def release_dir(root, documents, retired=None):
+def release_dir(root, documents, retired=None, *, scope=SCOPE, **extra_tables):
     """A real, internally consistent release: documents are rows of link-key letters."""
     root.mkdir(parents=True)
     tables = {
@@ -28,6 +29,7 @@ def release_dir(root, documents, retired=None):
         'sources': pa.table({'list_row': pa.array([], pa.int32()), 'url': pa.array([], pa.string()),
                              'member_path': pa.array([], pa.string())}),
     }
+    tables.update(extra_tables)
     if retired is not None:
         tables['retired_links'] = pa.Table.from_pylist(retired, schema=RETIRED)
     files = []
@@ -37,7 +39,7 @@ def release_dir(root, documents, retired=None):
         data = path.read_bytes()
         files.append(dict(name=path.name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(),
                           size=len(data), rows=table.num_rows))
-    data = json.dumps(SCOPE).encode()
+    data = json.dumps(scope).encode()
     (root / 'capture_scope.json').write_bytes(data)
     files.append(dict(name='capture_scope.json', sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0))
     manifest = dict(schema_version=1, files=files, facet_counts=[], release_id=release_identity(1, files))
@@ -259,21 +261,44 @@ def test_fetch_release_keeps_files_it_already_holds(pair, tmp_path):
 
 
 # ct-ud0b: nightly publication when every difference is a new row from new receipts.
-LIVE_RECEIPTS = {'receipts/documents/2026-11-01/live.jsonl.gz'}
+UNDATED_LIVE_RECEIPT = 'receipts/documents/undated/live.jsonl.gz'
+LIVE_RECEIPTS = {'receipts/documents/2026-11-01/live.jsonl.gz', UNDATED_LIVE_RECEIPT}
 NEW_RECEIPT = 'receipts/documents/2026-11-03/nightly.jsonl.gz'
+REQUEST = 'https://www.govinfo.gov/content/pkg/CHRG-119hhrg12345/pdf/CHRG-119hhrg12345.pdf'
+FETCHED = datetime(2026, 11, 3, 15, tzinfo=timezone.utc)
 
 
-def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None):
+def url_states(url, attempts):
+    ts = pa.timestamp('us', tz='UTC')
+    return pa.table({
+        'requested_url': pa.array([url], pa.string()),
+        'attempts': pa.array([attempts], pa.int32()),
+        'last_attempt': pa.array([FETCHED if attempts else None], ts),
+        'last_status': pa.array([200 if attempts else None], pa.int16()),
+        'last_outcome': pa.array(['stored' if attempts else None], pa.string()),
+        'last_good_at': pa.array([FETCHED if attempts else None], ts),
+        'next_attempt_at': pa.array([None], ts),
+    })
+
+
+def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
+            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=False):
     """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
     import gzip
     import os
     from docspec_client.client import NativeDatasets
     from viewer_publication.release_gate import automatic_causes
     base, candidate = tmp_path / 'base', tmp_path / 'candidate'
-    release_dir(base, base_docs)
-    release_dir(candidate, candidate_docs, retired=[])
+    states = url_states(url, attempts)
+    failure_url = 'https://www.govinfo.gov/failed-copy.pdf'
+    baseline = dict(url_state=states.slice(0, 0))
+    additions = dict(url_state=pa.concat_tables([states, url_states(failure_url, 1)]) if failed_duplicate else states)
+    if other_entity:
+        additions['meetings'] = pa.table({'event_id': [119123]})
+        baseline['meetings'] = additions['meetings'].slice(0, 0)
+    release_dir(base, base_docs, **baseline)
+    release_dir(candidate, candidate_docs, retired=[], **additions)
     if filenames:
-        table = pq.read_table(candidate / 'list.parquet')
         pq.write_table(pa.table({'filename': filenames}), candidate / 'list.parquet')
         manifest = json.loads((candidate / 'manifest.json').read_text())
         data = (candidate / 'list.parquet').read_bytes()
@@ -283,28 +308,54 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
         (candidate / 'manifest.json').write_text(json.dumps(manifest))
     new = [k for keys in candidate_docs for k in keys if not any(k in b for b in base_docs)]
     bodies = {k: K(k) + sha256(k.encode()).digest()[:24] for k in new}
-    pq.write_table(pa.table({'receipt_key': [receipt] * len(bodies), 'receipt_line': pa.array([1] * len(bodies), pa.int32()),
-                             'sha256': pa.array(list(bodies.values()), pa.binary(32))}), tmp_path / 'captures.parquet')
-    line = json.dumps(dict(captures=[dict(sha256=b.hex() if raw_names_body else '0' * 64) for b in bodies.values()]))
-    raw = {receipt: gzip.compress((line + '\n').encode(), mtime=0)}
+    capture_rows = [dict(receipt_key=receipt, receipt_line=1, sha256=body, requested_url=capture_url,
+                         mode='fetch', complete=True, attempt=0, outcome='stored', http_status=200)
+                    for body in bodies.values()]
+    if failed_duplicate:
+        capture_rows.append(dict(capture_rows[0], receipt_line=2, requested_url=failure_url,
+                                 outcome='failed', http_status=403))
+    pq.write_table(pa.Table.from_pylist(capture_rows, schema=pa.schema([
+        ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('sha256', pa.binary(32)),
+        ('requested_url', pa.string()), ('mode', pa.string()), ('complete', pa.bool_()),
+        ('attempt', pa.int32()), ('outcome', pa.string()), ('http_status', pa.int32()),
+    ])), tmp_path / 'captures.parquet')
+    sha = next(iter(bodies.values())).hex() if raw_names_body else '0' * 64
+    line = dict(record=dict(mode='fetch', outcome='stored', requested_url=raw_url, url=raw_url,
+                            http_status=200, retrieved_at=FETCHED.isoformat(), content=dict(sha256=sha)),
+                captures=[dict(pointer=['content', 'body'], sha256=sha,
+                               body_key=f'bodies/sha256/{sha[:2]}/{sha}.gz', bytes=4721, media_type='application/pdf')])
+    if len(bodies)>1:
+        line['notes'] = [b.hex() for b in list(bodies.values())[1:]]
+    if not nested:
+        line.update(line.pop('record'))
+    unrelated = (dict(record=dict(mode='fetch', requested_url=failure_url, outcome='failed', http_status=403),
+                      captures=line['captures']) if failed_duplicate else
+                 dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[]))
+    raw = {receipt: gzip.compress(('\n'.join(map(json.dumps, (line, unrelated))) + '\n').encode(), mtime=0)}
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     def automatic(report):
         return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
-                                live_receipt_keys=LIVE_RECEIPTS, read_receipt=raw.__getitem__, work=tmp_path / 'auto')
+                                live_receipt_keys=live_receipts, read_receipt=raw.__getitem__, work=tmp_path / 'auto')
     return base, candidate, automatic
 
 
-def test_additions_from_new_receipts_pass_unattended(tmp_path):
-    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'])
+@pytest.mark.parametrize('nested', [True, False])
+def test_additions_from_new_receipts_pass_unattended(tmp_path, nested):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], nested=nested)
     report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert report['reasons'] == [] and {e['tickets'][0] for e in report['automatic_causes']} == {'ct-ud0b'}
-    assert {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys'}
+    assert {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys', 'added URLs'}
+    trace = json.loads((tmp_path / 'auto/automatic-trace.json').read_text())
+    assert trace['url_attempts'] == {REQUEST: [[NEW_RECEIPT, 1]]}
+    assert trace['undated_live_receipts'] == 1
 
 
 @pytest.mark.parametrize('receipt,rule', [
     (sorted(LIVE_RECEIPTS)[0], 'is already in the live release'),
+    (UNDATED_LIVE_RECEIPT, 'is already in the live release'),
     ('receipts/documents/2026-10-30/older.jsonl.gz', 'is not dated after the live release'),
     ('receipts/documents/undated/assemble.jsonl.gz', 'is not dated after the live release'),
+    ('receipts/documents/2026-11-31/bad-date.jsonl.gz', 'is not dated after the live release'),
 ])
 def test_an_added_row_from_an_old_receipt_refuses(tmp_path, receipt, rule):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], receipt=receipt)
@@ -333,3 +384,59 @@ def test_a_removed_row_refuses(tmp_path):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     report = json.loads((tmp_path / 'r.json').read_text())
     assert any('is not an addition' in r or 'link rule' in r for r in report['automatic_reasons'])
+
+
+@pytest.mark.parametrize('change', [
+    {'raw_url': 'https://www.govinfo.gov/unrelated.pdf'},  # The requested URL occurs on another line.
+    {'capture_url': 'https://www.govinfo.gov/unrelated.pdf'},
+    {'attempts': 2},
+    {'attempts': 0},
+    {'attempts': None},
+    {'other_entity': True},
+])
+def test_nightly_refuses_additions_without_the_exact_new_document_attempt(tmp_path, change):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], **change)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['automatic_reasons'] and 'automatic_causes' not in report
+
+
+def test_automatic_policy_refuses_a_verified_scope_removal(tmp_path):
+    from viewer_publication.release_gate import automatic_causes
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    scope = {'version': 1, 'entries': [{'exclusions': ['/oembed/']}]}
+    queued = url_states('https://archive.example.test/oembed/1', 0)
+    release_dir(base, ['A'], scope=scope, url_state=queued)
+    release_dir(candidate, ['A'], scope=scope, url_state=queued.slice(0, 0))
+    assert require_release_gates(base, candidate, None, report_path=tmp_path / 'reviewed.json')['reasons'] == []
+    def automatic(report):
+        return automatic_causes(report, base, candidate, engine=None, captures=None,
+                                live_receipt_keys=(), read_receipt=None, work=tmp_path / 'auto')
+    with pytest.raises(ValueError, match='removed URLs'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'nightly.json', automatic=automatic)
+    report = json.loads((tmp_path / 'nightly.json').read_text())
+    assert report['failing'] == [] and report['reasons'] == report['automatic_reasons']
+
+
+def test_no_dated_live_receipt_refuses(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], live_receipts={UNDATED_LIVE_RECEIPT})
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert 'no dated receipt' in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'][0]
+
+
+def test_a_second_document_hash_in_raw_notes_does_not_ride_an_eligible_attempt(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N', 'X'])
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
+    assert len(reasons) == 1 and 'does not name body' in reasons[0]
+
+
+def test_a_failed_response_sharing_the_new_documents_body_cannot_qualify_its_url(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], failed_duplicate=True)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
+    assert len(reasons) == 1 and 'failed-copy.pdf has 1 attempts but 0 fresh raw lines' in reasons[0]
