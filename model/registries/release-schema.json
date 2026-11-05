@@ -1425,6 +1425,12 @@
           "nullable": false
         },
         {
+          "name": "committee_activities",
+          "type": "list<struct<system_code string, activities list<struct<name string, date string>>>>",
+          "nullable": true,
+          "meaning": "Committee groups and activity names and dates as supplied, in source order. Null means unavailable or unstated. An empty list means the source supplied no entries."
+        },
+        {
           "name": "transcripts",
           "type": "list<string>",
           "meaning": "Printed hearing package IDs from nomination hearing references",
@@ -1452,7 +1458,9 @@
       },
       "notes": {
         "floor_votes[]": "Embedded Senate roll-call summaries; no individual member positions.",
-        "transcripts[]": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions."
+        "transcripts[]": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions.",
+        "committee_activities[].activities[].date": "Exact source date or timestamp string, including offset and precision. Null when missing.",
+        "committee_activities[].activities": "Null when not supplied or unreadable, empty when the source supplied an empty list."
       },
       "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss."
     },

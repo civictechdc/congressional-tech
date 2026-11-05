@@ -179,7 +179,8 @@ SPICY_SCHEMAS={
         congress='Int32',number='Int32',part_number='Utf8',
         description='Utf8',organization='Utf8',received_date='Utf8',
         latest_action_date='Utf8',latest_action_text='Utf8',
-        committees_json='Utf8',hearings_json='Utf8',
+        hearings_json='Utf8',
+        committee_activities=list_of(struct(system_code='Utf8',activities=list_of(struct(name='Utf8',date='Utf8')))),
     ),
 }
 
@@ -348,6 +349,55 @@ def _normalize_related_bill_row(raw):
     }
 
 
+def _nomination_activities(raw):
+    """Decode the pinned committee groups without changing their order or dates."""
+    try:
+        groups=json.loads(raw) if isinstance(raw,str) else raw
+    except ValueError:
+        return None
+    if not isinstance(groups,list):
+        return None
+
+    def supplied_text(value):
+        return value if isinstance(value,str) else None
+
+    def group(item):
+        if not isinstance(item,dict):
+            return dict(system_code=supplied_text(item),activities=None)
+        code=item.get('systemCode',item.get('system_code'))
+        activities=item.get('activities')
+        return dict(system_code=supplied_text(code),activities=[
+            dict(name=supplied_text(a.get('name')),date=supplied_text(a.get('date')))
+            if isinstance(a,dict) else dict(name=None,date=None)
+            for a in activities
+        ] if isinstance(activities,list) else None)
+
+    return [group(item) for item in groups]
+
+
+def _nomination_input(directory, name, value, schema):
+    if isinstance(value,list):
+        source_rows=iter(value)
+    elif isinstance(value,dict) and value.get('kind')=='parquet' and isinstance(value.get('path'),str):
+        import pyarrow.parquet as pq
+        source=pq.ParquetFile(value['path'])
+        columns=[k for k in (*schema,'committees_json') if k in source.schema_arrow.names]
+        source_rows=(row for batch in source.iter_batches(columns=columns) for row in batch.to_pylist())
+    else:
+        raise ValueError('Unsupported spicy-regs table input: '+name)
+
+    def records():
+        for item in source_rows:
+            row={k:item.get(k) for k in schema}
+            for field in ('congress','number'):
+                raw=row[field]
+                row[field]=int(raw) if raw is not None else None
+            row['committee_activities']=_nomination_activities(item.get('committees_json'))
+            yield row
+
+    return json_input(directory,name,records(),**schema)
+
+
 def _prepare_spicy_inputs(scratch,spicy_regs,include_entities):
     """Stage the spicy-regs tables; the returned digests are exactly the generations the input states.
 
@@ -368,7 +418,9 @@ def _prepare_spicy_inputs(scratch,spicy_regs,include_entities):
     inputs=[]
     for name,schema in SPICY_SCHEMAS.items():
         value=tables[name]
-        if isinstance(value,list):
+        if name=='spicy_nominations':
+            inputs.append(_nomination_input(spicy_dir,name,value,schema))
+        elif isinstance(value,list):
             rows=[]
             for r in value:
                 row={k:(r.get(k) if r.get(k) is not None or not (isinstance(kind,dict) and 'List' in kind) else [])

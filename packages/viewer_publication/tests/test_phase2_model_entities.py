@@ -648,7 +648,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 received_date='2023-02-01',
                 latest_action_date='2023-05-18',
                 latest_action_text='Confirmed by the Senate.',
-                committees_json='[{"system_code":"ssaf00","name":"Agriculture"}]',
+                committees_json=json.dumps([
+                    dict(systemCode='ssaf00',activities=[
+                        dict(name='Hearings By (full committee)',date='2023-04-01T11:22:33.123-04:00'),
+                        dict(name='Hearings By (full committee)',date='2023-04-01T11:22:33.123-04:00'),
+                        dict(name='Publisher wording',date='date unavailable'),
+                    ]),
+                    dict(system_code='ssaf00',activities=[]),
+                    dict(system_code='ssaf00'),
+                ]),
                 hearings_json='[{"package_id":"CHRG-118shrg12345"},{"chamber":"Senate","jacket_number":"67890"}]',
             ),
         ],
@@ -872,6 +880,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     nom = nominations[0]
     assert nom['nomination_id'] == '118-pn-123'
     assert nom['committees'] == ['ssaf00']
+    assert nom['committee_activities'] == [
+        dict(system_code='ssaf00',activities=[
+            dict(name='Hearings By (full committee)',date='2023-04-01T11:22:33.123-04:00'),
+            dict(name='Hearings By (full committee)',date='2023-04-01T11:22:33.123-04:00'),
+            dict(name='Publisher wording',date='date unavailable'),
+        ]),
+        dict(system_code='ssaf00',activities=[]),
+        dict(system_code='ssaf00',activities=None),
+    ]
     assert nom['transcripts'] == ['CHRG-118shrg12345', 'CHRG-118shrg67890']
     assert len(nom['floor_votes']) == 1
     assert nom['floor_votes'][0]['vote_id'] == '118-s-1-99'
@@ -2705,7 +2722,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 received_date='2025-01-20',
                 latest_action_date='2025-02-12',
                 latest_action_text='Committee on Banking. Hearings held.',
-                committees_json='[{"system_code":"ssbk00","name":"Banking"}]',
+                committees_json=None,
                 hearings_json='[{"chamber":"Senate","citation":"S.Hrg.119-475","date":"2026-06-23","jacketNumber":58025,"number":475}]',
             ),
             dict(
@@ -2717,7 +2734,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 received_date='2025-01-22',
                 latest_action_date='2025-02-12',
                 latest_action_text='Committee on Banking. Hearings held.',
-                committees_json='[{"system_code":"ssbk00","name":"Banking"}]',
+                committees_json='[]',
                 hearings_json='[{"chamber":"Senate","citation":"S.Hrg.119-475","date":"2026-06-23","jacketNumber":58025,"number":475}]',
             ),
         ],
@@ -2748,6 +2765,8 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     assert sorted(nominations) == ['119-pn-12-10', '119-pn-850']
     assert nominations['119-pn-12-10']['transcripts'] == ['CHRG-119shrg58025']
     assert nominations['119-pn-850']['transcripts'] == ['CHRG-119shrg58025']
+    assert nominations['119-pn-12-10']['committee_activities'] is None
+    assert nominations['119-pn-850']['committee_activities'] == []
 
     bills = {b['bill_id']: b for b in pq.read_table(release_dir / 'bills.parquet').to_pylist()}
     assert '118-hr-7521' in bills
