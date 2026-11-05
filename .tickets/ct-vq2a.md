@@ -2,7 +2,7 @@
 id: ct-vq2a
 status: open
 deps: []
-links: [ct-94hw]
+links: [ct-94hw, ct-j9o7, ct-vrxc, ct-rvma, ct-flg9]
 created: 2026-11-04T20:47:30Z
 type: bug
 priority: 1
