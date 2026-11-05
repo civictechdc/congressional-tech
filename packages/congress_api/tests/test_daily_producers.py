@@ -476,6 +476,40 @@ def test_native_daily_producer_refreshes_and_pins_all_five_tables(tmp_path):
     assert second['producerreports']['appearance_records']['work_items']==0
 
 
+def test_native_daily_video_records_are_opt_in_and_reuse_the_current_pin(tmp_path):
+    from congress_api.lake import video_records
+    from congress_api.lake.daily import produce_daily
+
+    payload = json.dumps(dict(kind='youtube#videoListResponse', items=[
+        dict(kind='youtube#video', id='ABCDEFGHIJK', snippet=dict(title='Committee hearing'),
+             contentDetails=dict(duration='PT42S')),
+    ])).encode()
+    value, engine, store = native_fixture(tmp_path, payloads=[payload], family='youtube/api',
+        url_prefix='https://www.googleapis.com/youtube/v3/videos?id=', url_suffix='')
+    with engine:
+        base = produce_daily(value, engine=engine, raw_store=store)
+        assert base['status'] == 'completed'
+        assert 'video_records' not in base['pins'] and 'video_records' not in base['producerreports']
+
+        table = dict(namespace=['archive'], name='video_records')
+        video_records.create_table(engine=engine, work=tmp_path/'create-videos', catalog_root=value['catalog_root'],
+            table=table, location=tmp_path/'lake-videos')
+        opted_in = dict(value, tables=dict(value['tables'], video_records=table))
+        first = produce_daily(dict(opted_in, work=str(tmp_path/'videos')), engine=engine, raw_store=store)
+        assert first['status'] == 'completed' and first['pins']['captures'] == base['pins']['captures']
+        assert first['currentversions']['video_records'] == video_records.current_versions()
+        produced = first['producerreports']['video_records']
+        assert produced['append'] is not None
+        [row] = pq.read_table(produced['records']).to_pylist()
+        assert row['record_sha'] == hashlib.sha256(payload).digest()
+        assert row['source'] == 'youtube_api' and row['status'] == 'completed'
+        assert [(video['video_id'], video['duration_seconds']) for video in row['videos']] == [('ABCDEFGHIJK', 42)]
+
+        again = produce_daily(dict(opted_in, work=str(tmp_path/'again')), engine=engine, raw_store=store)
+        assert again['status'] == 'completed' and again['pins']['video_records'] == first['pins']['video_records']
+        assert again['producerreports']['video_records']['work_items'] == 0
+
+
 def test_native_daily_retries_playlist_work_after_budget_refusal(tmp_path):
     from congress_api.lake import playlist_records
     from congress_api.lake.daily import produce_daily
