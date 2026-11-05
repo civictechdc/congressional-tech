@@ -4,10 +4,10 @@
 -- one-way nickname, by a shared first three letters, or as an initial; a row with no given name matches only
 -- when that family name is unique among the higher rows (red-f3: Barbara and Joan Smith are not Robert and
 -- John Smith). Print entries labelled statements are matched too: a statement by someone the meeting's own
--- list names is that witness. Within one record, collapse repeat entries only when their appearance facts agree.
+-- list names is that witness. Within one record, collapse repeats when the normalized name and appearance facts agree.
 -- Its own step: as a CTE it re-ran the whole appearance resolution.
 WITH people AS (
- SELECT w.witness_key,w.occasion,s.priority,w.source,w.record_sha_hex,w.ordinal,p.statement,p.family,p.given,p.given_canon,
+ SELECT w.witness_key,w.occasion,s.priority,w.source,w.record_sha_hex,w.ordinal,w.name_key,p.statement,p.family,p.given,p.given_canon,
   sha256(json_array(w.position,w.organization,w.on_behalf_of,w.location,w.panel,w.panel_order,
    w.witness_type,w.testified,w.bioguide_id,array_sort(array_distinct(w.document_urls)))) AS occurrence_facts
  FROM appearance_records_resolved w
@@ -28,7 +28,7 @@ WITH people AS (
   AND ((a.occasion LIKE 'meeting:%' AND (b.priority<a.priority OR (b.priority=a.priority AND b.record_sha_hex<a.record_sha_hex)))
    -- A list can repeat a witness or list them in separate roles (ct-x78c). Keep distinct facts and statements.
    OR (b.source=a.source AND b.record_sha_hex=a.record_sha_hex AND b.ordinal<a.ordinal
-    AND b.occurrence_facts=a.occurrence_facts AND NOT a.statement AND NOT b.statement))
+    AND b.name_key=a.name_key AND b.occurrence_facts=a.occurrence_facts AND NOT a.statement AND NOT b.statement))
  WHERE (a.family=b.family OR (length(a.family)>=5 AND levenshtein(a.family,b.family)<=1))
   AND (a.given IS NULL OR b.given IS NULL OR a.given_canon=b.given_canon
    OR (length(a.given)>=3 AND length(b.given)>=3 AND substr(a.given,1,3)=substr(b.given,1,3))
