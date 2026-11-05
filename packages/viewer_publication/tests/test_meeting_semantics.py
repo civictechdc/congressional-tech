@@ -575,9 +575,13 @@ def test_a_print_yields_a_superseded_duplicate_to_the_meeting_that_sat(tmp_path)
 
 
 def test_a_print_stands_for_the_meeting_on_its_second_held_day(tmp_path):
-    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9002)],
-                  {'CHRG-a': facts(held=['2021-02-23', '2021-02-24'])}, meetings=((9002, '2021-02-24', TITLE),))
-    assert got == {'A': ('meeting:9002', 9002)}
+    rows, links = resolve(
+        tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')],
+        [('CHRG-a', 9002)], {'CHRG-a': facts(held=['2021-02-23', '2021-02-24'])},
+        meetings=((9002, '2021-02-24', TITLE),), print_links=True,
+    )
+    assert links == [{'package_id': 'CHRG-a', 'event_id': 9002}]
+    assert [(r['name'], r['occasion'], r['event_id']) for r in rows] == [('A', 'package:CHRG-a', None)]
 
 
 def test_precedence_is_per_person_and_statements_stay_statements(tmp_path):
