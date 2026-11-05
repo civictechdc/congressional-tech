@@ -11,10 +11,12 @@ When the daily step reports `backfill_required`, it runs the committed backfill 
 publishes again. A daily stop (`pending`, `backfill_required`, `raw_custody_required`) fails
 the publish step, and the run's summary names that status.
 
-Each run keeps its log, watchdog report and the small JSON files the job wrote under
-`<main>/.cache/archive-release/nightly/<UTC stamp>/`. The ignored files under `output/` in the
-worktree are rebuildable and are removed before each run, because the daily step refuses an
-existing work directory; `output/` also holds tracked files, which stay.
+Each run keeps its log, watchdog report and publication evidence under
+`<main>/.cache/archive-release/nightly/<UTC stamp>/`. One active candidate lives beside the
+run directories, outside worktree cleanup. The publisher can reuse it after an interruption
+or refusal. Completed and superseded candidates leave their evidence in the run directory.
+A directory ending in `-retiring` contains detached work from an interrupted archive or cleanup.
+It stays outside automatic reuse. An operator can reclaim it after confirming its evidence is retained.
 
     python3 scripts/nightly_publish.py --install   # write and load the launchd agent
     python3 scripts/nightly_publish.py              # one run now (what launchd calls)
@@ -22,6 +24,7 @@ existing work directory; `output/` also holds tracked files, which stay.
 import argparse
 import datetime
 import fcntl
+import importlib.util
 import json
 import os
 import plistlib
@@ -36,9 +39,24 @@ LABEL = 'ai.spicygov.archive-nightly'
 EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
 
 
-def git(*args, cwd, capture=True):
-    result = subprocess.run(['git', *args], cwd=cwd, check=True, text=True,
-                            stdout=subprocess.PIPE if capture else None)
+def run_owned(command, **options):
+    ownership = importlib.util.spec_from_file_location(
+        'nightly_process_owner', Path(__file__).with_name('measure') / 'process_rss.py')
+    owner = importlib.util.module_from_spec(ownership)
+    ownership.loader.exec_module(owner)
+    process = owner.start_owned(command, **options)
+    try:
+        stdout, stderr = process.communicate()
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    finally:
+        owner.stop_owned(process)
+
+
+def git(*args, cwd, capture=True, pass_fds=()):
+    run = run_owned if pass_fds else subprocess.run
+    result = run(['git', *args], cwd=cwd, text=True, pass_fds=pass_fds,
+                 stdout=subprocess.PIPE if capture else None)
+    result.check_returncode()
     return result.stdout.strip() if capture else ''
 
 
@@ -47,23 +65,24 @@ def main_checkout(start):
     return common.parent
 
 
-def update_worktree(main, worktree):
-    git('fetch', '--quiet', 'origin', 'main', cwd=main)
+def update_worktree(main, worktree, *, pass_fds):
+    git('fetch', '--quiet', 'origin', 'main', cwd=main, pass_fds=pass_fds)
     target = git('rev-parse', 'FETCH_HEAD', cwd=main)
     if not (worktree / '.git').exists():
-        git('worktree', 'add', '--detach', str(worktree), target, cwd=main, capture=False)
+        git('worktree', 'add', '--detach', str(worktree), target, cwd=main, capture=False, pass_fds=pass_fds)
         return target
-    dirty = git('status', '--porcelain', cwd=worktree)
+    dirty = git('--no-optional-locks', 'status', '--porcelain', cwd=worktree)
     if dirty:
         raise SystemExit(f'nightly refused: {worktree} has local changes:\n{dirty}')
-    git('checkout', '--quiet', '--detach', target, cwd=worktree)
+    git('checkout', '--quiet', '--detach', target, cwd=worktree, pass_fds=pass_fds)
     return target
 
 
-def step(name, command, *, cwd, env, log):
+def step(name, command, *, cwd, env, log, pass_fds=()):
     started = time.monotonic()
     print(f'== {name}: {" ".join(map(str, command))}', file=log, flush=True)
-    code = subprocess.run(list(map(str, command)), cwd=cwd, env=env, stdout=log, stderr=subprocess.STDOUT).returncode
+    code = run_owned(list(map(str, command)), cwd=cwd, env=env, stdout=log,
+                     stderr=subprocess.STDOUT, pass_fds=pass_fds).returncode
     print(f'== {name}: exit {code} in {time.monotonic() - started:.0f}s', file=log, flush=True)
     if code:
         raise StepFailed(name, code)
@@ -94,26 +113,63 @@ def publish_env(main, worktree):
     return env
 
 
-def keep_evidence(worktree, evidence, name='output'):
-    output = worktree / 'output'
+def keep_small_json(output, evidence):
     if not output.is_dir():
         return
     for path in output.rglob('*.json'):
         if path.is_file() and path.stat().st_size <= EVIDENCE_MAX_BYTES:
-            target = evidence / name / path.relative_to(output)
+            target = evidence / path.relative_to(output)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
 
 
-def daily_status(worktree):
-    report = worktree / 'output/archive-daily/daily-summary.json'
-    return json.loads(report.read_text()).get('status') if report.is_file() else None
+def daily_status(candidate):
+    report = candidate / 'archive-daily/daily-summary.json'
+    if not report.is_file():
+        return None
+    value = json.loads(report.read_text())
+    if not isinstance(value, dict):
+        raise ValueError('Invalid nightly daily summary')
+    return value.get('status')
 
 
-def run(worktree, prepare_only):
+def recoverable(candidate):
+    publish = candidate / 'archive-publish'
+    return (publish / 'completed-model.json').exists() or (
+        (publish / 'model-intent.json').exists() and (candidate / 'archive-release/manifest.json').exists())
+
+
+def archive_candidate(candidate, evidence):
+    # Detach the active name before cleanup. A stopped cleanup leaves an archive
+    # under this run, never a partially deleted candidate eligible for resume.
+    retired = candidate.rename(evidence.with_name(evidence.name + '-retiring'))
+    # Mirror relative paths for diagnostics. Absolute pins identify the former active tree.
+    try:
+        completed = daily_status(retired) == 'completed'
+    except (OSError, ValueError):
+        completed = False
+    if not completed:
+        keep_small_json(retired / 'archive-daily', evidence / 'archive-daily')
+    for pattern in ('commit', 'inputs-changed.json', 'archive-daily/daily-summary.json',
+                    'archive-release/manifest.json', 'archive-model/result.json', 'archive-model/admission/result.json',
+                    'archive-publish/*model*.json', 'archive-publish/outgoing-pointer*.json',
+                    'archive-publish/publication-assets.json',
+                    'archive-publish/contract.json', 'archive-publish/canary.json',
+                    'archive-publish/probe-*/contract.json', 'archive-publish/probe-*/canary.json',
+                    'producer-proof/*/*/job.json', 'producer-proof/*/*/result.json',
+                    'archive-publish/candidate-*/release-gate.json',
+                    'archive-publish/candidate-*/automatic/automatic-trace.json'):
+        for path in retired.glob(pattern):
+            target = evidence / path.relative_to(retired)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+    shutil.rmtree(retired)
+
+
+def run(worktree, prepare_only, *, lock_fd=None):
     main = main_checkout(worktree)
     nightly = main / '.cache/archive-release/nightly'
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
     evidence = nightly / stamp
     evidence.mkdir(parents=True)
     head = git('rev-parse', 'HEAD', cwd=worktree)
@@ -121,48 +177,89 @@ def run(worktree, prepare_only):
     env['RUNNER_TEMP'] = str(evidence)
     python = worktree / '.venv/bin/python'
     summary = dict(started=stamp, commit=head, worktree=str(worktree))
+    candidate = nightly / 'candidate'
+    changed = candidate / 'inputs-changed.json'
+    backfill = worktree / 'output/archive-backfill'
+    lock_args = [] if lock_fd is None else ['--nightly-lock-fd', str(lock_fd)]
+    pass_fds = () if lock_fd is None else (lock_fd,)
     with (evidence / 'log.txt').open('w') as log:
+        def run_step(name, command, *, step_env=env):
+            step(name, command, cwd=worktree, env=step_env, log=log, pass_fds=pass_fds)
+
         try:
-            step('clean output', ['git', 'clean', '-fdXq', '--', 'output'], cwd=worktree, env=env, log=log)
-            step('uv sync', ['uv', 'sync', '--frozen'], cwd=worktree, env=env, log=log)
-            step('npm ci', ['npm', '--prefix', 'apps/site', 'ci'], cwd=worktree, env=env, log=log)
-            step('browser', ['node', 'apps/site/node_modules/playwright/cli.js', 'install', '--only-shell', 'chromium'],
-                 cwd=worktree, env=env, log=log)
-            step('local runtime', [python, 'scripts/dev.py', 'write-local-runtime', '--limits',
-                                   '.github/docspec-local-limits.json', '--out', '.cache/local-runtime/runtime.json'],
-                 cwd=worktree, env=env, log=log)
-            step('doctor', [python, 'scripts/dev.py', 'doctor'], cwd=worktree, env=env, log=log)
-            step('spicy-regs', [python, '-I', '-m', 'viewer_publication.spicy_regs_inputs',
-                                '--model-spec', 'model/jobs/publish-model.json'], cwd=worktree, env=env, log=log)
-            step('site build', ['npm', '--prefix', 'apps/site', 'run', 'build'], cwd=worktree, env=env, log=log)
-            dirty = git('status', '--porcelain', cwd=worktree)
+            run_step('uv sync', ['uv', 'sync', '--frozen'])
+            run_step('npm ci', ['npm', '--prefix', 'apps/site', 'ci'])
+            run_step('browser', ['node', 'apps/site/node_modules/playwright/cli.js', 'install', '--only-shell', 'chromium'])
+            run_step('local runtime', [python, 'scripts/dev.py', 'write-local-runtime', '--limits',
+                                   '.github/docspec-local-limits.json', '--out', '.cache/local-runtime/runtime.json'])
+            run_step('doctor', [python, 'scripts/dev.py', 'doctor'])
+            run_step('spicy-regs', [python, '-I', '-m', 'viewer_publication.spicy_regs_inputs',
+                                '--model-spec', 'model/jobs/publish-model.json'])
+            run_step('site build', ['npm', '--prefix', 'apps/site', 'run', 'build'])
+            dirty = git('--no-optional-locks', 'status', '--porcelain', cwd=worktree)
             if dirty:
                 print(f'== setup left the worktree dirty, which gate 5 refuses:\n{dirty}', file=log, flush=True)
                 raise StepFailed('clean tree', 1)
             if not prepare_only:
-                publish = [python, '-I', '.github/scripts/run-archive-job.py', 'publish']
-                try:
-                    step('publish', publish, cwd=worktree, env=env, log=log)
-                except StepFailed:
-                    summary['daily_status'] = daily_status(worktree)
-                    if summary['daily_status'] != 'backfill_required':
-                        raise
-                    # Producer work beyond the daily budget (for example, left by an interrupted run)
-                    # never drains on its own: each night adds new bodies before it can clear.
-                    keep_evidence(worktree, evidence, 'output-before-backfill')
-                    step('clean output', ['git', 'clean', '-fdXq', '--', 'output'], cwd=worktree, env=env, log=log)
-                    step('backfill', [python, '-I', '.github/scripts/run-archive-job.py', 'backfill'],
-                         cwd=worktree, env=env, log=log)
+                publish = [python, '-I', '.github/scripts/run-archive-job.py', 'publish',
+                           '--nightly-work', candidate, *lock_args]
+                if candidate.exists():
+                    commit = candidate / 'commit'
+                    if changed.is_file():
+                        reason = json.loads(changed.read_text())['reason']
+                    elif not commit.is_file() or commit.read_text().strip() != head:
+                        reason = 'Selected code commit changed'
+                    elif not recoverable(candidate):
+                        reason = 'Previous attempt has no completed model'
+                    else:
+                        reason = None
+                        summary['resumed'] = True
+                    if reason:
+                        summary['fresh_reason'] = reason
+                        archive_candidate(candidate, evidence / 'previous-candidate')
+                def publish_step(name, *, initial=False):
+                    resuming = recoverable(candidate)
+                    if not candidate.exists():
+                        candidate.mkdir()
+                        (candidate / 'commit').write_text(head + '\n')
+                    step_env = env if initial else dict(env, RUNNER_TEMP=str(evidence / name.replace(' ', '-')))
                     try:
-                        step('publish after backfill', publish, cwd=worktree, env=env, log=log)
+                        run_step(name, publish, step_env=step_env)
                     except StepFailed:
-                        summary['daily_status_after_backfill'] = daily_status(worktree)
-                        raise
+                        if initial and changed.is_file():
+                            return
+                        if resuming or daily_status(candidate) != 'backfill_required':
+                            raise
+
+                publish_step('publish', initial=True)
+                if changed.is_file():
+                    summary['fresh_reason'] = json.loads(changed.read_text())['reason']
+                    archive_candidate(candidate, evidence / 'superseded-candidate')
+                    publish_step('publish with current inputs')
+                if daily_status(candidate) == 'backfill_required':
+                    summary['daily_status_before_backfill'] = 'backfill_required'
+                    archive_candidate(candidate, evidence / 'candidate-before-backfill')
+                    keep_small_json(backfill, evidence / 'backfill-before-cleanup')
+                    run_step('clean backfill output', ['git', 'clean', '-fdXq', '--', 'output/archive-backfill'])
+                    try:
+                        run_step('backfill', [python, '-I', '.github/scripts/run-archive-job.py', 'backfill', *lock_args])
+                    finally:
+                        keep_small_json(backfill, evidence / 'backfill')
+                    publish_step('publish after backfill')
+                    if daily_status(candidate) == 'backfill_required':
+                        raise StepFailed('publish after backfill', 2)
+                summary['daily_status'] = daily_status(candidate)
+                archive_candidate(candidate, evidence / 'candidate')
             summary.update(status='prepared' if prepare_only else 'ok', exit=0)
         except StepFailed as failure:
             summary.update(status='failed', step=failure.name, exit=failure.code)
         finally:
-            keep_evidence(worktree, evidence)
+            if not prepare_only and candidate.exists():
+                summary['retained_candidate'] = str(candidate)
+                try:
+                    summary['daily_status'] = daily_status(candidate)
+                except (OSError, ValueError) as error:
+                    summary['daily_summary_error'] = str(error)
             summary['finished'] = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
             (evidence / 'summary.json').write_text(json.dumps(summary, indent=2, sort_keys=True) + '\n')
     print(json.dumps(summary, sort_keys=True))
@@ -210,25 +307,32 @@ def main(argv=None):
     parser.add_argument('--minute', type=int, default=30)
     parser.add_argument('--prepare', action='store_true', help='Run every setup step but not the publish')
     parser.add_argument('--in-worktree', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--lock-fd', type=int, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     here = Path(__file__).resolve().parents[1]
     main_root = main_checkout(here)
     if args.install:
         return install(main_root, args.hour, args.minute)
     worktree = main_root / '.claude/worktrees/nightly'
-    if args.in_worktree:
-        return run(here, args.prepare)
     lock_path = main_root / '.cache/archive-release/nightly/lock'
+    if args.lock_fd is not None:
+        if not args.in_worktree or not os.path.samestat(os.fstat(args.lock_fd), lock_path.stat()):
+            parser.error('expected the inherited nightly lock')
+        return run(here, args.prepare, lock_fd=args.lock_fd)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with lock_path.open('w') as lock:
+    with lock_path.open('a') as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             print('nightly refused: another run holds the lock', file=sys.stderr)
             return 3
-        update_worktree(main_root, worktree)
+        if args.in_worktree:
+            return run(here, args.prepare, lock_fd=lock.fileno())
+        update_worktree(main_root, worktree, pass_fds=(lock.fileno(),))
+        # The publishing child and watchdog keep the lock if their launcher exits first.
         return subprocess.run([sys.executable, str(worktree / 'scripts/nightly_publish.py'), '--in-worktree',
-                               *(['--prepare'] if args.prepare else [])], cwd=worktree).returncode
+                               '--lock-fd', str(lock.fileno()), *(['--prepare'] if args.prepare else [])],
+                              cwd=worktree, pass_fds=(lock.fileno(),)).returncode
 
 
 if __name__ == '__main__':

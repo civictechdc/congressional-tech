@@ -46,7 +46,8 @@ def test_a_runaway_descendant_stops_the_tree_with_a_named_failure(tmp_path):
     assert result.returncode == 99 and time.monotonic() - started < 30
     assert 'RSS' in result.stderr and 'over the 0.2 GiB limit' in result.stderr
     report = json.loads((tmp_path / 'report.json').read_text())
-    assert report['exit_code'] == 99 and report['peak_rss_gb'] > 0.2 and 'RSS' in report['stopped']
+    assert report['exit_code'] == 99 and 'RSS' in report['stopped']
+    assert max(report['peak_rss_gb'], report['peak_physical_gb']) > 0.2
     pid = int(marker.read_text())
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
@@ -158,10 +159,10 @@ def sleeper(marker, *, ignore_term=False):
     return head + f"import os,pathlib,time;pathlib.Path({str(marker)!r}).write_text(str(os.getpid()));time.sleep(60)"
 
 
-def start(tmp_path, command, *flags):
+def start(tmp_path, command, *flags, pass_fds=()):
     return subprocess.Popen([sys.executable, str(WATCHDOG), '--rss-gb', '4', '--min-disk-gb', '0', '--min-available-gb', '0',
         '--interval', '0.1', '--report', str(tmp_path / 'report.json'), *flags, '--', *command],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, pass_fds=pass_fds)
 
 
 def test_sigterm_to_the_watchdog_stops_the_job(tmp_path):
@@ -175,13 +176,68 @@ def test_sigterm_to_the_watchdog_stops_the_job(tmp_path):
     assert watchdog.returncode == 99 and 'signal' in report['stopped'] and 'signal' in stderr
 
 
-def test_sigkill_to_the_watchdog_still_stops_the_job(tmp_path):
+def test_sigkill_to_the_watchdog_keeps_the_lock_until_the_job_stops(tmp_path):
+    import fcntl
+
     marker = tmp_path / 'job.pid'
-    watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)])
-    pid = wait_for(marker)
-    watchdog.kill()
-    watchdog.wait(timeout=10)
-    assert gone(pid), 'the job outlived its SIGKILLed watchdog'
+    lock = tmp_path / 'lock'
+    with lock.open('a') as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fd = held.fileno()
+        watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker, ignore_term=True)],
+                         '--hold-fd', str(fd), pass_fds=(fd,))
+    try:
+        pid = wait_for(marker)
+    finally:
+        watchdog.kill()
+        watchdog.wait(timeout=10)
+    with lock.open('a') as retry:
+        with pytest.raises(BlockingIOError):
+            fcntl.flock(retry, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        assert gone(pid), 'the job outlived its SIGKILLed watchdog'
+        fcntl.flock(retry, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def test_nightly_setup_keeps_the_lock_until_an_unlocked_grandchild_stops(tmp_path):
+    import fcntl
+    import signal
+
+    lock = tmp_path / 'lock'
+    setup_pid = tmp_path / 'setup.pid'
+    grandchild_pid = tmp_path / 'grandchild.pid'
+    launcher = ROOT / 'scripts/nightly_publish.py'
+    # Match npm's child launch: the writer gets no inherited lock descriptor.
+    setup = f'''
+import os,pathlib,subprocess,sys,time
+subprocess.Popen([sys.executable,'-c',{sleeper(grandchild_pid, ignore_term=True)!r}], close_fds=True)
+pathlib.Path({str(setup_pid)!r}).write_text(str(os.getpid()))
+time.sleep(60)
+'''
+    driver = f'''
+import fcntl,os,runpy,sys
+from pathlib import Path
+step=runpy.run_path({str(launcher)!r})['step']
+with open({str(lock)!r},'a') as held, open(os.devnull,'w') as log:
+    fcntl.flock(held,fcntl.LOCK_EX | fcntl.LOCK_NB)
+    step('setup',[sys.executable,'-c',{setup!r}],cwd=Path({str(tmp_path)!r}),
+         env=os.environ,log=log,pass_fds=(held.fileno(),))
+'''
+    process = subprocess.Popen([sys.executable,'-c',driver], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        child = wait_for(setup_pid)
+        grandchild = wait_for(grandchild_pid)
+        os.kill(child, signal.SIGKILL)
+        process.kill()
+        process.wait(timeout=5)
+        with lock.open('a') as retry:
+            with pytest.raises(BlockingIOError):
+                fcntl.flock(retry, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            assert gone(grandchild), 'the unlocked setup grandchild outlived the owner'
+            fcntl.flock(retry, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
 
 
 def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):

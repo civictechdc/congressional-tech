@@ -1,5 +1,6 @@
 """Plan or execute the one guarded archive publication path."""
 import argparse
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
@@ -8,7 +9,7 @@ import subprocess
 import sys
 from urllib.parse import urlsplit
 from tempfile import TemporaryDirectory
-from uuid import UUID
+from uuid import UUID,uuid4
 
 from congress_api.lake.daily import DAILY_CAPTURE_RECORDS
 from congress_api.retention.body_store import validate_key
@@ -112,7 +113,7 @@ def completed_daily_inputs(template,production,records):
     return validate_model_spec(value,base=Path.cwd()),list(keys)
 
 
-def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None):
+def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None,retain=False):
     """Run the maintained producer once against one complete raw snapshot."""
     from congress_api.lake.daily import produce_daily,_validate as validate_daily
     from congress_api.retention.provenance_inventory import provenance_inventory
@@ -133,7 +134,12 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
         raise ValueError('The pinned daily body inventory is absent: '+str(selected['body_inventory']))
     production=produce_daily(selected,engine=engine,raw_store=raw_store,producer_records=producer_records)
     summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions','producers']}
-    with (work/'daily-summary.json').open('x') as target:json.dump(summary,target,sort_keys=True)
+    summary_path=work/'daily-summary.json'
+    if retain:
+        from viewer_publication.archive_controller import _save_continuation
+        _save_continuation(summary_path,summary)
+    else:
+        with summary_path.open('x') as target:json.dump(summary,target,sort_keys=True)
     if production['status']!='completed':return dict(status=production['status'],daily=summary)
     records=snapshot.rows()
     model,keys=completed_daily_inputs(template,production,records)
@@ -141,9 +147,66 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
         if row['key'] not in full:
             if provenance_record_kind(row['key'])!='unreadable':raise ValueError('Unexpected daily provenance addition')
             full[row['key']]=dict(key=row['key'],etag=row['etag'],size=row['size'])
+    provenance=[dict(key=key,etag=full[key]['etag']) for key in sorted(full)]
+    handoff={}
+    if retain:
+        from congress_api.lake.receipt_inventory import retained_discovery,receipt_metadata_digest
+        deferred=receipt_metadata_digest(retained_discovery(work/'receipt-discovery'),exclude=keys)
+        _save_continuation(summary_path,dict(summary,publication=dict(
+            records=records,provenance=provenance,deferred=deferred)))
+        handoff['daily_summary_sha256']=sha256(summary_path.read_bytes()).hexdigest()
+    return dict(status='ready',model=model,receipt_keys=keys,daily=summary,provenance=provenance,
+        verified_files=snapshot.verified(),**handoff)
+
+
+def _resume_daily_inputs(template,daily,*,publish_work):
+    """Rebind the completed daily inputs before consulting the current selection."""
+    from viewer_publication.archive_controller import _read_continuation
+    _,checkpoint=_read_continuation(publish_work,daily=True)
+    summary_path=Path(daily['work'])/'daily-summary.json'
+    if summary_path.is_symlink():raise ValueError('Retained daily summary must be a regular file')
+    raw=summary_path.read_bytes()
+    digest=sha256(raw).hexdigest()
+    if digest!=checkpoint['daily_summary_sha256']:
+        raise ValueError('Retained daily summary differs from the model continuation')
+    summary=json.loads(raw)
+    retained=summary.pop('publication',None) if isinstance(summary,dict) else None
+    if not isinstance(retained,dict) or set(retained)!={'records','provenance','deferred'}:
+        raise ValueError('Retained daily summary lacks complete publication inputs')
+    records=retained['records']
+    model,keys=completed_daily_inputs(template,dict(summary,provenance={
+        kind:[row for row in records if provenance_record_kind(row['key'])==kind]
+        for kind in ('recoveries','reviews','unreadable')}),records)
     return dict(status='ready',model=model,receipt_keys=keys,daily=summary,
-        provenance=[dict(key=key,etag=full[key]['etag']) for key in sorted(full)],
-        verified_files=snapshot.verified())
+        provenance=retained['provenance'],verified_files=None,daily_summary_sha256=digest,
+        deferred_receipt_digest=retained['deferred'])
+
+
+def _require_current_daily(daily,retained,*,engine,raw_store,work):
+    from congress_api.lake.receipt_inventory import R2ReceiptStore,discover_receipts,receipt_metadata_digest
+    from congress_api.lake.tables import resolve_tables
+    from viewer_publication.archive_controller import PublicationInputsChanged
+    heads=resolve_tables(engine=engine,work=work/'heads',catalog_root=daily['catalog_root'],tables=daily['tables'])
+    if heads!=retained['daily']['pins']:
+        raise PublicationInputsChanged('Daily catalog heads changed since the retained candidate')
+    adapter=raw_store.adapter
+    rows=discover_receipts(R2ReceiptStore(adapter.client,adapter.bucket),daily['receipt_families'],
+        existing=heads['captures'],engine=engine,work=work/'receipt-discovery')
+    if receipt_metadata_digest(rows)!=retained['deferred_receipt_digest']:
+        raise PublicationInputsChanged('Daily receipt selection changed since the retained candidate')
+
+
+def nightly_spec(spec,root):
+    """Put the Mac's active candidate outside worktree cleanup using the same publisher."""
+    if not spec.get('_daily',{}).get('receipt_families') or spec.get('resume'):
+        raise ValueError('Nightly work requires daily receipt-family discovery')
+    root=Path(root).resolve()
+    work=root/'archive-publish'
+    model=dict(spec['_model'],output=str(root/'archive-release'),scratch=str(root/'archive-model'))
+    resume=(work/'completed-model.json').exists() or (
+        (work/'model-intent.json').exists() and (Path(model['output'])/'manifest.json').exists())
+    return dict(spec,work=str(work),_model=model,_daily=dict(spec['_daily'],work=str(root/'archive-daily')),
+                _nightly=True,resume=resume)
 
 
 def _metadata_pin(value,base):
@@ -181,7 +244,7 @@ def load_spec(path):
     base=path.parent
     result=dict(value)
     if type(value.get('resume',False)) is not bool:raise ValueError('Publication resume must be boolean')
-    if value.get('resume') and 'daily' in value:raise ValueError('Daily production cannot resume through a model checkpoint')
+    if value.get('resume') and 'daily' in value:raise ValueError('Daily publication resume requires the scheduled candidate directory')
     kind=value.get('model_kind','raw')
     if kind!='raw':raise ValueError('Unknown publication model_kind')
     result['model_kind']=kind
@@ -405,7 +468,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     if '_daily' in spec:
         spec['_daily_identity'].require(spec['daily']['path'])
         path=Path(spec['_daily']['work'])
-        if any(p.exists() or p.is_symlink() for p in [path,path.with_name(path.name+'-provenance')]):
+        if not spec.get('resume') and any(p.exists() or p.is_symlink() for p in [path,path.with_name(path.name+'-provenance')]):
             raise ValueError('Daily production work and provenance cache must be fresh')
     if not Path(spec['site_dist']).is_dir():raise ValueError('Publication site_dist must already exist; build the site first')
     from docspec_client.client import NativeDatasets
@@ -449,21 +512,26 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 # Body reads get their own client: a transient R2 server error on one of thousands of
                 # GETs retries, while this job's writes keep their single attempt.
                 reads=configure_read_retries(storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1}))
-                daily=produce_daily_inputs(selected_model,spec['_daily'],engine=model,
-                    raw_store=BodyStore(R2Adapter(reads,spec['bucket'])),producer_records=ledger)
+                raw_store=BodyStore(R2Adapter(reads,spec['bucket']))
+                if spec.get('resume'):
+                    daily=_resume_daily_inputs(selected_model,spec['_daily'],publish_work=Path(spec['work']))
+                else:
+                    retention={'retain':True} if spec.get('_nightly') else {}
+                    daily=produce_daily_inputs(selected_model,spec['_daily'],engine=model,
+                        raw_store=raw_store,producer_records=ledger,**retention)
                 spec['_daily_identity'].require(spec['daily']['path'])
                 spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
                 if daily['status']!='ready':return daily
                 selected_model=daily['model'];keys=daily['receipt_keys'];provenance=daily['provenance'];verified=daily['verified_files']
             # Gate 5: every pinned derived row names a current or compatible producer, before any build.
             from viewer_publication.producer_proof import find_records,require_producers
-            require_producers(selected_model,engine=model,work=directory/'producer-proof',
+            proof_work=(parent/'producer-proof'/uuid4().hex if spec.get('_nightly') else directory/'producer-proof')
+            require_producers(selected_model,engine=model,work=proof_work,
                 records=find_records(selected_model,ledger,anchors),ledger=ledger)
             def probe(name,context):
                 target_identity.require(spec['targets']['path']);require_configuration()
                 probe_spec=spec
                 if spec.get('resume',False):
-                    from uuid import uuid4
                     probe_work=Path(spec['work'])/('probe-'+uuid4().hex)
                     probe_work.mkdir()
                     probe_spec=dict(spec,work=str(probe_work))
@@ -478,6 +546,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=dict(spec['run'],site_targets=site_targets),
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
+            if spec.get('_nightly'):
+                options['daily_summary_sha256']=daily['daily_summary_sha256']
+                if spec.get('resume'):
+                    options['check_current_daily']=lambda:_require_current_daily(
+                        spec['_daily'],daily,engine=model,raw_store=raw_store,work=directory/'resume-daily')
             causes=None
             if 'release_causes' in spec:
                 from viewer_publication.release_gate import load_causes
@@ -494,14 +567,24 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--spec',type=Path,required=True)
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
+    parser.add_argument('--nightly-work',type=Path,help='Use the scheduled Mac candidate directory')
     args=parser.parse_args(argv)
+    if args.nightly_work is not None and not args.execute:
+        parser.error('--nightly-work requires --execute')
+    from viewer_publication.archive_controller import PublicationInputsChanged,_save_continuation
     try:
         spec=load_spec(args.spec)
         if spec.get('status')=='blocked':print(json.dumps(spec,sort_keys=True));return 2
+        if args.nightly_work is not None:spec=nightly_spec(spec,args.nightly_work)
         result=execute(spec) if args.execute else dict(status='planned',executed=False,
             model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
             targets=spec['targets'],site_dist=spec['site_dist'])
         if not args.execute and 'daily' in spec:result['daily']=spec['daily']
+    except PublicationInputsChanged as error:
+        if args.nightly_work is None or not spec.get('resume'):parser.error(str(error))
+        _save_continuation(args.nightly_work/'inputs-changed.json',dict(reason=str(error)))
+        print(str(error),file=sys.stderr)
+        return 2
     except (ValueError,OSError,subprocess.SubprocessError) as error:parser.error(str(error))
     daily=result.get('daily') if args.execute else None
     stopped=isinstance(daily,dict) and daily.get('status')!='completed'
