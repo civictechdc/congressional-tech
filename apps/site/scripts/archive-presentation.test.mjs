@@ -210,6 +210,20 @@ test('hearing evidence distinguishes witnesses, statements and publisher link me
   }
 });
 
+test('hearing captions keep separate saved bodies and label HLS as a download',()=>{
+  const first='a'.repeat(64), second='b'.repeat(64);
+  const html=renderToStaticMarkup(React.createElement(HearingDetail,{
+    rawBase:'https://raw.test/',
+    meeting:{event_id:100,videos:[{video_key:'recording-a',url:'https://fixture.test/video',tracks:[
+      {sha256:first,suffix:'.gz',language:'en',format:'vtt',production:'live'},
+      {sha256:second,suffix:'',language:'en',format:'m3u8',production:'archive'},
+    ]}]},
+  }));
+  for(const text of ['https://fixture.test/video',`https://raw.test/bodies/sha256/aa/${first}.gz`,
+    `https://raw.test/bodies/sha256/bb/${second}`,'en · vtt · live','en · m3u8 · archive',
+    'Download saved HLS playlist','Playback is unavailable here.','download=""'])assert(html.includes(text),text);
+});
+
 test('nomination committee actions retain publisher precision and stay separate from floor votes',()=>{
   const html=renderToStaticMarkup(React.createElement(SubjectDetail,{subject:{
     nomination_id:'119-pn-1011',kind:'nomination',description:'Charles Baldis',

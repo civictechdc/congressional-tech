@@ -9,6 +9,17 @@ import {
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
 import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
+import {savedCopy} from '../reader/archive.ts';
+
+function savedCaptionUrl(track: any, rawBase?: string) {
+  if (rawBase && track?.sha256) {
+    try {
+      return savedCopy({saved_body: track.sha256, saved_suffix: track.suffix}, rawBase).url;
+    } catch {
+      // The original link remains available if the saved identity is invalid.
+    }
+  }
+}
 
 function RecordingObservations({observations}:{observations:any[]}){
   return <ul className="archive-entity-list">
@@ -33,6 +44,7 @@ function RecordingObservations({observations}:{observations:any[]}){
 export function HearingDetail({
   meeting,
   committeesCatalog,
+  rawBase,
   compact,
   onSelect,
   onCommittee,
@@ -46,6 +58,7 @@ export function HearingDetail({
 }:{
   meeting:any;
   committeesCatalog?:CommitteeCatalogInput;
+  rawBase?:string;
   compact?:boolean;
   onSelect?:(row:number)=>void;
   onCommittee?:(key:string)=>void;
@@ -173,25 +186,30 @@ export function HearingDetail({
       <ul className="archive-entity-list">
         {recordings.map((rec:any,i:number)=>{
           const duration=formatDuration(rec.duration_s);
+          const label=rec.title||rec.source||rec.video_key||`Recording ${i+1}`;
           const rawTracks:any[]=Array.isArray(rec.tracks)?rec.tracks:Array.isArray(rec.transcripts)?rec.transcripts:[];
           const seenTracks=new Set<string>();
           const tracks=rawTracks.filter((t:any)=>{
-            const k=String(typeof t==='string'?t:(t?.url||t?.label||t?.language||t?.format||t?.production||''));
+            const k=String(typeof t==='string'?t:(t?.sha256||t?.url||[t?.label,t?.language,t?.format,t?.production].filter(Boolean).join(' · ')));
             if(!k||seenTracks.has(k))return false;
             seenTracks.add(k);
             return true;
           });
           return <li key={rec.video_key||rec.video_id||i}>
-            {rec.url?<PublicLink url={rec.url}>{rec.title||rec.source||`Recording ${i+1}`}</PublicLink>:<strong>{rec.title||rec.source||`Recording ${i+1}`}</strong>}
+            {rec.url?<PublicLink url={rec.url}>{label}</PublicLink>:<strong>{label}</strong>}
             {rec.source&&<span className="archive-source-meta"> ({rec.source}{duration?`, ${duration}`:''})</span>}
             {!rec.source&&duration&&<span className="archive-source-meta"> ({duration})</span>}
             {tracks.length>0&&<span className="archive-source-meta">
               <span aria-hidden="true"> · </span>
               Captions: {tracks.map((t:any,ti:number)=>{
-                const tLabel=typeof t==='string'?t:(t.label||t.language||t.format||t.production||'Captions');
+                const tLabel=typeof t==='string'?t:([t.label,t.language,t.format,t.production].filter(Boolean).join(' · ')||'Captions');
+                const savedUrl=savedCaptionUrl(t,rawBase);
+                const url=savedUrl||t?.url;
+                const savedPlaylist=savedUrl&&t?.format==='m3u8';
                 return <span key={ti}>
                   {ti>0&&', '}
-                  {t?.url?<PublicLink url={t.url}>{tLabel}</PublicLink>:<span>{tLabel}</span>}
+                  {url?<PublicLink url={url} download={Boolean(savedPlaylist)}>{savedPlaylist?'Download saved HLS playlist':tLabel}</PublicLink>:<span>{tLabel}</span>}
+                  {savedPlaylist&&<span> ({tLabel}). Playback is unavailable here.</span>}
                 </span>;
               })}
             </span>}

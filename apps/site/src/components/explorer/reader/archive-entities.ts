@@ -548,24 +548,24 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const seenVideoKeys = new Set<string>();
     const dedupedVideos: any[] = [];
     for (const v of baseMeeting.videos) {
-      const vk = String(v.url || v.video_id || v.title || v.name || '');
+      const vk = String(v.video_key || v.url || v.video_id || v.title || v.name || '');
       if (vk && seenVideoKeys.has(vk)) continue;
       if (vk) seenVideoKeys.add(vk);
       dedupedVideos.push({ ...v });
     }
-    const extraTracks = recRows.filter((r: any) => !r.url).flatMap((r: any) => Array.isArray(r.tracks) ? r.tracks : []);
-    if (extraTracks.length && dedupedVideos.length) {
-      const seenTrackLabels = new Set<string>();
-      const mergedTracks: any[] = [];
-      for (const t of [...(dedupedVideos[0].tracks ?? []), ...extraTracks]) {
-        const key = String(t?.url || t?.label || t?.language || t?.format || t?.production || '');
-        if (key && !seenTrackLabels.has(key)) { seenTrackLabels.add(key); mergedTracks.push(t); }
-      }
-      dedupedVideos[0] = { ...dedupedVideos[0], tracks: mergedTracks };
-    }
+    const sameRecording = (a: any, b: any) => a.video_key && b.video_key
+      ? a.video_key === b.video_key
+      : Boolean((a.video_id && a.video_id === b.video_id) || (a.url && a.url === b.url));
+    const joined = new Set<any>();
+    const publisherVideos = dedupedVideos.filter(v => !recRows.some(r => r.url && sameRecording(v, r))).map(v => {
+      const captionRow = v.video_key && recRows.find(r => !r.url && r.video_key === v.video_key);
+      if (!captionRow) return v;
+      joined.add(captionRow);
+      return { ...v, tracks: [...(v.tracks ?? v.transcripts ?? []), ...captionRow.tracks] };
+    });
     const allVideos = [
-      ...recRows.filter((r: any) => Boolean(r.url) || dedupedVideos.length === 0),
-      ...dedupedVideos.filter((v: any) => !recRows.some((r: any) => r.url && ((v.video_id && r.video_id === v.video_id) || (v.url && r.url === v.url)))),
+      ...recRows.filter(r => !joined.has(r)),
+      ...publisherVideos,
     ];
     const enrichedCommittees = (baseMeeting.committee_keys.length ? baseMeeting.committee_keys : baseMeeting.committees.map((c: any) => c.committee_key ?? c.system_code)).map((code: string) => {
       const lower = String(code ?? '').toLowerCase(), cat = commIdx?.byCode.get(lower);
