@@ -118,7 +118,8 @@ def version(module, call):
     except ImportError:
         return None  # the table's producer did not exist at this commit
 out = dict(captures=version('captures', lambda m: m.current_version()),
-    readings=version('readings', lambda m: {p: m.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}),
+    readings=version('readings', lambda m: {p: m.current_version(p)
+        for p in ('sniff', 'html', 'xml', 'json', *getattr(m, 'READ_AS', {}))}),
     filename_readings=version('filenames', lambda m: m.current_version()),
     module=importlib.import_module('congress_api.lake.captures').__file__)
 for name in ['meeting_records', 'appearance_records', 'video_records', 'committee_records', 'playlist_records']:
@@ -164,7 +165,9 @@ def expected_versions(name, model, mapping_current):
     if name == 'captures':
         return mapping_current
     if name == 'readings':
-        return {p: model['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']}
+        from congress_api.lake.compatible_versions import DERIVED_PARSERS, LEAF_PARSERS
+        selected = model['parser_versions']
+        return {p: selected[p] for p in (*LEAF_PARSERS, *(p for p in DERIVED_PARSERS if p in selected))}
     if name == 'filename_readings':
         return model['catalog_version']
     return model['parser_versions'].get(name)
@@ -198,7 +201,11 @@ def _record_reasons(name, record, model, mapping_current, root, *, label, select
             computed = versions_at(commit, root=root).get(name)
         except ValueError as error:
             return reasons + [f'producer proof: {label}: {error}']
-        if computed != expected_versions(name, model, mapping_current):
+        expected = expected_versions(name, model, mapping_current)
+        if name == 'readings' and isinstance(computed, dict):
+            # A capable writer can also produce a release that omits derived metadata.
+            computed = {parser: value for parser, value in computed.items() if parser in expected}
+        if computed != expected:
             reasons.append(f'producer proof: {label}: the code at {commit[:12]} computes another version than the pinned rows carry')
     return reasons
 

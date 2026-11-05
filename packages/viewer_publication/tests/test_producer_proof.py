@@ -209,3 +209,31 @@ def test_filename_proof_uses_historical_house_naming_bytes():
     historical = '6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1'
     assert filenames.current_version() != historical
     assert versions_at('412e115e')['filename_readings'] == historical
+
+
+def test_readings_import_origin_must_support_selected_html_metadata():
+    from congress_api.lake.compatible_versions import LEAF_PARSERS
+    from congress_api.lake.readings import current_version
+    from viewer_publication.producer_proof import IMPORT, snapshot_reasons
+
+    selector = {'kind': 'native_table', 'metadata_location': 's3://x/m.json',
+                'table_uuid': 'u', 'snapshot': 1, 'schema_id': 0}
+    legacy = '085bb61c63dfd9a2087d1770d9a8cff44ff32f73'
+    capable = '7988f0d6f79efc5bba34a24ef57f121ad6029310'
+    leaves = {parser: current_version(parser) for parser in LEAF_PARSERS}
+    current = current_version('html_metadata')
+
+    def reasons(origin_commit, parser_versions):
+        origin = dict(version=1, input='readings', selector={'kind': 'native_table', 'snapshot': 9},
+                      job=JOB, commit=origin_commit)
+        record = dict(version=1, input='readings', selector=selector, job=IMPORT, commit=capable,
+                      origin=dict(record=origin))
+        return snapshot_reasons(dict(readings=selector, parser_versions=parser_versions), {'readings': record})
+
+    assert reasons(legacy, leaves) == []
+    assert reasons(capable, leaves) == []
+    assert 'origin: the code at 085bb61c63df computes another version' in reasons(
+        legacy, dict(leaves, html_metadata=current))[0]
+    assert reasons(capable, dict(leaves, html_metadata=current)) == []
+    assert 'origin: the code at 7988f0d6f79e computes another version' in reasons(
+        capable, dict(leaves, html_metadata='f' * 64))[0]
