@@ -17,7 +17,7 @@ K = lambda letter: (letter * 8).encode()
 SCOPE = {'version': 1, 'entries': []}
 
 
-def release_dir(root, documents, retired=None, **extra_tables):
+def release_dir(root, documents, retired=None, *, scope=SCOPE, **extra_tables):
     """A real, internally consistent release: documents are rows of link-key letters."""
     root.mkdir(parents=True)
     tables = {
@@ -39,7 +39,7 @@ def release_dir(root, documents, retired=None, **extra_tables):
         data = path.read_bytes()
         files.append(dict(name=path.name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(),
                           size=len(data), rows=table.num_rows))
-    data = json.dumps(SCOPE).encode()
+    data = json.dumps(scope).encode()
     (root / 'capture_scope.json').write_bytes(data)
     files.append(dict(name='capture_scope.json', sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0))
     manifest = dict(schema_version=1, files=files, facet_counts=[], release_id=release_identity(1, files))
@@ -384,3 +384,20 @@ def test_nightly_refuses_additions_without_the_exact_new_document_attempt(tmp_pa
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     report = json.loads((tmp_path / 'r.json').read_text())
     assert report['automatic_reasons'] and 'automatic_causes' not in report
+
+
+def test_automatic_policy_refuses_a_verified_scope_removal(tmp_path):
+    from viewer_publication.release_gate import automatic_causes
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    scope = {'version': 1, 'entries': [{'exclusions': ['/oembed/']}]}
+    queued = url_states('https://archive.example.test/oembed/1', 0)
+    release_dir(base, ['A'], scope=scope, url_state=queued)
+    release_dir(candidate, ['A'], scope=scope, url_state=queued.slice(0, 0))
+    assert require_release_gates(base, candidate, None, report_path=tmp_path / 'reviewed.json')['reasons'] == []
+    def automatic(report):
+        return automatic_causes(report, base, candidate, engine=None, captures=None,
+                                live_receipt_keys=(), read_receipt=None, work=tmp_path / 'auto')
+    with pytest.raises(ValueError, match='removed URLs'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'nightly.json', automatic=automatic)
+    report = json.loads((tmp_path / 'nightly.json').read_text())
+    assert report['failing'] == [] and report['reasons'] == report['automatic_reasons']

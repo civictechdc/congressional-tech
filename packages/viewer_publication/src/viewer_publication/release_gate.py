@@ -291,8 +291,8 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     from viewer_publication.release_comparison import Diff, documents
     reasons = []
     groups = report['failing']
-    if not groups or not report['link_rule']['ok']:
-        return [], ['automatic causes: nothing to explain or the link rule failed']
+    if not report['link_rule']['ok']:
+        return [], ['automatic causes: the link rule failed']
     # Include already verified differences when deciding whether this is addition-only.
     differences = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
     other = [g for g in differences if g.get('value') or g['count'] <= 0 or
@@ -300,6 +300,8 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
               (g['file'], g['group'], g['cause']) != ATTEMPTED_URL_GROUP)]
     if other:
         return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
+    if not differences:
+        return [], []
     live = sorted(live_receipt_keys)
     live_dates = [_receipt_day(key) for key in live]
     if not live_dates or None in live_dates:
@@ -429,6 +431,9 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
             causes['groups'] = [*causes['groups'], *(e for e in entries if e['id'] not in named)]
             report['automatic_causes'] = entries
     report['reasons'] = verdict(report, causes)
+    if causes is None and not report['reasons']:
+        # A verified comparison group can still be outside the unattended policy.
+        report['reasons'] = report.get('automatic_reasons', [])
     report_path.write_text(json.dumps(report, indent=1, default=str) + '\n')
     if report['reasons']:
         raise ValueError('Release gates refused (report ' + str(report_path) + '):\n' + '\n'.join(report['reasons']))
