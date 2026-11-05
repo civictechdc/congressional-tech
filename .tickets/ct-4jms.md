@@ -2,7 +2,7 @@
 id: ct-4jms
 status: open
 deps: []
-links: [cefr-xjsp, cef-96wc, ct-tk10, ct-ud0b, ct-rie2]
+links: [cefr-xjsp, cef-96wc, ct-tk10, ct-ud0b, ct-1l1h, ct-98sm, ct-v967, ct-rie2]
 created: 2026-10-30T14:32:31Z
 type: task
 priority: 1
@@ -17,25 +17,52 @@ Keep the archive fresh by running the existing capture workflow against the sele
 
 ## Root cause and unresolved boundary (2026-11-05)
 
-GitHub inspection found `capture-archive.yml` (workflow 399669501) `disabled_manually`; its run query returned no runs. Repository `ARCHIVE_CAPTURE*` variables were absent. Environment and organization variables and the reason for disabling were not inspected. The workflow checks `ARCHIVE_CAPTURE_ENABLED`; passing local selection tests does not establish that scheduled capture ran.
+November 5 read-only inspection found `capture-archive.yml` (workflow 399669501) `disabled_manually` with zero recorded runs. The visible repository variable list contains only `CLOUDFLARE_ACCOUNT_ID` and `DOCSPEC_RUNTIME_ARTIFACT`. The environment inventory omits `archive-capture`, and its exact lookup returned 404. Organization-variable access returned 403, so inherited effective values remain unknown. The workflow requires an enable value, a selected pointer and three positive budgets. The reason for disabling and private credentials were not established. Passing local selection tests or publishing e145 does not establish scheduled acquisition.
 
 The concrete Ashley Nunes target is `https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1`. Discovery already found that link. The base address saved an HTTP 200 HTML wrapper (`is_real_file=false`, body `ae5ee73d95a8fada1e9491574799cf263d03114d3f84d830ed26a9f6e1e0934c`); selected inputs contain no file capture/recovery, and the download target has zero attempts in e145. The first missing handoff is discovered target to file acquisition. No invocation, budget cutoff, refusal and attempted failure remain distinct possibilities until the exact queue/receipt trace is read.
 
 Ordinary capture supports profile version 1. Explicit recovery campaigns require a separate version-2 requirements-bound input. Failure due dates follow the existing family/age retry policy; their presence alone is not a demonstrated retry defect.
+
+The current command supplies neither a cutoff URL list nor the weekly seed inputs described in `raw-source-tables.md`. Its starting queue is the selected release URL state, followed by in-run discovery. Correct that documentation or explicitly bind a demonstrated input need; do not restore the obsolete weekly path by default. An exception after remote receipt acknowledgment but before the local completion marker can omit a durable receipt from the summary. The workflow's top-level JSON glob also misses nested failure summaries. These are reporting gaps, not demonstrated lost raw objects.
 
 ## Acceptance Criteria
 
 - Recheck workflow state, applicable variable scopes and cutover prerequisites. Enable the existing workflow and `ARCHIVE_CAPTURE_ENABLED` binding at cutover; record one successful scheduled `capture-archive.yml` invocation, run ID, source revision, exact release/profile/URL-state identity, budgets and emitted receipt keys. A manual dispatch or restored schedule alone does not meet scheduled-run acceptance.
 - Verify creating receipt lines record `stored_md5` and `stored_suffix` against acknowledged stored objects. Prove receipt-referenced bodies exist and the run reads no old index. Account for each selected/cutoff target with an attempt receipt, retained result or explicit reason; preserve the observed target and repaired candidate addresses separately.
 - Trace the exact Ashley base and download targets through discovery, due queue, eligibility/cutoff, attempted candidate and receipt. Run the admitted bounded attempt or record a supported refusal/exclusion; an unexplained zero-attempt target is not complete. A remote failure remains a failure with its retry/next-action disposition, not a downloaded document. If content is acquired, verify body qualification and the intended testimony relationship; hand any required alternative recovery to ct-umtm with the same locators.
+- On the first run of a merged raw-writer change, compare prior raw key, size and ETag preservation with the documented B0 exception. Retain reconciliation and raw verification evidence under the [switch plan](../docs/plans/engine-first-switch.md). The Mac nightly publisher remains owned by ct-ud0b and raw lock/readback by ct-1l1h.
 - Demonstrate the existing ordinary-capture policy without weakening campaign guards. Attribute any proposed retry change to an actual repeated-request history and violated or explicitly revised policy; do not mark every failed address terminal. Keep campaign execution and publication gains out of this ticket's success claim.
+
+- Bind reviewed target accountability through the existing `--cutoff-urls` input where needed. Retain attempt, retained-result and refusal reasons, including terminal failures. Upload the nested run summary when the top-level call raises. Preserve acknowledged receipt keys even if later discovery or local completion recording fails; use existing receipt and run records rather than adding another tracking system.
 
 ## Evidence
 
 [November 5 root-cause analysis](../docs/experiments/url-normalization-revalidation-20261105/root-causes.md); exact GitHub commands in `.cache/archive-release/investigations/url-root-cause-20261105/greybeard.md`; Ashley capture and live queries in `.cache/archive-release/investigations/url-root-cause-20261105/etl-recovery-campaign/{handoff-check.json,mcp-ashley.json}`. The retained discovery result is `docs/experiments/url-normalization-validation-20261031/evidence/discovery-link-results.json`. These are November 5 observations, not proof of future deployment state.
+
+[Third-round root-cause analysis](../docs/plans/production-mvp-root-causes-round3-20261105.md).
 
 ## Notes
 
 **2026-11-01T20:08:14Z**
 
 Reopened 2026-11-01: capture-archive.yml is disabled_manually with no recorded runs, and ARCHIVE_CAPTURE_ENABLED is not set. Acceptance requires a live run.
+
+**2026-11-05T17:11:15Z**
+
+Acceptance transferred from ct-v967/ct-98sm: record the successful scheduled capture-archive.yml run against the exact selected live url_state.parquet identity, run ID and emitted receipts. For creating lines, verify stored suffix and MD5 against the acknowledged object and prove every referenced body exists; confirm zero old-index reads. For the first run of a merged raw-writer change, compare prior raw key/size/ETag preservation, retaining the documented B0 exception. Preserve the accepted-map reconciliation evidence and the actual raw verifier result; do not claim a restored schedule proves an unattended invocation. ct-1l1h separately owns lock/readback and weekly verification after locking.
+
+**2026-11-05T20:18:16Z**
+
+Applied the accepted third-round scope update. The current description records the root cause, delivered work, remaining behavior and bounded checks; historical notes remain unchanged. No implementation or operational action was performed. [Third-round root-cause analysis](../docs/plans/production-mvp-root-causes-round3-20261105.md).
+
+**2026-11-05T21:22:04Z**
+
+The reporting fixes are locally committed and independently reviewed in `5dc11c197b1a9cf719810d0a834dfe2c9acce6b9`. The release owner has the commit for integration. The workflow can bind an optional owner-reviewed JSON URL list through `ARCHIVE_CAPTURE_CUTOFF_URLS` and `--cutoff-urls`. The capture queue starts from the selected release's URL state and follows in-run discovery. The artifact allowlist includes the nested scheduler summary after a failed CLI run. Reports preserve reviewed and attempted addresses separately, identify retained or refused targets, and keep acknowledged receipt keys through discovery or local completion failures and another failed continuation.
+
+The pinned runtime and Poppler 26.06 passed 148 tests across four capture test files. These are focused local results. The receipt writer owner has the separate first-upload scratch cleanup case, where an exception after storage can prevent acknowledgment from reaching the scheduler. [Lane status](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/capture-ops/STATUS.md) · [Focused test log](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/capture-ops/capture-final.log)
+
+Live acceptance remains open. At cutover, verify the effective workflow bindings and record a successful scheduled invocation with its release, profile, URL-state identity, budgets and emitted keys. Preserve the live Ashley base, observed download and repaired candidate trace through the queue and receipt or supported disposition. Verify stored MD5 and suffix, receipt-referenced body existence, zero old-index reads, and first-run key, size and ETag preservation with the documented B0 exception. The production hold remains in force.
+
+**2026-11-05T21:31:58Z**
+
+Integrated local follow-up at `5ab813f919484c5d994d52220d898b2f69ea1257` combines receipt cleanup fix `8cda71d5` with scheduler acknowledgment change `5dc11c19`. The stable writer completes scratch cleanup before uploading the frozen receipt. A planted cleanup error at the writer boundary left no uploaded receipt, and retry used the original key and bytes. The writer and scheduler files passed 114 focused checks. All three targeted scheduler acknowledgment cases passed. Prepared-only receipts stay out of the summary, while keys acknowledged before discovery or local completion fails survive a repeated failure. Retry clears the pending entry without another source request. Independent review confirmed the exact revision, local bytes and test results. The scheduled production run and its live evidence remain open. [Integrated test log](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/receipts/integrated-composition.log) · [Acknowledgment checks](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/receipts/integrated-acknowledgment.log)

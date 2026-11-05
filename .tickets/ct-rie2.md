@@ -10,15 +10,15 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [recovery, campaign, ops, publication, url-audit]
 ---
-# Verify a requirements-bound recovery campaign through import and publication
+# Recover and publish one useful document cohort
 
-Recovery candidate-selection code is implemented, but e145 does not establish production acceptance of the separate version-2 campaign path. Its selected model has no recovery requirements and emits valid ordinary-capture profile version 1. ct-4jms owns ordinary scheduled capture; it cannot close this campaign-specific acceptance.
+Recover a bounded set of useful documents and make the accepted results accessible through the archive and MCP. Share a real cohort and execution with `ct-umtm` where its per-target work fits. Recovery candidate-selection code is implemented, but e145 does not establish production acceptance of the separate version-2 campaign path. Its selected model has no recovery requirements and emits valid ordinary-capture profile version 1. ct-4jms owns ordinary scheduled capture; it cannot close this campaign-specific acceptance.
 
 ## Root cause and reporting boundary
 
 `archive_model.py`/`archive_profile.py` emit version 2 only when recovery requirements are selected. `capture_scheduler.py` deliberately refuses campaign execution without version 2, matching requirement pins and explicit eligibility columns. No such campaign inputs or execution results are selected in the audited release. This is an input/execution gap, not a broken version-1 serializer.
 
-`run_recovery_campaign` returns its initial plan/counts even after optional imports. Those counts do not establish final accepted or published progress. The existing per-target ledger, import operation records and release comparison already provide the necessary owners; their results need to be joined and final state replanned.
+`run_recovery_campaign` returns its initial plan/counts even after optional imports. Those counts do not establish final accepted or published progress. The existing per-target ledger, import operation records and release comparison already provide the necessary owners; their results need to be joined and final state replanned. Import idempotency binds both the original descriptor and request digests. A final-state report must not replace those execution bindings.
 
 [November 5 root-cause analysis](../docs/experiments/url-normalization-revalidation-20261105/root-causes.md). Evidence: `.cache/archive-release/investigations/url-root-cause-20261105/etl-recovery-campaign/{report.md,selected-recovery-input-check.json,evidence-pins.json}`. The twelve Wayback target/body dispositions belong to ct-umtm, and explanation authoring belongs to ct-nh41.
 
@@ -34,5 +34,13 @@ Ordinary scheduled capture and explicit campaign execution are independent accep
 - Show version-1 campaign input, missing eligibility columns and mismatched requirement pins refuse before acquisition or writes, while ordinary version-1 capture remains supported. Qualify eligible, accepted-and-satisfied, excluded, unresolved and refresh-live cases with retained controls. The actual bounded run attempts only admitted unsatisfied work and preserves target versus candidate addresses and prior history.
 - Record the real run/operation IDs, budgets, queue/cutoff disposition, candidate receipts, qualification/acceptance records and acknowledged import receipt/provenance keys. Account for every cohort target including refusals and failures. Resume or rerun evidence must show completed accepted work is not reacquired merely because planning restarts.
 - Follow each accepted import into the selected capture/provenance inputs and the maintained publication gate, retaining source identity and relationship. Verify the intended public target/body attachment through both MCP and the reader on the selected release, or record a supported non-publication disposition. Local tests or a successful ordinary schedule alone cannot close this ticket.
-- Produce an updated final plan after acknowledged imports and join it to the base/candidate release comparison. Reconcile target counts, distinct qualified bodies, accepted target/body relationships, imports, attached occurrences, distinct document rows and newly verified semantic-document gains with explicit units and pins. Keep initial counts labeled initial; unknown semantic equivalence stays unknown. Do not add accepted-target totals or reuse counts to claim publication gains.
+- Preserve the original descriptor, request digests and acknowledged import bindings through retries. Produce a separate read-only final plan from updated state after acknowledged imports; do not feed its changed descriptor back into the original import operation. Join the final plan to the base/candidate release comparison. Reconcile target counts, distinct qualified bodies, accepted target/body relationships, imports, attached occurrences, distinct document rows and newly verified semantic-document gains with explicit units and pins. Keep initial counts labeled initial; unknown semantic equivalence stays unknown. Do not add accepted-target totals or reuse counts to claim publication gains.
 - Reuse the existing per-target ledger and release gates. Report the bounded run's request/byte/spool use, elapsed time and peak memory; justify any further acquisition/recompute by a named unresolved input. Preserve legacy recovery records and public lookup/link continuity.
+
+[Final root-cause review](../docs/plans/production-mvp-root-causes-round4-20261105.md).
+
+## Notes
+
+**2026-11-05T20:56:46Z**
+
+Final root-cause review: deliver one useful bounded cohort through the archive and MCP. Share ct-umtm execution where suitable; keep original import bindings on retry and produce final counts from a separate read-only plan.

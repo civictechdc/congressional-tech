@@ -2,26 +2,33 @@
 id: ct-jo8n
 status: open
 deps: [ct-qkvr, ct-nloa, ct-5fkx]
-links: [ct-nloa, ct-qkvr, ct-5fkx, ct-f11a, ct-4nyy, ct-gf8i, ct-n6lj, ct-csjp, ct-vt7i, ct-d8cf]
+links: [ct-nloa, ct-qkvr, ct-5fkx, ct-f11a, ct-4nyy, ct-gf8i, ct-n6lj, ct-csjp, ct-vt7i, ct-d8cf, ct-mi03]
 created: 2026-10-20T22:15:53Z
 type: feature
 priority: 1
 assignee: mikewolfd
-parent: ct-mi03
+parent: ct-d8cf
 tags: [docspec, application-adoption, efficiency]
 ---
-# Wire native news ingestion and views to exact published releases
 
-The alternative news backend is exercised by tests but has no maintained non-test caller. Its view builders repeatedly read independent latest heads and retain committed members only in memory. Connect it to the existing news ingestion/release path while preserving C1-C9 and I1-I6.
+# Make News Lake reads agree on one exact published release
+
+**Parked News Lake work.** The DocSpec CLI and named-release reader are delivered. The reader checks availability and exact table pins, including explicit empty inputs. The remaining gap is downstream: shared view state can substitute a newer bridge, and incremental handling assumes forward history. A retained October 24 probe also found an older available release unreadable after compaction; that result belongs to its stated runtime and needs qualification on the intended pin.
+
+## Smallest useful change
+
+Carry the available release's exact input pins and processor selections through bridges, joins, aggregates and reads. Reuse derived outputs only when their input and step dependencies match. Apply a proven forward delta; otherwise rebuild the required bridge from the selected inputs. Refuse missing or mismatched dependencies instead of falling back to a mutable latest version. Preserve application ownership of release availability, cursors, rights, historical mappings and explicit empties.
+
+`ct-d8cf` owns writer fencing, recovery, rollback and maintenance integration. This ticket owns the exact-read result, including old-release readback after that maintenance. Share the same compaction scenario and evidence. `ct-4nyy` uses this exact release to authorize exports.
 
 ## Acceptance Criteria
 
-- Obtain the reviewed news changes from their owner; integrate through the existing coordinator and reader entry points without overwriting primary UI/news work.
-- Capture one complete exact input set; propagate returned pins through bridges, joins, aggregates and assembly. Use native input capture/generation sealing/dependency corrections where they prove the required relationships. Preserve explicit empty members and all required release tables.
-- Retain the application release, availability, cursor and rights-policy authority; never substitute native latest or add a second mutable selector.
-- Test fresh-process resume, partial ingestion, concurrent input advance during assembly, stale seal, changed dependency and lost publication response. The previous release stays usable; declared release matches every value read.
-- Exercise the actual command/service caller and retired-release refusal before removing superseded backend routes; migration preserves old snapshots and mappings.
+- Through the maintained CLI or service, every returned value and derived table belongs to the requested release. Preserve every required release member, historical snapshot and mapping, explicit empties, and processor selections. Reuse native capture, sealing and dependency checks.
+- Compare release A, then B, then A again in real fresh processes. Exercise overlapping builds that advance a shared bridge between selection and refresh. Verify exact source references and values or a supported safe refusal; never label another release's data as A. These source-traced cases have not yet been executed by the root-cause review.
+- Preserve the previous available release across partial ingestion, resume and lifecycle compaction; reject retired releases. Share changed-dependency, stale-seal and lost-publication-response checks with the write/recovery owner. Keep the original frozen input set on retry rather than rebuilding from mutable committed state.
+- Preserve the News Lake data rules C1–C9 and storage rules I1–I6. Record focused failure-path results and independent review. Credit the existing reader and unchanged evidence; retire superseded production routes only through `ct-d8cf` after parity. Keep unrelated UI and news work intact.
 
+[Final root-cause review](../docs/plans/production-mvp-root-causes-round4-20261105.md).
 
 ## Notes
 
@@ -52,3 +59,7 @@ Implemented and verified: wired DocSpecLake.publish_release / read_release / fin
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:18
 - Status: Reopened. Unmet: AC3 (one release selector; native-latest fallbacks and `.news_lake_committed.json` remain), AC4 (stale seal, changed dependency and lost publication response are untested) and "the previous release stays usable" (automatic lifecycle compaction makes older releases unreadable). Owner: WS8 (ct-d8cf).
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-11-05T20:56:46Z**
+
+Final root-cause review: credit the delivered release reader; focus remaining work on exact derived inputs, A/B/A reads and old-release readback. Share maintenance evidence with ct-d8cf.

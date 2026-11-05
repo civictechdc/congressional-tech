@@ -1,8 +1,8 @@
 ---
 id: ct-7uit
-status: open
+status: closed
 deps: [ct-q2ht, ct-qqk2, ct-70kc, ct-w5fm, ct-gi01]
-links: [ct-13cn, ct-gziq, ct-bwac, ct-nc7l, ct-sb0s, ct-czsd, ct-2ukk, ct-si9g, ct-v5kb, ct-upte, ct-7e7q, ct-rcs8, ct-5kb2, ct-9vtu, ct-y32m, ct-l5q1, ct-gd8v, ct-dat9, ct-qdkd, ct-13g5]
+links: [ct-13cn, ct-gziq, ct-bwac, ct-nc7l, ct-sb0s, ct-czsd, ct-2ukk, ct-si9g, ct-v5kb, ct-upte, ct-7e7q, ct-rcs8, ct-5kb2, ct-9vtu, ct-y32m, ct-l5q1, ct-gd8v, ct-dat9, ct-qdkd, ct-13g5, ct-gi01]
 created: 2026-10-24T18:15:54Z
 type: task
 priority: 1
@@ -57,3 +57,7 @@ Verified completed and superseded by the engine-first native SQL model (model/sq
 **2026-10-30T20:37:05Z**
 
 Reopened and reconciled at the user’s request on 2026-10-30. Current scope and acceptance above supersede the earlier closure where it claimed the remaining Explorer migration was complete. Canonical coverage and order: docs/plans/phase-2-annex-20261028.md §4.6. No implementation, live publication or deletion was performed by this reconciliation.
+
+**2026-11-05T17:11:17Z**
+
+Closed as superseded on 2026-11-05. Remaining scope, acceptance and evidence are explicitly transferred to ct-gi01. This is consolidation, not a claim that unfinished implementation or publication has passed. Original criteria and historical notes remain here. See the surviving owner and the reviewed consolidation report under .cache/archive-release/investigations/open-ticket-clusters-20261105T161237Z/consolidation-review/REPORT.md.

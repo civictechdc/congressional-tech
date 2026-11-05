@@ -1,8 +1,8 @@
 ---
 id: ct-mi03
-status: open
+status: closed
 deps: []
-links: [ct-2ukk, ct-czsd, ct-tuez, ct-ur2y, ct-r60e, ct-gfv8, ct-13g5, ct-ur7v, ct-nmjc, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-dmca, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-uov2]
+links: [ct-2ukk, ct-czsd, ct-tuez, ct-ur2y, ct-r60e, ct-gfv8, ct-13g5, ct-ur7v, ct-nmjc, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-dmca, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-uov2, ct-4nyy, ct-d8cf, ct-jo8n]
 created: 2026-10-20T18:24:28Z
 type: epic
 priority: 1
@@ -77,3 +77,7 @@ Independent CS300 professor audit (fresh-context subagent, 2026-10-21) graded th
 **2026-10-30T17:48:00Z**
 
 All non-news_lake children (ct-oxg6, ct-a70m, ct-csyg, ct-uov2, ct-gi01, ct-2yl5, ct-bwac) are completed and closed. Kept open per WS12 Rule 1 solely for the parked news_lake children (ct-jo8n, ct-4nyy, ct-dzyf, deferred per user decision A4).
+
+**2026-11-05T17:11:17Z**
+
+Closed as superseded, not as newly completed engineering. The remaining parked News Lake work is owned by ct-d8cf (runtime and recovery), ct-jo8n (exact release reads), ct-4nyy (rights), and ct-xu1o (append correctness and measurement). Preserve failure-path tests and independent review with those owners; measure changed work where it informs acceptance, including the unmeasured news tables. ct-3180 remains evidence only for its qualified R2 operations; unsupported operations must remain fail-closed. The earlier per-child measurement rule was superseded by ct-uov2. Historical closed child relationships and evidence remain intact.

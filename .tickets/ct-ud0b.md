@@ -83,3 +83,9 @@ Reopened 2026-11-03 (post-release acceptance test): automatic causes work, but t
 **2026-11-04T12:46:09Z**
 
 Owner decision 2026-11-04: the nightly runs on the owner's Mac on a schedule (launchd), not a GitHub-hosted runner; a parallel investigation compares the current model build's memory and spill with the v21 run. Daily now discovers new receipts in R2 (22 families) and appends only the oldest receipts whose new bodies fit max_work_items (83c673aa); measured backlog on 2026-11-04: 29,414 receipts, 22,714 of 22,775 new bodies from 2026-10-31, all dated after the live cutoff 2026-10-28.
+
+**2026-11-05T21:33:58Z**
+
+Fresh independent acceptance on `dd9a6f82` found that a link added to an existing document could inherit automatic approval. `9c3ee247` fixed the attribution check and merged into local `main` at `5aa78701`. The correction passed 109 focused Gate 1, comparison and publisher checks plus the independent planted case. Integrated fixtures reused a 7.3 MB model result, reconciled a lost acknowledgement with one pointer write, and preserved the selected release on refusal. Both merged worktrees and branches were pruned after their exact tips were archived. [Acceptance and cleanup](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/nightly-freshness/HANDOFF.md)
+
+Keep open for a genuine scheduled additions-only run that passes all five gates and records the selected commit, daily result, gate outcomes and pre/post pointer. The all-wave hold still covers the Mac schedule. `ct-9lxf` owns complete-operation disk measurements for a fresh nightly run, a compatible retry and backfill.

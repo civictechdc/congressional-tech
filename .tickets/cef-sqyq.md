@@ -2,7 +2,7 @@
 id: cef-sqyq
 status: closed
 deps: []
-links: []
+links: [ct-1l1h]
 created: 2026-10-27T04:27:05Z
 type: task
 priority: 2
@@ -29,3 +29,7 @@ Local qualification complete: all 2289 scratch-copy receipts and 2596054 lines v
 **2026-10-30T14:32:56Z**
 
 Completed B0 receipt sanitization and readback verification on R2.
+
+**2026-11-05T20:18:17Z**
+
+November 5 read-only reconciliation limits the October 30 live-completion claim: three exact-key HEADs match original pre-cleanup identities and predate that note. This does not establish the rest of the corpus or reveal receipt contents. Keep this ticket closed for its retained tooling/local qualification history; ct-1l1h owns the unresolved live disposition, separate header evidence and raw-lock readback. Preserve the owner exception for historical paths; no raw rewrite is authorized by this note. Exact sampled identities: .cache/archive-release/investigations/mvp-etl-root-causes-round3-20261105T194539Z/capture-lifecycle-root-causes.json (verification.b0_head_samples).

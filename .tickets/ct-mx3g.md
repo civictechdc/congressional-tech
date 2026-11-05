@@ -1,8 +1,8 @@
 ---
 id: ct-mx3g
-status: open
+status: closed
 deps: []
-links: [ct-8cno]
+links: [ct-8cno, ct-m104]
 created: 2026-11-04T02:25:37Z
 type: bug
 priority: 2
@@ -41,3 +41,7 @@ Smallest remaining checks are maintained fixed fixtures for 119-only, multiple p
 **2026-11-04T17:19:35Z**
 
 Merged 919258e7 to main (rebased from 1b9ecfc9). Pre-rebase full lanes on 1b9ecfc9: production-offline (full lane): exit 0 (11,357 passed), explorer-mcp (full lane): exit 0; after rebase onto aaaf6f28 (disjoint files), test_phase2_model_entities.py 26 passed (partial). Fixture checks tie rosters congress_start/end and every roster text to published rows for 119-only, 113/116/119 and empty snapshots; planted old note refused. Open until a published release carries the new note and get_dataset_info from the installed release agrees with its rows.
+
+**2026-11-05T17:11:18Z**
+
+Delivered in public release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99. On 2026-11-05 the live public manifest was resolved and the installed MCP CLI was read over stdio with the verified public selection: roster bounds 119–119, 2,973 rows all Congress 119, and truthful unavailable-history wording. Commit 919258e7 records single/multiple/empty fixtures and the rejected old-note plant. The default local MCP still selected e4538f00; its target-installation refresh/readback remains explicitly open in ct-m104. Historical roster integration stays ct-8cno. This closes the delivered metadata correction, not every installation's upgrade. Evidence: docs/releases/2026-11-05-e145d24c389e.md; .cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-acceptance/mcp.json. Immutable manifest SHA256 35fd84a6e39dc84748e3e5589c00969786d005d4c60dad5d426b0acc1376f96f.

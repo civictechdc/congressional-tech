@@ -1,6 +1,6 @@
 ---
 id: ct-f9hw
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-02T11:10:10Z
@@ -10,16 +10,14 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [raw, privacy, receipts, phase2]
 ---
-# Public raw receipts carry absolute local filesystem paths
+# Refuse local paths when a frozen receipt resumes
 
-plan-e1-captures census 2026-11-02: file_references[].original_path holds 279,549 absolute local /Users/... values (415,134 relative, 46,365 missing) in receipts served from the public origin. Receipts are immutable, so existing lines stay. Cause: importers recorded their local path instead of a path relative to the retained root. Measure: .cache/rounds/r1b/e1/measure/.
+Frozen capture and recovery-import retries now verify the checkpoint and apply the same local-path check as fresh writes before upload or lost-acknowledgment reconciliation. The capture projection retains relative paths only. The owner’s November 2 and 4 exception keeps published historical receipts as written.
 
 ## Acceptance Criteria
 
-- Every receipt writer emits relative paths only, refused at write by a test (impl-e1, r1b-e1).
-- The data model states whether original_path is public and in which form; captures.original_path keeps relative values only.
-- The owner decides whether existing public receipts need a superseding redaction record or stay as written; the decision is recorded.
-
+- Prove that resuming a pre-guard receipt with an absolute `recovery_evidence.acquisition.body_path` refuses before creating a public receipt. An already-qualified safe retry remains idempotent.
+- Keep the existing fresh-writer guard, relative-path capture projection and documentation. Old published receipts remain as written under the owner’s November 2 and 4 decisions.
 
 ## Notes
 
@@ -30,3 +28,11 @@ Owner decision 2026-11-02: leave existing receipts as written. Exposure is the u
 **2026-11-04T12:46:09Z**
 
 Owner decision 2026-11-04: keep older receipts as written; data model §5.2 and invariant 3 are reworded to bind new receipt lines only.
+
+**2026-11-05T17:11:15Z**
+
+Closure review 2026-11-05: keep open for a reachable frozen-receipt resume gap. Fresh ReceiptWriter.write paths use the guard, capture projection drops local paths, and pipeline-data constructs URL-only records. The maintained recovery-import CLI can resume a pre-guard frozen checkpoint: ReceiptWriter.write:89–96 bypasses the guard and _apply_frozen:218–235 verifies checkpoint/body identity then uploads without the path rule. Earlier reconcile._write_import could carry recovered_filename into acquisition.body_path. No actual leaking checkpoint is established. Before closure, prove a frozen retry containing an absolute acquisition.body_path refuses before creating a public receipt, while safe retry remains idempotent. Existing published receipts retain the historical exception. Evidence: retention/receipt_writer.py, corpus_recovery/reconcile.py:281–343, test_pipeline_raw.py:197–207.
+
+**2026-11-05T21:20:33Z**
+
+Closed on source merge `0d2c8420` (`95738db4`). The planted absolute `recovery_evidence.acquisition.body_path` reached the upload path on the base in both checkpoint forms. The focused tests now prove refusal before any adapter call. The safe lost-acknowledgment cases preserve the original key and compressed bytes for both the pinned and gzip-only forms. The maintained recovery importer also passed its partial-failure retry check. Blind GPT-6.1 Sol/xhigh review accepted the guard. The expanded run passed 221 checks across eight selected files in the 491-file production-offline lane. The owner’s historical receipt exception remains in effect. [Base reproduction](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/receipts/privacy-before.log) · [Focused run](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/receipts/final-tests.log) · [Review handoff](../.cache/archive-release/implementation/production-mvp-round3-20261105T205727Z/receipts/STATUS.md)

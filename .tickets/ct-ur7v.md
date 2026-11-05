@@ -1,6 +1,6 @@
 ---
 id: ct-ur7v
-status: open
+status: closed
 deps: []
 links: [ct-mi03, ct-ur2y, ct-nloa, ct-xu1o, ct-8ax6, ct-pgxn, ct-r60e, ct-qkvr, ct-d8cf]
 created: 2026-10-21T14:41:26Z
@@ -37,3 +37,7 @@ Implemented in `b28cc9b7`: created `packages/news_lake/src/news_lake/cli.py` (`p
 - Problem: No material finding.
 - Status: Reopened: revisit under engine-first rule. It kept `analysis/views.py` as a Python oracle that re-implements the engine views. WS8 (ct-d8cf) replaces it with direct contract assertions unless the owner keeps it test-only (plan open question 6).
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-11-05T17:11:18Z**
+
+Closed as superseded on 2026-11-05. Remaining scope, acceptance and evidence are explicitly transferred to ct-d8cf. This is consolidation, not a claim that unfinished implementation or publication has passed. Original criteria and historical notes remain here. See the surviving owner and the reviewed consolidation report under .cache/archive-release/investigations/open-ticket-clusters-20261105T161237Z/consolidation-review/REPORT.md.

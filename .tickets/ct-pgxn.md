@@ -1,6 +1,6 @@
 ---
 id: ct-pgxn
-status: open
+status: closed
 deps: []
 links: [ct-nloa, ct-xu1o, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v, ct-d8cf]
 created: 2026-10-21T15:27:19Z
@@ -103,3 +103,7 @@ While per-poll scan latency is solved by `ct-xu1o`, `disk_kib` grew super-linear
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:13
 - Status: Reopened. Unmet: "per table"; the items upsert, mentions and bytes read were never measured, and the run had compaction off. Owner: WS8 fix 2 (ct-d8cf), which measures `['id']` lookups with compaction on.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-11-05T17:11:18Z**
+
+Closed as superseded on 2026-11-05. Remaining scope, acceptance and evidence are explicitly transferred to ct-xu1o. This is consolidation, not a claim that unfinished implementation or publication has passed. Original criteria and historical notes remain here. See the surviving owner and the reviewed consolidation report under .cache/archive-release/investigations/open-ticket-clusters-20261105T161237Z/consolidation-review/REPORT.md.

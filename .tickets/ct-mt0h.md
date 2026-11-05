@@ -1,8 +1,8 @@
 ---
 id: ct-mt0h
-status: open
+status: closed
 deps: []
-links: []
+links: [ct-r4rd]
 created: 2026-10-31T13:51:46Z
 type: feature
 priority: 1
@@ -28,3 +28,7 @@ Owner decision 2026-11-01: detail.parquet becomes the keyed document table by ad
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge. Open: detail size after rebuild; SpicyEngine retirement not verified.
+
+**2026-11-05T17:11:18Z**
+
+Archive-side delivery complete in e145d24c389e. Installed MCP stdio readback against the verified public selection confirms detail.parquet contains link_key and every list column: 356,735 rows in 26,880,700 bytes. Direct detail-only SQL returned key a1e328fa668b0649 with title and committee/Congress facets. meetings.parquet exposes congress. Matched SpicyRegs value parity stays with ct-r4rd. Remaining SpicyEngine adoption of this one keyed table and retirement of the row-aligned adapter/tests is explicitly transferred to the existing open spicy-stack ss-7ih1, which receives the release proof. This closure does not claim downstream indexing or adapter retirement has happened. Evidence: docs/engine-first-data-model.md §8.1 and the e145 publication-approved live manifest/readback.

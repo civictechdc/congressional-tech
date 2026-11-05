@@ -1,8 +1,8 @@
 ---
 id: ct-98sm
-status: open
+status: closed
 deps: [ct-7uit, ct-5kto]
-links: [ct-v967, ct-csyg, ct-gi01, ct-6rnk, ct-77zb, ct-8kl2]
+links: [ct-v967, ct-csyg, ct-gi01, ct-6rnk, ct-77zb, ct-8kl2, ct-1l1h, ct-4jms, ct-d8cf]
 created: 2026-10-24T18:15:53Z
 type: epic
 priority: 1
@@ -55,3 +55,7 @@ All Archive/Explorer/Engine-First workstreams (WS1-WS7, WS9-WS12) and F5 18-grou
 **2026-10-30T21:20:21Z**
 
 The accepted blind-review correctness work is part of the active Explorer migration: ct-sh4j, ct-30fp, reopened ct-yymr / ct-kw9b and existing ct-vpo2. PHASE-2 §4.7 records dependencies and acceptance. No generic engine redesign or reopening of deferred lifecycle work is implied.
+
+**2026-11-05T17:11:17Z**
+
+Closed as superseded after assigning active Phase 2 work to ct-77zb and its producer/reader/switch/retirement owners, raw locks to ct-1l1h, and scheduled capture plus first-run raw checks to ct-4jms. ct-7uit's remaining migration is ct-gi01. ct-d8cf is independent parked News Lake work, not a new Phase 2 gate. Preserve ct-q2ht Step 0; ct-qqk2 pointer/journal retirement; ct-70kc revision/lockfile proof; cefr-81oe exclusion-hook removal; ct-t906 custom-domain/r2.dev policy; ss-oxg1 engine ownership and phase resume policy. No unfinished raw check is marked passed by this closure.

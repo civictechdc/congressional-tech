@@ -24,14 +24,23 @@ Three Wayback-unwrapping cases resolve a different saved body in the same versio
 
 ## Design
 
-Owner: published lookup inputs/aliases and the reader consuming them. Add narrow supported aliases or a fallback relation while retaining existing fixed keys and exact-match behavior. Start with percent-triplet case and literal-space serialization; do not apply the complete WHATWG serializer, decode reserved separators, or replace public keys with capture normalization.
+Owner: published lookup inputs/aliases and the reader consuming them. Add narrow supported aliases or a fallback relation while retaining existing fixed keys and exact-match behavior. Start with percent-triplet case and literal-space serialization. Keep the exact-key result set authoritative and consult aliases only after an exact miss. Use a separate fallback relation or namespace so alias collisions do not weaken the existing exact-key checks. Do not apply the complete WHATWG serializer, decode reserved separators, or replace public keys with capture normalization.
 
 Qualify host-specific download repairs, query stripping, whitespace changes and archive expansion separately. An observed repair rule is not by itself proof of a same-document association. Use admitted good-fetch/recovery relationships when needed. Reuse retained metadata; body acquisition is not required for serialization aliases.
 
 ## Acceptance Criteria
 
 - The 21 retained literal-space-to-%20 cases and all 1,005 failing percent-triplet-case cases find their expected document through the implemented public lookup path. Preserve all pre-existing exact lookup keys and their expected document/edition membership; identify any intentionally added result separately from exact matches.
+- Include a two-edition control where supported alias spellings converge but the exact URLs identify different saved rows. Exact lookup must preserve its original result set, and fallback must retain every admitted edition rather than choose or merge one.
 - Keep escaped reserved characters, path case, dot segments and meaningful query values distinct with positive and negative controls. Producer and actual reader use the same alias semantics. No document/body/link identity changes or row merges arise solely from lookup aliases.
 - Give every retained repaired-download, stripped-query, trailing-space and Wayback variant case a supported disposition: admitted alias with evidence, separate edition, or unsupported/no association with reason. Implement documented rules for the admitted subset; do not report all generated probes as broken URLs or missing documents. Preserve original spelling and supporting association evidence.
 - For the three retained Wayback pairs, exact timestamped lookup still selects its intended archived representation; any broader fallback preserves every supported edition and its source/time distinction. No bare address silently replaces or merges the historical body.
 - Extend the maintained exact-source lookup/release checks with these alias and negative controls. Verify candidate bytes with the actual reader function, then representative deployed site journeys and MCP access to the same selected lookup index. Record counts as source-occurrence/variant cases, not document gains, and measure index size and lookup cost before/after.
+
+[Final root-cause review](../docs/plans/production-mvp-root-causes-round4-20261105.md).
+
+## Notes
+
+**2026-11-05T20:56:46Z**
+
+Final root-cause review: preserve the exact-key result set, use aliases only after an exact miss, and add a two-edition collision control. No document identity merges.

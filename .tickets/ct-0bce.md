@@ -1,6 +1,6 @@
 ---
 id: ct-0bce
-status: open
+status: closed
 deps: []
 links: [ct-d8cf, ct-r6xw]
 created: 2026-10-22T17:45:12Z
@@ -50,3 +50,7 @@ Subagent Self-Review Additions (Corpus, Viewer & News Lake Auditor):
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:83
 - Status: Reopened. Unmet: AC2, one release state machine (`releases.py`/`coordinator.py` still dispatch by `hasattr`); WS8 (ct-d8cf) deletes the PyIceberg backend, the dispatch and the `docspec_backend.py` shim. AC1 (retire the `chained=False` and `two_stage_syndication=False` branches and the ignored `native_upsert_merge` flag) is not a named plan step; WS8 should remove them with the backend.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-11-05T17:11:17Z**
+
+Closed as superseded on 2026-11-05. Remaining scope, acceptance and evidence are explicitly transferred to ct-d8cf. This is consolidation, not a claim that unfinished implementation or publication has passed. Original criteria and historical notes remain here. See the surviving owner and the reviewed consolidation report under .cache/archive-release/investigations/open-ticket-clusters-20261105T161237Z/consolidation-review/REPORT.md.

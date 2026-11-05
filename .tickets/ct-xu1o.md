@@ -1,7 +1,7 @@
 ---
 id: ct-xu1o
 status: open
-deps: [ct-pgxn]
+deps: []
 links: [ct-nloa, ct-pgxn, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v, ct-a3le, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-d8cf]
 created: 2026-10-21T15:27:19Z
 type: task
@@ -9,34 +9,27 @@ priority: 1
 assignee: mikewolfd
 tags: [news_lake, docspec, scale]
 ---
-# Key native news appends by an input-derived time column so polls skip old files
 
-Append tables (versions, mentions, discoveries, classifications, identity_decisions, runs, stories, story_members) keep deterministic uuid5 ids by design: replays and duplicate appends must be no-ops (ct-qkvr). Hashed ids give every retained file a near-total key range, so each poll's append check key-decodes the whole table. docspec-rs point pruning (spicy-stack ss-6cz9) already prunes per key column: adding a time column that clusters by poll to the Update keys lets every older file be skipped, with no id change and no engine change.
+# Keep news appends replay-safe as the archive grows
 
-## Design
+**Parked News Lake work.** The append path prunes by an incoming timestamp, then probes logical IDs only if that process has seen them before. A fresh process can therefore miss an existing deterministic ID with a changed timestamp. The engine matches the complete time-and-ID tuple, not ID-only uniqueness. A retained October 24 probe reproduced the collision on its older runtime; current source still contains the mechanism. The existing test warms the relevant cache before its changed-timestamp case.
 
-In DocSpecLake._commit_append, pass keys=[<time column>, 'id'] instead of ['id']. The contract logical key stays ['id']; only the physical Update key changes. Choose the time column per table from input-derived values that a replay reproduces exactly (for example the capture's fetched_at or the producing run's pinned started_at), never wall-clock time at commit or replay. Tables without such a column keep ['id'] and are listed. Keep the existing conflicting-reuse refusal; it must still see the prior row because a replayed id carries the same time value.
+A producer can trigger the mismatch: `build_run` derives its ID from processor, configuration and inputs while defaulting timestamps to the current clock. Replaying one execution must reuse its recorded values; an intentional new observation must remain a separate operation. Preserve honest timestamps, deterministic logical IDs and UUIDv7 capture IDs.
+
+## Smallest useful change
+
+Bind a maintained batched logical-ID check to the exact write base for every unresolved time lookup, or use ID-only lookup for kinds whose time cannot be reproduced safely. Refuse conflicting or multiply stored IDs rather than collapsing them into a dictionary. Keep time pruning where its measured benefit survives the durable identity check.
+
+Retained `output/news-poll-scale-20261021/` measurements cover a synthetic versions table. They demonstrate a mechanism, not complete poll cost. Correct replay comes before choosing the faster physical key. `ct-d8cf` owns writer recovery and the shared chronological comparison.
 
 ## Acceptance Criteria
 
-- Per table: the chosen column, why a replay reproduces it, or why the table keeps ['id'].
-- Replay test: re-running the same poll after a crash or a fresh process is a no-op (no duplicate rows, no new version), and reusing an id with different content is still refused.
-- Using the linked measurement fixture: files_scanned for the fixed poll stays flat between 1x and 10x retained archives on converted tables (report numbers).
-- Contract and semantics tests pass; stored ids are unchanged.
+- Document each append table's logical ID, physical key and replay-time source. Keep input-derived time pruning where unchanged replay reproduces that value; otherwise use a safe ID path. Preserve UUIDv7 capture behavior and use an exactly representable chronological value for time pruning.
+- As the first operation in a separate fresh process, submit an existing ID with a changed timestamp and conflicting values. Refuse it with stored rows and the selected native pin unchanged. Detect pre-existing duplicate logical IDs explicitly. Separately prove unchanged journaled poll replay after crash or restart is a no-op, with no additional row or version; do not warm the cache before the conflict case.
+- Compare ID-only lookup and the correct candidate using one fixed, production-shaped poll at 1× and 10× history, the 720-poll pilot tier, and a feasible larger measured point toward the 8,760-poll horizon. Reuse the release-build harness. Include items, versions and mentions at the retained modeled volumes of 2,000, 2,000 and 10,000 per poll, and report other affected phases. Label extrapolations.
+- Use equivalent compaction settings. Measure application lookups and native writes together: files scanned/reused, actual bytes read/written, elapsed time, peak memory, retained file counts/sizes, lifecycle metadata and workspace disk. Record truncation and remaining history-dependent costs. Treat the old roughly 55 GiB free-disk figure as historical; remeasure and admit the experiment against current capacity. Use the results to decide whether items or entities need `ss-wie5`; preserve the original measurement and review evidence.
 
-## Realistic scale (required, added 2026-10-21)
-
-Fixture-sized runs (a few files, tens of rows) prove correctness only; they are not evidence of cost. Qualify at these tiers, stated as assumptions until the pilot measures real volume (docs/packet.md I5: "scale according to measured gaps"):
-
-| Tier | Polls (hourly) | Items/poll | Versions/poll | Mentions/poll | Retained files/table (no compaction) |
-|---|---|---|---|---|---|
-| T1 pilot month | 720 | 2,000 | 2,000 | 10,000 | ~720 |
-| T2 one year | 8,760 | 2,000 | 2,000 | 10,000 | ~8,760 |
-
-- Keys match production shape: uuid5 over the real name templates (context.named_id), not sequential integers.
-- Measure at T1 plus at least one larger point toward T2 (for example 2,160 polls = 90 days), and report whether cost per poll is flat or grows with retained size. Extrapolate to T2 from at least two measured points; never from one.
-- Record wall time per poll, files_scanned, bytes read, peak RSS, lifecycle metadata bytes and disk used. Use a release build.
-- Local constraint: about 55 GiB of free disk. Bodies may be truncated to a fixed realistic length (C5 metadata_only records are valid); state the truncation and that key-probe cost depends on key columns and file count, not body size.
+[Final root-cause review](../docs/plans/production-mvp-root-causes-round4-20261105.md).
 
 ## Notes
 
@@ -80,3 +73,17 @@ Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): DocSpecLa
 **2026-10-24T18:47:54Z**
 
 Re-scoped by the efficiency pass: keep time-keyed appends, but derive the time column from the input record, not the run clock. Refuse id reuse durably across processes (ss-jxvn, or a key probe on a miss). Add a fresh-process duplicate test that doesn't depend on step order.
+
+**2026-11-05T17:11:15Z**
+
+Consolidation accepted 2026-11-05: absorb ct-pgxn.
+
+User outcome: Correct, measurable incremental news appends.
+
+Remaining acceptance: Fresh-process changed-timestamp replay and conflicting-ID refusal before performance; baseline and candidate per-table files/bytes/time/memory; realistic histories; items and mentions coverage; compaction and file-growth measurements.
+
+Source evidence and full original criteria remain in: .tickets/ct-xu1o.md:20; .tickets/ct-pgxn.md; packages/news_lake/src/news_lake/storage/docspec/lake.py:320. The superseded records remain available; completed work is reused and unfinished criteria stay with this owner.
+
+**2026-11-05T20:56:46Z**
+
+Final root-cause review: make the first fresh-process conflict check decisive, retain execution timestamps on replay, and measure complete append cost only after correctness. Prior runtime and disk measurements remain historical evidence.

@@ -1,8 +1,8 @@
 ---
 id: ct-a1aa
-status: open
+status: closed
 deps: [ct-owh2]
-links: [ct-d8cf]
+links: [ct-d8cf, ct-4nyy, ct-5yof]
 created: 2026-10-20T16:50:54Z
 type: epic
 priority: 1
@@ -55,3 +55,7 @@ Implemented all 4 final architectural recommendations (293 passed).
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:49
 - Status: Reopened, because its child ct-5yof is reopened under the engine-first rule; it closes when that does. Its crash-recovery criterion holds only on the PyIceberg oracle; WS8 (ct-d8cf) ports those tests to DocSpecLake.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-11-05T17:11:17Z**
+
+Closed as superseded after transferring all remaining acceptance: native crash/release validation to ct-d8cf, rights/expiry to ct-4nyy, and classifier adoption to ct-5yof. ct-d8cf retains mid-upsert and in-flight publish convergence, finite-value and decision/input DAG checks, unique checkpoint connectors, credential redaction, accurate documentation, and the ct-r33r failed-capture/metadata-only case. This closure does not claim those residual checks have passed.

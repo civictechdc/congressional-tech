@@ -45,3 +45,9 @@ Check existing source windows, exact detail receipts, held bodies and producer e
 **2026-11-02T00:36:42Z**
 
 Live on generation fbf53579: House missing 117688; Senate missing 335202, 335760, 335780, 337725, 338764, 338786. All 7 are absent from meetings.parquet on 448651e7. New on generation 37a6ebd4: 119588, scheduled for 2026-11-13. The zero-missing criterion also needs spicy-regs to move its bound and the NULL URL defect fixed.
+
+**2026-11-05T21:34:21Z**
+
+For archive `e145d24c389e` and SpicyRegs `37a6ebd4`, independent reviewer `/root/coverage_acceptance` confirmed the staged publisher details for `117688`, `335202`, `335760`, `335780` and `337725`. `338764` returned 404 and has committee postponement evidence. `338786` returned 404 and has witness-withdrawal evidence, with event cancellation unresolved. `119588` lies after the pinned archive's observed window. The comparator's nullable URL control passed among five focused SpicyRegs tests. [Per-event evidence](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/coverage-ledger.json) · [Independent acceptance](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/independent-acceptance.md)
+
+The source and acceptance branches are integrated locally through `eb7bd6a7` and `e6dd3be3`, with archived tips and pruned Congressional-tech worktrees. Remaining acceptance is readback of the five event IDs in the qualified and published `meetings.parquet`, with the three source dispositions accounted for against the exact release and generation. [Integration handoff](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/HANDOFF.md)

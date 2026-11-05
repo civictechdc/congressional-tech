@@ -1,8 +1,8 @@
 ---
 id: ct-8kl2
-status: open
+status: closed
 deps: [ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-gi01, ct-a3le]
-links: [ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-uov2, ct-77zb, ct-98sm]
+links: [ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-uov2, ct-77zb, ct-98sm, cef-96wc, ct-5kto, ct-d8cf]
 created: 2026-10-21T20:52:42Z
 type: epic
 priority: 1
@@ -54,3 +54,7 @@ All Archive, Catalog, R2, and Committee Explorer children (ct-te1p, ct-2yl5, ct-
 **2026-10-30T21:20:21Z**
 
 Shared-model completion now includes the accepted correctness cases in PHASE-2 §4.7, owned by ct-sh4j, ct-30fp, ct-yymr, ct-kw9b and ct-vpo2. Existing architecture/engine convergence evidence remains valid within its original scope; it does not establish observation preservation or complete selected-version publication.
+
+**2026-11-05T17:11:17Z**
+
+Closed as superseded by ct-77zb coordination, ct-gi01 native inputs and preservation, cef-96wc live switch/rollback, ct-5kto retirement, and the named parked News Lake owners. ct-a3le retains the diagnostic research import and scoped import/hash check as standalone work. Preserve ct-te1p worker-retirement and storage-only logical body_key evidence, maintained release value/cause and link-continuity checks, and G01/G02 retirement evidence. Historical 1.68M/1.24M counts constrain their storage-only transition, not future changing release populations. No new live acceptance is claimed.

@@ -132,3 +132,9 @@ User outcome: One owner for the remaining Explorer producer migration.
 Remaining acceptance: Completed archive/catalog and G01/G02 evidence; full retained-field inventory; row dispositions; actual native job bindings; measured comparison. Repoint umbrella dependencies to ct-gi01.
 
 Source evidence and full original criteria remain in: .tickets/ct-7uit.md:26; .tickets/ct-gi01.md:46; docs/plans/phase-2-annex-20261028.md:481. The superseded records remain available; completed work is reused and unfinished criteria stay with this owner.
+
+**2026-11-05T21:33:58Z**
+
+`373ebb96` adds opt-in video refresh through the existing daily producer. Fresh independent acceptance on `dd9a6f82` verified the default path, a native append, reuse of the same pin on an unchanged run, and the HTML and video pin handoffs in fresh and resumed publication. The Gate 1 link-attribution correction `9c3ee247` merged at `5aa78701` and passed its independent planted case. The merged nightly implementation and acceptance worktrees and branches were pruned with their exact tips archived. [Independent acceptance](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/nightly-freshness/REVIEW.md)
+
+Keep open for activation of qualified video, committee and playlist targets, generation and import of qualified recording decisions, and the broader Explorer migration. Production acceptance still needs exact refreshed native bindings, retained-field and row accounting, measured comparison with frozen legacy inputs, and delivery of the common release to both readers.

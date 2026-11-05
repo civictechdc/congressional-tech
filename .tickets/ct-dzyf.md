@@ -1,6 +1,6 @@
 ---
 id: ct-dzyf
-status: open
+status: closed
 deps: []
 links: [ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-d8cf]
 created: 2026-10-21T15:21:26Z
@@ -38,3 +38,7 @@ Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): Coordinat
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:31
 - Status: Reopened: revisit under engine-first rule. The rollback diff reads both tables fully into Python; the engine's `/changes` between the two pins returns the same bounded delta. Owner: WS8 (ct-d8cf).
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-11-05T17:11:17Z**
+
+Closed as superseded on 2026-11-05. Remaining scope, acceptance and evidence are explicitly transferred to ct-d8cf. This is consolidation, not a claim that unfinished implementation or publication has passed. Original criteria and historical notes remain here. See the surviving owner and the reviewed consolidation report under .cache/archive-release/investigations/open-ticket-clusters-20261105T161237Z/consolidation-review/REPORT.md.
