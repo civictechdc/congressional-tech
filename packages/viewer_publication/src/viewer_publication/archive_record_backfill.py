@@ -5,7 +5,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records, meeting_records
+from congress_api.lake import appearance_records, committee_records, meeting_records, playlist_records
 from congress_api.lake._record_producer import _candidate_rel_paths
 from congress_api.retention.body_store import BodyStore, LocalAdapter
 from congress_api.retention.provenance import file_pin
@@ -17,6 +17,7 @@ from viewer_publication.producer_proof import BACKFILL, ROOT, record
 
 FILE = {'path', 'size', 'sha256'}
 RECORD_TABLES = {'meeting_records', 'appearance_records'}
+CAPTURE_PRODUCERS = {'committee_records': committee_records, 'playlist_records': playlist_records}
 MEETING_PRIOR = {
     'congress_gov': 'ecc51fcdb572b426da01a9135b467bf3f9a85e91d268ff895a56e2dda5ef716e',
     'house_xml': '8a2417a2c876b2cd3f202ed92dfbc48bca580f7fa2848d6644310771484617c8',
@@ -32,9 +33,9 @@ def load_record_only(value, *, base):
         raise ValueError('Record-only backfill requires version 1, work and a local engine config')
     job = value['record_only']
     fields = {'base_model', 'bases', 'raw_root', 'raw_mirror', 'max_work_items'}
-    if not isinstance(job, dict) or not fields <= job.keys() or job.keys() - fields - {'meeting_selection'}:
+    if not isinstance(job, dict) or not fields <= job.keys() or job.keys() - fields - {'meeting_selection', 'capture_inputs'}:
         raise ValueError('Record-only backfill requires pinned bases, raw locations and a work limit')
-    if not isinstance(job['bases'], dict) or not job['bases'] or job['bases'].keys() - RECORD_TABLES:
+    if not isinstance(job['bases'], dict) or job['bases'].keys() - RECORD_TABLES:
         raise ValueError('Record-only backfill bases must name meeting_records or appearance_records')
     if ('meeting_records' in job['bases']) != ('meeting_selection' in job):
         raise ValueError('Meeting backfill requires its exact source selection')
@@ -45,9 +46,19 @@ def load_record_only(value, *, base):
         _pin(pin, FILE)
         return dict(pin, path=_local(pin['path'], base))
 
+    captures = job.get('capture_inputs', {})
+    if not isinstance(captures, dict) or captures.keys() - CAPTURE_PRODUCERS.keys():
+        raise ValueError('Record-only capture inputs must name committee_records or playlist_records')
+    if not captures and not job['bases']:
+        raise ValueError('Record-only backfill requires at least one table')
+    for item in captures.values():
+        if (not isinstance(item, dict) or set(item) != {'capture', 'expected_rows'}
+                or type(item['expected_rows']) is not int or not 0 < item['expected_rows'] <= job['max_work_items']):
+            raise ValueError('A capture input requires a pinned file and a positive bounded expected_rows')
     job = dict(job, base_model=local_pin(job['base_model']),
         bases={name: local_pin(pin) for name, pin in job['bases'].items()},
-        raw_root=_local(job['raw_root'], base), raw_mirror=_local(job['raw_mirror'], base))
+        raw_root=_local(job['raw_root'], base), raw_mirror=_local(job['raw_mirror'], base),
+        capture_inputs={name: dict(item, capture=local_pin(item['capture'])) for name,item in captures.items()})
     if 'meeting_selection' in job:
         job['meeting_selection'] = local_pin(job['meeting_selection'])
     return dict(value, work=_local(value['work'], base), engine_config=_local(value['engine_config'], base), record_only=job)
@@ -150,12 +161,23 @@ def _appearances(base, versions, *, directory, **stage):
     return output, dict(reused_rows=base.num_rows, appended=replay.num_rows)
 
 
+def _from_captures(name, capture, expected, *, engine, work, raw_root, mirror, unreadable, limit):
+    module = CAPTURE_PRODUCERS[name]
+    staged = module.stage(captures=capture, engine=engine, work=work, local_root=raw_root,
+        raw_store=BodyStore(LocalAdapter(mirror)), unreadable_files=unreadable, max_work_items=limit)
+    table = pq.read_table(staged['records'])
+    if staged['unreadable_pending'] or table.num_rows != expected:
+        raise ValueError(f'Record-only {name} capture count changed or unreadable decisions need review')
+    return table, dict(reused_rows=0, appended=table.num_rows)
+
+
 def execute_record_only(spec, *, runtime_factory=None):
     writer = writer_identity(ROOT, BACKFILL)
     job = spec['record_only']
     model_path = _verified(job['base_model'])
     model = json.loads(model_path.read_text())
     bases = {name: _verified(pin) for name, pin in job['bases'].items()}
+    captures = {name: _verified(item['capture']) for name,item in job['capture_inputs'].items()}
     selection = _verified(job['meeting_selection']) if 'meeting_selection' in job else None
     unreadable = [dict(key=item['key'], path=str(_verified(dict(path=_local(item['path'], model_path.parent),
         sha256=item['sha256'], size=item['size'])))) for item in model['unreadable_files']]
@@ -170,17 +192,23 @@ def execute_record_only(spec, *, runtime_factory=None):
         engine.verify_runtime()
         if engine.remote is not None:
             raise ValueError('Record-only backfill requires the local engine and held sources')
-        for name, path in bases.items():
+        for name in (*bases, *captures):
             directory = work / name
             directory.mkdir()
-            base = pq.read_table(path)
-            versions = model['parser_versions'][name]
             stage = dict(engine=engine, work=directory/'replay', raw_root=Path(job['raw_root']),
                 mirror=Path(job['raw_mirror']), unreadable=unreadable, limit=job['max_work_items'])
-            if name == 'meeting_records':
-                rows, counts = _meetings(base, versions, selection, **stage)
+            if name in captures:
+                item = job['capture_inputs'][name]
+                rows, counts = _from_captures(name, captures[name], item['expected_rows'], **stage)
+                lineage = dict(source=item['capture'], scope='selected captures')
             else:
-                rows, counts = _appearances(base, versions, directory=directory, **stage)
+                base = pq.read_table(bases[name])
+                versions = model['parser_versions'][name]
+                if name == 'meeting_records':
+                    rows, counts = _meetings(base, versions, selection, **stage)
+                else:
+                    rows, counts = _appearances(base, versions, directory=directory, **stage)
+                lineage = dict(source=job['bases'][name], base_selector=model[name])
             output = directory / f'{name}.parquet'
             pq.write_table(rows, output, compression='zstd')
             if not pq.read_table(output).equals(rows) or writer_identity(ROOT, BACKFILL) != writer:
@@ -188,8 +216,7 @@ def execute_record_only(spec, *, runtime_factory=None):
             selector = dict(kind='parquet', path=str(output), **file_pin(output))
             producer_path = directory/'producer.json'
             proof = record(producer_path, input=name, selector=selector, job=BACKFILL)
-            proof.update(recorded='with production', source=job['bases'][name], base_selector=model[name],
-                base_model=job['base_model'], **counts)
+            proof.update(recorded='with production', base_model=job['base_model'], **lineage, **counts)
             if name == 'meeting_records':
                 proof['selection'] = job['meeting_selection']
             producer_path.write_text(json.dumps(proof, indent=2, sort_keys=True)+'\n')
