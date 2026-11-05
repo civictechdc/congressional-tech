@@ -114,6 +114,69 @@ def fixture_discover(body,parser):
     return read_page(body,parser)
 
 
+def test_reviewed_house_xml_targets_keep_failed_probes_out_of_record_production(tmp_path):
+    from capture_qualification_helpers import write_qualified_bytes
+    from congress_api.cli.fetch_meetings import run_meeting_fetchers
+    from congress_api.lake import capture_staging, committee_records
+
+    base = "https://docs.house.gov/meetings/RU/RU00/20250521"
+    wrong_url = f"{base}/118455/HMTG-119-RU00-20250521.xml"
+    failed_url = f"{base}/118300/HMKP-119-RU00-20250521.xml"
+    good_url = f"{base}/118300/HMTG-119-RU00-20250521.xml"
+    doc_url = f"{base}/118300/BILLS-119-7-M000312-Amdt-7.pdf"
+    body = (
+        '<committee-meeting meeting-id="HMTG118300" update-date="2025-05-22T20:22:01.820">'
+        '<meeting-documents><meeting-document type="CA"><filename-metadata><amdt-num>7</amdt-num>'
+        f'</filename-metadata><files><file doc-url="{doc_url}"/></files>'
+        '</meeting-document></meeting-documents></committee-meeting>'
+    ).encode()
+    wrong_body = body.replace(b'118300', b'118455')
+    access_wall = b'<html>access denied</html>'
+    xml = {'content-type': 'application/xml'}
+    refused = Adapter({failed_url: (200, wrong_body, xml), good_url: (200, access_wall, {})})
+    accepted = Adapter({good_url: (200, body, xml)})
+    raw = tmp_path / 'raw'
+    options = dict(store=BodyStore(LocalAdapter(raw)), identity=IDENTITY, direct=refused,
+                   resolve=lambda _: ['8.8.8.8'], pace=lambda *_: None)
+    with pytest.raises(ValueError, match='does not identify event 118300'):
+        run_meeting_fetchers(**options, house_xml_targets=[dict(event_id='118300', url=wrong_url)])
+    assert refused.calls == []
+    result = run_meeting_fetchers(**options, provider=accepted, house_xml_targets=[
+        dict(event_id='118300', url=failed_url), dict(event_id='118300', url=good_url)
+    ])
+    assert refused.calls == [failed_url, good_url]
+    assert accepted.calls == [good_url]
+    probes = [probe for item in result['house_xml_targets'] for probe in item['probes']]
+    assert [(p['http_status'], p['outcome'], p['error_type']) for p in probes] == [
+        (200, 'request_failed', 'wrong_event_body'),
+        (200, 'request_failed', 'invalid_meeting_xml'),
+        (200, 'stored', None),
+    ]
+    files = []
+    for key in result['receipt_keys']:
+        source = raw / key
+        qualified = tmp_path / 'receipts' / source.name
+        files.append(dict(key=key, path=str(qualified),
+                          qualification=write_qualified_bytes(qualified, source.read_bytes())))
+    native = engine()
+    capture_path = capture_staging.stage_captures(
+        files, engine=native, work=tmp_path / 'capture-stage'
+    ) / 'captures.parquet'
+    captures = pq.read_table(capture_path).to_pylist()
+    assert {r['sha256'].hex(): r['outcome'] for r in captures} == {
+        hashlib.sha256(wrong_body).hexdigest(): 'request_failed',
+        hashlib.sha256(access_wall).hexdigest(): 'request_failed',
+        hashlib.sha256(body).hexdigest(): 'stored',
+    }
+    staged = committee_records.stage(captures=capture_path, engine=native,
+                                     work=tmp_path / 'records-stage', local_root=raw)
+    [record] = pq.read_table(staged['records']).to_pylist()
+    assert record['event_id'] == '118300'
+    assert [(r['ordinal'], r['number'], r['bill'], r['url']) for r in record['records']] == [
+        (0, '7', None, doc_url)
+    ]
+
+
 def run_fixture(tmp_path,rows,responses,**options):
     from congress_api.acquisition.capture_scheduler import run_capture
     root=release(tmp_path,rows)
