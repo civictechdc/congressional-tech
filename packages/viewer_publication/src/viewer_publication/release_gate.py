@@ -259,18 +259,22 @@ def _receipt_day(key):
     return None
 
 
-def _names_document_attempt(receipt, url, sha):
-    """Accept the explicit fetch shape written by current acquisition."""
+def _raw_document_proof(line):
+    """Read body references and the explicit request from one raw receipt line."""
+    try:
+        receipt = json.loads(line)
+    except ValueError:
+        return set(), None
     if not isinstance(receipt, dict):
-        return False
+        return set(), None
+    entries = receipt.get('captures') or receipt.get('file_references')
+    bodies = {entry['sha256'].lower() for entry in entries
+              if isinstance(entry, dict) and isinstance(entry.get('sha256'), str)} if isinstance(entries, list) else set()
     record = receipt.get('record', {})
-    if not isinstance(record, dict):
-        return False
-    entries = receipt.get('captures')
-    return (receipt.get('mode', record.get('mode')) == 'fetch'
-            and receipt.get('requested_url', record.get('requested_url')) == url
-            and isinstance(entries, list)
-            and any(isinstance(entry, dict) and entry.get('sha256') == sha for entry in entries))
+    url = None
+    if isinstance(record, dict) and receipt.get('mode', record.get('mode')) == 'fetch':
+        url = receipt.get('requested_url', record.get('requested_url'))
+    return bodies, url
 
 
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work):
@@ -343,6 +347,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
         reasons.append(f'automatic causes: {len(untraced)} new document keys have no capture to trace (first {untraced[:3]})')
     held = set(live)
     raw = {}
+    named = {}
     attempts = {url: set() for url in url_additions}
     for row in lines:
         key = row['receipt_key']
@@ -357,16 +362,15 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
                     raw[key] = stream.read().splitlines()
             text = raw[key]
             line = row['receipt_line']
-            if not (isinstance(line, int) and 1 <= line <= len(text) and row['sha'] in text[line - 1]):
+            location = (key, line)
+            if location not in named:
+                named[location] = (_raw_document_proof(text[line - 1]) if
+                                   isinstance(line, int) and 1 <= line <= len(text) else (set(), None))
+            bodies, raw_url = named[location]
+            if row['sha'] not in bodies:
                 reasons.append(f'automatic causes: {key}:{line} does not name body {row["sha"][:12]} in raw')
-            elif row.get('requested_url') in attempts:
-                url = row['requested_url']
-                try:
-                    receipt = json.loads(text[line - 1])
-                except ValueError:
-                    continue
-                if _names_document_attempt(receipt, url, row['sha']):
-                    attempts[url].add((key, line))
+            elif (url := row.get('requested_url')) in attempts and url == raw_url:
+                attempts[url].add(location)
     for url, count in url_additions.items():
         if len(attempts[url]) != count:
             reasons.append(f'automatic causes: {url} has {count} attempts but {len(attempts[url])} fresh raw lines naming the new document and its request URL')

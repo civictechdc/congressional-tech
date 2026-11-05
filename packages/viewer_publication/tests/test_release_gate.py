@@ -315,6 +315,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
                             http_status=200, retrieved_at=FETCHED.isoformat(), content=dict(sha256=sha)),
                 captures=[dict(pointer=['content', 'body'], sha256=sha,
                                body_key=f'bodies/sha256/{sha[:2]}/{sha}.gz', bytes=4721, media_type='application/pdf')])
+    if len(bodies)>1:
+        line['notes'] = [b.hex() for b in list(bodies.values())[1:]]
     if not nested:
         line.update(line.pop('record'))
     unrelated = dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[])
@@ -411,3 +413,11 @@ def test_no_dated_live_receipt_refuses(tmp_path):
     with pytest.raises(ValueError, match='no recorded cause'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert 'no dated receipt' in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'][0]
+
+
+def test_a_second_document_hash_in_raw_notes_does_not_ride_an_eligible_attempt(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N', 'X'])
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
+    assert len(reasons) == 1 and 'does not name body' in reasons[0]
