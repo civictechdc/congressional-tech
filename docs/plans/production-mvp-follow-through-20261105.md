@@ -4,16 +4,19 @@ The release coordinator owns the actions below. Sessions hand back reviewed comm
 
 Completed first-wave source is merged into local `main` at `18049548`. This includes the site cutover, MCP 0.6.2 preparation, source-preserving date and witness repairs, document descriptions, nomination activities, recording associations, caption handling and bounded recovery fixes. The merge preserves the existing ticket and plan edits. Its source files match the verified integration tree.
 
+The reviewed House XML acquisition slice `81053718` is merged at `34406841`. It accepts a bounded list of exact event URLs, checks the returned XML event, and keeps failed or wrong-event attempts as failures. Both retained publisher captures passed independent identity checks. It changes no parser or schema, so the completed first-wave stages remain reusable.
+
 **Hold:** merge completed work as it becomes ready. Wait for every implementation wave to finish before the full archive build, shared catalog changes and publication. The scheduled publisher remains disabled. Pushing `main` would deploy Pages, so the push also waits for release readiness.
 
 ## Coordinator actions
 
 | Action | Current state and completion check |
 | --- | --- |
-| Merge each reviewed slice | First wave merged. Second-wave HTML, source coverage and nightly recovery remain with their implementation sessions until reviewed. Merge completed slices without waiting for unrelated unfinished work. Preserve producing commits in ancestry. |
+| Merge each reviewed slice | First wave and the bounded House acquisition slice are merged. Remaining HTML, coverage and nightly recovery work stays with its sessions until reviewed. Merge completed slices without waiting for unrelated unfinished work. Preserve producing commits in ancestry. |
 | Reconcile final source and data dependencies | At the joint freeze, compare final parser versions, schemas, source inputs and reference generation with the retained stages. HTML work may change readings and bundle versions; reconcile missing parser pairs and unreadable decisions. Add any new coverage receipts or record keys explicitly. Reuse unchanged stages. |
 | Load the verified meeting, witness and caption results | Prepared native import plan covers 42,551 meeting rows, 129,448 versioned appearance rows and 4,361 playlists. All 84,610 prior appearance rows survive verbatim; 44,838 new rows are complete. Check each import against its actual staged source in both directions and select its acknowledged native table. No import has run. |
 | Add the Rules records without losing existing data | The prepared daily append retains the existing 6,186 committee parents and adds one parent with 31 children. It keeps both the successful meeting request and failed witness request. It needs one new body and raises the receipt set from 24,329 to 24,331 before other waves add inputs. Refresh starting heads and provenance under the writer lock. No append has run. |
+| Admit reviewed coverage additions | House events 117955 and 118261 have verified local captures. The coverage session is qualifying six Congress.gov detail successes and retaining two 404 results separately. After that handoff, add only the exact accepted inputs and check each event's nested attachments in the final candidate. Reuse held bytes. No shared catalog admission has run. |
 | Build and validate one combined archive | Recheck current disk and memory, then use the maintained publisher and its genuine checkpoint/resume path. Run all six model invariant suites, compare with the selected archive, and explain actual changes. The full build has not started. |
 | Check user journeys against that exact candidate | Site and installed MCP must agree on the repaired witnesses and roles, dates, bill identity, document descriptions, nomination activities, recording scope, captions and Rules documents. Check the old Farmer/Reese hearing keys after their records move to package context, Scott's real historical key versus the discarded fragment, and Allen's two roles. Preserve useful pages when optional data fails. Reuse unchanged focused checks; record candidate and live results separately. |
 | Publish the archive, MCP and site in order | Publish and verify the accepted archive. Bind the hosted service to it, regenerate configuration and check the final Linux amd64 image and saved-PDF path. Publish MCP 0.6.2 assets before pushing the site links that advertise them. Deploy and verify the live site and MCP against the same archive. |
@@ -28,6 +31,8 @@ Completed first-wave source is merged into local `main` at `18049548`. This incl
 - `ct-680z`: the MCP PDF dependency fix is prepared; broader shipped-dependency triage and hard interruption of stalled decoding remain unfinished.
 - `ct-x78c`: the two source-listed W. Ron Allen roles are preserved locally. The full legacy occurrence accounting and selected-release reader checks remain due.
 - `ct-5kto`: writer retirement remains separate. Legacy bookmark translation still uses the small event map produced by historical staging; preserve it before removing that staging.
+- `ct-k2ij`: 49 held House XML bodies have useful committee records but come from a legacy receipt without HTTP status, completion or URLs. Their source-admission decision is separate from the new exact captures; do not refetch them or invent successful fetch metadata. The existing three Congress 119 examples contain 115 parsed records.
+- `ct-r4rd` and `ct-8cno`: the upstream meeting comparator and historical roster availability remain with the coverage session until handoff. No accepted historical roster generation has been established.
 
 ## Retained work
 
@@ -42,3 +47,5 @@ Local evidence lives under `.cache/archive-release/implementation/production-mvp
 - `main-merge/after.json`: first-wave merge and preservation of pre-existing local edits.
 
 The shared `.cache/archive-release/implementation/FULL-BUILD-HOLD.json` records the active hold and schedule restoration commands. Second-wave readiness is owned by its coordinator under `production-mvp-round2-20261105T200638Z/` until each slice is handed back here.
+
+The second wave's `reviewed-slices.json` records accepted source slices. `source-coverage/STATUS.md`, `house-probes/result.json` and `meeting-probes/raw/` retain the House capture checks and remaining coverage boundaries.

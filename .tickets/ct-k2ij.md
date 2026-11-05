@@ -37,3 +37,7 @@ Reuse the `ct-717p` one-event trace and independent review in `.cache/archive-re
 **2026-11-04T16:55:20Z**
 
 Reusable completeness check for this work (from the ct-717p independent review, .cache/archive-release/investigations/ct-717p-event-118300-review-20261104.md): match on the event-specific link or body hash, not the document file name (Rules CA names repeat across meetings: Amdt-7 in 7 events, Amdt-1 in 53), emit a pass/fail status, and fail on any bill key derived from an amendment ordinal. The review's plant harness shows the name-only check misses a wrong-event link, a wrong-event body hash and an ordinal-derived bill key.
+
+**2026-11-05T20:29:49Z**
+
+The reviewed bounded House XML capture change is merged into local main at 34406841, retaining source commit 81053718. It checks both the exact target address and returned XML event, and preserves failed or wrong-event responses as failures. Two focused checks passed; independent review verified the captured bodies for events 117955 and 118261. Root now owns their final admission and event-scoped attachment checks. The separate 49-body legacy cohort remains outside admission pending its evidence-based policy decision; reuse its held bytes. No shared catalog write or publication occurred. Full build and publication remain held until all waves are complete.
