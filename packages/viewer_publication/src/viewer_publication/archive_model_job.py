@@ -21,7 +21,7 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # The Explorer tables (ct-gi01): with recording decisions they add meeting_coverage, videos,
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
-OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES)
+OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records')
 OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
@@ -271,7 +271,7 @@ def main(argv=None):
         if spec.get('status')=='blocked':
             print(json.dumps(spec,sort_keys=True));return 2
         result=(execute(spec) if args.execute else dict(status='planned',executed=False,
-            inputs={name:spec[name] for name in TABLES},output=spec['output'],scratch=spec['scratch'],
+            inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},output=spec['output'],scratch=spec['scratch'],
             parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version']))
     except (ValueError,OSError) as error:parser.error(str(error))
     print(json.dumps(result,sort_keys=True));return 0

@@ -35,6 +35,7 @@ from congress_api.parsers.captions import (
     cues,
     merge_rollup,
     parsed_cues,
+    playlist_uris,
 )
 from congress_api.parsers.senate_player import STREAM, parse_player_url, recording_urls
 from congress_api.retention.captions import RECEIPTS, _write_receipt, _write_text, receipt_path
@@ -93,8 +94,7 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
                 playlist_source = get_source(playlist_url, sources=sources)
                 playlist = playlist_source.text if playlist_source.status_code == 200 else ""
                 _require_playlist(playlist, playlist_url)
-                segments = [urljoin(playlist_url, line.strip()) for line in playlist.splitlines()
-                            if line.strip() and not line.strip().startswith("#")]
+                segments = [urljoin(playlist_url, uri) for uri in playlist_uris(playlist)["segments"]]
                 receipt["scope"]["segment_urls"] = segments
                 if not segments:
                     raise IncompleteCaptionsError("Subtitle playlist contains no segments")

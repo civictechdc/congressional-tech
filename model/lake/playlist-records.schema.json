@@ -1,0 +1,14 @@
+{
+  "type": "struct",
+  "schema-id": 0,
+  "identifier-field-ids": [1, 5, 2],
+  "fields": [
+    {"id": 1, "name": "record_sha", "required": true, "type": "fixed[32]"},
+    {"id": 2, "name": "parser_version", "required": true, "type": "string"},
+    {"id": 3, "name": "status", "required": true, "type": "string"},
+    {"id": 4, "name": "error_type", "required": false, "type": "string"},
+    {"id": 5, "name": "source", "required": true, "type": "string"},
+    {"id": 6, "name": "segments", "required": true, "type": {"type": "list", "element-id": 7, "element-required": true, "element": "string"}},
+    {"id": 8, "name": "playlists", "required": true, "type": {"type": "list", "element-id": 9, "element-required": true, "element": "string"}}
+  ]
+}

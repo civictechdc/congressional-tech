@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from tempfile import TemporaryDirectory
 from uuid import UUID
 
+from congress_api.lake.daily import DAILY_CAPTURE_RECORDS
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.derived_files import file_identity,check_identity
 from viewer_publication.archive_model_job import (
@@ -21,7 +22,7 @@ from viewer_publication.archive_comparison_acceptance import ComparisonAcceptanc
 
 ROOT=Path(__file__).resolve().parents[4]
 SITE=ROOT/'apps/site'
-# The five daily tables; the Explorer tables come from the template, not daily production.
+# Base daily pins and the optional meeting/appearance pair.
 ALL_TABLES=(*TABLES,*ENTITY_TABLES)
 FIELDS={'version','model_spec','bucket','work','public_origin','receipt_keys','provenance','run',
         'contract_next_release','targets'}
@@ -44,7 +45,7 @@ def completed_daily_inputs(template,production,records):
     if not isinstance(production,dict) or production.get('status')!='completed':
         raise ValueError('Publication requires completed daily production')
     pins=production.get('pins');keys=production.get('receipt_keys');versions=production.get('currentversions')
-    if (not isinstance(pins,dict) or set(pins) not in (set(TABLES),set(ALL_TABLES))
+    if (not isinstance(pins,dict) or set(pins)-set(DAILY_CAPTURE_RECORDS) not in (set(TABLES),set(ALL_TABLES))
             or not isinstance(keys,list) or any(not isinstance(key,str) for key in keys)
             or keys!=sorted(set(keys)) or not isinstance(versions,dict)
             or not {'parsers','filename_readings'}<=versions.keys()):
@@ -59,13 +60,21 @@ def completed_daily_inputs(template,production,records):
                 raise ValueError(f'Daily publication {entity_name} producer version differs from current source-scoped definitions')
             if entity_name in pins:
                 merged_parsers[entity_name]=dict(ver)
-    # Daily does not produce the Explorer tables; their template pins keep the versions that made them.
+    # Reuse template pins for Explorer tables absent from this daily run.
     for name in EXPLORER_TABLES:
         if template.get(name) is not None and name in (template.get('parser_versions') or {}):
             merged_parsers[name]=dict(template['parser_versions'][name])
+    for name,module in DAILY_CAPTURE_RECORDS.items():
+        if name in pins:
+            version=versions.get(name)
+            if version!=module.current_versions():
+                raise ValueError(f'Daily publication {name} producer version differs from current definitions')
+            merged_parsers[name]=dict(version)
+        elif template.get(name) is not None and name not in merged_parsers:
+            merged_parsers[name]=dict(template['parser_versions'][name])
     receipt_list(keys)
     value=dict(template,parser_versions=merged_parsers,catalog_version=versions['filename_readings'])
-    for name in (*TABLES,*(n for n in ENTITY_TABLES if n in pins)):
+    for name in pins:
         if (not isinstance(pins[name],dict)
                 or set(pins[name])!={'metadata_location','table_uuid','snapshot','schema_id'}):
             raise ValueError('Invalid daily native table pin')

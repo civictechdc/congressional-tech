@@ -327,13 +327,14 @@ def test_the_production_model_job_writes_the_explorer_files(tmp_path):
     # path the publish controller and the selective job use) had no field for their inputs,
     # so only the frozen builder could write them.
     import pyarrow.parquet as pq
-    from congress_api.lake import committee_records, video_records
+    from congress_api.lake import committee_records, playlist_records, video_records
     from congress_api.retention.provenance import file_pin
     from archive_job_fixture import real_model_spec, spicy_pin
     from viewer_publication.archive_model_job import execute, validate_spec
     value, _, _ = real_model_spec(tmp_path, entities=True)
     value['spicy_regs'] = spicy_pin(tmp_path)
-    for name, module in (('video_records', video_records), ('committee_records', committee_records)):
+    for name, module in (('video_records', video_records), ('committee_records', committee_records),
+                         ('playlist_records', playlist_records)):
         path = tmp_path / (name + '.parquet'); pq.write_table(module.table([]), path)
         value[name] = dict(kind='parquet', path=str(path), **file_pin(path))
         value['parser_versions'][name] = module.current_versions()

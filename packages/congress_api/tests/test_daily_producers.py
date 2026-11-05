@@ -476,6 +476,33 @@ def test_native_daily_producer_refreshes_and_pins_all_five_tables(tmp_path):
     assert second['producerreports']['appearance_records']['work_items']==0
 
 
+def test_native_daily_appends_held_playlist_once(tmp_path):
+    from congress_api.lake import playlist_records
+    from congress_api.lake.daily import produce_daily
+
+    payload = b'#EXTM3U\n#EXTINF:8.0,\ntext_1.vtt\n#EXT-X-ENDLIST\n'
+    value, engine, store = native_fixture(tmp_path, payloads=[payload],
+        url_prefix='https://www.senate.gov/streams/ag051023/text_', url_suffix='.m3u8', family='senate/captions')
+    table = dict(namespace=['archive'], name='playlist_records')
+    playlist_records.create_table(engine=engine, work=tmp_path/'create-playlists', catalog_root=value['catalog_root'],
+        table=table, location=tmp_path/'lake-playlists')
+    value['tables']['playlist_records'] = table
+
+    first = produce_daily(value, engine=engine, raw_store=store)
+    assert first['status'] == 'completed'
+    assert first['currentversions']['playlist_records'] == playlist_records.current_versions()
+    records = first['producerreports']['playlist_records']
+    assert records['produced'] == 1 and records['append'] is not None
+    row, = pq.read_table(records['records']).to_pylist()
+    assert row['record_sha'] == hashlib.sha256(payload).digest()
+    assert row['segments'] == ['text_1.vtt']
+
+    second = produce_daily(dict(value, work=str(tmp_path/'second')), engine=engine, raw_store=store)
+    assert second['status'] == 'completed'
+    assert second['pins']['playlist_records'] == first['pins']['playlist_records']
+    assert second['producerreports']['playlist_records']['work_items'] == 0
+
+
 def test_inline_saved_record_and_govinfo_mods_staging_with_anti_join(tmp_path):
     import gzip
     from docspec_client.client import NativeDatasets

@@ -9,7 +9,7 @@ import time
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records,capture_staging,captures,filenames,meeting_records,readings,tables
+from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,readings,tables
 from congress_api.lake.producer_records import DAILY_JOB
 from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStore,copy_receipts,
     discover_receipts,select_receipts)
@@ -25,6 +25,7 @@ ROOT=Path(__file__).resolve().parents[5]
 TABLE_NAMES=('captures','readings','filename_readings')
 OPTIONAL_TABLE_NAMES=('meeting_records','appearance_records')
 ALL_TABLE_NAMES=TABLE_NAMES+OPTIONAL_TABLE_NAMES
+DAILY_CAPTURE_RECORDS={'committee_records':committee_records,'playlist_records':playlist_records}
 PROVENANCE_KINDS=('recoveries','reviews','unreadable')
 QUALIFIED_FIELDS={'key','etag','path','sha256','size'}
 LISTING_SCHEMA=pa.schema([('key',pa.string()),('size',pa.int64()),('etag',pa.string())])
@@ -81,13 +82,13 @@ def _validate(spec,engine,raw_store):
     if spec.get('vocabularies') is not None:
         if not isinstance(spec['vocabularies'],dict):raise ValueError('Daily vocabularies must be an explicit object')
         json.dumps(spec['vocabularies'],allow_nan=False)
-    if (not isinstance(spec['tables'],dict) or set(spec['tables']) not in (set(TABLE_NAMES),set(ALL_TABLE_NAMES))
+    if (not isinstance(spec['tables'],dict) or set(spec['tables'])-set(DAILY_CAPTURE_RECORDS) not in (set(TABLE_NAMES),set(ALL_TABLE_NAMES))
             or any(not isinstance(t,dict) or set(t)!={'namespace','name'}
                 or not isinstance(t['namespace'],list) or not t['namespace']
                 or any(not isinstance(p,str) or not p for p in t['namespace'])
                 or not isinstance(t['name'],str) or not t['name'] for t in spec['tables'].values())
             or len({json.dumps(t,sort_keys=True) for t in spec['tables'].values()})!=len(spec['tables'])):
-        raise ValueError('Daily tables must name three or five distinct explicit targets')
+        raise ValueError('Daily tables must name distinct core or optional record targets')
     if not isinstance(spec['receipt_inventory'],list) or any(not isinstance(r,dict) for r in spec['receipt_inventory']):
         raise ValueError('Daily receipt inventory must contain original receipt metadata')
     families=spec.get('receipt_families')
@@ -590,6 +591,25 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
             acknowledgements[appearances_staged['unreadable_provenance']['key']]=appearances_staged['_unreadable_custody']
         report['producerreports']['appearance_records']=appearances_staged
         versions['appearance_records']=appearances_staged['parser_version']
+    for name,module in DAILY_CAPTURE_RECORDS.items():
+        if name not in spec['tables']:continue
+        head=tables.resolve_tables(**authority,work=work/(name+'-head'),
+            tables={name:spec['tables'][name]})[name]
+        try:
+            staged=module.stage(captures=heads['captures'],existing=head,engine=engine,
+                work=work/name,local_root=spec.get('local_root'),raw_store=raw_store,
+                unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
+                decided_at=spec['decided_at'],unreadable_store=raw_store)
+        except readings.BackfillRequired as error:
+            report.update(status='backfill_required');report['producerreports'][name]=error.as_dict()
+            return report
+        staged['append']=(module.append(staged,**authority,work=work/(name+'-append'),
+            table=spec['tables'][name]) if pq.ParquetFile(staged['records']).metadata.num_rows else None)
+        imports.append(staged['unreadable_provenance'])
+        if staged['unreadable_provenance'] is not None:
+            acknowledgements[staged['unreadable_provenance']['key']]=staged['_unreadable_custody']
+        report['producerreports'][name]=staged
+        versions[name]=staged['parser_version']
     report['provenance']=_final_provenance(provenance,raw_store,imports,identities,
         acknowledgements=acknowledgements,unreadable_snapshot=unreadable_snapshot)
     final=tables.resolve_tables(**authority,work=work/'final-heads',tables=spec['tables'])
@@ -604,6 +624,9 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
         _check_entity_versions('meeting_records',versions['meeting_records'],meeting_records)
     if 'appearance_records' in versions:
         _check_entity_versions('appearance_records',versions['appearance_records'],appearance_records)
+    for name,module in DAILY_CAPTURE_RECORDS.items():
+        if name in versions:
+            _check_entity_versions(name,versions[name],module)
     report['pins']=final
     report['receipt_keys']=_complete_receipt_keys(final['captures'],engine=engine,work=work/'receipt-identity')
     report['status']='completed'

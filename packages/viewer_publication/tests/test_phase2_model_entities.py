@@ -146,7 +146,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     vtt_old = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nOld caption track\n'
     vtt_new = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nNew caption track\n'
     vtt_asr = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nAuto caption track\n'
-    m3u8_bytes = b'#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n'
+    m3u8_bytes = b'#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:12.0,\ntext_1_00001.vtt\n#EXT-X-ENDLIST\n'
+    master_bytes = b'#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,URI="text_1.m3u8"\n'
+    caption_segment = b'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:183000\n\n00:00:01.000 --> 00:00:02.000\nSegment cue\n'
     segment_bytes = b'G@\x00\x10' + bytes(184)
     # One retained YouTube cache file on a directory channel: a video whose own text names event 115538,
     # and an upload naming no meeting. The Explorer build parses it through the real video_records parser.
@@ -227,12 +229,28 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             retrieved_at='2023-05-21T12:00:00Z',
         ),
         dict(
-            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/master.m3u8',
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/text_1.m3u8',
             data=m3u8_bytes,
             format='m3u8',
             media_type='application/vnd.apple.mpegurl',
             family='senate/captions',
             retrieved_at='2023-05-21T12:00:00Z',
+        ),
+        dict(
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/master.m3u8',
+            data=master_bytes, format='m3u8', media_type='application/vnd.apple.mpegurl',
+            family='senate/captions', retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        dict(
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/text_1_00001.vtt',
+            data=caption_segment, format='vtt', media_type='text/vtt', family='senate/captions',
+            retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        # A later generic route supplies the same bytes and cannot replace the live label.
+        dict(
+            url='https://www.senate.gov/streams/ag051023/text_1.m3u8',
+            data=m3u8_bytes, format='m3u8', media_type='application/vnd.apple.mpegurl',
+            family='senate/captions', retrieved_at='2023-05-23T12:00:00Z',
         ),
         # A stream segment is media, never a track or a document (annex §2), even when fetched.
         dict(
@@ -671,9 +689,14 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         ],
     )
 
+    from congress_api.lake import playlist_records
+    playlists = playlist_records.stage(captures=staged['captures'], engine=engine, work=tmp_path / 'playlist-stage',
+                                       local_root=tmp_path / 'raw', decided_at='2026-10-27T12:00:00Z')
+    staged['parser_versions']['playlist_records'] = playlist_records.current_versions()
     release_dir = tmp_path / 'release'
     manifest = build_release(
         **staged,
+        playlist_records=playlists['records'],
         meeting_records=meeting_records,
         appearance_records=appearance_records,
         spicy_regs=spicy_regs,
@@ -826,9 +849,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert set(tracks) == {('vtt', 'en', 'asr'), ('vtt', 'en', 'caption')}
     assert tracks[('vtt', 'en', 'caption')]['body'] == hashlib.sha256(vtt_new).digest()
     assert tracks[('vtt', 'en', 'asr')]['body'] == hashlib.sha256(vtt_asr).digest()
-    assert recordings['senate:ag051023']['tracks'][0]['format'] == 'm3u8'
-    assert recordings['senate:ag051023']['tracks'][0]['body'] == hashlib.sha256(m3u8_bytes).digest()
-    assert hashlib.sha256(segment_bytes).digest() not in {t['body'] for t in recordings['senate:ag051023']['tracks']}
+    track, = recordings['senate:ag051023']['tracks']
+    assert (track['format'], track['language'], track['production']) == ('m3u8', 'en', 'live')
+    assert track['body'] == hashlib.sha256(m3u8_bytes).digest()
 
     # 4. Verify committees.parquet (including Eastern date conversion)
     committees = pq.read_table(release_dir / 'committees.parquet').to_pylist()
@@ -927,7 +950,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     decisions.write_text(''.join(json.dumps(dict(id=letter * 64, subject_kind=kind, subject_id=subject, verdict='found',
         video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n'
         for letter,kind,subject in [('a','event','115538'),('b','package','CHRG-118hhrg55555')]))
-    explorer = build_release(**staged, meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
+    explorer = build_release(**staged, playlist_records=playlists['records'], meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
         video_records=video_path, committee_records=committee_path,
         recording_decision_files=[dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions))],
         engine=engine, output=tmp_path / 'release-explorer', scratch=tmp_path / 'model-explorer')

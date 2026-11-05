@@ -680,9 +680,19 @@ def evidence_checks():
 
 
 def entity_track_checks():
-    """Build-blocking: an empty body is never a recording track (ct-fh62)."""
-    return dict(empty_body_tracks=f'''(SELECT count(*) FROM recording_track_candidates
-        WHERE {empty_body_sql("encode(sha256,'hex')",'cast(NULL AS BIGINT)')})''')
+    """Check track bodies, playlist readings and one published label per body."""
+    return dict(
+        empty_body_tracks=f'''(SELECT count(*) FROM recording_track_candidates
+            WHERE {empty_body_sql("encode(sha256,'hex')",'cast(NULL AS BIGINT)')})''',
+        segment_tracks="""(SELECT count(*) FROM
+            (SELECT unnest(tracks) AS t FROM recording_tracks) r
+            WHERE r.t['body'] IN (SELECT sha256 FROM recording_segment_bodies))""",
+        unread_track_playlists=f"""(SELECT count(DISTINCT t.sha256) FROM recording_track_candidates t WHERE t.format='m3u8'
+            AND lower(encode(t.sha256,'hex')) NOT IN ({explorer_settled_sql('playlist_records')}))""",
+        duplicate_track_bodies="""(SELECT count(*) FROM (
+            SELECT video_key,t['body'] FROM (SELECT video_key,unnest(tracks) AS t FROM recording_tracks)
+            GROUP BY video_key,t['body'] HAVING count(*)>1))""",
+    )
 
 
 def _sql_steps(names,*,root=ROOT):
@@ -721,6 +731,12 @@ def explorer_settled_sql(table):
     return f"""SELECT lower(encode(record_sha,'hex')) AS sha FROM selected_{table} WHERE status IN ('completed','error','size_limit')
         UNION SELECT lower(coalesce(u.record_sha,u.body_sha256)) FROM active_unreadable u JOIN parser_versions v
          ON v.parser LIKE '{table}.%' AND u.parser_version=v.version WHERE u.parser IN ('{table}',v.parser)"""
+
+
+PLAYLIST_RECORDS_UNAVAILABLE = """SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS record_sha,
+ cast(NULL AS VARCHAR) AS parser_version,cast(NULL AS VARCHAR) AS status,cast(NULL AS VARCHAR) AS error_type,
+ cast(NULL AS VARCHAR) AS source,array_slice(make_array(cast(NULL AS VARCHAR)),1,0) AS segments,
+ array_slice(make_array(cast(NULL AS VARCHAR)),1,0) AS playlists WHERE false"""
 
 
 def selected_record_step(table,record_input,*,root=ROOT):
@@ -852,7 +868,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
                          unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
-                         video_records=None,committee_records=None,recording_decision_files=(),
+                         video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          prior_links=None,base_retired=None,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
@@ -870,6 +886,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     if explorer_inputs and (video_records is None or committee_records is None or not recording_decision_files or not include_entities):
         raise ValueError('Explorer tables require entity inputs, video_records, committee_records and recording decisions together')
     validate_parser_versions(parser_versions,require_entities=include_entities,require_explorer=explorer_inputs)
+    if playlist_records is not None and (not include_entities or 'playlist_records' not in parser_versions):
+        raise ValueError('Playlist records require entity inputs and a pinned playlist_records version')
     scratch=Path(scratch).resolve();scratch.mkdir(parents=True,exist_ok=False)
     evidence=scratch/'evidence';evidence.mkdir()
     inputs=registry_inputs(scratch/'registries',root=root)
@@ -880,6 +898,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         raw_data_inputs.append(('appearance_records',appearance_records))
     if explorer_inputs:
         raw_data_inputs += [('video_records',video_records),('committee_records',committee_records)]
+    if playlist_records is not None:
+        raw_data_inputs.append(('playlist_records',playlist_records))
     data_inputs=[dict(value,name=name) if isinstance(value,dict) else
         dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in raw_data_inputs]
     inputs += data_inputs
@@ -966,6 +986,10 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         inputs.append(json_input(scratch,'channel_directory',channel_directory_rows(root),handle='Utf8',channel_id='Utf8',system_code='Utf8',committee_label='Utf8',role='Utf8'))
         prelude += [selected_record_step('video_records','video_records',root=root),selected_record_step('committee_records','committee_records',root=root)]
         prelude += [dict(name='active_recording_decisions',sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)',materialize=True)]
+    if include_entities:
+        if playlist_records is None:
+            prelude.append(dict(name='playlist_records',sql=PLAYLIST_RECORDS_UNAVAILABLE,materialize=True))
+        prelude.append(selected_record_step('playlist_records','playlist_records',root=root))
     prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
     from congress_api.models.archive_profile import build_capture_profile
     capture_profile=build_capture_profile(engine_revision=engine.source_revision,
@@ -975,6 +999,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     from congress_api.retention.provenance import file_pin
     selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
     lake_tables=['captures','readings','filename_readings']+(['meeting_records','appearance_records'] if include_entities else [])+(['video_records','committee_records'] if explorer_inputs else [])
+    if playlist_records is not None:lake_tables.append('playlist_records')
     model_profile=profile_record(parser_versions=parser_versions,catalog_version=catalog_version,
         engine_revision=engine.source_revision,runtime_pins=dict(platform=engine.platform,build_features=list(engine.build_features),
             binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
@@ -994,7 +1019,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
-                  video_records=None,committee_records=None,recording_decision_files=(),
+                  video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   prior_links=None,base_retired=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
@@ -1003,7 +1028,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
-        recording_decision_files=recording_decision_files,prior_links=prior_links,base_retired=base_retired,root=root,registry=registry)
+        recording_decision_files=recording_decision_files,playlist_records=playlist_records,prior_links=prior_links,base_retired=base_retired,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -1077,7 +1102,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         steps += [dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True)]
     if prepared.get('include_entities'):
         steps += [
-            dict(name='recording_url_sources',sql="SELECT pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),
+            dict(name='recording_url_sources',sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),
             dict(name='recording_track_formats',sql="SELECT pattern,format,default_language,default_production FROM recording_sources WHERE kind='track_format'",materialize=True),
             dict(name='recording_segment_exclusions',sql="SELECT pattern FROM recording_sources WHERE kind='segment_exclusion'",materialize=True),
             dict(name='recording_link_candidates',sql="SELECT DISTINCT page_body,target_url FROM resolved_link_targets WHERE target_url IS NOT NULL AND regexp_like(target_url,'(?i)(?:youtube|youtu[.]be|senate)')",materialize=True),
@@ -1105,21 +1130,37 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 WHERE g.mode='fetch' AND g.complete AND g.outcome IN ('stored','unchanged') AND g.http_status BETWEEN 200 AND 299
                  AND g.sha256 IS NOT NULL AND coalesce(g.url,g.requested_url,g.context_url) IS NOT NULL
                  AND regexp_like(coalesce(g.url,g.requested_url,g.context_url),'(?i)(?:youtube|youtu[.]be|senate)')""",materialize=True),
+            # Resolve each listed segment against every retained address of its parent playlist.
+            dict(name='playlist_segment_urls',sql="""SELECT DISTINCT url_resolve(p.uri,f.fetch_url) AS segment_url
+                FROM (SELECT record_sha,unnest(segments) AS uri FROM selected_playlist_records WHERE status='completed') p
+                JOIN recording_fetch_candidates f ON f.sha256=p.record_sha""",materialize=True),
+            dict(name='recording_segment_bodies',sql="""SELECT f.sha256
+                FROM playlist_segment_urls s JOIN recording_fetch_candidates f ON s.segment_url=f.fetch_url
+                UNION SELECT sha256 FROM placeholders""",materialize=True),
+            # A subtitle media playlist lists caption segments. Masters, empty manifests
+            # and media playlists of video/audio segments do not supply subtitle tracks.
+            dict(name='caption_playlist_bodies',sql="""SELECT record_sha FROM (
+                SELECT record_sha,unnest(segments) AS uri FROM selected_playlist_records WHERE status='completed'
+                ) s GROUP BY record_sha HAVING bool_and(regexp_like(uri,'(?i)[.](?:vtt|srt|ttml|dfxp)(?:[?#]|$)'))""",materialize=True),
             # Every regex runs once per distinct fetch URL (a third of the fetches), and each registry is the
             # left input of its regex join: a nested-loop join buffers its left input whole, on one partition.
             dict(name='recording_track_candidates',sql="""WITH fetch_urls AS (
                 SELECT DISTINCT fetch_url FROM recording_fetch_candidates
-            ), url_keys AS (
+            ), matched_keys AS (
                 SELECT u.fetch_url,
                  regexp_replace((regexp_match(u.fetch_url,vu.pattern))[1],'^(.+)$',vu.key_template) AS extracted_key,
                  vu.format AS vu_format,
                  vu.default_language AS vu_default_language,
-                 vu.default_production AS vu_default_production
+                 vu.default_production AS vu_default_production,vu.id AS rule_id
                 FROM recording_url_sources vu
                 JOIN fetch_urls u ON regexp_like(u.fetch_url,vu.pattern)
             ), kept_keys AS (
-                SELECT k.* FROM recording_segment_exclusions ex
-                RIGHT ANTI JOIN url_keys k ON regexp_like(k.fetch_url,ex.pattern)
+                SELECT * FROM (
+                    SELECT k.*,row_number() OVER(PARTITION BY fetch_url,extracted_key ORDER BY
+                        vu_default_production IN ('live','archive') DESC,rule_id) AS preference
+                    FROM recording_segment_exclusions ex
+                    RIGHT ANTI JOIN matched_keys k ON regexp_like(k.fetch_url,ex.pattern)
+                ) k WHERE preference=1
             ), url_tracks AS (
                 SELECT k.fetch_url,k.extracted_key,k.vu_format,tf.format AS tf_format,
                 coalesce(
@@ -1142,8 +1183,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                  t.vu_format
                 ) AS format,
                 t.language,t.production
-            FROM url_tracks t
-            JOIN recording_fetch_candidates cf ON cf.fetch_url=t.fetch_url""",materialize=True),
+            FROM recording_segment_bodies b
+            RIGHT ANTI JOIN (url_tracks t JOIN recording_fetch_candidates cf ON cf.fetch_url=t.fetch_url)
+              ON b.sha256=cf.sha256""",materialize=True),
         ]
         # A step, not only an export: meetings read it to list caption tracks among their transcripts.
         steps += [dict(name='recording_tracks',sql=(Path(root)/'model/sql/recording-tracks.sql').read_text(),materialize=True),
