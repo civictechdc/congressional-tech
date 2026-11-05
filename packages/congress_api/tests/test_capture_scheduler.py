@@ -491,13 +491,23 @@ def test_public_pointer_is_pinned_once_and_inputs_are_verified(tmp_path):
 
 def test_cli_preview_uses_local_release_without_opening_raw_storage(tmp_path,capsys):
     from congress_api.cli.capture_schedule import main
-    root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)])
-    main(['--release-root',str(root),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
+    url='https://fixture.test/a'
+    root=release(tmp_path,[dict(requested_url=url,attempts=0)])
+    cutoff_file=tmp_path/'reviewed.json'
+    cutoff_file.write_text(json.dumps([url]))
+    args=['--release-root',str(root),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
         '--request-budget','20','--byte-budget','1073741824','--spool-budget','1073741824',
-        '--as-of',ASOF,'--work',str(tmp_path/'preview')])
+        '--as-of',ASOF,'--work',str(tmp_path/'preview'),'--cutoff-urls',str(cutoff_file)]
+    main(args)
     result=json.loads(capsys.readouterr().out)
     assert result['apply'] is False and result['counts']['queue']==1
     assert not (tmp_path/'preview/capture').exists()
+    selection=json.loads((tmp_path/'preview/selection.json').read_text())
+    assert selection['cutoff_urls']==result['reviewed_cutoff_urls']==[url]
+    assert selection['release']['release_id']==result['release_id']
+    cutoff_file.write_text(json.dumps(['https://fixture.test/b']))
+    with pytest.raises(ValueError,match='Continuation reviewed cutoff input changed'):
+        main(args)
 
 
 def test_seed_loader_keeps_jsonl_pointer_and_refuses_credential_urls(tmp_path):
@@ -538,21 +548,26 @@ def test_unsafe_discovered_target_is_refused_without_aborting_other_work(tmp_pat
 def test_every_reviewed_cutoff_has_a_native_disposition(tmp_path):
     future=datetime(2027,1,1,tzinfo=timezone.utc)
     cutoffs=['https://fixture.test/good','https://fixture.test/pending','https://fixture.test/future',
-        'https://outside.example/a','https://fixture.test/missing']
+        'https://outside.example/a','https://fixture.test/missing','https://fixture.test/retained']
     result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0),
         dict(requested_url=cutoffs[0],attempts=1),dict(requested_url=cutoffs[1],attempts=1),
         dict(requested_url=cutoffs[2],attempts=1,next_attempt_at=future),
-        dict(requested_url=cutoffs[3],attempts=1)],{
+        dict(requested_url=cutoffs[3],attempts=1),
+        dict(requested_url=cutoffs[5],attempts=1,last_outcome='stored',last_status=200,next_attempt_at=future)],{
         'https://fixture.test/a':(200,b'queue',{}),'https://fixture.test/good':(200,b'complete cutoff',{})},
         request_budget=2,cutoff_urls=cutoffs)
     assert adapter.calls==['https://fixture.test/a','https://fixture.test/good']
     rows={row['requested_url']:row for row in result['cutoffs']}
     assert set(rows)==set(cutoffs)
     assert rows[cutoffs[0]]['disposition']=='attempted' and rows[cutoffs[0]]['complete'] is True
+    assert rows[cutoffs[0]]['candidate_url']==cutoffs[0] and rows[cutoffs[0]]['receipt_key'] in result['receipts']
     assert rows[cutoffs[1]]['reason']=='request_budget'
     assert rows[cutoffs[2]]['reason']=='not_due' and rows[cutoffs[2]]['next_attempt_at'].startswith('2027-01-01')
     assert rows[cutoffs[3]]['reason']=='outside_capture_scope'
     assert rows[cutoffs[4]]['reason']=='not_in_release'
+    retained=rows[cutoffs[5]]
+    assert (retained['disposition'],retained['reason'],retained['retained_outcome'],retained['retained_http_status'])==(
+        'retained','not_due','stored',200)
 
 
 def test_future_seed_alias_does_not_bypass_shared_url_identity(tmp_path):
@@ -872,6 +887,46 @@ HTTP_STATES=[dict(requested_url=url,attempts=1,last_attempt=stamp,last_status=20
                       (HTTPS,datetime(2026,10,2,22,40,55,66127,tzinfo=timezone.utc)))]
 
 
+@pytest.mark.parametrize('budget,fail_replan',[(1,False),(2,False),(2,True)])
+def test_reviewed_ashley_download_keeps_discovered_and_attempted_addresses(tmp_path,monkeypatch,budget,fail_replan):
+    from congress_api.acquisition import capture_scheduler
+    base=AMP.split('&')[0]
+    selected=load(release(tmp_path,[dict(requested_url=base,attempts=0)],entries=SCOPE_ENTRIES),tmp_path/'read')
+    adapter=Adapter({base:(200,f'<html><body><a href="{AMP}">Download</a></body></html>'.encode(),{}),
+                     GOOD:(404,b'not a testimony',{})})
+    raw=tmp_path/'raw'
+    options=dict(engine=engine(),work=tmp_path/'capture',as_of=ASOF,
+        request_budget=budget,byte_budget=1<<28,spool_budget=1<<28,store=BodyStore(LocalAdapter(raw)),
+        identity=IDENTITY,direct=adapter,resolve=lambda _:['8.8.8.8'],pace=lambda *_:None,
+        archive_limits=LIMITS,discover=fixture_discover,cutoff_urls=[AMP])
+    if fail_replan:
+        original=capture_scheduler.json_input
+        def fail_discovery_input(work,name,records,**fields):
+            if name=='discovered-1':
+                raise OSError('planted replan input failure')
+            return original(work,name,records,**fields)
+        monkeypatch.setattr(capture_scheduler,'json_input',fail_discovery_input)
+        with pytest.raises(OSError,match='planted replan input failure'):
+            capture_scheduler.run_capture(selected,**options)
+        result=json.loads((options['work']/'summary.json').read_text())
+    else:
+        result=capture_scheduler.run_capture(selected,**options)
+    [row]=result['cutoffs']
+    assert row['requested_url']==row['discovered_url']==AMP
+    if budget==1 or fail_replan:
+        assert adapter.calls==[base]
+        assert row['disposition']=='deferred' and row['reason']==('error' if fail_replan else 'request_budget')
+        assert row['candidate_url'] is None and row['receipt_key'] is None
+    else:
+        assert adapter.calls==[base,GOOD]
+        assert row['disposition']=='attempted' and row['candidate_url']==GOOD
+        assert (row['outcome'],row['http_status'])==('failed',404)
+        with gzip.open(raw/row['receipt_key'],'rt') as source:
+            receipt=json.load(source)
+        assert receipt['requested_url']==GOOD
+        assert [item['url'] for item in receipt['source_context']['observations']]==[AMP]
+
+
 def _attempted(path,urls):
     with gzip.open(path,'wt') as out:
         for url in urls:out.write(json.dumps(dict(url=url,attempted=True,complete=True,outcome='http_status',
@@ -941,12 +996,19 @@ def test_retained_address_scenarios(tmp_path,name,states,seeds,campaign,expected
     assert [[url,'release' if source==release_source else source] for url,source in _observed(rows[0])]==observed
 
 
-@pytest.mark.parametrize('next_attempt_at,expected',[(FUTURE,[]),(None,[(GOOD,3)])])
-def test_stale_failed_amp_row_does_not_preempt_stored_repair(tmp_path,next_attempt_at,expected):
-    rows,_,_=_plan(tmp_path,[
+@pytest.mark.parametrize('outcome,status,next_attempt_at,expected',[
+    ('stored',200,FUTURE,[]),('failed',404,FUTURE,[]),('stored',200,None,[(GOOD,3)])])
+def test_stale_failed_amp_row_does_not_preempt_repair_state(tmp_path,outcome,status,next_attempt_at,expected):
+    from congress_api.acquisition.capture_scheduler import cutoff_report
+    rows,selected,_=_plan(tmp_path,[
         dict(requested_url=AMP,attempts=1,last_status=404,last_outcome='http_status',next_attempt_at=PAST),
-        dict(requested_url=GOOD,attempts=1,last_status=200,last_outcome='stored',next_attempt_at=next_attempt_at)])
+        dict(requested_url=GOOD,attempts=1,last_status=status,last_outcome=outcome,next_attempt_at=next_attempt_at)])
     assert [(row['requested_url'],row['priority']) for row in rows]==expected
+    if next_attempt_at is not None:
+        [report]=cutoff_report(selected,urls=[AMP],attempted=tmp_path/'no-attempts',engine=engine(),
+            work=tmp_path/'report',as_of=RETAINED_ASOF,stop_reason='queue_empty')
+        assert report['disposition']==('retained' if outcome=='stored' else 'deferred')
+        assert (report['reason'],report['state_url'],report['retained_http_status'])==('not_due',GOOD,status)
 
 
 @pytest.mark.parametrize('target,candidate',[(AMP,GOOD),(WSTATE,GOVINFO)])
@@ -959,10 +1021,17 @@ def test_satisfied_target_suppresses_its_eligible_candidates(tmp_path,target,can
 
 
 def test_out_of_scope_http_state_moves_to_in_scope_https_seed(tmp_path):
-    rows,_,_=_plan(tmp_path,[dict(requested_url=HTTP,attempts=1,last_status=404,last_outcome='http_status',
+    from congress_api.acquisition.capture_scheduler import cutoff_report
+    from congress_api.retention.provenance import json_input
+    rows,selected,_=_plan(tmp_path,[dict(requested_url=HTTP,attempts=1,last_status=404,last_outcome='http_status',
         next_attempt_at=PAST)],[HTTPS])
     assert [(row['requested_url'],row['priority']) for row in rows]==[(HTTPS,2)]
     assert _observed(rows[0])==[[HTTPS,'seeds.json']]
+    discovery=json_input(tmp_path,'discovery',[dict(href=HTTPS,context=HTTPS,base_href=None)],
+        href='Utf8',context='Utf8',base_href='Utf8')
+    [report]=cutoff_report(selected,urls=[HTTP],attempted=tmp_path/'no-attempts',engine=engine(),
+        work=tmp_path/'report',as_of=RETAINED_ASOF,stop_reason='request_budget',discovery_files=discovery['files'])
+    assert (report['disposition'],report['reason'],report['discovered_url'])==('deferred','request_budget',HTTPS)
 
 
 def test_state_only_repair_keeps_original_address_in_observations(tmp_path):

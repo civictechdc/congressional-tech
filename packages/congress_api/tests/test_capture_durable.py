@@ -91,6 +91,62 @@ def test_one_request_cap_permits_one_completed_direct_capture(tmp_path):
     assert result['requests']==1 and result['captures']==1
 
 
+@pytest.mark.parametrize('failure_stage',['before_receipt_ack','discovery','local_completion'])
+def test_terminal_summary_distinguishes_acknowledged_receipts_from_preparation(tmp_path,monkeypatch,failure_stage):
+    from congress_api.acquisition import capture_journal
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from test_capture_scheduler import fixture_discover
+
+    url='https://fixture.test/discover.html'
+    selected=load(release(tmp_path,[dict(requested_url=url,attempts=0)]),tmp_path/'read')
+    adapter=Adapter({url:(200,b'<html><body>fixture</body></html>',{'content-type':'text/html'})})
+    kwargs=options(tmp_path,selected,adapter)
+    kwargs.update(cutoff_urls=[url],discover=fixture_discover)
+    def fail(*args,**kw):
+        raise OSError('planted capture failure')
+    with monkeypatch.context() as patch:
+        if failure_stage=='before_receipt_ack':
+            patch.setattr(ReceiptWriter,'_apply_frozen',fail)
+        elif failure_stage=='discovery':
+            patch.setitem(kwargs,'discover',fail)
+        else:
+            original=capture_journal.durable_json
+            def commit(path,value):
+                if path.name=='committed.json':fail()
+                original(path,value)
+            patch.setattr(capture_journal,'durable_json',commit)
+        with pytest.raises(OSError,match='planted capture failure'):
+            run_capture(**kwargs)
+    work=kwargs['work']
+    summary=json.loads((work/'summary.json').read_text())
+    assert summary['stop_reason']=='error' and summary['error_type']=='OSError'
+    [frozen]=list((work/'frozen-receipts').glob('*/receipt.json'))
+    key=json.loads(frozen.read_text())['key']
+    assert not list((work/'attempts').glob('*/committed.json'))
+    [cutoff]=summary['cutoffs']
+    if failure_stage=='before_receipt_ack':
+        assert not (tmp_path/'raw'/key).exists()
+        assert summary['receipts']==summary['receipts_pending_completion']==[]
+        assert cutoff['receipt_key'] is None
+    else:
+        assert (tmp_path/'raw'/key).is_file()
+        assert summary['receipts']==[key]
+        assert [item['receipt_key'] for item in summary['receipts_pending_completion']]==[key]
+        assert cutoff['receipt_key']==key and cutoff['candidate_url']==url
+        # A later error before re-acknowledgement cannot erase earlier evidence.
+        with monkeypatch.context() as patch:
+            patch.setattr(ReceiptWriter,'_apply_frozen',fail)
+            with pytest.raises(OSError,match='planted capture failure'):
+                run_capture(**kwargs)
+        repeated=json.loads((work/'summary.json').read_text())
+        assert repeated['receipts']==summary['receipts']
+        assert repeated['receipts_pending_completion']==summary['receipts_pending_completion']
+        assert repeated['cutoffs'][0]['receipt_key']==key
+    result=run_capture(**kwargs)
+    assert result['receipts']==[key] and result['receipts_pending_completion']==[]
+    assert adapter.calls==[url] and result['requests']==1
+
+
 def test_unknown_outcome_is_protected_and_one_explicit_retry_is_bounded(tmp_path):
     journal=DurableCapture(tmp_path/'journal',{'campaign':'one'})
     class Unknown:
