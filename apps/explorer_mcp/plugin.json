@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "congress-explorer",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
   "author": {
     "name": "Civic Tech DC"
