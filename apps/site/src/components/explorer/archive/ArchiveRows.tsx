@@ -15,8 +15,8 @@ export const siteBase = () => {
   return String(raw).replace(/\/+$/, '');
 };
 
-export function PublicLink({url,children}:{url:any;children?:any}){
-  const target=validUrl(url);return target?<a href={target.href} target="_blank" rel="noreferrer">{children||target.href}</a>:null;
+export function PublicLink({url,children,download}:{url:any;children?:any;download?:boolean}){
+  const target=validUrl(url);return target?<a href={target.href} target="_blank" rel="noreferrer" download={download}>{children||target.href}</a>:null;
 }
 
 export function ArchiveRows({

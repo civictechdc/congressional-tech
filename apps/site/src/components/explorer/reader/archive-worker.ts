@@ -1,15 +1,21 @@
 import {openArchive} from './archive.ts';
-import {awaitShared} from './cache.ts';
+import {ArchiveReleaseChangedError,awaitShared} from './cache.ts';
 
 let session:Promise<Awaited<ReturnType<typeof openArchive>>>|undefined;
 const pending=new Map<number,AbortController>();
 async function displayedDates(reader:any,rows:any[],signal:AbortSignal){
   const needsEntry=(row:any)=>row.date_kind==='import_day'||(!row.title&&!row.filename);
   for(let i=0;i<rows.length;i+=4)await Promise.all(rows.slice(i,i+4).filter(needsEntry).map(async row=>{
-    const entry=await reader.entry(row.list_row,signal);
-    row.in_archive_since=entry.detail.in_archive_since;
-    row.removed_on=entry.detail.removed_on;
-    row.source_url=entry.sources[0]?.url||entry.recoveries[0]?.recovered_url||null;
+    try {
+      const entry=await reader.entry(row.list_row,signal);
+      row.in_archive_since=entry.detail.in_archive_since;
+      row.removed_on=entry.detail.removed_on;
+      row.source_url=entry.sources[0]?.url||entry.recoveries[0]?.recovered_url||null;
+    } catch (error) {
+      signal.throwIfAborted();
+      if (error instanceof ArchiveReleaseChangedError) throw error;
+      // Keep the list row when its optional display details cannot be read.
+    }
   }));
   return rows;
 }

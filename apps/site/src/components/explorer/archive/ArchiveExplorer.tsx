@@ -395,6 +395,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       {nav.hearing&&activeEntities.meeting&&<HearingDetail
         meeting={activeEntities.meeting}
         committeesCatalog={committeesCatalog}
+        rawBase={rawBase}
         compact
         onSelect={select}
         onCommittee={inspectCommittee}
@@ -468,6 +469,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
               {nav.tab==='hearings'&&activeEntities?.meeting&&<HearingDetail
                 meeting={activeEntities.meeting}
                 committeesCatalog={committeesCatalog}
+                rawBase={rawBase}
                 onSelect={select}
                 onCommittee={inspectCommittee}
                 onSubject={inspectSubject}
