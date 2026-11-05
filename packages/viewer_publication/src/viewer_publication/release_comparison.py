@@ -248,8 +248,8 @@ def documents(d: Diff):
 
 
 def rekeyed(d: Diff):
-    """The candidate's unambiguous witness_key_map rows (ct-kb4w) as table `witness_rekey` and one MAP
-    value `witness_rekey_map`; False when the candidate publishes no map.
+    """The candidate's unambiguous witness_key_map rows (ct-kb4w) as table `witness_rekey`; False when
+    the candidate publishes no map.
 
     A current key is never an old key (a relationship invariant), so mapping both sides through it
     changes only base keys that the candidate re-keyed.
@@ -259,8 +259,17 @@ def rekeyed(d: Diff):
         if d.witness_rekey:
             d.table('witness_rekey', """SELECT old_key,witness_key FROM candidate_witness_key_map
               WHERE status='unambiguous' AND witness_key IN (SELECT witness_key FROM candidate_witnesses)""")
-            d.table('witness_rekey_map', 'SELECT map(list(old_key),list(witness_key)) AS m FROM witness_rekey')
     return d.witness_rekey
+
+
+def rekeyed_lists(d: Diff, relation, row, column):
+    """`relation`'s `column` keys mapped through witness_rekey, sorted and distinct, per `row`, as table
+    `<relation>_rekeyed_<column>`. A join, not a MAP value per row: a MAP lookup scans the map."""
+    name = f'{relation}_rekeyed_{column}'
+    d.table(name, f"""SELECT u.{row},list_sort(list_distinct(list(coalesce(x.witness_key,u.k)))) AS {column}
+      FROM (SELECT {row},unnest({column}) AS k FROM {relation}) u LEFT JOIN witness_rekey x ON x.old_key=u.k
+      GROUP BY u.{row}""")
+    return name
 
 
 def document_file(table):
@@ -270,8 +279,10 @@ def document_file(table):
         compare, rekeys = None, []
         if rekeyed(d) and 'witness_keys' in set(d.columns('base', table)) & set(d.columns('candidate', table)):
             # Keys re-keyed through the candidate's witness_key_map count as the same witness.
-            join += ' CROSS JOIN witness_rekey_map r'
-            mapped = 'list_sort(list_distinct(list_transform(X.{c},k->coalesce(r.m[k],k))))'
+            for side, alias in (('base', 'pw'), ('candidate', 'lw')):
+                mapped_keys = rekeyed_lists(d, f'{side}_{table}', 'file_row_number', 'witness_keys')
+                join += f' LEFT JOIN {mapped_keys} {alias} ON {alias}.file_row_number={alias[0]}.file_row_number'
+            mapped = 'coalesce(Xw.{c},X.{c})'  # a row with no keys has no mapped row
             compare = {'witness_keys': mapped}
             left, right = (mapped.replace('X', s).format(c='"witness_keys"') for s in 'pl')
             n = d.one(f'SELECT count(*) FROM {join} WHERE p.witness_keys IS DISTINCT FROM l.witness_keys AND {left} IS NOT DISTINCT FROM {right}')
@@ -495,10 +506,13 @@ def witness_key_map(d: Diff):
           FROM base_witness_key_map ANTI JOIN candidate_witness_key_map USING(old_key) GROUP BY 1 ORDER BY 1"""):
         out.append(group('removed keys', 'published again in witnesses', -n, 'verified') if again
                    else group('removed keys', 'no longer resolves', -n))
-    compare = {'witness_key': 'coalesce(r.m[X.{c}],X.{c})',
-               'candidate_keys': 'list_sort(list_distinct(list_transform(X.{c},k->coalesce(r.m[k],k))))'}
-    return out + d.changed('witness_key_map', 'base_witness_key_map p JOIN candidate_witness_key_map l USING(old_key) CROSS JOIN witness_rekey_map r',
-                           compare, exclude={'old_key'}), {}
+    join = 'base_witness_key_map p JOIN candidate_witness_key_map l USING(old_key)'
+    for side, alias in (('base', 'pc'), ('candidate', 'lc')):
+        mapped_keys = rekeyed_lists(d, f'{side}_witness_key_map', 'old_key', 'candidate_keys')
+        join += (f' LEFT JOIN {mapped_keys} {alias} ON {alias}.old_key=p.old_key'
+                 f' LEFT JOIN witness_rekey {alias[0]}s ON {alias[0]}s.old_key={alias[0]}.witness_key')
+    compare = {'witness_key': 'coalesce(Xs.{c},X.{c})', 'candidate_keys': 'coalesce(Xc.{c},X.{c})'}
+    return out + d.changed('witness_key_map', join, compare, exclude={'old_key'}), {}
 
 
 def url_state(d: Diff):
