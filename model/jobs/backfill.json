@@ -45,12 +45,6 @@
       "namespace": [
         "archive_r1b"
       ]
-    },
-    "video_records": {
-      "name": "video_records",
-      "namespace": [
-        "archive_r1b"
-      ]
     }
   },
   "batch_size": 5000,
