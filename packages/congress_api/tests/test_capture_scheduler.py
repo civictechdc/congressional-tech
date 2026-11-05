@@ -1064,6 +1064,34 @@ def test_trimmed_space_repair_is_suppressed_after_attempt(tmp_path):
     assert rows==[]
 
 
+@pytest.mark.parametrize('reuse_keyed_states',[False,True])
+def test_reviewed_trimmed_address_reports_its_own_future_retry(tmp_path,reuse_keyed_states):
+    from congress_api.acquisition.capture_scheduler import cutoff_report,plan_queue
+
+    trimmed='https://democrats-science.house.gov/uploads/report.pdf'
+    observed=trimmed+'%20'
+    root=release(tmp_path,[
+        dict(requested_url=observed,attempts=1,last_status=404,last_outcome='failed',next_attempt_at=PAST),
+        dict(requested_url=trimmed,attempts=1,last_status=503,last_outcome='retry_later',next_attempt_at=FUTURE),
+    ],entries=SCOPE_ENTRIES)
+    selected=load(root,tmp_path/'read')
+    native=engine()
+    plan_work=tmp_path/'plan'
+    keyed_states=plan_work/'keyed_states.parquet'
+    plan=plan_queue(selected,engine=native,work=plan_work,as_of=RETAINED_ASOF,
+        request_budget=20,cutoff_urls=[observed],_keyed_states_cache=keyed_states)
+    assert pq.read_metadata(plan['queue']).num_rows==0
+    assert len(set(pq.read_table(keyed_states,columns=['url_key']).column(0).to_pylist()))==2
+
+    [report]=cutoff_report(selected,urls=[observed],attempted=tmp_path/'no-attempts',
+        engine=native,work=tmp_path/'report',as_of=RETAINED_ASOF,stop_reason='queue_empty',
+        _keyed_states_cache=keyed_states if reuse_keyed_states else None)
+    expected=dict(requested_url=observed,state_url=trimmed,disposition='deferred',reason='not_due',
+        retained_http_status=503,retained_outcome='retry_later',candidate_url=None,receipt_key=None)
+    assert {name:report[name] for name in expected}==expected
+    assert datetime.fromisoformat(report['next_attempt_at'])==FUTURE
+
+
 @pytest.mark.parametrize('seed,expected',[
     ('https://www.judiciary.senate.gov/404?notfound=download/01/06/2026/benton-sjq',
      'https://www.judiciary.senate.gov/download/01/06/2026/benton-sjq'),
