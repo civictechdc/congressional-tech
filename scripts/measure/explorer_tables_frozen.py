@@ -17,7 +17,7 @@ from docspec_client.client import NativeDatasets
 from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
-from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, WITNESSES_SQL, appearance_steps, channel_directory_rows,
+from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, WITNESSES_SQL, appearance_steps, channel_directory_rows, meeting_records_have_document_references,
     meeting_steps, registry_inputs, selected_record_step)
 from congress_api.retention.provenance import field, json_input, run_job
 
@@ -119,7 +119,7 @@ def main(argv=None):
         # The lake table as the model's prepared appearance input (archive_model._normalize_appearance_rows).
         dict(name='appearance_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,* EXCLUDE(record_sha),cast(NULL AS VARCHAR) AS context_url FROM appearance_records_lake", materialize=True),
         selected_record_step('appearance_records', 'appearance_records_input'),
-        *meeting_steps(),
+        *meeting_steps(has_document_references=meeting_records_have_document_references(spec['meeting_records']['path'])),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
         dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),

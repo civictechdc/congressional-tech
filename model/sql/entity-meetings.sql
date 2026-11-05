@@ -206,7 +206,8 @@ SELECT k.event_id,
  m.access_basis,
  m.not_held AND pr.event_id IS NULL AS not_held,
  r.rescheduled_to,
- r.rescheduled_basis
+ r.rescheduled_basis,
+ m.document_references
 FROM keys k
 LEFT JOIN meetings_resolved m ON k.event_id=m.event_id
 LEFT JOIN subject_keys_by_event sk ON k.event_id=sk.event_id

@@ -77,6 +77,7 @@ export function HearingDetail({
   const transcripts:any[]=Array.isArray(meeting.transcripts)?meeting.transcripts:[];
   const sittings:any[]=Array.isArray(meeting.sittings)?meeting.sittings:[];
   const witnesses:any[]=Array.isArray(meeting.witnesses)?meeting.witnesses:[];
+  const publisherDocuments:any[]=meeting.document_references??[];
   const documents:any[]=Array.isArray(meeting.documents)?meeting.documents:[];
   const contextParts=[
     congressLabel(meeting.congress),
@@ -263,6 +264,20 @@ export function HearingDetail({
             </div>}
           </li>;
         })}
+      </ul>
+    </div>}
+
+    {!compact&&publisherDocuments.length>0&&<div className="archive-entity-section">
+      <h3>Documents listed by Congress.gov</h3>
+      <ul className="archive-entity-list">
+        {publisherDocuments.map((ref:any)=><li key={`${ref.collection}-${ref.ordinal}`}>
+          <PublicLink url={ref.url}>{ref.name||ref.description||ref.url}</PublicLink>
+          <span className="archive-source-meta"> · {ref.collection==='witnessDocuments'?'Witness document':'Meeting document'}
+            {ref.role&&` · ${ref.role}`}
+            {ref.format&&` · Publisher format ${ref.format}`}
+          </span>
+          {ref.description&&ref.name&&<p className="archive-source-meta">{ref.description}</p>}
+        </li>)}
       </ul>
     </div>}
 

@@ -805,6 +805,12 @@
           "type": "dict",
           "meaning": "publisher_status or recording_on_later_twin",
           "nullable": true
+        },
+        {
+          "name": "document_references",
+          "type": "list<struct<collection string, ordinal int32, url string, role string, format string, description string, name string>>",
+          "nullable": true,
+          "meaning": "Congress.gov document links in source collection order. Null means the metadata is unavailable or unstated. An empty list means a supplied collection contained no links."
         }
       ],
       "gaps": [],
@@ -824,9 +830,14 @@
         "transcripts[]": "One entry per GovInfo package. list_row is the package's listed document whose saved format ranks first (then lowest row); formats are the distinct saved and alternate formats over all the package's listed documents, in format-preference order. A package listed as several documents (editions) keeps one entry.",
         "transcripts[].formats": "Format names (pdf, html, ...) the package is retained in, in format-preference order; values, not keys.",
         "videos[]": "Publisher recording links; video_key joins retained recordings when available.",
-        "meeting_type": "As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label."
+        "meeting_type": "As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label.",
+        "document_references[].collection": "Source collection name, meetingDocuments or witnessDocuments. Witness documents are linked to this event without a witness identity claim.",
+        "document_references[].ordinal": "Zero-based occurrence within its source collection. Different references to the same URL keep their own values.",
+        "document_references[].url": "Publisher link. Use the existing document address lookup to find saved copies.",
+        "document_references[].role": "Publisher documentType. Null when omitted.",
+        "document_references[].format": "Publisher format, independent of the format of the saved body. Null when omitted."
       },
-      "nullability": "Nullability transcribes data model \u00a78.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null."
+      "nullability": "Nullability transcribes data model \u00a78.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references."
     },
     {
       "name": "witnesses.parquet",

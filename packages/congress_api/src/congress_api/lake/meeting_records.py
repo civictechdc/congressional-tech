@@ -89,6 +89,18 @@ VIDEO_STRUCT = pa.struct(
     ]
 )
 
+DOCUMENT_REFERENCE_STRUCT = pa.struct(
+    [
+        pa.field("collection", pa.string(), nullable=False),
+        pa.field("ordinal", pa.int32(), nullable=False),
+        pa.field("url", pa.string(), nullable=False),
+        pa.field("role", pa.string(), nullable=True),
+        pa.field("format", pa.string(), nullable=True),
+        pa.field("description", pa.string(), nullable=True),
+        pa.field("name", pa.string(), nullable=True),
+    ]
+)
+
 COLLECTION_STATES_STRUCT = pa.struct(
     [
         pa.field("sittings", pa.string(), nullable=True),
@@ -123,6 +135,7 @@ MEETING_STRUCT = pa.struct(
         pa.field("not_held", pa.bool_(), nullable=True),
         pa.field("title_key", pa.string(), nullable=True),
         pa.field("reschedule_candidate", pa.bool_(), nullable=True),
+        pa.field("document_references", pa.list_(pa.field("element", DOCUMENT_REFERENCE_STRUCT, nullable=False)), nullable=True),
     ]
 )
 
@@ -144,6 +157,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "COMMITTEE_STRUCT",
         "VIDEO_STRUCT",
         "COLLECTION_STATES_STRUCT",
+        "DOCUMENT_REFERENCE_STRUCT",
         "MEETING_STRUCT",
         "ARROW_SCHEMA",
         "_FORM_PLACEHOLDER",
@@ -161,6 +175,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "COMMITTEE_STRUCT",
         "VIDEO_STRUCT",
         "COLLECTION_STATES_STRUCT",
+        "DOCUMENT_REFERENCE_STRUCT",
         "MEETING_STRUCT",
         "ARROW_SCHEMA",
         "_HOUSE_SELECT_CODES",
@@ -513,11 +528,31 @@ def _convert_congress_meeting_dict(m: Mapping[str, Any]) -> dict[str, Any]:
                 )
 
     document_urls: list[str] = []
+    document_references: list[dict[str, Any]] = []
+    supplied_document_collection = False
     for key in ("meetingDocuments", "witnessDocuments"):
-        for doc in m.get(key) or []:
+        documents = m.get(key)
+        if not isinstance(documents, list):
+            continue
+        supplied_document_collection = True
+        for ordinal, doc in enumerate(documents):
             url = str(doc.get("url") or "").strip() if isinstance(doc, Mapping) else ""
-            if url and url not in document_urls:
+            if not url:
+                continue
+            if url not in document_urls:
                 document_urls.append(url)
+            document_references.append({
+                "collection": key,
+                "ordinal": ordinal,
+                "url": url,
+                **{
+                    name: doc.get(source) if isinstance(doc.get(source), str) else None
+                    for name, source in (
+                        ("role", "documentType"), ("format", "format"),
+                        ("description", "description"), ("name", "name"),
+                    )
+                },
+            })
 
     return {
         "event_id": event_id,
@@ -535,6 +570,7 @@ def _convert_congress_meeting_dict(m: Mapping[str, Any]) -> dict[str, Any]:
         "transcript_jackets": jackets,
         "videos": videos,
         "document_urls": document_urls,
+        "document_references": document_references if supplied_document_collection else None,
         "collection_states": {
             "sittings": "present" if sittings else ("empty" if ("location" in m or "continuations" in m) else "absent"),
             "committees": "present" if committees else ("empty" if m.get("committees") is not None else "absent"),

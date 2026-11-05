@@ -6,7 +6,7 @@ from pathlib import Path
 
 from congress_api.lake.receipt_metadata import document_status_sql,empty_body_sql
 from congress_api.retention.provenance import json_input,list_of,struct
-from viewer_publication.archive_format import SPICY_PRODUCER_FAMILIES
+from viewer_publication.archive_format import NULL_MEETING_DOCUMENT_REFERENCES, SPICY_PRODUCER_FAMILIES
 
 ROOT=Path(__file__).parents[4]
 REGISTRIES={
@@ -52,6 +52,8 @@ MEETING_RECORD_FIELDS=dict(
         transcript_jackets=list_of('Utf8'),
         videos=list_of(struct(video_key='Utf8',url='Utf8',title='Utf8')),
         document_urls=list_of('Utf8'),
+        document_references=list_of(struct(collection='Utf8',ordinal='Int32',url='Utf8',role='Utf8',
+            format='Utf8',description='Utf8',name='Utf8')),
         collection_states=struct(
             sittings='Utf8',
             committees='Utf8',
@@ -727,10 +729,19 @@ def selected_record_step(table,record_input,*,root=ROOT):
     return dict(name='selected_'+table,sql=sql,materialize=True)
 
 
-def meeting_steps(*,root=ROOT):
+def meeting_steps(*,root=ROOT,has_document_references=True):
     """Select once, merge once, then resolve: CTEs are inlined per reader, so these must be steps."""
-    return _sql_steps(['meeting-records-ranked','meeting-records-current','meeting-records-merged'],root=root)+[
-        dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
+    steps=_sql_steps(['meeting-records-ranked','meeting-records-current','meeting-records-merged'],root=root)
+    if not has_document_references:
+        steps[0]['sql']=steps[0]['sql'].replace("m['document_references'] AS document_references",
+            NULL_MEETING_DOCUMENT_REFERENCES + " AS document_references")
+    return steps+[dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
+
+
+def meeting_records_have_document_references(path):
+    import pyarrow.parquet as pq
+    schema=pq.read_schema(path)
+    return schema.field('meetings').type.value_type.get_field_index('document_references') >= 0
 
 
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
@@ -926,6 +937,9 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                 created_expr='created' if 'created' in schema.names else 'cast(NULL AS VARCHAR) AS created'
                 extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},{created_expr},'
         return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
+    meeting_records_path=meeting_records.get('path') if isinstance(meeting_records,dict) else meeting_records
+    has_document_references=(not isinstance(meeting_records_path,(str,Path)) or
+        not Path(meeting_records_path).is_file() or meeting_records_have_document_references(meeting_records_path))
     if meeting_records is None or isinstance(meeting_records,(list,tuple)):
         inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or (),parser_versions.get('meeting_records')),**MEETING_RECORD_FIELDS))
     else:
@@ -972,7 +986,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
         parser_versions=dict(parser_versions),catalog_version=catalog_version,
-        include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs)
+        include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs,
+        has_document_references=has_document_references)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
@@ -1003,7 +1018,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps=list(prepared['steps'])+link_steps(root=root)
     steps += _sql_steps(['archive-member-addresses'],root=root)
     # Meetings read only prelude inputs; the documents they list feed URL keys and annotations.
-    steps += meeting_steps(root=root)+_sql_steps(['meeting-document-urls'],root=root)
+    steps += meeting_steps(root=root,has_document_references=prepared.get('has_document_references',True))+_sql_steps(['meeting-document-urls'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
     steps += url_normalized_steps(root=root)
     steps += [dict(name='model_url_keys',sql=(Path(root)/'model/sql/url-keys.sql').read_text(),materialize=True)]

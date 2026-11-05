@@ -314,6 +314,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 committees=[dict(system_code='HSAG00', role='host')],
                 subject_keys=['118-hr-1234'],
                 transcript_jackets=['55555'],
+                document_urls=['https://www.congress.gov/112/meeting/house/100031/documents/CHRG-112hhrg72212.pdf'],
+                document_references=[
+                    dict(collection='meetingDocuments',ordinal=0,
+                         url='https://www.congress.gov/112/meeting/house/100031/documents/CHRG-112hhrg72212.pdf',
+                         role='Support Document',format='PDF',description=None,name='Printed Hearing Record'),
+                    dict(collection='witnessDocuments',ordinal=1,
+                         url='https://www.congress.gov/112/meeting/house/100031/documents/CHRG-112hhrg72212.pdf',
+                         role='Witness Statement',format=None,description='Witness supplied',name=None),
+                ],
                 videos=[
                     dict(title='YouTube Stream', url='https://youtu.be/dQw4w9WgXcQ', video_key=None),
                     dict(title='Senate ISVP', url='https://www.senate.gov/isvp/?comm=ag&filename=ag051023', video_key=None),
@@ -760,6 +769,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['status'] == 'Scheduled'
     assert m['sittings'][0]['place'] == '1300, LHOB, Washington, DC'
     assert m['committees'] == [{'system_code': 'hsag00', 'role': 'primary'}]
+    assert m['document_references'] == meeting_records[1]['meetings'][0]['document_references']
     assert m['subject_keys'] == ['115-hr-1', '118-hr-1234', '118-pn-123']
     # The print first, then the recording's two complete caption tracks (ct-1i4q).
     assert [(t['source'], t['package_id'], t['video_key'], t['production']) for t in m['transcripts']] == [

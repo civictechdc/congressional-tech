@@ -115,7 +115,7 @@ def meetings(tmp_path_factory):
     work = tmp_path_factory.mktemp('meeting-semantics')
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     steps = [
-        dict(name='meetings_resolved', sql=' UNION ALL '.join(MEETINGS), materialize=True),
+        dict(name='meetings_resolved', sql="SELECT *,CASE WHEN false THEN make_array(named_struct('url',cast(NULL AS VARCHAR))) END AS document_references FROM ("+' UNION ALL '.join(MEETINGS)+")", materialize=True),
         dict(name='ordered', sql=ORDERED, materialize=True),
         dict(name='recordings_entity', sql=RECORDINGS, materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),

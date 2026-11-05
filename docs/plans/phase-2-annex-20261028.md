@@ -256,6 +256,8 @@ file's column meanings are in the release's `schema.json`, from the release-sche
 | `committee_records.parquet` | `record_key` string (hex SHA-256 of `[record_sha hex, ordinal]`), `event_id` int64, `kind` dict (`amendment`, `vote`), `bill`, `number` strings nullable, `sponsor_bioguide` dict nullable, `amendment_type` dict nullable, `enbloc`, `source_description`, `url` strings nullable, `record_sha` fsb(32), `ordinal` int32 (§1.5) | `record_key` | Whole | 1.5 MB |
 | `meeting_coverage.parquet` | `event_id` int64, `aspect` dict (`recording`, `transcript`, `documents`, `witnesses`, `captions`), `state` dict (ranked as [[DATA-MODEL]] §7.11 Coverage; states never merge), `basis` dict, `count` int32 nullable, `reason` dict nullable | `(event_id, aspect)` | Whole | Under 1 MB |
 
+The `meetings.parquet` field `document_references` keeps Congress.gov's links in their original meeting or witness document collection, with a zero-based occurrence and the supplied role, format, description, and name. The publisher format describes the link. Readers can use the existing document address lookup to find a saved copy and its independently recorded format. A null list means the metadata is unavailable or unstated. An empty list means a supplied collection contained no links.
+
 Recording associations use `direct_event` evidence for an event subject and `print_agreement` for a related package. `package_context` can link to several meetings without establishing presence or absence for any one sitting. An empty `meeting_links` list means no supported link. Earlier releases can omit the field and still carry their original observations.
 
 ## 4. Plan Items
