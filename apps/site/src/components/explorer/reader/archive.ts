@@ -380,6 +380,11 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       return result;
     },
     entry,
+    async pageMetadata(index: number, signal?: AbortSignal) {
+      checkedRow(index);
+      const [item] = await awaitShared(read('detail.parquet', index, index + 1, undefined, ['page_metadata']), signal);
+      return item?.page_metadata ?? [];
+    },
     async selectedText(index: number, signal?: AbortSignal) {
       checkedRow(index);
       const [item] = await awaitShared(read('detail.parquet', index, index + 1, undefined, ['selected_text', 'main_content']), signal);
@@ -443,7 +448,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
 
 export function detailProjection(detailNames: string[],listNames: string[]){
   const held=new Set(listNames);
-  return detailNames.filter(name=>name!=='selected_text'&&!held.has(name));
+  return detailNames.filter(name=>name!=='selected_text'&&name!=='page_metadata'&&!held.has(name));
 }
 
 export function savedCopy(detail: any,rawBase: string){

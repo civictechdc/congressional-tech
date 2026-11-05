@@ -79,14 +79,17 @@ WITH docs AS (
 ), measured AS (
  SELECT *,
   sum(literal_bytes+address_bytes) OVER (PARTITION BY doc_key) AS expanded_bytes,
-  sum(CASE WHEN literal_position=1 THEN literal_bytes ELSE 0 END) OVER (PARTITION BY doc_key) AS base_bytes
+  sum(CASE WHEN literal_position=1 THEN literal_bytes ELSE 0 END) OVER (PARTITION BY doc_key) AS base_bytes,
+  sum(CASE WHEN literal_position=1 AND selected THEN literal_bytes ELSE 0 END) OVER (PARTITION BY doc_key) AS selected_bytes
  FROM sized
 ), listed AS (
  SELECT doc_key,
   array_agg(named_struct('field',field,'value',value,'format',format,'path',path,'date',date,'precision',precision,
    'resolved',CASE WHEN expanded_bytes<=65536 THEN resolved END,'selected',coalesce(selected,false),
    'context_url',CASE WHEN expanded_bytes<=65536 THEN context_url END) ORDER BY field,rank,path,context_url)
-   FILTER (WHERE expanded_bytes<=65536 OR (literal_position=1 AND base_bytes<=65536)) AS page_metadata,
+   -- Keep the exact pointers for summaries before spending the budget on alternatives.
+   FILTER (WHERE expanded_bytes<=65536 OR (literal_position=1 AND
+    (base_bytes<=65536 OR (selected AND selected_bytes<=65536)))) AS page_metadata,
   bool_or(contexts_omitted OR expanded_bytes>65536) AS evidence_limited
  FROM measured GROUP BY doc_key
 ), labels AS (
@@ -95,8 +98,12 @@ WITH docs AS (
        WHERE field='section' AND trim(value)<>'' GROUP BY body_sha,trim(value))
  GROUP BY body_sha
 )
-SELECT d.doc_key,pd.description,pt.published_on,pt.modified_on,
- coalesce(l.publisher_labels,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS publisher_labels,
+SELECT d.doc_key,
+ CASE WHEN array_length(li.page_metadata)>0 THEN pd.description END AS description,
+ CASE WHEN array_length(li.page_metadata)>0 THEN pt.published_on END AS published_on,
+ CASE WHEN array_length(li.page_metadata)>0 THEN pt.modified_on END AS modified_on,
+ coalesce(CASE WHEN array_length(li.page_metadata)>0 THEN l.publisher_labels END,
+  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS publisher_labels,
  coalesce(li.page_metadata,array_slice(make_array(named_struct('field',cast(NULL AS VARCHAR),'value',cast(NULL AS VARCHAR),
   'format',cast(NULL AS VARCHAR),'path',cast(NULL AS VARCHAR),'date',cast(NULL AS DATE),'precision',cast(NULL AS VARCHAR),
   'resolved',cast(NULL AS VARCHAR),'selected',cast(NULL AS BOOLEAN),'context_url',cast(NULL AS VARCHAR))),1,0)) AS page_metadata,

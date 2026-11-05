@@ -35,7 +35,8 @@ test('publisher evidence shows recorded failures and omitted resolutions',()=>{
     main_content:{outcome:'unreadable',reason:'timeout',decision_id:'fixture-timeout'}},sources:[],recoveries:[]});
   for(const text of ['The HTML reader could not process this saved page.','timeout','fixture-timeout','Open original saved page'])assert(html.includes(text),text);
   const limited=render({document:{...row,format:'html'},detail:{...detail,saved_media_type:'text/html',
-    main_content:{outcome:'fallback',evidence_limited:true}},sources:[],recoveries:[]});
+    main_content:{outcome:'fallback',evidence_limited:true,facts_limited:true}},sources:[],recoveries:[]});
+  assert(limited.includes('The HTML reading exceeded the publisher metadata size limit.'));
   assert(limited.includes('Some publisher evidence exceeded the detail size limit.'));
   assert(limited.includes('Open original saved page'));
 });
