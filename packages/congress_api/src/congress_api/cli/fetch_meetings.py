@@ -1,4 +1,9 @@
-"""Execute B14 meeting fetchers through the shared raw Fetcher, ReceiptWriter and BodyStore."""
+"""Capture meetings through the shared raw Fetcher, ReceiptWriter and BodyStore.
+
+A JSON spec can include house_xml_targets, a list of reviewed event_id and url
+pairs. These targets fetch only the named meeting XML, with no page discovery
+or witness-list requests.
+"""
 import argparse
 from contextlib import ExitStack
 from datetime import datetime, timezone
@@ -25,6 +30,21 @@ ROOT = Path(__file__).resolve().parents[5]
 DEFAULT_SCOPE = ROOT / 'model/registries/capture-scope.json'
 
 
+def _house_xml_targets(targets):
+    """Validate a small list of exact URLs before making any source requests."""
+    if not isinstance(targets, (list, tuple)) or len(targets) > 16:
+        raise ValueError('house_xml_targets must be a list of at most 16 reviewed addresses')
+    seen = set()
+    for target in targets:
+        if not isinstance(target, dict) or set(target) != {'event_id', 'url'}:
+            raise ValueError('Each House XML target requires event_id and url')
+        house_acq.validate_meeting_xml_target(target['event_id'], target['url'])
+        if target['url'] in seen:
+            raise ValueError('Duplicate House XML target URL')
+        seen.add(target['url'])
+    return targets
+
+
 def run_meeting_fetchers(
     *,
     store,
@@ -40,12 +60,14 @@ def run_meeting_fetchers(
     gpo_since=None,
     gpo_packages=(),
     house_meetings=(),
+    house_xml_targets=(),
     senate_urls=(),
     api_key=None,
     spool_limit=64 << 20,
     write_date=None,
 ):
     """Run B14 meeting fetchers through Fetcher + ReceiptWriter + BodyStore with no separate state files."""
+    house_xml_targets = _house_xml_targets(house_xml_targets)
     policy = CapturePolicy(scope_path, resolve=resolve)
     policy.require_capture()
     run_id = new_run_id()
@@ -74,6 +96,7 @@ def run_meeting_fetchers(
         'congress_details': [],
         'gpo_packages': [],
         'house_meetings': [],
+        'house_xml_targets': [],
         'senate_pages': [],
         'receipt_keys': [],
     }
@@ -156,6 +179,11 @@ def run_meeting_fetchers(
             summary['house_meetings'].append(res)
             summary['receipt_keys'].extend(res['receipt_keys'])
 
+        for target in house_xml_targets:
+            res = house_acq.fetch_meeting_xml_through_raw(fetcher, writer, **target)
+            summary['house_xml_targets'].append(res)
+            summary['receipt_keys'].extend(probe['receipt_key'] for probe in res['probes'])
+
         for page_url in senate_urls:
             res = senate_acq.fetch_page_through_raw(fetcher, writer, page_url)
             summary['senate_pages'].append(res)
@@ -186,6 +214,7 @@ def main(argv=None):
             'senate_urls': list(spec_data.get('senate_urls', ())) + list(args.senate_url),
             'congress_detail_urls': list(spec_data.get('congress_detail_urls', ())) + list(args.congress_detail_url),
             'house_meetings': list(spec_data.get('house_meetings', ())),
+            'house_xml_targets': list(_house_xml_targets(spec_data.get('house_xml_targets', ()))),
             'congress_endpoints': list(spec_data.get('congress_endpoints', ())),
         }
         print(json.dumps(plan_report, indent=2, sort_keys=True))
@@ -242,6 +271,7 @@ def main(argv=None):
             gpo_since=spec_data.get('gpo_since'),
             gpo_packages=list(spec_data.get('gpo_packages', ())) + list(args.gpo_package),
             house_meetings=spec_data.get('house_meetings', ()),
+            house_xml_targets=spec_data.get('house_xml_targets', ()),
             senate_urls=list(spec_data.get('senate_urls', ())) + list(args.senate_url),
         )
     print(json.dumps(result, indent=2, sort_keys=True))

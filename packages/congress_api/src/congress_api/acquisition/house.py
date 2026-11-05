@@ -14,6 +14,7 @@ refreshed per run, oldest checks first. --zyte is only a backfill option.
 
 import collections
 from copy import deepcopy
+from dataclasses import replace
 import re
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
@@ -24,11 +25,12 @@ from congress_api.matching.house import DOCUMENT_FIELDS, document_rows
 from congress_api.matching.meetings import NOT_HELD, TRANSCRIPT, is_hearing
 from congress_api.matching.prints import attached_prints, match_prints
 from congress_api.models.content import RawContent
+from congress_api.models.raw_fetch import FetchResult
 from congress_api.parsers.house import parsed
 from congress_api.matching.house import addresses
 from congress_api.parsers.house_documents import AMENDMENT_FIELDS, WITNESS_FIELDS
 from congress_api.parsers.house_evidence import SCHEMA_VERSION
-from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
+from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses, strip_house_meeting_prefix
 from congress_api.retention.house import seed, timestamp
 from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_csv, read_meetings, read_state, write_csv, write_state
@@ -278,6 +280,51 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
         totals[name] = len(rows)
     totals["refreshes deferred"] = max(0, len(pending) - len(todo))
     print(dict(totals), dict(http.COUNTS))
+
+
+MEETING_XML_URL = re.compile(
+    r"https://docs[.]house[.]gov/meetings/[A-Z]{2}/[A-Z]{2}[0-9]{2}/[0-9]{8}/([0-9]+)/"
+    r"(?:HHRG|HMKP|HMTG)-[0-9]{3}-[A-Z]{2}[0-9]{2}-[0-9]{8}[.]xml"
+)
+
+
+def validate_meeting_xml_target(event_id: str, url: str) -> None:
+    """Require an exact House meeting XML address under the named event."""
+    match = MEETING_XML_URL.fullmatch(url) if isinstance(url, str) else None
+    if match is None or match[1] != event_id:
+        raise ValueError(f"House meeting XML URL does not identify event {event_id}")
+
+
+def fetch_meeting_xml_through_raw(fetcher, receipt_writer, *, event_id: str, url: str) -> dict:
+    """Capture one reviewed address and qualify each response against its event."""
+    validate_meeting_xml_target(event_id, url)
+    result = fetcher.fetch(url)
+    probes = []
+    # A rejected 2xx response must have its own outcome. Prior attempts in a
+    # shared receipt carry HTTP status and digest but omit the validation error.
+    for attempt in (*result.prior_attempts, result.final):
+        if attempt.complete and not attempt.error and 200 <= (attempt.http_status or 0) < 300:
+            try:
+                validate_meeting_xml_target(event_id, attempt.url)
+            except ValueError:
+                attempt = replace(attempt, error="wrong_event_url")
+            else:
+                body = attempt.body.path if attempt.body else None
+                try:
+                    root = parse_house_meeting(body.read_bytes() if body is not None else b"")
+                except (ET.ParseError, ValueError):
+                    attempt = replace(attempt, error="invalid_meeting_xml")
+                else:
+                    if strip_house_meeting_prefix(root.get("meeting-id")) != event_id:
+                        attempt = replace(attempt, error="wrong_event_body")
+        key, receipt = receipt_writer.write(FetchResult(attempt), family="house/meeting-xml")
+        probes.append({
+            "receipt_key": key,
+            "outcome": receipt["outcome"],
+            "http_status": receipt["http_status"],
+            "error_type": receipt.get("error_type"),
+        })
+    return {"event_id": event_id, "url": url, "probes": probes}
 
 
 def fetch_through_raw(
