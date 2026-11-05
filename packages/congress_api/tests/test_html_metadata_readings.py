@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -35,11 +36,11 @@ def bodies():
             'gov_uk': GOV_UK, 'pdf': b'%PDF-1.7\n%fixture\n', 'missing': b'<html><body>not on disk</body></html>'}
 
 
-def inputs(root):
+def inputs(root, *, selected_bodies=None):
     root.mkdir()
     raw = root / 'raw'
     captures, inventory, sniff, digests = [], [], [], {}
-    for name, data in bodies().items():
+    for name, data in (bodies() if selected_bodies is None else selected_bodies).items():
         digest = hashlib.sha256(data).digest()
         digests[name] = digest
         key = 'bodies/sha256/' + digest.hex()[:2] + '/' + digest.hex()
@@ -111,6 +112,129 @@ def test_rerun_is_zero_work_and_a_new_version_reselects_only_html_bodies(tmp_pat
     assert listed == {digests[n] for n in ('marked', 'no_statement', 'gov_uk', 'missing')}
     for leaf in ('html', 'sniff'):  # a moved html_metadata pin re-reads no leaf
         assert readings.current_version(leaf) == real(leaf)
+
+
+def test_dependency_drift_warns_while_old_rows_settle_until_the_declared_bump(tmp_path, monkeypatch, capsys):
+    from congress_api.lake import reading_version_diagnostics as diagnostics
+    from congress_api.lake.compatible_proof import choose_sample
+    from congress_api.lake.reading_versions import READING_VERSIONS
+    from congress_api.parsers import main_content
+
+    chosen = {key: data for key, data in bodies().items() if key in ('marked', 'no_statement', 'pdf')}
+    args, existing, digests = inputs(tmp_path / 'source', selected_bodies=chosen)
+    root = diagnostics.ROOT
+    checkout = tmp_path / 'checkout'
+    (checkout / 'packages').mkdir(parents=True)
+    for package in (root / 'packages').iterdir():
+        if package.name == 'congress_api':
+            shutil.copytree(package / 'src', checkout / 'packages/congress_api/src',
+                            ignore=shutil.ignore_patterns('__pycache__'))
+        else:
+            (checkout / 'packages' / package.name).symlink_to(package)
+    for path in ('apps', 'model'):
+        (checkout / path).symlink_to(root / path)
+    lock = checkout / 'uv.lock'
+    original_lock = (root / 'uv.lock').read_text()
+    unused = '\n[[package]]\nname = "ct-fixture-unused"\nversion = "1.0"\nsource = { registry = "https://pypi.org/simple" }\n'
+    lock.write_text(original_lock + unused)
+    helper = checkout / diagnostics.SOURCE / 'parsers/main_content.py'
+    log = tmp_path / 'body-opens'
+    wrapper = tmp_path / 'observe.py'
+    wrapper.write_text(f'''import json
+import sys
+from pathlib import Path
+from congress_api.lake.readings import parse_payload
+from congress_api.parsers import main_content
+
+def run(payload):
+    source = json.loads(payload)['path']
+    def observe(event, args):
+        if event == 'open' and str(args[0]) == source:
+            with Path({str(log)!r}).open('a') as stream:
+                stream.write(source + '\\n')
+    sys.addaudithook(observe)
+    return parse_payload(payload)
+
+helper = Path({str(helper)!r})
+exec(compile(helper.read_bytes(), str(helper), 'exec'), vars(main_content))
+''')
+
+    def worker(parser, version, entrypoint, **limits):
+        return ParserWorker(parser, version, f'{wrapper}:run', **limits)
+
+    def stage(name, selected):
+        return readings.stage(**args, existing=selected, work=tmp_path / name,
+                              parser='html_metadata', worker_factory=worker)
+
+    before = diagnostics.snapshot(checkout)
+    first = stage('first', existing)
+    saved = by_name(pq.read_table(first['readings']).to_pylist(), digests)
+    assert first['work_items'] == 2 and len(log.read_text().splitlines()) == 2
+    current = _current(tmp_path, args, [existing, first['readings']])
+    settled = stage('settled', current)
+    work_list = pq.read_table(settled['work_list']).to_pylist()
+    assert work_list == [] and len(log.read_text().splitlines()) == 2
+
+    lock.write_text(original_lock + unused.replace('version = "1.0"', 'version = "2.0"'))
+    assert diagnostics.snapshot(checkout) == before
+    unrelated = stage('unrelated', current)
+    assert unrelated['parser_version'] == settled['parser_version']
+    assert pq.read_table(unrelated['work_list']).to_pylist() == work_list
+    assert len(log.read_text().splitlines()) == 2
+
+    driver = checkout / diagnostics.DRIVER
+    driver_text = driver.read_text()
+    driver.write_text(driver_text.replace('decoded_size_limit', 'fixture_decoded_size_limit'))
+    changed_driver = diagnostics.snapshot(checkout)
+    assert set(dict(diagnostics.drift_messages(before, changed_driver))) == set(before)
+    assert all(changed_driver[name]['version'] == evidence['version'] for name, evidence in before.items())
+    driver.write_text(driver_text)
+
+    original = 'SHORT_MARKED_CHARS = 200'
+    assert original in helper.read_text()
+    helper.write_text(helper.read_text().replace(original, 'SHORT_MARKED_CHARS = 3000'))
+    changed = diagnostics.snapshot(checkout)
+    assert changed['html_metadata']['version'] == before['html_metadata']['version']
+    assert changed['html_metadata']['workspace_sha256'] != before['html_metadata']['workspace_sha256']
+    assert changed['html_metadata']['locked_sha256'] == before['html_metadata']['locked_sha256']
+
+    drifted = stage('drifted', current)
+    assert drifted['parser_version'] == settled['parser_version']
+    assert pq.read_table(drifted['work_list']).to_pylist() == work_list
+    assert len(log.read_text().splitlines()) == 2
+
+    sample, _ = choose_sample(
+        [dict(body=digests[name].hex(), status=row['status']) for name, row in saved.items()],
+        local={digests[name].hex() for name in saved}, size=1, full=False,
+    )
+    assert sample == [digests['no_statement'].hex()]
+    baseline = tmp_path / 'baseline.json'
+    before['html_metadata']['sample_sha256'] = diagnostics.sample_digest('html_metadata')
+    baseline.write_text(json.dumps(before))
+    altered = dict(vars(main_content))
+    exec(compile(helper.read_bytes(), str(helper), 'exec'), altered)
+    monkeypatch.setattr(main_content, 'select_main_content', altered['select_main_content'])
+    monkeypatch.setattr(diagnostics, 'BASELINE', baseline)
+    monkeypatch.setattr(diagnostics, 'snapshot', lambda: changed)
+    assert diagnostics.main([]) is None
+    warning = capsys.readouterr().out
+    assert 'WARNING: html_metadata reading version evidence changed (workspace_sha256)' in warning
+    assert 'html_metadata fixed fixture sample matched' in warning
+
+    monkeypatch.setitem(READING_VERSIONS, 'html_metadata', 'deliberate-fixture-bump')
+    assert {parser for parser, version in compatible_versions.current_pins().items()
+            if version != before[parser]['version']} == {'html_metadata'}
+    bumped = stage('bumped', current)
+    assert {row['body_sha'] for row in pq.read_table(bumped['work_list']).to_pylist()} == {
+        digests['marked'], digests['no_statement'],
+    }
+    assert len(log.read_text().splitlines()) == 4
+    rerun = by_name(pq.read_table(bumped['readings']).to_pylist(), digests)
+    assert fields(saved['marked'])['main_content:outcome'] == 'marked'
+    assert fields(rerun['marked'])['main_content:outcome'] == 'marked_no_content'
+    assert {key for key in saved['no_statement'] if saved['no_statement'][key] != rerun['no_statement'][key]} == {
+        'parser_version',
+    }
 
 
 def _as_lists(source, target):

@@ -3,9 +3,8 @@
 [environment]
 python_version_file = ".python-version"
 
-# The sniff parser_version hashes the first line of `pdfinfo -v` and `pdftotext -v`
-# (congress_api/retention/pdf_tools.py reader_versions), so every machine runs this
-# exact Poppler release; any other release makes stored sniff readings look stale.
+# PDF outcomes depend on the native reader. Every machine runs this exact
+# Poppler release, and reading-version diagnostics record the reader versions.
 # CI builds it from source (.github/scripts/install-poppler.sh): no maintained
 # Linux distribution ships 26.06.0.
 [environment.poppler]

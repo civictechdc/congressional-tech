@@ -1,0 +1,89 @@
+{
+  "html": {
+    "limits": {
+      "decoded_bytes": 67108864,
+      "page_parse_bytes": 25165824,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "5eda252dd613a3d29ea796e884d6edc00cc6c949ce844e744a988cbe09796f04",
+    "sample_sha256": "1f7918d00ea4860c20b2dc8a4bccdf4ef0b646505763cc54c784091e6701b74e",
+    "version": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",
+    "workspace_sha256": "6fd5505ff8e5a539d3053e45e9b91bf74b9f519691c03ce88878a2d39e9189d4"
+  },
+  "html_metadata": {
+    "format_timeout_seconds": 10.0,
+    "formats": [
+      "json-ld",
+      "opengraph",
+      "dublincore",
+      "microdata",
+      "microformat",
+      "rdfa"
+    ],
+    "limits": {
+      "decoded_bytes": 67108864,
+      "page_parse_bytes": 25165824,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "738e8c89f3a1cc097b75029b25608b953879bf805a551c2633c0610c69664bb1",
+    "policy": {
+      "max_input_bytes": 65536,
+      "max_output_bytes": 8388608,
+      "memory_bytes": 1073741824,
+      "timeout_seconds": 75
+    },
+    "sample_sha256": "d6b9359912cac669da66673017cb13451b9d54fc795e7608e29068655be617a5",
+    "version": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
+    "workspace_sha256": "db4a1af600d91abd9c1b68de5066d5c915c50a6146af553acad63b34592910e8"
+  },
+  "json": {
+    "limits": {
+      "decoded_bytes": 67108864,
+      "page_parse_bytes": 25165824,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "5eda252dd613a3d29ea796e884d6edc00cc6c949ce844e744a988cbe09796f04",
+    "sample_sha256": "29b6bd375201fffc4d4aa59db3b1e661d36ad63b94889649396b21b18af92f7c",
+    "version": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
+    "workspace_sha256": "6fd5505ff8e5a539d3053e45e9b91bf74b9f519691c03ce88878a2d39e9189d4"
+  },
+  "readings": {
+    "limits": {
+      "decoded_bytes": 67108864,
+      "page_parse_bytes": 25165824,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "f6e7ef6f3cde2ba575a75f7cebe91954eb6b1375333cae4d9c340aec819600b8",
+    "policy": {
+      "max_input_bytes": 65536,
+      "max_output_bytes": 8388608,
+      "memory_bytes": 1073741824,
+      "timeout_seconds": 15
+    },
+    "sample_sha256": "475a2288edeaf9a7dc8e8c91be51524729eeb54b750bb99d28ebb81996393982",
+    "version": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
+    "workspace_sha256": "345d096df407ee0e14d433cafefc1140c1779ef4ee24f06d0f2540379207d9a6"
+  },
+  "sniff": {
+    "locked_sha256": "1be1625807f3b8ac0a36326c86165cbd63c6f7d3261daba4d06ed4e9f7b685d4",
+    "readers": {
+      "pdfinfo": "pdfinfo version 26.06.0",
+      "pdftotext": "pdftotext version 26.06.0",
+      "pypdf": "6.19.0"
+    },
+    "sample_sha256": "a65c8c35474262329806ea3ebcc90e962c6df3aecf509ab9246f599253bb8357",
+    "version": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
+    "workspace_sha256": "3b2f98d54446c891041f1bbaa5c5faae65474ae89f4d59d731efc6e4b2429de9"
+  },
+  "xml": {
+    "limits": {
+      "decoded_bytes": 67108864,
+      "page_parse_bytes": 25165824,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "5eda252dd613a3d29ea796e884d6edc00cc6c949ce844e744a988cbe09796f04",
+    "sample_sha256": "25f05b499749df71b38a9edb58dd249a89e5cf9e85dfb93d1f0e82778ab88c4e",
+    "version": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f",
+    "workspace_sha256": "6fd5505ff8e5a539d3053e45e9b91bf74b9f519691c03ce88878a2d39e9189d4"
+  }
+}

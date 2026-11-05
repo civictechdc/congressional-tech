@@ -14,6 +14,7 @@ from queue import Empty
 from itertools import islice
 from functools import lru_cache
 
+from congress_api.lake import reading_versions
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.body_keys import body_object_digest
@@ -49,27 +50,11 @@ STRINGS=('parser','parser_version','status','error_type','format','xml_root','ti
 INTEGERS=('text_bytes','link_count','link_text_bytes')
 
 
-def current_version(parser,*,root=ROOT):
-    """Content version of one readings parser. `root` relocates html_metadata's inputs (tests)."""
-    if parser=='sniff':
-        from congress_api.retention.sniff import sniff_version
-        return sniff_version()
-    from congress_api.lake.versions import version_digest
-    if parser=='html_metadata':
-        # Not in bundle_version or LEAF_PARSERS: a main_content.py fix moves only this pin.
-        from congress_api.parsers.html_metadata import FORMAT_TIMEOUT_SECONDS,FORMATS
-        source=Path(root)/'packages/congress_api/src/congress_api'
-        return version_digest(packages={},files={'lock':Path(root)/'uv.lock',
-            **{name:source/name for name in ('models/html_metadata.py','parsers/html_metadata.py','parsers/main_content.py')}},
-            values=dict(parser=parser,options=dict(formats=list(FORMATS),format_timeout_seconds=FORMAT_TIMEOUT_SECONDS,base_url=None),
-                stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES,page_parse_bytes=PAGE_PARSE_MAX_BYTES,policy=worker_limits(parser)))
-    if parser not in {'html','xml','json'}:
+def current_version(parser):
+    """Declared version of one leaf or derived reading parser."""
+    if parser == 'readings' or parser not in reading_versions.READING_VERSIONS:
         raise ValueError('Unsupported reading parser')
-    return version_digest(packages={},files={
-        'parser':Path(__file__).parents[1]/'parsers/archive_readings.py',
-        'xml_helper':Path(__file__).parents[1]/'parsers/xml.py',
-        'lock':ROOT/'uv.lock','schema':ROOT/'model/lake/readings.schema.json'},
-        values=dict(parser=parser,stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES))
+    return reading_versions.READING_VERSIONS[parser]
 
 
 def _storage_gzip(stream,body_sha,*,raw_io=None,verify_plain=False):
@@ -217,13 +202,11 @@ def worker_limits(parser=None):
 def bundle_version(versions,*,policy):
     """Pin combined failure authority without invalidating completed leaf facts."""
     from congress_api.lake.versions import version_digest
-    files={'producer':Path(__file__),
-        'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
-        'resources':Path(__file__).parents[1]/'retention/process_resources.py',
-        'selection':Path(__file__).parent/'compatible_versions.py'}
-    files.update({name:ROOT/'model/sql'/(name+'.sql') for name in
-        ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','body-admissions']})
-    return version_digest(packages={},files=files,values=dict(leaf_versions=versions,policy=policy))
+    inputs = version_digest(packages={}, files={}, values=dict(leaf_versions=versions, policy=policy))
+    version = reading_versions.READING_VERSIONS['readings']
+    if inputs == reading_versions.MIGRATION_BUNDLE_INPUTS:
+        return version
+    return sha256(f'{version}:{inputs}'.encode()).hexdigest()
 
 
 def writer_admission_step(*,root=ROOT):

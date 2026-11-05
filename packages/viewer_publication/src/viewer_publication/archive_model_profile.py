@@ -93,7 +93,9 @@ def _definition_hashes(root):
         'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py')]
     files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
     files += [root/'packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv']
-    files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/compatible_versions.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py','retention/parser_worker.py','retention/process_resources.py']]
+    files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/reading_versions.py',
+        'lake/compatible_versions.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py',
+        'retention/parser_worker.py','retention/process_resources.py']]
     return {path.relative_to(root).as_posix():file_pin(path)['sha256'] for path in sorted(set(files))}
 
 

@@ -4,10 +4,9 @@ The engine keeps a distinct set per group (about 14 KB each), so the count form 
 gigabytes over hundreds of thousands of groups (source_reference_targets: 480K). min/max keep
 two values per group and select the same groups for every key type the model uses.
 
-A step file a version digest hashes keeps its bytes: rewriting it, even to an equivalent
-query, moves that version. body-admissions.sql is in the readings bundle, so a rewrite
-re-pins the bundle and every readings unreadable decision in the lake stops settling its
-body (ct-6v77 build-1: missing_sniff=24, missing_pages=1 with byte-identical outputs).
+An equivalent body-admissions.sql rewrite used to repin the readings bundle and
+reopen 25 settled failures. The diagnostics now flag the edit for review while
+the declared version keeps those decisions eligible.
 """
 import json
 import os
@@ -87,17 +86,17 @@ def model_definitions():
     yield ROOT / 'packages/viewer_publication/src/viewer_publication/archive_model.py'
 
 
-def version_hashed_files(monkeypatch):
-    """Every file the producers that read model/sql hash into a version."""
-    from congress_api.lake import filenames, readings, versions, video_records
+def parser_fingerprint_files(monkeypatch):
+    """SQL files included in producer versions or the bundle's advisory fingerprint."""
+    from congress_api.lake import filenames, reading_version_diagnostics as diagnostics, versions, video_records
     hashed, digest = set(), versions.version_digest
 
     def capture(*, packages, files, values=None):
         hashed.update(Path(path).resolve() for path in files.values())
         return digest(packages=packages, files=files, values=values)
-    for module in (versions, filenames, video_records):
+    for module in (diagnostics, versions, filenames, video_records):
         monkeypatch.setattr(module, 'version_digest', capture)
-    readings.bundle_version(LEAVES, policy=readings.worker_limits())
+    diagnostics.snapshot()
     filenames.current_version()
     video_records.current_versions()
     monkeypatch.undo()
@@ -106,28 +105,28 @@ def version_hashed_files(monkeypatch):
 
 def plant_rewritten_admissions(monkeypatch, tmp_path):
     """Hash the branch's min=max rewrite of body-admissions.sql in place of the committed bytes."""
-    from congress_api.lake import versions
+    from congress_api.lake import reading_version_diagnostics as diagnostics
     text = ADMISSIONS.read_text()
     assert text.count('count(DISTINCT c.media_type)=1') == 1
     planted = tmp_path / 'body-admissions.sql'
     planted.write_text(text.replace('count(DISTINCT c.media_type)=1', 'min(c.media_type)=max(c.media_type)'))
-    digest = versions.version_digest
+    digest = diagnostics.version_digest
 
     def swapped(*, packages, files, values=None):
         files = {name: planted if Path(path).resolve() == ADMISSIONS else path for name, path in files.items()}
         return digest(packages=packages, files=files, values=values)
-    monkeypatch.setattr(versions, 'version_digest', swapped)
+    monkeypatch.setattr(diagnostics, 'version_digest', swapped)
 
 
 def test_no_model_step_counts_distinct_values_to_test_for_one(monkeypatch):
-    hashed = version_hashed_files(monkeypatch)
+    hashed = parser_fingerprint_files(monkeypatch)
     found = [f'{path.relative_to(ROOT)}: {match.group(0)}' for path in model_definitions()
              if path.resolve() not in hashed for match in DISTINCT_EQUALS_ONE.finditer(path.read_text())]
     assert found == [], 'use min(x)=max(x): ' + '; '.join(found)
 
 
-def test_the_lint_exempts_only_version_hashed_step_files(monkeypatch):
-    exempt = version_hashed_files(monkeypatch) & {path.resolve() for path in model_definitions()}
+def test_the_lint_exempts_only_fingerprinted_step_files(monkeypatch):
+    exempt = parser_fingerprint_files(monkeypatch) & {path.resolve() for path in model_definitions()}
     assert ADMISSIONS in exempt
     assert DISTINCT_EQUALS_ONE.search(ADMISSIONS.read_text())
     assert not {path.name for path in exempt} & {
@@ -140,18 +139,27 @@ def test_the_published_leaves_make_the_pinned_readings_bundle():
     assert readings_bundle_version(LEAVES) == READINGS_BUNDLE
 
 
-def test_the_planted_rewrite_moves_the_readings_bundle_to_build_1s(monkeypatch, tmp_path):
+def test_the_planted_rewrite_warns_without_moving_the_readings_bundle(monkeypatch, tmp_path):
+    from congress_api.lake import reading_version_diagnostics as diagnostics
     from viewer_publication.archive_model_profile import readings_bundle_version
+    before = diagnostics.snapshot()
     plant_rewritten_admissions(monkeypatch, tmp_path)
-    assert readings_bundle_version(LEAVES) == '7ee4d97be67f6fea8e33c53666e59b5e03b6163819b05352b3fd5738db4789ac'
+    assert dict(diagnostics.drift_messages(before, diagnostics.snapshot())) == {'readings': (
+        f'readings reading version evidence changed (workspace_sha256); using {READINGS_BUNDLE}. '
+        'Record equivalence or a deliberate bump.'
+    )}
+    assert readings_bundle_version(LEAVES) == READINGS_BUNDLE
 
 
-@pytest.mark.parametrize('arm,expected', [('committed', {}), ('planted', {'missing_sniff': 1, 'missing_pages': 1})])
+@pytest.mark.parametrize('arm,expected', [('current', {}), ('advisory', {}), ('bumped', {'missing_sniff': 1, 'missing_pages': 1})])
 def test_readings_decisions_at_the_pinned_bundle_settle_their_bodies(monkeypatch, tmp_path, arm, expected):
     from viewer_publication.archive_model_profile import (completeness_checks, completeness_steps,
                                                           readings_bundle_version)
-    if arm == 'planted':
+    if arm == 'advisory':
         plant_rewritten_admissions(monkeypatch, tmp_path)
+    if arm == 'bumped':
+        from congress_api.lake.reading_versions import READING_VERSIONS
+        monkeypatch.setitem(READING_VERSIONS, 'readings', 'deliberately-bumped')
     pins = {**LEAVES, 'readings': readings_bundle_version(LEAVES)}
     bodies = (UNSNIFFED, UNPAGED)
     inputs = [

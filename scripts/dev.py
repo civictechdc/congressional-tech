@@ -118,7 +118,7 @@ def doctor(config, lane_name=None):
             continue
         try:
             result = run([executable, *(arg.replace('{pid}', str(os.getpid())) for arg in native['arguments'])])
-            # Same first line, stdout then stderr, that pdf_tools.reader_versions hashes.
+            # Same first line, stdout then stderr, that pdf_tools.reader_versions records.
             line = ((result.stdout or '') + (result.stderr or '')).splitlines()[0]
             print(f'{command}: {line}')
             if 'first_line' in native and line != (pinned := native['first_line'].format(**pins)):
@@ -138,6 +138,13 @@ def doctor(config, lane_name=None):
     if errors:
         raise ValueError('\n'.join(errors))
     job_runtime(config, lane_name)
+    try:
+        result = run([sys.executable, '-m', 'congress_api.lake.reading_version_diagnostics'],
+                     timeout=import_timeout)
+        if result.stdout:
+            print(result.stdout, end='')
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f'WARNING: Reading version diagnostics unavailable: {error}')
     print('Doctor passed.')
 
 
