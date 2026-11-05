@@ -17,7 +17,7 @@ from congress_api.lake.reading_versions import READING_VERSIONS
 from congress_api.parsers.document_links import response_kind
 from congress_api.retention.archive_members import ArchiveReadError, ZipLimits, inspect_office_zip
 from congress_api.retention.image_tools import image_kind
-from congress_api.retention.pdf_tools import BODY_LIMIT, PdfToolError, check_pdf
+from congress_api.retention.pdf_tools import BODY_LIMIT, PdfToolError, check_pdf, require_pinned_pdfinfo
 
 PREFIX_BYTES = 8192
 
@@ -172,6 +172,14 @@ def read_sniff(read_range, *, stored_size, stored_gzip=False, pdf_reader=check_p
     return row
 
 
+def _check_pinned_pdf(data):
+    try:
+        executable = require_pinned_pdfinfo()
+    except PdfToolError:
+        raise SniffRefusal('pdf_reader_unqualified') from None
+    return check_pdf(data, executable=executable)
+
+
 def read_sniff_file(path, *, zip_limits=ZipLimits()):
     """Use the same sniffer on a spool; ZIP metadata uses a read-only mapping."""
     import mmap
@@ -184,4 +192,5 @@ def read_sniff_file(path, *, zip_limits=ZipLimits()):
         def office():
             with mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_READ) as view:
                 return inspect_office_zip(view, limits=zip_limits)
-        return read_sniff(read, stored_size=size, zip_limits=zip_limits, zip_inspector=office)
+        return read_sniff(read, stored_size=size, pdf_reader=_check_pinned_pdf,
+                          zip_limits=zip_limits, zip_inspector=office)

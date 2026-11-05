@@ -108,6 +108,76 @@ def test_inspection_failure_retains_exact_body_receipt_and_transfer_facts(tmp_pa
     assert result.final.body.sniffed_format is None
 
 
+@pytest.mark.parametrize('mode', ['capture', 'recovery'])
+@pytest.mark.parametrize('reader', ['pinned', 'mismatch', 'missing', 'tail'])
+def test_direct_receipts_qualify_pdfinfo_only_for_the_fallback(tmp_path, monkeypatch, mode, reader):
+    from io import BytesIO
+    import shutil
+    from pypdf import PdfWriter
+    from congress_api.retention.sniff import sniff_version
+    from corpus_recovery.reconcile import import_retained
+
+    pdf = PdfWriter()
+    pdf.add_blank_page(width=72, height=72)
+    output = BytesIO()
+    pdf.write(output)
+    data = output.getvalue()
+    if reader != 'tail':
+        data = data.rsplit(b'%%EOF', 1)[0]
+
+    calls = tmp_path/'pdfinfo-calls'
+    if reader != 'pinned':
+        bin_dir = tmp_path/'bin'
+        bin_dir.mkdir()
+        (bin_dir/'ps').symlink_to(shutil.which('ps'))
+        monkeypatch.setenv('PATH', str(bin_dir))
+        if reader != 'missing':
+            monkeypatch.setenv('CT_TEST_PDFINFO_CALLS', str(calls))
+            executable = bin_dir/'pdfinfo'
+            executable.write_text(
+                '#!/bin/sh\n'
+                'if [ "$1" = "-v" ]; then\n'
+                '  echo version >> "$CT_TEST_PDFINFO_CALLS"\n'
+                '  echo "pdfinfo version 0.0.0" >&2\n'
+                'else\n'
+                '  echo document >> "$CT_TEST_PDFINFO_CALLS"\n'
+                '  echo "Pages: 1"\n'
+                'fi\n'
+            )
+            executable.chmod(0o700)
+
+    root = tmp_path/'raw'
+    if mode == 'capture':
+        url = URL + '.pdf'
+        result, adapter, root = run_fixture(tmp_path, [dict(requested_url=url, attempts=0)],
+            {url: (200, data, {'content-type': 'application/pdf'})}, request_budget=1)
+        [key] = result['receipts']
+        assert adapter.calls == [url]
+    else:
+        source = tmp_path/'retained.pdf'
+        source.write_bytes(data)
+        key, _ = import_retained(writer(root), dict(original_url=URL, recovered_url=URL+'.pdf',
+            body_path=str(source), body_sha256=hashlib.sha256(data).hexdigest(),
+            retrieved_at='2026-10-27T10:00:00Z', imported_at='2026-10-27T11:00:00Z',
+            category='recovered_document', match_basis='verified_archive_capture', media_type='application/pdf'))
+
+    line = json.loads(gzip.decompress((root/key).read_bytes()))
+    [capture] = line['captures']
+    assert (root/body_key(data)).read_bytes() == data
+    assert line['outcome'] == 'stored' and capture['complete']
+    if reader in {'mismatch', 'missing'}:
+        assert capture['sniff_error'] == 'pdf_reader_unqualified'
+        assert (capture['sniffed_format'], capture['sniff_version'], capture['intact']) == (None,)*3
+    else:
+        assert (capture['sniffed_format'], capture['sniff_version'], capture['intact']) == (
+            'pdf', sniff_version(), True)
+        assert 'sniff_error' not in capture
+    if reader == 'mismatch':
+        assert calls.read_text().splitlines() == ['version']
+    else:
+        assert not calls.exists()
+
+
 def test_html_is_inspected_after_storage_and_receipt_keeps_the_reading(tmp_path):
     data = b'<html><p>durable original</p></html>'
     adapter, root, observed = Adapter(data), tmp_path/'raw', []
