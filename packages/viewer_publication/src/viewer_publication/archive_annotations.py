@@ -1,5 +1,8 @@
 """Assemble per-source display evidence through the model's native SQL job."""
 from pathlib import Path
+from re import escape
+
+from house_naming.bill_codes import get_bill_versions
 
 from viewer_publication.archive_format import EMPTY_FACTS,EMPTY_STRINGS
 
@@ -16,7 +19,8 @@ def annotation_steps(catalog_version,*,root=ROOT):
     if not isinstance(catalog_version,str) or not catalog_version:
         raise ValueError('A pinned filename catalog version is required')
     replacements={'{{CATALOG_VERSION}}':"'"+catalog_version.replace("'","''")+"'",
-                  '{{EMPTY_STRINGS}}':EMPTY_STRINGS,'{{EMPTY_FACTS}}':EMPTY_FACTS,'{{FILENAME_DATE}}':FILENAME_DATE}
+                  '{{EMPTY_STRINGS}}':EMPTY_STRINGS,'{{EMPTY_FACTS}}':EMPTY_FACTS,'{{FILENAME_DATE}}':FILENAME_DATE,
+                  '{{GOVINFO_BILL_VERSIONS}}':'|'.join(escape(version) for version in sorted(get_bill_versions()))}
     names=['linked_filenames','filename','addresses','publisher','codes','committees','unmapped_committees','facts','meetings','pages','final']
     steps=[]
     for name in names:

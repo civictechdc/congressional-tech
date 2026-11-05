@@ -90,12 +90,16 @@ def test_a_filename_names_only_a_govinfo_package_and_an_act_title_year_dates_not
     from viewer_publication.archive_annotations import annotation_steps
     act='AFWA testimony_H.R. 2264_Bear Protection Act of 2019_6-23-20_final.pdf'
     packages={'katko':'BILLS-117hr1833ih-Katko','untyped':'BILLS-1171833ih','bill':'BILLS-117hr1833ih',
+        'draft':'BILLS-119hr2534pih','garbled':'BILLS-118hr2534116thcongressih','returned':'BILLS-118hr1rhuc',
+        'direct':'BILLS-119hr2534pih',
         'part':'CHRG-115hhrg24725-pt2','addendum':'CHRG-116hhrg43625-add2','report':'CRPT-112hrpt480-pt1',
         'errata':'CRPT-104srpt259-ERRATA','print':'CPRT-113HPRT86429','rules':'CPRT-113-hprt-RU00-HR1105',
         'treaty':'CDOC-118tdoc5','amendment':'BILLS-118-HR897-W000821-Amdt-1','suspension':'BILLS-117hres888-SUS'}
     names={**{key:value+'.pdf' for key,value in packages.items()},'act':act,
         'dated':'H.R. 2264 Act of 2019 hearing 2020-06-25.pdf','linked':'statement.pdf'}
-    sources=[dict(source_id=key,filename=name,source_url='https://committee.test/'+key,body_sha=None) for key,name in names.items()]
+    direct_url='https://www.govinfo.gov/content/pkg/BILLS-119hr2534pih/pdf/BILLS-119hr2534pih.pdf'
+    sources=[dict(source_id=key,filename=name,
+        source_url=direct_url if key=='direct' else 'https://committee.test/'+key,body_sha=None) for key,name in names.items()]
     rows=[]
     for source in sources:
         if source['source_id'] in packages:
@@ -128,6 +132,7 @@ def test_a_filename_names_only_a_govinfo_package_and_an_act_title_year_dates_not
             dict(name='named',sql='SELECT source_id,filename_date_valid,congress_valid FROM source_filename_readings ORDER BY source_id')])
     assert {row['source_id']:row['package_id'] for row in result['sources'] if row['source_id'] in packages}=={
         'katko':None,'untyped':None,'bill':'BILLS-117hr1833ih','part':'CHRG-115hhrg24725','addendum':None,
+        'draft':None,'garbled':None,'returned':'BILLS-118hr1rhuc','direct':'BILLS-119hr2534pih',
         'report':'CRPT-112hrpt480','errata':'CRPT-104srpt259','print':'CPRT-113HPRT86429','rules':None,
         'treaty':'CDOC-118tdoc5','amendment':None,'suspension':None}
     assert {row['source_id']:row['filename_date'] for row in result['sources'] if row['source_id'] not in packages}=={

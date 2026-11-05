@@ -10,8 +10,9 @@ SELECT s.source_id,
  -- A filename names a package only in GovInfo's own form (govinfo.gov/help/{bills,chrg,crpt,cprt,cdoc});
  -- a granule's part, volume or errata suffix names its package. Look-alike committee-site names
  -- (BILLS-117hr1833ih-Katko, BILLS-1171833ih, CHRG-116hhrg43625-add2) name none.
+ -- A filename's bill version must be recognized by the maintained GovInfo vocabulary.
  coalesce(u.package_id,CASE WHEN f.status='completed' THEN coalesce(
-  (regexp_match(f.package_id,'^(BILLS-[1-9][0-9]{0,2}(?:hr|s|hjres|sjres|hconres|sconres|hres|sres)[1-9][0-9]*[a-z]+)$'))[1],
+  (regexp_match(f.package_id,'^(BILLS-[1-9][0-9]{0,2}(?:hr|s|hjres|sjres|hconres|sconres|hres|sres)[1-9][0-9]*(?:{{GOVINFO_BILL_VERSIONS}}))$'))[1],
   (regexp_match(f.package_id,'^(CHRG-[1-9][0-9]{0,2}[hsj]hrg[0-9]+)(?:-vol[0-9]+)?(?:-pt[0-9]+)?(?:-err[0-9]*)?$'))[1],
   (regexp_match(f.package_id,'^(CRPT-[1-9][0-9]{0,2}(?:hrpt|srpt|erpt)[1-9][0-9]*)(?:-vol[0-9]+)?(?:-pt[0-9]+)?(?:-ERRATA[0-9]*)?$'))[1],
   (regexp_match(f.package_id,'^(CPRT-[1-9][0-9]{0,2}[HSJ]PRT[0-9]+)$'))[1],
