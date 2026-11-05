@@ -1986,6 +1986,32 @@ def test_unset_form_values_state_no_place(placeholder):
     assert congress["sittings"][0]["room"] is None and congress["sittings"][0]["building"] is None
 
 
+def test_mods_witness_affiliation_boundaries_keep_source_occurrences():
+    # The named lines are from CHRG-112hhrg72238, whose printed contents III
+    # also show the complete roles, employers and Reese's representative role.
+    lines = [
+        "Mr. Thomas L. Farmer, Assistant Vice President for Security, Safety, and Operations, Association of American Railroads:",
+        "Mr. Raymond J. Reese, Corporate Health, Safety, and Security Leader, Colonial Pipeline Company, On Behalf of The Association of Oil Pipe Lines and the American Petroleum Institute:",
+        "Mr. Martin Rojas, Vice President for Security and Operations, American Trucking Association:",
+        "Mansooreh Mollaghasemi, Ph.D., President, Atria Technologies, LLC",
+        "Ms. Jane Doe, Deputy Director for Finance, Safety, and Operations, Northeast Programs",
+    ]
+    xml = '<mods xmlns="http://www.loc.gov/mods/v3"><extension>' + "".join(
+        f"<witness>{line}</witness>" for line in lines
+    ) + "</extension></mods>"
+    row = appearance_records.build_appearance_record_row(_sha("affiliation"), "mods", xml)
+    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["on_behalf_of"])
+            for a in row["appearances"]] == [
+        ("mods:witness[1]", "Thomas L. Farmer", "Assistant Vice President for Security, Safety, and Operations",
+         "Association of American Railroads", None),
+        ("mods:witness[2]", "Raymond J. Reese", "Corporate Health, Safety, and Security Leader",
+         "Colonial Pipeline Company", "The Association of Oil Pipe Lines and the American Petroleum Institute"),
+        ("mods:witness[3]", "Martin Rojas", "Vice President for Security and Operations", "American Trucking Association", None),
+        ("mods:witness[4]", "Mansooreh Mollaghasemi", "President", "Atria Technologies, LLC", None),
+        ("mods:witness[5]", "Jane Doe", None, None, None),
+    ]
+
+
 def test_mods_print_states_every_held_day_and_labels_statements():
     """A multi-day print states later days in constituent items (Haaland 328803), and its <witness> list
     carries letters for the record and Members' statements, which are not witnesses (red-f2)."""
