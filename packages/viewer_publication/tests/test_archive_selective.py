@@ -802,6 +802,7 @@ def test_record_only_retained_committee_checks_custody_and_returns_only_append_r
     from congress_api.retention.provenance import file_pin
     from viewer_publication.archive_backfill_job import load_spec
     from viewer_publication.archive_record_backfill import HOUSE_XML_PATH, _retained_committee_selection
+    from viewer_publication.producer_proof import BACKFILL, IMPORT, record, snapshot_reasons
 
     def pin(path):
         return dict(path=str(path), **file_pin(path))
@@ -846,7 +847,9 @@ def test_record_only_retained_committee_checks_custody_and_returns_only_append_r
         body,parser_version=version[committee_records.SOURCE])]),old)
     old_pin = pin(old)
     model = tmp_path/'model.json'
-    model.write_text(json.dumps(dict(committee_records=dict(kind='parquet', **old_pin),
+    base_selector = dict(kind='native_table', metadata_location='fixture/metadata.json',
+                         table_uuid='fixture-table', snapshot=6186, schema_id=0)
+    model.write_text(json.dumps(dict(committee_records=base_selector,
         parser_versions=dict(committee_records=version), unreadable_files=[])))
     path = tmp_path/'job.json'
 
@@ -871,3 +874,39 @@ def test_record_only_retained_committee_checks_custody_and_returns_only_append_r
     proof = json.loads(Path(item['producer']['path']).read_text())
     assert proof['final_reconciliation_required'] and 'base_selector' not in proof
     assert pin(old) == old_pin
+
+    base_origin = tmp_path/'base-origin.json'
+    origin = record(base_origin, input='committee_records', selector=dict(kind='parquet', **old_pin), job=BACKFILL)
+    base_producer = tmp_path/'base-import.json'
+    imported = record(base_producer, input='committee_records', selector=base_selector, job=IMPORT)
+    imported.update(source=old_pin, verified='EXCEPT ALL both ways against the source file',
+                    origin=dict(pin=pin(base_origin), record=origin))
+    base_producer.write_text(json.dumps(imported))
+
+    def composition(work, **changes):
+        inputs = dict(base=old_pin, base_producer=pin(base_producer),
+                      delta=pin(Path(item['selector']['path'])), delta_producer=item['producer'],
+                      expected_base_rows=1, expected_delta_rows=1)
+        path.write_text(json.dumps(dict(version=1, work=str(tmp_path/work),
+            engine_config=os.environ['DOCSPEC_JOB_CONFIG'],record_only=dict(base_model=pin(model),bases={},
+                raw_root=str(tmp_path/'unavailable-raw'),raw_mirror=str(tmp_path/'unavailable-mirror'),
+                max_work_items=1, committee_composition=dict(inputs, **changes)))))
+        return load_spec(path)
+
+    with pytest.raises(ValueError, match='the producer record names another selector'):
+        execute(composition('wrong-delta', delta=old_pin))
+    duplicate_proof = tmp_path/'duplicate-delta.json'
+    duplicate_proof.write_text(json.dumps(dict(proof, selector=dict(kind='parquet', **old_pin))))
+    with pytest.raises(ValueError, match='primary keys overlap'):
+        execute(composition('overlap', delta=old_pin, delta_producer=pin(duplicate_proof)))
+
+    result = execute(composition('compose'))['tables']['committee_records']
+    combined = pq.read_table(result['selector']['path'])
+    assert combined.num_rows == 2
+    assert combined.slice(0, 1).equals(pq.read_table(old))
+    assert combined.slice(1, 1).equals(pq.read_table(item['selector']['path']))
+    assert result['reused_rows'] == result['appended'] == 1
+    combined_proof = json.loads(Path(result['producer']['path']).read_text())
+    assert combined_proof['job'] == BACKFILL and 'delta_only' not in combined_proof
+    assert snapshot_reasons(dict(committee_records=result['selector'], parser_versions=dict(committee_records=version)),
+                            {'committee_records': combined_proof}) == []

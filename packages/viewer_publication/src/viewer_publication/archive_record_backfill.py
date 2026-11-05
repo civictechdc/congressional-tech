@@ -15,7 +15,7 @@ from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model_job import _local, _pin
 from viewer_publication.archive_selective_records import SELECTION_SCHEMA, stage_selected_records
-from viewer_publication.producer_proof import BACKFILL, ROOT, record
+from viewer_publication.producer_proof import BACKFILL, IMPORT, ROOT, record, snapshot_reasons
 
 FILE = {'path', 'size', 'sha256'}
 RECORD_TABLES = {'meeting_records', 'appearance_records'}
@@ -37,7 +37,8 @@ def load_record_only(value, *, base):
         raise ValueError('Record-only backfill requires version 1, work and a local engine config')
     job = value['record_only']
     fields = {'base_model', 'bases', 'raw_root', 'raw_mirror', 'max_work_items'}
-    if not isinstance(job, dict) or not fields <= job.keys() or job.keys() - fields - {'meeting_selection', 'capture_inputs', 'retained_committee'}:
+    optional = {'meeting_selection', 'capture_inputs', 'retained_committee', 'committee_composition'}
+    if not isinstance(job, dict) or not fields <= job.keys() or job.keys() - fields - optional:
         raise ValueError('Record-only backfill requires pinned bases, raw locations and a work limit')
     if not isinstance(job['bases'], dict) or job['bases'].keys() - RECORD_TABLES:
         raise ValueError('Record-only backfill bases must name meeting_records or appearance_records')
@@ -65,7 +66,17 @@ def load_record_only(value, *, base):
         retained = dict(retained, **{k: local_pin(retained[k]) for k in ('receipt', 'selection', 'base')})
         if not retained['receipt']['path'].endswith('/' + key):
             raise ValueError('Retained committee receipt path does not match its key')
-    if not captures and not job['bases'] and retained is None:
+    composition = job.get('committee_composition')
+    if 'committee_composition' in job:
+        pins = {'base', 'base_producer', 'delta', 'delta_producer'}
+        counts = {'expected_base_rows', 'expected_delta_rows'}
+        if (not isinstance(composition, dict) or set(composition) != pins | counts
+                or retained is not None or 'committee_records' in captures
+                or any(type(composition[k]) is not int or composition[k] <= 0 for k in counts)
+                or composition['expected_delta_rows'] > job['max_work_items']):
+            raise ValueError('Committee composition requires pinned base and delta origins and bounded row counts')
+        composition = dict(composition, **{k: local_pin(composition[k]) for k in pins})
+    if not captures and not job['bases'] and retained is None and composition is None:
         raise ValueError('Record-only backfill requires at least one table')
     for item in captures.values():
         if (not isinstance(item, dict) or set(item) != {'capture', 'expected_rows'}
@@ -79,6 +90,8 @@ def load_record_only(value, *, base):
         job['meeting_selection'] = local_pin(job['meeting_selection'])
     if retained is not None:
         job['retained_committee'] = retained
+    if composition is not None:
+        job['committee_composition'] = composition
     return dict(value, work=_local(value['work'], base), engine_config=_local(value['engine_config'], base), record_only=job)
 
 
@@ -253,6 +266,52 @@ def _from_retained_committee(item, model, directory, **stage):
         delta_only=True, final_reconciliation_required=True)
 
 
+def _compose_committee(item, model, base_model):
+    """Combine two qualified Parquet inputs without reopening receipts or XML."""
+    name = 'committee_records'
+    versions = committee_records.current_versions()
+    selector = model.get(name)
+    if (model['parser_versions'].get(name) != versions or not isinstance(selector, dict)
+            or selector.get('kind') != 'native_table' or selector.get('snapshot') is None):
+        raise ValueError('Committee composition requires the pinned base selector and current parser')
+    base_proof = json.loads(_verified(item['base_producer']).read_text())
+    delta_proof = json.loads(_verified(item['delta_producer']).read_text())
+    if (not isinstance(base_proof, dict) or base_proof.get('job') != IMPORT
+            or base_proof.get('source') != item['base']
+            or base_proof.get('verified') != 'EXCEPT ALL both ways against the source file'):
+        raise ValueError('Committee composition base must match the verified import source')
+    delta_source = delta_proof.get('source') if isinstance(delta_proof, dict) else None
+    if (not isinstance(delta_source, dict) or delta_source.get('base') != item['base']
+            or delta_proof.get('job') != BACKFILL or delta_proof.get('base_model') != base_model
+            or delta_proof.get('delta_only') is not True or delta_proof.get('final_reconciliation_required') is not True
+            or delta_proof.get('appended') != item['expected_delta_rows']):
+        raise ValueError('Committee composition delta must match the retained backfill and its pinned base')
+    selected = {name: selector, 'parser_versions': model['parser_versions']}
+    delta_selector = dict(kind='parquet', **item['delta'])
+    reasons = snapshot_reasons(selected, {name: base_proof}) + snapshot_reasons(
+        dict(selected, committee_records=delta_selector), {name: delta_proof})
+    if reasons:
+        raise ValueError('Committee composition input origin refused: ' + '; '.join(reasons))
+
+    tables = []
+    keys = []
+    for label in ('base', 'delta'):
+        with pq.ParquetFile(_verified(item[label])) as source:
+            if (source.metadata.num_rows != item[f'expected_{label}_rows']
+                    or not source.schema_arrow.equals(committee_records.ARROW_SCHEMA)):
+                raise ValueError(f'Committee composition {label} schema or row count changed')
+            table = source.read()
+        current = _base_keys(table, versions, history=True)
+        if len(current) != table.num_rows:
+            raise ValueError(f'Committee composition {label} contains unselected versions')
+        tables.append(table)
+        keys.append({tuple(row[k] for k in committee_records.PK) for row in current})
+    if keys[0] & keys[1]:
+        raise ValueError('Committee composition base and delta primary keys overlap')
+    base, delta = tables
+    return pa.concat_tables(tables), dict(reused_rows=base.num_rows, appended=delta.num_rows)
+
+
 def execute_record_only(spec, *, runtime_factory=None):
     writer = writer_identity(ROOT, BACKFILL)
     job = spec['record_only']
@@ -261,9 +320,11 @@ def execute_record_only(spec, *, runtime_factory=None):
     bases = {name: _verified(pin) for name, pin in job['bases'].items()}
     captures = {name: _verified(item['capture']) for name,item in job['capture_inputs'].items()}
     retained = job.get('retained_committee')
+    composition = job.get('committee_composition')
     selection = _verified(job['meeting_selection']) if 'meeting_selection' in job else None
+    unreadable_files = model['unreadable_files'] if bases or captures or retained is not None else ()
     unreadable = [dict(key=item['key'], path=str(_verified(dict(path=_local(item['path'], model_path.parent),
-        sha256=item['sha256'], size=item['size'])))) for item in model['unreadable_files']]
+        sha256=item['sha256'], size=item['size'])))) for item in unreadable_files]
     runtime = json.loads(Path(spec['engine_config']).read_text())
     if {'remote', 'credentials'} & runtime.keys():
         raise ValueError('Record-only backfill requires the local engine and held sources')
@@ -275,7 +336,8 @@ def execute_record_only(spec, *, runtime_factory=None):
         engine.verify_runtime()
         if engine.remote is not None:
             raise ValueError('Record-only backfill requires the local engine and held sources')
-        for name in (*bases, *captures, *(('committee_records',) if retained is not None else ())):
+        committee = ('committee_records',) if retained is not None or composition is not None else ()
+        for name in (*bases, *captures, *committee):
             directory = work / name
             directory.mkdir()
             stage = dict(engine=engine, work=directory/'replay', raw_root=Path(job['raw_root']),
@@ -284,6 +346,9 @@ def execute_record_only(spec, *, runtime_factory=None):
                 item = job['capture_inputs'][name]
                 rows, counts = _from_captures(name, captures[name], item['expected_rows'], **stage)
                 lineage = dict(source=item['capture'], scope='selected captures')
+            elif name == 'committee_records' and composition is not None:
+                rows, counts = _compose_committee(composition, model, job['base_model'])
+                lineage = dict(source=composition, base_selector=model[name], scope='complete retained committee composition')
             elif name == 'committee_records':
                 rows, counts = _from_retained_committee(retained, model, directory, **stage)
                 lineage = dict(source=retained, scope='selected retained House meeting XML')
