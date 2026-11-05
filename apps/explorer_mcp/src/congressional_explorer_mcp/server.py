@@ -126,6 +126,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         section='documents' follows direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
         use nomination_transcripts, bill_hearing_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         Integer IDs accept leading zeros and surrounding whitespace; decimals, exponents and booleans are rejected.
+        For a saved HLS (m3u8) track, saved_url downloads the retained playlist file.
+        Relative segment paths refer to the publisher's playlist context. Use the publisher recording link for playback.
         """
         return await call('get_entity', query.model_dump())
 
