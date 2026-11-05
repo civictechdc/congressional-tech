@@ -83,9 +83,14 @@ def load_spec(path):
 def _verified(item):
     """Refuse changed source, schema or origin evidence before the first effect."""
     from congress_api.retention.provenance import file_pin
+    from viewer_publication.producer_proof import import_origin_problem
     for key in ('source','schema','producer'):
         if key in item and file_pin(item[key]['path'])!={k:item[key][k] for k in ('sha256','size')}:
             raise ValueError('Import '+key+' does not match its pin: '+item[key]['path'])
+    if 'producer' in item:
+        origin = json.loads(Path(item['producer']['path']).read_text(encoding='utf-8'))
+        if problem := import_origin_problem(item['source'], origin):
+            raise ValueError('Import producer refused: '+problem)
     return json.loads(Path(item['schema']['path']).read_text(encoding='utf-8'))
 
 

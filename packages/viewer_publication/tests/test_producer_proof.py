@@ -201,6 +201,33 @@ def test_an_import_record_passes_only_through_a_valid_origin():
     assert 'cannot name another import' in snapshot_reasons(model, imported(origin=dict(record=dict(origin, job=IMPORT))))[0]
 
 
+def test_a_committee_delta_is_not_a_complete_snapshot_or_import_origin():
+    from congress_api.lake import committee_records
+    from viewer_publication.producer_proof import BACKFILL, IMPORT, snapshot_reasons
+
+    name = 'committee_records'
+    versions = {name: committee_records.current_versions()}
+    source = dict(path='/fixture/delta.parquet', sha256='a'*64, size=49)
+    selector = dict(kind='parquet', **source)
+    origin = dict(version=1, input=name, selector=selector, job=BACKFILL, commit=head())
+    delta = dict(origin, delta_only=True, final_reconciliation_required=True)
+    native = dict(kind='native_table', metadata_location='s3://fixture/meta.json',
+                  table_uuid='committee', snapshot=1, schema_id=0)
+
+    def reasons(selected, proof):
+        return snapshot_reasons({name: selected, 'parser_versions': versions}, {name: proof})
+
+    def imported(origin_record, source_pin):
+        return dict(version=1, input=name, selector=native, job=IMPORT, commit=head(),
+                    origin=dict(record=origin_record), source=source_pin)
+
+    assert 'a staged delta cannot produce a complete table' in reasons(selector, delta)[0]
+    assert 'a staged delta cannot be the origin' in reasons(native, imported(delta, source))[0]
+    assert 'does not match the import source pin' in reasons(
+        native, imported(origin, dict(source, sha256='b'*64)))[0]
+    assert reasons(native, imported(origin, dict(source, path='/fixture/relocated.parquet'))) == []
+
+
 def test_filename_proof_uses_historical_house_naming_bytes():
     from congress_api.lake import filenames
     from viewer_publication.producer_proof import versions_at
