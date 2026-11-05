@@ -713,6 +713,7 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
         json_input(tmp_path, 'appearance_url_keys', [], url='Utf8', url_key='Utf8', error='Utf8'),
         json_input(tmp_path, 'document_packages', [], component='Utf8', package_id='Utf8'),
         json_input(tmp_path, 'source_annotations', [], source_id='Utf8', package_id='Utf8', meeting_keys=list_of('Utf8')),
+        json_input(tmp_path, 'source_filename_readings', [], source_id='Utf8', status='Utf8', package_id='Utf8'),
         json_input(tmp_path, 'copy_url_keys', [], source_id='Utf8', url_key='Utf8'),
         json_input(tmp_path, 'saved_recoveries', [], id='Utf8', component='Utf8', original_url='Utf8'),
         json_input(tmp_path, 'recovery_original_keys', [], recovery_id='Utf8', url_key='Utf8'),
