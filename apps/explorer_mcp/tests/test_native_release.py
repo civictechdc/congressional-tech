@@ -147,3 +147,56 @@ def test_repaired_bill_filenames_through_stdio(tmp_path, request):
         facts = {(f['field'], f['value']) for f in detail['facts']}
         assert ('measure_references', expected_ref) in facts
         assert not any(f['field'] == 'date_token_candidates' and f['value'].startswith(('2199-', '2167-')) for f in detail['facts'])
+
+
+def test_native_html_reader_fixture_through_stdio(tmp_path, request):
+    source = request.config.getoption('--native-fixture-root')
+    if source is None:
+        pytest.skip('Native integration requires --native-fixture-root from the producer test runner')
+    candidates = {p.resolve() for p in Path(source).glob('test_shared_html_reader_*/release/manifest.json')}
+    if not candidates:
+        pytest.skip('Native integration root has no HTML reader fixture')
+    assert len(candidates) == 1
+    selection = prepare(tmp_path, candidates.pop(), archive_origin='https://archive.example')
+
+    async def run():
+        transport = StdioTransport(sys.executable, ['-m', 'congressional_explorer_mcp.cli', 'serve',
+                                   '--data-dir', str(tmp_path)], keep_alive=False)
+        async with Client(transport) as client:
+            async def call(name, query):
+                return (await client.call_tool(name, query if name == 'get_dataset_info' else {'query': query})).data
+
+            detail = await call('get_dataset_info', {'table': 'detail'})
+            release_id = detail['release_id']
+            assert release_id == selection['release_id']
+            assert {'modified_on', 'page_metadata', 'selected_text'} <= detail['columns'].keys()
+            rows = (await call('query_sql', {'sql': """
+                SELECT lower(hex(link_key)) AS link_key,modified_on,main_content.outcome AS outcome
+                FROM documents WHERE modified_on=DATE '2025-04-01' OR main_content.text_available
+                ORDER BY modified_on NULLS LAST
+            """}))['rows']
+            dated, marked = rows
+            assert dated['modified_on'] == '2025-04-01' and marked['outcome'] == 'marked'
+            ref = dict(release_id=release_id, link_key=dated['link_key'])
+            facts = await call('get_document', dict(ref, section='page_metadata'))
+            assert facts['source']['reader_version']
+            assert facts['source']['saved_body'] and facts['release_id'] == release_id
+            assert any(row['selected'] and row['field'] == 'modified_time' and row['date'] == '2025-04-01'
+                       for row in facts['rows'])
+            ref['link_key'] = marked['link_key']
+            summary = (await call('get_document', ref))['rows'][0]
+            assert 'selected_text' not in summary and 'selected_text' in summary['sections']
+            parts = []
+            offset = 0
+            while offset is not None:
+                result = await call('get_document', dict(ref, section='selected_text', offset=offset, max_chars=1000))
+                assert result['release_id'] == release_id and result['offset'] == offset
+                assert result['selector'] == summary['main_content']['selector']
+                assert result['reader_version'] == summary['main_content']['reader_version']
+                assert len(encoded(result)) < MAX_BYTES
+                parts.append(result['text'])
+                offset = result['next_offset']
+            from hashlib import sha256
+            assert sha256(''.join(parts).encode()).hexdigest() == summary['main_content']['text_sha256']
+
+    asyncio.run(run())

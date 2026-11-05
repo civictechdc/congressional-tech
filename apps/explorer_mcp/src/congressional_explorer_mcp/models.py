@@ -87,7 +87,7 @@ class DocumentSearch(Page):
 class DocumentQuery(Page):
     link_key: str = Field(pattern='^[a-fA-F0-9]{16}$')
     release_id: str = Field(pattern='^[a-f0-9]{64}$')
-    section: Literal['summary', 'sources', 'recoveries', 'text'] = 'summary'
+    section: Literal['summary', 'sources', 'recoveries', 'text', 'page_metadata', 'selected_text'] = 'summary'
     query: StrictStr | None = Field(default=None, max_length=2000)
     page: int | None = Field(default=None, ge=1, le=100000)
     offset: int = Field(default=0, ge=0, le=100_000_000)

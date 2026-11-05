@@ -2,6 +2,7 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
 import {startArchiveServer} from './archive-server.mjs';
 import {ARCHIVE_ORIGIN,browserDependency,heapSampler,routeArchiveOrigin} from './archive-browser.mjs';
@@ -105,12 +106,57 @@ async function checkRecordingAssociations(eventId){
   return {operation:'scoped-recording-associations',status:'passed'};
 }
 
+async function checkPublisherPage(datedKey, markedKey) {
+  const context = await fixtureContext(), page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  const open = async key => {
+    await page.goto(server.pageUrl + '?key=' + key);
+    await page.locator('[data-archive-detail]').waitFor();
+    return page.locator('[data-archive-ready]').getAttribute('data-archive-release');
+  };
+  const bytesRead = () => server.state.requests
+    .filter(r => r.path.includes('/detail.') && r.status === 206)
+    .reduce((sum, r) => sum + r.end - r.start + 1, 0);
+  try {
+    const releaseId = await open(datedKey);
+    assert.equal(releaseId, server.manifest.release_id);
+    const panel = page.locator('[data-archive-detail]');
+    assert.match(await panel.innerText(), /Page published 2017-09-13/);
+    assert.match(await panel.innerText(), /Page updated 2025-04-01/);
+    await page.getByText('Publisher declarations and evidence', {exact: true}).click();
+    await page.getByRole('link', {name: 'Open original saved page'}).waitFor();
+    assert.match(await panel.innerText(), /HTML reading version [a-f0-9]{64}/);
+    assert.match(await panel.innerText(), /2025-04-01T15:01:50[+]00:00/);
+
+    assert.equal(await open(markedKey), releaseId);
+    await page.getByText('Publisher declarations and evidence', {exact: true}).click();
+    const citation = (await panel.getByText(/^Selected text SHA-256/).innerText()).split(' ').at(-1);
+    assert.match(citation, /^[a-f0-9]{64}$/);
+    const before = bytesRead();
+    await page.getByRole('button', {name: 'Read selected text'}).click();
+    const text = panel.getByText(/^Chairman Miller, Ranking Member Michaud and Committee Members:/);
+    await text.waitFor();
+    assert.equal(createHash('sha256').update(await text.textContent()).digest('hex'), citation);
+    const selectedTextRangeBytes = bytesRead() - before;
+
+    const older = JSON.parse(await readFile(resolve(args['next-release'], 'manifest.json')));
+    server.state.releaseId = older.release_id;
+    assert.equal(await open(datedKey), older.release_id);
+    assert.equal(await page.getByRole('heading', {name: 'Publisher page'}).count(), 0);
+    return {operation: 'publisher-page', releaseId, olderReleaseId: older.release_id, selectedTextRangeBytes, status: 'passed'};
+  } finally {
+    await context.close();
+  }
+}
+
 const results=[];
 const fixtureReader=args.hand==='true'?await openArchive(server.pointerUrl):null;
 const fixtureEntries=fixtureReader?await Promise.all([1,2,5,6].map(index=>fixtureReader.entry(index))):[];
 const hex=value=>Buffer.from(value).toString('hex');
 try{
-  if(args['recording-event']){
+  if(args['html-dated-key'] && args['html-marked-key']){
+    results.push(await checkPublisherPage(args['html-dated-key'],args['html-marked-key']));
+  }else if(args['recording-event']){
     results.push(await checkRecordingAssociations(args['recording-event']));
   }else{
   for(const profileKind of ['desktop','phone']){
