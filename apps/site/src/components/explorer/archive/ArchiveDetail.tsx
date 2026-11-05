@@ -79,7 +79,8 @@ function PublisherPage({entry, original, onSelectedText}: {
   const content = detail.main_content;
   const declarations = detail.page_metadata ?? [];
   const labels = detail.publisher_labels ?? [];
-  const hasEvidence = declarations.length > 0 || content?.selector || content?.reading_status === 'partial' || content?.outcome === 'fallback';
+  const hasEvidence = declarations.length > 0 || content?.selector || content?.reading_status === 'partial' ||
+    content?.evidence_limited || ['fallback', 'failed', 'unreadable'].includes(content?.outcome);
   if (!hasEvidence && !detail.description && !detail.published_on && !detail.modified_on && !labels.length) return null;
 
   return <section>
@@ -108,6 +109,12 @@ function PublisherPage({entry, original, onSelectedText}: {
       {content?.text_sha256 ? <p>Selected text SHA-256 <code>{content.text_sha256}</code></p> : null}
       {content?.outcome === 'fallback' ? <p>Read the full page in the original saved copy.</p> : null}
       {content?.reading_status === 'partial' ? <p>The HTML reading recovered part of the publisher metadata.</p> : null}
+      {content?.evidence_limited ? <p>Some publisher evidence exceeded the detail size limit.</p> : null}
+      {content?.outcome === 'unreadable' ? <p>The HTML reader could not process this saved page.{' '}
+        {content.reason ? <>Reason <code>{content.reason}</code>.{' '}</> : null}
+        {content.decision_id ? <>Decision <code>{content.decision_id}</code>.</> : null}
+      </p> : null}
+      {content?.outcome === 'failed' ? <p>The archive could not complete the HTML reading.</p> : null}
       {declarations.length ? <ul>{declarations.map((item: any) => <li key={JSON.stringify([item.path, item.context_url])}>
         <strong>{declarationLabels[item.field] ?? item.field}</strong>{' '}{item.value}{item.selected ? ' (selected)' : ''}
         {item.precision ? <span> · {item.precision}</span> : null}

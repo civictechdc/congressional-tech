@@ -52,7 +52,8 @@ EMPTY_PAGE_METADATA = _empty_struct(field='cast(NULL AS VARCHAR)', value='cast(N
 NO_MAIN_CONTENT = ("CASE WHEN false THEN named_struct('outcome',cast(NULL AS VARCHAR),'selector',cast(NULL AS VARCHAR),"
     "'text_sha256',cast(NULL AS VARCHAR),'text_bytes',cast(NULL AS INT),'snippet',cast(NULL AS VARCHAR),"
     "'reader_version',cast(NULL AS VARCHAR),'reading_status',cast(NULL AS VARCHAR),'reason',cast(NULL AS VARCHAR),"
-    "'facts_limited',cast(NULL AS BOOLEAN),'text_available',cast(NULL AS BOOLEAN)) END")
+    "'facts_limited',cast(NULL AS BOOLEAN),'text_available',cast(NULL AS BOOLEAN),'decision_id',cast(NULL AS VARCHAR),"
+    "'evidence_limited',cast(NULL AS BOOLEAN)) END")
 
 
 PAGE_DEFAULTS = dict(description='cast(NULL AS VARCHAR)', published_on='cast(NULL AS DATE)', modified_on='cast(NULL AS DATE)',

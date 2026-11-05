@@ -30,6 +30,16 @@ test('release detail shows public dates, physical copies, alternates and sources
   for(const text of ['body_key','http_status','response_usable'])assert(!html.includes(text),text);
 });
 
+test('publisher evidence shows recorded failures and omitted resolutions',()=>{
+  const html=render({document:{...row,format:'html'},detail:{...detail,saved_media_type:'text/html',
+    main_content:{outcome:'unreadable',reason:'timeout',decision_id:'fixture-timeout'}},sources:[],recoveries:[]});
+  for(const text of ['The HTML reader could not process this saved page.','timeout','fixture-timeout','Open original saved page'])assert(html.includes(text),text);
+  const limited=render({document:{...row,format:'html'},detail:{...detail,saved_media_type:'text/html',
+    main_content:{outcome:'fallback',evidence_limited:true}},sources:[],recoveries:[]});
+  assert(limited.includes('Some publisher evidence exceeded the detail size limit.'));
+  assert(limited.includes('Open original saved page'));
+});
+
 test('all recovery kinds and hidden direct links show their recorded decisions',()=>{
   const recoveries=['recovered_document','official_substitute','requested_content_in_official_hearing'].map(kind=>({kind,body:new Uint8Array(32).fill(19),suffix:'.gz',bytes:20,recovered_url:'https://recovery.test/file',imported_at:'2020-01-01',identity_note:'Recorded identity evidence'}));
   const html=render({document:{...row,hidden:true},detail:{...detail,saved_body:null,review_note:'Superseded complete record',review_decided_at:'2024-02-02'},recoveries,sources:[{url:'javascript:alert(1)',listed_on:'https://u:p@publisher.test/secret'}]});

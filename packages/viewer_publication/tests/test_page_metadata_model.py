@@ -54,6 +54,10 @@ def run(tmp_path, documents, bodies, *, queries, extra_contexts=()):
         json_input(tmp_path, 'capture_sources', contexts,
                    source_id='Utf8', body_sha='Utf8', context_url='Utf8', outcome='Utf8', is_real_file='Boolean'),
         json_input(tmp_path, 'base_normalized', docs, doc_key='Utf8', format='Utf8', source_url='Utf8', body_hex='Utf8'),
+        json_input(tmp_path, 'parser_versions', [dict(parser='html_metadata', version='test-pin')], parser='Utf8', version='Utf8'),
+        json_input(tmp_path, 'accepted_versions', [dict(parser='html_metadata', version='test-pin')], parser='Utf8', version='Utf8'),
+        json_input(tmp_path, 'active_unreadable', [], id='Utf8', body_sha256='Utf8', parser='Utf8',
+                   parser_version='Utf8', reason='Utf8', decided_at='Utf8'),
         json_input(tmp_path, 'readings_json', readings, body_hex='Utf8', parser='Utf8', parser_version='Utf8', status='Utf8', error_type='Utf8', title='Utf8',
                    base_href='Utf8', text_bytes='Int64', text_head='Utf8', fields=list_of(struct(field='Utf8', value='Utf8')))]
     steps = [dict(name='selected_readings', sql="""SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,
@@ -88,6 +92,38 @@ def test_one_body_at_two_addresses_resolves_in_the_same_document(tmp_path):
         ('../z', 'https://two.test/p/q', 'https://two.test/z'),
     ]
     assert [r['resolved'] for r in result['c']] == [None]
+
+
+def test_capture_context_fanout_and_long_resolutions_keep_bounded_literal_evidence(tmp_path):
+    bodies = [
+        page(head=og('og:description', f'Publisher summary {i}') + '<link rel="canonical" href="next">')
+        for i in range(2)
+    ]
+    documents = [(str(i), body, 'https://publisher.test/root/', 'html') for i, body in enumerate(bodies)]
+    contexts = [
+        dict(source_id='0', body_sha=hashlib.sha256(bodies[0]).hexdigest(),
+             context_url=f'https://publisher.test/{i}/', outcome='stored', is_real_file=True)
+        for i in range(600)
+    ]
+    # These contexts fit before URL resolution. Including each resolved address
+    # would exceed the final byte budget even though there are only eight.
+    contexts += [
+        dict(source_id='1', body_sha=hashlib.sha256(bodies[1]).hexdigest(),
+             context_url=f'https://publisher.test/{i}/' + 'a' * 6000 + '/', outcome='stored', is_real_file=True)
+        for i in range(8)
+    ]
+    evidence = dict(name='evidence', sql="""SELECT doc_key,page_metadata,main_content['evidence_limited'] AS limited
+        FROM document_page_metadata ORDER BY doc_key""")
+    result = run(tmp_path, documents, bodies, queries=[evidence], extra_contexts=contexts)
+
+    for row in result['evidence']:
+        assert row['limited']
+        facts = {fact['field']: fact for fact in row['page_metadata']}
+        assert facts['description']['value'] == f"Publisher summary {row['doc_key']}"
+        assert facts['description']['selected']
+        assert facts['declared_url']['value'] == 'next'
+        assert facts['declared_url']['context_url'] is None and facts['declared_url']['resolved'] is None
+        assert len(json.dumps(row['page_metadata']).encode()) <= 65536
 
 
 def test_declared_base_comes_before_the_document_address(tmp_path):
@@ -162,7 +198,7 @@ def test_sql_dates_equal_reported_time_both_ways(tmp_path):
     assert sql == {value: python(value) for value in DATES}
 
 
-def _release(tmp_path, *, with_metadata, extra_pages=()):
+def _release(tmp_path, *, with_metadata, extra_pages=(), unreadable=()):
     """One html document from a receipt line through the real producers and the model."""
     import gzip
     import pyarrow.parquet as pq
@@ -204,21 +240,30 @@ def _release(tmp_path, *, with_metadata, extra_pages=()):
         'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
         'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,
         stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
+    unreadable_files = []
+    if unreadable:
+        decision_file = tmp_path / 'unreadable.jsonl'
+        decision_file.write_text(''.join(json.dumps(row) + '\n' for row in unreadable))
+        unreadable_files = [dict(key='unreadable/fixture.jsonl', path=str(decision_file))]
     common = dict(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, decided_at='2026-10-27T12:00:00Z')
     parts = [readings.stage(**common, work=tmp_path / 'html-stage', parser='html')['readings']]
     versions = {p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}
     if with_metadata:
-        staged = readings.stage(**common, work=tmp_path / 'metadata-stage', parser='html_metadata')
-        assert staged['work_items'] == len({hashlib.sha256(data).hexdigest() for _,data in extra_pages}) + 1
-        parts.append(staged['readings'])
         versions['html_metadata'] = readings.current_version('html_metadata')
+        staged = readings.stage(**common, work=tmp_path / 'metadata-stage', parser='html_metadata',
+                                unreadable_files=unreadable_files)
+        eligible = {hashlib.sha256(data).hexdigest() for _, data in extra_pages}
+        settled = {row['body_sha256'] for row in unreadable if row['parser_version'] == versions['html_metadata']}
+        assert staged['work_items'] == len(eligible - settled) + 1
+        parts.append(staged['readings'])
     joined = tmp_path / 'readings'
     joined.mkdir()
     run_job(joined, engine, inputs=[dict(name=f'p{i}', kind='parquet', path=str(p)) for i, p in enumerate(parts)], steps=[], outputs=[
         parquet_output(joined, 'readings', ' UNION ALL '.join(f'SELECT * FROM p{i}' for i in range(len(parts))), readings.PK)])
     names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=tmp_path / 'filename-stage', decided_at='2026-10-27T12:00:00Z')
     build_release(captures=captures, readings=joined / 'readings.parquet', filename_readings=names['readings'], parser_versions=versions,
-                  catalog_version=names['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+                  catalog_version=names['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model',
+                  unreadable_files=unreadable_files)
     return tmp_path / 'release', pq
 
 
@@ -244,6 +289,35 @@ def test_page_columns_survive_export_and_change_no_other_column(tmp_path):
     for name in ('links', 'urls', 'sources', 'meetings', 'url_state'):
         assert pq.read_table(release / f'{name}.parquet').to_pylist() == pq.read_table(bare / f'{name}.parquet').to_pylist(), name
 
+
+
+def test_native_partial_and_decided_unreadable_metadata(tmp_path):
+    from congress_api.lake.readings import current_version
+    from congress_api.parsers.html_metadata import MAX_DETAIL_FACT_BYTES
+
+    partial = page(title='Page with oversized publisher facts',
+                   head=og('og:description', 'a' * (MAX_DETAIL_FACT_BYTES + 1)),
+                   body='<p>Independent substantive text. ' + 'This page contains a publisher report. ' * 30 + '</p>')
+    blocked = page(title='Publisher page with worker failure',
+                   body='<p>' + 'This other publisher page contains a hearing report. ' * 30 + '</p>')
+    blocked_sha = hashlib.sha256(blocked).hexdigest()
+    current = current_version('html_metadata')
+    decision = dict(id='fixture-timeout', body_sha256=blocked_sha, parser='html_metadata', parser_version=current,
+                    reason='timeout', decided_by='fixture', decided_at='2026-10-27T12:00:00Z', supersedes=None)
+    # The superseding current decision supplies the outcome and citation.
+    previous = dict(decision, id='fixture-earlier', reason='memory_limit', decided_at='2026-10-26T12:00:00Z')
+    release, pq = _release(tmp_path, with_metadata=True, extra_pages=[
+        ('https://fixture.test/partial.htm', partial),
+        ('https://fixture.test/unreadable.htm', blocked),
+    ], unreadable=[previous, dict(decision, supersedes=previous['id'])])
+
+    detail = {row['saved_body'].hex(): row for row in pq.read_table(release / 'detail.parquet').to_pylist()}
+    assert detail[hashlib.sha256(partial).hexdigest()]['main_content']['reading_status'] == 'partial'
+    assert detail[hashlib.sha256(partial).hexdigest()]['main_content']['facts_limited']
+    unreadable = detail[blocked_sha]['main_content']
+    assert (unreadable['outcome'], unreadable['reading_status'], unreadable['reason']) == ('unreadable', 'unreadable', 'timeout')
+    assert unreadable['reader_version'] == current and unreadable['decision_id'] == decision['id']
+    assert detail[blocked_sha]['page_metadata'] == []
 
 
 def test_shared_html_reader_fixture(tmp_path):

@@ -986,7 +986,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     prelude += [selected_record_step('meeting_records','meeting_records_input',root=root),
         selected_record_step('appearance_records','appearance_records_input',root=root)]
     prelude += [dict(name='url_variants',sql='SELECT DISTINCT canonical_url,variant_url FROM url_variant_records r WHERE NOT EXISTS(SELECT 1 FROM url_variant_records s WHERE s.supersedes=r.id)',materialize=True)]
-    inputs.append(_provenance_input('unreadable_records',unreadable_files,dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')))
+    inputs.append(_provenance_input('unreadable_records',unreadable_files,dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',
+        parser='Utf8',parser_version='Utf8',reason='Utf8',decided_at='Utf8',supersedes='Utf8')))
     if explorer_inputs:
         inputs.append(_provenance_input('recording_decision_records',recording_decision_files,RECORDING_DECISION_FIELDS))
         inputs.append(json_input(scratch,'channel_directory',channel_directory_rows(root),handle='Utf8',channel_id='Utf8',system_code='Utf8',committee_label='Utf8',role='Utf8'))
