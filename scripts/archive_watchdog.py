@@ -185,7 +185,7 @@ def admit(registry, me, *, headroom, wait_seconds):
 
 
 def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval, timeline=None,
-          youngest=lambda: True):
+          youngest=lambda: True, hold_fd=None):
     """Return (exit code, peak resident GiB, peak physical GiB, reason, seconds).
 
     The limit applies to max(resident, physical): macOS charged footprint also counts
@@ -199,7 +199,9 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
     started = time.monotonic()
     process = None
     try:
-        process = sampler.start_owned(command)
+        # The owned group holds this descriptor until parent-death cleanup ends.
+        pass_fds = () if hold_fd is None else (hold_fd,)
+        process = sampler.start_owned(command, pass_fds=pass_fds)
         while process.poll() is None:
             observed = memory.sample(process.pid)
             rss, physical = (value / 2**30 for value in observed) if observed else (0.0, 0.0)
@@ -246,6 +248,7 @@ def main(argv=None):
     parser.add_argument('--timeline', action='store_true', help='Write one JSON line per sample next to --report')
     parser.add_argument('--min-disk-gb', type=float, default=15.0, help='Stop if free disk falls below this')
     parser.add_argument('--interval', type=float, default=1.0)
+    parser.add_argument('--hold-fd', type=int, help=argparse.SUPPRESS)
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
@@ -279,7 +282,7 @@ def main(argv=None):
         code, peak, physical_peak, reason, seconds = watch(command, rss_gb=args.rss_gb,
             min_available_gb=args.min_available_gb, min_disk_gb=args.min_disk_gb,
             disk_root=args.report.parent if args.report else Path.cwd(), interval=args.interval, timeline=timeline,
-            youngest=youngest)
+            youngest=youngest, hold_fd=args.hold_fd)
     finally:
         if timeline is not None:
             timeline.close()

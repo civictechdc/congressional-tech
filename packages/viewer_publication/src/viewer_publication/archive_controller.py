@@ -20,6 +20,10 @@ from viewer_publication.archive_publish import (
 from viewer_publication.receipt_pins import receipt_list
 
 
+class PublicationInputsChanged(ValueError):
+    """A retained attempt belongs to different current inputs."""
+
+
 def _publication_directory(path,*,fresh):
     """Persist each newly created directory name before publication can start."""
     target=Path(path).resolve();missing=[];current=target
@@ -78,11 +82,11 @@ def _require_model_definition(saved,engine):
     try:
         profile=saved['profile']['profile'];runtime=profile['runtime_pins']
         if profile['file_hashes']!=_definition_hashes(Path(__file__).parents[4]):
-            raise ValueError('Model definitions changed since the retained intent')
+            raise PublicationInputsChanged('Model definitions changed since the retained intent')
         if (profile['engine_revision']!=engine.source_revision or
                 runtime['binary_sha256']!=engine.binary_sha256 or runtime['platform']!=engine.platform or
                 runtime['build_features']!=list(engine.build_features) or runtime['limits']!=json.loads(engine.limits.read_text())):
-            raise ValueError('Native runtime changed since the retained intent')
+            raise PublicationInputsChanged('Native runtime changed since the retained intent')
         expected=['invariants','model_invariants','url_state_invariants','profile_completeness']
         if saved['entity_digests']:expected.append('entity_profile_completeness')
         if saved['admitted_names']!=expected:raise ValueError('Completed model admission set differs')
@@ -140,7 +144,7 @@ def _provenance_snapshot(client,bucket,expected):
             return provenance_etag_md5(actual[key])==provenance_etag_md5(pinned[key])
         return actual[key]==pinned[key]
     if set(actual)!=set(pinned) or any(not same_etag(key) for key in actual):
-        raise ValueError('Pinned provenance differs from the current immutable raw inventory')
+        raise PublicationInputsChanged('Pinned provenance differs from the current immutable raw inventory')
     return [dict(key=key,etag=actual[key]) for key in sorted(actual)]
 
 
@@ -193,8 +197,11 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         if source==checkpoint_path:fields|={'manifest_pin','result_pin'}
         if not isinstance(checkpoint,dict) or set(checkpoint)!=fields:
             raise ValueError('Corrupt publication continuation fields')
-        if checkpoint.get('version')!=1 or checkpoint.get('identity')!=identity:
-            raise ValueError('Publication continuation inputs differ from the completed model')
+        saved_identity=checkpoint.get('identity')
+        if checkpoint.get('version')!=1 or not isinstance(saved_identity,str) or not re.fullmatch('[a-f0-9]{64}',saved_identity):
+            raise ValueError('Corrupt publication continuation identity')
+        if saved_identity!=identity:
+            raise PublicationInputsChanged('Publication continuation inputs differ from the completed model')
         stage=_stage_paths(checkpoint.get('stage'),model_spec=model_spec,work=work)
         if source==intent_path:
             # The exporter writes its manifest last. Missing final metadata means
@@ -228,7 +235,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             if pending is not None:
                 _require_model_definition(pending,engine)
                 if pointer!=pending['pointer'] or etag!=pending['pointer_etag']:
-                    raise ValueError('Selected release changed since the retained model intent')
+                    raise PublicationInputsChanged('Selected release changed since the retained model intent')
                 attempt=_publication_directory(work/'model-attempts'/('attempt-'+uuid4().hex),fresh=True)
                 _save_continuation(attempt/'prior-intent.json',pending)
                 stage=dict(output=str(attempt/'release'),scratch=str(attempt/'scratch'))
@@ -264,7 +271,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 selected_candidate=(pointer is not None and pointer['release_id']==candidate and
                     pointer.get('previous_release_id')==prior and live_input is not None)
                 if not selected_candidate and (pointer!=checkpoint['pointer'] or etag!=checkpoint['pointer_etag']):
-                    raise ValueError('Selected release changed since the completed model checkpoint')
+                    raise PublicationInputsChanged('Selected release changed since the completed model checkpoint')
             if live_input is not None and checkpoint is None:
                 admission=prepared['scratch']/'admission';admission.mkdir()
                 checks=admission_checks(parser_versions=prepared['parser_versions'],catalog_version=prepared['catalog_version'],

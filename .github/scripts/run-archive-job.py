@@ -23,11 +23,12 @@ def binding_command(binding, spec):
     return [sys.executable, '-I', '-m', binding['module'], '--spec', str(spec), *binding['argv']]
 
 
-def watched_command(command, binding, operation, temp):
+def watched_command(command, binding, operation, temp, *, lock_fd=None):
     """The owner command under the watchdog, with its report and timeline in the runner's temp."""
+    lock_args = [] if lock_fd is None else ['--hold-fd', str(lock_fd)]
     return [sys.executable, '-I', str(ROOT / 'scripts/archive_watchdog.py'), '--rss-gb', str(binding['rss_gb']),
             '--report', str(Path(temp) / f'{operation}-watchdog.json'), '--timeline', '--min-disk-gb', '15',
-            '--', *command]
+            *lock_args, '--', *command]
 
 
 def export_publisher_work(command, output):
@@ -55,7 +56,11 @@ def main():
     parser.add_argument('operation', choices=['publish', 'backfill', 'maintenance'])
     parser.add_argument('--check-binding', action='store_true', help='Refuse pending specs before runtime or storage setup')
     parser.add_argument('--github-output', type=Path, help='Export owner-planned publisher work during binding admission')
+    parser.add_argument('--nightly-work', type=Path, help='Retain the scheduled Mac candidate here')
+    parser.add_argument('--nightly-lock-fd', type=int, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.nightly_work is not None and (args.operation != 'publish' or args.check_binding):
+        parser.error('--nightly-work requires a publish execution')
     if args.github_output is not None and (not args.check_binding or args.operation != 'publish'):
         parser.error('--github-output requires publish --check-binding')
     binding = json.loads((ROOT / '.github/archive-jobs.json').read_text())[args.operation]
@@ -74,8 +79,12 @@ def main():
         return 2
     if args.check_binding:
         return export_publisher_work(command, args.github_output) if args.github_output is not None else 0
+    if args.nightly_work is not None:
+        command.extend(['--nightly-work', str(args.nightly_work.resolve())])
     temp = os.environ.get('RUNNER_TEMP') or tempfile.gettempdir()
-    return subprocess.run(watched_command(command, binding, args.operation, temp), cwd=ROOT).returncode
+    pass_fds = () if args.nightly_lock_fd is None else (args.nightly_lock_fd,)
+    watched = watched_command(command, binding, args.operation, temp, lock_fd=args.nightly_lock_fd)
+    return subprocess.run(watched, cwd=ROOT, pass_fds=pass_fds).returncode
 
 
 if __name__ == '__main__':

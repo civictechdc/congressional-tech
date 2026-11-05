@@ -120,6 +120,20 @@ def discover_receipts(adapter,families,*,existing,engine,work,mode='incremental'
     return select_receipts(files,existing,engine=engine,work=work/'selection')
 
 
+def retained_discovery(work):
+    """Read the metadata selected by an earlier incremental discovery, before body copies."""
+    queries=json.loads((Path(work)/'selection/result.json').read_text())['queries']
+    [missing]=[query['data'] for query in queries if query['name']=='missing']
+    return [json.loads(row['metadata_json']) for row in missing]
+
+
+def receipt_metadata_digest(rows,*,exclude=()):
+    """Identify the deferred selection by raw object key, ETag and size."""
+    exclude=set(exclude)
+    selected=sorted((row['key'],row['etag'],row['size']) for row in rows if row['key'] not in exclude)
+    return hashlib.sha256(json.dumps(selected,separators=(',',':')).encode()).hexdigest()
+
+
 def copy_receipts(store,rows,directory,*,workers=16):
     """Copy selected receipts into `directory`, each with the qualification staging requires.
 

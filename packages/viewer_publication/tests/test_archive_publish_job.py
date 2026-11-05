@@ -65,6 +65,14 @@ def test_a_daily_description_without_a_body_inventory_plans(tmp_path,capsys):
     assert json.loads(capsys.readouterr().out)['daily']==value['daily']
 
 
+def test_nightly_work_requires_receipt_family_discovery(tmp_path,capsys):
+    value=with_daily(tmp_path,publish_spec(tmp_path))
+    with pytest.raises(SystemExit) as error:
+        invoke(tmp_path,value,'--execute','--nightly-work',str(tmp_path/'candidate'))
+    assert error.value.code==2 and 'requires daily receipt-family discovery' in capsys.readouterr().err
+    assert not (tmp_path/'candidate').exists()
+
+
 @pytest.mark.parametrize('change',['checksum','overlap','stale_receipts','stale_provenance','qualified_override'])
 def test_daily_description_refuses_before_runtime_or_storage(tmp_path,capsys,change):
     value=with_daily(tmp_path,publish_spec(tmp_path));daily=json.loads(Path(value['daily']['path']).read_text())
@@ -510,7 +518,7 @@ def test_raw_startup_refuses_unqualified_or_unmeasured_targets_before_sdk(tmp_pa
     assert not Path(value['work']).exists()
 
 
-@pytest.mark.parametrize('outcome',['completed','pending','backfill_required'])
+@pytest.mark.parametrize('outcome',['completed','pending','backfill_required','nightly-resume','nightly-changed','nightly-refused'])
 def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome,producers_recorded,monkeypatch):
     """Only external catalog storage, SDK and browser execution are adapted."""
     from copy import deepcopy
@@ -521,13 +529,21 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     monkeypatch.setattr(daily_module,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
     from test_archive_publish import Store,Native
     from viewer_publication.archive_publish_job import load_spec,execute
-    count=2 if outcome=='backfill_required' else 1
-    payloads=([b'%PDF-1.7\n% Authored startup report\n%%EOF\n'] if outcome=='completed' else None)
+    nightly=outcome.startswith('nightly-')
+    count=2 if outcome=='backfill_required' or nightly else 1
+    payloads=[f'%PDF-1.7\n% Authored startup report {i}\n%%EOF\n'.encode()
+              for i in range(count)] if outcome=='completed' or nightly else None
     raw=tmp_path/'producer';raw.mkdir()
     daily,initial,raw_store=native_fixture(raw,count,payloads=payloads)
     try:heads=tables.resolve_tables(engine=initial,work=tmp_path/'heads',catalog_root=daily['catalog_root'],tables=daily['tables'])
     finally:initial.close()
     catalog=daily['catalog_root'];daily['catalog_root']=None
+    receipt_objects={}
+    if nightly:
+        from test_daily_receipt_discovery import Bucket
+        receipt_objects={row['key']:Path(row['path']).read_bytes() for row in daily['receipt_inventory']}
+        receipt_bucket=Bucket(receipt_objects)
+        daily.update(receipt_families=['documents'],receipt_inventory=[],max_work_items=1)
     if outcome=='pending':
         row=pq.read_table(daily['body_inventory']).to_pylist()[0]
         (Path(daily['local_root'])/row['relative_path']).unlink()
@@ -549,7 +565,7 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
         **{name:dict(kind='native_table',**head) for name,head in heads.items()})
     path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
     path=tmp_path/'daily.json';path.write_text(json.dumps(daily))
-    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[],first_release=True)
+    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[],first_release=outcome!='nightly-refused')
     path=tmp_path/'publish.json';path.write_text(json.dumps(value));spec=load_spec(path)
     assert spec['_daily']['catalog_root'] is None
     class SDK(Store):
@@ -557,6 +573,15 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
             from types import SimpleNamespace
             assert operation=='list_objects_v2'
             return SimpleNamespace(paginate=lambda **request:[self.list_objects_v2(**request)])
+        def list_objects_v2(self,**request):
+            if nightly and request['Prefix'].startswith('receipts/'):
+                return receipt_bucket.list_objects_v2(**request)
+            return super().list_objects_v2(**request)
+        def get_object(self,*,Bucket,Key,IfMatch=None):
+            if nightly and Key.startswith('receipts/'):
+                self.events.append(('raw-get',Key))
+                return receipt_bucket.get_object(Bucket=Bucket,Key=Key,IfMatch=IfMatch)
+            return super().get_object(Bucket=Bucket,Key=Key)
     store=SDK();commands=[];catalog_calls=[]
     class Runtime:
         def __init__(self,configuration):
@@ -579,12 +604,21 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
             return self.native.run_job(target)
     def runtime_factory(path):return Runtime(json.loads(Path(path).read_text()))
     def process_runner(command,**kwargs):
-        assert outcome=='completed' and kwargs['check'] is True
+        assert (outcome=='completed' or nightly) and kwargs['check'] is True
         commands.append(command)
-        manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
+        release=Path(command[command.index('--release')+1])
+        release_id=(json.loads((release/'manifest.json').read_text())['release_id']
+                    if command[2]=='contract:archive' else str(release))
+
         Path(command[command.index('--output')+1]).write_text(json.dumps(
-            dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
-    result=execute(spec,runtime_factory=runtime_factory,storage_factory=lambda **_:store,process_runner=process_runner,end_to_end_runner=END_TO_END_PASSED)
+            dict(status='passed',releaseId=release_id,targets='owner-approved')))
+    options=dict(runtime_factory=runtime_factory,storage_factory=lambda **_:store,
+        process_runner=process_runner,end_to_end_runner=END_TO_END_PASSED)
+    if nightly:
+        _interrupt_nightly_wrapper(tmp_path,path,options,store,receipt_objects,outcome,monkeypatch)
+        assert catalog_calls and producers_recorded
+        return
+    result=execute(spec,**options)
     assert catalog_calls and result['status']==('published' if outcome=='completed' else outcome)
     # Gate 5: each head the run moved has its record in the bucket, even when the run stopped.
     recorded={json.loads(body)['input'] for key,body in store.objects.items() if key.startswith('lake/producers/')}
@@ -595,6 +629,195 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     else:
         assert commands==[] and not Path(model['output']).exists() and not Path(model['scratch']).exists()
         assert not any(key.startswith('viewer-publications/') for key in store.objects)
+
+
+def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome,monkeypatch):
+    """Run the scheduled wrapper and actual bound CLI with local external-service substitutes."""
+    import importlib.util
+    import sys
+    from types import SimpleNamespace
+    from viewer_publication import archive_controller,archive_publish_job
+
+    def load_script(name,path):
+        binding=importlib.util.spec_from_file_location(name,path)
+        module=importlib.util.module_from_spec(binding)
+        binding.loader.exec_module(module)
+        return module
+
+    root=Path(__file__).resolve().parents[3]
+    nightly=load_script('nightly_publish',root/'scripts/nightly_publish.py')
+    runner=load_script('run_archive_job',root/'.github/scripts/run-archive-job.py')
+    monkeypatch.setattr(nightly,'main_checkout',lambda _:tmp_path)
+    monkeypatch.setattr(nightly,'git',lambda *args,**_: 'f'*40 if args[0]=='rev-parse' else '')
+    monkeypatch.setattr(nightly,'publish_env',lambda *args:{})
+    execute=archive_publish_job.execute
+    monkeypatch.setattr(archive_publish_job,'execute',lambda spec:execute(spec,**options))
+    build=archive_controller.build_prepared_release
+    builds=[]
+    def interrupt_after_export(prepared,**kwargs):
+        manifest=build(prepared,**kwargs)
+        result=prepared['scratch']/'result.json'
+        builds.append(result)
+        if len(builds)==1:
+            # A structurally valid native result above the old wrapper's evidence-copy limit.
+            raw=json.loads(result.read_text())
+            result.write_text(json.dumps(dict(raw,padding='x'*7_300_000)))
+            raise OSError('injected interruption after completed export')
+        return manifest
+    monkeypatch.setattr(archive_controller,'build_prepared_release',interrupt_after_export)
+    responses=[]
+    def invoke_owner(command,**_):
+        index=command.index('--spec')
+        assert command[index-1]=='viewer_publication.archive_publish_job'
+        assert command[index+2]=='--execute' and command[index+3]=='--nightly-work'
+        args=command[index:]
+        args[1]=str(spec_path)
+        try:
+            return SimpleNamespace(returncode=archive_publish_job.main(args))
+        except SystemExit as error:
+            return SimpleNamespace(returncode=error.code)
+    monkeypatch.setattr(runner,'subprocess',SimpleNamespace(run=invoke_owner))
+    def step(name,command,**_):
+        if 'publish' not in command:
+            return  # external dependency setup is outside this fixture
+        monkeypatch.setattr(sys,'argv',[str(item) for item in command[2:]])
+        code=runner.main()
+        responses.append((name,code))
+        if code:
+            raise nightly.StepFailed(name,code)
+        if outcome=='nightly-resume' and len(responses)==2:
+            raise nightly.StepFailed(name,9)  # lose the success acknowledgement after the pointer flip
+    monkeypatch.setattr(nightly,'step',step)
+
+    evidence=tmp_path/'.cache/archive-release/nightly'
+    active=evidence/'candidate'
+    pointer='viewer-publications/manifest.json'
+    if outcome=='nightly-refused':
+        from test_archive_publish import encoded,real_release
+        base,manifest=real_release(tmp_path/'selected',['A'],retired=[])
+        for name in [item['name'] for item in manifest['files']]+['manifest.json']:
+            store.objects['viewer-publications/releases/'+manifest['release_id']+'/'+name]=(base['release']/name).read_bytes()
+        store.objects[pointer]=encoded(dict(release_id=manifest['release_id'],previous_release_id=None))
+    selected=store.objects.get(pointer)
+    assert nightly.run(root,False)==2 and store.objects.get(pointer)==selected
+    assert not (active/'archive-publish/completed-model.json').exists()
+    intent=json.loads((active/'archive-publish/model-intent.json').read_text())
+    result=Path(intent['stage']['scratch'])/'result.json'
+    assert result.stat().st_size>nightly.EVIDENCE_MAX_BYTES
+    pinned=file_pin(result)
+    raw_reads=[event for event in store.events if event[0]=='raw-get']
+    # Discovery inspected both receipts, but the oldest-first budget admitted one.
+    assert {key for _,key in raw_reads}==receipts.keys() and len(receipts)==2
+    daily=json.loads((active/'archive-daily/daily-summary.json').read_text())
+    assert daily['receipt_keys']==[min(receipts)]
+
+    if outcome=='nightly-refused':
+        assert nightly.run(root,False)==2
+        assert len(builds)==1 and file_pin(result)==pinned
+        assert store.objects[pointer]==selected and ('put',pointer) not in store.events
+        [gate]=active.glob('archive-publish/candidate-*/release-gate.json')
+        assert json.loads(gate.read_text())['reasons']
+        return
+
+    if outcome=='nightly-changed':
+        receipts['receipts/documents/2026-10-29/added.jsonl.gz']=next(iter(receipts.values()))
+        assert nightly.run(root,False)==0 and pointer in store.objects
+        assert len(builds)==2 and not active.exists()
+        [stale]=evidence.glob('*/superseded-candidate/inputs-changed.json')
+        assert 'receipt selection changed' in stale.read_text()
+        assert file_pin(stale.parent/'archive-model/result.json')==pinned
+        return
+
+    assert nightly.run(root,False)==9
+    assert file_pin(result)==pinned and pointer in store.objects
+    selected=store.objects[pointer]
+    assert nightly.run(root,False)==0
+    assert len(builds)==1 and not active.exists()
+    assert [event for event in store.events if event[0]=='raw-get']==raw_reads
+    assert store.objects[pointer]==selected and store.events.count(('put',pointer))==1
+    [held]=evidence.glob('*/candidate/archive-model/result.json')
+    assert file_pin(held)==pinned
+    for gate in ('contract','canary'):
+        [receipt]=held.parents[1].glob(f'archive-publish/probe-*/{gate}.json')
+        assert json.loads(receipt.read_text())['status']=='passed'
+
+
+def test_nightly_interrupted_retirement_cannot_leave_an_active_checkpoint(tmp_path,monkeypatch):
+    import runpy
+    import shutil
+
+    launcher=Path(__file__).resolve().parents[3]/'scripts/nightly_publish.py'
+    archive_candidate=runpy.run_path(str(launcher))['archive_candidate']
+    candidate=tmp_path/'candidate'
+    checkpoint=candidate/'archive-publish/completed-model.json'
+    checkpoint.parent.mkdir(parents=True)
+    checkpoint.write_text('{}')
+    report=candidate/'archive-daily/daily-summary.json'
+    report.parent.mkdir()
+    report.write_text('{')  # The interrupted producer may also leave incomplete JSON.
+    run=tmp_path/'run'
+    run.mkdir()
+    def interrupt(path):
+        assert path==run/'candidate-retiring' and not candidate.exists()
+        raise OSError('stopped during cleanup')
+    monkeypatch.setattr(shutil,'rmtree',interrupt)
+    with pytest.raises(OSError,match='stopped during cleanup'):
+        archive_candidate(candidate,run/'candidate')
+    assert not candidate.exists()
+    assert (run/'candidate/archive-publish/completed-model.json').read_text()=='{}'
+    assert (run/'candidate/archive-daily/daily-summary.json').read_text()=='{'
+
+
+def test_nightly_lock_survives_a_dead_launcher(tmp_path):
+    import subprocess
+    import sys
+    import time
+
+    launcher=Path(__file__).resolve().parents[3]/'scripts/nightly_publish.py'
+    child=tmp_path/'.claude/worktrees/nightly/scripts/nightly_publish.py'
+    child.parent.mkdir(parents=True)
+    ready=tmp_path/'child-ready'
+    stop=tmp_path/'child-stop'
+    done=tmp_path/'child-done'
+    child.write_text(f'''
+import os, sys, time
+from pathlib import Path
+os.fstat(int(sys.argv[sys.argv.index('--lock-fd')+1]))
+Path({str(ready)!r}).touch()
+deadline=time.monotonic()+15
+while not Path({str(stop)!r}).exists() and time.monotonic()<deadline:
+    time.sleep(.02)
+Path({str(done)!r}).touch()
+''')
+    launch=[sys.executable,'-c',f'''
+import importlib.util
+from pathlib import Path
+binding=importlib.util.spec_from_file_location('nightly_publish',{str(launcher)!r})
+nightly=importlib.util.module_from_spec(binding)
+binding.loader.exec_module(nightly)
+nightly.main_checkout=lambda _:Path({str(tmp_path)!r})
+nightly.update_worktree=lambda *args,**kwargs:None
+raise SystemExit(nightly.main([]))
+''']
+    first=subprocess.Popen(launch,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    def wait_for(path):
+        deadline=time.monotonic()+5
+        while not path.exists() and time.monotonic()<deadline:
+            time.sleep(.02)
+        assert path.exists()
+    try:
+        wait_for(ready)
+        first.kill()
+        first.wait(timeout=5)
+        retry=subprocess.run(launch,capture_output=True,text=True,timeout=5)
+        assert retry.returncode==3 and 'another run holds the lock' in retry.stderr
+    finally:
+        if first.poll() is None:
+            first.kill()
+            first.wait(timeout=5)
+        stop.touch()
+        if ready.exists():
+            wait_for(done)
 
 
 @pytest.mark.parametrize('change',['basis','profile','raw_runs','harness','median'])
