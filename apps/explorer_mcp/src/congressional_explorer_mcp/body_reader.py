@@ -23,7 +23,7 @@ MAX_BODY_BYTES = 64 << 20
 MAX_RAW_BYTES = MAX_BODY_BYTES
 MAX_CACHE_ENTRIES = 256
 MAX_PAGE_MATCH_ITERATIONS = 10_000
-MAX_FALLBACK_PDF_BYTES = 4 << 20
+BODY_CACHE_VERSION = 2
 SNIPPET_CONTEXT_CHARS = 160
 
 TEXT_FORMATS = frozenset({'pdf', 'html', 'htm', 'xhtml', 'xml', 'text', 'txt', 'json', 'csv', 'md', 'vtt', 'm3u8'})
@@ -274,22 +274,6 @@ def _extract_pdf_pages(payload: bytes, *, deadline: float | None = None) -> list
             raise
         except Exception:
             pass
-    # 3. Fallback for minimal PDF streams with literal (text) Tj operators (bounded to <= 4 MiB)
-    if len(pdf_data) <= MAX_FALLBACK_PDF_BYTES:
-        _check_deadline(deadline)
-        blocks = re.findall(rb'BT\b(.*?)\bET', pdf_data, flags=re.DOTALL)
-        if blocks:
-            pages = []
-            for block in blocks:
-                _check_deadline(deadline)
-                tokens = re.findall(rb'\((?:\\.|[^\\()])*\)', block)
-                lines = []
-                for tok in tokens:
-                    inner = tok[1:-1].replace(b'\\(', b'(').replace(b'\\)', b')').replace(b'\\\\', b'\\')
-                    lines.append(inner.decode('latin-1', errors='replace'))
-                pages.append('\n'.join(lines).strip())
-            if any(pages):
-                return pages
     raise ExplorerError('Unable to extract text from PDF body')
 
 
@@ -332,7 +316,7 @@ def _read_cached_pages(cache_path: Path, body_hex: str, *, max_bytes: int = MAX_
         raise ExplorerError('Corrupt cached document body') from error
     if (
         not isinstance(cached, dict)
-        or cached.get('version') != 1
+        or cached.get('version') != BODY_CACHE_VERSION
         or cached.get('saved_body') != body_hex
         or not isinstance(cached.get('pages'), list)
         or len(cached['pages']) == 0
@@ -355,7 +339,7 @@ def _write_cached_pages(
     atomic_json(
         cache_path,
         dict(
-            version=1,
+            version=BODY_CACHE_VERSION,
             saved_body=body_hex,
             format=fmt,
             page_count=len(pages),
@@ -397,7 +381,11 @@ def _load_or_extract_pages(
         target.get('saved_body'),
         target.get('saved_suffix'),
     )
-    cache_path = (Path(data_dir) / 'bodies' / f'{body_hex}.json') if data_dir is not None else None
+    # Keep legacy entries out of the new reader and leave their paths usable by older installs.
+    cache_path = (
+        Path(data_dir) / 'bodies' / f'{body_hex}.v{BODY_CACHE_VERSION}.json'
+        if data_dir is not None else None
+    )
     if cache_path is not None:
         cached_pages = _read_cached_pages(cache_path, body_hex, max_bytes=max_bytes)
         if cached_pages is not None:
