@@ -1,6 +1,6 @@
 ---
 id: ct-k2ij
-status: open
+status: closed
 deps: []
 links: [ct-717p]
 created: 2026-11-04T16:47:47Z
@@ -47,3 +47,9 @@ The reviewed bounded House XML capture change is merged into local main at 34406
 The bounded exact-event capture staged 537 records from House events `117955` and `118261`. Independent reviewer `/root/coverage_acceptance` verified event-scoped links and all 557 records from the separate 49-body retained cohort. The composer preserved all 6,186 base parents and emitted 6,235 parents with unique keys. The local consumer check preserved all 19,985 baseline child tuples and found 1,094 additions across the fresh and retained cohorts. Rules event `118300` remains in ct-717p. The other 292 events in the 295-event signature lie outside this bounded batch. [Independent acceptance](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/independent-acceptance.md) · [Pinned inputs](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/source-coverage-freeze-inputs.json)
 
 Implementation merge `eb7bd6a7` and acceptance merge `e6dd3be3` are on local main. Approved tip `e83c5b2c` refuses partial, wrong-Parquet and wrong-table origins while permitting the qualified composition input. The final focused run passed 39 tests. Missing or malformed native snapshot selectors belong to the separate HTML proof follow-up. The two Congressional-tech worktrees were pruned and their tips archived. Remaining acceptance is fresh-target import with both-way equality, daily append readback, and event-specific links in the selected live archive. [Merge, tests and archive refs](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/HANDOFF.md)
+
+**2026-11-05T23:55:27Z**
+
+The bounded House input selection, retained XML composition and import safeguards are merged through e6dd3be3 and independently accepted. Actual native readback now contains 6,238 committee parents and 21,110 entries, including the two fresh events and the separate 49-body cohort. [Independent source acceptance](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/HANDOFF.md)
+
+Close the bounded implementation and input admission. ct-gi01 and ct-m104 retain final event-specific links and preservation checks. The other 292 signals in the original 295-event cohort remain outside this batch; its selection plan and the legacy cohort’s unknown capture facts remain explicit source-gap dispositions under ct-gi01.

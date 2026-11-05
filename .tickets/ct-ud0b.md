@@ -1,6 +1,6 @@
 ---
 id: ct-ud0b
-status: open
+status: closed
 deps: [ct-itcg, ct-whm2]
 links: [ct-4jms, ct-tk10, ct-082q, ct-9lxf]
 created: 2026-11-02T13:59:14Z
@@ -89,3 +89,9 @@ Owner decision 2026-11-04: the nightly runs on the owner's Mac on a schedule (la
 Fresh independent acceptance on `dd9a6f82` found that a link added to an existing document could inherit automatic approval. `9c3ee247` fixed the attribution check and merged into local `main` at `5aa78701`. The correction passed 109 focused Gate 1, comparison and publisher checks plus the independent planted case. Integrated fixtures reused a 7.3 MB model result, reconciled a lost acknowledgement with one pointer write, and preserved the selected release on refusal. Both merged worktrees and branches were pruned after their exact tips were archived. [Acceptance and cleanup](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/nightly-freshness/HANDOFF.md)
 
 Keep open for a genuine scheduled additions-only run that passes all five gates and records the selected commit, daily result, gate outcomes and pre/post pointer. The all-wave hold still covers the Mac schedule. `ct-9lxf` owns complete-operation disk measurements for a fresh nightly run, a compatible retry and backfill.
+
+**2026-11-05T23:55:28Z**
+
+The nightly approval and completed-candidate recovery changes are merged at 04f41b28 and 5aa78701. Independent checks passed 109 focused controls, reused the retained 7.3 MB result, reconciled a lost acknowledgement with one pointer write and preserved the selected release on refusal. [Independent acceptance](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/nightly-freshness/HANDOFF.md)
+
+Close implementation. cef-96wc now owns scheduler restoration and a genuine Mac additions-only run through all five gates, with commit, daily result and pre/post pointer readback. A crash before the producer record is written still requires reconciliation. ct-9lxf retains whole-operation disk/spill checks; ct-4jms retains hosted scheduled capture. The Mac schedule remains disabled until release readiness.

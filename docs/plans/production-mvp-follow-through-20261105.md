@@ -19,6 +19,12 @@ The coordinator owns the remaining actions below. Reports and reusable outputs l
 | Canonical jobs | Reviewed configuration is merged at `54e9ad70`. Daily and fallback jobs use the seven qualified writer targets and four authentic imported-table anchors. The model keeps eight verified selectors, including the unchanged video selection. Video refresh and whole-archive daily HTML derivation remain opt-in. All three plan checks passed before the final source rebind. |
 | Cleanup | Completed author and acceptance worktrees have been archived and pruned through `scripts/dev.py prune-worktree`. Reports, native fixtures and exact archive refs remain. The integration checkout remains active; unrelated worktrees and local research are preserved. |
 
+## Implementation ticket closure
+
+Thirteen completed implementation tickets are closed: ten from Wave 1 and three from Wave 2. Their closure notes preserve the independent acceptance evidence and name the remaining owners. `ct-gi01` carries combined-model checks, `ct-m104` carries same-release reader checks, and `cef-96wc` carries live cutover and the Mac scheduled publication check formerly in `ct-ud0b`. Closing implementation does not mark publication complete. The exact ticket list is recorded in `ct-77zb`.
+
+Unfinished source work and migration remain open. Two tickets also gained new MCP requirements during this review: `ct-9s7b` retains meeting-level caption discovery and discrepancy reconciliation, and `ct-m94a` retains chronological lookup defaults and explicit inclusion of uncertain dates. Their original repairs are accepted; their new requirements are preserved.
+
 ## Remaining release actions
 
 | Action | Completion check |

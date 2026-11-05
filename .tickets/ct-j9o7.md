@@ -1,6 +1,6 @@
 ---
 id: ct-j9o7
-status: open
+status: closed
 deps: []
 links: [ct-vq2a, ct-yci9]
 created: 2026-11-05T02:36:33Z
@@ -42,3 +42,9 @@ The retained replay is `.cache/archive-release/investigations/saved-copy-identit
 **2026-11-05T20:18:06Z**
 
 Integrated exact-body bill evidence for document 1a9cae0e1043a2a2: its own cover and footer support BILLS-116hr2899ih. Existing authoritative precedence, House/Senate conflicts and uncorroborated cases remain protected. The paired draft PDFs are not assigned a later reported package version. Focused controls passed; candidate and selected-release verification remains due after the all-wave build hold.
+
+**2026-11-05T23:55:27Z**
+
+Exact-body evidence now supports BILLS-116hr2899ih for document 1a9cae0e1043a2a2. The merged repair passed independent authority, conflict and uncorroborated-case controls. [Independent Wave 1 acceptance](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/acceptance/SUMMARY.md)
+
+Close implementation. ct-gi01 and ct-m104 retain final identity and reader checks, including the existing H.R. 1776 control and continued access to unresolved drafts. No unsupported bill version is assigned.

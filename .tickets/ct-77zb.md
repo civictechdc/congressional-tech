@@ -115,3 +115,9 @@ Progress update 2026-11-03: Release e4538f0064e18168089a77891c93a16e175af18ed75e
 **2026-11-05T20:08:15Z**
 
 November 5 URL root-cause ticket reconciliation: updated ct-umtm (twelve replay custody/acceptance/import/publication dispositions), ct-4jms (ordinary scheduled capture plus Ashley queue/receipt trace), and ct-nh41 (producer explanation repair). New owners are [ct-yci9](ct-yci9.md) for agreeing wrong filenames, [ct-5esu](ct-5esu.md) for supported lookup aliases, and [ct-rie2](ct-rie2.md) for a requirements-bound campaign with final target/body/publication metrics. The first two are children of ct-gi01; the campaign is a child here. Links express shared evidence, not artificial execution dependencies: ordinary capture and explicit campaigns can be qualified separately. Existing completed normalization and filename-conflict tickets stay closed. [Root-cause report](../docs/experiments/url-normalization-revalidation-20261105/root-causes.md). No production changes, new acquisition, workflow enablement or publication accompanied this ticket update.
+
+**2026-11-05T23:55:26Z**
+
+Closed 13 completed implementation tickets at the user’s request: Wave 1 ct-t915, ct-j78x, ct-j49p, ct-67k1, ct-dx22, ct-lx67, ct-opy0, ct-j9o7, ct-cxc5 and ct-717p; Wave 2 ct-k2ij, ct-db3w and ct-ud0b. Independent Sol/xhigh greybeard/ETL reviewers checked the retained evidence and current scope.
+
+ct-gi01 retains combined native/candidate obligations; ct-m104 retains same-release reader acceptance; cef-96wc retains live cutover and the Mac scheduled publication check. Source gaps, legacy accounting, historical rosters, the unmerged upstream comparator and old-writer retirement remain open with their existing owners. Concurrent additions to ct-9s7b and ct-m94a introduce unfinished implementation, so those tickets stay open while crediting their completed original fixes. No new release or deployment is claimed.

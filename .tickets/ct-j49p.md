@@ -1,6 +1,6 @@
 ---
 id: ct-j49p
-status: open
+status: closed
 deps: []
 links: [ct-mj9f, ct-sw5t]
 created: 2026-11-04T15:05:25Z
@@ -52,3 +52,9 @@ Exact nested shape/missingness semantics are the hard prerequisite to projection
 **2026-11-05T20:18:06Z**
 
 Integrated ordered nomination committee activities with publisher names and timestamp precision, displayed separately from floor votes. The retained PN1011 case and MCP readback preserve all four activities, with null and empty states distinguished. Combined-candidate and live acceptance remains due; the full build/publication is held for all waves.
+
+**2026-11-05T23:55:26Z**
+
+The model and readers preserve all four PN1011 committee activities, source order and exact timestamps. Independent checks preserve unavailable versus empty data and the PN247/PN271 voice-vote controls. [Independent Wave 1 acceptance](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/acceptance/SUMMARY.md)
+
+Close implementation. ct-gi01 owns the final nomination output; ct-m104 owns PN1011 and the voice-vote controls in both readers on the selected release.

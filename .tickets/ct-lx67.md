@@ -1,6 +1,6 @@
 ---
 id: ct-lx67
-status: open
+status: closed
 deps: []
 links: [ct-dx22]
 created: 2026-11-04T15:07:16Z
@@ -54,3 +54,9 @@ Attribute-only corrections keep occurrence keys when body/locator/context/occasi
 **2026-11-05T20:18:06Z**
 
 Integrated the MODS-local affiliation repair. The full bounded MODS replay completed 35,020 rows; independent comparison found 4,835 changed lists with no cardinality changes. Farmer and Reese preserve their source-supported roles and employers. House/Congress rows remain identical. Native import and final selected-release checks are held for the combined waves.
+
+**2026-11-05T23:55:27Z**
+
+The MODS affiliation repair is merged and independently accepted. The imported replay covers 35,020 records; 4,835 witness lists changed values without changing their entry counts. Farmer and Reese retain the supported titles, employers and representative context. [Independent Wave 1 acceptance](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/acceptance/SUMMARY.md)
+
+Close implementation. ct-gi01 and ct-m104 retain the final witness-field and selected-reader checks; ct-dx22’s transferred release checks account for the sitting-related key changes.

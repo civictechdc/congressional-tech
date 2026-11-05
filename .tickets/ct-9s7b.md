@@ -64,3 +64,7 @@ Source evidence and full original criteria remain in: .tickets/ct-9s7b.md:24; .t
 **2026-11-05T20:18:06Z**
 
 Integrated the maintained playlist producer and recording-track selection. A genuine local backfill produced all 4,361 completed current HLS records, matching the intended keys and retained payloads with no missing, extra or duplicate keys. The retained Govtaff case distinguishes the subtitle playlist from its segments. Redirect and unkeyed-parent controls passed. Native import and final reader/publication checks wait for the combined waves.
+
+**2026-11-05T23:55:26Z**
+
+Implementation review: the original segment exclusion, supported production label and recording-ownership fixes are merged and independently accepted; all 4,361 playlist rows are imported. Keep this ticket open for the newly added meeting-level discovery and event 338785 / 938-of-1,553 reconciliation criteria. Those criteria are not established by the original track-selection checks. Preserve the concurrent additions and verify the final release with ct-gi01/ct-m104.

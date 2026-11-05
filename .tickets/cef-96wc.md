@@ -73,3 +73,11 @@ Owner decision 2026-11-04: B10 (full re-hash) and B13 (PDF copy) are deferred as
 **2026-11-05T17:11:15Z**
 
 Consolidated ownership from ct-8kl2/ct-98sm: retain actual production bindings, live selected release/site/MCP readback, raw provenance and previous-release rollback evidence. Use ct-tk10's maintained value/cause and link-continuity gates for current source/document changes. Preserve ct-te1p worker and storage-only logical body_key proof without treating its historical population totals as fixed across later semantic releases. Closing superseded trackers does not satisfy this live cutover gate.
+
+**2026-11-05T23:55:26Z**
+
+Wave 1/2 implementation closure transfers two remaining release responsibilities here. ct-t915’s implementation is accepted; verify the deployed native routes, legacy bookmarks, optional-load behavior and site/MCP agreement on the accepted immutable release, with the existing rollback references. ct-m104 owns the exact candidate and installed-reader checks.
+
+ct-ud0b’s nightly approval and completed-candidate recovery implementation is accepted. After publication and reconciliation of remote main and canonical jobs, restore the retained 05:30 America/New_York Mac schedule. Observe a genuine qualifying additions-only run through all five gates; record its selected commit, daily result, gate outcomes and pre/post pointer. An unchanged run or safe refusal is an operational observation, not proof of automatic publication. Preserve a refused candidate and its reason. A crash before the producer record exists still needs head/ledger reconciliation before retry. Keep the scheduler disabled until release readiness.
+
+ct-4jms remains the hosted scheduled-capture owner, ct-9lxf owns whole-operation disk/spill checks, and ct-5kto owns retirement after the live switch. [Release follow-through](../docs/plans/production-mvp-follow-through-20261105.md)

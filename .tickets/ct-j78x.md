@@ -1,6 +1,6 @@
 ---
 id: ct-j78x
-status: open
+status: closed
 deps: []
 links: [ct-9479, ct-adoh]
 created: 2026-11-04T15:05:50Z
@@ -46,3 +46,9 @@ Record source, candidate and selected-release results separately. Deliver the em
 **2026-11-05T20:18:06Z**
 
 Integrated producer-owned recording associations across coverage, recipes and site readers. Sitting evidence and package context remain distinct, and old-schema original observations remain accessible. Typed and older fixture checks passed through the browser and MCP standard I/O. The Altman observation retains its limited committee/day/player evidence. Same selected-release readback remains due; full build/publication waits all waves.
+
+**2026-11-05T23:55:26Z**
+
+The producer-owned recording association is merged and independently accepted through native coverage, both MCP recipes and the site. Altman’s evidence retains package context. [Independent Wave 1 acceptance](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/acceptance/SUMMARY.md)
+
+Close implementation. ct-gi01 owns the combined-candidate association and coverage check; ct-m104 owns both installed recipes and site readback on that same release. Preserve distinct observations, source references and association scope.

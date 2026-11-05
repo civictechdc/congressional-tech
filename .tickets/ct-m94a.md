@@ -81,3 +81,7 @@ Date fixtures and metadata qualification can proceed alongside other producer/re
 **2026-11-05T20:18:06Z**
 
 Integrated the qualification fix for opaque Foreign Relations download aliases; no replay of unchanged filename parsing is needed. Retained browser and MCP checks leave the three unsupported aliases undated, preserve supported alternate names and a genuine historical 1901 date, and flag the 2303 control. Final combined-candidate and live checks remain due. Full build/publication waits all waves.
+
+**2026-11-05T23:55:26Z**
+
+Implementation review: the original unsupported-alias qualification fix is merged and independently accepted, including the genuine 1901, alternate-name and suspect-date controls. Keep this ticket open for the newly added MCP chronological default, explicit suspect/undated inclusion and older-release behavior. Those lookup changes are not established by the original model/date checks. Preserve the concurrent additions; final reader acceptance remains with ct-m104.

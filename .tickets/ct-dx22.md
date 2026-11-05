@@ -1,6 +1,6 @@
 ---
 id: ct-dx22
-status: open
+status: closed
 deps: []
 links: [ct-qg8e, ct-kthe, ct-j2yo, ct-x78c, ct-5w9u, ct-egg6, ct-66ns, ct-2o4d, ct-67k1, ct-lx67]
 created: 2026-11-02T00:36:42Z
@@ -120,3 +120,9 @@ Retained held_dates should permit a model-only binding repair, reusing appearanc
 **2026-11-05T20:18:06Z**
 
 Integrated package-scoped handling for witnesses from multi-date MODS hearing prints. The bounded refresh produced all 35,020 current MODS rows while retaining every prior row. Named multi-day and single-sitting controls passed. Final candidate checks must confirm package context is not promoted to an individual appearance date. Full build/publication waits all waves.
+
+**2026-11-05T23:55:27Z**
+
+The reviewed model keeps ambiguous multi-date print witnesses at package scope, and the qualified MODS replay is imported. Supported single-sitting and print-link controls passed. [Independent Wave 1 acceptance](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/acceptance/SUMMARY.md)
+
+Close implementation. ct-gi01 retains Farmer/Reese occurrence-key causes and document-link continuity; ct-m104 retains selected-reader verification. Check the July link separately: retained event 100099 identifies jacket 72257, and the inspected 72238 inputs do not establish a July candidate edge. Do not invent that edge to satisfy a check.

@@ -1,6 +1,6 @@
 ---
 id: ct-cxc5
-status: open
+status: closed
 deps: []
 links: [ct-rvma]
 created: 2026-11-05T13:10:47Z
@@ -53,3 +53,9 @@ Use the exact body hashes and cover checks under `.cache/archive-release/handoff
 **2026-11-05T20:18:06Z**
 
 Integrated three exact-body, cover-supported hearing-date corrections through the existing date decision owner: CHRG-112hhrg68347, CHRG-112hhrg80849 and CHRG-113hhrg82590. Existing multi-day and named contrary controls remain intact. Retained reader checks passed. The combined candidate must verify the final date changes before publication; the full build is held for all waves.
+
+**2026-11-05T23:55:27Z**
+
+The merged, cover-supported corrections for CHRG-112hhrg68347, CHRG-112hhrg80849 and CHRG-113hhrg82590 passed independent identity and wrong-date controls while retaining supported event links. [Independent Wave 1 acceptance](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/acceptance/SUMMARY.md)
+
+Close the original three-case implementation. ct-gi01 owns both date checks on the actual candidate and attachment continuity; ct-m104 owns the selected-reader result. A general rule for other ambiguous print dates is not established by these three corrections.

@@ -1,6 +1,6 @@
 ---
 id: ct-opy0
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-31T07:22:48Z
@@ -46,3 +46,9 @@ Unchanged on 448651e7: 713 NULL chamber = 166 dated + 547 undated. Correction: t
 **2026-11-05T20:18:06Z**
 
 Integrated chamber_basis so readers can distinguish a publisher that omitted chamber from a missing meeting detail, while preserving the raw chamber value. The retained e145 census distinguishes 547 detail gaps from 166 source-unknown cases. Focused producer/model checks passed. The full candidate and selected-release readback wait until all waves finish.
+
+**2026-11-05T23:55:27Z**
+
+The merged chamber_basis field distinguishes a source-backed unknown from missing meeting detail. The retained census accounts for all 713 baseline nulls, and focused native/schema checks passed. [Independent Wave 1 acceptance](../.cache/archive-release/implementation/production-mvp-20261105T190929Z/acceptance/SUMMARY.md)
+
+Close implementation. ct-gi01 and ct-r4rd retain the final population comparison and the 104064/119583 cases. ct-m104 retains the reader explanation and document-link checks. This does not assert that every missing source detail has been acquired.
