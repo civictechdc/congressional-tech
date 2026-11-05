@@ -229,7 +229,7 @@ def facts(named=(), held=(DAY,), title=TITLE):
     return dict(named_meetings=list(named), held_dates=list(held), title=title)
 
 
-def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False):
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False, print_links=False):
     """Witness rows per name, from the maintained package-link and appearance SQL; with keys, the
     published rows and witness_key_map."""
     import json
@@ -281,10 +281,15 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
         return run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
             dict(name='witnesses', sql='SELECT witness_key,name,occasion,source_locator,record_sha_hex FROM appearance_records_resolved ORDER BY witness_key'),
             dict(name='map', sql='SELECT * FROM witness_key_map ORDER BY old_key')])
-    found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
-        dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,r.source_locator,s.name AS superseded_by FROM appearance_records_resolved r
+    queries = [dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,r.source_locator,s.name AS superseded_by FROM appearance_records_resolved r
             LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
-            LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')])['rows']
+            LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')]
+    if print_links:
+        queries.append(dict(name='print_links', sql='SELECT * FROM package_meeting_links ORDER BY package_id,event_id'))
+    result = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
+    found = result['rows']
+    if print_links:
+        return found, result['print_links']
     if rows:
         return found
     if full:
@@ -336,11 +341,29 @@ def test_a_print_naming_two_meetings_attaches_only_where_it_was_held(tmp_path):
     assert got == {'A': ('meeting:9001', 9001)}
 
 
-def test_a_multi_day_print_attaches_to_each_day_it_names(tmp_path):
-    # Haaland 328803: one print held on two days stands for each day's meeting.
-    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001), ('CHRG-a', 9002)],
-                  {'CHRG-a': facts(named=[9001, 9002], held=[DAY, '2021-02-24'])}, meetings=((9001, DAY, TITLE), (9002, '2021-02-24', TITLE)), full=True)
-    assert got['A'][0] in ('meeting:9001', 'meeting:9002') and got['A'][1] is None
+@pytest.mark.parametrize('jacket_events', [(100098,), (100098, 100099)])
+def test_two_day_print_links_do_not_assign_individual_witness_dates(tmp_path, jacket_events):
+    # Printed contents III of CHRG-112hhrg72238 puts Pistole on June 2 and
+    # Farmer and Reese on July 12. Its flat MODS list gives no individual dates.
+    package = 'CHRG-112hhrg72238'
+    days = ('2011-06-02', '2011-07-12')
+    pistole = 'John S. Pistole'
+    names = [pistole, 'Thomas L. Farmer', 'Raymond J. Reese']
+    records = [
+        record('two-day-print', 'mods', [witness(name) for name in names], package_id=package),
+        record('june-list', 'congress_gov', [witness(pistole)], event_id=100098),
+    ]
+    rows, links = resolve(
+        tmp_path, records, [(package, event) for event in jacket_events],
+        {package: facts(held=days)},
+        meetings=((100098, days[0], TITLE), (100099, days[1], TITLE)),
+        print_links=True,
+    )
+    assert [(r['package_id'], r['event_id']) for r in links] == [(package, event) for event in jacket_events]
+    assert sorted((r['name'], r['occasion'], r['event_id'], r['source_locator']) for r in rows) == sorted([
+        *((name, f'package:{package}', None, f'w:{name}') for name in names),
+        (pistole, 'meeting:100098', 100098, f'w:{pistole}'),
+    ])
 
 
 PANEL = ['Jane Doe', 'John Roe', 'Mary Major']
