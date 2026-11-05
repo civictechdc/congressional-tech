@@ -973,13 +973,17 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += appearance_steps(root=root)+witness_key_steps(root=root)+[
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
+    steps += _sql_steps(['document-hearing-date-corrections'],root=root)
     from viewer_publication.archive_model_profile import completeness_checks
     steps += application_steps(root=root)
-    steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on),
+    steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
         coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
-        coalesce(r.hidden,false) AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on
+        coalesce(r.hidden,false) AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
+        CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
+        CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source
         FROM document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
-            (document_identities d JOIN base_normalized n ON n.doc_key=d.document_id)
+            (document_identities d JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)
+             ON n.doc_key=d.document_id)
             ON d.component=r.component) ON d.component=x.component""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]

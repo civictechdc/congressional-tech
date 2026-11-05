@@ -2001,6 +2001,57 @@ def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
         bus: (None, '2017-09-06', 'filename', 115)}, facts
 
 
+def test_printed_hearing_date_and_conflicting_bill_packages_reach_the_export(tmp_path):
+    from viewer_publication.archive_model import build_release
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    package = 'CHRG-117hhrg49353'
+    govinfo = 'https://www.govinfo.gov/content/pkg'
+    house = 'https://docs.house.gov/meetings/GO/GO00/20230607/116064'
+    committee = 'https://financialservices.house.gov/files'
+    hearing = b'%PDF-1.7\nHEARING ON THE JANUARY 6TH INVESTIGATION\nJUNE 23, 2022\n%%EOF\n'
+    conflicting = b'%PDF-1.7\n118TH CONGRESS\nH. R. 5255\n%%EOF\n'
+    supported = b'%PDF-1.7\n119TH CONGRESS\nH. R. 225\n%%EOF\n'
+    captures = [
+        (f'{govinfo}/{package}/pdf/{package}.pdf', hearing, '2026-10-02T12:00:00Z'),
+        (f'{house}/HHRG-118-GO00-20230607-SD016.pdf', hearing, '2026-10-01T12:00:00Z'),
+        (f'{committee}/BILLS-118hr5225ih.pdf', conflicting, '2026-10-01T12:00:00Z'),
+        (f'{committee}/BILLS-118hr5255ih.pdf', conflicting, '2026-10-02T12:00:00Z'),
+        (f'{committee}/BILLS-119hr225ih.pdf', supported, '2026-10-01T12:00:00Z'),
+        (f'{committee}/BILLS-119hr2225ih.pdf', supported, '2026-10-02T12:00:00Z'),
+        (f'{govinfo}/BILLS-119hr225ih/pdf/BILLS-119hr225ih.pdf', supported, '2026-10-03T12:00:00Z'),
+    ]
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(url=url, data=body, format='pdf', compress=False, retrieved_at=at)
+        for url, body, at in captures
+    ])
+    build_release(
+        **staged, engine=engine, output=tmp_path/'release', scratch=tmp_path/'model',
+        spicy_regs=spicy_input(spicy_committees=[dict(system_code='HSGO00', name='Oversight', chamber='House')]),
+        meeting_records=[dict(
+            record_sha='dd'*32, source='congress_gov', meetings=[dict(
+                event_id='114899', congress=117, chamber='house', meeting_date='2022-06-23',
+                title='On the January 6th Investigation', transcript_jackets=['49353'],
+            )],
+        )],
+        appearance_records=[dict(
+            record_sha='cc'*32, source='mods', package_id=package, held_dates=['2022-06-23'],
+            title='HEARING ON THE JANUARY 6TH INVESTIGATION', appearances=[],
+        )],
+    )
+    rows = pq.read_table(tmp_path/'release/detail.parquet').to_pylist()
+    facts = {r['filename']: (r['package_id'], r['document_date'], r['document_date_source']) for r in rows}
+    assert facts == {
+        f'{package}.pdf': (package, date(2022, 6, 23), 'meeting'),
+        'BILLS-118hr5255ih.pdf': (None, None, None),
+        'BILLS-119hr225ih.pdf': ('BILLS-119hr225ih', None, None),
+    }
+    annotations = pq.read_table(tmp_path/'model/evidence/source_annotations.parquet').to_pylist()
+    assert {r['package_id'] for r in annotations if r['package_id']} == {
+        package, 'BILLS-118hr5225ih', 'BILLS-118hr5255ih', 'BILLS-119hr225ih', 'BILLS-119hr2225ih',
+    }
+
+
 def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
     """red-g F1: a rendition's <title> fills a title only when no listing label names the document."""
     from viewer_publication.archive_model import build_release
