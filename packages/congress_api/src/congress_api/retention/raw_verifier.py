@@ -1,6 +1,8 @@
 """Raw inventory checks. Native SQL owns joins; storage adapters only LIST and GET."""
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from datetime import datetime, timezone
+from functools import partial
 import gzip
 import hashlib
 import json
@@ -13,8 +15,11 @@ import pyarrow.parquet as pq
 
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import BODY
+from congress_api.retention.concurrency import completed_map
 from congress_api.retention.provenance import (field, parquet_output, parquet_records,
                                                file_pin, run_job)
+
+MAX_BODY_WORKERS = 32
 
 D1_CAPTURE_SCHEMA = pa.schema([
     ('sha256', pa.binary(32)),
@@ -89,10 +94,26 @@ def check_body(store, listing, *, checked_at):
         return dict(result,error=type(error).__name__)
 
 
-def verify(store, *, captures, receipts, previous, engine, work, checked_at, seed=None, full_rehash=False):
-    """Stage reports and accepted verification records; never repair or upload implicitly."""
+def _check_bodies(store, rows, *, checked_at, body_workers):
+    measure = partial(check_body, store, checked_at=checked_at)
+    if body_workers == 1:
+        yield from map(measure, rows)
+        return
+    with ThreadPoolExecutor(max_workers=body_workers, thread_name_prefix='raw-verify') as pool:
+        yield from completed_map(pool, measure, rows, max_pending=body_workers)
+
+
+def verify(store, *, captures, receipts, previous, engine, work, checked_at, seed=None,
+           full_rehash=False, body_workers: int = 1):
+    """Stage audit reports and accepted verification records locally.
+
+    body_workers limits simultaneous body reads to 1 through MAX_BODY_WORKERS.
+    A store used with more than one worker must support concurrent GETs.
+    """
     if type(full_rehash) is not bool:
         raise ValueError('full_rehash must be an explicit boolean')
+    if type(body_workers) is not int or not 1 <= body_workers <= MAX_BODY_WORKERS:
+        raise ValueError(f'body_workers must be an integer from 1 to {MAX_BODY_WORKERS}')
     work=Path(work)
     work.mkdir(parents=True,exist_ok=False)
     seed=seed or secrets.token_hex(32)
@@ -207,9 +228,10 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
     counts=dict(reports['counts'][0],**reports['issues'][0],**reports['orphans'][0])
     checks=work/'checked.jsonl.gz'
     checked=errors=0
-    with gzip.open(checks,'wt',encoding='utf-8') as out:
-        for row in parquet_records(work/'work.parquet'):
-            measured=check_body(store,row,checked_at=checked_at)
+    with (closing(parquet_records(work/'work.parquet')) as rows,
+          gzip.open(checks,'wt',encoding='utf-8') as out,
+          closing(_check_bodies(store,rows,checked_at=checked_at,body_workers=body_workers)) as measurements):
+        for measured in measurements:
             checked+=1
             errors+=not measured['sha256_verified']
             out.write(json.dumps(measured,separators=(',',':'))+'\n')

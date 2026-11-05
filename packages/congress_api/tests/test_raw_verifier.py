@@ -1,16 +1,18 @@
 """B9/B12: LIST is the inventory; native joins and measured bytes establish integrity."""
+from contextlib import closing
 import gzip
 import hashlib
 import io
 import json
 import os
 from pathlib import Path
+from threading import Barrier, Lock
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from congress_api.retention.raw_verifier import verify, check_body
+from congress_api.retention.raw_verifier import MAX_BODY_WORKERS, _check_bodies, check_body, verify
 from docspec_client.client import NativeDatasets
 
 
@@ -293,3 +295,135 @@ def test_d1_digest_evidence_preserves_repeated_captures_at_distinct_indexes(tmp_
     assert result['valid'] and result['digest_repairs']==2
     for file in ('digest-evidence','digest-repairs'):
         assert pq.read_table(work/(file+'.parquet'))['capture_index'].to_pylist()==[0,1]
+
+
+@pytest.mark.parametrize('body_workers', [True, 0, -1, 1.5, '8', MAX_BODY_WORKERS + 1])
+def test_verify_rejects_invalid_body_worker_bound_before_staging(tmp_path, body_workers):
+    work = tmp_path / 'job'
+    with pytest.raises(ValueError, match='body_workers'):
+        verify(None, captures=None, receipts=None, previous=None, engine=None, work=work,
+               checked_at='2026-10-27T00:00:00Z', body_workers=body_workers)
+    assert not work.exists()
+
+
+@pytest.mark.parametrize('corrupt', [False, True])
+def test_parallel_verification_preserves_audit_results(tmp_path, corrupt):
+    values = {key(data): (gzip.compress(data, mtime=0), None)
+              for data in (b'one', b'two', b'three')}
+    errors = {}
+    if corrupt:
+        values[key(b'bad gzip')] = (b'broken gzip header', None)
+        values[key(b'wrong identity')] = (gzip.compress(b'different content', mtime=0), None)
+        errors = {key(b'bad gzip'): 'BadGzipFile', key(b'wrong identity'): 'identity_mismatch'}
+    captures, receipts, previous = inputs(tmp_path, [])
+    reports = []
+    measurements = []
+    accepted = []
+    for body_workers in (1, 3):
+        store = Store(values)
+        work = tmp_path / str(body_workers)
+        report = verify(store, captures=captures, receipts=receipts, previous=previous, engine=engine(),
+                        work=work, checked_at='2026-10-27T00:00:00Z', seed='fixed',
+                        body_workers=body_workers)
+        assert sorted(store.reads) == sorted(values)
+        assert report['checked'] == len(values) and report['content_errors'] == len(errors)
+        assert report['valid'] is (not corrupt)
+        with gzip.open(work / 'checked.jsonl.gz', 'rt') as rows:
+            measured = sorted(map(json.loads, rows), key=lambda row: row['key'])
+        assert {row['key']: row['error'] for row in measured if row['error']} == errors
+        measurements.append(measured)
+        records = Path(report.pop('records'))
+        assert records.exists() is (not corrupt)
+        if not corrupt:
+            accepted.append(records.read_bytes())
+        reports.append(report)
+    assert measurements[0] == measurements[1]
+    assert reports[0] == reports[1]
+    if not corrupt:
+        assert accepted[0] == accepted[1]
+
+
+def test_parallel_body_reads_bound_open_streams_and_pending_rows():
+    body_workers = 3
+    values = {key(data, ''): (data, None)
+              for data in (f'body-{index}'.encode() for index in range(12))}
+    first_wave = Barrier(body_workers, timeout=5)
+    lock = Lock()
+    active = peak = supplied = 0
+
+    class TrackedStream(io.BytesIO):
+        def __init__(self, data, wait_for_peers):
+            super().__init__(data)
+            self.wait_for_peers = wait_for_peers
+
+        def read(self, size=-1):
+            if self.wait_for_peers:
+                self.wait_for_peers = False
+                first_wave.wait()
+            return super().read(size)
+
+        def close(self):
+            nonlocal active
+            if not self.closed:
+                with lock:
+                    active -= 1
+            super().close()
+
+    class TrackingStore(Store):
+        def get(self, key):
+            nonlocal active, peak
+            with lock:
+                response = super().get(key)
+                active += 1
+                peak = max(peak, active)
+                wait_for_peers = len(self.reads) <= body_workers
+            data, _ = self.values[key]
+            response['Body'].close()
+            response['Body'] = TrackedStream(data, wait_for_peers)
+            return response
+
+    store = TrackingStore(values)
+
+    def rows():
+        nonlocal supplied
+        for row in store.listing():
+            supplied += 1
+            yield row
+
+    with closing(_check_bodies(store, rows(), checked_at='2026-10-27T00:00:00Z',
+                               body_workers=body_workers)) as measured:
+        first = next(measured)
+        assert body_workers <= supplied <= body_workers + 1
+        results = [first, *measured]
+    assert peak == body_workers and active == 0
+    assert sorted(row['key'] for row in results) == sorted(values)
+    assert all(row['sha256_verified'] for row in results)
+
+
+def test_fatal_parallel_read_closes_streams_and_leaves_no_qualified_audit(tmp_path):
+    captures, receipts, previous = inputs(tmp_path, [])
+    failing_key = key(b'fatal stream', '')
+    values = {failing_key: (b'fatal stream', None), key(b'good', ''): (b'good', None)}
+    streams = []
+
+    class BrokenStream(io.BytesIO):
+        def read(self, size=-1):
+            raise RuntimeError('body stream interrupted')
+
+    class BrokenStore(Store):
+        def get(self, key):
+            response = super().get(key)
+            if key == failing_key:
+                response['Body'].close()
+                response['Body'] = BrokenStream()
+            streams.append(response['Body'])
+            return response
+
+    work = tmp_path / 'job'
+    with pytest.raises(RuntimeError, match='body stream interrupted'):
+        verify(BrokenStore(values), captures=captures, receipts=receipts, previous=previous,
+               engine=engine(), work=work, checked_at='2026-10-27T00:00:00Z', seed='fixed',
+               body_workers=2)
+    assert streams and all(stream.closed for stream in streams)
+    for name in ('final', 'accepted.parquet', 'report.json', 'verification.jsonl'):
+        assert not (work / name).exists()
