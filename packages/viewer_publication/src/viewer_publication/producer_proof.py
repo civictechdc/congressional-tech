@@ -36,6 +36,7 @@ import json
 import os
 from pathlib import Path
 
+from congress_api.lake.producer_records import PIN_FIELDS
 from congress_api.lake.tables import table_input
 from congress_api.retention.provenance import run_job
 
@@ -191,9 +192,15 @@ def import_origin_problem(name, source, origin):
     if _is_delta(origin):
         return 'a staged delta cannot be the origin of a complete table'
     selector = origin.get('selector')
-    if isinstance(selector, dict) and selector.get('kind') == 'parquet' and (
-            not isinstance(source, dict)
-            or any(source.get(key) is None or source[key] != selector.get(key) for key in ('sha256', 'size'))):
+    if not isinstance(selector, dict) or selector.get('kind') not in ('parquet', 'native_table'):
+        return 'the import origin must name a Parquet artifact or native snapshot'
+    if selector['kind'] == 'native_table':
+        try:
+            table_input(name, {key: selector[key] for key in PIN_FIELDS})
+        except (KeyError, ValueError):
+            return 'the import origin needs an exact native table pin'
+    elif (not isinstance(source, dict)
+          or any(source.get(key) is None or source[key] != selector.get(key) for key in ('sha256', 'size'))):
         return 'the Parquet origin does not match the import source pin'
     return None
 
