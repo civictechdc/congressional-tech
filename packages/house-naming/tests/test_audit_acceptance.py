@@ -2,10 +2,28 @@
 import json
 import subprocess
 import sys
+from time import monotonic
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+
+
+# Allow for interpreter startup and imports when other jobs share the machine.
+CLI_HANG_TIMEOUT_SECONDS = 60
+
+
+def run_cli(*args):
+    command = [sys.executable, *args]
+    started = monotonic()
+    try:
+        return subprocess.run(command, capture_output=True, text=True, timeout=CLI_HANG_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as error:
+        pytest.fail(
+            f"House naming CLI timed out after {monotonic() - started:.1f}s: {command!r}\n"
+            f"stdout: {error.stdout!r}\nstderr: {error.stderr!r}",
+            pytrace=False,
+        )
 
 
 @pytest.fixture
@@ -42,8 +60,7 @@ raise SystemExit(c.main())
 '''
     output = tmp_path / 'output'
     flags = ['-O'] if optimized else []
-    run = subprocess.run([sys.executable, *flags, '-c', code, corruption, str(inventory), str(output)],
-                         capture_output=True, text=True, timeout=10)
+    run = run_cli(*flags, '-c', code, corruption, str(inventory), str(output))
     if corruption == 'none':
         assert run.returncode == 0, run.stderr
         report = json.loads((output / 'coverage.json').read_text())
@@ -67,8 +84,7 @@ def test_both_commands_reject_the_same_bad_surname_json(tmp_path, inventory, pay
         ['house_naming', 'extract', 'BILLS-119HR42RepClyburnTitleih.pdf'],
         ['house_naming.filename_corpus', str(inventory), str(tmp_path / 'output')],
     ]:
-        run = subprocess.run([sys.executable, '-m', *args, '--member-surnames', str(reference)],
-                             capture_output=True, text=True, timeout=10)
+        run = run_cli('-m', *args, '--member-surnames', str(reference))
         assert run.returncode == status, run.stdout + run.stderr
         assert json.loads(run.stderr)['error']['code'] == code
     assert not (tmp_path / 'output/coverage.json').exists()
@@ -89,7 +105,6 @@ def test_refinement_limit_reaches_all_consumers(tmp_path):
         with pytest.raises(NamingError) as failure:
             call()
         assert failure.value.code == 'extraction-limit'
-    run = subprocess.run([sys.executable, '-m', 'house_naming', 'extract', name],
-                         capture_output=True, text=True, timeout=3)
+    run = run_cli('-m', 'house_naming', 'extract', name)
     assert run.returncode == 2
     assert json.loads(run.stderr)['error']['code'] == 'extraction-limit'

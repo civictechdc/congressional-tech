@@ -2,7 +2,6 @@
 from copy import deepcopy
 from datetime import date
 import hashlib
-import importlib.util
 import json
 from pathlib import Path
 from threading import Event
@@ -11,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 from congress_api.acquisition import house_sites
+from congress_api.cli import probe_house_sites
 from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_discovery import discover, key, listing_records, task
 from congress_api.parsers.committee_pages import event_identity, listing_url, parse_event_page
@@ -56,14 +56,6 @@ def test_activity_route_guard_preserves_explicit_details(url):
         assert event_identity(body, explicit)['title'] == 'Child hearing'
 
 
-def probe_module():
-    path = ROOT / 'docs/youtube-coverage/research/scripts/probe_house_sites.py'
-    spec = importlib.util.spec_from_file_location('house_site_probe_test', path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 class Response:
     status_code = 200
     headers = {'Content-Type': 'application/json'}
@@ -86,13 +78,12 @@ def test_probe_keeps_retained_calendar_post_body_through_discovery(monkeypatch, 
     item = row['request']
     before = deepcopy(item)
     response = Response(item['url'], body)
-    module = probe_module()
     def get(session, url, **kwargs):
         assert kwargs['attempts'] == 1 and kwargs['method'] == 'POST'
         assert kwargs['json_body'] == item['body']
         return response
-    monkeypatch.setattr(module.http, 'get_with_retry', get)
-    result = module.probe(None, item, tmp_path)
+    monkeypatch.setattr(probe_house_sites.http, 'get_with_retry', get)
+    result = probe_house_sites.probe(None, item, tmp_path)
     assert result.get('discovery_error') is None
     assert result['discovered_count'] == 21  # 20 event links plus offset1140.
     assert result['request'] == item == before
@@ -101,12 +92,11 @@ def test_probe_keeps_retained_calendar_post_body_through_discovery(monkeypatch, 
 
 
 def test_probe_body_files_distinguish_post_requests_at_the_same_url(monkeypatch, tmp_path):
-    module = probe_module()
     def get(session, url, **kwargs):
         offset = kwargs['json_body']['offset']
         return Response(url, json.dumps({'events_connection': {'nodes': []}, 'offset': offset}).encode())
-    monkeypatch.setattr(module.http, 'get_with_retry', get)
-    reports = [module.probe(None, task(HOME+'api/events', 'calendar_api', body={'offset': n, 'limit': 20}), tmp_path) for n in [0, 20]]
+    monkeypatch.setattr(probe_house_sites.http, 'get_with_retry', get)
+    reports = [probe_house_sites.probe(None, task(HOME+'api/events', 'calendar_api', body={'offset': n, 'limit': 20}), tmp_path) for n in [0, 20]]
     assert all(not r.get('error_type') and not r.get('discovery_error') for r in reports)
     assert reports[0]['body_path'] != reports[1]['body_path']
     assert len(list((tmp_path/'responses').iterdir())) == 2

@@ -141,15 +141,20 @@ that field. An absent table, an empty table and an unknown value remain distinct
 
 ## Reproduce native integration
 
-Use the configured local native runtime and the two existing project runners:
+Use the configured local native runtime to build both fixtures and pass their
+directory to the MCP tests. Use `--native-fixture-root=PATH` so pytest treats the
+directory as fixture data during test discovery. Choose a fresh fixture directory.
+Pytest clears the directory given to `--basetemp` before building the fixtures.
 
 ```sh
 DOCSPEC_JOB_CONFIG=/absolute/path/to/runtime.json \
   .venv/bin/python scripts/dev.py test production-offline \
   --path packages/viewer_publication/tests/test_phase2_model_entities.py::test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections \
+  --path packages/congress_api/tests/test_filename_readings.py::test_repaired_bill_filename_dates_publish \
   -- --basetemp=/absolute/path/to/native-fixture
 apps/explorer_mcp/.venv/bin/python scripts/dev.py test explorer-mcp \
-  -- --native-fixture-root /absolute/path/to/native-fixture
+  --path apps/explorer_mcp/tests/test_native_release.py \
+  -- --native-fixture-root=/absolute/path/to/native-fixture
 .venv/bin/python -m viewer_publication.archive_schema --check
 ```
 
@@ -193,7 +198,7 @@ Reproduce the full MCP lane with a native fixture containing current metadata:
 
 ```sh
 apps/explorer_mcp/.venv/bin/python apps/explorer_mcp/scripts/dev.py test tests \
-  --native-fixture-root /absolute/path/to/native-fixture -q
+  --native-fixture-root=/absolute/path/to/native-fixture -q
 .venv/bin/python .github/scripts/offline-python.py -m pytest \
   packages/viewer_publication/tests/test_archive_schema.py -k 'not native_checks' -q
 .venv/bin/python -m viewer_publication.archive_schema --check
