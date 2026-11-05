@@ -1,5 +1,6 @@
 """Plan or execute the one guarded archive publication path."""
 import argparse
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
@@ -139,21 +140,28 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
             if provenance_record_kind(row['key'])!='unreadable':raise ValueError('Unexpected daily provenance addition')
             full[row['key']]=dict(key=row['key'],etag=row['etag'],size=row['size'])
     provenance=[dict(key=key,etag=full[key]['etag']) for key in sorted(full)]
+    handoff={}
     if retain:
         from congress_api.lake.receipt_inventory import retained_discovery,receipt_metadata_digest
         deferred=receipt_metadata_digest(retained_discovery(work/'receipt-discovery'),exclude=keys)
         _save_continuation(summary_path,dict(summary,publication=dict(
             records=records,provenance=provenance,deferred=deferred)))
+        handoff['daily_summary_sha256']=sha256(summary_path.read_bytes()).hexdigest()
     return dict(status='ready',model=model,receipt_keys=keys,daily=summary,provenance=provenance,
-        verified_files=snapshot.verified())
+        verified_files=snapshot.verified(),**handoff)
 
 
-def _resume_daily_inputs(template,daily,*,engine,raw_store,work):
-    """Rebind the completed daily inputs only while the current raw and catalog selection agrees."""
-    from congress_api.lake.receipt_inventory import R2ReceiptStore,discover_receipts,receipt_metadata_digest
-    from congress_api.lake.tables import resolve_tables
-    from viewer_publication.archive_controller import PublicationInputsChanged
-    summary=json.loads((Path(daily['work'])/'daily-summary.json').read_text())
+def _resume_daily_inputs(template,daily,*,publish_work):
+    """Rebind the completed daily inputs before consulting the current selection."""
+    from viewer_publication.archive_controller import _read_continuation
+    _,checkpoint=_read_continuation(publish_work,daily=True)
+    summary_path=Path(daily['work'])/'daily-summary.json'
+    if summary_path.is_symlink():raise ValueError('Retained daily summary must be a regular file')
+    raw=summary_path.read_bytes()
+    digest=sha256(raw).hexdigest()
+    if digest!=checkpoint['daily_summary_sha256']:
+        raise ValueError('Retained daily summary differs from the model continuation')
+    summary=json.loads(raw)
     retained=summary.pop('publication',None) if isinstance(summary,dict) else None
     if not isinstance(retained,dict) or set(retained)!={'records','provenance','deferred'}:
         raise ValueError('Retained daily summary lacks complete publication inputs')
@@ -161,17 +169,23 @@ def _resume_daily_inputs(template,daily,*,engine,raw_store,work):
     model,keys=completed_daily_inputs(template,dict(summary,provenance={
         kind:[row for row in records if provenance_record_kind(row['key'])==kind]
         for kind in ('recoveries','reviews','unreadable')}),records)
+    return dict(status='ready',model=model,receipt_keys=keys,daily=summary,
+        provenance=retained['provenance'],verified_files=None,daily_summary_sha256=digest,
+        deferred_receipt_digest=retained['deferred'])
+
+
+def _require_current_daily(daily,retained,*,engine,raw_store,work):
+    from congress_api.lake.receipt_inventory import R2ReceiptStore,discover_receipts,receipt_metadata_digest
+    from congress_api.lake.tables import resolve_tables
+    from viewer_publication.archive_controller import PublicationInputsChanged
     heads=resolve_tables(engine=engine,work=work/'heads',catalog_root=daily['catalog_root'],tables=daily['tables'])
-    if heads!=summary['pins']:
+    if heads!=retained['daily']['pins']:
         raise PublicationInputsChanged('Daily catalog heads changed since the retained candidate')
     adapter=raw_store.adapter
     rows=discover_receipts(R2ReceiptStore(adapter.client,adapter.bucket),daily['receipt_families'],
         existing=heads['captures'],engine=engine,work=work/'receipt-discovery')
-    if receipt_metadata_digest(rows)!=retained['deferred']:
+    if receipt_metadata_digest(rows)!=retained['deferred_receipt_digest']:
         raise PublicationInputsChanged('Daily receipt selection changed since the retained candidate')
-    # The controller rechecks the complete raw provenance inventory and local file custody.
-    return dict(status='ready',model=model,receipt_keys=keys,daily=summary,
-        provenance=retained['provenance'],verified_files=None)
 
 
 def nightly_spec(spec,root):
@@ -492,8 +506,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 reads=configure_read_retries(storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1}))
                 raw_store=BodyStore(R2Adapter(reads,spec['bucket']))
                 if spec.get('resume'):
-                    daily=_resume_daily_inputs(selected_model,spec['_daily'],engine=model,
-                        raw_store=raw_store,work=directory/'resume-daily')
+                    daily=_resume_daily_inputs(selected_model,spec['_daily'],publish_work=Path(spec['work']))
                 else:
                     retention={'retain':True} if spec.get('_nightly') else {}
                     daily=produce_daily_inputs(selected_model,spec['_daily'],engine=model,
@@ -525,6 +538,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=dict(spec['run'],site_targets=site_targets),
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
+            if spec.get('_nightly'):
+                options['daily_summary_sha256']=daily['daily_summary_sha256']
+                if spec.get('resume'):
+                    options['check_current_daily']=lambda:_require_current_daily(
+                        spec['_daily'],daily,engine=model,raw_store=raw_store,work=directory/'resume-daily')
             causes=None
             if 'release_causes' in spec:
                 from viewer_publication.release_gate import load_causes

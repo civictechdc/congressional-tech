@@ -198,6 +198,48 @@ def test_sigkill_to_the_watchdog_keeps_the_lock_until_the_job_stops(tmp_path):
         fcntl.flock(retry, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 
+def test_nightly_setup_keeps_the_lock_until_an_unlocked_grandchild_stops(tmp_path):
+    import fcntl
+    import signal
+
+    lock = tmp_path / 'lock'
+    setup_pid = tmp_path / 'setup.pid'
+    grandchild_pid = tmp_path / 'grandchild.pid'
+    launcher = ROOT / 'scripts/nightly_publish.py'
+    # Match npm's child launch: the writer gets no inherited lock descriptor.
+    setup = f'''
+import os,pathlib,subprocess,sys,time
+subprocess.Popen([sys.executable,'-c',{sleeper(grandchild_pid, ignore_term=True)!r}], close_fds=True)
+pathlib.Path({str(setup_pid)!r}).write_text(str(os.getpid()))
+time.sleep(60)
+'''
+    driver = f'''
+import fcntl,os,runpy,sys
+from pathlib import Path
+step=runpy.run_path({str(launcher)!r})['step']
+with open({str(lock)!r},'a') as held, open(os.devnull,'w') as log:
+    fcntl.flock(held,fcntl.LOCK_EX | fcntl.LOCK_NB)
+    step('setup',[sys.executable,'-c',{setup!r}],cwd=Path({str(tmp_path)!r}),
+         env=os.environ,log=log,pass_fds=(held.fileno(),))
+'''
+    process = subprocess.Popen([sys.executable,'-c',driver], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        child = wait_for(setup_pid)
+        grandchild = wait_for(grandchild_pid)
+        os.kill(child, signal.SIGKILL)
+        process.kill()
+        process.wait(timeout=5)
+        with lock.open('a') as retry:
+            with pytest.raises(BlockingIOError):
+                fcntl.flock(retry, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            assert gone(grandchild), 'the unlocked setup grandchild outlived the owner'
+            fcntl.flock(retry, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+
+
 def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
     marker = tmp_path / 'job.pid'
     report = tmp_path / 'a/b/r.json'

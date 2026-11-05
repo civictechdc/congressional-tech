@@ -518,7 +518,7 @@ def test_raw_startup_refuses_unqualified_or_unmeasured_targets_before_sdk(tmp_pa
     assert not Path(value['work']).exists()
 
 
-@pytest.mark.parametrize('outcome',['completed','pending','backfill_required','nightly-resume','nightly-changed','nightly-refused'])
+@pytest.mark.parametrize('outcome',['completed','pending','backfill_required','nightly-resume','nightly-changed','nightly-refused','nightly-corrupt','nightly-corrupt-input','nightly-corrupt-status','nightly-reconcile-new'])
 def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome,producers_recorded,monkeypatch):
     """Only external catalog storage, SDK and browser execution are adapted."""
     from copy import deepcopy
@@ -651,7 +651,18 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     monkeypatch.setattr(nightly,'git',lambda *args,**_: 'f'*40 if args[0]=='rev-parse' else '')
     monkeypatch.setattr(nightly,'publish_env',lambda *args:{})
     execute=archive_publish_job.execute
-    monkeypatch.setattr(archive_publish_job,'execute',lambda spec:execute(spec,**options))
+    publication_results=[]
+    def execute_bound(spec):
+        outcome=execute(spec,**options)
+        publication_results.append(outcome)
+        return outcome
+    monkeypatch.setattr(archive_publish_job,'execute',execute_bound)
+    produce=archive_publish_job.produce_daily_inputs
+    productions=[]
+    def produce_once(*args,**kwargs):
+        productions.append(True)
+        return produce(*args,**kwargs)
+    monkeypatch.setattr(archive_publish_job,'produce_daily_inputs',produce_once)
     build=archive_controller.build_prepared_release
     builds=[]
     def interrupt_after_export(prepared,**kwargs):
@@ -685,7 +696,7 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
         responses.append((name,code))
         if code:
             raise nightly.StepFailed(name,code)
-        if outcome=='nightly-resume' and len(responses)==2:
+        if outcome in {'nightly-resume','nightly-reconcile-new'} and len(responses)==2:
             raise nightly.StepFailed(name,9)  # lose the success acknowledgement after the pointer flip
     monkeypatch.setattr(nightly,'step',step)
 
@@ -708,8 +719,27 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     raw_reads=[event for event in store.events if event[0]=='raw-get']
     # Discovery inspected both receipts, but the oldest-first budget admitted one.
     assert {key for _,key in raw_reads}==receipts.keys() and len(receipts)==2
-    daily=json.loads((active/'archive-daily/daily-summary.json').read_text())
+    summary=active/'archive-daily/daily-summary.json'
+    daily=json.loads(summary.read_text())
     assert daily['receipt_keys']==[min(receipts)]
+
+    if outcome.startswith('nightly-corrupt'):
+        if outcome=='nightly-corrupt':
+            daily['publication']['deferred']='0'*64
+            summary.write_text(json.dumps(daily))
+        elif outcome=='nightly-corrupt-status':
+            summary.write_text(json.dumps(dict(daily,status='backfill_required')))
+        else:
+            intent['input_digest']='0'*64
+            (active/'archive-publish/model-intent.json').write_text(json.dumps(intent))
+            receipts['receipts/documents/2026-10-29/added.jsonl.gz']=next(iter(receipts.values()))
+        assert nightly.run(root,False)==2
+        assert len(productions)==len(builds)==1 and file_pin(result)==pinned
+        assert store.objects.get(pointer)==selected
+        assert not (active/'inputs-changed.json').exists()
+        assert not list(evidence.glob('*/superseded-candidate*'))
+        assert not list(evidence.glob('*/candidate-before-backfill*'))
+        return
 
     if outcome=='nightly-refused':
         assert nightly.run(root,False)==2
@@ -731,7 +761,14 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     assert nightly.run(root,False)==9
     assert file_pin(result)==pinned and pointer in store.objects
     selected=store.objects[pointer]
+    if outcome=='nightly-reconcile-new':
+        receipts['receipts/documents/2026-10-29/added.jsonl.gz']=next(iter(receipts.values()))
     assert nightly.run(root,False)==0
+    assert publication_results[-1]['live_release_basis']=='selected_pointer_reconciled'
+    assert publication_results[-1]['status']=='release_unchanged'
+    durable=json.loads(store.objects['viewer-publications/status.json'])
+    assert durable['live_release_basis']=='selected_pointer_reconciled'
+    assert len(productions)==1
     assert len(builds)==1 and not active.exists()
     assert [event for event in store.events if event[0]=='raw-get']==raw_reads
     assert store.objects[pointer]==selected and store.events.count(('put',pointer))==1
@@ -740,6 +777,15 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     for gate in ('contract','canary'):
         [receipt]=held.parents[1].glob(f'archive-publish/probe-*/{gate}.json')
         assert json.loads(receipt.read_text())['status']=='passed'
+    if outcome=='nightly-reconcile-new':
+        # The next normal invocation still processes the newly available work.
+        value=json.loads(spec_path.read_text())
+        spec_path.write_text(json.dumps(dict(value,first_release=False)))
+        assert nightly.run(root,False)==2  # This fixture has no reviewed cause record.
+        assert len(productions)==len(builds)==2
+        assert store.objects[pointer]==selected and store.events.count(('put',pointer))==1
+        pending=json.loads((active/'archive-daily/daily-summary.json').read_text())
+        assert set(pending['receipt_keys'])>set(daily['receipt_keys'])
 
 
 def test_nightly_interrupted_retirement_cannot_leave_an_active_checkpoint(tmp_path,monkeypatch):
@@ -752,6 +798,8 @@ def test_nightly_interrupted_retirement_cannot_leave_an_active_checkpoint(tmp_pa
     checkpoint=candidate/'archive-publish/completed-model.json'
     checkpoint.parent.mkdir(parents=True)
     checkpoint.write_text('{}')
+    journal=candidate/'archive-publish/publication-assets.json'
+    journal.write_bytes(b'{malformed upload journal')
     report=candidate/'archive-daily/daily-summary.json'
     report.parent.mkdir()
     report.write_text('{')  # The interrupted producer may also leave incomplete JSON.
@@ -765,6 +813,7 @@ def test_nightly_interrupted_retirement_cannot_leave_an_active_checkpoint(tmp_pa
         archive_candidate(candidate,run/'candidate')
     assert not candidate.exists()
     assert (run/'candidate/archive-publish/completed-model.json').read_text()=='{}'
+    assert (run/'candidate/archive-publish/publication-assets.json').read_bytes()==b'{malformed upload journal'
     assert (run/'candidate/archive-daily/daily-summary.json').read_text()=='{'
 
 

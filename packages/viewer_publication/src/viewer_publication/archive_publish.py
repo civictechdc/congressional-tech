@@ -393,7 +393,8 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
-                      base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None):
+                      base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None,
+                      selected_pointer_reconciled=False):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -436,6 +437,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 pairs=_collect_spicy_generations(client,store,bucket,live=live,previous=previous,candidate_digests=input_record['entity_digests'])
                 write_spicy_generations(client,bucket=bucket,generations=pairs)
             status['status']='release_unchanged'
+            if selected_pointer_reconciled:status['live_release_basis']='selected_pointer_reconciled'
             return dict(status)
         if live is not None:
             if first_release:raise ValueError('A first release cannot replace a live release')

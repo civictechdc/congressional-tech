@@ -105,16 +105,40 @@ class MemorySamples:
 # period is real and the KILL follows only a job that would not stop.
 _OWNER = """import os,signal,subprocess,sys,time
 parent=int(sys.argv[1])
+fds=tuple(map(int,sys.argv[2].split(','))) if sys.argv[2] else ()
+group=os.getpgrp()
 signal.signal(signal.SIGTERM,lambda *_:None)
-process=subprocess.Popen(sys.argv[2:])
-while process.poll() is None:
+process=subprocess.Popen(sys.argv[3:],pass_fds=fds)
+def stop_group():
+ signal.signal(signal.SIGTERM,signal.SIG_IGN)
+ os.killpg(group,signal.SIGTERM)
+def descendants():
+ rows=subprocess.check_output(['ps','-axo','pid=,pgid=,stat='],text=True,timeout=5,start_new_session=True)
+ return any(int(pgid)==group and int(pid)!=os.getpid() and not state.startswith('Z')
+            for pid,pgid,state in map(str.split,rows.splitlines()))
+while True:
  if os.getppid()!=parent:
-  signal.signal(signal.SIGTERM,signal.SIG_IGN)
-  os.killpg(os.getpgrp(),signal.SIGTERM)
+  stop_group()
   time.sleep(2)
-  os.killpg(os.getpgrp(),signal.SIGKILL)
+  os.killpg(group,signal.SIGKILL)
+ code=process.poll()
+ if code is not None:
+  break
  time.sleep(.1)
-raise SystemExit(process.returncode)
+# A command can exit or be killed while a child that closed the lock fd keeps writing.
+# The leader holds the inherited lock until that child is gone.
+if fds:
+ try:
+  if descendants():
+   stop_group()
+   deadline=time.monotonic()+2
+   while descendants():
+    if time.monotonic()>=deadline:
+     os.killpg(group,signal.SIGKILL)
+    time.sleep(.1)
+ except (OSError,ValueError,subprocess.SubprocessError):
+  os.killpg(group,signal.SIGKILL)
+raise SystemExit(code)
 """
 
 
@@ -151,7 +175,8 @@ def _cleanup_child(child,send):
 
 def start_owned(command,**popen):
     """Start a command in its own process group, led by the parent-death trampoline."""
-    return subprocess.Popen([sys.executable,'-I','-c',_OWNER,str(os.getpid()),*command],start_new_session=True,**popen)
+    fds=','.join(map(str,popen.get('pass_fds',())))
+    return subprocess.Popen([sys.executable,'-I','-c',_OWNER,str(os.getpid()),fds,*command],start_new_session=True,**popen)
 
 
 def stop_owned(child):

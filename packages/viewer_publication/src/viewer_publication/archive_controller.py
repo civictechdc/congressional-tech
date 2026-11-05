@@ -49,6 +49,33 @@ def _save_continuation(path,value):
     finally:os.close(descriptor)
 
 
+def _read_continuation(work, *, daily=False):
+    """Read the existing intent or checkpoint before comparing current inputs."""
+    checkpoint_path=work/'completed-model.json'
+    source=checkpoint_path if checkpoint_path.exists() or checkpoint_path.is_symlink() else work/'model-intent.json'
+    if not source.is_file() or source.is_symlink():
+        raise ValueError('Publication continuation requires a completed model checkpoint or intent')
+    try:checkpoint=json.loads(source.read_text())
+    except (ValueError,OSError) as error:raise ValueError('Corrupt publication continuation') from error
+    fields={'version','identity','profile','entity_digests','admitted_names','pointer','pointer_etag'}
+    if isinstance(checkpoint,dict) and 'stage' in checkpoint:fields.add('stage')
+    if source==checkpoint_path:fields|={'manifest_pin','result_pin'}
+    if daily:fields|={'daily_summary_sha256','input_digest','input_provenance'}
+    if not isinstance(checkpoint,dict) or set(checkpoint)!=fields:
+        raise ValueError('Corrupt publication continuation fields')
+    for key in ('identity','daily_summary_sha256','input_digest') if daily else ('identity',):
+        value=checkpoint[key]
+        if not isinstance(value,str) or not re.fullmatch('[a-f0-9]{64}',value):
+            raise ValueError('Corrupt publication continuation digest: '+key)
+    if daily:
+        provenance=checkpoint['input_provenance']
+        if not isinstance(provenance,list) or any(not isinstance(row,dict) or set(row)!={'key','etag'} for row in provenance):
+            raise ValueError('Corrupt nightly publication provenance')
+    if checkpoint['version']!=1:
+        raise ValueError('Corrupt publication continuation version')
+    return source,checkpoint
+
+
 def _completed_artifacts(model_spec):
     """A manifest exists only after native export and local admission finish."""
     pins={}
@@ -159,7 +186,8 @@ def _probe_evidence(reports):
 
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
                 public_origin,contract,canary,verified_files=None,measured_release_id=None,comparison_acceptance=None,
-                resume=False,release_causes=None,link_history=(),first_release=False,automatic_causes=False):
+                resume=False,release_causes=None,link_history=(),first_release=False,automatic_causes=False,
+                daily_summary_sha256=None,check_current_daily=None):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -178,6 +206,11 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     if len(selected)!=len(set(selected)) or set(selected)!=records:
         raise ValueError('Publication provenance records must equal the actual model input set')
     if type(resume) is not bool:raise ValueError('Publication resume must be explicit')
+    daily_pin={}
+    if daily_summary_sha256 is not None:
+        if not isinstance(daily_summary_sha256,str) or not re.fullmatch('[a-f0-9]{64}',daily_summary_sha256):
+            raise ValueError('Invalid daily summary digest')
+        daily_pin['daily_summary_sha256']=daily_summary_sha256
     work=_publication_directory(work,fresh=not resume)
     identity=sha256(json.dumps(dict(model=model_spec,receipt_keys=keys,provenance=provenance,run=run,
         bucket=bucket,public_origin=public_origin,measured_release_id=measured_release_id),
@@ -187,20 +220,18 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     stage=_stage_paths(None,model_spec=model_spec,work=work)
     intent_path=work/'model-intent.json'
     if resume:
-        source=checkpoint_path if checkpoint_path.exists() else intent_path
-        if not source.is_file() or source.is_symlink():
-            raise ValueError('Publication continuation requires a completed model checkpoint or intent')
-        try:checkpoint=json.loads(source.read_text())
-        except (ValueError,OSError) as error:raise ValueError('Corrupt publication continuation') from error
-        fields={'version','identity','profile','entity_digests','admitted_names','pointer','pointer_etag'}
-        if isinstance(checkpoint,dict) and 'stage' in checkpoint:fields.add('stage')
-        if source==checkpoint_path:fields|={'manifest_pin','result_pin'}
-        if not isinstance(checkpoint,dict) or set(checkpoint)!=fields:
-            raise ValueError('Corrupt publication continuation fields')
-        saved_identity=checkpoint.get('identity')
-        if checkpoint.get('version')!=1 or not isinstance(saved_identity,str) or not re.fullmatch('[a-f0-9]{64}',saved_identity):
-            raise ValueError('Corrupt publication continuation identity')
-        if saved_identity!=identity:
+        source,checkpoint=_read_continuation(work,daily=bool(daily_pin))
+        if checkpoint.get('daily_summary_sha256')!=daily_summary_sha256:
+            raise ValueError('Retained daily summary differs from the model continuation')
+        if daily_pin:
+            try:
+                retained_digest=input_digest(receipt_keys=keys,provenance=checkpoint['input_provenance'],
+                    profile=checkpoint['profile']['profile'],entity_digests=checkpoint['entity_digests'])
+            except (KeyError,TypeError) as error:
+                raise ValueError('Corrupt retained nightly inputs') from error
+            if retained_digest!=checkpoint['input_digest']:
+                raise ValueError('Retained nightly input identity differs from the model continuation')
+        if checkpoint['identity']!=identity:
             raise PublicationInputsChanged('Publication continuation inputs differ from the completed model')
         stage=_stage_paths(checkpoint.get('stage'),model_spec=model_spec,work=work)
         if source==intent_path:
@@ -216,7 +247,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                              verified_files=verified_files,allow_existing_output=resume) as arguments:
             engine.verify_runtime()
             storage_ready=True
-            provenance=_provenance_snapshot(client,bucket,provenance)
+            if check_current_daily is None:provenance=_provenance_snapshot(client,bucket,provenance)
             # A resume reads the pointer again; it may have moved (for example after a flip), so
             # each later read keeps its own evidence beside the first rather than colliding with it.
             evidence=work/'outgoing-pointer.json'
@@ -259,17 +290,33 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 reports=_reports(result)
                 _admitted(reports,checkpoint['admitted_names']);_receipt_evidence(reports,keys)
                 probe_selectors=_probe_evidence(reports)
-            digest=input_digest(receipt_keys=keys,provenance=provenance,profile=profile['profile'],entity_digests=entity_digests)
-            status['input_digest']=digest
-            live_input=None
-            if pointer:
+            def find_live_input(digest):
                 lookup=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=work/('input-lookup-'+uuid4().hex))
-                live_input=matching_live_input(lookup,release_id=pointer['release_id'],digest=digest)
-            if checkpoint is not None:
+                return matching_live_input(lookup,release_id=pointer['release_id'],digest=digest)
+            live_input=None;pointer_matches=False;selected_candidate=False
+            if checkpoint is not None and pointer is not None:
                 candidate=json.loads(Path(checkpoint['manifest_pin']['path']).read_text())['release_id']
                 prior=checkpoint['pointer']['release_id'] if checkpoint['pointer'] else None
-                selected_candidate=(pointer is not None and pointer['release_id']==candidate and
-                    pointer.get('previous_release_id')==prior and live_input is not None)
+                pointer_matches=pointer['release_id']==candidate and pointer.get('previous_release_id')==prior
+            if check_current_daily is not None:
+                if pointer_matches:
+                    # A committed candidate is reconciled against the immutable input record
+                    # already written for it, even if new work arrived after the flip.
+                    live_input=find_live_input(checkpoint['input_digest'])
+                    if live_input is None:raise ValueError('Selected nightly candidate has no matching input record')
+                    provenance=live_input['provenance']
+                else:
+                    check_current_daily()
+                    provenance=_provenance_snapshot(client,bucket,provenance)
+            digest=input_digest(receipt_keys=keys,provenance=provenance,profile=profile['profile'],entity_digests=entity_digests)
+            status['input_digest']=digest
+            if daily_pin:
+                if checkpoint is not None and checkpoint['input_digest']!=digest:
+                    raise ValueError('Retained nightly input identity differs from the model continuation')
+                daily_pin.update(input_digest=digest,input_provenance=provenance)
+            if pointer and live_input is None:live_input=find_live_input(digest)
+            if checkpoint is not None:
+                selected_candidate=pointer_matches and live_input is not None
                 if not selected_candidate and (pointer!=checkpoint['pointer'] or etag!=checkpoint['pointer_etag']):
                     raise PublicationInputsChanged('Selected release changed since the completed model checkpoint')
             if live_input is not None and checkpoint is None:
@@ -286,7 +333,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 # Persist before the expensive job. A process can die after the
                 # exporter finishes and before this controller regains control.
                 _save_continuation(intent_path,dict(version=1,identity=identity,profile=profile,
-                    entity_digests=entity_digests,admitted_names=admitted_names,pointer=pointer,pointer_etag=etag,stage=stage))
+                    entity_digests=entity_digests,admitted_names=admitted_names,pointer=pointer,pointer_etag=etag,stage=stage,
+                    **daily_pin))
                 manifest=build_prepared_release(prepared,engine=engine,output=stage['output'])
                 result=json.loads((prepared['scratch']/'result.json').read_text())
                 reports=_reports(result)
@@ -326,7 +374,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         if checkpoint is None or promote_checkpoint:
             saved=dict(version=1,identity=identity,profile=profile,entity_digests=entity_digests,
                        admitted_names=admitted_names if checkpoint is None else checkpoint['admitted_names'],
-                       pointer=pointer,pointer_etag=etag,stage=stage,**artifacts)
+                       pointer=pointer,pointer_etag=etag,stage=stage,**artifacts,**daily_pin)
             _save_continuation(checkpoint_path,saved)
         delegate=True
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/('candidate-'+uuid4().hex),
@@ -334,6 +382,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             asset_journal=work/'publication-assets.json',
             measured_release_id=measured_release_id,comparison_acceptance=comparison_acceptance,
             pointer=pointer,expected_etag=etag,public_origin=public_origin,
+            selected_pointer_reconciled=check_current_daily is not None and selected_candidate,
             base_release=base_release,release_causes=release_causes,link_history_dirs=history,first_release=first_release,
             automatic_captures=model_spec['captures'] if automatic_causes else None,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),

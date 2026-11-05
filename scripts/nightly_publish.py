@@ -15,6 +15,8 @@ Each run keeps its log, watchdog report and publication evidence under
 `<main>/.cache/archive-release/nightly/<UTC stamp>/`. One active candidate lives beside the
 run directories, outside worktree cleanup. The publisher can reuse it after an interruption
 or refusal. Completed and superseded candidates leave their evidence in the run directory.
+A directory ending in `-retiring` contains detached work from an interrupted archive or cleanup.
+It stays outside automatic reuse. An operator can reclaim it after confirming its evidence is retained.
 
     python3 scripts/nightly_publish.py --install   # write and load the launchd agent
     python3 scripts/nightly_publish.py              # one run now (what launchd calls)
@@ -22,6 +24,7 @@ or refusal. Completed and superseded candidates leave their evidence in the run 
 import argparse
 import datetime
 import fcntl
+import importlib.util
 import json
 import os
 import plistlib
@@ -36,9 +39,24 @@ LABEL = 'ai.spicygov.archive-nightly'
 EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
 
 
+def run_owned(command, **options):
+    ownership = importlib.util.spec_from_file_location(
+        'nightly_process_owner', Path(__file__).with_name('measure') / 'process_rss.py')
+    owner = importlib.util.module_from_spec(ownership)
+    ownership.loader.exec_module(owner)
+    process = owner.start_owned(command, **options)
+    try:
+        stdout, stderr = process.communicate()
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    finally:
+        owner.stop_owned(process)
+
+
 def git(*args, cwd, capture=True, pass_fds=()):
-    result = subprocess.run(['git', *args], cwd=cwd, check=True, text=True, pass_fds=pass_fds,
-                            stdout=subprocess.PIPE if capture else None)
+    run = run_owned if pass_fds else subprocess.run
+    result = run(['git', *args], cwd=cwd, text=True, pass_fds=pass_fds,
+                 stdout=subprocess.PIPE if capture else None)
+    result.check_returncode()
     return result.stdout.strip() if capture else ''
 
 
@@ -53,7 +71,7 @@ def update_worktree(main, worktree, *, pass_fds):
     if not (worktree / '.git').exists():
         git('worktree', 'add', '--detach', str(worktree), target, cwd=main, capture=False, pass_fds=pass_fds)
         return target
-    dirty = git('status', '--porcelain', cwd=worktree)
+    dirty = git('--no-optional-locks', 'status', '--porcelain', cwd=worktree)
     if dirty:
         raise SystemExit(f'nightly refused: {worktree} has local changes:\n{dirty}')
     git('checkout', '--quiet', '--detach', target, cwd=worktree, pass_fds=pass_fds)
@@ -63,8 +81,8 @@ def update_worktree(main, worktree, *, pass_fds):
 def step(name, command, *, cwd, env, log, pass_fds=()):
     started = time.monotonic()
     print(f'== {name}: {" ".join(map(str, command))}', file=log, flush=True)
-    code = subprocess.run(list(map(str, command)), cwd=cwd, env=env, stdout=log,
-                          stderr=subprocess.STDOUT, pass_fds=pass_fds).returncode
+    code = run_owned(list(map(str, command)), cwd=cwd, env=env, stdout=log,
+                     stderr=subprocess.STDOUT, pass_fds=pass_fds).returncode
     print(f'== {name}: exit {code} in {time.monotonic() - started:.0f}s', file=log, flush=True)
     if code:
         raise StepFailed(name, code)
@@ -135,6 +153,7 @@ def archive_candidate(candidate, evidence):
     for pattern in ('commit', 'inputs-changed.json', 'archive-daily/daily-summary.json',
                     'archive-release/manifest.json', 'archive-model/result.json', 'archive-model/admission/result.json',
                     'archive-publish/*model*.json', 'archive-publish/outgoing-pointer*.json',
+                    'archive-publish/publication-assets.json',
                     'archive-publish/contract.json', 'archive-publish/canary.json',
                     'archive-publish/probe-*/contract.json', 'archive-publish/probe-*/canary.json',
                     'producer-proof/*/*/job.json', 'producer-proof/*/*/result.json',
@@ -177,7 +196,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
             run_step('spicy-regs', [python, '-I', '-m', 'viewer_publication.spicy_regs_inputs',
                                 '--model-spec', 'model/jobs/publish-model.json'])
             run_step('site build', ['npm', '--prefix', 'apps/site', 'run', 'build'])
-            dirty = git('status', '--porcelain', cwd=worktree)
+            dirty = git('--no-optional-locks', 'status', '--porcelain', cwd=worktree)
             if dirty:
                 print(f'== setup left the worktree dirty, which gate 5 refuses:\n{dirty}', file=log, flush=True)
                 raise StepFailed('clean tree', 1)
@@ -199,6 +218,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
                         summary['fresh_reason'] = reason
                         archive_candidate(candidate, evidence / 'previous-candidate')
                 def publish_step(name, *, initial=False):
+                    resuming = recoverable(candidate)
                     if not candidate.exists():
                         candidate.mkdir()
                         (candidate / 'commit').write_text(head + '\n')
@@ -206,7 +226,9 @@ def run(worktree, prepare_only, *, lock_fd=None):
                     try:
                         run_step(name, publish, step_env=step_env)
                     except StepFailed:
-                        if not (initial and changed.is_file()) and daily_status(candidate) != 'backfill_required':
+                        if initial and changed.is_file():
+                            return
+                        if resuming or daily_status(candidate) != 'backfill_required':
                             raise
 
                 publish_step('publish', initial=True)
