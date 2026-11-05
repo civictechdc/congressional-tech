@@ -526,7 +526,11 @@ def _stage_raw_inventories(client,bucket,work):
         raise ValueError('Duplicate raw verification receipt key')
     copied=copy_receipts(receipt_store,sorted(listed,key=lambda row:row['key']),work/'receipts')
     receipts=[dict(key=row['key'],path=row['path']) for row in copied]
-    with VerificationInventory(BodyStore(R2Adapter(client,bucket)),work=work/'verification') as inventory:
+    # The first successful verifier run can write one baseline for the entire
+    # archive. Allow the raw writer's single-PUT size and bound the local cache.
+    history_limit=5<<30
+    with VerificationInventory(BodyStore(R2Adapter(client,bucket)),work=work/'verification',
+            max_file_bytes=history_limit,max_total_bytes=history_limit) as inventory:
         inventory.qualify(row['key'] for row in inventory.metadata() if provenance_record_kind(row['key'])=='verification')
         previous=inventory.files()
     for name,rows in (('receipt',receipts),('verification',previous)):

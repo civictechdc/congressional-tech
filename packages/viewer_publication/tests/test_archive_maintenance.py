@@ -577,3 +577,19 @@ def test_cli_dry_run_stages_bucket_receipts_and_verification_for_native_checks(t
     for name,key in [('receipt',receipt_key),('verification',verification_key)]:
         [row]=json.loads((inputs/(name+'-inventory.json')).read_text())
         assert row['key']==key and Path(row['path']).read_bytes()==store.objects[key]
+
+
+def test_maintenance_can_stage_a_verifier_baseline_above_the_unreadable_file_limit(tmp_path):
+    from congress_api.retention.provenance_inventory import MAX_OBJECT_BYTES
+    from viewer_publication.archive_maintenance import ReadOnlyClient,_stage_raw_inventories
+
+    store=Store()
+    key='provenance/verification/baseline.jsonl'
+    line=b'{"key":"bodies/sha256/aa/'+b'a'*64+b'","sha256_verified":false}\n'
+    data=line*(MAX_OBJECT_BYTES//len(line)+1)
+    store.create(key,data)
+    client=RecordingS3(store)
+    receipts,[baseline]=_stage_raw_inventories(ReadOnlyClient(client),'archive-fixture',tmp_path)
+    assert receipts==[] and baseline['key']==key
+    assert Path(baseline['path']).stat().st_size==len(data)
+    assert set(client.calls)=={'get_object','list_objects_v2'}
