@@ -20,6 +20,7 @@
     "spec": "model/jobs/maintenance.json",
     "argv": [
       "--execute"
-    ]
+    ],
+    "rss_gb": 10
   }
 }
