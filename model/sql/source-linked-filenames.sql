@@ -5,6 +5,12 @@ WITH requested AS (
 )
 SELECT q.source_id,q.requested_filename,q.requested_url,
  {{FILENAME_DATE}} AS filename_date,f.congress,f.valid,
+ -- A published naming convention or a named Finance statement supplies a document date.
+ -- Generic download slugs only supply a literal reading, even when they contain eight digits.
+ (coalesce(f.valid,false) OR (
+  regexp_like(q.requested_url,'(?i)^https://(?:www[.])?finance[.]senate[.]gov/download/')
+  AND regexp_like(q.requested_filename,'(?i)^[0-9]{8}-[a-z][a-z0-9-]*-(?:testimony|statement)(?:[.&?]|$)')
+ )) AS date_supported,
  -- Iceberg carries element field ids (document_kind is 19); the aggregated choices relation
  -- does not. Normalize the three public list fields so both sides concatenate as one type.
  arrow_cast(f.document_kind,'List(Utf8)') AS document_kind,

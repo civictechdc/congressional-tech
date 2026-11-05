@@ -84,6 +84,9 @@ def test_hearing_date_corrections_preserve_held_days_and_require_package_evidenc
     print_package = 'CHRG-117hhrg49353'
     multi_day_package = 'CHRG-117hhrg50139'
     metadata_error = 'CHRG-119hhrg60403'
+    cover_68347 = '09bd414d3340e2460f48c6894ebdea0d3ee2420456ec1fde19a2e8f75f59a81f'
+    cover_80849 = 'a600af79338071e29eba24fcb61977e89635fc0e6c1de7948013cddb3fe95749'
+    cover_82590 = 'dc3e89f2578626fda386ab7fc85ae735dbeee8b69d6b2801b504b7ba7a88bc56'
     documents = [
         ('repost', print_package, '2023-06-07', 'filename'),
         ('multi-day-held-sitting', multi_day_package, '2022-06-13', 'filename'),
@@ -91,25 +94,34 @@ def test_hearing_date_corrections_preserve_held_days_and_require_package_evidenc
         ('undated', print_package, None, None),
         ('other-date-source', print_package, '2023-06-07', 'meeting'),
         ('uncorroborated-mods', metadata_error, '2025-05-15', 'filename'),
+        ('68347', 'CHRG-112hhrg68347', '2011-06-22', 'meeting', cover_68347),
+        ('80849', 'CHRG-112hhrg80849', '2012-07-25', 'meeting', cover_80849),
+        ('82590', 'CHRG-113hhrg82590', '2013-07-10', 'meeting', cover_82590),
+        ('different-bytes', 'CHRG-112hhrg80849', '2012-07-25', 'meeting', 'f' * 64),
     ]
     inputs = [
         json_input(tmp_path, 'documents', [
-            dict(doc_key=key, package_id=pkg, day=day, document_date_source=source)
-            for key, pkg, day, source in documents
-        ], doc_key='Utf8', package_id='Utf8', day='Utf8', document_date_source='Utf8'),
+            dict(doc_key=key, package_id=pkg, day=day, document_date_source=source, body_hex=body[0] if body else None)
+            for key, pkg, day, source, *body in documents
+        ], doc_key='Utf8', package_id='Utf8', day='Utf8', document_date_source='Utf8', body_hex='Utf8'),
         json_input(tmp_path, 'package_mods_facts', [
             dict(package_id=print_package, held_dates=['2022-06-23']),
             dict(package_id=multi_day_package, held_dates=['2021-07-27', '2022-06-13']),
             dict(package_id=metadata_error, held_dates=['2025-05-14']),
+            dict(package_id='CHRG-112hhrg68347', held_dates=['2011-09-22']),
+            dict(package_id='CHRG-112hhrg80849', held_dates=['2012-06-25']),
+            dict(package_id='CHRG-113hhrg82590', held_dates=['2013-05-09']),
         ], package_id='Utf8', held_dates=list_of('Utf8')),
         json_input(tmp_path, 'package_meeting_links', [
             dict(package_id=print_package, event_id=114899),
             dict(package_id=multi_day_package, event_id=114877),
+            dict(package_id='CHRG-112hhrg68347', event_id=103921),
         ], package_id='Utf8', event_id='Int64'),
         json_input(tmp_path, 'meetings', [
             dict(event_id=114899, day='2022-06-23', not_held=False),
             dict(event_id=114877, day='2022-06-13', not_held=False),
             dict(event_id=118173, day='2025-05-15', not_held=False),
+            dict(event_id=103921, day='2011-09-22', not_held=False),
         ], event_id='Int64', day='Utf8', not_held='Boolean'),
     ]
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[
@@ -121,6 +133,9 @@ def test_hearing_date_corrections_preserve_held_days_and_require_package_evidenc
              FROM document_hearing_date_corrections ORDER BY doc_key'''),
     ])
     assert result['corrections'] == [
+        dict(doc_key='68347', document_date='2011-09-22', document_date_source='meeting'),
+        dict(doc_key='80849', document_date='2012-06-25', document_date_source='content'),
+        dict(doc_key='82590', document_date='2013-05-09', document_date_source='content'),
         dict(doc_key='multi-day-repost', document_date=None, document_date_source=None),
         dict(doc_key='repost', document_date='2022-06-23', document_date_source='meeting'),
     ]
@@ -164,7 +179,7 @@ def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_pat
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,steps=[
         dict(name='saved_files',sql='SELECT component,source_id,body_sha,saved_rank,source_url,filename,cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM copies'),
         dict(name='source_filename_readings',sql="""SELECT source_id,filename AS filename_date_name,filename AS congress_name,
-            cast(filename_date AS DATE) AS filename_date,filename_date_valid,
+            cast(filename_date AS DATE) AS filename_date,filename_date_valid,true AS filename_date_eligible,
             CASE WHEN filename_date IS NULL THEN 'missing' ELSE 'completed' END AS filename_date_status,
             congress,congress_valid,CASE WHEN congress IS NULL THEN 'missing' ELSE 'completed' END AS congress_status FROM copies"""),
         dict(name='document_filename_facts',sql=(ROOT/'model/sql/document-filename-facts.sql').read_text(),materialize=True)],outputs=[],

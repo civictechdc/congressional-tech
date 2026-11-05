@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from datetime import date
+from urllib.parse import quote
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -62,7 +63,9 @@ def _review_readings(shown_status):
 def _release(tmp_path, capture_cases=None, transform_names=None):
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    result_cases = CASES if capture_cases is None else capture_cases[:1]
+    result_cases = CASES if capture_cases is None else list({
+        content: (requested, final, content) for requested, final, content in capture_cases
+    }.values())
     capture_cases = [*CASES, REPEAT] if capture_cases is None else capture_cases
     raw = tmp_path / 'raw'
     lines = []
@@ -173,3 +176,51 @@ def test_failed_shown_reading_does_not_block_completed_linked_typed_values(tmp_p
     assert [counts[field + suffix] for field, suffix in [
         ('filename_date', '_filled'), ('document_kind', '_filled'), ('document_family', '_filled'),
         ('congress', '_filled'), ('committee_code', '_filled')]] == [1, 1, 1, 1, 1]
+
+
+def test_opaque_download_dates_do_not_set_observed_bounds(tmp_path):
+    foreign = 'https://www.foreign.senate.gov/'
+    aliases = [
+        ('02271901', '02 27 19 Assessing The Role Of The United States In The World2.pdf', date(1901, 2, 27)),
+        ('03261901', '03 26 19 US Policy Toward North Korea After the Second Summit1.pdf', date(1901, 3, 26)),
+        ('06191901', '06 19 19 Nomination of Kelly Craft, of Kentucky, to be United States Ambassador to the United Nations.pdf',
+         date(1901, 6, 19)),
+    ]
+    cases = [(foreign + 'download/transcript-' + alias, foreign + 'imo/media/doc/' + quote(name),
+              f'%PDF-1.7\n{alias}\n%%EOF\n'.encode()) for alias, name, _ in aliases]
+    # The Government Publishing Office dates the printing of S. Rept. 56-2496 to March 2, 1901.
+    # https://www.govinfo.gov/app/details/SERIALSET-04067_00_00-174-2496-0000/
+    # Give the fixture a plain displayed filename to exercise the date with a null Congress.
+    historical = foreign + 'imo/media/doc/Deficiency%20appropriation%20bill%20March%202,%201901.pdf'
+    typo = 'https://www.help.senate.gov/imo/media/doc/FDA%20PAHPA%20testimony%20May%204%202303%20HELP1.pdf'
+    # An opaque supplier sorts first by URL. A supported, named supplier should still win.
+    competing_alias = (FINANCE + 'download/00000000', *CASES[0][1:])
+
+    def add_opaque_reading(rows):
+        row = next(row for row in rows if row['source_url'] == competing_alias[0])
+        row.update(filename_date=date(1900, 1, 1), valid=False)
+
+    rows, conflicts, _, annotations = _release(tmp_path, capture_cases=[
+        *cases, (historical, historical, b'%PDF-1.7\nHistorical\n%%EOF\n'),
+        (typo, typo, b'%PDF-1.7\nTypo\n%%EOF\n'), CASES[0], competing_alias,
+    ], transform_names=add_opaque_reading)
+    by_name = {row['filename']: row for row in annotations}
+    for row, (alias, name, literal) in zip(rows, aliases):
+        assert (row['document_date'], row['document_date_source'], row['document_date_status']) == (None, None, None)
+        source = by_name[name]
+        assert source['date_token'] == name[:8]
+        assert source['shown_filename_date'] is None
+        assert source['filename_date'] == literal
+        assert source['filename_date_url'] == foreign + 'download/transcript-' + alias
+        assert source['filled_date'] is True and source['filename_date_eligible'] is False
+    actual, future, named = rows[3:]
+    assert (actual['document_date'], actual['document_date_status'], actual['congress']) == (date(1901, 3, 2), 'accepted', None)
+    assert (future['document_date'], future['document_date_status'], future['document_date_source']) == (
+        date(2303, 5, 4), 'suspect', 'filename')
+    assert (named['document_date'], named['document_date_status']) == (date(2021, 3, 17), 'accepted')
+    assert any(c['field'] == 'filename_date' and c['other_url'] == competing_alias[0] for c in conflicts)
+
+    release = json.loads((tmp_path / 'release/manifest.json').read_text())
+    coverage = next(item['coverage'] for item in release['files'] if item['name'] == 'detail.parquet')
+    assert coverage['document_dates'] == {'accepted': 2, 'suspect': 1, 'undated': 3}
+    assert (coverage['date_start'], coverage['date_end']) == ('1901-03-02', '2021-03-17')
