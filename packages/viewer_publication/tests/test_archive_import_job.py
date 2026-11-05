@@ -69,6 +69,36 @@ def test_import_refuses_a_changed_origin_before_any_effect(tmp_path):
     assert not (tmp_path/'work').exists() and not (tmp_path/'catalog').exists()
 
 
+@pytest.mark.parametrize('problem, expected', [
+    ('delta_only', 'a staged delta cannot be the origin'),
+    ('final_reconciliation_required', 'a staged delta cannot be the origin'),
+    ('different_bytes', 'the Parquet origin does not match the import source pin'),
+    ('different_table', 'the import origin names another table'),
+])
+def test_import_refuses_incomplete_or_mismatched_origin_before_any_effect(tmp_path, problem, expected):
+    from viewer_publication.archive_import_job import execute, load_spec
+
+    source = tmp_path/'rows.parquet'
+    pq.write_table(ROWS, source)
+    path = _spec(tmp_path, source)
+    value = json.loads(path.read_text())
+    item = value['tables']['meeting_records']
+    origin = dict(input='meeting_records', selector=dict(kind='parquet', **item['source']))
+    if problem == 'different_bytes':
+        origin['selector']['sha256'] = '0'*64
+    elif problem == 'different_table':
+        origin.update(input='video_records', selector={'kind': 'native_table', 'snapshot': 7})
+    else:
+        origin[problem] = True
+    origin_path = tmp_path/'origin.json'
+    origin_path.write_text(json.dumps(origin))
+    item['producer'] = dict(path=str(origin_path), **file_pin(origin_path))
+    path.write_text(json.dumps(value))
+    with pytest.raises(ValueError, match=expected):
+        execute(load_spec(path))
+    assert not (tmp_path/'work').exists() and not (tmp_path/'catalog').exists()
+
+
 def test_import_spec_requires_a_location_matching_its_catalog(tmp_path):
     from viewer_publication.archive_import_job import load_spec
     source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)

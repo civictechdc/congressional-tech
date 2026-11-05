@@ -15,7 +15,7 @@ from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model_job import _local, _pin
 from viewer_publication.archive_selective_records import SELECTION_SCHEMA, stage_selected_records
-from viewer_publication.producer_proof import BACKFILL, IMPORT, ROOT, record, snapshot_reasons
+from viewer_publication.producer_proof import BACKFILL, IMPORT, ROOT, _record_reasons, record, snapshot_reasons
 
 FILE = {'path', 'size', 'sha256'}
 RECORD_TABLES = {'meeting_records', 'appearance_records'}
@@ -288,8 +288,8 @@ def _compose_committee(item, model, base_model):
         raise ValueError('Committee composition delta must match the retained backfill and its pinned base')
     selected = {name: selector, 'parser_versions': model['parser_versions']}
     delta_selector = dict(kind='parquet', **item['delta'])
-    reasons = snapshot_reasons(selected, {name: base_proof}) + snapshot_reasons(
-        dict(selected, committee_records=delta_selector), {name: delta_proof})
+    reasons = snapshot_reasons(selected, {name: base_proof}) + _record_reasons(
+        name, delta_proof, selected, None, ROOT, label=f'{name} delta', selector=delta_selector, allow_delta=True)
     if reasons:
         raise ValueError('Committee composition input origin refused: ' + '; '.join(reasons))
 

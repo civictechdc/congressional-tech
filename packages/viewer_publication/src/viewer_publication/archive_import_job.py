@@ -80,12 +80,17 @@ def load_spec(path):
     return spec
 
 
-def _verified(item):
+def _verified(name, item):
     """Refuse changed source, schema or origin evidence before the first effect."""
     from congress_api.retention.provenance import file_pin
+    from viewer_publication.producer_proof import import_origin_problem
     for key in ('source','schema','producer'):
         if key in item and file_pin(item[key]['path'])!={k:item[key][k] for k in ('sha256','size')}:
             raise ValueError('Import '+key+' does not match its pin: '+item[key]['path'])
+    if 'producer' in item:
+        origin = json.loads(Path(item['producer']['path']).read_text(encoding='utf-8'))
+        if problem := import_origin_problem(name, item['source'], origin):
+            raise ValueError('Import producer refused: '+problem)
     return json.loads(Path(item['schema']['path']).read_text(encoding='utf-8'))
 
 
@@ -131,7 +136,7 @@ def plan(spec):
 def execute(spec,*,runtime_factory=None):
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():raise ValueError('Import work directory must be fresh')
-    schemas={name:_verified(item) for name,item in spec['tables'].items()}
+    schemas={name:_verified(name,item) for name,item in spec['tables'].items()}
     engine_config=(spec.get('engine_config') or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
         or os.environ.get('DOCSPEC_JOB_CONFIG'))
     if not isinstance(engine_config,str) or not engine_config.strip():

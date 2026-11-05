@@ -175,11 +175,33 @@ def _git(root, *args):
     return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
 
 
-def _record_reasons(name, record, model, mapping_current, root, *, label, selector=None, versions=True):
+def _is_delta(record):
+    return record.get('delta_only') is True or record.get('final_reconciliation_required') is True
+
+
+def import_origin_problem(name, source, origin):
+    """Check that a pinned origin can account for the complete file being imported."""
+    if not isinstance(origin, dict):
+        return 'an import needs a producer record object'
+    if origin.get('input') != name:
+        return 'the import origin names another table'
+    if _is_delta(origin):
+        return 'a staged delta cannot be the origin of a complete table'
+    selector = origin.get('selector')
+    if isinstance(selector, dict) and selector.get('kind') == 'parquet' and (
+            not isinstance(source, dict)
+            or any(source.get(key) is None or source[key] != selector.get(key) for key in ('sha256', 'size'))):
+        return 'the Parquet origin does not match the import source pin'
+    return None
+
+
+def _record_reasons(name, record, model, mapping_current, root, *, label, selector=None, versions=True, allow_delta=False):
     """One record's refusals: version, registered job, full reachable commit, job checked in
     there and, when the record's code produced the rows, the versions recomputed there."""
     import re
     reasons = []
+    if not allow_delta and _is_delta(record):
+        return [f'producer proof: {label}: a staged delta cannot produce a complete table']
     if selector is not None and (record.get('input') != name or record.get('selector') != selector):
         reasons.append(f'producer proof: {label}: the producer record names another selector')
     commit, job = record.get('commit'), record.get('job')
@@ -209,6 +231,8 @@ def _import_reasons(name, record, model, mapping_current, root, *, label, versio
         return [f'producer proof: {label}: an import record needs the origin record of the job that produced the rows']
     if origin['record'].get('job') == IMPORT:
         return [f'producer proof: {label}: an import cannot name another import as its origin']
+    if problem := import_origin_problem(name, record.get('source'), origin['record']):
+        return [f'producer proof: {label} origin: {problem}']
     return _record_reasons(name, origin['record'], model, mapping_current, root, label=f'{label} origin', versions=versions)
 
 
