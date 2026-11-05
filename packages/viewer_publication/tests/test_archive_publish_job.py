@@ -98,6 +98,39 @@ def test_daily_handoff_uses_completed_heads_full_receipts_and_acknowledged_recor
     assert not Path(records[0]['path']).exists()  # Handoff consumes metadata only.
 
 
+@pytest.mark.parametrize('derived_ran', [False, True], ids=['reuse-template', 'select-fresh'])
+def test_daily_handoff_keeps_selected_html_metadata(tmp_path, derived_ran):
+    from congress_api.lake.readings import current_version
+    from viewer_publication.archive_publish_job import completed_daily_inputs
+
+    current = current_version('html_metadata')
+    template = model_spec(tmp_path)
+    prior = '0' * 64 if derived_ran else current
+    template['parser_versions']['html_metadata'] = prior
+    report, records = daily_report(tmp_path)
+    if derived_ran:
+        report['currentversions']['html_metadata'] = current
+
+    selected, _ = completed_daily_inputs(template, report, records)
+
+    assert selected['parser_versions']['html_metadata'] == current
+    assert selected['readings'] == dict(kind='native_table', **report['pins']['readings'])
+    assert template['parser_versions']['html_metadata'] == prior
+
+
+def test_daily_handoff_refuses_an_invalid_derived_result(tmp_path):
+    from congress_api.lake.readings import current_version
+    from viewer_publication.archive_publish_job import completed_daily_inputs
+
+    template = model_spec(tmp_path)
+    template['parser_versions']['html_metadata'] = current_version('html_metadata')
+    report, records = daily_report(tmp_path)
+    report['currentversions']['html_metadata'] = '0' * 64
+
+    with pytest.raises(ValueError, match='Parser versions must match the current definitions'):
+        completed_daily_inputs(template, report, records)
+
+
 @pytest.mark.parametrize('change',['pending','backfill_required','missing_pin','old_parser',
                                   'receipt_delta','duplicate_record','backup','missing_ack'])
 def test_daily_handoff_refuses_incomplete_or_inconsistent_evidence(tmp_path,change):

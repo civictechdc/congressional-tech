@@ -53,7 +53,14 @@ def completed_daily_inputs(template,production,records):
     if not isinstance(versions.get('parsers'),dict):
         raise ValueError('Daily publication requires page parser versions')
     from congress_api.lake.compatible_versions import DERIVED_PARSERS
-    merged_parsers={**versions['parsers'], **{name:versions[name] for name in DERIVED_PARSERS if name in versions}}
+    merged_parsers=dict(versions['parsers'])
+    template_parsers=template.get('parser_versions') or {}
+    # The readings head retains settled derived rows when their daily pass is disabled.
+    for name in DERIVED_PARSERS:
+        if name in versions:
+            merged_parsers[name]=versions[name]
+        elif name in template_parsers:
+            merged_parsers[name]=template_parsers[name]
     if 'meeting_records' in pins or 'appearance_records' in pins:
         for entity_name,expected_ver in _expected_entity_versions().items():
             ver=versions.get(entity_name)
