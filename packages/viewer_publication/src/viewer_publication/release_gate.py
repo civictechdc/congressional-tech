@@ -25,6 +25,8 @@ from urllib.request import Request, urlopen
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from viewer_publication.release_comparison import ADDED_URL_STATE, ATTEMPTED_URLS
+
 DIGEST = re.compile('[0-9a-f]{64}')
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
 LEDGER_FILES = ('manifest.json', 'links.parquet', 'detail.parquet', 'list.parquet', 'sources.parquet')
@@ -242,8 +244,33 @@ AUTOMATIC_GROUPS = {('list.parquet', 'added rows'), ('detail.parquet', 'added ro
                     ('urls.parquet', 'keys new'), ('urls.parquet', 'keys with more rows'),
                     ('sources.parquet', 'new URLs'), ('sources.parquet', 'member rows added'),
                     ('sources.parquet', 'same-URL rows added')}
+ATTEMPTED_URL_GROUP = ('url_state.parquet', 'added URLs', ATTEMPTED_URLS)
 AUTOMATIC_CAUSE = 'addition traced to receipts newer than every receipt of the live release (automatic, ct-ud0b)'
 DATED = re.compile(r'/(\d{4}-\d{2}-\d{2})/')
+
+
+def _receipt_day(key):
+    match = DATED.search(key)
+    if match:
+        try:
+            return date.fromisoformat(match.group(1))
+        except ValueError:
+            pass
+    return None
+
+
+def _names_document_attempt(receipt, url, sha):
+    """Accept the explicit fetch shape written by current acquisition."""
+    if not isinstance(receipt, dict):
+        return False
+    record = receipt.get('record', {})
+    if not isinstance(record, dict):
+        return False
+    entries = receipt.get('captures')
+    return (receipt.get('mode', record.get('mode')) == 'fetch'
+            and receipt.get('requested_url', record.get('requested_url')) == url
+            and isinstance(entries, list)
+            and any(isinstance(entry, dict) and entry.get('sha256') == sha for entry in entries))
 
 
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work):
@@ -255,10 +282,10 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     lines holding those bodies. Each line is then read from raw: its key must be outside the
     live release's receipt set and dated after the newest of them, and the line itself must
     name the body's SHA-256. Source and lookup additions must sit on new documents only.
+    Each added attempted URL needs a fresh document receipt line for every reported attempt.
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
     new row whose receipts are new while the code that made it changed; the other gates still run.
     """
-    import duckdb
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
     from viewer_publication.release_comparison import Diff, documents
@@ -266,12 +293,16 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     groups = report['failing']
     if not groups or not report['link_rule']['ok']:
         return [], ['automatic causes: nothing to explain or the link rule failed']
-    other = [g for g in groups if g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS]
+    # Include already verified differences when deciding whether this is addition-only.
+    differences = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
+    other = [g for g in differences if g.get('value') or g['count'] <= 0 or
+             ((g['file'], g['group']) not in AUTOMATIC_GROUPS and
+              (g['file'], g['group'], g['cause']) != ATTEMPTED_URL_GROUP)]
     if other:
         return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
     live = sorted(live_receipt_keys)
-    live_dates = [m.group(1) for m in map(DATED.search, live) if m]
-    if not live or len(live_dates) != len(live):
+    live_dates = [_receipt_day(key) for key in live]
+    if not live_dates or None in live_dates:
         return [], ['automatic causes: the live release has no dated receipt set to compare with']
     cutoff = max(live_dates)
     d = Diff(Path(base_dir), Path(candidate_dir))
@@ -284,6 +315,9 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
                 EXCEPT SELECT x.lr,{','.join('p.' + f for f in fields.split(','))} FROM base_{table} p JOIN pairs x ON p.list_row=x.pr)""")
             if stray:
                 reasons.append(f'automatic causes: {stray} {table} rows were added to existing documents')
+    url_additions = {}
+    if any((g['file'], g['group'], g['cause']) == ATTEMPTED_URL_GROUP for g in groups):
+        url_additions = dict(d.rows(f'SELECT requested_url, attempts FROM {ADDED_URL_STATE} WHERE attempts>0'))
     keys = [r[0] for r in d.rows("SELECT DISTINCT lower(hex(link_key)) FROM candidate_links WHERE list_row IN (SELECT r FROM added_documents) ORDER BY 1")]
     if not keys:
         reasons.append('automatic causes: no new document carries a key to trace')
@@ -293,9 +327,10 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     work.mkdir(parents=True, exist_ok=True)
     pq.write_table(pa.table({'prefix': keys}), work / 'added-keys.parquet')
     source = captures['path'] if captures.get('kind') == 'parquet' else {k: v for k, v in captures.items() if k != 'kind'}
+    request_column = ', c.requested_url' if url_additions else ''
     lines = run_job(work / 'trace', engine, inputs=[table_input('captures', source),
         dict(name='added_keys', kind='parquet', path=str(work / 'added-keys.parquet'))], steps=[], outputs=[],
-        queries=[dict(name='lines', sql="""SELECT DISTINCT k.prefix,c.receipt_key,c.receipt_line,lower(encode(c.sha256,'hex')) AS sha
+        queries=[dict(name='lines', sql=f"""SELECT DISTINCT k.prefix,c.receipt_key,c.receipt_line,lower(encode(c.sha256,'hex')) AS sha{request_column}
             FROM added_keys k JOIN captures c ON substr(lower(encode(c.sha256,'hex')),1,16)=k.prefix
             WHERE c.sha256 IS NOT NULL ORDER BY 1,2,3""")])['lines']
     traced = {}
@@ -306,12 +341,13 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
         reasons.append(f'automatic causes: {len(untraced)} new document keys have no capture to trace (first {untraced[:3]})')
     held = set(live)
     raw = {}
+    attempts = {url: set() for url in url_additions}
     for row in lines:
         key = row['receipt_key']
-        date = DATED.search(key)
+        day = _receipt_day(key)
         if key in held:
             reasons.append(f'automatic causes: {key} is already in the live release')
-        elif date is None or date.group(1) <= cutoff:
+        elif day is None or day <= cutoff:
             reasons.append(f'automatic causes: {key} is not dated after the live release ({cutoff})')
         else:
             if key not in raw:
@@ -321,10 +357,21 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
             line = row['receipt_line']
             if not (isinstance(line, int) and 1 <= line <= len(text) and row['sha'] in text[line - 1]):
                 reasons.append(f'automatic causes: {key}:{line} does not name body {row["sha"][:12]} in raw')
+            elif row.get('requested_url') in attempts:
+                url = row['requested_url']
+                try:
+                    receipt = json.loads(text[line - 1])
+                except ValueError:
+                    continue
+                if _names_document_attempt(receipt, url, row['sha']):
+                    attempts[url].add((key, line))
+    for url, count in url_additions.items():
+        if len(attempts[url]) != count:
+            reasons.append(f'automatic causes: {url} has {count} attempts but {len(attempts[url])} fresh raw lines naming the new document and its request URL')
     if reasons:
         return [], sorted(set(reasons))
     evidence = work / 'automatic-trace.json'
-    evidence.write_text(json.dumps(dict(cutoff=cutoff, live_receipts=len(live), lines=lines), indent=1, default=str) + '\n')
+    evidence.write_text(json.dumps(dict(cutoff=cutoff, live_receipts=len(live), lines=lines, url_attempts={url: sorted(matches) for url, matches in attempts.items()}), indent=1, default=str) + '\n')
     from congress_api.retention.provenance import file_pin
     pin = dict(path=str(evidence), **file_pin(evidence))
     return [dict(id=group_id(g), count=g['count'], disposition='explained', cause=AUTOMATIC_CAUSE,
