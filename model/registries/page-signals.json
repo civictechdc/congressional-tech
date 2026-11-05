@@ -112,5 +112,58 @@
     "kind": "link_word",
     "pattern": "(?i)^(printable\\s+(pdf|version)(\\s+of\\s+this\\s+(document|page))?|download\\s+(the\\s+)?(report|document|file|attachment))[.!:]*$",
     "sample_id": "page-signals:link_word_phrases"
+  },
+  {
+    "id": "description_templates",
+    "kind": "description_template",
+    "pattern": "^(?:official publications from the u[.]s[.] government publishing office|house committee on natural resources - democrats|education & workforce committee democrats|the house committee on science, space and technology|the house committee on transportation and infrastructure|the official website of|congressional website|the committee on energy and commerce is the oldest standing legislative committee)",
+    "sample_id": "page-signals:description_templates"
+  },
+  {
+    "id": "site_node_types",
+    "kind": "site_node_type",
+    "pattern": "^(?:WebSite|Organization|Person)$",
+    "sample_id": "page-signals:site_node_types"
+  },
+  {
+    "id": "description_opengraph",
+    "kind": "description_format",
+    "pattern": "^opengraph$",
+    "number": 0,
+    "sample_id": "page-signals:description_opengraph"
+  },
+  {
+    "id": "description_json_ld",
+    "kind": "description_format",
+    "pattern": "^json-ld$",
+    "number": 1,
+    "sample_id": "page-signals:description_json_ld"
+  },
+  {
+    "id": "description_head_meta",
+    "kind": "description_format",
+    "pattern": "^head_meta$",
+    "number": 2,
+    "sample_id": "page-signals:description_head_meta"
+  },
+  {
+    "id": "date_json_ld",
+    "kind": "date_format",
+    "pattern": "^json-ld$",
+    "number": 0,
+    "sample_id": "page-signals:date_json_ld"
+  },
+  {
+    "id": "date_opengraph",
+    "kind": "date_format",
+    "pattern": "^opengraph$",
+    "number": 1,
+    "sample_id": "page-signals:date_opengraph"
+  },
+  {
+    "id": "description_repeat",
+    "kind": "description_repeat",
+    "number": 50,
+    "sample_id": "page-signals:description_repeat"
   }
 ]

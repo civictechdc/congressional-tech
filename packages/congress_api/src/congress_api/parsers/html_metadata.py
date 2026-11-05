@@ -257,7 +257,8 @@ def page_is_substantive(metadata: HtmlMetadata, http_status: int) -> bool:
 
 
 _OPENGRAPH_FACTS = {'article:published_time': 'published_time', 'article:modified_time': 'modified_time',
-                    'og:description': 'description', 'article:section': 'section', 'og:url': 'declared_url'}
+                    'og:description': 'description', 'article:section': 'section', 'og:url': 'declared_url',
+                    'og:site_name': 'site_name'}
 _JSON_LD_FACTS = {'datePublished': 'published_time', 'dateModified': 'modified_time', 'description': 'description',
                   'articleSection': 'section', '@type': 'declared_type', 'author': 'person_card'}
 
@@ -300,3 +301,73 @@ def page_facts(metadata: HtmlMetadata) -> tuple[PageFact, ...]:
         if 'h-card' in item.get('type', ()):
             facts.append(PageFact('person_card', item, 'microformat', f'/formats/microformat/items/{index}'))
     return tuple(facts)
+
+
+FACT_PREFIX = 'fact:'
+MAX_DETAIL_FACT_BYTES = 48 << 10
+MAX_SELECTED_TEXT_BYTES = 256 << 10
+
+
+def fact_fields(facts) -> list[dict]:
+    """One readings field per string fact: ``fact:<name> <JSON Pointer>`` = the literal value.
+
+    Pointers are built from fixed keys and integers, so they never contain a space.
+    Non-string values (an author card, a nested object) are not written.
+    """
+    return [dict(field=f'{FACT_PREFIX}{fact.field} {fact.path}', value=fact.value)
+            for fact in facts if isinstance(fact.value, str)]
+
+
+def facts_from_fields(fields) -> tuple[PageFact, ...]:
+    """The inverse of ``fact_fields``; the format is the pointer's segment after /formats/."""
+    out = []
+    for item in fields:
+        if item['field'].startswith(FACT_PREFIX):
+            name, path = item['field'][len(FACT_PREFIX):].split(' ', 1)
+            parts = path.split('/')
+            out.append(PageFact(name, item['value'], parts[2] if parts[1] == 'formats' else parts[1], path))
+    return tuple(out)
+
+
+def reading_row(body: bytes) -> dict:
+    """One ``html_metadata`` readings row: small values downstream reads, never the full result.
+
+    The reader is deterministic per (body, version), so the full ``HtmlMetadata`` is
+    reproduced on demand from the retained body; a ``wall_clock_dependent`` row is flagged
+    because it is not. ``status`` is ``completed`` when every format is ok, absent or
+    skipped, ``partial`` when one failed (the others are kept), ``error`` when the reader raised.
+    """
+    from congress_api.parsers.main_content import select_main_content
+
+    try:
+        metadata = read_html_metadata(body)
+        content = select_main_content(body, metadata)
+    except Exception as error:  # a reader failure is a row, never an empty reading
+        return dict(status='error', error_type=type(error).__name__, format='html', fields=[])
+    fields = [dict(field='extruct_version', value=metadata.extruct_version)] if metadata.extruct_version else []
+    fields.append(dict(field='document_kind', value=metadata.document_kind))
+    if metadata.error_title_hint:
+        fields.append(dict(field='error_title_hint', value='true'))
+    if metadata.wall_clock_dependent:
+        fields.append(dict(field='wall_clock_dependent', value='true'))
+    for name, result in metadata.formats.items():
+        fields.append(dict(field=f'format:{name}', value=result.status + (f':{result.error_type}' if result.error_type else '')))
+    reference = content.ref()
+    for name, value in (('outcome', content.outcome), ('reason', content.fallback_reason), ('selector', content.selector),
+                        ('property', content.property), ('sha256', reference.text_sha256),
+                        ('candidates', str(len(content.candidates)))):
+        if value is not None:
+            fields.append(dict(field=f'main_content:{name}', value=value))
+    if reference.text_bytes is not None and reference.text_bytes <= MAX_SELECTED_TEXT_BYTES:
+        fields.append(dict(field='main_content:text', value=content.selected_text()))
+    facts = [] if metadata.error_title_hint else fact_fields(page_facts(metadata))
+    # Keep all repeated and conflicting declarations together. Oversize evidence stays
+    # reproducible from the original and the reading explicitly records its omission.
+    fact_bytes = len(json.dumps(facts, ensure_ascii=False).encode())
+    if fact_bytes <= MAX_DETAIL_FACT_BYTES:
+        fields += facts
+    else:
+        fields.append(dict(field='detail_facts_limit', value=str(fact_bytes)))
+    failed = fact_bytes > MAX_DETAIL_FACT_BYTES or any(result.status == 'failed' for result in metadata.formats.values())
+    return dict(status='partial' if failed else 'completed', error_type=None, format='html', title=metadata.title,
+                base_href=metadata.declared_base, text_bytes=reference.text_bytes, text_head=reference.snippet, fields=fields)

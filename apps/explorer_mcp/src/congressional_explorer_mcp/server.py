@@ -81,10 +81,13 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.tool(annotations=annotations)
     async def get_document(query: DocumentQuery) -> dict:
-        """Read a document reference: summary, paged sources, paged recoveries, or verified body text.
+        """Read a document summary, paged sources or recoveries, publisher declarations, or body text.
 
         Use section='text' with optional page, offset, max_chars, or query (keyword/regex snippet search)
         to read verified PDF, HTML, XML, or plain-text document bodies from the archive.
+        Summary includes published_on and modified_on when supplied. They are publisher page dates.
+        Use section='page_metadata' for paged declarations, including conflicting values and their source pointers.
+        Use section='selected_text' with offset and max_chars for exact publisher-marked text and its citation.
         A recovery's kind states its relationship to the original, and identity_note adds an authored explanation when one
         was recorded (often null); a related file is not the original.
         """

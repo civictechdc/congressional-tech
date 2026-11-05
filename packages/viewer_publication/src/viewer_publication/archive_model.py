@@ -696,6 +696,10 @@ def entity_track_checks():
     )
 
 
+# Declared page metadata per html document (ct-93zs); readings selected inside a candidate join.
+PAGE_METADATA_STEPS=['html-metadata-readings','page-metadata-values','page-dates','page-descriptions','document-page-metadata']
+
+
 def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
 
@@ -906,7 +910,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     inputs += data_inputs
     inputs.append(json_input(scratch,'parser_versions',expand_parser_version_rows(parser_versions),parser='Utf8',version='Utf8'))
     # Load the registry once; every readings reader goes through the one selection it renders.
-    pins={**{p:parser_versions[p] for p in compatible_versions.LEAF_PARSERS},'readings':readings_bundle_version(parser_versions)}
+    pins={**{p:parser_versions[p] for p in compatible_versions.LEAF_PARSERS},'readings':readings_bundle_version(parser_versions),
+          **{p:parser_versions[p] for p in compatible_versions.DERIVED_PARSERS if p in parser_versions}}
     entries=compatible_versions.load_registry(current=pins,path=registry or Path(root)/'model/registries/compatible-versions.json')
     inputs.append(compatible_versions.accepted_versions_input(scratch,entries,pins=pins))
     from viewer_publication.release_gate import ledger_inputs
@@ -915,7 +920,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     # are projected once by the native reader before policy joins.
     from viewer_publication.archive_provenance import provenance_inputs
     provenance,prelude=provenance_inputs(scratch/'provenance',recovery_files=recovery_files,review_files=review_files)
-    prelude[0:0]=compatible_versions.selected_readings_steps(entries)
+    prelude[0:0]=compatible_versions.selected_readings_steps(entries,parsers=pins)
     inputs += provenance
     recovery_policy=None
     if recovery_requirements is not None:
@@ -981,7 +986,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     prelude += [selected_record_step('meeting_records','meeting_records_input',root=root),
         selected_record_step('appearance_records','appearance_records_input',root=root)]
     prelude += [dict(name='url_variants',sql='SELECT DISTINCT canonical_url,variant_url FROM url_variant_records r WHERE NOT EXISTS(SELECT 1 FROM url_variant_records s WHERE s.supersedes=r.id)',materialize=True)]
-    inputs.append(_provenance_input('unreadable_records',unreadable_files,dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')))
+    inputs.append(_provenance_input('unreadable_records',unreadable_files,dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',
+        parser='Utf8',parser_version='Utf8',reason='Utf8',decided_at='Utf8',supersedes='Utf8')))
     if explorer_inputs:
         inputs.append(_provenance_input('recording_decision_records',recording_decision_files,RECORDING_DECISION_FIELDS))
         inputs.append(json_input(scratch,'channel_directory',channel_directory_rows(root),handle='Utf8',channel_id='Utf8',system_code='Utf8',committee_label='Utf8',role='Utf8'))
@@ -1071,15 +1077,18 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += _sql_steps(['document-hearing-date-corrections'],root=root)
     from viewer_publication.archive_model_profile import completeness_checks
     steps += application_steps(root=root)
-    steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
+    steps += _sql_steps(PAGE_METADATA_STEPS,root=root)
+    from viewer_publication.archive_format import PAGE_COLUMNS,PAGE_DEFAULTS
+    page=','.join(f'coalesce(pm.{c},{PAGE_DEFAULTS[c]}) AS {c}' if c in ('publisher_labels','page_metadata') else f'pm.{c}' for c in PAGE_COLUMNS)
+    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
         coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
         coalesce(r.hidden,false) AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
         CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
-        CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source
-        FROM document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
+        CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source,{page}
+        FROM document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
             (document_identities d JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)
              ON n.doc_key=d.document_id)
-            ON d.component=r.component) ON d.component=x.component""",materialize=True),
+            ON d.component=r.component) ON d.component=x.component) ON pm.doc_key=n.doc_key""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
     url_state_meeting_dates_sql="""SELECT requested_url,cast(meeting_date AS DATE) AS meeting_date FROM url_state_meeting_dates_input
@@ -1259,7 +1268,15 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
-        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,FILENAME_BOTH_NAMES]
+        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,FILENAME_BOTH_NAMES,
+        # Main-content outcomes and page-metadata conflicts per release (ct-c5xf D7); unread is a reading gap.
+        dict(name='html_main_content',sql="""SELECT main_content['outcome'] AS outcome,count(*) AS documents,
+            count(*) FILTER (WHERE description IS NOT NULL) AS described,
+            count(*) FILTER (WHERE coalesce(array_length(page_metadata),0)>0) AS with_metadata
+            FROM ordered WHERE format='html' GROUP BY 1 ORDER BY 1"""),
+        dict(name='page_metadata_conflicts',sql="""SELECT field,count(*) AS documents FROM (
+            SELECT list_row,e['field'] AS field FROM (SELECT list_row,unnest(page_metadata) AS e FROM ordered WHERE format='html')
+            GROUP BY list_row,e['field'] HAVING min(e['value'])<>max(e['value'])) GROUP BY field ORDER BY field""")]
     if prepared.get('include_entities'):
         entity_invariant_sql=""",
             (SELECT count(*) FROM (

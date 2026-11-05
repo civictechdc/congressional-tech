@@ -208,7 +208,8 @@ def _open_state(spec,engine):
     definition['selective']=dict(definition['selective'],model={k:v for k,v in spec['selective']['model'].items() if k!='engine_config'})
     versioned_tables=set(RECORD_TABLES)|(set(EXPLORER_TABLES)&set(spec['tables']))
     identity=sha256(json.dumps(dict(definition=definition,captures=captures.current_version(),
-        versions=_versions(versioned_tables),parsers={p:readings.current_version(p) for p in ('sniff','html','xml','json')},
+        versions=_versions(versioned_tables),parsers={p:readings.current_version(p)
+            for p in (*compatible_versions.LEAF_PARSERS,*spec.get('derived_parsers',[]))},
         engine=[engine.source_revision,engine.binary_sha256]),sort_keys=True,default=str).encode()).hexdigest()
     path=work/'state.json'
     if path.exists():
@@ -375,7 +376,9 @@ def _daily(run):
     raw_store,provenance=run.raw_store()
     production=produce_daily(dict(work=str(run.attempt/'daily'),decided_at=run.decided_at,catalog_root=run.catalog,
         tables={name:run.spec['tables'][name] for name in ('captures','readings','filename_readings')},receipt_inventory=[],
-        max_work_items=run.spec['batch_size']*run.spec['max_batches'],provenance=provenance),engine=run.engine,raw_store=raw_store)
+        max_work_items=run.spec['batch_size']*run.spec['max_batches'],provenance=provenance,
+        **({'derived_parsers':run.spec['derived_parsers']} if run.spec.get('derived_parsers') else {})),
+        engine=run.engine,raw_store=raw_store)
     if production['status']!='completed':raise SelectiveStop('Daily producers stopped at '+production['status'])
     run.state['daily']=dict(captures=production['pins']['captures'],unreadable=[dict(key=r['key'],path=r['path']) for r in production['provenance']['unreadable']],
         filenames_recomputed=production['producerreports']['filename_readings'].get('produced'))
@@ -447,6 +450,7 @@ def _model_value(run):
     from viewer_publication.archive_model_profile import current_parser_versions
     model=run.selective['model'];value=json.loads(Path(model['template']).read_text())
     versioned_tables=set(value.get('parser_versions',{}))|set(RECORD_TABLES)|(set(EXPLORER_TABLES)&set(run.state['pins']))
+    versioned_tables.update(run.spec.get('derived_parsers',[]))
     value.update(engine_config=model['engine_config'],catalog_version=_versions()['filename_readings'],
         output=str(run.work/'model-output'),scratch=str(run.work/'model-scratch'),
         parser_versions=current_parser_versions(versioned_tables))

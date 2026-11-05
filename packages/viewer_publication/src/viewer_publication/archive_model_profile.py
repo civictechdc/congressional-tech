@@ -15,6 +15,8 @@ from congress_api.retention.provenance import file_pin
 
 ROOT=Path(__file__).parents[4]
 PARSERS=('sniff','html','xml','json')
+# Derived readings parsers a release may pin; html_metadata is required only to publish page metadata.
+OPTIONAL_PARSERS=('html_metadata',)
 MEETING_SOURCES=('congress_gov','house_xml')
 APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
 ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}
@@ -31,7 +33,7 @@ def current_parser_versions(keys=()):
     from congress_api.lake import readings,meeting_records,appearance_records,video_records,committee_records,playlist_records
     modules=dict(meeting_records=meeting_records,appearance_records=appearance_records,
                  video_records=video_records,committee_records=committee_records,playlist_records=playlist_records)
-    result={p:readings.current_version(p) for p in PARSERS}
+    result={p:readings.current_version(p) for p in (*PARSERS, *(p for p in OPTIONAL_PARSERS if p in keys))}
     result.update({name:modules[name].current_versions() for name in SELECTED_SOURCES if name in keys})
     return result
 
@@ -45,9 +47,9 @@ def readings_bundle_version(versions):
 def validate_parser_versions(parser_versions,*,require_entities=False,require_explorer=False):
     """Validate page-parser and optional/required entity-parser version selections."""
     if (not isinstance(parser_versions,dict) or not set(PARSERS)<=parser_versions.keys()
-            or not set(parser_versions)<=set(PARSERS)|set(SELECTED_SOURCES)):
+            or not set(parser_versions)<=set(PARSERS)|set(OPTIONAL_PARSERS)|set(SELECTED_SOURCES)):
         raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
-    for name in PARSERS:
+    for name in (*PARSERS,*(p for p in OPTIONAL_PARSERS if p in parser_versions)):
         val=parser_versions.get(name)
         if not isinstance(val,str) or not val:
             raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
@@ -66,7 +68,7 @@ def validate_parser_versions(parser_versions,*,require_entities=False,require_ex
 def expand_parser_version_rows(parser_versions):
     """Flatten page and source-scoped entity parser versions into (parser, version) rows."""
     validate_parser_versions(parser_versions)
-    rows=[dict(parser=name,version=parser_versions[name]) for name in sorted(PARSERS)]
+    rows=[dict(parser=name,version=parser_versions[name]) for name in sorted(PARSERS) + [p for p in OPTIONAL_PARSERS if p in parser_versions]]
     for entity_name,expected_sources in sorted(SELECTED_SOURCES.items()):
         if entity_name not in parser_versions:
             continue

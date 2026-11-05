@@ -254,6 +254,48 @@
           "nullable": false
         },
         {
+          "name": "description",
+          "type": "string",
+          "meaning": "The publisher's page summary as declared, never the title or the site's own description; NULL when none survives selection",
+          "nullable": true
+        },
+        {
+          "name": "published_on",
+          "type": "date32",
+          "meaning": "The page's declared publication date on its stated local date; a page date, never a hearing or document date",
+          "nullable": true
+        },
+        {
+          "name": "modified_on",
+          "type": "date32",
+          "meaning": "The page's declared modification date on its stated local date; never changes document_date, date_kind or first_captured",
+          "nullable": true
+        },
+        {
+          "name": "publisher_labels",
+          "type": "list<dict>",
+          "meaning": "The page's declared sections (article:section, articleSection) as stated",
+          "nullable": false
+        },
+        {
+          "name": "page_metadata",
+          "type": "list<struct<field dict,value string,format dict,path string,date date32,precision dict,resolved string,selected boolean,context_url string>>",
+          "meaning": "Publisher declarations with literal value, selection status and JSON Pointer into the pinned reading. Distinct literals for a field show a conflict. Declared addresses carry each qualifying capture URL and resolution against that address. A missing context or a detail size limit leaves resolutions empty.",
+          "nullable": false
+        },
+        {
+          "name": "main_content",
+          "type": "struct<outcome dict,selector string,text_sha256 string,text_bytes int32,snippet string,reader_version string,reading_status string,reason string,facts_limited boolean,text_available boolean,decision_id string,evidence_limited boolean>",
+          "meaning": "Publisher-marked text preview and citation. Outcome distinguishes marked text, short marked text, fallback to the saved page, a failed reading, a recorded unreadable decision, exclusion, and an unattempted reading. The original body and reader version identify the source. The selector locates marked text. decision_id identifies a recorded unreadable decision. evidence_limited signals that the size limit omitted publisher evidence.",
+          "nullable": true
+        },
+        {
+          "name": "selected_text",
+          "type": "string",
+          "meaning": "Bounded plain text from the cited marked element. Load only on request. Its SHA-256 and length are in main_content. The original remains available for larger or unselected pages.",
+          "nullable": true
+        },
+        {
           "name": "filename",
           "type": "string",
           "meaning": "Displayed filename",
@@ -397,7 +439,10 @@
         "measure_keys[]": "Same values as list.measure_keys; see that field.",
         "bioguide_ids[]": "Same values as list.bioguide_ids; see that field.",
         "witness_keys[]": "Same values as list.witness_keys; see that field.",
-        "version_keys[]": "Same values as list.version_keys; see that field."
+        "version_keys[]": "Same values as list.version_keys; see that field.",
+        "publisher_labels[]": "Embedded declared section labels; not a key into another table.",
+        "page_metadata[]": "Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin.",
+        "main_content": "Embedded reference to selected text. Verify selected_text with text_sha256 and find the marked element in saved_body with selector."
       },
       "nullability": "Nullability transcribes data model \u00a78.1 (list and detail bullets)."
     },

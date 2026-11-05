@@ -20,7 +20,7 @@ TABLES={name:dict(namespace=['archive'],name=name)
 
 def spec(root):
     return dict(work=str(root/'work'),decided_at=STAMP,catalog_root=str(root/'catalog'),
-        tables=TABLES,receipt_inventory=[],body_inventory=str(root/'body-inventory.parquet'),
+        tables=dict(TABLES),receipt_inventory=[],body_inventory=str(root/'body-inventory.parquet'),
         local_root=str(root/'raw'),max_work_items=10,
         provenance={kind:[] for kind in ['recoveries','reviews','unreadable']})
 
@@ -641,3 +641,31 @@ def test_daily_entity_version_check_rejects_scalar_composite_versions(table,kind
     with pytest.raises(ValueError,match=table):
         _check_entity_versions(table,bad,mod)
 
+
+
+@pytest.mark.parametrize('derived',['html_metadata',['html'],['html_metadata','html_metadata'],[1]])
+def test_invalid_derived_parsers_refuse_before_any_effect(tmp_path,derived):
+    from congress_api.lake.daily import produce_daily
+    value=dict(spec(tmp_path),derived_parsers=derived)
+    with pytest.raises(ValueError,match='derived_parsers'):
+        produce_daily(value,engine=NeverNative(),raw_store=BodyStore(LocalAdapter(tmp_path/'durable')))
+    assert not (tmp_path/'work').exists()
+
+
+def test_native_daily_derived_pass_reads_html_after_the_combined_pass(tmp_path):
+    from congress_api.lake import readings
+    from congress_api.lake.daily import produce_daily
+    page=b'<html><head><title>Hearing</title><meta property="og:description" content="About it"></head><body><p>x</p></body></html>'
+    value,engine,store=native_fixture(tmp_path,2,payloads=[page,json.dumps(dict(url='https://x.test/a')).encode()],
+        url_suffix='.htm')
+    value['derived_parsers']=['html_metadata']
+    first=produce_daily(value,engine=engine,raw_store=store)
+    assert first['status']=='completed'
+    assert first['producerreports']['readings']['work_items']==2
+    derived=first['producerreports']['html_metadata']
+    assert derived['work_items']==1 and derived['parser_version']==readings.current_version('html_metadata')
+    assert first['currentversions']['html_metadata']==derived['parser_version']
+    second=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
+    assert second['producerreports']['html_metadata']['work_items']==0
+    without=produce_daily(dict(value,work=str(tmp_path/'third'),derived_parsers=[]),engine=engine,raw_store=store)
+    assert 'html_metadata' not in without['producerreports'] and 'html_metadata' not in without['currentversions']

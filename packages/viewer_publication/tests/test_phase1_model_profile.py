@@ -45,6 +45,7 @@ def test_profile_record_refuses_unpinned_definitions():
 
 @pytest.mark.parametrize('case,expected',[
     ('complete',{}),('error-settles',{}),('size-limit-settles',{}),('current-capture-sniff',{}),
+    ('partial-html',{'invalid_readings':1,'missing_pages':1}),
     ('body-admission',{}),('unreadable-current',{}),('bundle-current',{}),('filename-unreadable',{}),
     ('missing-sniff',{'missing_sniff':1}),('missing-page',{'missing_pages':1}),
     ('old-page',{'missing_pages':1}),('old-unreadable',{'missing_pages':1}),
@@ -65,6 +66,7 @@ def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,
     sniff=[dict(body_hex=body,format='html')]
     filenames=[dict(filename='a.pdf',source_url='',catalog_version='catalog-1',status='completed')]
     unreadable=[];admissions=[]
+    if case=='partial-html':readings[1]['status']='partial'
     if case=='error-settles':readings[1]['status']='error';filenames[0]['status']='error'
     if case=='size-limit-settles':readings[1]['status']='size_limit';filenames[0]['status']='size_limit'
     if case=='current-capture-sniff':readings=readings[1:]

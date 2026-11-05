@@ -53,7 +53,8 @@ SELECT
  (SELECT count(*) FROM (SELECT parser FROM parser_versions GROUP BY parser HAVING count(*)>1)) AS duplicate_parser_versions,
  (SELECT count(*) FROM captures WHERE receipt_key IS NULL OR receipt_line IS NULL OR capture_index IS NULL) AS invalid_capture_keys,
  (SELECT count(*) FROM readings WHERE body_sha IS NULL OR parser IS NULL OR parser_version IS NULL
-   OR status IS NULL OR status NOT IN ('completed','error','size_limit')) AS invalid_readings,
+   OR status IS NULL OR (status NOT IN ('completed','error','size_limit')
+     AND NOT (parser='html_metadata' AND status='partial'))) AS invalid_readings,
  (SELECT count(*) FROM filename_readings WHERE filename IS NULL OR source_url IS NULL OR catalog_version IS NULL
    OR status IS NULL OR status NOT IN ('completed','error','size_limit')) AS invalid_filename_readings,
  (SELECT count(*) FROM parser_versions WHERE parser IS NULL OR version IS NULL OR version='') AS invalid_parser_versions,

@@ -84,6 +84,13 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 | `alternates` | `list<struct<format dict,body fixed[32],suffix dict,size int64>>` | no | One saved file per other format |
 | `package_id` | `string` | yes | GovInfo package identifier |
 | `facts` | `list<struct<field dict,value string>>` | no | Selected filename facts, one value per entry |
+| `description` | `string` | yes | The publisher's page summary as declared, never the title or the site's own description; NULL when none survives selection |
+| `published_on` | `date32` | yes | The page's declared publication date on its stated local date; a page date, never a hearing or document date |
+| `modified_on` | `date32` | yes | The page's declared modification date on its stated local date; never changes document_date, date_kind or first_captured |
+| `publisher_labels` | `list<dict>` | no | The page's declared sections (article:section, articleSection) as stated |
+| `page_metadata` | `list<struct<field dict,value string,format dict,path string,date date32,precision dict,resolved string,selected boolean,context_url string>>` | no | Publisher declarations with literal value, selection status and JSON Pointer into the pinned reading. Distinct literals for a field show a conflict. Declared addresses carry each qualifying capture URL and resolution against that address. A missing context or a detail size limit leaves resolutions empty. |
+| `main_content` | `struct<outcome dict,selector string,text_sha256 string,text_bytes int32,snippet string,reader_version string,reading_status string,reason string,facts_limited boolean,text_available boolean,decision_id string,evidence_limited boolean>` | yes | Publisher-marked text preview and citation. Outcome distinguishes marked text, short marked text, fallback to the saved page, a failed reading, a recorded unreadable decision, exclusion, and an unattempted reading. The original body and reader version identify the source. The selector locates marked text. decision_id identifies a recorded unreadable decision. evidence_limited signals that the size limit omitted publisher evidence. |
+| `selected_text` | `string` | yes | Bounded plain text from the cited marked element. Load only on request. Its SHA-256 and length are in main_content. The original remains available for larger or unselected pages. |
 | `filename` | `string` | no | Displayed filename |
 | `title` | `string` | yes | Document or publisher title when known |
 | `document_kind` | `list<dict>` | no | Document kinds |
@@ -119,6 +126,9 @@ Nullability: Nullability transcribes data model §8.1 (list and detail bullets).
 - `bioguide_ids[]`: Same values as list.bioguide_ids; see that field.
 - `witness_keys[]`: Same values as list.witness_keys; see that field.
 - `version_keys[]`: Same values as list.version_keys; see that field.
+- `publisher_labels[]`: Embedded declared section labels; not a key into another table.
+- `page_metadata[]`: Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin.
+- `main_content`: Embedded reference to selected text. Verify selected_text with text_sha256 and find the marked element in saved_body with selector.
 
 Outgoing: `document_public_link`, `document_body`, `alternate_bodies`, `document_package`.
 

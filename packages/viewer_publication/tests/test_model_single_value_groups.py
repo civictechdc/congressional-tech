@@ -33,9 +33,9 @@ FORMS = dict(
 )
 PUBLISHED = json.loads((ROOT / 'model/jobs/publish-model.json').read_text())['parser_versions']
 LEAVES = {parser: PUBLISHED[parser] for parser in ('sniff', 'html', 'xml', 'json')}
-# The bundle the lake's readings unreadable decisions carry for the published leaves. Moving it
-# needs a `bundle` entry in model/registries/compatible-versions.json, then a new value here.
-READINGS_BUNDLE = 'a7a8c404519439472a4fd91ab9285d9e118f325650c46532ca2cd670e3e50900'
+# Pin the bundle formed by the model's selected leaves and current producer. The fixture
+# below uses decisions at that version. Reconcile prior real decisions separately.
+READINGS_BUNDLE = '7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed'
 ADMISSIONS = ROOT / 'model/sql/body-admissions.sql'
 # Two of build-1's 25 bodies whose only settlement was a readings decision at READINGS_BUNDLE:
 # one with no sniff reading, one sniffed as xml with no xml reading.
@@ -143,7 +143,7 @@ def test_the_published_leaves_make_the_pinned_readings_bundle():
 def test_the_planted_rewrite_moves_the_readings_bundle_to_build_1s(monkeypatch, tmp_path):
     from viewer_publication.archive_model_profile import readings_bundle_version
     plant_rewritten_admissions(monkeypatch, tmp_path)
-    assert readings_bundle_version(LEAVES) == '2a0234d76bb8ceda93fa70d54ce0576f80028dccbb2228f893326ddd4e8f25a0'
+    assert readings_bundle_version(LEAVES) == '7ee4d97be67f6fea8e33c53666e59b5e03b6163819b05352b3fd5738db4789ac'
 
 
 @pytest.mark.parametrize('arm,expected', [('committed', {}), ('planted', {'missing_sniff': 1, 'missing_pages': 1})])

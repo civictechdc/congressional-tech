@@ -1,3 +1,5 @@
+import {useState} from 'react';
+import {RequestMessage, useRequest} from '../view/request-state.tsx';
 import type {RelationState} from '../reader/archive-entities.ts';
 import {RelationNotice} from './ArchiveRows.tsx';
 import {dateLabels, recoveryLabel, savedCopy} from '../reader/archive.ts';
@@ -54,6 +56,76 @@ function CopyLink({detail,label,rawBase,onOpenSaved,primary=false}:{detail:any;l
   </span>;
 }
 
+const declarationLabels: Record<string, string> = {
+  description: 'Description', published_time: 'Page published', modified_time: 'Page updated',
+  section: 'Publisher section', declared_url: 'Publisher-declared address',
+  declared_type: 'Publisher page type', site_name: 'Publisher site',
+};
+
+type LoadSelectedText = (index: number, signal: AbortSignal) => Promise<string>;
+
+function SelectedText({index, load}: {index: number; load: LoadSelectedText}) {
+  const [state, retry] = useRequest(signal => load(index, signal), [index]);
+  return state.status === 'ready'
+    ? <p style={{whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>{state.value}</p>
+    : <RequestMessage state={state} retry={retry} noun="selected text"/>;
+}
+
+function PublisherPage({entry, original, onSelectedText}: {
+  entry: any; original: React.ReactNode; onSelectedText?: LoadSelectedText;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const {detail, releaseId, document} = entry;
+  const content = detail.main_content;
+  const declarations = detail.page_metadata ?? [];
+  const labels = detail.publisher_labels ?? [];
+  const hasEvidence = declarations.length > 0 || content?.selector || content?.reading_status === 'partial' ||
+    content?.evidence_limited || ['fallback', 'failed', 'unreadable'].includes(content?.outcome);
+  if (!hasEvidence && !detail.description && !detail.published_on && !detail.modified_on && !labels.length) return null;
+
+  return <section>
+    <h3>Publisher page</h3>
+    {detail.description ? <p>{detail.description}</p> : null}
+    {detail.published_on ? <p><strong>Page published</strong>{' '}{day(detail.published_on)}</p> : null}
+    {detail.modified_on ? <p><strong>Page updated</strong>{' '}{day(detail.modified_on)}</p> : null}
+    {labels.length ? <p><strong>Publisher sections</strong>{' '}{labels.join(', ')}</p> : null}
+    {content?.snippet ? <section>
+      <h4>Publisher-marked text</h4>
+      {!expanded ? <p style={{whiteSpace: 'pre-wrap'}}>{content.snippet}</p> : null}
+      {content.text_available && onSelectedText ? <>
+        <button type="button" className="explorer-button" aria-expanded={expanded} onClick={() => setExpanded(open => !open)}>
+          {expanded ? 'Hide selected text' : 'Read selected text'}
+        </button>
+        {expanded ? <SelectedText index={document.list_row} load={onSelectedText}/> : null}
+      </> : original}
+    </section> : null}
+    {hasEvidence ? <details className="archive-provenance-details">
+      <summary>Publisher declarations and evidence</summary>
+      {original}
+      {releaseId ? <p>Archive release <code>{releaseId}</code></p> : null}
+      {detail.saved_body ? <p>Saved body SHA-256 <code>{keyHex(detail.saved_body)}</code></p> : null}
+      {content?.reader_version ? <p>HTML reading version <code>{content.reader_version}</code></p> : null}
+      {content?.selector ? <p>Marked element <code>{content.selector}</code></p> : null}
+      {content?.text_sha256 ? <p>Selected text SHA-256 <code>{content.text_sha256}</code></p> : null}
+      {content?.outcome === 'fallback' ? <p>Read the full page in the original saved copy.</p> : null}
+      {content?.reading_status === 'partial' ? <p>The HTML reading recovered part of the publisher metadata.</p> : null}
+      {content?.evidence_limited ? <p>Some publisher evidence exceeded the detail size limit.</p> : null}
+      {content?.outcome === 'unreadable' ? <p>The HTML reader could not process this saved page.{' '}
+        {content.reason ? <>Reason <code>{content.reason}</code>.{' '}</> : null}
+        {content.decision_id ? <>Decision <code>{content.decision_id}</code>.</> : null}
+      </p> : null}
+      {content?.outcome === 'failed' ? <p>The archive could not complete the HTML reading.</p> : null}
+      {declarations.length ? <ul>{declarations.map((item: any) => <li key={JSON.stringify([item.path, item.context_url])}>
+        <strong>{declarationLabels[item.field] ?? item.field}</strong>{' '}{item.value}{item.selected ? ' (selected)' : ''}
+        {item.precision ? <span> · {item.precision}</span> : null}
+        {item.context_url ? <p>Capture address <PublicLink url={item.context_url}/></p> : null}
+        {item.resolved ? <p>Resolved address <PublicLink url={item.resolved}/></p> : null}
+        <p className="archive-source-meta">{item.format}{' '}<code>{item.path}</code></p>
+      </li>)}</ul> : null}
+    </details> : null}
+  </section>;
+}
+
 export function ArchiveDetail({
   entry,
   meetings=[],
@@ -74,6 +146,7 @@ export function ArchiveDetail({
   onWitness,
   onMember,
   onOpenSaved,
+  onSelectedText,
 }:{
   entry:any;
   meetings?:any[];
@@ -94,6 +167,7 @@ export function ArchiveDetail({
   onWitness?:(key:string)=>void;
   onMember?:(bioguideId:string)=>void;
   onOpenSaved:(detail:any)=>void;
+  onSelectedText?:LoadSelectedText;
 }){
   const {document,detail,sources,recoveries}=entry,labels=dateLabels(document,detail);
   const catalog=committeesCatalog??committees;
@@ -171,6 +245,8 @@ export function ArchiveDetail({
       </p>}
       {labels.removed&&<p className="archive-removed-callout">{labels.removed}</p>}
     </div>
+    <PublisherPage key={document.list_row} entry={entry} onSelectedText={onSelectedText}
+      original={detail.saved_body ? <CopyLink detail={primaryDetail} label="Open original saved page" rawBase={rawBase} onOpenSaved={onOpenSaved}/> : null}/>
     <section><h3>Saved copies</h3>{detail.saved_body?<><ul><li><CopyLink detail={primaryDetail} label={`Open saved ${formatLabel(primaryFormat)}`} rawBase={rawBase} onOpenSaved={onOpenSaved} primary/></li>
       {(detail.alternates??[]).map((alternate:any,i:number)=><li key={i}><CopyLink detail={bodyDetail(alternate,alternate.format)} label={`Open alternate ${formatLabel(alternate.format)}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>)}</ul>
       <details className="archive-provenance-details">

@@ -1,21 +1,35 @@
 """Select a page's main text from explicit article-body markup.
 
-Class-name heuristics such as ``entry-content`` are not explicit markup and are not
-candidates. Marked text under ``SHORT_MARKED_CHARS`` is not testimony ("No prepared
+Only RDFa ``content:encoded`` is a candidate. JSON-LD ``articleBody`` is a publisher string,
+not the page: it can carry raw markup (gov.uk f3a990b3) or a truncated body, and nothing
+compares it with the DOM. Class-name heuristics such as ``entry-content`` are not explicit
+markup either. Two or more distinct candidates are never chosen between: a long sidebar is
+as marked as a short body. Marked text under ``SHORT_MARKED_CHARS`` is not testimony ("No prepared
 statement.") and never falls back: an extractor would present other page text as
 the statement. Everything else is ``fallback_required``: the caller reuses the stored
 trafilatura reading (archive_readings), rather than a second unbounded run of it here.
 """
+import re
+
 from lxml import etree
 
 from congress_api.models.html_metadata import ContentCandidate, ContentLink, HtmlMetadata, MainContent
 from congress_api.parsers.html_metadata import parse_document
 
 SHORT_MARKED_CHARS = 200
-PROPERTIES = ('content:encoded', 'schema:articleBody', 'articleBody')
+CONTENT_PROPERTY = 'content:encoded'
+CONTENT_NAMESPACE = 'http://purl.org/rss/1.0/modules/content/'
+CONTENT_PREFIX = re.compile(r'(?:^|\s)content:\s+(\S+)', re.I)
 _DROPPED = {'script', 'style', 'noscript', 'template'}
 _BLOCKS = {'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'table', 'section', 'article',
-           'blockquote', 'ul', 'ol'}
+           'blockquote', 'ul', 'ol', 'td', 'th', 'dt', 'dd', 'dl', 'hr', 'caption', 'pre', 'figure', 'figcaption'}
+# Match declarations, including !important, without treating custom properties as CSS visibility.
+HIDDEN_STYLE = re.compile(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\s*(?:!important\s*)?(?:;|$)', re.I)
+SOFT_HYPHEN = '\u00ad'
+
+
+def _hidden(element) -> bool:
+    return 'hidden' in element.attrib or bool(HIDDEN_STYLE.search(element.get('style', '')))
 
 
 def block_text(node) -> str:
@@ -31,8 +45,8 @@ def block_text(node) -> str:
     for event, element in walker:
         tag = element.tag.lower() if isinstance(element.tag, str) else None
         if event == 'start':
-            if tag in _DROPPED:
-                walker.skip_subtree()
+            if tag in _DROPPED or (tag is not None and element is not node and _hidden(element)):
+                walker.skip_subtree()  # the end event still comes, so the tail is kept
                 continue
             if tag in _BLOCKS:
                 parts.append('\n')
@@ -42,7 +56,7 @@ def block_text(node) -> str:
             parts.append('\n')
         if element is not node:
             parts.append(element.tail or '')
-    lines = (' '.join(line.split()) for line in ''.join(parts).splitlines())
+    lines = (' '.join(line.split()) for line in ''.join(parts).replace(SOFT_HYPHEN, '').splitlines())
     return '\n'.join(line for line in lines if line)
 
 
@@ -51,37 +65,42 @@ def _tokens(name: str) -> str:
 
 
 def _rdfa_confirms(metadata: HtmlMetadata) -> bool:
-    return any(key.endswith('content/encoded') for item in metadata.formats['rdfa'].items for key in item)
+    return any(CONTENT_NAMESPACE + 'encoded' in item for item in metadata.formats['rdfa'].items)
 
 
-def _json_ld_bodies(value, path: str):
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if key == 'articleBody' and isinstance(item, str):
-                yield path + '/articleBody', item
-            else:
-                yield from _json_ld_bodies(item, f"{path}/{key.replace('~', '~0').replace('/', '~1')}")
-    elif isinstance(value, list):
-        for index, item in enumerate(value):
-            yield from _json_ld_bodies(item, f'{path}/{index}')
+def _rebound_content_prefix(elements) -> bool:
+    for element in elements:
+        prefix = CONTENT_PREFIX.search(element.get('prefix', ''))
+        namespace = prefix.group(1) if prefix else element.get('xmlns:content')
+        if namespace is not None:
+            return namespace != CONTENT_NAMESPACE
+    return False
 
 
 def _dom_candidates(tree, metadata: HtmlMetadata) -> list[ContentCandidate]:
-    tests = [(_tokens('property') % name, name) for name in PROPERTIES] + [(_tokens('itemprop') % 'articleBody', 'itemprop:articleBody')]
-    named = {}
-    for test, name in tests:
-        for node in tree.xpath(f'//*[{test}]'):
-            named.setdefault(node, name)
+    marked = tree.xpath(f'//*[{_tokens("property") % CONTENT_PROPERTY}]')
+    named = {node for node in marked if not _rebound_content_prefix((node, *node.iterancestors()))}
     roots = tree.getroottree()
     out = []
     confirmed = _rdfa_confirms(metadata)
-    for node, name in named.items():
-        if any(ancestor in named for ancestor in node.iterancestors()):  # nested candidates resolve to the outermost
+    for node in marked:
+        if node not in named:
+            continue
+        ancestors = tuple(node.iterancestors())
+        if _hidden(node) or node.tag in _DROPPED or any(
+            ancestor in named or ancestor.tag in _DROPPED or _hidden(ancestor) for ancestor in ancestors
+        ):
             continue
         body = block_text(node)
-        links = [ContentLink(href=link.get('href'), text=' '.join(link.text_content().split())) for link in node.xpath('.//a[@href]')]
-        out.append(ContentCandidate(selector=roots.getpath(node), property=name, text=body, char_count=len(body), links=links,
-                                    rdfa_confirmed=name == 'content:encoded' and confirmed))
+        links = [
+            ContentLink(href=link.get('href'), text=' '.join(block_text(link).split()))
+            for link in node.xpath('.//a[@href]')
+            if not _hidden(link) and not any(
+                ancestor.tag in _DROPPED or _hidden(ancestor) for ancestor in link.iterancestors()
+            )
+        ]
+        out.append(ContentCandidate(selector=roots.getpath(node), property=CONTENT_PROPERTY, text=body, char_count=len(body), links=links,
+                                    rdfa_confirmed=confirmed))
     return out
 
 
@@ -98,13 +117,16 @@ def select_main_content(body: bytes, metadata: HtmlMetadata) -> MainContent:
     if tree is None:
         return result('fallback_required', reason='unparseable')
     candidates = _dom_candidates(tree, metadata)
-    for path, value in _json_ld_bodies(metadata.formats['json-ld'].items, '/formats/json-ld/items'):
-        candidates.append(ContentCandidate(selector=path, property='json-ld:articleBody', text=value, char_count=len(value), links=[], rdfa_confirmed=False))
-    distinct = list({candidate.text: candidate for candidate in reversed(candidates) if candidate.text}.values())[::-1]
-    substantive = [candidate for candidate in distinct if candidate.char_count >= SHORT_MARKED_CHARS]
-    if len(substantive) == 1:
-        return result('marked', text=substantive[0].text, selected=substantive[0], candidates=candidates)
-    if distinct and not substantive:
+    distinct = {}
+    for candidate in candidates:
+        if candidate.text:
+            key = (candidate.text, tuple((link.href, link.text) for link in candidate.links))
+            distinct.setdefault(key, candidate)
+    distinct = list(distinct.values())
+    if len(distinct) > 1:
+        return result('fallback_required', candidates=candidates, reason='multiple_candidates')
+    if distinct and distinct[0].char_count >= SHORT_MARKED_CHARS:
+        return result('marked', text=distinct[0].text, selected=distinct[0], candidates=candidates)
+    if distinct:
         return result('marked_no_content', selected=distinct[0], candidates=candidates, reason='short_marked_text')
-    reason = 'conflicting_candidates' if substantive else 'empty_candidate' if candidates else 'no_candidate'
-    return result('fallback_required', candidates=candidates, reason=reason)
+    return result('fallback_required', candidates=candidates, reason='empty_candidate' if candidates else 'no_candidate')

@@ -137,7 +137,7 @@ class Reader:
             if table not in declared:
                 self.require(table)
             meaning = declared.get(table, {})
-            return dict(table=table, available=table in self.schemas, columns=self.schemas.get(table, {}),
+            return dict(release_id=self.release_id, table=table, available=table in self.schemas, columns=self.schemas.get(table, {}),
                 meanings=meaning.get('columns', []), purpose=meaning.get('purpose'), row_meaning=meaning.get('row_meaning'),
                 identity=meaning.get('identity'), scope=meaning.get('gaps', []), notes=meaning.get('notes', {}),
                 relationships_version=version,
@@ -316,7 +316,9 @@ class Reader:
         if query.section == 'summary':
             if query.cursor:
                 raise ExplorerError('Summary does not take a cursor')
-            result = self.rows('SELECT * REPLACE(hex(link_key) AS link_key,hex(saved_body) AS saved_body,'
+            deferred = [name for name in ('page_metadata', 'selected_text') if name in self.schemas['documents']]
+            exclude = f' EXCLUDE({",".join(deferred)})' if deferred else ''
+            result = self.rows(f'SELECT *{exclude} REPLACE(hex(link_key) AS link_key,hex(saved_body) AS saved_body,'
                                'list_transform(alternates,lambda a:struct_pack(format:=a.format,body:=hex(a.body),suffix:=a.suffix,size:=a.size)) AS alternates),'
                                '(SELECT url FROM sources WHERE list_row=documents.list_row ORDER BY ordinal LIMIT 1) AS primary_source_url '
                                'FROM documents WHERE list_row=?', [position], limit=1)
@@ -330,15 +332,52 @@ class Reader:
                 recoveries='Recovered files and their relationship to this document',
                 text='Verified archived document body text and snippet search',
             )
+            if 'page_metadata' in deferred and row.get('main_content'):
+                row['sections']['page_metadata'] = 'Paged publisher declarations with selection and source evidence'
+            if (row.get('main_content') or {}).get('text_available'):
+                row['sections']['selected_text'] = 'Publisher-marked text with selector, body digest and reading version'
             return result
-        columns = '*' if query.section == 'sources' else '* REPLACE(hex(body) AS body)'
-        result = self.page(query, f'SELECT {columns} FROM {query.section} WHERE list_row=?', [position], order='ordinal')
-        if query.section == 'recoveries':
-            for row in result['rows']:
-                row['saved_url'] = self.file_url(row['body'], row['suffix'])
+        if query.section == 'page_metadata':
+            if 'page_metadata' not in self.schemas['documents']:
+                raise ExplorerError('Publisher page metadata is unavailable in this release')
+            result = self.page(query, '''SELECT ordinal,item.* FROM (
+                SELECT generate_subscripts(page_metadata,1) AS ordinal,unnest(page_metadata) AS item
+                FROM documents WHERE list_row=?)''', [position], order='ordinal')
+            source = self.rows('''SELECT lower(hex(link_key)) AS link_key,lower(hex(saved_body)) AS saved_body,
+                saved_suffix,main_content.reader_version AS reader_version
+                FROM documents WHERE list_row=?''', [position], limit=1)['rows'][0]
+            source['saved_url'] = self.file_url(source['saved_body'], source.pop('saved_suffix'))
+            result['source'] = source
+        elif query.section == 'selected_text':
+            result = self.selected_text(query, position)
+        else:
+            columns = '*' if query.section == 'sources' else '* REPLACE(hex(body) AS body)'
+            result = self.page(query, f'SELECT {columns} FROM {query.section} WHERE list_row=?', [position], order='ordinal')
+            if query.section == 'recoveries':
+                for row in result['rows']:
+                    row['saved_url'] = self.file_url(row['body'], row['suffix'])
         if redirected_from:
             result['redirected_from'] = redirected_from
         return result
+
+    def selected_text(self, query, position):
+        if 'selected_text' not in self.schemas['documents']:
+            raise ExplorerError('Selected text is unavailable in this release. Use section=text for the saved body.')
+        if query.cursor or query.page is not None or query.query is not None:
+            raise ExplorerError('Selected text uses offset and max_chars')
+        # At most six JSON bytes per character, with room for the citation.
+        limit = min(query.max_chars, (MAX_BYTES - 8192) // 6)
+        row = self.rows('''SELECT lower(hex(link_key)) AS link_key,lower(hex(saved_body)) AS saved_body,
+            saved_suffix,main_content.selector AS selector,main_content.reader_version AS reader_version,
+            main_content.text_sha256 AS text_sha256,length(selected_text) AS total_chars,
+            substr(selected_text,?,?) AS text
+            FROM documents WHERE list_row=?''', [query.offset + 1, limit, position], limit=1)['rows'][0]
+        if row['text'] is None:
+            raise ExplorerError('Selected text is unavailable for this document. Use section=text for the saved body.')
+        next_offset = query.offset + len(row['text'])
+        return dict(row, release_id=self.release_id, offset=query.offset,
+                    next_offset=next_offset if next_offset < row['total_chars'] else None,
+                    saved_url=self.file_url(row['saved_body'], row['saved_suffix']))
 
     def search_entities(self, value):
         query = EntitySearch.model_validate(value)

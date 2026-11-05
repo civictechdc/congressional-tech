@@ -173,17 +173,18 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     metrics.detailColumns=selected.length;
     return {columns:selected};
   };
-  async function read(name: string,start?: number,end?: number,filter?: any){
+  async function read(name: string,start?: number,end?: number,filter?: any,only?: string[]){
+    const requested=(input: any)=>only?{columns:only.filter(name=>input.names.includes(name))}:projection(name,input);
     const group=shards.get(name.replace('.parquet',''));
     if(group){
       if(start===undefined||end===undefined||filter)throw new Error('Archive shards require a row range.');
       if(start<0||end<start||end>group.at(-1).row_range[1])throw new Error('Invalid archive shard row range.');
       const ranges=group.filter(item=>item.row_range[0]<end&&item.row_range[1]>start);
-      return (await Promise.all(ranges.map(async item=>{const input=await table(item.name);return parquetReadObjects({...input,...projection(name,input),compressors,rowStart:Math.max(start!,item.row_range[0])-item.row_range[0],rowEnd:Math.min(end!,item.row_range[1])-item.row_range[0],useOffsetIndex:true});}))).flat();
+      return (await Promise.all(ranges.map(async item=>{const input=await table(item.name);return parquetReadObjects({...input,...requested(input),compressors,rowStart:Math.max(start!,item.row_range[0])-item.row_range[0],rowEnd:Math.min(end!,item.row_range[1])-item.row_range[0],useOffsetIndex:true});}))).flat();
     }
     const input=await table(name);
     if(start!==undefined&&(start<0||end===undefined||end<start||end>Number(input.metadata.num_rows)))throw new Error('Invalid archive row range.');
-    return parquetReadObjects({...input,...projection(name,input),compressors,rowStart:start,rowEnd:end,filter,useOffsetIndex:true,usePageIndex:Boolean(filter)});
+    return parquetReadObjects({...input,...requested(input),compressors,rowStart:start,rowEnd:end,filter,useOffsetIndex:true,usePageIndex:Boolean(filter)});
   }
   const entities=new Map<string,Promise<any[]>>();
   const entity=(name: string)=>{
@@ -379,6 +380,15 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       return result;
     },
     entry,
+    async selectedText(index: number, signal?: AbortSignal) {
+      checkedRow(index);
+      const [item] = await awaitShared(read('detail.parquet', index, index + 1, undefined, ['selected_text', 'main_content']), signal);
+      if (typeof item?.selected_text !== 'string') throw new Error('Selected text is unavailable for this document.');
+      const bytes = utf8.encode(item.selected_text);
+      if (bytes.length > 256 * 1024 || bytes.length !== item.main_content?.text_bytes ||
+          await digest(bytes) !== item.main_content?.text_sha256) throw new Error('Selected text failed verification.');
+      return item.selected_text as string;
+    },
     resolve,
     async lookup(url: string){
       const binary=new Uint8Array(await crypto.subtle.digest('SHA-256',utf8.encode('lookup:'+lookupUrl(url)))).slice(0,8);
@@ -433,7 +443,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
 
 export function detailProjection(detailNames: string[],listNames: string[]){
   const held=new Set(listNames);
-  return detailNames.filter(name=>!held.has(name));
+  return detailNames.filter(name=>name!=='selected_text'&&!held.has(name));
 }
 
 export function savedCopy(detail: any,rawBase: string){
