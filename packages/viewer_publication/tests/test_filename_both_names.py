@@ -194,7 +194,12 @@ def test_opaque_download_dates_do_not_set_observed_bounds(tmp_path):
     historical = foreign + 'imo/media/doc/Deficiency%20appropriation%20bill%20March%202,%201901.pdf'
     typo = 'https://www.help.senate.gov/imo/media/doc/FDA%20PAHPA%20testimony%20May%204%202303%20HELP1.pdf'
     # An opaque supplier sorts first by URL. A supported, named supplier should still win.
-    competing_alias = (FINANCE + 'download/00000000', *CASES[0][1:])
+    judiciary = (
+        JUDICIARY + 'download/results-of-executive-business-meeting-may-9-2019',
+        JUDICIARY + 'imo/media/doc/050919%20Results%20of%20Executive%20Business%20Meeting.pdf',
+        b'%PDF-1.7\nResults\n%%EOF\n',
+    )
+    competing_alias = (foreign + 'download/transcript-00000000', *judiciary[1:])
 
     def add_opaque_reading(rows):
         row = next(row for row in rows if row['source_url'] == competing_alias[0])
@@ -202,7 +207,7 @@ def test_opaque_download_dates_do_not_set_observed_bounds(tmp_path):
 
     rows, conflicts, _, annotations = _release(tmp_path, capture_cases=[
         *cases, (historical, historical, b'%PDF-1.7\nHistorical\n%%EOF\n'),
-        (typo, typo, b'%PDF-1.7\nTypo\n%%EOF\n'), CASES[0], competing_alias,
+        (typo, typo, b'%PDF-1.7\nTypo\n%%EOF\n'), CASES[0], judiciary, competing_alias,
     ], transform_names=add_opaque_reading)
     by_name = {row['filename']: row for row in annotations}
     for row, (alias, name, literal) in zip(rows, aliases):
@@ -213,14 +218,18 @@ def test_opaque_download_dates_do_not_set_observed_bounds(tmp_path):
         assert source['filename_date'] == literal
         assert source['filename_date_url'] == foreign + 'download/transcript-' + alias
         assert source['filled_date'] is True and source['filename_date_eligible'] is False
-    actual, future, named = rows[3:]
+    actual, future, named, alternate = rows[3:]
     assert (actual['document_date'], actual['document_date_status'], actual['congress']) == (date(1901, 3, 2), 'accepted', None)
     assert (future['document_date'], future['document_date_status'], future['document_date_source']) == (
         date(2303, 5, 4), 'suspect', 'filename')
     assert (named['document_date'], named['document_date_status']) == (date(2021, 3, 17), 'accepted')
+    assert (alternate['document_date'], alternate['document_date_status']) == (date(2019, 5, 9), 'accepted')
+    alternate_source = by_name[alternate['filename']]
+    assert alternate_source['filename_date_url'] == judiciary[0]
+    assert alternate_source['filename_date_valid'] is False and alternate_source['filename_date_eligible'] is True
     assert any(c['field'] == 'filename_date' and c['other_url'] == competing_alias[0] for c in conflicts)
 
     release = json.loads((tmp_path / 'release/manifest.json').read_text())
     coverage = next(item['coverage'] for item in release['files'] if item['name'] == 'detail.parquet')
-    assert coverage['document_dates'] == {'accepted': 2, 'suspect': 1, 'undated': 3}
+    assert coverage['document_dates'] == {'accepted': 3, 'suspect': 1, 'undated': 3}
     assert (coverage['date_start'], coverage['date_end']) == ('1901-03-02', '2021-03-17')

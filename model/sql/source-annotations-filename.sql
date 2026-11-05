@@ -1,7 +1,7 @@
 -- Filename producers own typed keys; the model joins their exact admitted pair.
 -- Both names (owner, 2026-11-02): a completed, nonempty shown value has precedence. Otherwise each
 -- field takes the first completed linked reading that supplies it, in canonical URL/name order, and
--- keeps that supplier's name and URL. Supported linked dates rank before opaque aliases. Shown status/error stay separate from the per-field suppliers.
+-- keeps that supplier's name and URL. Dates eligible for selection rank before opaque aliases. Shown status/error stay separate from the per-field suppliers.
 WITH own AS (
  SELECT s.source_id,
   f.* EXCLUDE(document_kind,document_family,committee_code,filename_date),
@@ -28,7 +28,7 @@ WITH own AS (
   max(requested_filename) FILTER (WHERE date_choice=1) AS date_name,
   max(requested_url) FILTER (WHERE date_choice=1) AS date_url,
   bool_or(valid) FILTER (WHERE date_choice=1) AS date_valid,
-  bool_or(date_supported) FILTER (WHERE date_choice=1) AS date_supported,
+  bool_or(date_eligible) FILTER (WHERE date_choice=1) AS date_eligible,
   max(congress) FILTER (WHERE congress_choice=1) AS congress,
   max(requested_filename) FILTER (WHERE congress_choice=1) AS congress_name,
   max(requested_url) FILTER (WHERE congress_choice=1) AS congress_url,
@@ -45,7 +45,7 @@ WITH own AS (
  FROM (
   SELECT l.*,
    CASE WHEN filename_date IS NOT NULL THEN row_number() OVER(
-    PARTITION BY source_id ORDER BY filename_date IS NULL,date_supported DESC,preference) END AS date_choice,
+    PARTITION BY source_id ORDER BY filename_date IS NULL,date_eligible DESC,preference) END AS date_choice,
    CASE WHEN congress IS NOT NULL THEN row_number() OVER(
     PARTITION BY source_id ORDER BY congress IS NULL,preference) END AS congress_choice,
    CASE WHEN coalesce(array_length(document_kind),0)>0 THEN row_number() OVER(
@@ -78,7 +78,7 @@ SELECT o.source_id,o.filename,o.source_url,o.catalog_version,o.status,o.error_ty
  CASE WHEN o.status='completed' AND coalesce(array_length(o.committee_code),0)>0 THEN o.status WHEN l.committee_code IS NOT NULL THEN 'completed' ELSE o.status END AS committee_code_status,
  -- Whether the name supplying the value follows a published naming convention (the reading's valid).
  CASE WHEN o.status='completed' AND o.filename_date IS NOT NULL THEN o.valid ELSE l.date_valid END AS filename_date_valid,
- (o.status='completed' AND o.filename_date IS NOT NULL) OR coalesce(l.date_supported,false) AS filename_date_eligible,
+ (o.status='completed' AND o.filename_date IS NOT NULL) OR coalesce(l.date_eligible,false) AS filename_date_eligible,
  CASE WHEN o.status='completed' AND o.congress IS NOT NULL THEN o.valid ELSE l.congress_valid END AS congress_valid,
  CASE WHEN o.status='completed' AND o.filename_date IS NOT NULL THEN o.filename ELSE l.date_name END AS filename_date_name,
  CASE WHEN o.status='completed' AND o.filename_date IS NOT NULL THEN o.source_url ELSE l.date_url END AS filename_date_url,
