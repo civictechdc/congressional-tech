@@ -9,5 +9,5 @@ SELECT c.sha256 AS body_sha,
 CASE WHEN bool_and(coalesce(c.bytes=0,false)) THEN 'empty' WHEN min(c.media_type)='text/vtt' THEN 'vtt' ELSE 'm3u8' END AS format,
 'writer_format' AS basis FROM captures c JOIN candidate_admission_shas s ON c.sha256=s.sha256 GROUP BY c.sha256
 HAVING bool_and(coalesce(c.bytes=0,false)) OR
-(bool_and(coalesce(c.fidelity='saved-text',false)) AND count(c.media_type)=count(*) AND min(c.media_type)=max(c.media_type)
+(bool_and(coalesce(c.fidelity='saved-text',false)) AND count(c.media_type)=count(*) AND count(DISTINCT c.media_type)=1
 AND min(c.media_type) IN ('text/vtt','application/vnd.apple.mpegurl','application/x-mpegurl'))
