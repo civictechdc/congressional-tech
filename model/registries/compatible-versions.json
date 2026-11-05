@@ -155,6 +155,45 @@
       "reason": "predicate proof over 2489 rows",
       "recompute_sql": "none",
       "version": "5d79e149b01e060c2abae435163e875a00c9e3e3c543be4da06a99cfd43cca91"
+    },
+    {
+      "basis": "bundle",
+      "current": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
+      "parser": "readings",
+      "proof": {
+        "columns": 1,
+        "current": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
+        "differences": 0,
+        "evidence": {
+          "frozen-inputs.json": "849b30db1f7f0003b129e9c2a24107fdf3142b90f396861421f81fd9573b050a",
+          "proof-result.json": "bd159a6b893b2c297691657eb1ac5127d04700362310caeeb3b72bfe9918656b",
+          "qualification.watchdog.json": "e018a2f4ad42a19f6ae4f7114bd86101abddf59344f3433aa67ceb4f22a8e830",
+          "retained-original-reads.json": "566ca1cdc12ce453429ac6da268da4008e68f1248a08f2f477ecd27dfc41dfff"
+        },
+        "new_input_sha256": "c4d316f76caf5b4d956c15c5e32594815b7dcdd4326643e8420a15d682985fc4",
+        "old_input_sha256": "b9205fc6c2c46dffb7544e383b0f12a4a4c0e4427f35c1cc397f3642f97e4cbb",
+        "only_new": 0,
+        "only_old": 0,
+        "recompute_sha256": "140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe",
+        "rows": 25,
+        "scope": "full",
+        "strata": {
+          "memory_limit": {
+            "local": 9,
+            "population": 9,
+            "sampled": 9
+          },
+          "output_limit": {
+            "local": 16,
+            "population": 16,
+            "sampled": 16
+          }
+        },
+        "version": "a7a8c404519439472a4fd91ab9285d9e118f325650c46532ca2cd670e3e50900"
+      },
+      "reason": "Exact frozen set of 25 active historical refusals produced identical keys and reasons.",
+      "recompute_sql": "none",
+      "version": "a7a8c404519439472a4fd91ab9285d9e118f325650c46532ca2cd670e3e50900"
     }
   ],
   "version": 2
