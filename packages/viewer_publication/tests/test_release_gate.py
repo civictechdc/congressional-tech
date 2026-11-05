@@ -261,7 +261,8 @@ def test_fetch_release_keeps_files_it_already_holds(pair, tmp_path):
 
 
 # ct-ud0b: nightly publication when every difference is a new row from new receipts.
-LIVE_RECEIPTS = {'receipts/documents/2026-11-01/live.jsonl.gz'}
+UNDATED_LIVE_RECEIPT = 'receipts/documents/undated/live.jsonl.gz'
+LIVE_RECEIPTS = {'receipts/documents/2026-11-01/live.jsonl.gz', UNDATED_LIVE_RECEIPT}
 NEW_RECEIPT = 'receipts/documents/2026-11-03/nightly.jsonl.gz'
 REQUEST = 'https://www.govinfo.gov/content/pkg/CHRG-119hhrg12345/pdf/CHRG-119hhrg12345.pdf'
 FETCHED = datetime(2026, 11, 3, 15, tzinfo=timezone.utc)
@@ -281,7 +282,7 @@ def url_states(url, attempts):
 
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
-            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True):
+            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS):
     """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
     import gzip
     import os
@@ -321,7 +322,7 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     def automatic(report):
         return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
-                                live_receipt_keys=LIVE_RECEIPTS, read_receipt=raw.__getitem__, work=tmp_path / 'auto')
+                                live_receipt_keys=live_receipts, read_receipt=raw.__getitem__, work=tmp_path / 'auto')
     return base, candidate, automatic
 
 
@@ -333,10 +334,12 @@ def test_additions_from_new_receipts_pass_unattended(tmp_path, nested):
     assert {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys', 'added URLs'}
     trace = json.loads((tmp_path / 'auto/automatic-trace.json').read_text())
     assert trace['url_attempts'] == {REQUEST: [[NEW_RECEIPT, 1]]}
+    assert trace['undated_live_receipts'] == 1
 
 
 @pytest.mark.parametrize('receipt,rule', [
     (sorted(LIVE_RECEIPTS)[0], 'is already in the live release'),
+    (UNDATED_LIVE_RECEIPT, 'is already in the live release'),
     ('receipts/documents/2026-10-30/older.jsonl.gz', 'is not dated after the live release'),
     ('receipts/documents/undated/assemble.jsonl.gz', 'is not dated after the live release'),
     ('receipts/documents/2026-11-31/bad-date.jsonl.gz', 'is not dated after the live release'),
@@ -401,3 +404,10 @@ def test_automatic_policy_refuses_a_verified_scope_removal(tmp_path):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'nightly.json', automatic=automatic)
     report = json.loads((tmp_path / 'nightly.json').read_text())
     assert report['failing'] == [] and report['reasons'] == report['automatic_reasons']
+
+
+def test_no_dated_live_receipt_refuses(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], live_receipts={UNDATED_LIVE_RECEIPT})
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert 'no dated receipt' in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'][0]

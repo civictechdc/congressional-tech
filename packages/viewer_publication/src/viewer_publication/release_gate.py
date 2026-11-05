@@ -245,7 +245,7 @@ AUTOMATIC_GROUPS = {('list.parquet', 'added rows'), ('detail.parquet', 'added ro
                     ('sources.parquet', 'new URLs'), ('sources.parquet', 'member rows added'),
                     ('sources.parquet', 'same-URL rows added')}
 ATTEMPTED_URL_GROUP = ('url_state.parquet', 'added URLs', ATTEMPTED_URLS)
-AUTOMATIC_CAUSE = 'addition traced to receipts newer than every receipt of the live release (automatic, ct-ud0b)'
+AUTOMATIC_CAUSE = "addition traced to receipts newer than the live release's newest dated receipt (automatic, ct-ud0b)"
 DATED = re.compile(r'/(\d{4}-\d{2}-\d{2})/')
 
 
@@ -280,7 +280,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     a candidate row none of whose link keys an earlier release published. Its body keys are
     joined to `captures` (the capture mapping, not the archive model) to find the receipt
     lines holding those bodies. Each line is then read from raw: its key must be outside the
-    live release's receipt set and dated after the newest of them, and the line itself must
+    live release's receipt set and dated after the newest dated receipt, and the line itself must
     name the body's SHA-256. Source and lookup additions must sit on new documents only.
     Each added attempted URL needs a fresh document receipt line for every reported attempt.
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
@@ -303,8 +303,8 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if not differences:
         return [], []
     live = sorted(live_receipt_keys)
-    live_dates = [_receipt_day(key) for key in live]
-    if not live_dates or None in live_dates:
+    live_dates = [day for key in live if (day := _receipt_day(key)) is not None]
+    if not live_dates:
         return [], ['automatic causes: the live release has no dated receipt set to compare with']
     cutoff = max(live_dates)
     d = Diff(Path(base_dir), Path(candidate_dir))
@@ -373,7 +373,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if reasons:
         return [], sorted(set(reasons))
     evidence = work / 'automatic-trace.json'
-    evidence.write_text(json.dumps(dict(cutoff=cutoff, live_receipts=len(live), lines=lines, url_attempts={url: sorted(matches) for url, matches in attempts.items()}), indent=1, default=str) + '\n')
+    evidence.write_text(json.dumps(dict(cutoff=cutoff, live_receipts=len(live), undated_live_receipts=len(live)-len(live_dates), lines=lines, url_attempts={url: sorted(matches) for url, matches in attempts.items()}), indent=1, default=str) + '\n')
     from congress_api.retention.provenance import file_pin
     pin = dict(path=str(evidence), **file_pin(evidence))
     return [dict(id=group_id(g), count=g['count'], disposition='explained', cause=AUTOMATIC_CAUSE,
