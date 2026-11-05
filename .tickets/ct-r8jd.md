@@ -1,6 +1,6 @@
 ---
 id: ct-r8jd
-status: open
+status: closed
 deps: [ct-3szv]
 links: [ct-deg8, ct-wsu7, ct-6v77]
 created: 2026-11-02T00:40:43Z
@@ -64,3 +64,7 @@ Owner decision 2026-11-04: hosted runner capacity is moot: the nightly runs on t
 **2026-11-05T12:02:36Z**
 
 2026-11-05 Codex continuation: maintenance completed as a full read-only audit plus maintained staged-apply and retention execution, without repeating307,033 completed body reads. Native audit peak5.989 GiB; apply/retention peak0.169 GiB. Configured maintenance rss_gb10 in .github/archive-jobs.json (7240b36d); --check-binding passed.10 GiB is a deliberate runaway allowance, not a measured hosted peak. All three operations now have limits. Final integration qualification pending. See ct-3szv and durable full-readonly/completed-maintenance watchdog reports.
+
+**2026-11-05T13:09:52Z**
+
+Qualified source 7f9ebddd2cb632f97bc0214ffd44beaf72b0a5a6: all three production-offline shards passed (11,497 passed; 37 unchanged legacy skips; 3 existing expected failures), native-loopback full lane passed (10 tests, zero skips), and storage-loopback full lane passed (1 test). Evidence: .cache/archive-release/handoffs/cursor-resume-20261105/qualification-7f9ebddd2cb6/combined-results.json. Maintenance now has a 10 GiB runaway limit based on its 5.989 GiB measured native audit peak; publish remains 14 GiB and backfill 12 GiB. All three bindings pass. The November 4 owner decision uses the Mac nightly, so no hosted capacity result is claimed. Closing after the completed real maintenance measurement and binding.

@@ -18,3 +18,9 @@ saved-copy-identity stops 'Act of <year>' from dating documents, which loses the
 
 The reader dates that filename 2016-01-12 and still refuses 'Act of 2019_6-23-20' style misreads; batch with the next filename-reader change.
 
+
+## Notes
+
+**2026-11-05T13:09:52Z**
+
+Implemented and selectively backfilled in the qualified 7f9ebddd source. The EPS filename produces date token 1-12-16 and 2016-01-12 while Act-title misreads remain rejected. Recomputed 295 of 1,403,275 filename readings, reused 1,402,980 with exact value proof, and reconciled the related House XML parser pin without replaying unaffected XML. Imported tables and producer anchors passed native parity and all six model suites. Final candidate e145d24c389e preserves 2016-01-12 through actual MCP/browser checks. Publication remains pending the owner review explicitly reserved in the Cursor session. Evidence: .cache/archive-release/handoffs/cursor-resume-20261105/{filename-date-repair,candidate-streaming-repair,final-acceptance}/.
