@@ -306,7 +306,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
         entry.update(sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data))
         manifest['release_id'] = release_identity(1, manifest['files'])
         (candidate / 'manifest.json').write_text(json.dumps(manifest))
-    new = [k for keys in candidate_docs for k in keys if not any(k in b for b in base_docs)]
+    held_keys = set(''.join(base_docs))
+    new = [k for keys in candidate_docs if not held_keys.intersection(keys) for k in keys]
     bodies = {k: K(k) + sha256(k.encode()).digest()[:24] for k in new}
     capture_rows = [dict(receipt_key=receipt, receipt_line=1, sha256=body, requested_url=capture_url,
                          mode='fetch', complete=True, attempt=0, outcome='stored', http_status=200)
@@ -440,3 +441,13 @@ def test_a_failed_response_sharing_the_new_documents_body_cannot_qualify_its_url
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
     assert len(reasons) == 1 and 'failed-copy.pdf has 1 attempts but 0 fresh raw lines' in reasons[0]
+
+
+def test_an_added_link_key_on_an_existing_document_requires_review(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['AZ', 'N'], filenames=['A.pdf', 'N.pdf'])
+    report_path = tmp_path / 'r.json'
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=report_path, automatic=automatic)
+    report = json.loads(report_path.read_text())
+    assert report['link_rule']['ok']
+    assert report['automatic_reasons'] == ['automatic causes: 2 added link keys, 1 attached to new documents']

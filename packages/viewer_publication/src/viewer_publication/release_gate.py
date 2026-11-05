@@ -291,7 +291,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     joined to `captures` (the capture mapping, not the archive model) to find the receipt
     lines holding those bodies. Each line is then read from raw: its key must be outside the
     live release's receipt set and dated after the newest dated receipt, and the line itself must
-    name the body's SHA-256. Source and lookup additions must sit on new documents only.
+    name the body's SHA-256. Link, source and lookup additions must sit on new documents only.
     Every attempt for an added URL needs a fresh receipt line that supplied the new document.
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
     new row whose receipts are new while the code that made it changed; the other gates still run.
@@ -331,6 +331,11 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if any((g['file'], g['group'], g['cause']) == ATTEMPTED_URL_GROUP for g in groups):
         url_additions = dict(d.rows(f'SELECT requested_url, attempts FROM {ADDED_URL_STATE} WHERE attempts>0'))
     keys = [r[0] for r in d.rows("SELECT DISTINCT lower(hex(link_key)) FROM candidate_links WHERE list_row IN (SELECT r FROM added_documents) ORDER BY 1")]
+    # A new document has no link key in the base. Its keys must account for
+    # every added link key already counted by the comparison.
+    added_links = sum(g['count'] for g in differences if (g['file'], g['group']) == ('links.parquet', 'added keys'))
+    if len(keys) != added_links:
+        reasons.append(f'automatic causes: {added_links} added link keys, {len(keys)} attached to new documents')
     if not keys:
         reasons.append('automatic causes: no new document carries a key to trace')
     if reasons:
