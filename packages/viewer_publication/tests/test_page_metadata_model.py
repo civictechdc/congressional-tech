@@ -126,6 +126,26 @@ def test_capture_context_fanout_and_long_resolutions_keep_bounded_literal_eviden
         assert len(json.dumps(row['page_metadata']).encode()) <= 65536
 
 
+def test_over_budget_declarations_keep_citations_for_summaries_that_fit(tmp_path):
+    crowded = page(head=''.join(
+        f'<meta name="description" content="Distinct hearing evidence value {i:03d}.">' for i in range(400)
+    ))
+    sections = page(head=''.join(og('article:section', f'Distinct publisher section {i:03d}.') for i in range(400)))
+    assert all(reading_row(body)['status'] == 'completed' for body in (crowded, sections))
+    evidence = dict(name='evidence', sql="""SELECT doc_key,description,publisher_labels,page_metadata,
+        main_content['evidence_limited'] AS limited FROM document_page_metadata ORDER BY doc_key""")
+    result = run(tmp_path, [('descriptions', crowded, 'https://publisher.test/a', 'html'),
+                            ('sections', sections, 'https://publisher.test/b', 'html')],
+                 [crowded, sections], queries=[evidence])
+
+    described, labeled = result['evidence']
+    assert described['limited'] and described['description'] == 'Distinct hearing evidence value 000.'
+    [citation] = described['page_metadata']
+    assert citation['selected'] and citation['value'] == described['description']
+    assert citation['path'] == '/head_meta/0/content'
+    assert labeled['limited'] and labeled['page_metadata'] == [] and labeled['publisher_labels'] == []
+
+
 def test_declared_base_comes_before_the_document_address(tmp_path):
     body = page(head='<base href="https://base.test/d/e/"><link rel="canonical" href="f">')
     result = run(tmp_path, [('a', body, 'https://one.test/x/y', 'html')], [body], queries=[entries_query('a')])
