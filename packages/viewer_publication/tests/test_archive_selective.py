@@ -893,7 +893,7 @@ def test_record_only_retained_committee_checks_custody_and_returns_only_append_r
                 max_work_items=1, committee_composition=dict(inputs, **changes)))))
         return load_spec(path)
 
-    with pytest.raises(ValueError, match='delta.*another selector'):
+    with pytest.raises(ValueError, match='the producer record names another selector'):
         execute(composition('wrong-delta', delta=old_pin))
     duplicate_proof = tmp_path/'duplicate-delta.json'
     duplicate_proof.write_text(json.dumps(dict(proof, selector=dict(kind='parquet', **old_pin))))
