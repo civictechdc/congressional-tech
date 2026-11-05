@@ -102,13 +102,22 @@ def _stage(run,bodies,name,keys,work,*,existing,raw_store,unreadable):
     """
     rows=bodies.selection(name,keys);work.mkdir(parents=True)
     selection=work/'selection.parquet';pq.write_table(pa.Table.from_pylist(rows,schema=SELECTION_SCHEMA),selection)
-    module,build=RECORD_TABLES[name];bodies.root.mkdir(parents=True,exist_ok=True)
+    bodies.root.mkdir(parents=True,exist_ok=True)
+    return stage_selected_records(name,selection,engine=run.engine,work=work/'stage',
+        existing=existing,local_root=bodies.root,raw_store=raw_store,
+        unreadable_files=unreadable,decided_at=run.decided_at)
+
+
+def stage_selected_records(name,selection,*,engine,work,existing=None,local_root,raw_store,
+                           unreadable_files=(),decided_at=None,max_work_items=None):
+    """Replay exact captured body keys or inline receipt positions through the maintained producer."""
+    module,build=RECORD_TABLES[name]
     return stage_record_table(parser_name=name,out_filename=name+'.parquet',
         candidate_sql='SELECT record_sha,stored_suffix,source FROM captures WHERE record_sha IS NOT NULL',
         inline_sql='SELECT receipt_key,receipt_line,source_url FROM captures WHERE receipt_key IS NOT NULL ORDER BY receipt_key,receipt_line',
-        build_row_fn=build,table_fn=module.table,captures=selection,engine=run.engine,work=work/'stage',
-        version=module.current_versions(),existing=existing,local_root=bodies.root,raw_store=raw_store,
-        unreadable_files=unreadable,decided_at=run.decided_at,unreadable_store=None)
+        build_row_fn=build,table_fn=module.table,captures=selection,engine=engine,work=work,
+        version=module.current_versions(),existing=existing,local_root=local_root,raw_store=raw_store,
+        unreadable_files=unreadable_files,decided_at=decided_at,max_work_items=max_work_items,unreadable_store=None)
 
 
 def stage_d4(run,bodies):
