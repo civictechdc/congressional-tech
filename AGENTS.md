@@ -78,6 +78,11 @@ Several producers compute `parser_version` by hashing their own source bytes:
 
 - `captures.py` (`packages/congress_api/tests/test_captures_version.py` pins `APPROVED_MAPPING`)
 - `readings.py` (`document_links.py`, `pdf_tools.py`, `qualification.py`, `html.py`)
+- the `readings` bundle version (`readings.bundle_version`): `readings.py`,
+ `retention/parser_worker.py`, `retention/process_resources.py`, `compatible_versions.py`
+ and `model/sql/{pinned-readings,sniff-observations,sniff-conflicts,sniff-facts,body-admissions}.sql`.
+ A byte change re-stamps the bundle and orphans unreadable decisions recorded under the old one
+ (`profile_completeness` then reports missing sniff/page readings).
 - `filename_readings.py` (`document_cover.py`)
 - `meeting_records.py` and `appearance_records.py` (`house_xml`, `congress_gov`, `senate_page`, `mods`)
 
