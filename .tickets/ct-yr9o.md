@@ -1,6 +1,6 @@
 ---
 id: ct-yr9o
-status: open
+status: closed
 deps: []
 links: [ct-717p]
 created: 2026-11-02T18:20:46Z
@@ -71,3 +71,11 @@ The reviewed source reference is included in local main 1a5ae01c. Remaining: Rev
 Integrated the independently approved local transition caller aa1f7d0f into main at 07c10cba. The bounded pilot and complete local cohort passed at that combined source: 15,822 selected keys and all semantic values are preserved, excluding only the intentional parser_version change. This includes all 4,027 pairs outside current fetch eligibility. Reused 15,237 pairs and recomputed 585 pairs across 584 bodies; zero new unreadable decisions and zero pending work. Peak cohort RSS was 0.636 GiB. The 31 baseline decision files remain unchanged, and a fresh native runtime found no remaining work.
 
 Both complete refetch bodies already exist in the frozen inputs, so no new imports are needed. The two truncated fragments were outside this transition and were not replayed. Shared table activation is still under focused implementation/review; final native/model, document-download selection and selected public acceptance remain open. No shared tables or publication changed during the local cohort. Evidence: .cache/archive-release/implementation/merge-prune-20261106T180951Z/house-transition-cohort-handoff-review.md and house-transition-cohort-retained-checks.json.
+
+**2026-11-06T21:15:10Z**
+
+Closed after the reviewed implementation and real shared House transition completed in main at 0debd552. Independent native readback confirms all 15,822 selected records match the accepted stage exactly, including 4,027 outside current fetch eligibility: no missing or extra keys, duplicates or changed values. The three new-version table heads have valid daily history; all five other selectors, the receipt inventory and 31 unreadable-input files remain unchanged. No new unreadable decisions or pending work were produced.
+
+Malformed, valid-empty, wrong-root, missing-byte and settled-failure behavior is covered by the maintained native-consumer fixtures; the real selected cohort completed successfully. The accepted fresh-native zero-work evidence transfers through exact row and input equality. No full daily run or deployment is claimed. The two recovered-document download checks and final release qualification remain with ct-m104.
+
+[Independent acceptance](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/house-transition-activation-acceptance.md) and [actual execution](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/house-activation-execution-attempt02.json). The first pre-write credential-environment failure remains retained; the successful run peaked at 0.476 GiB RSS. Scope: this ticket's three acceptance criteria are complete; broader publication and operations remain separate.
