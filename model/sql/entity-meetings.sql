@@ -243,9 +243,13 @@ SELECT k.event_id,
  m.not_held AND pr.event_id IS NULL AS not_held,
  r.rescheduled_to,
  r.rescheduled_basis,
- m.document_references
+ m.document_references,
+ named_struct('state',coalesce(o.state,'unknown'),'coverage',coalesce(o.coverage,'unknown'),
+  'successful_read',o.successful_read,'latest_attempt',o.latest_attempt,'listing',o.listing,
+  'has_undated_attempt',coalesce(o.has_undated_attempt,false)) AS congress_gov_detail_observation
 FROM keys k
 LEFT JOIN meetings_resolved m ON k.event_id=m.event_id
+LEFT JOIN meeting_detail_observations o ON m.congress=o.congress AND m.chamber=o.chamber AND k.event_id=o.event_id
 LEFT JOIN subject_keys_by_event sk ON k.event_id=sk.event_id
 LEFT JOIN transcripts_agg t ON k.event_id=t.event_id
 LEFT JOIN rescheduled r ON k.event_id=r.event_id

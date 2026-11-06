@@ -15,6 +15,7 @@ from congress_api.parsers.meeting_facts import stated_facts
 from congress_api.retention.provenance import json_input, list_of, parquet_output, run_job, struct
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model import witness_key_steps
+from viewer_publication.meeting_detail_observations import EMPTY_OBSERVATIONS
 
 ROOT = Path(__file__).parents[3]
 EMPTY_SITTINGS = ("array_slice(make_array(named_struct('start',arrow_cast(NULL,'Timestamp(Microsecond, Some(\"UTC\"))'),"
@@ -129,6 +130,10 @@ def meetings(tmp_path_factory):
         dict(name='package_meeting_links', sql="SELECT 'CHRG-own' AS package_id,cast(19 AS BIGINT) AS event_id", materialize=True),
         dict(name='package_mods_facts', sql="SELECT 'CHRG-own' AS package_id", materialize=True),
         dict(name='spicy_nominations', sql="SELECT cast(NULL AS INT) AS congress,cast(NULL AS VARCHAR) AS number,cast(NULL AS VARCHAR) AS part_number,cast(NULL AS VARCHAR) AS hearings_json WHERE false", materialize=True),
+        dict(name='meeting_detail_observations', sql=EMPTY_OBSERVATIONS, materialize=True),
+        dict(name='meeting_records_ranked', sql=f"SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source,cast(NULL AS VARCHAR) AS status,cast(NULL AS DATE) AS meeting_date,cast(NULL AS VARCHAR) AS record_sha_hex,{UTC} AS retrieved_at WHERE false", materialize=True),
+        dict(name='meeting_records_current', sql="SELECT *,cast(1 AS INT) AS priority,cast(NULL AS VARCHAR) AS title FROM meeting_records_ranked WHERE false", materialize=True),
+        dict(name='meeting_status_conflicts', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS evidence WHERE false", materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     run_job(work, engine, inputs=[], steps=steps,

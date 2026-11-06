@@ -771,6 +771,12 @@ def meeting_steps(*,root=ROOT,has_document_references=True):
     return steps+[dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
 
 
+def meeting_detail_steps(*,root=ROOT):
+    """Bind individual receipts before selecting event-specific read observations."""
+    return _sql_steps(['congress-gov-routes','meeting-detail-evidence','meeting-detail-ranked',
+        'meeting-detail-observations'],root=root)
+
+
 def meeting_records_have_document_references(path):
     import pyarrow.parquet as pq
     schema=pq.read_schema(path)
@@ -1062,7 +1068,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps=list(prepared['steps'])+link_steps(root=root)
     steps += _sql_steps(['archive-member-addresses'],root=root)
     # Meetings read only prelude inputs; the documents they list feed URL keys and annotations.
-    steps += meeting_steps(root=root,has_document_references=prepared.get('has_document_references',True))+_sql_steps(['meeting-document-urls'],root=root)
+    steps += meeting_steps(root=root,has_document_references=prepared.get('has_document_references',True))+meeting_detail_steps(root=root)+_sql_steps(['meeting-document-urls'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
     steps += url_normalized_steps(root=root)
     steps += [dict(name='model_url_keys',sql=(Path(root)/'model/sql/url-keys.sql').read_text(),materialize=True)]

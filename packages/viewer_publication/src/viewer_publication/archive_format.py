@@ -3,6 +3,7 @@ from hashlib import md5, sha256
 from congress_shared.custody import write_atomic_bytes
 
 from viewer_publication.archive_model_lifetimes import retire_relations
+from viewer_publication.meeting_detail_observations import UNKNOWN_OBSERVATION
 import json
 from pathlib import Path
 
@@ -408,7 +409,8 @@ def _auxiliary():
                 {transcripts} AS transcripts,{videos} AS videos,cast(NULL AS SMALLINT) AS congress,{TS} AS congress_gov_updated,
                 cast(NULL AS VARCHAR) AS house_xml_updated,cast(NULL AS VARCHAR) AS congress_gov_meeting_type,
                 cast(NULL AS VARCHAR) AS access,cast(NULL AS VARCHAR) AS access_basis,cast(NULL AS BOOLEAN) AS not_held,cast(NULL AS BIGINT) AS rescheduled_to,cast(NULL AS VARCHAR) AS rescheduled_basis,
-                {NULL_MEETING_DOCUMENT_REFERENCES} AS document_references FROM meta GROUP BY event_id""", ['event_id'],
+                {NULL_MEETING_DOCUMENT_REFERENCES} AS document_references,
+                {UNKNOWN_OBSERVATION} AS congress_gov_detail_observation FROM meta GROUP BY event_id""", ['event_id'],
             MEETING_DICTIONARY),
         ('committees', f"""SELECT system_code,name,chamber,cast(NULL AS VARCHAR) AS committee_type,
             cast(NULL AS VARCHAR) AS parent_system_code,{names} AS names,cast(NULL AS VARCHAR) AS website,
