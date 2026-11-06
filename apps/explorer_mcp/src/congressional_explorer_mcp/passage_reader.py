@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 
 from .body_reader import read_document_body
 from .caption_reader import caption_cursor
-from .citations import CITATION_VERSION, TEXT_READER_VERSION
+from .citations import CITATION_VERSION, TEXT_READER_VERSION, validate_witness_claim
 from .hearing_models import TranscriptQuery
 from .models import DocumentQuery, ExplorerError
 from .pdf_decoder import run_body_read
@@ -43,6 +43,7 @@ async def resolve_passage(citation,call,caption_read,*,data_dir=None,timeout=10.
                 return dict(state='different_source',reason='Caption recording differs',citation=citation)
             if target['saved_body']!=citation.get('saved_body'):
                 return dict(state='different_source',reason='Caption root body differs',citation=citation)
+            validate_witness_claim(target,citation.get('witness_key'),citation.get('witness_attribution'))
             if isinstance(selected.get('corpus_text_index'),dict):
                 retained=await call('resolve_index_citation',dict(citation=citation,source=target))
                 if retained.get('state') in ('resolved','different_source'):
@@ -75,9 +76,7 @@ async def resolve_passage(citation,call,caption_read,*,data_dir=None,timeout=10.
             target=await call('document_body_target',query.model_dump())
             if target.get('saved_body')!=citation.get('saved_body'):
                 return dict(state='different_source',reason='Published document body differs from the cited body',citation=citation,source=target['reference'])
-            witness=citation.get('witness_key')
-            if witness is not None and witness not in (target.get('witness_keys') or []):
-                return dict(state='unavailable',reason='Witness occurrence is not associated with this source',citation=citation)
+            validate_witness_claim(target,citation.get('witness_key'),citation.get('witness_attribution'))
             if kind=='body_text':
                 result=await run_body_read(partial(read_document_body,target,query,data_dir=data_dir,timeout=timeout))
                 reader_version=TEXT_READER_VERSION

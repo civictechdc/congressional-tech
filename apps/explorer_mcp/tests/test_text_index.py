@@ -109,6 +109,11 @@ def test_full_body_caption_filters_and_actual_stdio(tmp_path):
                 assert result['rows'][0]['text'] == row['text']
                 metadata_search = (await client.call_tool('search_documents', {'query': {'text': phrase}})).data
                 assert metadata_search['rows'] == []
+                for claim in [dict(witness_key='unrelated-occurrence',witness_attribution='source_association'),
+                              dict(witness_attribution='source_association'),dict(witness_attribution='ambiguous')]:
+                    forged=deepcopy(caption['citation']);forged.update(claim)
+                    refused=(await client.call_tool('resolve_citation',{'citation':forged})).data
+                    assert refused['state']=='unavailable'
                 location = row['location']
                 body = (await client.call_tool('get_document', {'query': dict(row['reference'], section='text', page=location['page'], offset=location['offset'], max_chars=location['length'])})).data
                 assert body['text'] == row['text']

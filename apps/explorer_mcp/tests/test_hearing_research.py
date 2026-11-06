@@ -9,6 +9,7 @@ import sys
 import duckdb
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
+from fastmcp.client.transports import StdioTransport
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
@@ -188,6 +189,49 @@ def test_hearing_tools_transcript_paging_cues_dossier_and_passage_roundtrips(tmp
                     assert bad.is_error
         asyncio.run(run())
         assert requests and all(path.startswith('/bodies/sha256/') for path in requests)
+
+
+def test_nonindexed_citations_refuse_unsupported_witness_claims(tmp_path,phase2):
+    routes={}
+    with local_archive_server(routes) as (origin,_):
+        _,payloads,shas=hearing_release(tmp_path,phase2,origin)
+        for index,(payload,digest) in enumerate(zip(payloads,shas)):
+            routes[f'/bodies/sha256/{digest.hex()[:2]}/{digest.hex()}{".pdf" if index==0 else ""}']=payload
+        async def run():
+            transport=StdioTransport(sys.executable,['-m','congressional_explorer_mcp.cli','serve',
+                '--data-dir',str(tmp_path/'selected')],keep_alive=False)
+            async with Client(transport) as client:
+                async def call(name,**values):
+                    return (await client.call_tool(name,values)).data
+                captions=[]
+                for event in (338785,334136):
+                    inventory=await call('get_transcript',event_id=event,kind='captions')
+                    source=inventory['rows'][0]
+                    cue=(await call('get_transcript',**source['reference'],limit=1))['rows'][0]
+                    assert cue['citation']['witness_key'] is None
+                    assert cue['citation']['witness_attribution']=='unavailable'
+                    captions.append(cue['citation'])
+                orphan=deepcopy(captions[0])
+                orphan['source'].pop('event_id')
+                orphan['source']['video_key']='senate:complete'
+                captions.append(orphan)
+                for citation in captions:
+                    assert (await call('resolve_citation',citation=citation))['state']=='resolved'
+                    for claim in [dict(witness_key='unrelated-occurrence',witness_attribution='source_association'),
+                                  dict(witness_attribution='source_association'),dict(witness_attribution='ambiguous')]:
+                        forged=deepcopy(citation);forged.update(claim)
+                        assert (await call('resolve_citation',citation=forged))['state']=='unavailable'
+                committee=next(row for row in (await call('get_transcript',event_id=334136))['rows'] if row['kind']=='committee')
+                statement=await call('get_document',query=dict(**committee['document_reference'],section='selected_text',max_chars=30))
+                citation=statement['citation']
+                assert citation['witness_attribution']=='ambiguous'
+                forged=deepcopy(citation);forged['witness_attribution']='source_association'
+                assert (await call('resolve_citation',citation=forged))['state']=='unavailable'
+                supported=deepcopy(citation);supported.update(witness_key='appearance-2',witness_attribution='source_association')
+                assert (await call('resolve_citation',citation=supported))['text']==statement['text']
+                legacy=deepcopy(citation);legacy.pop('witness_attribution')
+                assert (await call('resolve_citation',citation=legacy))['text']==statement['text']
+        asyncio.run(run())
 
 
 def test_old_release_playlist_fallback_and_missing_table_states(tmp_path,phase2):

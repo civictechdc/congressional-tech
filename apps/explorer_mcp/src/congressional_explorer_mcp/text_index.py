@@ -11,7 +11,7 @@ import sys
 import time
 import zlib
 
-from .citations import text_citation
+from .citations import text_citation, validate_witness_claim
 from .models import ExplorerError, MAX_BYTES
 from .release import encoded
 
@@ -369,8 +369,7 @@ class TextIndex:
                 context=json.loads(selected['context'])
                 if context['saved_body']!=citation.get('saved_body') or context.get('reader_version')!=citation.get('reader_version'):
                     return dict(state='different_source',reason='Citation body or reader differs from this retained reading')
-                if citation.get('witness_key') is not None and citation['witness_key'] not in context.get('witness_keys',[]):
-                    raise ExplorerError('Citation witness occurrence is not associated with this source')
+                validate_witness_claim(context,citation.get('witness_key'),citation.get('witness_attribution'))
                 if citation.get('extraction_definition') not in (None,self.info['definition']):
                     return dict(state='different_source',reason='Citation extraction definition differs from the retained reading')
                 if location.get('kind')=='caption_cue':
