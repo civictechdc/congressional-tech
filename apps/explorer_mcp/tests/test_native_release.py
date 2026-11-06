@@ -166,9 +166,7 @@ def test_native_html_reader_fixture_through_stdio(tmp_path, request):
     if source is None:
         pytest.skip('Native integration requires --native-fixture-root from the producer test runner')
     candidates = {p.resolve() for p in Path(source).glob('test_shared_html_reader_*/release/manifest.json')}
-    if not candidates:
-        pytest.skip('Native integration root has no HTML reader fixture')
-    assert len(candidates) == 1
+    assert len(candidates) == 1, f'Expected one retained native HTML reader fixture, found {len(candidates)}'
     selection = prepare(tmp_path, candidates.pop(), archive_origin='https://archive.example')
 
     async def run():
