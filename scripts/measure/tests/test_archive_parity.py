@@ -215,7 +215,7 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=F
             details['sql']=details['sql'].replace('coalesce(s.src_len,cast(0 AS INT)) AS src_len','coalesce(s.src_len,cast(0 AS INT))+1 AS src_len')
         if bad_lookup:
             lookup=next(step for step in job['steps'] if step['name']=='url_keys')
-            lookup['sql']+=' WHERE false'
+            lookup['sql']='SELECT * FROM ('+lookup['sql']+') AS planted_url_keys WHERE false'
         if bad_sort:
             output=next(o for o in job['outputs'] if o['name']==bad_sort)
             output['settings']['order_by'][0]['direction']='desc'
@@ -227,6 +227,8 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=F
         (producer/'job.json').write_text(json.dumps(job))
         result=engine().run_job(producer/'job.json')
         (producer/'result.json').write_text(json.dumps(result))
+        if bad_lookup:
+            assert pq.ParquetFile(release/'urls.parquet').metadata.num_rows == 0, 'URL-loss plant must remove the whole public result'
         for item in manifest['files']:
             if item['name'].endswith('.parquet'):
                 actual=next(r for r in result['outputs'] if r['name']==item['name'])

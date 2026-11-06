@@ -14,6 +14,7 @@
   "active_recording_decisions": 7200,
   "active_unreadable": 127,
   "ambiguous_endpoints": 7671,
+  "appearance_observation_exclusions": 2,
   "appearance_observations": 64419,
   "appearance_people": 177307,
   "appearance_records": 66490,
@@ -28,6 +29,7 @@
   "archive_member_addresses": 68786,
   "base_normalized": 355608,
   "base_retired": 450,
+  "bill_package_evidence": 2,
   "bills_export": 52279,
   "body_admissions": 1,
   "body_evidence": 1036482,
@@ -293,6 +295,24 @@
     "spicy_member_votes": 10561417
    },
    "meaning": "Additional legislative leaf counts from the exact qualified source manifest; original measured relation rows remain unchanged."
+  },
+  {
+   "source": "model/registries/appearance-observation-exclusions.json",
+   "sha256": "a85f0c7569d7f989d5ddb48e913f7bf8fdeeb93174b7144c8c4f2c3f88f4a512",
+   "size": 1414,
+   "rows": {
+    "appearance_observation_exclusions": 2
+   },
+   "meaning": "Exact small static registry input count; original measured relation rows are unchanged."
+  },
+  {
+   "source": "model/registries/bill-package-evidence.json",
+   "sha256": "edc59d7b66914987b92b78c1c2a8011dfde95656d2da5f6e7d0065b5becb9ac5",
+   "size": 1855,
+   "rows": {
+    "bill_package_evidence": 2
+   },
+   "meaning": "Exact small static registry input count; original measured relation rows are unchanged."
   }
  ]
 }

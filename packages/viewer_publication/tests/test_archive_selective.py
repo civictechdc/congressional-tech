@@ -714,14 +714,17 @@ def test_records_written_on_a_resume_of_an_older_build_say_so(tmp_path,fixture,m
     assert records and all(r['recorded']=='after production, on resume' for r in records)
 
 
-def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path):
+def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path, monkeypatch):
     from hashlib import sha256
 
     from congress_api.retention.provenance import file_pin
     from viewer_publication.archive_backfill_job import load_spec, plan
-    from viewer_publication.archive_record_backfill import MEETING_PRIOR
+    from viewer_publication.archive_record_backfill import MEETING_DOCUMENT_REFERENCES, MEETING_PRIOR
     from viewer_publication.archive_selective_records import SELECTION_SCHEMA
     from viewer_publication.producer_proof import BACKFILL, snapshot_reasons
+
+    # This fixture exercises the reviewed historical endpoint, before the later House syntax transition.
+    monkeypatch.setattr(meeting_records, "current_versions", lambda: dict(MEETING_DOCUMENT_REFERENCES))
 
     def pin(path):
         return dict(path=str(path), **file_pin(path))
@@ -792,6 +795,24 @@ def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path)
     selected = {name:item['selector'] for name,item in result.items()}
     assert snapshot_reasons(dict(**selected,parser_versions=dict(meeting_records=meeting_records.current_versions(),
         appearance_records=appearance_records.current_versions())),records) == []
+
+
+@pytest.mark.parametrize('endpoint,source', [
+    ('prior', 'house_xml'), ('prior', 'congress_gov'),
+    ('current', 'house_xml'), ('current', 'congress_gov'),
+])
+def test_record_only_meeting_transition_refuses_unreviewed_versions_before_base_read(endpoint, source, monkeypatch):
+    from viewer_publication import archive_record_backfill as backfill
+
+    prior = dict(backfill.MEETING_PRIOR)
+    current = dict(backfill.MEETING_DOCUMENT_REFERENCES)
+    (prior if endpoint == 'prior' else current)[source] = '0' * 64
+    monkeypatch.setattr(meeting_records, 'current_versions', lambda: current)
+    def reject_base(*args, **kwargs):
+        pytest.fail('An unreviewed transition reached the base reader')
+    monkeypatch.setattr(backfill, '_base_keys', reject_base)
+    with pytest.raises(ValueError, match='reviewed document-reference transition'):
+        backfill._meetings(None, prior, None)
 
 
 def test_record_only_retained_committee_checks_custody_and_returns_only_append_rows(tmp_path):

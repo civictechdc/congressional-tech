@@ -1588,7 +1588,9 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
     captures_path = work / "captures.parquet"
     pq.write_table(
         pa.Table.from_pylist(
-            [
+            [dict(row, fidelity="exact-bytes", receipt_key="receipts/fixture.jsonl",
+                  receipt_line=index+1, capture_index=0, run_id="fixture")
+             for index, row in enumerate([
                 {
                     "mode": "fetch",
                     "complete": True,
@@ -1694,9 +1696,14 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
                     "media_type": "application/json",
                     "retrieved_at": "2024-05-10T18:00:00Z",
                 },
-            ],
+            ])],
             schema=pa.schema(
                 [
+                    ("fidelity", pa.string()),
+                    ("receipt_key", pa.string()),
+                    ("receipt_line", pa.int64()),
+                    ("capture_index", pa.int32()),
+                    ("run_id", pa.string()),
                     ("mode", pa.string()),
                     ("complete", pa.bool_()),
                     ("outcome", pa.string()),
@@ -1720,6 +1727,8 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
     )
     inputs = [
         table_input("captures", captures_path),
+        json_input(work, "appearance_observation_exclusions", [], source="Utf8", receipt_key="Utf8",
+                   receipt_line="Int64", capture_index="Int32", run_id="Utf8", reason="Utf8"),
         json_input(
             work,
             "parser_versions",
@@ -1972,6 +1981,7 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
                {"name": "meetings_resolved", "sql": "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS DATE) AS meeting_date WHERE false", "materialize": True},
                {"name": "appearance_people", "sql": (ROOT / "model/sql/appearance-people.sql").read_text(encoding="utf-8"), "materialize": True},
                {"name": "senate_page_meeting_links", "sql": "SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS BIGINT) AS event_id WHERE false", "materialize": True},
+               {"name": "appearance_capture_contexts", "sql": (ROOT / "model/sql/appearance-capture-contexts.sql").read_text(encoding="utf-8"), "materialize": True},
                {"name": "appearance_observations", "sql": observations_sql, "materialize": True},
                {"name": "resolved", "sql": resolved_sql, "materialize": True}],
         outputs=[],

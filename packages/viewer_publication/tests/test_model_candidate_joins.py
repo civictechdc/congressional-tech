@@ -18,8 +18,8 @@ from docspec_client.client import NativeDatasets
 from viewer_publication import archive_format
 from viewer_publication.archive_model import build_prepared_release, prepare_model_inputs
 
-# Keyed by join text, so a step split does not silently take a join out of the gate.
-CANDIDATE_JOINS = ('JOIN candidate_meeting_shas cms', 'JOIN candidate_app_shas cas', 'JOIN candidate_appearance_shas cas')
+# Keyed by candidate clauses, so a step split or join direction cannot silently remove coverage.
+CANDIDATE_JOINS = ('JOIN candidate_meeting_shas cms', 'JOIN candidate_app_shas cas', 'FROM candidate_appearance_shas cas')
 
 
 @pytest.fixture(scope='module')
@@ -117,7 +117,12 @@ def test_candidate_join_precedes_capture_aggregate(planned, join):
 def test_gate_fails_when_the_candidate_join_is_removed(planned, join):
     root, engine, prepared, seen = planned
     step = joined_step(seen, join)
-    stripped = re.sub(re.escape(join) + r'[^\n]*\n', '\n', step['sql'])
+    if join == 'FROM candidate_appearance_shas cas':
+        candidate_join = join + '\n JOIN captures c ON c.sha256=cas.sha256'
+        assert candidate_join in step['sql']
+        stripped = step['sql'].replace(candidate_join, 'FROM captures c', 1)
+    else:
+        stripped = re.sub(re.escape(join) + r'[^\n]*\n', '\n', step['sql'])
     assert stripped != step['sql']
     plan = physical(root, engine, prepared, closure(seen, [step['name']]), stripped, f"negative-{step['name']}")
     verdicts = capture_scans_filtered(plan)
