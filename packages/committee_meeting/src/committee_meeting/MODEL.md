@@ -1,6 +1,6 @@
 # Committee Explorer data model
 
-**Status: executable model, schema `0.1.0-draft.3`.** Readers still accept `0.1.0-draft.2`. These models validate
+**Status: executable model, schema `0.1.0-draft.3`.** Producers and readers use this version. These models validate
 records and relationships. The application exporter and its IdRegistry are
 current policy ([adapter identity policy](../../../../docs/congress-api-contracts.md#adapter-identity-policy)); this package still does not replace transcript bodies.
 

@@ -458,25 +458,24 @@ that committee failures do not stop upstream GPO/video results from being saved.
 
 ### Frontend data-source boundary
 
-Inject the data source at page startup. The renderer consumes normalized domain
-records through `ExplorerReader` (or `ExplorerDataSource` for bounded previews);
-fetching, file discovery, decoding and
-format conversion belong to the adapter. The local implementation and interface
+Open the committee publication at page startup. The renderer consumes records
+through `ExplorerReader`; fetching, file discovery and decoding belong to the
+reader. The local implementation and interface
 are in `apps/site/src/components/explorer/reader/data-source.ts` and `types.ts`, documented
-in that directory's README. The preview now calls `mountExplorer({ source })`.
+in that directory's README.
 
-The JSON publication adapter follows `CURRENT` to the manifest, selects a
-complete catalog by role/schema, selects its decoder by `media_type`, and checks
-manifest/data checksums, schema and record count. A Parquet adapter must produce
-the same record identities, date precision, null meanings and evidence. Changing
-encoding should not change charts, filters or source inspectors. Keep decoder
-dependencies out of the UI bundle until the selected source needs them.
+`openPublicationReader` follows `CURRENT` to its checked manifest and requires
+`0.1.0-draft.3` metadata and Parquet partitions. It verifies the manifest hash and
+the requested JSON metadata's checksum and size. The Parquet reader checks row
+counts and HTTP byte-range responses without claiming a whole-file hash from a
+partial read. Whole-catalog JSON previews and sharded `.data` publications are
+retired. Selected rows preserve record identities, date precision, null meanings
+and source evidence. Parquet decoder dependencies load when the reader opens.
 
-The bounded preview loads one complete snapshot. For the real archive,
-`openPublicationReader` provides `search`, `getRelated`, `getRecord`, `getRecords`
-and filtered `getCoverage`. It pins one manifest, follows sharded record locators, validates
-each requested artifact and caches a small number of completed files. A record
-and its cited source can be fetched without downloading the complete catalog.
+The returned `ExplorerReader` provides `search`, `getRelated`, `getRecord`,
+`getRecords` and filtered `getCoverage`. It pins one manifest and reads selected
+Parquet columns and row groups with bounded caches. A record and its cited
+source can be fetched without downloading the complete catalog.
 Query pages are scoped by kind and Congress; results are filtered before pagination.
 Coverage uses the same selected meeting population and published evidence states. The
 interface expresses user queries and domain results, not filenames, SQL or

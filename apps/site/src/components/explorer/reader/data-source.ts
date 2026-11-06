@@ -1,14 +1,11 @@
 import type {
-  ArtifactDecoder, ArtifactPart, ExplorerDataSource, ExplorerReader,
-  ExplorerSnapshot, Fetcher, OpenReaderOptions, PublicationHandle,
+  ArtifactDecoder, ArtifactPart, ExplorerReader, Fetcher, OpenReaderOptions, PublicationHandle,
 } from './types.ts';
 
 export type * from './types.ts';
 
-const supportedSchemaVersions = new Set(['0.1.0-draft.2', '0.1.0-draft.3']);
-
 function supportedSchema(version: unknown): version is string {
-  return typeof version === 'string' && supportedSchemaVersions.has(version);
+  return version === '0.1.0-draft.3';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,38 +25,6 @@ export async function decodeGzipJson(bytes: Uint8Array): Promise<unknown> {
   return decodeJson(new Uint8Array(await new Response(stream).arrayBuffer()));
 }
 
-function identity(item: Record<string, unknown>): { kind: string; id: string } {
-  if (typeof item.kind !== 'string' || !item.kind.trim() || typeof item.id !== 'string' || !item.id.trim()) {
-    throw new Error('Explorer records require a kind and a nonempty string ID.');
-  }
-  return { kind: item.kind, id: item.id };
-}
-
-export function normalizeCatalog(document: unknown): ExplorerSnapshot {
-  if (!isRecord(document) || !supportedSchema(document.schema_version)) {
-    throw new Error('Unsupported explorer schema version. Refresh the application or use a compatible publication.');
-  }
-  if (document.scope !== 'complete' || !Array.isArray(document.records) || !Array.isArray(document.sources)) {
-    throw new Error('Expected a complete explorer catalog, not a partial record file.');
-  }
-  const seen = new Set<string>();
-  for (const [group, items] of [['records', document.records], ['sources', document.sources]] as const) {
-    for (const item of items) {
-      if (!isRecord(item)) throw new Error('Explorer records require a kind and a nonempty string ID.');
-      const { kind, id } = identity(item);
-      if ((kind === 'source_record') !== (group === 'sources')) throw new Error('Explorer source observations must be separate from domain records.');
-      const key = JSON.stringify([kind, id]);
-      if (seen.has(key)) throw new Error(`Duplicate explorer identity: ${key}`);
-      seen.add(key);
-    }
-  }
-  return Object.freeze({
-    schemaVersion: document.schema_version,
-    records: Object.freeze(document.records as ExplorerSnapshot['records']),
-    sources: Object.freeze(document.sources as ExplorerSnapshot['sources']),
-  });
-}
-
 async function readBytes(fetcher: Fetcher, url: URL | string, signal?: AbortSignal): Promise<Uint8Array> {
   signal?.throwIfAborted();
   const response = await fetcher(url, { signal });
@@ -74,18 +39,6 @@ async function checkDigest(bytes: Uint8Array, expected: unknown, label: string):
   const digest = await globalThis.crypto.subtle.digest('SHA-256', bytesBuffer(bytes));
   const actual = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
   if (actual !== expected) throw new Error(`Explorer ${label} checksum differs from its publication metadata.`);
-}
-
-export function createCatalogSource(options: { url: string | URL; fetcher?: Fetcher; decode?: ArtifactDecoder }): ExplorerDataSource {
-  const fetcher = options.fetcher || globalThis.fetch;
-  const decode = options.decode || decodeJson;
-  return {
-    async load({ signal } = {}) {
-      const document = await decode(await readBytes(fetcher, options.url, signal));
-      signal?.throwIfAborted();
-      return normalizeCatalog(document);
-    },
-  };
 }
 
 async function openVerifiedPublication(options: OpenReaderOptions): Promise<PublicationHandle> {
@@ -109,6 +62,9 @@ async function openVerifiedPublication(options: OpenReaderOptions): Promise<Publ
     throw new Error('Unsupported explorer publication manifest.');
   }
   if (pointer.publication_id !== manifest.publication_id) throw new Error('Explorer release pointer and manifest identify different publications.');
+  if (manifest.partitions.some(part => !isRecord(part) || !supportedSchema(part.schema_version))) {
+    throw new Error('The explorer artifact descriptor is incomplete or incompatible.');
+  }
   const partitions = manifest.partitions as ArtifactPart[];
   function select(role: string, schemaName: string): ArtifactPart {
     const candidates = partitions.filter(part => part.role === role && part.schema_name === schemaName);
@@ -134,19 +90,6 @@ async function openVerifiedPublication(options: OpenReaderOptions): Promise<Publ
   }
   signal?.throwIfAborted();
   return { manifest: Object.freeze(manifest) as PublicationHandle['manifest'], manifestUrl, select, readPartition };
-}
-
-export function createPublicationSource(options: OpenReaderOptions): ExplorerDataSource {
-  return {
-    async load({ signal } = {}) {
-      const publication = await openVerifiedPublication({ ...options, signal });
-      const part = publication.select('download', 'committee_meeting.Catalog');
-      const snapshot = normalizeCatalog(await publication.readPartition(part, signal));
-      if (snapshot.records.length !== part.record_count) throw new Error('Explorer record count differs from its publication manifest.');
-      signal?.throwIfAborted();
-      return Object.freeze({ ...snapshot, publication: publication.manifest });
-    },
-  };
 }
 
 export async function openPublicationReader(options: OpenReaderOptions): Promise<ExplorerReader> {

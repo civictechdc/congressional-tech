@@ -277,6 +277,7 @@ class ModelTests(unittest.TestCase):
             "inputs": [{"id": "snapshot", "provider": "example", "artifact": {"uri": "artifact:input", "sha256": "a" * 64},
                         "last_attempt_status": "failed", "limitations": ["Retained last successful input."]}]}
         parsed = PublicationManifest.model_validate(manifest)
+        self.assertEqual(parsed.schema_version, "0.1.0-draft.3")
         self.assertIsNone(parsed.inputs[0].last_observed_at)
         manifest["source_scopes"] = [{"provider": "example", "scope": "Older transcript editions",
             "status": "not_collected", "explanation": "Historical editions have not been collected."}]
@@ -296,6 +297,27 @@ class ModelTests(unittest.TestCase):
         metric["unknown"] = 3
         with self.assertRaisesRegex(ValidationError, "exceed denominator"):
             CoverageMetric.model_validate(metric)
+
+    def test_publication_schema_accepts_current_and_refuses_retired_or_unknown_versions(self):
+        manifest = {"publication_id": "example", "generated_at": "2026-09-27T12:00:00Z",
+            "producer": {"name": "example-export", "version": "1"},
+            "inputs": [{"id": "snapshot", "provider": "example",
+                        "artifact": {"uri": "artifact:input", "sha256": "a" * 64}}]}
+        self.assertEqual(Catalog.model_validate(self.data).schema_version, "0.1.0-draft.3")
+        self.assertEqual(PublicationManifest.model_validate({**manifest, "schema_version": "0.1.0-draft.3"}).schema_version,
+                         "0.1.0-draft.3")
+        for version in ("0.1.0-draft.2", "future"):
+            with self.subTest(version=version):
+                with self.assertRaisesRegex(ValidationError, "schema_version"):
+                    Catalog.model_validate({**self.data, "schema_version": version})
+                with self.assertRaisesRegex(ValidationError, "schema_version"):
+                    PublicationManifest.model_validate({**manifest, "schema_version": version})
+
+    def test_source_history_retains_publisher_schema_metadata(self):
+        self.data["sources"][0]["payload"]["schema_version"] = "0.1.0-draft.2"
+        catalog = Catalog.model_validate(self.data)
+        self.assertEqual(catalog.schema_version, "0.1.0-draft.3")
+        self.assertEqual(catalog.model_dump(mode="json")["sources"][0]["payload"]["schema_version"], "0.1.0-draft.2")
 
     def test_day_only_successful_check_keeps_its_precision(self):
         check = self.row("caption-estimate")

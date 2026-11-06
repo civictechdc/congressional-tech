@@ -105,17 +105,6 @@ export type ExplorerSourceRecord = Readonly<(NonNullable<Catalog['sources']>[num
 /** A record the reader has loaded: a catalog record, a source observation, or a Parquet row. */
 export type LoadedRecord = ExplorerRecord | ExplorerSourceRecord | QueryRow;
 
-export interface ExplorerSnapshot {
-  readonly schemaVersion: string;
-  readonly records: readonly ExplorerRecord[];
-  readonly sources: readonly ExplorerSourceRecord[];
-  readonly publication?: Readonly<Record<string, unknown>>;
-}
-
-export interface ExplorerDataSource {
-  load(options?: { signal?: AbortSignal }): Promise<ExplorerSnapshot>;
-}
-
 export type ArtifactDecoder = (bytes: Uint8Array, context?: { schemaName: string; schemaVersion: string }) => unknown | Promise<unknown>;
 export type Fetcher = typeof fetch;
 

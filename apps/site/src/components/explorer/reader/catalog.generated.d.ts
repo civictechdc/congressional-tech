@@ -1,6 +1,6 @@
 /** Generated from committee_meeting.Catalog. Do not edit. Run npm run generate:explorer-types. */
 
-export type SchemaVersion = '0.1.0-draft.2' | '0.1.0-draft.3';
+export type SchemaVersion = '0.1.0-draft.3';
 export type Scope = 'complete';
 export type Kind = 'source_record';
 export type Id = string;

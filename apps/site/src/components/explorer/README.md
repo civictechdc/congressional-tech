@@ -9,12 +9,12 @@ The remaining notes describe the retained committee reader and publisher.
 `Explorer.tsx` contains the former dashboard workspace. Its supporting modules include:
 
 - `view/` — coverage, record detail, related materials, and paging
-- `reader/` — opening a release. `data-source.ts` reads JSON releases; `parquet-source.ts` reads the current Parquet tables
+- `reader/` — opening a release. `data-source.ts` verifies the pointer, manifest and metadata; `parquet-source.ts` reads the Parquet tables
 - `browse/` — URL filters, search, display rules, and document categories
 
 The UI receives one `ExplorerReader` with `search`, `getRecord`, `getRelated` and
 `getCoverage`. React components know nothing about Parquet or HTTP ranges.
-`openPublicationReader` chooses the reader from the release manifest.
+`openPublicationReader` requires a `0.1.0-draft.3` release manifest with Parquet partitions.
 
 The weekly committee publisher exports six logical tables:
 
@@ -81,11 +81,10 @@ Business meetings have a distinct type and filter. When a generic `Meeting`
 record explicitly says business meeting in its title, the classification records
 that basis and keeps the original source type.
 
-The old JSON reader remains for existing releases and the bounded design preview.
-The current publisher CLI defaults to Parquet; Python callers can explicitly use
-`format='json'` for compatibility. Model validation and historical issue/ID state
-still run upstream. This change removes JSON packaging and graph navigation; it
-does not replace acquisition or the normalized model with a new matching system.
+The publisher exports Parquet. Model validation and historical issue/ID state
+run upstream, preserving source evidence and supported graph relationships.
+The browser reads JSON control metadata and selected Parquet rows; whole-catalog
+JSON and sharded `.data` publications are retired.
 
 Frontend changes deploy the existing published files. Data/source changes trigger
 the exporter. To convert an existing local release without rebuilding records:
