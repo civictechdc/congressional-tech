@@ -2,10 +2,13 @@
 import asyncio
 from copy import deepcopy
 from hashlib import sha256
+from pathlib import Path
 import shutil
+import sys
 
 import duckdb
 from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
@@ -211,3 +214,53 @@ def test_caption_parsers_preserve_cue_occurrences_and_refuse_invalid_timing():
         list(cue_rows('WEBVTT\n\n00:00:03.000 --> 00:00:02.000\nInvalid','vtt'))
     with pytest.raises(ValueError,match='unseparated'):
         list(cue_rows('WEBVTT\n00:00:01.000 --> 00:00:02.000\nInvalid','vtt'))
+
+
+def test_native_caption_inventory_parity_and_citation_roundtrips(tmp_path,request):
+    """A native producer release keeps independent full tracks beside a playlist (review F1)."""
+    source=request.config.getoption('--native-fixture-root')
+    if source is None:
+        pytest.skip('Requires the retained native phase2 producer fixture')
+    candidates={p.resolve() for p in Path(source).glob('test_phase2_entities_*/release-explorer/manifest.json')}
+    assert len(candidates)==1
+    manifest_path=candidates.pop()
+    raw=manifest_path.parent.parent/'raw'
+    routes={'/'+path.relative_to(raw).as_posix():path.read_bytes() for path in (raw/'bodies/sha256').glob('*/*')}
+    native_meetings=pq.read_table(manifest_path.parent/'meetings.parquet').to_pylist()
+    expected={(t['video_key'],fmt,t['language'],t['production']) for m in native_meetings if m['event_id']==115538
+        for t in m['transcripts'] if t['source']=='captions' for fmt in t['formats']}
+    senate_expected={('senate:ag051023','m3u8','en','live'),('senate:ag051023','vtt','en','live'),('senate:ag051023','vtt','es','live')}
+    assert {key for key in expected if key[0]=='senate:ag051023'}==senate_expected
+    with local_archive_server(routes) as (origin,requests):
+        selected=prepare(tmp_path,manifest_path,archive_origin=origin)
+        async def run():
+            transport=StdioTransport(sys.executable,['-m','congressional_explorer_mcp.cli','serve','--data-dir',str(tmp_path)],keep_alive=False)
+            async with Client(transport) as client:
+                async def call(name,**args):
+                    return (await client.call_tool(name,args)).data
+                inventory=await call('get_transcript',event_id=115538,kind='captions',limit=100)
+                actual={(row['video_key'],row['format'],row['language'],row['production']) for row in inventory['rows']}
+                assert not inventory['has_more']
+                assert expected-actual==set()
+                assert actual-expected==set()
+                assert len(inventory['rows'])==len(expected)
+                bodies={row['saved_body'] for row in inventory['rows']}
+                segment=b'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:183000\n\n00:00:01.000 --> 00:00:02.000\nSegment cue\n'
+                assert sha256(segment).hexdigest() not in bodies
+                assert sha256(b'WEBVTT\n\n').hexdigest() not in bodies
+                senate_text=set()
+                for row in inventory['rows']:
+                    assert row['reference']['release_id']==selected['release_id']
+                    assert row['source_id']==caption_source_id(row['video_key'],row['saved_body'],row['language'],row['production'])
+                    read=await call('get_transcript',**row['reference'],limit=1)
+                    assert read['rows']
+                    assert read['coverage']==('complete_snapshot' if row['format']=='m3u8' else 'retained_file')
+                    passage=read['rows'][0]
+                    reopened=await call('resolve_citation',citation=passage['citation'])
+                    assert reopened['state']=='resolved'
+                    assert reopened['text']==passage['text']
+                    if row['video_key']=='senate:ag051023':
+                        senate_text.add(passage['text'])
+                assert senate_text=={'Segment cue','Independent complete English captions','Pista completa independiente en espanol'}
+        asyncio.run(run())
+        assert requests and all(path.startswith('/bodies/sha256/') for path in requests)

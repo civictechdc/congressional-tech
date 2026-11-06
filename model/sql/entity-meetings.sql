@@ -101,20 +101,17 @@ WITH keys AS (
  JOIN (SELECT DISTINCT event_id,lower(regexp_replace(url,'^.*/','')) AS name FROM meeting_document_urls) d
   ON d.event_id=o.event_id AND d.name=lower(o.filename)
  UNION ALL
- -- Captions and subtitles (ct-1i4q): complete caption files of the meeting's recordings. A vtt beside a
- -- playlist of the same production is one segment of that stream, not a track (ct-9s7b), and a track
- -- with no body is not held.
+ -- Selected recording tracks own eligibility (ct-9s7b): their producer excludes declared
+ -- segments and placeholders. A shared production or language does not establish a segment.
  SELECT DISTINCT c.event_id,'captions' AS source,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS INT) AS list_row,
   arrow_cast(make_array(c.format),'List(Utf8)') AS formats,c.video_key,c.language,c.production
  FROM caption_tracks c
- LEFT JOIN (SELECT DISTINCT video_key,production FROM recording_tracks WHERE format='m3u8') p
-  ON p.video_key=c.video_key AND p.production IS NOT DISTINCT FROM c.production
- WHERE c.format='m3u8' OR p.video_key IS NULL
 ), transcript_ranked AS (
  SELECT *,row_number() OVER (
   PARTITION BY event_id
   ORDER BY CASE source WHEN 'printed_hearing' THEN 0 WHEN 'committee_transcript' THEN 1 ELSE 2 END,
-   list_row ASC NULLS LAST,package_id ASC NULLS LAST,video_key ASC NULLS LAST,language ASC NULLS LAST,production ASC NULLS LAST
+   list_row ASC NULLS LAST,package_id ASC NULLS LAST,video_key ASC NULLS LAST,language ASC NULLS LAST,
+   production ASC NULLS LAST,array_to_string(formats,',') ASC
  ) AS tr_seq
  FROM transcript_sources
 ), transcripts_agg AS (

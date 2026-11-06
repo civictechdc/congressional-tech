@@ -45,8 +45,6 @@ class HearingReader:
         ), sources AS ({document} UNION ALL
           SELECT 'captions',NULL,NULL,lower(hex(t.body)),t.suffix,t.format,NULL,NULL,'original',NULL,NULL,
             []::VARCHAR[],t.video_key,t.language,t.production,t.scope,t.basis FROM caption_tracks t
-          WHERE t.format='m3u8' OR NOT EXISTS (SELECT 1 FROM caption_tracks p
-            WHERE p.video_key=t.video_key AND p.production IS NOT DISTINCT FROM t.production AND p.format='m3u8')
         ) SELECT DISTINCT * FROM sources'''
 
     def _source_page(self, query, *, offset=0, limit=25):

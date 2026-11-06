@@ -41,8 +41,11 @@ and the pinned playlist reading version.
 
 `complete_snapshot` describes a retained playlist with an end marker and no
 declared missing resources. It does not prove that a recording covers the entire
-hearing. A live snapshot has `partial_live_snapshot` coverage. Missing, corrupt,
-unsupported, or unreadable resources are reported explicitly. Older releases
+hearing. A live snapshot has `partial_live_snapshot` coverage.
+Direct caption files have `retained_file` coverage: verified retained bytes do
+not establish full-recording coverage, particularly for older releases whose
+track selection predates the producer's declared-segment checks.
+Missing, corrupt, unsupported, or unreadable resources are reported explicitly. Older releases
 without the resource map still expose playlist references and report server-side
 assembly as unavailable. Caption calls read at most 32 segments and 32 MiB of
 decoded text, then return a continuation where possible.
