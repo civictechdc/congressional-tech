@@ -98,6 +98,9 @@ def test_supported_literal_alias_import_and_fresh_process_repeat(tmp_path):
     assert file_pin(tmp_path/'operation/identity-evidence.json')['sha256']==result['evidence_sha256']
     assert result['decision']['original_url']==TARGET and result['decision']['recovered_url']==CANDIDATE
     assert result['decision']['identity_note'] is None
+
+
+    assert result['decision']['match_basis']=='official_document_identifier'
     identity=tmp_path/'writer.json';identity.write_text(json.dumps(IDENTITY))
     command=[sys.executable,'-m','corpus_recovery.campaign','import','--campaign',str(descriptor),'--request',str(request),
         '--runtime',os.environ['DOCSPEC_JOB_CONFIG'],'--output',str(tmp_path/'operation'),'--local-store',str(tmp_path/'raw'),
@@ -134,6 +137,186 @@ def test_legacy_operation_cannot_rewrite_its_immutable_decision(tmp_path):
         import_candidate(descriptor,request,output=operation,engine=engine(),writer=writer,store=store)
     assert path.read_bytes()==before
     assert not (tmp_path/'raw/provenance').exists()
+
+
+def test_catalog_attribution_is_request_bound_and_preserved_in_receipt_and_provenance(tmp_path):
+    import gzip
+    descriptor=inputs(tmp_path);request,writer,store=candidate_request(tmp_path)
+    value=json.loads(request.read_text());value['match_basis']='source_catalog_document_identifier'
+    request.write_text(json.dumps(value))
+    original=request.read_bytes()
+    result=import_candidate(descriptor,request,output=tmp_path/'operation',engine=engine(),writer=writer,store=store)
+    assert result['status']=='accepted' and result['decision']['kind']=='recovered_document'
+    assert result['decision']['match_basis']=='source_catalog_document_identifier'
+    with gzip.open(tmp_path/'raw'/result['receipt_key'],'rt') as stream:
+        receipt=json.load(stream)
+    assert receipt['recovery_evidence']['match_basis']=='source_catalog_document_identifier'
+    assert import_candidate(descriptor,request,output=tmp_path/'operation',engine=engine(),writer=writer,store=store)==result
+    assert request.read_bytes()==original
+    assert len(list((tmp_path/'raw/receipts').rglob('*.gz')))==2
+    value['match_basis']='official_document_identifier';request.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='inputs changed'):
+        import_candidate(descriptor,request,output=tmp_path/'operation',engine=engine(),writer=writer,store=store)
+
+
+def test_acknowledged_retry_reuses_original_decision_without_body_or_reauthoring(tmp_path, monkeypatch):
+    import corpus_recovery.campaign as campaign_module
+    descriptor=inputs(tmp_path);request,writer,store=candidate_request(tmp_path)
+    operation=tmp_path/'operation'
+    result=import_candidate(descriptor,request,output=operation,engine=engine(),writer=writer,store=store)
+    original_provenance=(tmp_path/'raw'/result['provenance_key']).read_bytes()
+    for name in ('body.html','target.json','candidate.json'):
+        (tmp_path/name).unlink()
+    def unexpected(*args,**kwargs):
+        raise AssertionError('Acknowledged import repeated completed work')
+    monkeypatch.setattr(campaign_module,'qualify',unexpected)
+    monkeypatch.setattr(campaign_module,'decide',unexpected)
+    monkeypatch.setattr(campaign_module,'_member',unexpected)
+    monkeypatch.setattr(campaign_module,'import_retained',unexpected)
+    monkeypatch.setattr(campaign_module,'write_records',unexpected)
+    again=import_candidate(descriptor,request,output=operation,engine=None,writer=None,store=None)
+    assert again==result
+    assert (tmp_path/'raw'/result['provenance_key']).read_bytes()==original_provenance
+    # A corrupt acknowledgement must refuse rather than create replacement history.
+    result['decision']['id']='f'*64
+    (operation/'result.json').write_text(json.dumps(result))
+    with pytest.raises(ValueError,match='original operation bindings'):
+        import_candidate(descriptor,request,output=operation,engine=None,writer=None,store=None)
+
+
+@pytest.fixture
+def acknowledged_operation(tmp_path, monkeypatch):
+    """A real import whose body/source files are gone and completed work must not repeat."""
+    import corpus_recovery.campaign as campaign_module
+    from congress_shared.campaign import load_campaign
+    descriptor=inputs(tmp_path,requirement='requested_content')
+    request,writer,store=candidate_request(tmp_path)
+    operation=tmp_path/'operation'
+    result=import_candidate(descriptor,request,output=operation,engine=engine(),writer=writer,store=store)
+    for name in ('body.html','target.json','candidate.json'):
+        (tmp_path/name).unlink()
+    Path(json.loads(request.read_text())['receipt']['path']).unlink()
+    def unexpected(*args,**kwargs):
+        raise AssertionError('Acknowledgement validation repeated body/source work or raw writes')
+    for name in ('identity_source','qualify','decide','_member','import_retained','write_records'):
+        monkeypatch.setattr(campaign_module,name,unexpected)
+    return descriptor,load_campaign(descriptor),request,operation,result
+
+
+@pytest.mark.parametrize('field,value', [
+    ('receipt_key','receipts/documents/2026-10-31/another-operation.jsonl.gz'),
+    ('provenance_key','provenance/recoveries/another-decision.jsonl'),
+    ('kind','requested_content_in_official_report'),
+    ('identity_note','A different valid explanation.'),
+    ('decided_by','another-reviewer'),
+    ('decided_at','2026-10-31T13:00:00Z'),
+    ('supersedes','prior-decision'),
+    ('recovered_filename','alternate.pdf'),
+])
+def test_changed_acknowledgement_keys_and_valid_decision_fields_refuse_both_consumers(acknowledged_operation,field,value):
+    from congress_api.retention.provenance import validate_provenance
+    from corpus_recovery.progress import _operation
+    descriptor,campaign,request,operation,result=acknowledged_operation
+    if field in {'receipt_key','provenance_key'}:
+        result[field]=value
+    else:
+        result['decision'][field]=value
+        # These are valid in-domain values; schema/type checks alone cannot detect the fault.
+        validate_provenance('recoveries',result['decision'])
+    (operation/'result.json').write_text(json.dumps(result))
+    with pytest.raises(ValueError):
+        import_candidate(descriptor,request,output=operation,engine=None,writer=None,store=None)
+    with pytest.raises(ValueError):
+        _operation(operation,campaign)
+
+
+@pytest.mark.parametrize('changed', ['receipt-key','receipt-sha','receipt-relationship','receipt-run','request'])
+def test_changed_retained_acknowledgement_metadata_refuses_both_consumers(acknowledged_operation,changed):
+    import gzip
+    from corpus_recovery.progress import _operation
+    descriptor,campaign,request,operation,result=acknowledged_operation
+    frozen=operation/'receipts'/result['decision']['id']
+    metadata=json.loads((frozen/'receipt.json').read_text())
+    if changed=='receipt-key':
+        metadata['key']='receipts/documents/2026-10-31/different.jsonl.gz'
+    elif changed=='receipt-sha':
+        metadata['sha256']='f'*64
+    elif changed=='request':
+        value=json.loads((operation/'request.json').read_text());value['decided_by']='different-reviewer'
+        (operation/'request.json').write_text(json.dumps(value))
+    else:
+        receipt=json.loads(gzip.decompress((frozen/'receipt.gz').read_bytes()))
+        if changed=='receipt-relationship':
+            receipt['recovery_evidence']['acquisition']['prior_access_category']='requested_content_in_official_report'
+        else:
+            receipt['run_id']='different-run'
+        raw=gzip.compress(json.dumps(receipt).encode(),mtime=0)
+        (frozen/'receipt.gz').write_bytes(raw)
+        metadata['sha256']=sha256(raw).hexdigest()
+    (frozen/'receipt.json').write_text(json.dumps(metadata))
+    with pytest.raises(ValueError):
+        import_candidate(descriptor,request,output=operation,engine=None,writer=None,store=None)
+    # An explicit original request must not hide corruption in an existing snapshot.
+    with pytest.raises(ValueError):
+        _operation(operation,campaign,{file_pin(request)['sha256']:request})
+
+
+@pytest.mark.parametrize('artifact', ['binding.json','result.json'])
+def test_duplicate_operation_fields_refuse_both_consumers(acknowledged_operation,artifact):
+    from corpus_recovery.progress import _operation
+    descriptor,campaign,request,operation,result=acknowledged_operation
+    path=operation/artifact
+    raw=path.read_text()
+    # A conflicting first value followed by the original valid one must not be
+    # accepted by a last-value-wins decoder in either metadata consumer.
+    key='policy' if artifact=='binding.json' else 'receipt_key'
+    path.write_text('{'+json.dumps(key)+':"wrong-first-value",'+raw[1:])
+    with pytest.raises(ValueError):
+        import_candidate(descriptor,request,output=operation,engine=None,writer=None,store=None)
+    with pytest.raises(ValueError,match='Duplicate evidence field'):
+        _operation(operation,campaign)
+
+
+def test_legacy_acknowledgement_can_be_reported_with_exact_original_request_without_body_reads(acknowledged_operation):
+    from corpus_recovery.progress import _operation,report_campaign
+    descriptor,campaign,request,operation,result=acknowledged_operation
+    (operation/'request.json').unlink()
+    with pytest.raises(ValueError,match='needs its original request'):
+        _operation(operation,campaign)
+    report=report_campaign(descriptor,output=operation.parent/'legacy-progress',engine=engine(),
+                           operation_dirs=[operation],request_paths=[request])
+    assert report['import_counts']['imports'][0]['acknowledged_import_operations']==1
+    assert not (operation/'request.json').exists(), 'Reporting must remain read-only on original operations'
+    assert import_candidate(descriptor,request,output=operation,engine=None,writer=None,store=None)==result
+    assert (operation/'request.json').read_bytes()==request.read_bytes()
+
+
+def test_request_snapshot_preserves_compressed_request_digest_and_supports_body_free_reporting(tmp_path):
+    import gzip
+    from congress_shared.campaign import load_campaign
+    from corpus_recovery.progress import _operation
+    descriptor=inputs(tmp_path);request,writer,store=candidate_request(tmp_path)
+    compressed=tmp_path/'compressed-request.json.gz'
+    compressed.write_bytes(gzip.compress(request.read_bytes(),mtime=0))
+    operation=tmp_path/'operation'
+    result=import_candidate(descriptor,compressed,output=operation,engine=engine(),writer=writer,store=store)
+    assert (operation/'request.json.gz').read_bytes()==compressed.read_bytes()
+    compressed.unlink()
+    for name in ('body.html','target.json','candidate.json'):
+        (tmp_path/name).unlink()
+    row,pins=_operation(operation,load_campaign(descriptor))
+    assert row['receipt_key']==result['receipt_key'] and row['provenance_key']==result['provenance_key']
+    assert any(p['path'].endswith('request.json.gz') for p in pins)
+
+
+@pytest.mark.parametrize('basis',['unreviewed_guess',None,{}])
+def test_unsupported_match_basis_refuses_before_operation_or_raw_write(tmp_path,basis):
+    descriptor=inputs(tmp_path);request,writer,store=candidate_request(tmp_path)
+    value=json.loads(request.read_text());value['match_basis']=basis;request.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='Unsupported campaign match basis'):
+        import_candidate(descriptor,request,output=tmp_path/'operation',engine=engine(),writer=writer,store=store)
+    assert not (tmp_path/'operation').exists() and not (tmp_path/'raw/provenance').exists()
+    assert len(list((tmp_path/'raw/receipts').rglob('*.gz')))==1
 
 
 def test_counterpart_cannot_satisfy_historical_requirement(tmp_path):
@@ -239,3 +422,107 @@ def test_duplicate_metadata_identifier_is_ambiguous(tmp_path):
     value=json.loads(request.read_text());value['target']['source']=pinned(source);request.write_text(json.dumps(value))
     with pytest.raises(ValueError,match='Duplicate evidence field'):
         import_candidate(descriptor,request,output=tmp_path/'operation',engine=engine(),writer=writer,store=store)
+
+
+def final_campaign(descriptor, state_dir, *, decision_id='decision-1', targets_path=None):
+    """A retained version-2 state control; production state is the model owner's output."""
+    from congress_api.models.archive_profile import build_capture_profile
+    state_dir.mkdir()
+    state = state_dir / 'state.parquet'
+    requirements = descriptor.parent / 'plan/recovery-requirements.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(requested_url=TARGET, capture_disposition='satisfied',
+        capture_decision_id=decision_id)]), state)
+    profile = state_dir / 'profile.json'
+    profile.write_text(json.dumps(build_capture_profile(engine_revision=engine().source_revision,
+        url_normalized_sql='SELECT 1', url_keys_sql='SELECT 1',
+        url_rules=[dict(id='rule',kind='strip',host_pattern=None,pattern='#.*$',replacement=None,decoder=None)],
+        recovery_policy=dict(acceptance_policy='recovery-identity-v1',requirements_sha256=file_pin(requirements)['sha256']))))
+    value = json.loads(descriptor.read_text())
+    value['tables'].update(state=pinned(state), state_profile=pinned(profile), state_requirements=pinned(requirements))
+    if targets_path:
+        value['tables']['targets'] = pinned(targets_path)
+    out = state_dir / 'campaign.json'
+    out.write_text(json.dumps(value))
+    return out
+
+
+def test_progress_keeps_execution_binding_final_state_and_publication_units_separate(tmp_path):
+    from corpus_recovery.pipeline import import_accepted_candidates, resume_recovery_campaign
+    from corpus_recovery.progress import report_campaign
+    descriptor = inputs(tmp_path)
+    request, writer, store = candidate_request(tmp_path)
+    original = descriptor.read_bytes()
+    result = import_accepted_candidates(descriptor, [request], output_dir=tmp_path / 'operations',
+        engine=engine(), writer=writer, store=store)[0]
+    [operation] = (tmp_path / 'operations').glob('import-*')
+    initial = report_campaign(descriptor, output=tmp_path / 'initial-progress', engine=engine(),
+                              operation_dirs=[operation])
+    assert initial['initial_counts']['dispositions'] == [{'disposition':'retained_candidate_pending','targets':1}]
+    assert initial['final_counts'] is None and initial['publication_counts']['newly_verified_semantic_documents'] is None
+    final = final_campaign(descriptor, tmp_path / 'updated-state', decision_id=result['decision']['id'])
+    comparison = tmp_path / 'comparison.json'
+    comparison.write_text(json.dumps(dict(base_release='base-fixture', candidate_release='candidate-fixture',
+        ok=True, inputs=[dict(path=str(descriptor), **file_pin(descriptor))])))
+    report = report_campaign(descriptor, output=tmp_path / 'progress', engine=engine(),
+        operation_dirs=[operation, operation], final_descriptor=final, release_comparison=comparison)
+    assert report['initial_counts'] == initial['initial_counts']
+    assert report['final_counts']['dispositions'] == [{'disposition':'accepted_recovery','targets':1}]
+    assert report['import_counts']['imports'] == [dict(acknowledged_import_operations=1, accepted_targets=1,
+        distinct_qualified_imported_bodies=1, acknowledged_receipt_keys=1, acknowledged_provenance_keys=1)]
+    assert report['import_counts']['relationships'] == [dict(accepted_target_body_relationships=1)]
+    [row] = pq.read_table(report['target_progress']['path']).to_pylist()
+    assert row['target_url'] == TARGET and row['candidate_url'] == CANDIDATE
+    assert row['initial_disposition'] == 'retained_candidate_pending' and row['final_disposition'] == 'accepted_recovery'
+    assert row['receipt_key'] == result['receipt_key'] and row['provenance_key'] == result['provenance_key']
+    assert report['release_comparison']['candidate_release'] == 'candidate-fixture'
+    assert all(v is None for v in report['publication_counts'].values())
+    before = sorted(p.relative_to(tmp_path / 'raw') for p in (tmp_path / 'raw').rglob('*') if p.is_file())
+    again = resume_recovery_campaign(descriptor, engine=engine(), import_requests=[request], writer=writer, store=store)
+    assert again['imports'] == [result] and again['counts_phase'] == 'initial'
+    assert sorted(p.relative_to(tmp_path / 'raw') for p in (tmp_path / 'raw').rglob('*') if p.is_file()) == before
+    assert descriptor.read_bytes() == original
+    with pytest.raises(ValueError, match='inputs changed'):
+        import_candidate(final, request, output=operation, engine=engine(), writer=writer, store=store)
+
+
+def test_progress_preserves_rejected_and_interrupted_operations(tmp_path):
+    from congress_shared.custody import canonical_json_bytes
+    from corpus_recovery.progress import report_campaign
+    descriptor = inputs(tmp_path, extra_targets=['https://example.gov/unattempted.pdf'])
+    request, writer, store = candidate_request(tmp_path, candidate_changes={'document':'OTHER'})
+    operation = tmp_path / 'rejected'
+    result = import_candidate(descriptor, request, output=operation, engine=engine(), writer=writer, store=store)
+    interrupted = tmp_path / 'interrupted'; interrupted.mkdir()
+    binding = json.loads((operation / 'binding.json').read_text())
+    binding['request_sha256'] = 'f' * 64
+    binding['identity_note_policy'] = 'authored-or-null-v1'
+    (interrupted / 'binding.json').write_bytes(canonical_json_bytes(binding))
+    report = report_campaign(descriptor, output=tmp_path / 'progress', engine=engine(), operation_dirs=[operation, interrupted])
+    assert result['status'] == 'rejected'
+    assert report['import_counts']['operations'] == [{'status':'incomplete','operations':1},{'status':'rejected','operations':1}]
+    assert report['import_counts']['imports'][0]['accepted_targets'] == 0
+    assert report['import_counts']['invariants'][0]['unmapped_operations'] == 1
+    rows = pq.read_table(report['target_progress']['path']).to_pylist()
+    assert len(rows) == 2 and rows[1]['import_status'] is None
+    assert report['unmapped_operations'][0]['status'] == 'incomplete'
+    result.update(status='accepted', decision={}, receipt_key='fake', provenance_key='fake')
+    (operation / 'result.json').write_text(json.dumps(result))
+    with pytest.raises(ValueError, match='accepted import acknowledgement'):
+        report_campaign(descriptor, output=tmp_path / 'corrupt-progress', engine=engine(), operation_dirs=[operation])
+
+
+def test_progress_refuses_changed_final_membership_and_unbound_comparison(tmp_path):
+    from corpus_recovery.progress import report_campaign
+    descriptor = inputs(tmp_path)
+    report_campaign(descriptor, output=tmp_path / 'initial-progress', engine=engine())
+    other = tmp_path / 'other.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(target_url='https://example.gov/other')]), other)
+    changed = final_campaign(descriptor, tmp_path / 'changed', targets_path=other)
+    with pytest.raises(ValueError, match='preserve original membership'):
+        report_campaign(descriptor, output=tmp_path / 'bad', engine=engine(), final_descriptor=changed)
+    final = final_campaign(descriptor, tmp_path / 'final')
+    comparison = tmp_path / 'comparison.json'
+    comparison.write_text(json.dumps(dict(base_release='base', candidate_release='candidate', ok=True, inputs=[])))
+    with pytest.raises(ValueError, match='pin the execution descriptor'):
+        report_campaign(descriptor, output=tmp_path / 'bad-comparison', engine=engine(),
+                        final_descriptor=final, release_comparison=comparison)
