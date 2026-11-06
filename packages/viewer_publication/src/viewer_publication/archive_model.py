@@ -25,7 +25,7 @@ REGISTRIES={
     'recovery_kinds':dict(category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8'),
     'capture_scope':dict(family='Utf8',patterns=list_of('Utf8'),exclusions=list_of('Utf8')),
     'meeting_sources':dict(id='Utf8',kind='Utf8',source='Utf8',priority='Int64'),
-    'meeting_status_conflicts':dict(event_id='Int64',publisher_status='Utf8',evidence='Utf8'),
+    'meeting_status_conflicts':dict(event_id='Int64',held_date='Utf8',publisher_status='Utf8',evidence='Utf8'),
     'bill_package_evidence':dict(id='Utf8',package_id='Utf8',pdf_sha='Utf8',source_urls=list_of('Utf8'),
         package_disposition='Utf8',rejected_package_ids=list_of('Utf8'),excluded_measure_keys=list_of('Utf8'),
         supported_measure_keys=list_of('Utf8'),evidence='Utf8'),
@@ -795,7 +795,7 @@ def selected_record_step(table,record_input,*,root=ROOT):
 
 def meeting_steps(*,root=ROOT,has_document_references=True):
     """Select once, merge once, then resolve: CTEs are inlined per reader, so these must be steps."""
-    steps=_sql_steps(['meeting-records-ranked','meeting-records-current','meeting-records-merged'],root=root)
+    steps=_sql_steps(['meeting-records-observed','meeting-records-ranked','meeting-records-current','meeting-records-merged'],root=root)
     if not has_document_references:
         steps[0]['sql']=steps[0]['sql'].replace("m['document_references'] AS document_references",
             NULL_MEETING_DOCUMENT_REFERENCES + " AS document_references")

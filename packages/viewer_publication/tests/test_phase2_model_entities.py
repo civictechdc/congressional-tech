@@ -1678,8 +1678,8 @@ def _resolved_meetings(tmp_path, records, pins=(), conflicts=()):
         json_input(tmp_path, 'parser_versions', list(pins), parser='Utf8', version='Utf8'),
         json_input(tmp_path, 'meeting_sources', [dict(kind='meeting', source='house_xml', priority=1), dict(kind='meeting', source='congress_gov', priority=2)], kind='Utf8', source='Utf8', priority='Int64'),
         json_input(tmp_path, 'recording_sources', [], kind='Utf8', pattern='Utf8', key_template='Utf8'),
-        json_input(tmp_path, 'meeting_status_conflicts', [dict(event_id=e, publisher_status='Canceled', evidence='read') for e in conflicts],
-            event_id='Int64', publisher_status='Utf8', evidence='Utf8'),
+        json_input(tmp_path, 'meeting_status_conflicts', [dict(event_id=e, held_date='2019-11-13', publisher_status='Canceled', evidence='read') for e in conflicts],
+            event_id='Int64', held_date='Utf8', publisher_status='Utf8', evidence='Utf8'),
         json_input(tmp_path, 'committee_codes', [], id='Utf8', code='Utf8', system_code='Utf8', chamber='Utf8'),
         json_input(tmp_path, 'spicy_bill_committee_activities', [], **SPICY_SCHEMAS['spicy_bill_committee_activities']),
         json_input(tmp_path, 'spicy_congress_bills', [], **SPICY_SCHEMAS['spicy_congress_bills']),
@@ -1716,9 +1716,10 @@ def test_congress_gov_leads_and_house_fills_only_what_it_lacks(tmp_path):
     assert str(rows[0]['congress_gov_updated']).startswith('2019-11-11T00:00:00')
 
 
-@pytest.mark.parametrize('conflicts,expected', [((), True), ((100,), False)])
-def test_a_curated_status_conflict_keeps_the_publisher_status_but_the_meeting_sat(tmp_path, conflicts, expected):
-    rows = _resolved_meetings(tmp_path, [_record('22', 'congress_gov', status='Canceled', not_held=True, title='Water resources development acts review')], conflicts=conflicts)
+@pytest.mark.parametrize('conflicts,day,expected', [((), '2019-11-13', True), ((100,), '2019-11-13', False),
+    ((100,), '2019-11-14', True), ((100,), None, True)])
+def test_a_curated_status_conflict_keeps_the_publisher_status_but_the_meeting_sat(tmp_path, conflicts, day, expected):
+    rows = _resolved_meetings(tmp_path, [_record('22', 'congress_gov', meeting_date=day, status='Canceled', not_held=True, title='Water resources development acts review')], conflicts=conflicts)
     assert (rows[0]['status'], rows[0]['not_held']) == ('Canceled', expected)
 
 
