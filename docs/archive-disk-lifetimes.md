@@ -63,6 +63,51 @@ Group both roots together only when they are on the same filesystem. Requalify
 the budget when the revision, workload bounds, runtime, layout or cache conditions change.
 Do not convert a sampled shared-volume drawdown into an isolated allocation claim.
 
+## Qualifying a new revision from retained measurements
+
+Exact-revision admission is deliberate: the scheduled wrapper selects current
+`origin/main`, and a budget for another revision refuses until an operator
+qualifies the selected revision. A ticket or documentation commit can therefore
+require operator review. **Requalification does not automatically mean another
+whole-operation measurement.** Reuse a retained measurement only when its resource
+guarantees still apply; a metadata-only label is not that evidence.
+
+The release owner can qualify retained measurements for a new revision as follows:
+
+1. Preserve the original measurement report and budget record with their content
+   identities. Record the measured revision, selected revision, reviewed Git delta,
+   operation, reviewer and decision in a durable qualification record under the
+   main checkout's archive-release directory.
+2. Check the actual changed files and operation's inputs. Establish that
+   resource-relevant code and dependencies, native binary and limits, runtime
+   configuration, workload bounds, writing roots/layout and cache conditions
+   remain within the measured case. Documentation can be an input to an operation;
+   do not assume that every change under `docs/` or every merge is irrelevant.
+3. Match the operation the wrapper will actually run. Its candidate-commit guard
+   currently chooses fresh work after any selected Git revision mismatch, including a
+   ticket-only commit. Carrying a disk measurement forward does not authorize
+   cross-revision candidate reuse or justify applying a smaller retry allowance
+   to fresh work. Preserve that distinction and the publisher's continuation checks.
+4. If equivalence is supported, prepare a new exact-revision budget record. Keep
+   the original measured additional peaks and headroom; have `measurement` identify
+   the original report and the new qualification record. Have `workload` describe
+   the qualified population/bounds and conditions. This is an explicit reviewed
+   qualification, not an automatic revision edit. If equivalence is unsupported,
+   retain refusal and qualify the changed operation with a bounded measurement.
+5. Have the release owner supply that reviewed budget through the existing
+   `ARCHIVE_DISK_BUDGETS` deployment path, then use `--check-disk` before launch.
+   Recheck every writing filesystem, including `python_temp`; current free space
+   must still cover additional peak plus headroom. Keep separate setup, fresh,
+   retry and backfill records. A prior qualification never reserves current space.
+
+No command automatically carries a budget forward, excludes ticket/docs paths or
+restamps it from a success flag. Unattended execution remains refused until the
+selected revision has its own qualified record. The release owner can use this
+procedure after a verified irrelevant delta without repeating expensive work.
+No production qualification decision or carried-forward budget is supplied here.
+
+## Retiring native temporary files
+
 After a publish/backfill process group exits, the Mac wrapper retains its nightly
 lock while retiring only `native` children explicitly declared as job scratch.
 It reads bounded job/checkpoint metadata, follows model-attempt stages and refuses
