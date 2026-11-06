@@ -65,6 +65,13 @@ policy-bound version 2 target adds three checks: two required-field checks and
 selection remain unbound. This handoff is preparation for the parent-owned
 whole-job API, not an executable or qualified candidate.
 
+Model requirements now require an explicit `refresh_policy`. The former default
+for an omitted field has been removed; the maintained campaign writer already
+emits the field. Six native recovery-policy checks passed, covering valid
+eligibility and missing, null or invalid policy refusal. The source change after
+the preparation handoff is recorded in `checks-recovery-policy-current-01/`;
+final admission must capture the current source.
+
 Earlier historical-reader tests remain evidence for the preparatory refactor.
 Their scope does not establish acceptance of the mandatory catalog format.
 

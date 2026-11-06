@@ -125,3 +125,19 @@ whole-job recovery, acquisition adoption, external publication or cutover. The
 existing producer's schema owner and controller must retire atomically with the
 parent-owned whole-job API. The optional catalog finalizer still accepts no
 catalog on the incumbent path; it is not yet the mandatory producer boundary.
+
+## Explicit model recovery requirements — 2026-11-06
+
+Independent native-boundary review found no code blocker in removal of the
+missing-`refresh_policy` fallback. The maintained campaign writer already emits
+that field. Its authoring defaults remain separate from the model's required
+serialized fields. The reviewer requested that distinction in documentation;
+the recovery architecture and package README now state it explicitly.
+
+`checks-recovery-policy-current-01/junit.xml` records six native passes, zero
+failures or skips, in 68.991 seconds. The checks preserve explicit policy and
+HTTP-history behavior, refuse null/invalid values, and require a native
+missing-field failure without a final manifest. The watchdog recorded 0.496 GiB
+peak RSS. This is one focused production-offline module, not a full lane or
+replacement-native result. `source-delta.json` records the source-identity change
+after the earlier whole-job preparation handoff.

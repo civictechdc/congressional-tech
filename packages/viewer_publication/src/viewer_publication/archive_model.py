@@ -926,13 +926,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     if recovery_requirements is not None:
         recovery_policy=dict(acceptance_policy=recovery_requirements['acceptance_policy'],
                              requirements_sha256=recovery_requirements['sha256'])
-        # Releases created before refresh policy was explicit conservatively keep
-        # live refresh eligible. The exact original requirements remain pinned.
-        import pyarrow.parquet as pq
-        fields=pq.read_schema(recovery_requirements['path']).names
         inputs.append(dict(name='recovery_requirements_input',kind='parquet',path=recovery_requirements['path']))
-        refresh='refresh_policy' if 'refresh_policy' in fields else "cast('refresh_live' AS VARCHAR) AS refresh_policy"
-        prelude.append(dict(name='recovery_requirements',sql='SELECT original_url,target_requirement,acceptance_policy,'+refresh+' FROM recovery_requirements_input',materialize=True))
+        prelude.append(dict(name='recovery_requirements',sql='SELECT original_url,target_requirement,acceptance_policy,refresh_policy FROM recovery_requirements_input',materialize=True))
     def _record_table_sql(table_name,value,payload_col):
         parquet_path=value.get('path') if isinstance(value,dict) and value.get('kind')=='parquet' else (value if isinstance(value,(str,Path)) else None)
         sha_expr="lower(encode(record_sha,'hex'))"

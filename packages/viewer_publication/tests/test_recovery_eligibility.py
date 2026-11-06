@@ -1,6 +1,5 @@
 """Native eligibility retains fetch history and requires pinned qualified decisions."""
 import os
-from pathlib import Path
 
 import pytest
 
@@ -136,16 +135,18 @@ def test_full_model_refuses_invalid_refresh_policy(tmp_path,refresh_policy):
         execute(validate_spec(spec,base=tmp_path))
 
 
-def test_legacy_requirements_conservatively_keep_live_refresh(tmp_path):
+def test_full_model_refuses_missing_refresh_policy(tmp_path):
+    import pyarrow as pa
     import pyarrow.parquet as pq
-    from test_recovery_publication_journey import retained_model
+    from archive_job_fixture import real_model_spec
     from congress_api.retention.provenance import file_pin
+    from docspec_client.models import DocSpecFailure
     from viewer_publication.archive_model_job import validate_spec,execute
-    spec,_,_,_,urls=retained_model(tmp_path)
-    path=Path(spec['recovery_requirements']['path'])
-    table=pq.read_table(path).drop(['refresh_policy']);pq.write_table(table,path)
-    spec['recovery_requirements'].update(file_pin(path))
-    execute(validate_spec(spec,base=tmp_path))
-    states={row['requested_url']:row for row in pq.read_table(Path(spec['output'])/'url_state.parquet').to_pylist()}
-    assert states[urls['exact']]['capture_disposition']=='eligible'
-    assert states[urls['live']]['capture_disposition']=='eligible'
+    spec,_,_=real_model_spec(tmp_path)
+    path=tmp_path/'requirements.parquet'
+    pq.write_table(pa.table(dict(original_url=['https://fixture.test/report.html'],
+        target_requirement=['historical_exact'],acceptance_policy=['recovery-identity-v1'])),path)
+    spec['recovery_requirements']=dict(path=str(path),**file_pin(path),acceptance_policy='recovery-identity-v1')
+    with pytest.raises(DocSpecFailure,match='refresh_policy'):
+        execute(validate_spec(spec,base=tmp_path))
+    assert not (tmp_path/'release/manifest.json').exists()

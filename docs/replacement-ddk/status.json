@@ -48,7 +48,8 @@
     "Committee current-format cleanup committed as 1758b519; 34 Python, 23 browser and generated-type checks passed",
     "Greenfield current-field cleanup passed 41 browser unit/presentation cases, two final unknown-label cases, and five focused root cases; independent reader review closed all findings",
     "All eight nonarchive workflow-definition cases passed against qualified dev4; execution adoption remains unqualified",
-    "Whole-job preparation handoff preserves the current 51-input, 251-step, 40-export, 23-report request and 222 blocking check names without opening input data; version 2 target adds three checks"
+    "Whole-job preparation handoff preserves the current 51-input, 251-step, 40-export, 23-report request and 222 blocking check names without opening input data; version 2 target adds three checks",
+    "Removed model inference of refresh_live from requirements missing refresh_policy; six real native checks passed, and independent review confirmed current writer and policy semantics"
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -299,6 +300,18 @@
       "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-consumer-current-05",
       "log": "workflows.log",
       "junit": "workflows.junit.xml"
+    },
+    "explicitRecoveryPolicy": {
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Production-offline partial: one of 501 files; actual native explicit-policy eligibility, null/invalid policy refusal and missing current-field refusal. No replacement-native or publication claim.",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-recovery-policy-current-01",
+      "log": "test.log",
+      "junit": "junit.xml",
+      "watchdog": "watchdog.json",
+      "peakRSSGiB": 0.496,
+      "review": "Independent native-boundary review found no code blocker and confirmed the maintained requirements writer emits the field. Documentation now distinguishes campaign authoring defaults from required model fields."
     }
   },
   "commits": {
@@ -306,7 +319,8 @@
       "706de09e",
       "f054f0a5",
       "261b8f56",
-      "1758b519"
+      "1758b519",
+      "e75f8b9e"
     ],
     "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
     "checkpoint": "This containing checkpoint records the standard catalog and consumer migration; the shared whole-job producer and full acceptance remain pending."

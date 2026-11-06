@@ -80,7 +80,9 @@ Direct-use and exclusion assertions require evidence IDs from the pinned inputs.
 
 The planner writes `url-dispositions.parquet`, `recovery-requirements.parquet`,
 `counts.json`, native queries, and `input-manifest.json`. All primary counts derive
-from the ledger. It cannot infer a missing production baseline. To reuse published
+from the ledger. The generated requirements always include `refresh_policy`;
+the model refuses a supplied requirements file that omits it. The planner cannot
+infer a missing production baseline. To reuse published
 eligibility, pin `state`, `state_profile`, and `state_requirements`; the profile
 must bind those requirements and the current acceptance policy. Satisfaction for
 a different target requirement does not transfer to the new campaign.
