@@ -169,6 +169,15 @@ test('document presentation resolves generic scrape titles, missing filenames, f
   );
 });
 
+test('recovery explanations survive legacy boilerplate cleanup',()=>{
+  const legacy='Reconciled from pinned accepted mappings '+'7'.repeat(64);
+  const sentinel=legacy+'; receipt categories preserved';
+  for(const note of [null,undefined,'',legacy,sentinel]) assert.equal(cleanIdentityNote(note),null);
+  for(const note of ['The hearing contains the requested statement.',
+    sentinel+'; reviewed against the committee index',
+    legacy+'; the committee index identifies the statement.']) assert.equal(cleanIdentityNote(note),note);
+});
+
 test('historical committee names, nominations, durations, and external URLs resolve accurately',()=>{
   const catalog=[
     {
