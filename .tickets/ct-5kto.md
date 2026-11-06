@@ -81,3 +81,11 @@ Owner decision 2026-11-04: retire the old Explorer route and staging as soon as 
 **2026-11-05T17:11:15Z**
 
 Consolidated ownership from ct-8kl2/ct-98sm: retain completed G01/G02 and later deletion evidence, then retire only remaining old writers, pointer consumption, scratch/call paths and staging after native/site/MCP/live acceptance. Preserve source data, evidence and rollback references; archived tracker closures are not a new live-switch or retirement proof. ct-a3le's diagnostic research import remains standalone and linked, not an added Phase 2 exit gate.
+
+**2026-11-06T18:43:09Z**
+
+All independent retirement preparation is complete at b343b1c6e58be97bd7605a2d8979cf5d54af07b8; the reviewed branch is unchanged and clean. The isolated patch removes the old writer and Pages staging, shows removal notices for old UUID bookmarks, and preserves event-ID forwarding, YouTube coverage, historical data and rollback references. G01–G18 remain credited as complete. Validation: 23 focused workflow tests, 108 reader tests, the static build and the complete Pages browser helper passed, including saved-copy isolation, memory and historical witness-link checks. The earlier broader run's unchanged capture-fixture failure remains documented for combined regression. Evidence: .cache/archive-release/implementation/reviewed-non-news-20261106/ct-5kto/{HANDOFF.md,completion-audit.json,completion-pages.log}.
+
+Keep open: the root coordinator owns integration and combined regression; ct-m104 owns the final native candidate and deployment; cef-96wc owns accepted live cutover, paired rollback references and post-retirement readback with the release owner. Local preparation is not merged or live retirement.
+
+Independent review: REQUEST CHANGES; current owner state: repair in progress. These findings remain open until repaired and rechecked. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-5kto/REVIEW.md).

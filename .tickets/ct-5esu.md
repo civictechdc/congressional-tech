@@ -60,3 +60,11 @@ Ticket remains in progress. Remaining acceptance: reconcile the focused archive_
 **2026-11-06T17:20:49Z**
 
 Final refinement: collision validation reuses the existing exact-key check, groups only canonical alias strings, and rejects any alias/exact key intersection. Independent consultation confirmed the zero-collision guarantee, including collisions on the same document row. The refined native index is byte-identical to the qualified candidate (ac6ec9efb947e23e209404b9fc1d88e83db430ae1518b16c81c066f111d2ae80), so retained reader receipts remain valid. The focused three-file run passes 32 tests; strengthened planted tests isolate alias-only versus namespace collisions and verify that only the intended diagnostic fires. This avoids grouping the full exact URL text a second time. Full-lane, integrated recovery/good-fetch alias and deployed acceptance remain outstanding.
+
+**2026-11-06T18:43:10Z**
+
+Local implementation is complete in 8f8ea78602fff18c0bc73c5c7a3165a640b163c3: exact lookup results remain authoritative, and serialization fallback preserves every admitted edition. The retained candidate resolves all 1,005 percent-case and 21 literal-space misses while preserving 611,729 exact index pairs; index size increases 3.03%. Validation passed 32 focused Python tests, 32 Node tests and 16 additional representative SQL checks bound to stable document links/body hashes. The latter are local SQL checks, not live MCP acceptance. Evidence and release-owner inputs are under .cache/archive-release/implementation/reviewed-non-news-20261106/ct-5esu/. The earlier 17-versus-23 reader-fixture issue now has a qualified ct-m104 repair (fixture-reader-02: four reader tests passed), so it is no longer an unresolved independent task.
+
+Remaining: original root 01a1aa05-d4d2-7ca0-b541-a8a52e6c794f owns the consolidated source/main rollup; ct-m104 (01a1b1b0-7f7b-7b50-8b00-6f5a05eed772) owns the final selected index, including recovery/good-fetch aliases, and deployed site/MCP acceptance against that same index. Keep in_progress until those release criteria pass; local completion is not live delivery. The reviewed source commit is unchanged.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

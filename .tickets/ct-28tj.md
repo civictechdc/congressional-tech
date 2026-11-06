@@ -18,3 +18,17 @@ Use the existing release-bound document references, PDF page and offset results 
 - Reuse existing source and body identities across text retrieval and search results. Define how a reference resolves against its pinned release and reports an unavailable or different source.
 - Round-trip one reference of each supported kind to the original evidence. Reuse the passage check in [ct-082q](ct-082q.md) when the locator is unchanged. Check a changed body, an ambiguous witness match, and a missing source so references retain their original meaning.
 
+
+## Notes
+
+**2026-11-06T18:43:10Z**
+
+2026-11-06 owner update:
+
+Stable citations preserve release/body identity and exact PDF page, HTML passage/selected-block, and caption cue/timing locations, with explicit witness occurrence or ambiguous attribution. The app remains byte-identical to reviewed cffa18e0; retained validation is 191 passed (full app lane) plus independent round trips and eight wrong-value refusal plants. Independent work is complete: the normal stdio probe and report-bound plan builder are runnable, with shared-lock, identity and disk guards; six preparation checks and four final smoke/guard checks passed. Evidence: parallel-sessions/ct-28tj/RUN.md and independent-audit-final-20261106/checks.json under the durable mcp-research-20261106 root. No new application commit or live-delivery claim.
+
+Keep in_progress. HTML baseline/daily adoption is now locally qualified; the old blocker is stale. ct-m104 owns the still-unavailable final native candidate/shared selection and selected release. ct-082q and ct-4kuo must supply passed same-release HTML/PDF/caption reports before actual citation and final witness round trips can run. Corpus-search citations remain deferred with ct-m704.
+
+A fresh independent four-skill review is running under agent /root/ct_28tj_blind_review. Implementation preparation is complete; review findings and any required corrections remain pending. Keep closure_ready=false.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

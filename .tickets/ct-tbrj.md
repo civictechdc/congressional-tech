@@ -45,3 +45,13 @@ Local implementation adds meetings.congress_gov_detail_observation, qualified by
 Implementation branch codex/ct-tbrj-detail-observations-20261106; durable results and concrete comparator handoff: .cache/archive-release/implementation/reviewed-non-news-20261106/ct-tbrj/. Public fields and evidence meaning: docs/meeting-detail-observations.md and model/registries/release-schema.json.
 
 Ticket remains open: ct-r4rd/ss-ikn9 must pin and read actual committee_meetings_detail_reads evidence and compare observations against integrated final inputs. DDK/release owners must reconcile the small archive_model.py/archive_format.py edits and qualify final delivery. No main merge, push, full-corpus replay, new acquisition, shared import, deployment or publication occurred.
+
+**2026-11-06T18:43:10Z**
+
+Reviewed local implementation at 02526166 adds event-specific Congress.gov detail-read observations to meeting exports: qualified success, recorded failure, listing-only within selected evidence, and unknown. Each success binds the exact event route, receipt and response; retrieval time stays separate from publisher update time, and later failures preserve earlier success. All 38 selected checks passed across the relevant focused runs (partial lanes). An independently checked retained receipt/response for event 117688 confirms the binding; eight reused observations contain six successes and two 404 failures. Evidence and consumer fields: .cache/archive-release/implementation/reviewed-non-news-20261106/ct-tbrj/HANDOFF.md and COMPARATOR-HANDOFF.json. The reviewed commit is unchanged and the worktree is clean; no independent feature work remains. The pending House-only transition preserves the qualified Congress.gov proof versions.
+
+Keep open: the original root owns consolidated source integration; ct-r4rd/ss-ikn9 owns comparison against the actual pinned detail-attempt journal; ct-m104 owns final native qualification, deployment and selected-release readback. Local preparation does not establish delivered or live behavior.
+
+A new independent four-skill review found that HTTP 304 unchanged responses were incorrectly called failures. Follow-up 89851988 fixes the classification and clarifies unknown evidence; the regression failed before the change and all six focused observation/public-export checks passed afterward. The same independent reviewer is checking the final delta. Original 02526166 remains preserved. The source integrator must include the separate follow-up before final freeze; no ticket closure or live-delivery claim is made.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.
