@@ -334,7 +334,7 @@ def render_reference(schema):
         lines += [f'### `{r["id"]}`', '', f'`{source["table"]}.{", ".join(source["fields"])}` → {dest}. {r["meaning"]}', '',
             f'{r["cardinality"]}; match: `{r["match"]}`; nullable: {str(r["nullable"]).lower()}; resolution: `{r["resolution"]}`. Scope: {r["scope"]}.', '']
     lines += ['## Pinned upstream relations', '',
-        'Held upstream and never mirrored here. A release names a relation\u2019s generation and path only when it states that family\u2019s digest.', '',
+        'These are upstream source relations. A release names a relation\u2019s generation and path only when it states that family\u2019s digest. Locally published detail tables are listed above; a source pin alone does not make its rows locally queryable.', '',
         '| Relation | Family and table | Keys | Local joins | Row | Limits |', '| --- | --- | --- | --- | --- | --- |']
     for u in schema.get('upstream_relations', ()):
         joins = ', '.join(f'`{j["table"]}.{j["field"]}`' for j in u['joins']) or 'none'

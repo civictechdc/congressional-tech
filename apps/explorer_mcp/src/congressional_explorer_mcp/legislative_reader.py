@@ -31,6 +31,28 @@ class LegislativeReader:
             terms.append(f'{column}<CAST(? AS DATE)'); args.append(query.until)
         return terms
 
+    @staticmethod
+    def local_action_time(column):
+        """Parse only a supplied local clock value; preserve literal precision and unknown zones."""
+        return (f"CASE WHEN regexp_full_match({column},'[0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}}([.][0-9]{{1,6}})?') "
+                f'THEN try_cast({column} AS TIME) END')
+
+    def roll_call_bill_match(self, vote, bill_id):
+        """One association rule for bill lookups and activity filters; every match is existential."""
+        matches = [f'lower({vote}.bill_id)=lower({bill_id})']
+        if 'bill_references' in self.schemas.get('roll_call_votes', {}):
+            matches.append(f'EXISTS (SELECT 1 FROM unnest({vote}.bill_references) refs(r) WHERE lower(r.bill_id)=lower({bill_id}))')
+        elif 'bills' in self.schemas:
+            matches.append(f'EXISTS (SELECT 1 FROM bills linked,unnest(linked.floor_votes) f(vote) WHERE linked.bill_id={bill_id} AND vote.vote_id={vote}.vote_id)')
+        return '('+' OR '.join(matches)+')'
+
+    def activity_bill_match(self):
+        matches = ['b.bill_id=e.subject_id']
+        if 'roll_call_votes' in self.schemas:
+            matches.append("(e.source_table='roll_call_votes' AND EXISTS (SELECT 1 FROM roll_call_votes linked_vote "
+                'WHERE linked_vote.vote_id=e.event_key AND '+self.roll_call_bill_match('linked_vote','b.bill_id')+'))')
+        return '('+' OR '.join(matches)+')'
+
     def legislative_page(self, query, table, date_field, identity):
         query.window()
         coverage = self.research_coverage([table], query.since, query.until)
@@ -53,13 +75,7 @@ class LegislativeReader:
                 if key == 'bill_id': value = value.strip().lower()
                 if key == 'bioguide_id': value = value.strip().upper()
                 if key == 'bill_id' and table == 'roll_call_votes':
-                    # Keep direct upstream links; nested bill_action vote references remain in bills.floor_votes.
-                    if 'bill_references' in self.schemas[table]:
-                        terms.append('(lower(t.bill_id)=? OR EXISTS (SELECT 1 FROM unnest(t.bill_references) refs(r) WHERE lower(r.bill_id)=?))'); args.append(value)
-                    elif 'bills' in self.schemas:
-                        terms.append('(lower(t.bill_id)=? OR EXISTS (SELECT 1 FROM bills b,unnest(b.floor_votes) f(vote) WHERE b.bill_id=? AND vote.vote_id=t.vote_id))'); args.append(value)
-                    else:
-                        terms.append('lower(t.bill_id)=?')
+                    terms.append('EXISTS (SELECT 1 FROM (SELECT ? AS bill_id) subject WHERE '+self.roll_call_bill_match('t','subject.bill_id')+')')
                 else:
                     terms.append(f't.{key}=?')
                 args.append(value)
@@ -69,8 +85,12 @@ class LegislativeReader:
             else:
                 terms.append("CASE lower(t.chamber) WHEN 'h' THEN 'house' WHEN 's' THEN 'senate' ELSE lower(t.chamber) END=?")
             args.append(query.chamber)
-        result = self.page(query, 'SELECT t.* FROM '+source+(' WHERE '+' AND '.join(terms) if terms else ''), args,
-            order=date_column+' ASC NULLS LAST,'+','.join('t.'+key for key in identity))
+        order = date_column+' ASC NULLS LAST,'
+        if table == 'bill_actions': order += self.local_action_time('t.action_time')+' ASC NULLS LAST,'
+        order += ','.join('t.'+key for key in identity)
+        result = self.page(query, 'SELECT t.* FROM '+source+(' WHERE '+' AND '.join(terms) if terms else ''), args,order=order)
+        if table == 'bill_actions':
+            result['ordering'] = 'Calendar date, supplied local clock time ascending, then bill_id/action_index. Missing or unparseable clock values follow timed rows on the same date; their actual time remains unknown. No timezone is inferred.'
         result['coverage'] = coverage
         result['date_field'] = date_field
         return result
@@ -202,21 +222,23 @@ class LegislativeReader:
         if query.chamber: terms.append('e.chamber=?'); args.append(query.chamber)
         if committee:
             matches = []
-            if 'bills' in self.schemas: matches.append('EXISTS (SELECT 1 FROM bills b WHERE b.bill_id=e.subject_id AND list_contains(b.committees,?))'); args.append(committee)
+            if 'bills' in self.schemas: matches.append('EXISTS (SELECT 1 FROM bills b WHERE '+self.activity_bill_match()+' AND list_contains(b.committees,?))'); args.append(committee)
             if 'nominations' in self.schemas: matches.append('EXISTS (SELECT 1 FROM nominations n WHERE n.nomination_id=e.subject_id AND list_contains(n.committees,?))'); args.append(committee)
             if 'meetings' in self.schemas: matches.append("EXISTS (SELECT 1 FROM meetings m,unnest(m.committees) c(item) WHERE e.source_table='meetings' AND cast(m.event_id AS VARCHAR)=e.subject_id AND item.system_code=?)"); args.append(committee)
             terms.append('('+' OR '.join(matches)+')')
         if topic:
-            matches = ['EXISTS (SELECT 1 FROM bills b WHERE b.bill_id=e.subject_id AND list_contains(b.subjects,?))']; args.append(topic)
+            matches = ['EXISTS (SELECT 1 FROM bills b WHERE '+self.activity_bill_match()+' AND list_contains(b.subjects,?))']; args.append(topic)
             if 'meetings' in self.schemas:
                 matches.append("EXISTS (SELECT 1 FROM meetings m,bills b WHERE e.source_table='meetings' AND cast(m.event_id AS VARCHAR)=e.subject_id AND list_contains(m.subject_keys,b.bill_id) AND list_contains(b.subjects,?))"); args.append(topic)
             terms.append('('+' OR '.join(matches)+')')
         result = self.page(query, 'SELECT e.* FROM ('+' UNION ALL '.join(unions)+') e(event_type,event_key,event_date,source_date,source_time,date_precision,subject_id,description,chamber,source_table,source_key) WHERE '+' AND '.join(terms), args,
-            order='e.event_date,e.event_type,e.event_key')
+            order='e.event_date ASC NULLS LAST,'+self.local_action_time('e.source_time')+
+                " ASC NULLS LAST,e.event_type,e.subject_id ASC NULLS LAST,try_cast(json_extract_string(e.source_key,'$.action_index') AS BIGINT) ASC NULLS LAST,e.event_key")
         for row in result['rows']:
             row['reference'] = dict(release_id=self.release_id,table=row.pop('source_table'),key=row.pop('source_key'))
         coverage['limits'] += ['Meeting dates describe schedules, not proof of a sitting. Use the meeting outcome fields.',
             'Committee filters match exact published association codes, without automatically adding subcommittees.',
-            'Topic filters use published bill subjects and meeting subject_keys, never title keywords. Events outside local bill profiles have unavailable committee/topic associations.']
+            'Topic filters use published bill subjects and meeting subject_keys, never title keywords. Roll calls follow their direct bill_id and supported bill references; one vote remains one event. Events outside local bill profiles have unavailable committee/topic associations.',
+            'Same-day actions use supplied local clock time ascending; missing or unparseable times follow timed events. Their actual time remains unknown, and no timezone is inferred.']
         result.update(coverage=coverage,resolved_filters=dict(committee=committee,topic=topic))
         return result

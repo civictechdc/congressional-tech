@@ -1300,7 +1300,7 @@ many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. S
 
 ## Pinned upstream relations
 
-Held upstream and never mirrored here. A release names a relation’s generation and path only when it states that family’s digest.
+These are upstream source relations. A release names a relation’s generation and path only when it states that family’s digest. Locally published detail tables are listed above; a source pin alone does not make its rows locally queryable.
 
 | Relation | Family and table | Keys | Local joins | Row | Limits |
 | --- | --- | --- | --- | --- | --- |

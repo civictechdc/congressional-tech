@@ -100,3 +100,86 @@ def test_new_research_tools_run_through_normal_stdio(tmp_path,phase2):
 def test_explicit_meeting_projection_does_not_inject_outcome_fields(reader):
     result=reader.entity_rows(dict(rows=[dict(title='Projected title')]),'meetings',selected_fields=['title'])
     assert result['rows']==[dict(title='Projected title')]
+
+
+def review_regression_release(tmp_path, phase2):
+    """Retain the authentic three-action case and a vote with repeated supported links."""
+    import json
+    from pathlib import Path
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    root=tmp_path/'release';shutil.copytree(phase2.parent,root)
+    fixture=json.loads((Path(__file__).parent/'fixtures/bill-action-chronology.json').read_text())
+    assert fixture['source_pin']['sha256']=='ded5f49598848192c847dd6e2b4ba0bd57b26209c0606a4d3d27f6dea32d78a9'
+    rows=[dict(row,source_generation=fixture['source_generation'],source_reference=fixture['source_pin']['path']) for row in fixture['rows']]
+    pq.write_table(pa.Table.from_pylist(rows),root/'bill_actions.parquet')
+    table=pq.read_table(root/'roll_call_votes.parquet');votes=table.to_pylist()
+    linked=next(row for row in votes if row['vote_id']=='119-h-1')
+    linked['bill_id']=None
+    linked['bill_references']=[dict(bill_id='119-hr-1',action_index=7),dict(bill_id='119-hr-1',action_index=8),dict(bill_id='119-hr-unavailable',action_index=9)]
+    pq.write_table(pa.Table.from_pylist(votes,schema=table.schema),root/'roll_call_votes.parquet')
+    return manifest(root),fixture
+
+
+def test_authentic_local_action_times_order_detail_feed_and_pages(tmp_path,phase2):
+    source,fixture=review_regression_release(tmp_path,phase2)
+    reader=Reader(prepare(tmp_path/'selected',source))
+    try:
+        query=dict(bill_id='119-s-1055',since='2026-10-05',until='2026-10-06')
+        rows=reader.get_bill_actions(query)['rows']
+        assert [row['action_index'] for row in rows]==[1,0,2]
+        assert [row['action_time'] for row in rows]==['16:31:57','16:50:14',None]
+        original={row['action_index']:row for row in fixture['rows']}
+        assert [{key:row[key] for key in original[row['action_index']]} for row in rows]==[original[1],original[0],original[2]]
+        page=reader.get_bill_actions(dict(**query,limit=1));indices=[]
+        while True:
+            indices.extend(row['action_index'] for row in page['rows'])
+            if not page['has_more']:break
+            page=reader.get_bill_actions(dict(**query,limit=1,cursor=page['next_cursor']))
+        assert indices==[1,0,2]
+        feed=reader.get_activity(dict(since=query['since'],until=query['until']))
+        assert [row['reference']['key']['action_index'] for row in feed['rows']]==[1,0,2]
+        assert [row['source_time'] for row in feed['rows']]==['16:31:57','16:50:14',None]
+        assert all(row['date_precision']=='day' for row in feed['rows'])
+        assert 'No timezone is inferred' in reader.get_bill_actions(query)['ordering']
+    finally:reader.close()
+
+
+def test_activity_filters_follow_all_bill_references_without_multiplying_votes(tmp_path,phase2):
+    source,_=review_regression_release(tmp_path,phase2)
+    reader=Reader(prepare(tmp_path/'selected',source))
+    try:
+        window=dict(since='2025-02-01',until='2025-02-02')
+        assert len([row for row in reader.get_activity(window)['rows'] if row['event_type']=='roll_call'])==2
+        for filters in [dict(committee='hsif00'),dict(topic='Public transit'),dict(committee='hsif00',topic='Public transit')]:
+            votes=[row for row in reader.get_activity(dict(**window,**filters))['rows'] if row['event_type']=='roll_call']
+            assert len(votes)==1 and votes[0]['event_key']=='119-h-1'
+            assert votes[0]['subject_id'] is None
+        vote=reader.get_roll_calls(dict(bill_id='119-hr-1'))['rows'][0]
+        assert vote['bill_id'] is None and len(vote['bill_references'])==3
+        # Releases without bill_references retain the existing local floor-vote association.
+        reader.db.execute('CREATE TEMP TABLE votes_base AS SELECT * FROM roll_call_votes; CREATE OR REPLACE TEMP VIEW roll_call_votes AS SELECT * EXCLUDE(bill_references) FROM votes_base')
+        reader.schemas['roll_call_votes'].pop('bill_references')
+        legacy=reader.get_activity(dict(**window,committee='hsif00',topic='Public transit'))
+        assert [row['event_key'] for row in legacy['rows'] if row['event_type']=='roll_call']==['119-h-1']
+    finally:reader.close()
+
+
+def test_review_regressions_through_normal_stdio(tmp_path,phase2):
+    import asyncio
+    import sys
+    from fastmcp import Client
+    from fastmcp.client.transports import StdioTransport
+    source,_=review_regression_release(tmp_path/'inputs',phase2)
+    data=tmp_path/'selected';prepare(data,source)
+    async def run():
+        transport=StdioTransport(sys.executable,['-m','congressional_explorer_mcp.cli','serve','--data-dir',str(data)],keep_alive=False)
+        async with Client(transport) as client:
+            actions=(await client.call_tool('get_bill_actions',{'query':dict(bill_id='119-s-1055',since='2026-10-05',until='2026-10-06')})).data
+            assert [row['action_index'] for row in actions['rows']]==[1,0,2]
+            chronological=(await client.call_tool('get_activity',{'query':dict(since='2026-10-05',until='2026-10-06')})).data
+            assert [row['source_time'] for row in chronological['rows']]==['16:31:57','16:50:14',None]
+            linked=(await client.call_tool('get_activity',{'query':dict(since='2025-02-01',until='2025-02-02',committee='hsif00',topic='Public transit')})).data
+            votes=[row for row in linked['rows'] if row['event_type']=='roll_call']
+            assert len(votes)==1 and votes[0]['event_key']=='119-h-1' and votes[0]['subject_id'] is None
+    asyncio.run(run())

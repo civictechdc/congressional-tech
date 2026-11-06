@@ -148,10 +148,11 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.tool(annotations=annotations)
     async def get_bill_actions(query: BillActions) -> dict:
-        """Page every recorded bill action in chronological source order, by bill or date window.
+        """Page every recorded bill action by calendar date and supplied local clock time, by bill or date window.
 
         since is inclusive and until exclusive (YYYY-MM-DD). Same-day source entries remain distinct by
-        bill_id/action_index. stage is an upstream derived status; voice actions remain actions, not ballots.
+        bill_id/action_index. Parseable local times sort first, then unknown times; no timezone is inferred.
+        stage is an upstream derived status; voice actions remain actions, not ballots.
         Chamber follows source_system_name where explicit; source_generation/reference identify pinned rows.
         Missing detail tables return unavailable coverage, never a fabricated empty history.
         """
@@ -182,8 +183,10 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Read dated legislative events: bill actions, roll calls, nomination received/latest action, meeting schedules.
 
         since is inclusive, until exclusive; omitted until means onward. Dates have day precision and remain
-        distinct by source occurrence key. Committee resolves one published code/name and matches its exact
-        associations. Topic resolves a published bill subject, including meetings explicitly linked to those bills.
+        distinct by source occurrence key. Same-day actions follow supplied local clock time, then unknown times;
+        no timezone is inferred. Committee resolves one published code/name and matches its exact
+        associations. Topic resolves a published bill subject, including meetings explicitly linked to those bills. Roll calls follow direct
+        bill_id and supported bill references without duplicating the vote.
         Coverage reports missing sources; schedules do not establish that a meeting occurred.
         """
         return await call('get_activity', query.model_dump())
