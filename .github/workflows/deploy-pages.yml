@@ -1,7 +1,7 @@
 name: Deploy website to Pages
 
-# Archive releases publish independently to R2. Pages deploys the archive
-# interface and the retained committee Explorer publication.
+# Archive releases publish independently to R2. Pages deploys only the site,
+# whose /archive/ Explorer reads the shared release pointer.
 on:
   push:
     branches: [main]
@@ -18,16 +18,7 @@ on:
       - ".github/actions/setup-publication-browser/**"
       - ".github/workflows/deploy-pages.yml"
       - "packages/congress_shared/**"
-  workflow_dispatch:
-    inputs:
-      code_revision:
-        description: Verified site commit; must match this workflow's main revision
-        required: true
-        type: string
-      pipeline_revision:
-        description: pipeline-data commit containing the verified Explorer publication
-        required: true
-        type: string
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -39,100 +30,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  revision-mismatch:
-    if: github.event_name == 'workflow_dispatch' && inputs.code_revision != github.sha
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Record why this publication cannot deploy the current workflow
-        env:
-          SITE_REVISION: ${{ inputs.code_revision }}
-          WORKFLOW_REVISION: ${{ github.sha }}
-          PIPELINE_REVISION: ${{ inputs.pipeline_revision }}
-        run: |
-          python3 - <<'PYTHON'
-          import json, os
-          from pathlib import Path
-          receipt = {'status': 'skipped', 'reason': 'site_and_workflow_revisions_differ',
-                     'site_revision': os.environ['SITE_REVISION'],
-                     'workflow_revision': os.environ['WORKFLOW_REVISION'],
-                     'pipeline_revision': os.environ['PIPELINE_REVISION']}
-          print(json.dumps(receipt, sort_keys=True))
-          Path(os.environ['GITHUB_STEP_SUMMARY']).write_text(
-              'Pages deployment skipped because the producer selected a different site revision. '
-              'The verified pipeline snapshot remains retained. A current main push can deploy it.\n\n'
-              + '```json\n' + json.dumps(receipt, indent=2) + '\n```\n')
-          PYTHON
   build:
-    # An older exporter may finish after main advances. Its checkout must not
-    # run a newer workflow or replace an already deployed newer interface.
-    if: github.event_name != 'workflow_dispatch' || inputs.code_revision == github.sha
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
-      - name: Check out the published browser snapshot
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.pipeline_revision || 'pipeline-data' }}
-          path: pipeline-data
       - uses: ./.github/actions/setup-python-project
-      - name: Verify and stage only published browser files
-        run: |
-          python - <<'PYTHON'
-          import json, re, shutil
-          from pathlib import Path
-          import pyarrow.parquet as pq
-          from committee_explorer.browser import verify
-          source = Path('pipeline-data/committee-explorer/public')
-          target = Path('apps/site/public/data/explorer')
-          _, _, manifest = verify(source)
-          if not any(p.media_type == 'application/vnd.apache.parquet' for p in manifest.partitions):
-              raise ValueError('Browser publication must use Parquet partitions')
-          shutil.copytree(source, target, dirs_exist_ok=True)
-          curr = json.loads((target / 'CURRENT.json').read_text())
-          rel_dir = target / 'releases' / curr['publication_id']
-          meetings = pq.read_table(rel_dir / 'meetings.parquet', columns=['id', 'congress', 'source_ids', 'facts']).to_pylist()
-          sources = pq.read_table(rel_dir / 'sources.parquet', columns=['id', 'identifier_value', 'url', 'facts']).to_pylist()
-          source_event = {}
-          for s in sources:
-              ev = None
-              for f in (s.get('facts') or []):
-                  if isinstance(f, dict) and f.get('label') in ('Event ID', 'Event number') and f.get('value'):
-                      ev = str(f['value']).strip()
-                      break
-              if not ev:
-                  ident = str(s.get('identifier_value') or '')
-                  m = re.search(r'\|(\d{5,})(?:"|\s|$)', ident)
-                  if m:
-                      ev = m.group(1)
-                  elif re.fullmatch(r'\d{5,}', ident.strip()):
-                      ev = ident.strip()
-              if not ev:
-                  u = str(s.get('url') or '')
-                  m = re.search(r'/committee-meeting/\d+/(?:house|senate)/(\d+)', u, re.I) or re.search(r'/meetings/[A-Z0-9]+/[A-Z0-9]+/\d{8}/(\d{5,})', u, re.I)
-                  if m:
-                      ev = m.group(1)
-              if ev:
-                  source_event[s['id']] = ev
-          event_map = {}
-          for m in meetings:
-              ev = None
-              for f in (m.get('facts') or []):
-                  if isinstance(f, dict) and f.get('label') in ('Event ID', 'Event number') and f.get('value'):
-                      ev = str(f['value']).strip()
-                      break
-              if not ev:
-                  for sid in (m.get('source_ids') or []):
-                      if sid in source_event:
-                          ev = source_event[sid]
-                          break
-              if ev:
-                  event_map[ev] = [m['id'], m.get('congress')]
-          (target / 'event-meetings.json').write_text(json.dumps(event_map, separators=(',', ':'), sort_keys=True) + '\n')
-          PYTHON
       - uses: ./.github/actions/setup-node-project
-      - name: Verify retained explorer and archive readers
+      - name: Verify the archive readers
         working-directory: apps/site
         run: npm run test:explorer
       - name: Build Astro site

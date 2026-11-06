@@ -11,7 +11,7 @@
 
 ## Shared concurrency and runtime admission
 
-All R2 and lake writers (`capture-archive.yml`, `archive-jobs.yml`, `update-data.yml`, and `publish-explorer.yml`) share the `raw-source-mirror` concurrency group with `cancel-in-progress: false` and `queue: max`. This serializes writes across capture, publication, backfill, and maintenance without canceling an in-flight operation. Both archive workflows run with `contents: read` permissions and require an explicit `vars.CLOUDFLARE_ACCOUNT_ID` endpoint binding on every step that holds R2 credentials.
+All R2 and lake writers (`capture-archive.yml`, `archive-jobs.yml`, and `update-data.yml`) share the `raw-source-mirror` concurrency group with `cancel-in-progress: false` and `queue: max`. This serializes writes across capture, publication, backfill, and maintenance without canceling an in-flight operation. Both archive workflows run with `contents: read` permissions and require an explicit `vars.CLOUDFLARE_ACCOUNT_ID` endpoint binding on every step that holds R2 credentials.
 
 Every job verifies its pinned `docspec` runtime artifact (`vars.DOCSPEC_RUNTIME_ARTIFACT`) and engine credentials before accessing storage:
 
@@ -50,6 +50,25 @@ The `archive-capture-<run_id>-<run_attempt>` artifact includes `selection.json` 
    - Uses eight concurrent readers for body checks. It checks every unverified orphan and the regular sample. A successful execution saves verification evidence for the next run.
    - Validates rebuild evidence for the live release, its predecessor, and releases pinned by SpicyRegs. It prunes only unpinned derived release keys whose newest object is older than 24 hours.
    - Use `python -I -m viewer_publication.archive_maintenance --spec model/jobs/maintenance.json --plan` to list retained releases and proposed deletion keys. Use `--dry-run` to also stage raw verification and write the local maintenance report. Both modes use read-only storage access.
+
+## Pages and retired Committee Explorer delivery
+
+`deploy-pages.yml` builds the application at its own workflow revision, runs the
+reader and browser checks, and deploys the static site. It does not check out
+`pipeline-data` or stage a second Explorer publication. The shared archive
+publisher selects the immutable release that the site and MCP read.
+
+The old Committee Explorer writer and its collection-attempt helper are removed.
+The weekly `update-data.yml` collector still maintains the independent YouTube
+coverage CSV and retained source state. Keep `pipeline-data`, old publications,
+persistent ID/history state, raw/provenance records, and recovery evidence for
+preservation and paired application/data rollback; this code retirement does not
+remove stored objects. Workspace package deletion and parser-version changes are
+separate work.
+
+Merge this retirement only after `cef-96wc` records accepted live cutover and exact
+rollback references. Then check the shared site and MCP on that release, old UUID
+removal notices, and `/youtube-coverage/` with its report CSV.
 
 ## Local CLI reference
 

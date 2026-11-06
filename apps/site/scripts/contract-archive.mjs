@@ -30,15 +30,12 @@ async function checkSiteCutover(eventId){
   const context=await fixtureContext(),page=await context.newPage();
   page.setDefaultTimeout(15000);
   const base=server.origin+'/congressional-tech/';
-  const mapPath='/congressional-tech/data/explorer/event-meetings.json';
   const oldId='d6c7189d-ab25-4785-bc4e-fc7284b70fd6';
   const legacyRequests=[];
   context.on('request',request=>{
     const path=new URL(request.url()).pathname;
     if(path.includes('/data/explorer/'))legacyRequests.push(path);
   });
-  await context.route(base+'data/explorer/event-meetings.json',
-    route=>route.fulfill({json:{[eventId]:[oldId,118]}}));
   try{
     await page.goto(base);
     const explorer=page.getByRole('navigation',{name:'Main',exact:true}).getByRole('link',{name:'Congress Explorer',exact:true});
@@ -47,7 +44,7 @@ async function checkSiteCutover(eventId){
     const release=page.locator(`[data-archive-release="${server.manifest.release_id}"]`);
     await release.waitFor();
     assert.equal(await page.locator('a[href*="/dashboard/"]').count(),0);
-    for(const bookmark of ['?meeting='+eventId,'?view=meetings&kind=meeting&id='+oldId]){
+    for(const bookmark of ['?meeting='+eventId,'?hearing='+eventId,'?event_id='+eventId]){
       await page.goto(base+'dashboard/'+bookmark);
       await page.waitForURL(server.pageUrl+'?tab=hearings&hearing='+eventId);
       await release.waitFor();
@@ -59,17 +56,22 @@ async function checkSiteCutover(eventId){
     await page.goto(base+'dashboard/?view=coverage');
     await page.getByText('The former Coverage and Gaps views have closed.',{exact:false}).waitFor();
     assert.equal(await page.getByRole('link',{name:'Open Congress Explorer',exact:true}).getAttribute('href'),server.pageUrl+'?tab=hearings');
-    await page.goto(base+'dashboard/?kind=meeting&id=unknown');
-    await page.getByText('This bookmark uses an older record identifier.',{exact:false}).waitFor();
-    assert.equal(await page.getByRole('link',{name:'Open Congress Explorer',exact:true}).getAttribute('href'),server.pageUrl+'?tab=hearings');
-    await context.route(base+'data/explorer/event-meetings.json',route=>route.fulfill({status:404}));
-    await page.goto(base+'dashboard/?kind=meeting&id='+oldId);
-    await page.getByText('This bookmark uses an older record identifier.',{exact:false}).waitFor();
+    for(const bookmark of ['?kind=meeting&id='+oldId,'?kind=witness&id='+oldId,'?id='+oldId,'?kind=meeting&id=unknown']){
+      await page.goto(base+'dashboard/'+bookmark);
+      await page.getByText('This old Committee Explorer record link has been removed.',{exact:false}).waitFor();
+      assert.equal(new URL(page.url()).pathname,'/congressional-tech/dashboard/');
+      assert.equal(await page.getByRole('link',{name:'Open Congress Explorer',exact:true}).getAttribute('href'),server.pageUrl+'?tab=hearings');
+    }
     await page.getByRole('link',{name:'Open Congress Explorer',exact:true}).click();
     await page.waitForURL(server.pageUrl+'?tab=hearings');
     await release.waitFor();
-    assert.deepEqual(legacyRequests,[mapPath,mapPath,mapPath]);
-    return {operation:'shared-explorer-entry',status:'passed',eventId,legacyMapRequests:legacyRequests.length};
+    await page.goto(base+'youtube-coverage/');
+    await page.getByRole('heading',{name:'Committee YouTube coverage',exact:true}).waitFor();
+    await page.locator('astro-island').scrollIntoViewIfNeeded();
+    await page.getByRole('form',{name:'Filter the report'}).waitFor();
+    await page.getByRole('heading',{name:'Committee leaderboard',exact:true}).waitFor();
+    assert.deepEqual(legacyRequests,[],'Retired bookmarks must never read the old publication or event map.');
+    return {operation:'shared-explorer-entry',status:'passed',eventId,legacyMapRequests:legacyRequests.length,youtubeCoverage:'passed'};
   }finally{await context.close();}
 }
 // Use the same browser and release server for the typed candidate and its older schema.

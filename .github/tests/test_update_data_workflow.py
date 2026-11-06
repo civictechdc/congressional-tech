@@ -65,7 +65,7 @@ def test_b14_cutover_removes_legacy_weekly_meeting_inventory_job():
     assert not any('--seed-inventory' in step.get('run', '') for step in capture['jobs']['capture']['steps'])
 
 
-@pytest.mark.parametrize('filename,count', [('update-data.yml', 3), ('publish-explorer.yml', 1)])
+@pytest.mark.parametrize('filename,count', [('update-data.yml', 3)])
 def test_every_snapshot_save_also_keeps_the_snapshot_in_raw(filename, count):
     workflow = yaml.load((ROOT / '.github/workflows' / filename).read_text(), Loader=yaml.BaseLoader)
     saves = [step for job in workflow['jobs'].values() for step in job['steps']

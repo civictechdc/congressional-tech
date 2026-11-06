@@ -91,7 +91,7 @@ def test_weekly_writer_uses_pinned_clean_python_after_snapshot_save():
                    step.get('uses')=='./.github/actions/setup-python-project' for step in job['steps'])
 
 
-@pytest.mark.parametrize('workflow_name', ['update-data.yml', 'publish-explorer.yml'])
+@pytest.mark.parametrize('workflow_name', ['update-data.yml'])
 @pytest.mark.parametrize('failure', [None, 'setup', 'body', 'receipt', 'push'])
 def test_weekly_snapshot_preserves_raw_before_publishing(tmp_path, failure, workflow_name):
     original = tmp_path/'job'
