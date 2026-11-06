@@ -96,8 +96,16 @@ def extract_pdf_pages(payload, *, deadline=None, backend_info=None):
                 backend_info.update(value['backend'])
             return value['pages']
         finally:
-            # Kill descendants even when the Python decoder has already exited.
-            # No shared cache file is being written inside this process group.
+            # Let subprocess.run reap a Poppler child before killing the whole
+            # group. A stuck parser may ignore TERM, so KILL remains mandatory.
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                process.wait(timeout=.2)
+            except subprocess.TimeoutExpired:
+                pass
             try:
                 os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
@@ -109,6 +117,12 @@ def main():
     from .body_reader import MAX_BODY_BYTES, _decode_pdf_pages
     from .release import encoded
 
+    def interrupt(signum, frame):
+        # BaseException propagates through subprocess.run's kill/wait cleanup
+        # instead of being treated as an ordinary parser failure or fallback.
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGTERM, interrupt)
     try:
         payload = sys.stdin.buffer.read(MAX_BODY_BYTES + 1)
         if len(payload) > MAX_BODY_BYTES:

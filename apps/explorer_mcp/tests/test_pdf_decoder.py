@@ -69,13 +69,15 @@ pypdf.PdfReader = broken
     return marker, processes
 
 
-def assert_stopped(marker, processes):
+def assert_stopped(marker, processes, *, reaped=False):
     assert processes and all(p.poll() is not None for p in processes)
     pid = json.loads(marker.read_text())['pid']
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return
+    if reaped:
+        pytest.fail(f'Poppler child {pid} was not reaped before its decoder exited')
     # A killed grandchild can briefly remain as a zombie awaiting init's reap.
     status = subprocess.run(['ps', '-o', 'stat=', '-p', str(pid)], capture_output=True, text=True).stdout.strip()
     assert not status or status.startswith('Z'), (pid, status)
@@ -89,7 +91,7 @@ def test_stalled_pdf_deadline_kills_decoder_family(monkeypatch, tmp_path, stage)
         body_reader._extract_pdf_pages(make_pdf_bytes(['First', 'Second']), deadline=started + 2)
     assert time.monotonic() - started < 4
     assert marker.exists(), 'The test must actually enter the stalled parser'
-    assert_stopped(marker, processes)
+    assert_stopped(marker, processes, reaped=stage == 'poppler')
 
 
 @pytest.mark.parametrize('cancel', ['scope', 'task'])
@@ -122,7 +124,7 @@ def test_cancellation_waits_for_pdf_cleanup(monkeypatch, tmp_path, stage, cancel
             await cancel_when_started(task=task)
             with pytest.raises(asyncio.CancelledError):
                 await task
-        assert_stopped(marker, processes)
+        assert_stopped(marker, processes, reaped=stage == 'poppler')
 
     asyncio.run(run())
 
