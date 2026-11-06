@@ -225,6 +225,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
             if indexed is not None:
                 return indexed
             from .body_reader import MAX_BODY_BYTES, read_document_body
+            from .pdf_decoder import run_body_read
             target = await call('document_body_target', query.model_dump())
             if body_budget is not None:
                 size = target.get('saved_bytes')
@@ -234,10 +235,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
                 body_budget['remaining'] -= charge
             try:
                 with anyio.fail_after(timeout):
-                    return await anyio.to_thread.run_sync(
-                        partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout),
-                        abandon_on_cancel=True,
-                    )
+                    return await run_body_read(partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout))
             except TimeoutError as error:
                 raise ToolError('Document body read timed out') from error
             except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:

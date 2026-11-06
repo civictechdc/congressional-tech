@@ -491,6 +491,7 @@ def test_redos_zero_length_regex_pdftotext_timeout_and_cache_bounds(tmp_path):
         BODY_CACHE_VERSION,
         _compile_query,
         _extract_pdf_pages,
+        _decode_pdf_pages,
         _read_cached_pages,
         _search,
         _write_cached_pages,
@@ -518,13 +519,13 @@ def test_redos_zero_length_regex_pdftotext_timeout_and_cache_bounds(tmp_path):
             raise subprocess.TimeoutExpired(cmd=args[0], timeout=1.0)
         mp.setattr(subprocess, 'run', raise_timeout)
         with pytest.raises(TimeoutError, match='timed out'):
-            _extract_pdf_pages(fake_pdf, deadline=time.monotonic() + 5.0)
+            _decode_pdf_pages(fake_pdf, deadline=time.monotonic() + 5.0)
 
     # 3. Unparsed text blocks cannot establish PDF page boundaries.
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(shutil, 'which', lambda name: None)
         with pytest.raises(ExplorerError, match='Unable to extract text'):
-            _extract_pdf_pages(fake_pdf, deadline=time.monotonic() + 5.0)
+            _decode_pdf_pages(fake_pdf, deadline=time.monotonic() + 5.0)
 
     # 4. Monotonic deadline already expired raises TimeoutError in _extract_pdf_pages and read_document_body
     with pytest.raises(TimeoutError, match='timed out'):

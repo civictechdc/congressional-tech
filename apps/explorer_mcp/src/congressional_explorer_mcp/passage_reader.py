@@ -3,7 +3,6 @@ from functools import partial
 from hashlib import sha256
 import re
 
-import anyio
 from fastmcp.exceptions import ToolError
 
 from .body_reader import read_document_body
@@ -11,6 +10,7 @@ from .caption_reader import caption_cursor
 from .citations import CITATION_VERSION, TEXT_READER_VERSION
 from .hearing_models import TranscriptQuery
 from .models import DocumentQuery, ExplorerError
+from .pdf_decoder import run_body_read
 
 
 async def resolve_passage(citation,call,caption_read,*,data_dir=None,timeout=10.0):
@@ -79,7 +79,7 @@ async def resolve_passage(citation,call,caption_read,*,data_dir=None,timeout=10.
             if witness is not None and witness not in (target.get('witness_keys') or []):
                 return dict(state='unavailable',reason='Witness occurrence is not associated with this source',citation=citation)
             if kind=='body_text':
-                result=await anyio.to_thread.run_sync(partial(read_document_body,target,query,data_dir=data_dir,timeout=timeout),abandon_on_cancel=True)
+                result=await run_body_read(partial(read_document_body,target,query,data_dir=data_dir,timeout=timeout))
                 reader_version=TEXT_READER_VERSION
             else:
                 result=await call('get_document',query.model_dump())
