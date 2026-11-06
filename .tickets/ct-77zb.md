@@ -1,7 +1,7 @@
 ---
 id: ct-77zb
 status: open
-deps: [ct-gi01, ct-t915, ct-m104, ct-5kto, cef-96wc, ct-sh4j, ct-30fp, ct-kw9b, ct-yymr, ct-vpo2, ct-aapl, ct-v51p, ct-jinw, ct-l9g0, ct-cov3, ct-vnkf, ct-h1nd, ct-wx65, ct-9wl3]
+deps: [ct-gi01, ct-t915, ct-m104, ct-5kto, cef-96wc, ct-sh4j, ct-30fp, ct-kw9b, ct-yymr, ct-vpo2, ct-aapl, ct-v51p, ct-jinw, ct-l9g0, ct-cov3, ct-vnkf, ct-h1nd, ct-wx65, ct-9wl3, ct-1l1h, ct-4jms]
 links: [cef-96wc, cef-jh7i, ct-t906, ct-8kl2, ct-98sm, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, cef-nkzp, ct-h1nd, ct-d0o0, ct-sh4j, cefr-7sar, ct-kac4, ct-3vub, cef-zrhq, ct-a3le, ct-v967, ct-082q]
 created: 2026-10-30T14:32:30Z
 type: epic
@@ -12,6 +12,8 @@ tags: [phase2, engine-first, site, master-list]
 # Complete Phase 2 with one live Explorer release
 
 Track the switch to one native release for the site and Congress MCP. Keep the archive's retained facts and evidence accessible as the legacy publisher is retired. The original 25-item checklist and its delivered work are recorded below. The [Phase 2 annex §4.6](../docs/plans/phase-2-annex-20261028.md#46-explorer-migration-and-data-coverage) defines the remaining closure order.
+
+**Current closure map (November 6):** [Evidence, owners and remaining actions](../docs/plans/phase-2-closure-map-20261106.md). `ct-t915` is closed for verified site implementation; `ct-m104` and `cef-96wc` retain its candidate and live checks. Candidate `720c495b66d1` is completed but private and predates newer MCP changes. The final non-indexed release remains with the MCP coordinator. Preserve the original checklist and notes below.
 
 ## Acceptance Criteria
 
@@ -121,3 +123,9 @@ November 5 URL root-cause ticket reconciliation: updated ct-umtm (twelve replay 
 Closed 13 completed implementation tickets at the user’s request: Wave 1 ct-t915, ct-j78x, ct-j49p, ct-67k1, ct-dx22, ct-lx67, ct-opy0, ct-j9o7, ct-cxc5 and ct-717p; Wave 2 ct-k2ij, ct-db3w and ct-ud0b. Independent Sol/xhigh greybeard/ETL reviewers checked the retained evidence and current scope.
 
 ct-gi01 retains combined native/candidate obligations; ct-m104 retains same-release reader acceptance; cef-96wc retains live cutover and the Mac scheduled publication check. Source gaps, legacy accounting, historical rosters, the unmerged upstream comparator and old-writer retirement remain open with their existing owners. Concurrent additions to ct-9s7b and ct-m94a introduce unfinished implementation, so those tickets stay open while crediting their completed original fixes. No new release or deployment is claimed.
+
+**2026-11-06T16:37:39Z**
+
+November 6 closure-map reconciliation at source 742dbe70: docs/plans/phase-2-closure-map-20261106.md records the four active handoffs, original seven-track accounting and explicit raw/source/operations gaps. ct-t915 remains closed for verified implementation; its candidate and live obligations stay with ct-m104/cef-96wc. The completed private 720c495b66d1 candidate and 69 unaccepted comparison groups are credited separately from the final non-indexed release. Existing release/MCP coordinators retain cause review and final release execution; ct-5kto retains retirement after live acceptance.
+
+Added direct dependencies on ct-1l1h and ct-4jms to reflect this milestone's existing raw-lock and scheduled-capture acceptance. Original dependencies, checklist, notes and completed implementation history remain intact. Corpus indexing, News and standalone cleanup stay outside the active release's exit checks. No source/runtime change, new model, publication, deployment, schedule change or ticket closure accompanies this documentation-only reconciliation.
