@@ -2284,37 +2284,18 @@ def test_ipc_write_streaming_and_shared_schema_adapter(tmp_path):
 
     client = DocSpecClient(tmp_path / 'ws-ipc')
     table1 = records_to_arrow('outlet', [OUTLET_A])
-    try:
-        pin1 = client.run_ipc(table1, 'news_outlets', 'ipc-admit-outlets')
-    except DocSpecFailure as exc:
-        if getattr(exc, 'status_code', None) == 415:
-            pin1 = client.run_table(table1, 'news_outlets', 'ipc-admit-outlets', stream_ipc=True)
-        else:
-            raise
+    pin1 = client.run_ipc(table1, 'news_outlets', 'ipc-admit-outlets')
     assert pin1['dataset']['dataset'] == 'news_outlets'
     assert table_records(client.read_arrow(pin1)) == [OUTLET_A]
 
     table2 = records_to_arrow('outlet', [OUTLET_B])
-    try:
-        pin2 = client.update_ipc(
-            'news_outlets',
-            'ipc-update-outlets',
-            pin1['dataset']['version'],
-            ['id'],
-            table2,
-        )
-    except DocSpecFailure as exc:
-        if getattr(exc, 'status_code', None) == 415:
-            pin2 = client.update_table(
-                'news_outlets',
-                'ipc-update-outlets',
-                pin1['dataset']['version'],
-                ['id'],
-                table2,
-                stream_ipc=True,
-            )
-        else:
-            raise
+    pin2 = client.update_ipc(
+        'news_outlets',
+        'ipc-update-outlets',
+        pin1['dataset']['version'],
+        ['id'],
+        table2,
+    )
     rows = {r['id']: r for r in table_records(client.read_arrow(pin2))}
     assert rows == {OUTLET_A['id']: OUTLET_A, OUTLET_B['id']: OUTLET_B}
 

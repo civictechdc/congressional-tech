@@ -18,7 +18,6 @@ from urllib.parse import quote
 import weakref
 
 import pyarrow as pa
-import pyarrow.parquet as pq
 
 try:
     import blake3 as _blake3_ext
@@ -37,7 +36,6 @@ from .models import (
     DocSpecFailure,
     PartitionSpec,
     UpdateMergeSpec,
-    UpdateMergeStrategy,
     load_runtime_pin,
     runtime_pin_digest,
 )
@@ -47,7 +45,6 @@ from .schema import (
     restore_application_schema,
 )
 from .specs import (
-    apply_update_merge_spec,
     build_export_spec,
     build_ipc_run_spec,
     build_ipc_update_spec,
@@ -73,6 +70,30 @@ def cleanup_safe(error: Any) -> bool:
     if getattr(error, 'pre_admission', None) is not None:
         return bool(error.pre_admission) and error.status in (400, 409, 422)
     return error.status in (400, 409, 422) and error.code in PRE_ADMISSION_ERROR_CODES
+
+
+def _retain_producer_failure(directory: Path, error: BaseException, custody: dict[str, Any]) -> None:
+    """Keep original producer bytes and all attempt evidence while work is unresolved."""
+    failures = custody['failures']
+    setattr(error, 'producer_failures', failures)
+    request_path = directory / 'request.json'
+    failures_path = directory / 'attempt-failures.json'
+    try:
+        entry = producer_input_entry(request_path)
+        size = entry['bytes'] if entry is not None else None
+        setattr(error, 'retained_input', dict(
+            input=entry['input'] if entry is not None else str(directory),
+            request=str(request_path),
+            bytes=size,
+            files=entry['files'] if entry is not None else [],
+            failures=str(failures_path),
+        ))
+        failures_path.write_text(json.dumps(failures, ensure_ascii=False, allow_nan=False))
+        error.add_note(f'DocSpec producer inputs retained under {directory} ({size} bytes); '
+                       f'exact replay request: {request_path}; attempt evidence: {failures_path}')
+    except (OSError, TypeError, ValueError) as diagnostic:
+        error.add_note(f'DocSpec producer directory retained at {directory}; '
+                       f'could not save its diagnostic: {diagnostic}')
 
 
 def _cleanup_dataset_client(host: Host, responses: set[Any]) -> None:
@@ -428,6 +449,42 @@ class NativeDatasets:
         deadline = time.monotonic() + self.timeout
         return self._execution_host().request(method, path, deadline=deadline, **kwargs)
 
+    def _producer_request(self, path: str, request: Any, *, custody: dict[str, Any]) -> Any:
+        """Retry identical native work without forgetting an earlier uncertain submit."""
+        import httpx
+
+        custody['failures'] = []
+        for attempt in range(4):
+            dispatch: dict[str, Any] = {}
+            try:
+                result = self._request(path, request, dispatch=dispatch)
+            except BaseException as error:
+                submitted = bool(dispatch.get('submitted'))
+                custody['failures'].append(dict(
+                    attempt=attempt + 1, submitted=submitted, type=type(error).__name__,
+                    message=str(error), status=getattr(error, 'status', None),
+                    code=getattr(error, 'code', None), pre_admission=getattr(error, 'pre_admission', None),
+                    stdout=getattr(error, 'stdout', None), stderr=getattr(error, 'stderr', None),
+                    completed=getattr(error, 'completed', None),
+                ))
+                if submitted and not cleanup_safe(error):
+                    custody['unresolved'] = True
+                # Dispatch is attempt-local; a later refusal does not settle
+                # whether an earlier submitted attempt used these same bytes.
+                transport = (isinstance(error, httpx.TransportError)
+                             and not isinstance(error, httpx.TimeoutException) and not submitted)
+                transient = isinstance(error, DocSpecFailure) and any(token in str(error).lower() for token in (
+                    'commit state is unknown', 'gateway', 'remote_unconfirmed', '502', '503', '504',
+                ))
+                if (transport or transient) and attempt < 3:
+                    time.sleep(1.0 * (2 ** attempt))
+                    continue
+                raise
+            else:
+                # The native owner reconciled this exact operation/request.
+                custody.clear()
+                return result
+
     def hash_input(self, path: Path | str) -> dict[str, Any]:
         """Hash a local producer file without opening the configured remote host."""
         resolved = Path(path).resolve()
@@ -501,31 +558,22 @@ class NativeDatasets:
         native_types: bool = False,
         row_group_size: int | None = PRODUCER_PARQUET_ROW_GROUP_SIZE,
     ) -> Any:
-        """Pass one caller-bounded Arrow source table to the native Run API."""
+        """Pass one caller-bounded source to Run; unsupported native features refuse."""
         normalized_partition_by = PartitionSpec.normalize(partition_by) if partition_by is not None else None
-        if normalized_partition_by and isinstance(table, pa.Table):
-            normalized_partition_by = [
-                pf for pf in normalized_partition_by if pf['column'] in table.schema.names
-            ] or None
         if stream_ipc and not normalized_partition_by:
-            try:
-                return self.run_ipc(
-                    table,
-                    dataset=dataset,
-                    operation=operation,
-                    definition=definition,
-                    relationship=relationship,
-                    base=base,
-                    native_types=native_types,
-                )
-            except DocSpecFailure as error:
-                status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
-                if status != 415:
-                    raise
+            return self.run_ipc(
+                table,
+                dataset=dataset,
+                operation=operation,
+                definition=definition,
+                relationship=relationship,
+                base=base,
+                native_types=native_types,
+            )
 
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
-        dispatch: dict[str, Any] = {}
+        custody: dict[str, Any] = {}
         retained = False
         try:
             source = directory / 'source.parquet'
@@ -541,82 +589,11 @@ class NativeDatasets:
                 request['partition_by'] = normalized_partition_by
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
-            active_request = request
-            used_legacy_rgs = False
-            attempt = 0
-            while attempt < 4:
-                try:
-                    return self._request('/run', active_request, dispatch=dispatch)
-                except Exception as exc:
-                    import httpx
-                    if isinstance(exc, httpx.TransportError) and not isinstance(exc, httpx.TimeoutException) and not dispatch.get('submitted'):
-                        if attempt < 3:
-                            time.sleep(1.0 * (2 ** attempt))
-                            attempt += 1
-                            continue
-                        raise
-                    if not isinstance(exc, DocSpecFailure):
-                        raise
-                    msg = str(exc).lower()
-                    if normalized_partition_by and 'unknown field' in msg and 'partition_by' in msg:
-                        active_request = {k: v for k, v in active_request.items() if k != 'partition_by'}
-                        normalized_partition_by = None
-                        (directory / 'request.json').write_text(
-                            json.dumps(active_request, ensure_ascii=False, allow_nan=False))
-                        dispatch.clear()
-                        continue
-                    if row_group_size is None and not used_legacy_rgs and 'operation_conflict' in msg:
-                        used_legacy_rgs = True
-                        _write_producer_parquet(
-                            table,
-                            source,
-                            row_group_size=None,
-                            _legacy_row_group_sizing=True,
-                        )
-                        legacy_digest = self.hash_input(source)['digest']
-                        active_request = dict(active_request, expected_digest=legacy_digest)
-                        (directory / 'request.json').write_text(
-                            json.dumps(active_request, ensure_ascii=False, allow_nan=False))
-                        dispatch.clear()
-                        continue
-                    transient = any(
-                        token in msg
-                        for token in (
-                            'commit state is unknown',
-                            'gateway',
-                            'remote_unconfirmed',
-                            '502',
-                            '503',
-                            '504',
-                        )
-                    )
-                    if transient and attempt < 3:
-                        time.sleep(1.0 * (2 ** attempt))
-                        dispatch.clear()
-                        attempt += 1
-                        continue
-                    raise
+            return self._producer_request('/run', request, custody=custody)
         except BaseException as error:
-            cleanup_ok = cleanup_safe(error)
-            if dispatch.get('submitted') and not cleanup_ok:
-                retained = True
-                request_path = directory / 'request.json'
-                try:
-                    entry = producer_input_entry(request_path)
-                    size = entry['bytes'] if entry is not None else None
-                    setattr(error, 'retained_input', dict(
-                        input=str(source),
-                        request=str(request_path),
-                        bytes=size,
-                        files=entry['files'] if entry is not None else [],
-                    ))
-                    if hasattr(error, 'add_note'):
-                        error.add_note(f'DocSpec producer input retained: {source} ({size} bytes); '
-                                       f'exact replay request: {request_path}')
-                except OSError as diagnostic:
-                    if hasattr(error, 'add_note'):
-                        error.add_note(f'DocSpec producer directory retained at {directory}; '
-                                       f'could not save its diagnostic: {diagnostic}')
+            retained = bool(custody.get('unresolved'))
+            if retained:
+                _retain_producer_failure(directory, error, custody)
             raise
         finally:
             if not retained:
@@ -677,7 +654,7 @@ class NativeDatasets:
         stream_ipc: bool = False,
         native_types: bool = False,
     ) -> Any:
-        """Submit one ``UpdateSpec`` with pre-persisted producer custody."""
+        """Submit the current native ``UpdateSpec`` with pre-persisted producer custody."""
         normalized_merge = None
         if merge is not None:
             if hasattr(merge, 'to_dict'):
@@ -690,48 +667,22 @@ class NativeDatasets:
                 if isinstance(merge, Mapping)
                 else UpdateMergeSpec.normalize(merge)
             )
-            if isinstance(table, pa.Table):
-                filtered_merge: dict[str, Any] = {}
-                ord_col = normalized_merge.get('order_by')
-                if isinstance(ord_col, str) and ord_col in table.schema.names:
-                    filtered_merge['order_by'] = ord_col
-                elif isinstance(ord_col, (list, tuple)):
-                    filtered_merge['order_by'] = list(ord_col)
-                filtered_cols: dict[str, str] = {}
-                for k, v in (normalized_merge.get('columns') or {}).items():
-                    if k not in table.schema.names:
-                        continue
-                    field_type = table.schema.field(k).type
-                    if v == UpdateMergeStrategy.SET_UNION and not (
-                        pa.types.is_list(field_type) or pa.types.is_large_list(field_type)
-                    ):
-                        v = UpdateMergeStrategy.MAX
-                    filtered_cols[k] = v
-                if filtered_cols:
-                    filtered_merge['columns'] = filtered_cols
-                normalized_merge = filtered_merge
         if stream_ipc and replacements is None and deletions is None and table is not None:
-            try:
-                return self.update_ipc(
-                    table,
-                    dataset=dataset,
-                    operation=operation,
-                    definition=definition,
-                    base=base,
-                    keys=keys,
-                    relationship=relationship,
-                    merge=normalized_merge,
-                    native_types=native_types,
-                )
-            except DocSpecFailure as error:
-                status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
-                if status != 415:
-                    raise
+            return self.update_ipc(
+                table,
+                dataset=dataset,
+                operation=operation,
+                definition=definition,
+                base=base,
+                keys=keys,
+                relationship=relationship,
+                merge=normalized_merge,
+                native_types=native_types,
+            )
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
-        dispatch: dict[str, Any] = {}
+        custody: dict[str, Any] = {}
         retained = False
-        primary = None
         try:
             if replacements is None:
                 if table is None:
@@ -760,82 +711,11 @@ class NativeDatasets:
                 request['merge'] = normalized_merge
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
-            primary = Path(replacements_spec['path'])
-            active_request = request
-            for attempt in range(4):
-                try:
-                    return self._request('/updates/run', active_request, dispatch=dispatch)
-                except Exception as exc:
-                    import httpx
-                    if isinstance(exc, httpx.TransportError) and not isinstance(exc, httpx.TimeoutException) and not dispatch.get('submitted'):
-                        if attempt < 3:
-                            time.sleep(1.0 * (2 ** attempt))
-                            attempt += 1
-                            continue
-                        raise
-                    if not isinstance(exc, DocSpecFailure):
-                        raise
-                    msg = str(exc).lower()
-                    if normalized_merge is not None and 'unknown field' in str(exc) and 'merge' in str(exc):
-                        base_pin = self.release(dataset, base)
-                        with self.source_batches(base_pin) as reader:
-                            existing_table = pa.Table.from_batches(list(reader), schema=reader.schema)
-                        incoming_table = table if isinstance(table, pa.Table) else pq.read_table(primary)
-                        merged_table = apply_update_merge_spec(
-                            existing_table,
-                            incoming_table,
-                            keys=list(keys),
-                            merge_spec=normalized_merge,
-                            include_unmatched_existing=False,
-                        )
-                        merged_path = directory / 'replacements.parquet'
-                        _write_producer_parquet(merged_table, merged_path)
-                        merged_digest = self.hash_input(merged_path)['digest']
-                        active_request = {k: v for k, v in active_request.items() if k != 'merge'}
-                        active_request['replacements'] = dict(path=str(merged_path), digest=merged_digest)
-                        normalized_merge = None
-                        (directory / 'request.json').write_text(
-                            json.dumps(active_request, ensure_ascii=False, allow_nan=False))
-                        primary = merged_path
-                        dispatch.clear()
-                        continue
-                    transient = any(
-                        token in msg
-                        for token in (
-                            'commit state is unknown',
-                            'gateway',
-                            'remote_unconfirmed',
-                            '502',
-                            '503',
-                            '504',
-                        )
-                    )
-                    if transient and attempt < 3:
-                        time.sleep(1.0 * (2 ** attempt))
-                        dispatch.clear()
-                        continue
-                    raise
+            return self._producer_request('/updates/run', request, custody=custody)
         except BaseException as error:
-            if dispatch.get('submitted') and not cleanup_safe(error):
-                retained = True
-                try:
-                    entry = producer_input_entry(directory / 'request.json')
-                    size = entry['bytes'] if entry is not None else None
-                    setattr(error, 'retained_input', dict(
-                        input=str(primary),
-                        request=str(directory / 'request.json'),
-                        bytes=size,
-                        files=entry['files'] if entry is not None else [],
-                    ))
-                    if hasattr(error, 'add_note'):
-                        error.add_note(
-                            f'DocSpec producer inputs retained under {directory} ({size} bytes); '
-                            f'exact replay request: {directory / "request.json"}'
-                        )
-                except OSError as diagnostic:
-                    if hasattr(error, 'add_note'):
-                        error.add_note(f'DocSpec producer directory retained at {directory}; '
-                                       f'could not save its diagnostic: {diagnostic}')
+            retained = bool(custody.get('unresolved'))
+            if retained:
+                _retain_producer_failure(directory, error, custody)
             raise
         finally:
             if not retained:
