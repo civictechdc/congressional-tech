@@ -84,6 +84,30 @@ def test_each_filesystem_has_its_own_qualified_peak(tmp_path, monkeypatch):
         disk.admit(path, 'fixture', roots, commit='a' * 40, floor=20)
 
 
+def test_python_temporary_files_need_capacity_separate_from_runner_reports(tmp_path, monkeypatch):
+    report_temp = tmp_path / 'runner-temp'
+    python_temp = tmp_path / 'python-temp'
+    spec = tmp_path / 'backfill.json'
+    spec.write_text(json.dumps(dict(work=str(tmp_path / 'work'))))
+    monkeypatch.setattr(disk.tempfile, 'gettempdir', lambda: str(python_temp))
+    mode, roots = disk.job_roots('backfill', spec, temp=report_temp, env={})
+    assert mode == 'backfill' and roots['temp'] == report_temp and roots['python_temp'] == python_temp
+
+    class Probe:
+        def __init__(self, path): self.python_temp = path == python_temp
+        def stat(self): return SimpleNamespace(st_dev=2 if self.python_temp else 1)
+    monkeypatch.setattr(disk, 'existing_parent', lambda path: Probe(path))
+    monkeypatch.setattr(disk.shutil, 'disk_usage', lambda path: SimpleNamespace(free=59 if path.python_temp else 100))
+    groups = [dict(roots=['work', 'temp'], peak_additional_bytes=40, headroom_bytes=20)]
+    with pytest.raises(ValueError, match='every writing root: python_temp'):
+        disk.admit(budget(tmp_path, filesystems=groups), 'fixture', roots, commit='a' * 40, floor=20)
+    groups.append(dict(roots=['python_temp'], peak_additional_bytes=40, headroom_bytes=20))
+    result = disk.admit(budget(tmp_path, filesystems=groups), 'fixture', roots, commit='a' * 40, floor=20)
+    assert result['status'] == 'refused' and result['filesystems'][1]['free_bytes'] == 59
+    monkeypatch.setattr(disk.shutil, 'disk_usage', lambda _: SimpleNamespace(free=60))
+    assert disk.admit(budget(tmp_path, filesystems=groups), 'fixture', roots, commit='a' * 40, floor=20)['status'] == 'admitted'
+
+
 def candidate(tmp_path):
     root = tmp_path / '.cache/archive-release/nightly/candidate'
     scratch = root / 'archive-publish/model-attempts/attempt-fixture/scratch'

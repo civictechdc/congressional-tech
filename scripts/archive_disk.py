@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 from urllib.parse import unquote, urlsplit
 
 METADATA_LIMIT = 8 * 1024 * 1024
@@ -94,7 +95,9 @@ def job_roots(operation, spec_path, *, temp, nightly_work=None, env=None):
     def local(value, base=spec_path.parent):
         path = Path(value)
         return path if path.is_absolute() else base / path
-    roots = dict(work=local(spec['work']), temp=Path(temp))
+    # RUNNER_TEMP owns reports; Python's host logs and producer-version trees
+    # use tempfile's selected directory, which may be on another filesystem.
+    roots = dict(work=local(spec['work']), temp=Path(temp), python_temp=Path(tempfile.gettempdir()))
     explicit_config = local(spec['engine_config']) if spec.get('engine_config') else None
     catalog = spec.get('catalog_root')
     if isinstance(catalog, str) and not urlsplit(catalog).scheme:
