@@ -658,6 +658,18 @@ FILENAME_CONFLICTS_SQL=' UNION ALL '.join(
     FROM source_filename_readings o JOIN source_linked_filename_readings l USING(source_id)
     WHERE nullif({shown},'') IS NOT NULL AND nullif({other},'') IS NOT NULL AND {shown}<>{other}"""
     for name,shown,other,filled in _NAME_FIELDS)
+# A qualified linked date can supersede an ineligible shown alias. Retain that
+# shown disagreement too; the ordinary linked comparison already names it when
+# a separate capture also requested the shown address.
+FILENAME_CONFLICTS_SQL += """ UNION ALL
+ SELECT o.source_id,'filename_date' AS field,cast(o.filename_date AS VARCHAR) AS shown_value,
+ o.filename_date_name AS shown_name,o.filename_date_url AS shown_url,
+ cast(o.shown_filename_date AS VARCHAR) AS other_value,o.filename AS other_name,o.source_url AS other_url
+ FROM source_filename_readings o
+ WHERE o.shown_status='completed' AND o.shown_filename_date IS NOT NULL
+ AND o.filename_date IS NOT NULL AND o.filename_date<>o.shown_filename_date
+ AND NOT EXISTS (SELECT 1 FROM source_linked_filename_readings l
+  WHERE l.source_id=o.source_id AND l.requested_filename=o.filename AND l.requested_url=o.source_url)"""
 FILENAME_BOTH_NAMES=dict(name='filename_both_names',sql='SELECT count(*) FILTER (WHERE linked_filename IS NOT NULL) AS sources_with_two_names,'+','.join(
     f'count(*) FILTER (WHERE {filled}) AS {name}_filled' for name,_,_,filled in _NAME_FIELDS)+','+','.join(
     f"(SELECT count(*) FROM filename_conflicts c WHERE c.field='{name}') AS {name}_conflicting" for name,_,_,_ in _NAME_FIELDS)

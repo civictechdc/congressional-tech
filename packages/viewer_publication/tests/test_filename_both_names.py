@@ -12,6 +12,8 @@ import os
 from datetime import date
 from urllib.parse import quote
 
+import pytest
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -251,3 +253,47 @@ def test_descriptive_foreign_download_alias_does_not_date_the_document(tmp_path)
     assert annotation['filename_date_url'] == requested
     assert annotation['filename_date_valid'] is False
     assert annotation['filename_date_eligible'] is False
+
+
+def test_opaque_alias_dates_are_ineligible_when_the_download_is_the_shown_url(tmp_path):
+    foreign = 'https://www.foreign.senate.gov/'
+    cases = [
+        ('transcript-02271901', date(1901, 2, 27)),
+        ('transcript-03261901', date(1901, 3, 26)),
+        ('transcript-06191901', date(1901, 6, 19)),
+        ('10-22-19-assessing-the-impact-of-turkeys-offensive-in-northeast-syria-10221902', date(1902, 10, 22)),
+    ]
+    rows, _, _, annotations = _release(tmp_path, capture_cases=[
+        (foreign + 'download/' + name, foreign + 'download/' + name,
+         f'%PDF-1.7\nDirect {name}\n%%EOF\n'.encode()) for name, _ in cases])
+    by_url = {row['source_url']: row for row in annotations}
+    for row, (name, literal) in zip(rows, cases):
+        url = foreign + 'download/' + name
+        assert (row['document_date'], row['document_date_source'], row['document_date_status']) == (None, None, None)
+        annotation = by_url[url]
+        assert annotation['shown_filename_date'] == literal
+        assert annotation['filename_date'] == literal
+        assert annotation['filename_date_url'] == url
+        assert annotation['filename_date_valid'] is False
+        assert annotation['filename_date_eligible'] is False
+
+
+@pytest.mark.parametrize('also_requested', [False, True])
+def test_supported_linked_date_can_fill_an_ineligible_shown_alias(tmp_path, also_requested):
+    shown = 'https://www.foreign.senate.gov/download/transcript-02271901'
+    requested = FINANCE + 'download/03172021-ramos-testimony&download=1'
+    body = b'%PDF-1.7\nNamed supplier\n%%EOF\n'
+    captures = [(requested, shown, body)]
+    if also_requested:
+        captures.append((shown, shown, body))
+    (row,), conflicts, _, (annotation,) = _release(tmp_path, capture_cases=captures)
+    assert (row['document_date'], row['document_date_source'], row['document_date_status']) == (
+        date(2021, 3, 17), 'filename', 'accepted')
+    assert annotation['shown_filename_date'] == date(1901, 2, 27)
+    assert annotation['filename_date'] == date(2021, 3, 17)
+    assert annotation['filename_date_url'] == requested
+    assert annotation['filename_date_eligible'] is True
+    assert annotation['filled_date'] is True
+    assert [(c['field'], c['shown_value'], c['shown_url'], c['other_value'], c['other_url'])
+            for c in conflicts if c['field'] == 'filename_date'] == [
+        ('filename_date', '2021-03-17', requested, '1901-02-27', shown)]
