@@ -36,36 +36,7 @@ WITH committee_code_map AS (
    ORDER BY session DESC NULLS LAST,title_missing ASC,parsed_rank ASC NULLS LAST
   ) AS rn
  FROM normalized_assignments
-), distinct_roster_congresses AS (
- SELECT DISTINCT congress FROM dedup_assignments WHERE rn=1
-), member_term_parsed AS (
- SELECT
-  trim(bioguide_id) AS m_bioguide_id,
-  nullif(trim(term_party),'') AS term_party,
-  try_cast(substr(trim(term_start),1,10) AS DATE) AS start_date,
-  try_cast(substr(trim(term_end),1,10) AS DATE) AS end_date,
-  nullif(trim(term_end),'') IS NULL AS end_missing
- FROM spicy_member_terms
- WHERE bioguide_id IS NOT NULL AND nullif(trim(term_party),'') IS NOT NULL
-), member_congress_candidates AS (
- SELECT
-  c.congress AS m_congress,
-  t.m_bioguide_id,
-  t.term_party
- FROM distinct_roster_congresses c
- JOIN member_term_parsed t
-  ON t.start_date < make_date(1789 + (cast(c.congress AS INT) - 1) * 2 + 2,1,3)
-  AND (t.end_missing OR (
-   t.end_date > t.start_date
-   AND t.end_date > make_date(1789 + (cast(c.congress AS INT) - 1) * 2,1,3)
-  ))
-), member_parties AS (
- -- Without a roster observation date, conflicting parties cannot be resolved.
- SELECT m_congress,m_bioguide_id,min(term_party) AS term_party
- FROM member_congress_candidates
- GROUP BY m_congress,m_bioguide_id
- HAVING min(term_party)=max(term_party)
-), with_party AS (
+), selected_assignments AS (
  SELECT
   d.congress,
   d.system_code,
@@ -76,9 +47,9 @@ WITH committee_code_map AS (
   CASE WHEN d.parsed_rank IS NULL THEN 1 ELSE 0 END AS rank_missing,
   d.name_last,
   d.name_first,
-  coalesce(d.raw_party,mp.term_party) AS party
+  -- Service-term party is not dated roster-party evidence.
+  d.raw_party AS party
  FROM dedup_assignments d
- LEFT JOIN member_parties mp ON mp.m_congress=d.congress AND mp.m_bioguide_id=d.bioguide_id
  WHERE d.rn=1
 ), ranked_rosters AS (
  SELECT
@@ -93,7 +64,7 @@ WITH committee_code_map AS (
    PARTITION BY congress,system_code,party,rank_missing
    ORDER BY title_missing ASC,name_last ASC NULLS LAST,name_first ASC NULLS LAST,bioguide_id ASC
   ) AS missing_rank_seq
- FROM with_party
+ FROM selected_assignments
 )
 SELECT
  congress,

@@ -2334,7 +2334,7 @@ def test_hhrg_slug_witness_matching_precedence_title_enrichment_and_meeting_prop
 def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     """ct-mj9f & ct-8cno: reconcile meetings.subject_keys across all 5 authoritative sources,
     publish bills.parquet with public_law_number/cosponsor_count/related_bills, and wire
-    multi-Congress (113-119) rosters with normalized system codes, coalesced party, and synthesized rank."""
+    multi-Congress (113-119) rosters with normalized codes, supplied or unknown party, and synthesized rank."""
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
 
@@ -2594,7 +2594,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 rank=1,
                 party='Democrat',
             ),
-            # 115th Congress: party-switcher C000003 with missing party -> must match 2013-2019 Democrat term
+            # 115th Congress: service terms cannot establish this missing assignment party.
             dict(
                 congress=115,
                 session='1',
@@ -2606,7 +2606,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 rank=1,
                 party=None,
             ),
-            # 117th Congress: historical subcommittee HSVR09 with mixed explicit rank=1 (C000003) and rank=None (B000002)
+            # 117th Congress: same supplied party, explicit rank=1 and missing rank.
             dict(
                 congress=117,
                 session='1',
@@ -2635,7 +2635,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 name_last='Baker',
                 position='Ranking Member',
                 rank=None,
-                party=None,
+                party='Republican',
             ),
             # 119th Congress: current assignment
             dict(
@@ -2863,7 +2863,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     assert rosters == [
         dict(congress=113, system_code='hlig00', bioguide_id='A000001', title='Chair', rank=1, party='Democrat'),
         dict(congress=113, system_code='hlig01', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),
-        dict(congress=115, system_code='ssbk00', bioguide_id='C000003', title='Member', rank=1, party='Democrat'),
+        dict(congress=115, system_code='ssbk00', bioguide_id='C000003', title='Member', rank=1, party=None),
         dict(congress=117, system_code='hsvr09', bioguide_id='C000003', title='Chair', rank=1, party='Republican'),
         dict(congress=117, system_code='hsvr09', bioguide_id='B000002', title='Ranking Member', rank=2, party='Republican'),
         dict(congress=119, system_code='ssbk00', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),

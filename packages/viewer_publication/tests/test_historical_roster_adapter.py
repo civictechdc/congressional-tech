@@ -29,10 +29,12 @@ def _inputs(directory, assignments):
         dict(bioguide_id='H000008', term_party='Republican', term_start='2024-06-30', term_end='2025-01-03'),
         dict(bioguide_id='I000009', term_party='Republican', term_start='2023-01-03', term_end=None),
         dict(bioguide_id='J000010', term_party='Democrat', term_start='2023-01-03', term_end='unreadable'),
+        # A single term-level assertion can omit party changes within that term.
+        dict(bioguide_id='K000011', term_party='Independent', term_start='2019-01-03', term_end='2025-01-03'),
     ]
     members = [dict(bioguide_id=key, name_first='Fixture', name_last=key)
                for key in ('A000001', 'B000002', 'C000003', 'D000004',
-                           'E000005', 'F000006', 'G000007', 'H000008', 'I000009', 'J000010')]
+                           'E000005', 'F000006', 'G000007', 'H000008', 'I000009', 'J000010', 'K000011')]
     committees = [dict(system_code=key, name='Fixture ' + key, chamber=chamber,
                        committee_type='Standing', is_current=False)
                   for key, chamber in (('HLIG00', 'House'), ('SSFI00', 'Senate'))]
@@ -73,17 +75,17 @@ def historical(tmp_path_factory):
     return _build(root / 'populated', assignments)
 
 
-def test_historical_seats_preserve_congress_leadership_and_term_dates(historical):
+def test_historical_seats_preserve_congress_leadership_and_supplied_party(historical):
     rows = pq.read_table(historical / 'rosters.parquet').to_pylist()
     expected = [dict(congress=congress, system_code=code, bioguide_id=member, title=title,
                      rank=1, party=party)
                 for congress in HISTORY
                 for code, member, title, party in (
-                    ('hlig00', 'A000001', 'Chair', 'Democrat' if congress <= 115 else 'Republican'),
-                    ('hlig00', 'B000002', 'Ranking Member', 'Independent'),
+                    ('hlig00', 'A000001', 'Chair', None),
+                    ('hlig00', 'B000002', 'Ranking Member', None),
                     ('hlig01', 'C000003', 'Vice Chair', 'Independent'),
-                    ('ssfi00', 'D000004', 'Chair', 'Republican'),
-                    ('ssfi01', 'D000004', 'Vice Chair', 'Republican'),
+                    ('ssfi00', 'D000004', 'Chair', None),
+                    ('ssfi01', 'D000004', 'Vice Chair', None),
                 )]
     assert rows == expected
     assert len({(r['congress'], r['system_code'], r['bioguide_id']) for r in rows}) == len(rows)
@@ -121,22 +123,24 @@ def test_published_roster_recipe_returns_historical_leadership(historical, congr
 
 def test_service_terms_and_committee_references_do_not_create_missing_history(tmp_path):
     directory = _build(tmp_path / 'absent', [])
-    assert pq.read_table(directory / 'members.parquet').num_rows == 10
+    assert pq.read_table(directory / 'members.parquet').num_rows == 11
     assert pq.read_table(directory / 'committees.parquet').num_rows == 2
     assert pq.read_table(directory / 'rosters.parquet').num_rows == 0
 
 
-def test_missing_source_party_requires_unambiguous_overlapping_service(tmp_path):
-    # Half-open dates: a term ending at Congress start or starting at Congress end
-    # provides no party evidence for that Congress. Two different parties within
-    # the Congress cannot establish the party at an undated roster observation.
+def test_missing_source_party_is_not_inferred_from_service_terms(tmp_path):
+    # Dates, open terms and agreement between term assertions cannot establish
+    # party at the roster observation. One assertion may hide mid-term changes.
     assignments = [dict(congress=118, system_code='SSFI00', bioguide_id=member,
                         position='Member', rank=rank, party=None)
                    for rank, member in enumerate(('E000005', 'F000006', 'G000007', 'H000008',
                                                   'I000009', 'J000010'), 1)]
+    assignments += [dict(congress=congress, system_code='SSFI00', bioguide_id='K000011',
+                         position='Chair', rank=1, party=None) for congress in (116, 117)]
     directory = _build(tmp_path / 'party-boundaries', assignments)
     rows = pq.read_table(directory / 'rosters.parquet').to_pylist()
-    assert [(r['bioguide_id'], r['party']) for r in rows] == [
-        ('E000005', None), ('F000006', None), ('G000007', None), ('H000008', None),
-        ('I000009', 'Republican'), ('J000010', None),
+    assert [(r['congress'], r['bioguide_id'], r['party']) for r in rows] == [
+        (116, 'K000011', None), (117, 'K000011', None),
+        (118, 'E000005', None), (118, 'F000006', None), (118, 'G000007', None),
+        (118, 'H000008', None), (118, 'I000009', None), (118, 'J000010', None),
     ]

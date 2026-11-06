@@ -487,7 +487,7 @@ Coverage: Committee seats cover only the Congresses populated in the pinned upst
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `congress`: Keyed by (congress, system_code, bioguide_id); populated from the pinned upstream committee_assignments snapshot, whose populated Congresses the coverage congress_start and congress_end bound. Earlier Congresses appear only after an upstream backfill is pinned.
-- `party`: Preserves the supplied assignment party. If absent, uses the single party shared by service terms overlapping this Congress, with half-open [start,end) dates. No overlapping party evidence or conflicting parties leaves this value null; the input does not supply a roster observation date.
+- `party`: Preserves the supplied assignment party; missing or blank values stay null. Service-term party assertions do not establish party or caucus at a roster observation, and the input does not supply qualified dated affiliation history.
 
 Outgoing: `roster_committee`, `roster_member`.
 
