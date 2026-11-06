@@ -40,3 +40,9 @@ Independent review: REQUEST CHANGES; current owner state: completed changes requ
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 2c120996. Publisher observation history now comes from a materialized relation before current-record pruning. Curated held/not-held decisions require the documented date; current-field precedence is unchanged. All 118 targeted checks passed, and three native microfixtures passed normal MCP and site readers. No actual shared-release pass is claimed.
 
 This reviewed follow-up is not yet included in local main. Reconciled follow-up c2be1c10 still needs affected checks and the same reviewer's approval. Remaining: Final five-control source comparison, three negative plants, same-release normal consumers and selected public MCP/Pages readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-oh9y/REPAIR-REVIEW-2c120996.md).
+
+**2026-11-06T20:26:32Z**
+
+Integrated approved repair c2be1c10 into main at 69048036. All 17 combined controls passed (partial lane): publisher status history survives current-record selection, and held evidence applies only to its documented date. The original review findings are resolved. Independent combined review approved the merged behavior.
+
+Keep in_progress for the five source controls, three negative plants, normal MCP/site checks and selected public readback on the final release. No final build or deployment is claimed. Evidence: .cache/archive-release/implementation/merge-prune-20261106T180951Z/oh9y-combined-checks.json and combined-cause-delta-69048036.md.

@@ -73,3 +73,9 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 20c55d20. Disk admission now includes Python temporary files when they use a different filesystem from RUNNER_TEMP. The review also checked documented reuse of retained measurements after non-resource source changes: both revisions and unchanged workload/runtime/storage guarantees must be recorded. Exact-revision and capacity refusal remain enforced; 23 focused checks passed.
 
 This reviewed follow-up is not yet included in local main. Remaining: Qualified final-layout operation budgets and release-owner resource checks. Measured Git maintenance remains with the existing cleanup owner. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-9lxf/REVIEW.md).
+
+**2026-11-06T20:26:32Z**
+
+Integrated the approved temporary-filesystem fix abd90dff and measurement-reuse documentation 20c55d20 into main, complete at 82a52289. Resource admission includes Python's actual temporary filesystem. Retained measurements may be reused only with a recorded explanation of unchanged workload, runtime and storage guarantees; exact-revision and capacity checks still apply. The final documentation delta was independently approved.
+
+Keep open for qualified complete-operation budgets at the final layout and release-owner resource checks. Quiet-window Git maintenance remains with the existing cleanup owner. No shared recovery data was deleted. Evidence: .cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-9lxf/SUPPLEMENTAL-REVIEW-20c55d20.md.
