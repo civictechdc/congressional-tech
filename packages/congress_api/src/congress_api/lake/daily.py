@@ -496,6 +496,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
         raise ValueError('Derived baseline must name the current captures table')
     work=Path(work)
     scope_work=work/'delta'
+    scope_work.mkdir(parents=True,exist_ok=False)
     inputs=[tables.table_input('captures',heads['captures']),tables.table_input('baseline',baseline)]
     schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',supersedes='Utf8')
     files=unreadable_snapshot.files()
