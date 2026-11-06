@@ -20,6 +20,10 @@ TOOL_NAMES = runpy.run_path(APP / 'src/congressional_explorer_mcp/__init__.py')[
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('wheel', type=Path, nargs='?', help='Omit to verify the versioned PyPI release')
+    parser.add_argument('--publication', default=str(REPO / 'model/fixtures/archive-contract/current/manifest.json'))
+    parser.add_argument('--archive-origin')
+    parser.add_argument('--probe-plan', type=Path)
+    parser.add_argument('--require-research', action='store_true')
     args = parser.parse_args()
     registry = json.loads((APP / 'server.json').read_text())
     distribution = str(args.wheel.resolve()) if args.wheel else f"congressional-explorer-mcp=={registry['version']}"
@@ -39,11 +43,14 @@ def main():
         data = root / 'Congress data'
         def run(*args):
             return subprocess.check_output([str(command), *args], cwd=root, env=env, text=True)
-        run('prepare', '--publication', str(REPO / 'model/fixtures/archive-contract/current/manifest.json'), '--data-dir', str(data))
+        run('prepare', '--publication', args.publication, '--data-dir', str(data),
+            *(['--archive-origin', args.archive_origin] if args.archive_origin else []))
         config = json.loads(run('config', '--client', 'claude-desktop', '--data-dir', str(data)))['mcpServers']['congress']
         assert Path(config['command']).is_absolute()
         assert config == tomllib.loads(run('config', '--client', 'codex', '--data-dir', str(data)))['mcp_servers']['congress']
-        result = json.loads(run('check', '--data-dir', str(data)))
+        result = json.loads(run('check', '--data-dir', str(data),
+            *(['--probe-plan', str(args.probe_plan.resolve())] if args.probe_plan else []),
+            *(['--require-research'] if args.require_research else [])))
         assert result['status'] == 'ok' and result['sample_rows'] == 1 and set(result['tools']) == TOOL_NAMES
         assert result['version'] == registry['version'] == registry['packages'][0]['version']
         alias_version = subprocess.check_output([str(root / 'bin/congressional-explorer-mcp'), '--version'], text=True)

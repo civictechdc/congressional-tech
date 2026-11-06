@@ -21,7 +21,8 @@ export async function handleRequest(
   if (url.pathname === "/" && request.method === "GET") {
     return Response.json({ name: "Congress Explorer", mcp: "/mcp", publication: env.PUBLICATION }, { headers });
   }
-  if (url.pathname !== "/mcp") return reply("Not found", 404);
+  if (!["/mcp", "/ready"].includes(url.pathname)) return reply("Not found", 404);
+  if (url.pathname === "/ready" && request.method !== "GET") return reply("Method not allowed", 405);
   if (request.method === "OPTIONS") {
     headers.set("Access-Control-Allow-Methods", "POST, GET, DELETE, OPTIONS");
     headers.set("Access-Control-Allow-Headers", "Content-Type, Accept, Mcp-Protocol-Version, Mcp-Session-Id");

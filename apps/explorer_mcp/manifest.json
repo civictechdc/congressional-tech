@@ -19,7 +19,7 @@
     "research"
   ],
   "tools_generated": true,
-  "long_description": "Explore congressional metadata locally. The first question downloads the public snapshot; later sessions reuse it. Document bodies are fetched only when requested. Python and dependencies are managed by uv. macOS and Linux; Windows is not supported.",
+  "long_description": "Explore congressional records and retained searchable text locally. The first question downloads the public snapshot and its text index when published; later sessions reuse them. Original document bodies are fetched only when requested. Python and dependencies are managed by uv. macOS and Linux; Windows is not supported.",
   "server": {
     "type": "uv",
     "entry_point": "desktop.py",

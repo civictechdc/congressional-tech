@@ -58,8 +58,8 @@ def generated_files():
             description=identity['description'], author=identity['author'], homepage=identity['homepage'],
             documentation=identity['homepage'], support=interface['supportURL'], icon='assets/icon.png',
             license=identity['license'], keywords=identity['keywords'], tools_generated=True,
-            long_description='Explore congressional metadata locally. The first question downloads the public '
-                'snapshot; later sessions reuse it. Document bodies are fetched only when requested. '
+            long_description='Explore congressional records and retained searchable text locally. The first question downloads the public '
+                'snapshot and its text index when published; later sessions reuse them. Original document bodies are fetched only when requested. '
                 'Python and dependencies are managed by uv. macOS and Linux; Windows is not supported.',
             server=dict(type='uv', entry_point='desktop.py', mcp_config=dict(command='uv', args=[
                 'run', '--project', '${__dirname}', '--python', '3.12', '--no-dev',

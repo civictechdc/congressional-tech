@@ -42,6 +42,20 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         'Use get_hearing_bundle for a hearing dossier; get_transcript discovers release-bound official, committee and caption sources. '
         'Pass a returned citation to resolve_citation to reopen its original passage.'))
 
+    @mcp.custom_route('/ready', methods=['GET'])
+    async def ready(request):
+        """Open the exact selected data and its index before reporting readiness."""
+        from starlette.responses import JSONResponse
+        try:
+            result = await call('overview', {})
+            if worker.selection['manifest'].get('text_index'):
+                await call('search_text', dict(text='CongressExplorerReadinessProbe', limit=1))
+            return JSONResponse(dict(status='ready', version=__version__, release_id=result['release_id']),
+                                headers={'Cache-Control': 'no-store'})
+        except Exception:
+            return JSONResponse(dict(status='unavailable'), status_code=503,
+                                headers={'Cache-Control': 'no-store'})
+
     async def call(method, query):
         try:
             if worker.selection is None:

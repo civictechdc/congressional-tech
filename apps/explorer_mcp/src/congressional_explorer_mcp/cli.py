@@ -21,25 +21,17 @@ def client_config(data_dir, client):
     return json.dumps({'mcpServers': {'congress': {'command': command, 'args': args}}}, indent=2)
 
 
-async def check_installation(data_dir):
-    """Exercise the installed entry point, MCP handshake, and an actual data read."""
+async def check_installation(data_dir, *, plan=None, require_research=False):
+    """Exercise the installed entry point and the available research paths."""
     from fastmcp import Client
     from fastmcp.client.transports import StdioTransport
 
     transport = StdioTransport(sys.executable,
         ['-m', 'congressional_explorer_mcp.cli', 'serve', '--data-dir', str(data_dir)], keep_alive=False)
-    async with asyncio.timeout(30):
-        async with Client(transport) as client:
-            tools = await client.list_tools()
-            from . import TOOL_NAMES
-            if {tool.name for tool in tools} != TOOL_NAMES:
-                raise ExplorerError('Installed MCP tool surface differs from the declared package tools')
-            info = (await client.call_tool('get_dataset_info')).data
-            result = (await client.call_tool('query_sql', {'query': {
-                'sql': 'SELECT filename FROM documents LIMIT 1'}})).data
-            return dict(status='ok', version=__version__, release_id=info['release_id'],
-                data_dir=str(data_dir), tables=len(info['tables']),
-                tools=[tool.name for tool in tools], sample_rows=len(result['rows']))
+    from .validation import check_client
+    async with asyncio.timeout(180):
+        async with Client(transport, timeout=120) as client:
+            return dict(await check_client(client, plan=plan, require_research=require_research), data_dir=str(data_dir))
 
 
 def serve(args, selection=None):
@@ -61,7 +53,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     descriptions = dict(prepare='Download or refresh the published data', inspect='Show the selected release',
         serve='Run the MCP server (stdio by default)', config='Print client configuration without changing settings',
-        check='Check the installed server and read one data row over MCP')
+        check='Check installed tools and available research paths over MCP')
     for name, description in descriptions.items():
         command = sub.add_parser(name, help=description)
         command.add_argument('--data-dir', type=Path, default=os.environ.get('CONGRESS_MCP_DATA_DIR', Path.home() / '.cache/congress-explorer-mcp'))
@@ -70,6 +62,9 @@ def main(argv=None):
         if name == 'prepare':
             command.add_argument('--publication', default=PUBLICATION, help='Current archive pointer or release manifest, URL or local path')
             command.add_argument('--archive-origin', help='Body archive origin; inferred for remote publications')
+        if name == 'check':
+            command.add_argument('--probe-plan', type=Path, help='JSON with retained event_id, document_reference and search_text')
+            command.add_argument('--require-research', action='store_true', help='Require real caption, page and indexed citation round trips')
         if name == 'serve':
             command.add_argument('--transport', choices=('stdio', 'http'), default='stdio')
             command.add_argument('--host', default='127.0.0.1', help='HTTP listen address')
@@ -96,7 +91,8 @@ def main(argv=None):
             selection = load_selection(args.data_dir)
         if args.command == 'check':
             try:
-                result = asyncio.run(check_installation(args.data_dir))
+                plan = json.loads(args.probe_plan.read_text()) if args.probe_plan else None
+                result = asyncio.run(check_installation(args.data_dir, plan=plan, require_research=args.require_research))
             except Exception as error:
                 raise ExplorerError(f'MCP installation check failed: {error}. Run inspect with the same --data-dir to check the selected release.') from error
             print(json.dumps(result, indent=2))

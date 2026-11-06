@@ -4,6 +4,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import shutil
+import sqlite3
 
 import pyarrow.parquet as pq
 import pytest
@@ -12,6 +13,34 @@ from congressional_explorer_mcp import release
 from congressional_explorer_mcp.models import ExplorerError
 from congressional_explorer_mcp.reader import Reader
 from conftest import CURRENT, manifest, replace_rows
+
+
+def test_opaque_index_download_streams_hashes_and_cleans_failed_transfer(tmp_path, monkeypatch):
+    """A SQLite asset uses the same bounded transfer as large release tables."""
+    source = tmp_path / 'search_index.sqlite'
+    with sqlite3.connect(source) as db:
+        db.execute('CREATE TABLE retained_text(content BLOB)')
+        db.execute('INSERT INTO retained_text VALUES (zeroblob(2500000))')
+    digest = sha256(source.read_bytes()).hexdigest()
+    item = dict(name=source.name, sha256=digest, size=source.stat().st_size, rows=1)
+    objects = tmp_path / 'objects'; objects.mkdir()
+    reads = []
+    @contextmanager
+    def bounded(location):
+        with Path(location).open('rb') as stream:
+            class CheckedStream:
+                def read(self, size):
+                    assert 0 < size <= 1 << 20
+                    reads.append(size)
+                    return stream.read(size)
+            yield CheckedStream()
+    monkeypatch.setattr(release, 'opened', bounded)
+    result = release.retain(source, item, objects, None)
+    assert result.stat().st_size == item['size'] and len(reads) >= 4
+    assert sha256(result.read_bytes()).hexdigest() == digest
+    with pytest.raises(ExplorerError, match='checksum'):
+        release.retain(source, dict(item, sha256='f' * 64), objects, None)
+    assert not list(objects.glob('*.partial'))
 
 
 def test_same_release_reuses_verified_files_without_payload_or_footer_reads(tmp_path, monkeypatch):
