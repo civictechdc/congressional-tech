@@ -688,7 +688,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "data-design-kit", extras = ["catalog"], path = "vendor/ddk/data_design_kit-0.1.0.dev4-py3-none-any.whl" },
+    { name = "data-design-kit", extras = ["catalog"], path = "vendor/ddk/data_design_kit-0.1.0.dev5-py3-none-any.whl" },
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "readability-lxml", specifier = ">=0.9" },
 ]
@@ -820,14 +820,14 @@ wheels = [
 
 [[package]]
 name = "data-design-kit"
-version = "0.1.0.dev4"
-source = { path = "vendor/ddk/data_design_kit-0.1.0.dev4-py3-none-any.whl" }
+version = "0.1.0.dev5"
+source = { path = "vendor/ddk/data_design_kit-0.1.0.dev5-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "referencing" },
 ]
 wheels = [
-    { filename = "data_design_kit-0.1.0.dev4-py3-none-any.whl", hash = "sha256:7c4c6bb481316c95e13c5518089f90c71664ca7387c09eb1ae0f94219fe267b8" },
+    { filename = "data_design_kit-0.1.0.dev5-py3-none-any.whl", hash = "sha256:b5b64cf8e670b9fb9a1546d4f3bc5aead70e47124f2acfb51cec9028286007eb" },
 ]
 
 [package.optional-dependencies]

@@ -18,7 +18,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "data-design-kit[catalog]==0.1.0.dev4",
+    "data-design-kit[catalog]==0.1.0.dev5",
     "PyYAML>=6,<7",
     "readability-lxml>=0.9",
 ]
@@ -43,7 +43,7 @@ members = [
 ]
 
 [tool.uv.sources]
-data-design-kit = { path = "vendor/ddk/data_design_kit-0.1.0.dev4-py3-none-any.whl" }
+data-design-kit = { path = "vendor/ddk/data_design_kit-0.1.0.dev5-py3-none-any.whl" }
 house-naming-guide = { workspace = true }
 committee-meeting = { workspace = true }
 congress-shared = { workspace = true }

@@ -23,10 +23,10 @@ No full replacement, external publication or production cutover is complete.
 | [Runtime gaps](runtime-gaps.md) | Remaining shared capabilities and their owners |
 | [Reviews](reviews/active-greybeard-review.md) | Historical review checkpoints; new scope supersedes their old-reader requirements |
 
-Qualified catalog package: `data-design-kit==0.1.0.dev4`, source
-`fb70ab825243235b4ecf77c5ebb8c636d0d06e2d`, wheel SHA-256
-`7c4c6bb481316c95e13c5518089f90c71664ca7387c09eb1ae0f94219fe267b8`.
-The parent qualified 320 installed tests and 177 case/profile combinations.
+Qualified catalog package: `data-design-kit==0.1.0.dev5`, source
+`5e90d70f74ef88053a75b8d991caf262ad74bbd0`, wheel SHA-256
+`b5b64cf8e670b9fb9a1546d4f3bc5aead70e47124f2acfb51cec9028286007eb`.
+The parent qualified 358 installed tests and 187 case/profile combinations.
 The selected application profile now admits all 70 relationship declarations,
 including release-local virtual row positions. Public profiles require an exact
 identifier grant. Native candidate qualification, richer schema mapping and
@@ -37,8 +37,18 @@ For this development release, finish installation with the maintained
 hash-qualified pip installation described by DDK's release guide: uv's local
 wheel installer omits the PEP 610 archive hash required by development locks.
 The exact install command and resulting metadata are retained in
-`<main checkout>/.cache/archive-release/ddk-replacement-20261106/catalog-install-04/`.
+`<main checkout>/.cache/archive-release/ddk-replacement-20261106/catalog-install-05/`.
 Do not patch DDK or manufacture installation records.
+
+The dev5 application checks passed 31 cases across four files. The native
+invariant adapter now uses `.local_catalog` and `.local_report` from the same
+assembly that provides the public catalog. A genuine public view withholding all
+field details and identities still produces the complete private native check
+inventory. An independent read-only review approved the change. No second
+assembly or definition validator was added. The full MCP suite also passed
+138 cases, with the three replacement-native fixture cases still pending.
+Seven browser cases passed against the freshly assembled dev5 catalog, including
+actual local HTTP delivery of its exact SQL companions.
 
 Focused checks have passed for native request parity, write-once control retry,
 asset-path safety, semantic declaration transcription and bounded workflow
@@ -96,6 +106,14 @@ stopped the macOS loader; that failure remains separately retained. The correcte
 probe does not qualify the experimental runtime or establish observed source
 schemas, input protection, actual report values or a valid data candidate. The
 application runtime pin and its entrypoint refusal remain unchanged.
+
+A separately authorized replay with experimental `source06` also passed. All
+287 schema bytes and complete named membership match `source05`; the added
+`declared_native_schema_id` is 0 for the eight original native inputs and null
+for the 43 Arrow-only declarations. This verifies the returned declared IDs;
+contradictory-ID rejection belongs to the parent's separate tests. The replay took
+3.270 seconds with 0.108 GiB observed peak RSS. Final shared runtime qualification
+and application runtime adoption remain separate.
 
 Model requirements now require an explicit `refresh_policy`. The former default
 for an omitted field has been removed; the maintained campaign writer already

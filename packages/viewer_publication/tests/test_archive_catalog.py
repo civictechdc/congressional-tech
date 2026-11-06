@@ -9,14 +9,37 @@ import duckdb
 ROOT = Path(__file__).parents[3]
 
 
-@pytest.fixture(scope='module')
-def admitted_catalog():
+@pytest.fixture(scope='module', params=['local', 'public'])
+def admitted_catalog(request, tmp_path_factory):
     from ddk.catalog import assemble_catalog
     from viewer_publication.archive_relationships import ArchiveRelationshipProfileV1
 
-    result = assemble_catalog(ROOT / 'model/ddk/project.ddk.json', permitted_roots=[ROOT],
-                              relationship_profile=ArchiveRelationshipProfileV1())
+    options = {}
+    permitted_roots = [ROOT]
+    if request.param == 'public':
+        project = json.loads((ROOT / 'model/ddk/project.ddk.json').read_text())
+        definitions = json.loads((ROOT / 'model/ddk/archive.odcs.json').read_text())
+        product = json.loads((ROOT / 'model/ddk/archive.odps.json').read_text())
+        datasets = [item for item in project['artifacts'].values() if item['kind'] == 'dataset']
+        # Only dataset-root metadata is public. Writer checks must still use
+        # every private field and identity from this single captured assembly.
+        policy = dict(identifiers=[project['id'], project['catalog']['id'],
+            definitions['id'], product['id'], ArchiveRelationshipProfileV1.identity['id'],
+            *[item['catalogId'] for item in datasets]],
+            definitionFields={item['catalogId']: [[]] for item in datasets})
+        directory = tmp_path_factory.mktemp('public-definition-scope')
+        path = directory / 'policy.json'
+        path.write_text(json.dumps(policy))
+        options['disclosure_policy'] = path
+        permitted_roots.append(directory)
+    result = assemble_catalog(ROOT / 'model/ddk/project.ddk.json', permitted_roots=permitted_roots,
+                              relationship_profile=ArchiveRelationshipProfileV1(), **options)
     assert result.report['decision'] == 'passed', result.local_report
+    assert result.catalog['audience'] == request.param
+    if request.param == 'public':
+        public = result.catalog['extensions']['urn:ddk:catalog:assembly']['datasetDefinitions']
+        assert public and all(not item.get('properties') for item in public.values())
+        assert result.catalog['identities'] == []
     return result
 
 

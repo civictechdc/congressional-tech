@@ -10,11 +10,12 @@
     "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/release-status.json",
     "lastObservedImplementationReady": true,
     "publicationRequiredForLocalImplementation": false,
-    "verifiedDDKImplementation": "fb70ab825243235b4ecf77c5ebb8c636d0d06e2d",
-    "verifiedDDKDocumentation": "a573a0d988ed9ba65ab63c01a4df06eef701adfe",
+    "verifiedDDKImplementation": "5e90d70f74ef88053a75b8d991caf262ad74bbd0",
+    "verifiedDDKDocumentation": "5e90d70f74ef88053a75b8d991caf262ad74bbd0",
     "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79",
-    "observedSuccessorCatalogCommit": "fb70ab825",
-    "successorInstalledQualification": "Qualified dev4 wheel installed through frozen uv sync and hash-qualified pip 24.3.1; native runtime unchanged"
+    "observedSuccessorCatalogCommit": "5e90d70f74ef88053a75b8d991caf262ad74bbd0",
+    "successorInstalledQualification": "Qualified dev5 wheel installed through frozen uv sync and hash-qualified pip; all 108 installed members match the wheel. Catalog/API slice adopted; application native pin unchanged.",
+    "qualifiedSharedNative": "d96e00172d7d4be26da4532cda35aa05f2a3709e; source-only Build/Update only; not the application native pin or experimental whole-job preparation"
   },
   "completed": [
     "Isolated branch at current local-main baseline; main working files preserved",
@@ -51,7 +52,8 @@
     "Historical frozen-prefix handoff records 51 inputs, 251 steps, 40 exports, 23 reports and 222 blocking check names without opening data; later actual preparation records one selected_readings difference and nomination preprocessing",
     "Removed model inference of refresh_live from requirements missing refresh_policy; six real native checks passed, and independent review confirmed current writer and policy semantics",
     "Actual low-level source preparation captured 51 inputs with exact schema artifacts, 251 steps, 40 outputs and 23 reports; independent review confirmed scope/custody and corrected unique-byte accounting; native preparation and entrypoint admission remain absent",
-    "Experimental schema-only native source05 inferred the complete actual job: exact 51/251/40/23 membership, 287 decodable IPC schemas, 250 declared native field/element identities and 222 required report column declarations; no source admission or data execution"
+    "Experimental schema-only native source05 inferred the complete actual job: exact 51/251/40/23 membership, 287 decodable IPC schemas, 250 declared native field/element identities and 222 required report column declarations; no source admission or data execution",
+    "Adopted qualified dev5 catalog/API slice; complete private native check definitions and audience-filtered public artifacts share one captured assembly; independent review approved 31 root cases,138 MCP passes/3 producer-fixture skips and7 HTTP/browser cases"
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -390,6 +392,79 @@
       "firstAttempt": "native-schema-probe-01 stopped in the macOS loader under a broad file-read allowlist; retained unchanged. Parent separately authorized the corrected exact-raw-path denial retry.",
       "review": "Independent read-only native-boundary review matched all supplied hashes, decoded all 287 IPC schemas, verified exact named membership and 250 field/element identities, confirmed all 43 payload denials and unchanged originals, and found no material overclaim or integration defect. No additional native execution or payload read.",
       "remainingNativeGuard": "Parent identified source05 lacks contradictory Iceberg artifact schema-id rejection; source06 repair and final qualification are separate."
+    },
+    "catalogDev5Adoption": {
+      "version": "0.1.0.dev5",
+      "sourceCommit": "5e90d70f74ef88053a75b8d991caf262ad74bbd0",
+      "wheelSHA256": "b5b64cf8e670b9fb9a1546d4f3bc5aead70e47124f2acfb51cec9028286007eb",
+      "installedWheelMembersMatched": 108,
+      "dependencyDelta": "Only DDK version/path/hash changed; native runtime unchanged.",
+      "root": {
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "scope": "production-offline partial:4 of 501 lane files; not a full lane",
+        "pytestSeconds": 24.674,
+        "peakRSSGiB": 0.29
+      },
+      "mcp": {
+        "passed": 138,
+        "failed": 0,
+        "skipped": 3,
+        "scope": "full MCP suite; replacement-native fixture cases still not supplied",
+        "pytestSeconds": 75.832,
+        "peakRSSGiB": 0.77
+      },
+      "browser": {
+        "passed": 7,
+        "failed": 0,
+        "scope": "Fresh dev5 catalog,43 delivered files/24 datasets including future-table fixture; actual local HTTP reader and companion delivery",
+        "peakRSSGiB": 0.151
+      },
+      "privatePublicBoundary": "Real public fixture reveals dataset-root metadata only and no identities, while native invariant definitions retain every private required field and identity from the same assembly. No second assembly or validator added.",
+      "review": "Independent read-only definition/code review approved, no material findings",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-catalog-current-05",
+      "runtimeQualification": "No replacement runtime adoption, data computation or full candidate qualification"
+    },
+    "schemaOnlySource06Replay": {
+      "status": "schema_only_diagnostic_inferred_membership_verified",
+      "runtimeSHA256": "b6ca99e41382e5c279726b3d01c4110258603a5e754d41a3f48d9d4eccf26958",
+      "runtimeQualification": "experimental source06; final native full-gate and application qualification separate",
+      "counts": {
+        "inputs": 51,
+        "steps": 251,
+        "outputs": 40,
+        "queries": 23
+      },
+      "comparison": {
+        "all287SchemaBytes": "identical",
+        "inputs": "identical_except_explicit_declared_native_schema_id",
+        "steps": "identical",
+        "outputs": "identical",
+        "queries": "identical",
+        "nativeSchemaIDs": {
+          "captures": 0,
+          "readings": 0,
+          "filename_readings": 0,
+          "meeting_records": 0,
+          "appearance_records": 0,
+          "video_records": 0,
+          "committee_records": 0,
+          "playlist_records": 0
+        },
+        "arrowOnlyNullSchemaIDs": 43
+      },
+      "nativeWallSeconds": 3.2704792089934926,
+      "peakRSSGiB": 0.108,
+      "peakPhysicalGiB": 0.046,
+      "inputAdmission": "not_run",
+      "execution": "not_run",
+      "protection": "not_run",
+      "candidateQualification": "not_run",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-03",
+      "summary": "summary.json",
+      "review": "Independent read-only delta review matched both supplied hashes, all 287 unchanged schema bytes and original membership, all 8 positive native schema IDs/43 Arrow-only null IDs, unchanged pins and limits. No material delta finding; no extra execution or payload read.",
+      "scope": "One parent-authorized replay with unchanged inputs, declarations, SQL, limits and payload/network/write denials. Returned actual schema IDs verified; negative contradictory-ID tests belong to native owner."
     }
   },
   "commits": {
@@ -400,10 +475,11 @@
       "1758b519",
       "e75f8b9e",
       "a8abadff",
-      "6e48e204"
+      "6e48e204",
+      "96251d9c"
     ],
     "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
-    "checkpoint": "This checkpoint records experimental schema-only preparation of the actual native request; full producer replacement and candidate acceptance remain pending."
+    "checkpoint": "This checkpoint adopts qualified dev5 for one shared private/public catalog assembly; producer/runtime adoption and full replacement acceptance remain pending."
   },
   "sharedDependencies": [
     "Exact original native table-pin protection and nested field/element-ID/schema mappings",
@@ -420,7 +496,7 @@
     "localInputCustody": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/input-admission-01/local-input-custody.json",
     "sharedRelationshipRequest": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/shared-relationships-01/request.json",
     "sharedRelationshipSourceRun": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/catalog-successor/congress-relationships-01/summary.json",
-    "installedCatalog": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/catalog-install-04/installed.json",
+    "installedCatalog": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/catalog-install-05/installed.json",
     "readingClosureEquivalence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reading-drift-01/closure.json",
     "wholeJobPreparation": {
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-01/handoff.json",
@@ -473,6 +549,26 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-02/boundary-analysis.json",
       "sha256": "4b6950c99dc0737e00c46affe9eb43cda728d73026a7dec5827c9153a8ed4a6d",
       "size": 3109
+    },
+    "catalogDev5Handoff": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/catalog-install-05/handoff.json",
+      "sha256": "dce5e5268552077550b385c2216046ec426cf141f263a7971fbd705946aa2699",
+      "size": 5999
+    },
+    "catalogDev5ProducerAdmission": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/catalog-install-05/producer-admission.json",
+      "sha256": "3ee9a6592f283e416d17e7bd8899db23568b7dcbba599bef704f17ba14707d1d",
+      "size": 427
+    },
+    "nativeSchemaSource06Result": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-03/native.stdout.json",
+      "sha256": "9c2492aa654cf6a12be1cc704942470172b1db640e5e15951c9b6903f2270a82",
+      "size": 439920
+    },
+    "nativeSchemaSource06Summary": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-03/summary.json",
+      "sha256": "e796b6ce9828a40d0da70aca0e532cae7a49cbf247a7c12ebeed6b15557beb39",
+      "size": 46823
     }
   },
   "constraints": {
@@ -485,7 +581,7 @@
     "resourceNote": "Bounded local checks ran under the shared watchdog with measured peaks. Parent owns the successor build lane; complete replacement-native acceptance remains pending.",
     "boundedLocalChecksAdmitted": true,
     "replacementNativeAcceptanceAdmitted": false,
-    "currentProducerEntrypoint": "Refuses checked-in original parser/catalog pins under the modified uv.lock; no pin replacement, equivalence exception or admission bypass adopted in production."
+    "currentProducerEntrypoint": "Refusal reverified under dev5/e966b803 lock: checked-in original parser/catalog pins differ from whole-lock fingerprints. No pin restamping, compatibility exception or production bypass."
   },
   "delivery": {
     "fullReplacementComplete": false,
@@ -495,7 +591,7 @@
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed"
   },
   "definitionImplementation": {
-    "state": "Qualified dev4 profile admits the complete declarations; MCP, browser, comparison and publication readers require the standard public catalog",
+    "state": "Qualified dev5 profile admits complete declarations; native check definitions use the complete private view from the same assembly that supplies public catalog artifacts. MCP/browser/comparison/publication use the standard public catalog.",
     "owner": "application definitions and consumer adapter; shared DDK fix parent-owned",
     "remaining": [
       "Exact native schema and complete candidate binding through the shared whole-JobSpec API",
@@ -503,7 +599,7 @@
       "Executable computation, qualification and metadata invalidation acceptance",
       "Three MCP native fixture journeys against a replacement-produced release"
     ],
-    "wheelSHA256": "7c4c6bb481316c95e13c5518089f90c71664ca7387c09eb1ae0f94219fe267b8"
+    "wheelSHA256": "b5b64cf8e670b9fb9a1546d4f3bc5aead70e47124f2acfb51cec9028286007eb"
   },
   "simplification": {
     "requirement": "Standardize and streamline the whole catalog-to-validation stack; reduce custom machinery rather than accumulate compatibility patches",

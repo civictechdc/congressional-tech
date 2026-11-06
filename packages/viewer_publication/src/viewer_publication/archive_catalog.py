@@ -8,12 +8,13 @@ Exact native schema and field-ID qualification belongs to the shared runtime.
 ASSEMBLY = 'urn:ddk:catalog:assembly'
 
 
-def dataset_definitions(result):
-    """Use DDK's admitted effective objects without rebuilding a release schema."""
-    if (result.report.get('decision') != 'passed' or result.catalog is None
-            or result.catalog.get('audience') != 'local'):
+def _local_catalog(result):
+    """Use the complete private view from the same public or local assembly."""
+    catalog = result.local_catalog
+    if (result.local_report.get('decision') != 'passed' or catalog is None
+            or catalog.get('audience') != 'local'):
         raise ValueError('Archive native checks require admitted local DDK declarations')
-    return result.catalog['extensions'][ASSEMBLY]['datasetDefinitions']
+    return catalog
 
 
 def publication_checks(result, auxiliary, published):
@@ -26,13 +27,14 @@ def publication_checks(result, auxiliary, published):
     """
     from viewer_publication.archive_format import CORE_RELATIONS
 
-    definitions = dataset_definitions(result)
+    catalog = _local_catalog(result)
+    definitions = catalog['extensions'][ASSEMBLY]['datasetDefinitions']
     published = set(published)
     undeclared = published - {table['physicalName'] for table in definitions.values()}
     if undeclared:
         raise ValueError('Archive outputs lack admitted dataset definitions: ' + ', '.join(sorted(undeclared)))
     identities = {}
-    for item in result.catalog['identities']:
+    for item in catalog['identities']:
         if item['kind'] == 'key':
             identities.setdefault(item['dataset'], []).append(item)
     checks = ['''(SELECT count(*) FROM details d WHERE d.link_key IS NOT NULL

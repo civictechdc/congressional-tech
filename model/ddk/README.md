@@ -30,6 +30,15 @@ unsupported semantics into a passed check. Only a passed result exposes the
 standard `artifacts` bytes. Public definitions require explicit field grants;
 project extension grants bind the exact source project identifier and version.
 
+Qualified dev5 supplies `.local_catalog` and `.local_report` for complete private
+writer checks, alongside audience-filtered `.catalog` and public artifact bytes.
+The native invariant adapter uses the complete private view from that same
+assembly. It does not assemble or read the definitions a second time. A public
+policy can withhold field details and identities without removing required native
+checks. Composite native type text requires an explicit `definitionPhysicalTypes`
+grant as well as disclosure of every modeled child; that disclosure does not
+qualify native type mapping or actual data.
+
 Both applications require the public catalog, report and lock. MCP discovery
 reads admitted definitions and typed relationships directly, and resolves SQL
 from verified recipe companions. Browser `catalog()` returns the standard

@@ -353,6 +353,26 @@ was created. This diagnostic does not change the application runtime pin, resolv
 its producer-version refusal, or qualify execution, protection, recovery,
 selection or a data candidate.
 
+The parent separately authorized one replay against experimental `source06`,
+binary SHA-256
+`b6ca99e41382e5c279726b3d01c4110258603a5e754d41a3f48d9d4eccf26958`.
+`native-schema-probe-03/` retains its exact result. Every one of the 287 schema
+byte strings and all existing input, step, export and report records match
+`source05`; the new `declared_native_schema_id` is 0 for all eight native inputs
+and null for all 43 Arrow-only inputs. The original declarations, SQL, runtime
+limits and denial policy remain unchanged apart from the separate evidence
+directory. Native wall time was 3.270 seconds, with 0.108 GiB observed peak RSS.
+The parent's contradictory-ID tests and final native gate remain separate from
+this positive replay. No application runtime pin changed.
+
+For nominations, `model/sql/entity-nominations.sql` owns the physical order:
+`committee_activities` is at zero-based position 6 and `committees` at 7. The
+builder materializes that relation, then exports `SELECT *` without a column
+override. DDK `DDK-DATA-005` makes property order irrelevant to declared
+compatibility while requiring exact positional mapping for execution. Preserve
+the native SQL and schema bytes, and record those actual positions in the shared
+mapping. Neither metadata reordering nor an application type mapper is needed.
+
 ## Decisions the native parent must return
 
 The JSON assigns these exact unresolved target semantics:
