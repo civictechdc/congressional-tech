@@ -15,7 +15,7 @@ export interface ArchiveEntityContext {
   resolve: (key: string) => Promise<number | null>;
   entry: (index: number, signal?: AbortSignal) => Promise<any>;
   versions: (index: number, signal?: AbortSignal) => Promise<any[]>;
-  entityHasColumn?: (name: string, column: string) => Promise<boolean>;
+  entityHasColumn: (name: string, column: string) => Promise<boolean>;
   meetingCoverage?: (eventId: string) => Promise<any[]>;
   witnessKeyMap?: (key: string) => Promise<{ key: string; status: string; successor: string | null; basis: string | null; candidates: string[] } | null>;
 }
@@ -63,10 +63,16 @@ const TRANSCRIPT_SOURCE_LABELS: Record<string, string> = {
   captions: 'Captions or subtitles',
 };
 
+export function transcriptSourceLabel(value: unknown): string {
+  const source = typeof value === 'string' ? value.trim() : '';
+  if (!source) return 'Source not stated';
+  return Object.hasOwn(TRANSCRIPT_SOURCE_LABELS, source) ? TRANSCRIPT_SOURCE_LABELS[source] : source;
+}
+
 /** The labelled sources of a meeting's transcripts (ct-1i4q), in the order the release lists them. */
 export function transcriptSourceLabels(transcripts: unknown): string[] {
   if (!Array.isArray(transcripts)) return [];
-  const labels = transcripts.map((t: any) => TRANSCRIPT_SOURCE_LABELS[String(t?.source ?? 'printed_hearing')] ?? String(t?.source));
+  const labels = transcripts.map((t: any) => transcriptSourceLabel(t?.source));
   return [...new Set(labels)];
 }
 
@@ -332,21 +338,20 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
   });
 
   const recordingMatchesIndex = () => memoized('recording_matches', async () => {
-    const hasLinks = await ctx.entityHasColumn?.('recording_matches', 'meeting_links');
+    if (!await ctx.entityHasColumn('recording_matches', 'meeting_links')) {
+      throw new Error('Archive recording_matches is missing meeting_links.');
+    }
     const rows = await entity('recording_matches');
-    const byEventId = new Map<string, any[]>(), byPackageId = new Map<string, any[]>();
+    const byEventId = new Map<string, any[]>();
     for (const observation of rows) {
-      if (hasLinks) {
-        for (const link of observation.meeting_links) {
-          pushMap(byEventId, String(link.event_id), { ...observation, meeting_link: link });
-        }
-      } else if (observation.event_id != null) {
-        pushMap(byEventId, String(observation.event_id), observation);
-      } else if (observation.package_id) {
-        pushMap(byPackageId, String(observation.package_id), observation);
+      if (!Array.isArray(observation.meeting_links)) {
+        throw new Error('Archive recording_matches meeting_links must be a list.');
+      }
+      for (const link of observation.meeting_links) {
+        pushMap(byEventId, String(link.event_id), { ...observation, meeting_link: link });
       }
     }
-    return { hasLinks, byEventId, byPackageId };
+    return { byEventId };
   });
 
   const committeesIndex = () => memoized('committees', async () => {
@@ -614,21 +619,13 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       const lower = sk.toLowerCase();
       return bIdx?.byKey.get(lower) ?? nIdx?.byKey.get(lower) ?? { kind: /^(?:\d+-)?pn-/i.test(sk) ? 'nomination' : 'bill', subject_key: sk, title: null, list_rows: rowsForColumn('measure_keys', sk) };
     });
-    // An older release can still show observations under their exact original package.
-    // These belong to the package and are separate from the hearing's recording associations.
-    const legacyPackageObservations = [...new Set(baseMeeting.transcripts.map((t: any) => t.package_id))]
-      .flatMap(packageId => {
-        const observations = matches.data?.byPackageId.get(String(packageId));
-        return observations?.length ? [{ package_id: packageId, observations }] : [];
-      });
     return {
       ...baseMeeting, subject_keys: allSubjectKeys, subjects, committees: enrichedCommittees,
       recordings: recRows, videos: allVideos, witnesses: mergedWitnesses, documents: baseMeeting.list_rows.map(row),
       relation_states: { recordings: recordings.state, committees: committees.state, witnesses: witnesses.state,
         bills: bills.state, nominations: nominations.state, coverage: coverage.state },
       recording_observations: matches.data?.byEventId.get(eventKey) ?? [],
-      original_package_observations: legacyPackageObservations,
-      recording_associations_state: matches.state === 'ready' && !matches.data?.hasLinks ? 'missing' : matches.state,
+      recording_associations_state: matches.state,
       coverage: Object.fromEntries((coverage.data ?? []).map(item => [item.aspect, item.state])),
     };
   }

@@ -2,6 +2,21 @@
 
 This request makes the archive model's native integration concrete. It preserves the eight existing Iceberg snapshot pins and the whole shared SQL job. It does not claim that the released managed DDK/DocSpec profile can adopt these pins, preserve the nested schema, or recover this job yet. Those parent-owned target semantics remain explicit below.
 
+The parent confirmed the production direction: one DDK component with named
+dataset input and output ports contains the complete native `JobSpec` produced
+by `plan_prepared_release`. Shared materialized steps, exports and reports stay
+in that single job. DDK and DocSpec own transport, exact typed reads, complete
+candidate qualification and native recovery. Raw Iceberg selectors retain
+`metadata_location`, `table_uuid`, `snapshot` and `schema_id`; no application
+adapter invents a `VersionRef` or replaces a snapshot with the latest table.
+The exact shared binding API remains under development.
+
+The greenfield output definition now includes the three actual policy-bound
+capture fields: 257 physical fields in total. New publication requires explicit
+`capture_profile` version 2; an absent policy does not mean eligibility passed.
+The original version-1 graph below remains a preserved computation baseline,
+not an accepted complete candidate for that current output shape.
+
 The companion [native-profile.json](native-profile.json) contains the exact original selectors, all eight source schemas and their physical IDs, all 251 live step specifications and dependencies, every export setting and SQL report, the planned meeting example, and named unresolved decisions. The JSON is request documentation, not a runnable native request: group/version bindings are deliberately `null` where no native `VersionRef` exists.
 
 Scope is the current checked-in archive publish model at the parent-declared baseline `a06eb64bf3caa4a44e12a89bdd08939323de3092`. Broader acquisition and consumer obligations remain in the existing capability inventories. This work read metadata and rendered declarations only; no native engine, job, test, corpus scan/copy, network request, Git operation, or shared-repository edit occurred.
@@ -228,6 +243,26 @@ Named historical measurements remain deliberately separate:
 | Same rebuttal, §2(g) | One 4,147,132-row capture-evidence re-export succeeded with 4/13/20 spills; smaller nonspillable merge budgets failed | One export only; no whole-job or replacement-runtime spill qualification |
 
 All investigation paths above are under `/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/`. Source graph counts and historical measurements do not establish current input size, largest nested row/group, total process memory, disk coexistence, physical I/O, selective delta work or performance. This turn starts none of those experiments. The parent reported about 8.7 GiB free disk before assignment; that is a constraint report, not a reservation or current remeasurement.
+
+## Application construction seam and pending native acceptance
+
+The application now exposes its complete supported `JobSpec` through one builder. `archive_format.native_release_job(inputs, steps, *, output, scratch, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None)` returns `(job, public_schema, blocking_diagnostics)`. It reads small schema definitions, creates no directories, opens no input rows, submits no native work, and leaves the caller's prepared relation list unchanged. `capture_scope` belongs to the later JSON-control finalization; it adds no separate native operation.
+
+`archive_model.plan_prepared_release(prepared, *, output, root=ROOT)` renders the full model through that builder. `build_prepared_release` retains the incumbent execution path. Both call the same sole model assembly function, and `_execute` now obtains its request from the extracted builder. The extraction removes construction from the executor rather than copying it into another adapter. There is no new request data class, phase database, retry controller, selection pointer or assumed managed API.
+
+The focused test `packages/viewer_publication/tests/test_archive_native_request.py` characterizes the full request against this preparation inventory, including all eight native pins, 251 live step specifications and last-reader releases, 40 output specifications/settings and 23 report SQL definitions. It also verifies that invalid SQL, missing relations and duplicate relation names refuse without creating work, and that the incumbent executor submits exactly the same single request. The inventory was captured before extraction: `native-profile.json.source_definitions` preserves those earlier source hashes as comparison evidence, not the identity of the now-refactored source files. The original table pins, schema IDs and graph definitions remain unchanged.
+
+The required runner passed eight tests, including three existing SQL-dependency/lifetime cases: `production-offline (partial: 2 of 496 lane files; not a lane result): exit 0`. Evidence is retained under `/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-native-request-01/` in `test-runner-02.log` and `junit-02.xml`. An initial host Poppler mismatch stopped preflight; the later runner-argument refusal and first extraction failure remain in the earlier retained logs. The successful run used this checkout's environment, the retained pinned Poppler path and its configured immutable native runtime; no native job ran. Reading-version diagnostics warned about workspace evidence drift while their fixed samples matched; that is limited incumbent evidence, not a replacement qualification or a parser-version decision.
+
+The actual retained-native acceptance route is now concrete up to the shared native operation:
+
+1. Resolve the original input custody through `archive_model_job.load_spec` and `model_arguments`, retaining the exact eight native pins and the actual SpicyRegs/provenance/predecessor members. Use the original selected manifest and its protection owner; no copy/export/reimport establishes adoption. Missing local generation/decision bindings remain N07.
+2. After the parent qualifies the successor runtime/client tuple and its protected-pin/group admission, use `prepare_model_inputs` to produce the application's exact prepared inputs, profile and shared admission prefix. This preparation writes small owned input definitions and needs an admitted durable stage directory. It is distinct from the side-effect-free full graph rendering.
+3. Pass that prepared state to `plan_prepared_release`. Submit its unchanged `job` through the parent's supported retained native operation under the original operation/request identity. Native execution owns protection, retained expensive completions and recovery. No new shared managed signature is assumed here.
+4. Bind the native candidate to the complete output/view membership, all required checks (`invariants` plus returned blocking diagnostics), rule/evaluator identities and completed-read coverage. The application still has its existing native-result, schema, receipt, reader and publisher gates as comparison oracles. A successful source-only read or one group's quality report does not qualify this full job.
+5. Compare authenticated current-schema rows independently, then exercise the planned append/correction/empty/partial/delete/cold/historical-retry cases before replacing the old path. Historical e145 metadata and the older retained native jobs do not cover the current added meeting/page/recording fields or all eight current snapshots.
+
+Before accepting a successor tuple, run the maintained native regression entry points under the required watchdog and a root-admitted resource budget: `test_archive_model_job.py::test_model_cli_executes_real_raw_lake_fixture`, `test_archive_job_metadata.py::test_metadata_rows_do_not_change_release_bytes_or_weaken_guards` and `test_phase1_model_lifetimes.py::test_actual_raw_lake_model_releases_every_relation_after_its_last_reader`. Those generated-row regressions protect request execution, release bytes, checks and lifetimes; authentic retained-native acceptance is a separate obligation. None was run for this extraction. Parent-owned operation/view/evidence extensions remain unqualified, and the incumbent controllers remain the comparison path.
 
 ## Decisions the native parent must return
 

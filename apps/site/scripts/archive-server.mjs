@@ -1,19 +1,22 @@
 /** Read-only fixture origin: explicit verified releases, built site, approved body paths. */
 import {createServer} from 'node:http';
-import {readFile,stat} from 'node:fs/promises';
+import {readFile,realpath,stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {resolve,sep,extname} from 'node:path';
 import {createHash} from 'node:crypto';
 export async function startArchiveServer({release,siteDist,bodies={},nextRelease,port=0}){
   const releases=new Map();
   for(const folder of [release,nextRelease].filter(Boolean)){
+    const root=await realpath(folder);
     const manifest=JSON.parse(await readFile(resolve(folder,'manifest.json')));
     const identity=createHash('sha256').update(JSON.stringify([manifest.schema_version,manifest.files.map(f=>[f.name,f.sha256,f.size,f.rows])])).digest('hex');
     if(identity!==manifest.release_id)throw new Error('Fixture release identity failed verification.');
     const assets=new Map();
     for(const file of manifest.files){
-      if(!/^[a-z_0-9.-]+$/.test(file.name))throw new Error('Invalid fixture asset name.');
-      const path=resolve(folder,file.name),bytes=await readFile(path);
+      if(!/^(?:[a-z_0-9.-]+|queries\/[a-f0-9]{64}\.sql|lineage\/[0-9]{4}\.openlineage\.json)$/.test(file.name)||assets.has(file.name))throw new Error('Invalid fixture asset name.');
+      const path=await realpath(resolve(root,file.name));
+      if(!path.startsWith(root+sep))throw new Error('Fixture asset escapes its release directory.');
+      const bytes=await readFile(path);
       if(bytes.byteLength!==file.size||createHash('sha256').update(bytes).digest('hex')!==file.sha256)throw new Error('Fixture asset bytes failed verification.');assets.set(file.name,{path,size:file.size,digest:file.sha256});
     }
     const path=resolve(folder,'manifest.json'),bytes=await readFile(path);assets.set('manifest.json',{path,size:bytes.length,digest:createHash('sha256').update(bytes).digest('hex')});
@@ -28,7 +31,7 @@ export async function startArchiveServer({release,siteDist,bodies={},nextRelease
     bodyAssets.set(key,{path:resolve(path),size:bytes.length,digest:expected});
   }
   const state={releaseId:releases.keys().next().value,missingFile:null,flipOnMissing:null,pointerReads:0,pointerBody:null,delayDetailMs:0,requests:[]};
-  const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.woff2':'font/woff2'};
+  const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.sql':'text/plain; charset=utf-8','.svg':'image/svg+xml','.woff2':'font/woff2'};
   const server=createServer(async(req,res)=>{
     try{
       if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}
@@ -37,7 +40,7 @@ export async function startArchiveServer({release,siteDist,bodies={},nextRelease
         state.pointerReads++;const bytes=Buffer.from(state.pointerBody??JSON.stringify({release_id:state.releaseId,previous_release_id:null}));
         res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Content-Length':bytes.length});res.end(req.method==='HEAD'?undefined:bytes);return;
       }
-      const match=/^\/congressional-tech\/data\/archive\/releases\/([a-f0-9]{64})\/([a-z_0-9.-]+)$/.exec(path);
+      const match=/^\/congressional-tech\/data\/archive\/releases\/([a-f0-9]{64})\/(.+)$/.exec(path);
       if(match){
         if(state.missingFile===match[2]){if(state.flipOnMissing)state.releaseId=state.flipOnMissing;res.writeHead(404,{'Cache-Control':'no-store'});res.end();return;}
         if(server && state.delayDetailMs && /^detail(?:-|[.])/.test(match[2]))await new Promise(resolve=>setTimeout(resolve,state.delayDetailMs));

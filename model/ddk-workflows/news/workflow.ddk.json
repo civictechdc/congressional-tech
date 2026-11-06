@@ -1,0 +1,83 @@
+{
+  "specVersion": "0.1",
+  "kind": "design",
+  "id": "urn:congressional-tech:news:design",
+  "version": "1.0.0",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "sources": {
+    "supplied-fetch": {
+      "dataset": "fetch-outcomes"
+    }
+  },
+  "steps": {
+    "interpret": {
+      "component": "rss-records",
+      "inputs": {
+        "fetch": {
+          "source": "supplied-fetch"
+        }
+      },
+      "arguments": {}
+    }
+  },
+  "exports": {
+    "captures": {
+      "from": {
+        "step": "interpret",
+        "output": "captures"
+      },
+      "dataset": "captures",
+      "allowAdditionalFields": true
+    },
+    "discoveries": {
+      "from": {
+        "step": "interpret",
+        "output": "discoveries"
+      },
+      "dataset": "discoveries",
+      "allowAdditionalFields": true
+    },
+    "items": {
+      "from": {
+        "step": "interpret",
+        "output": "items"
+      },
+      "dataset": "items",
+      "allowAdditionalFields": true
+    },
+    "outlets": {
+      "from": {
+        "step": "interpret",
+        "output": "outlets"
+      },
+      "dataset": "outlets",
+      "allowAdditionalFields": true
+    },
+    "versions": {
+      "from": {
+        "step": "interpret",
+        "output": "versions"
+      },
+      "dataset": "versions",
+      "allowAdditionalFields": true
+    },
+    "runs": {
+      "from": {
+        "step": "interpret",
+        "output": "runs"
+      },
+      "dataset": "runs",
+      "allowAdditionalFields": true
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "evidence": "declared interfaces only; no executable runtime adapter selected",
+      "unqualified": "Source payload schemas, exact physical output schema, data values, recovery, availability and publication remain separate obligations."
+    }
+  }
+}

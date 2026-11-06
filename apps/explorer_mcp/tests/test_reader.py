@@ -9,16 +9,17 @@ import pytest
 from congressional_explorer_mcp.models import ExplorerError, MAX_BYTES
 from congressional_explorer_mcp.release import encoded, prepare
 from congressional_explorer_mcp.reader import Reader
-from conftest import CURRENT, REPO, manifest
+from conftest import REPO, manifest
+
+
+# Independently frozen identifier semantics from a06eb64.
+EXPECTED_ENTITY_KEYS = {'meetings': ['event_id'], 'witnesses': ['witness_key'], 'witness_key_map': ['old_key'], 'recordings': ['video_key'], 'committees': ['system_code'], 'members': ['bioguide_id'], 'rosters': ['congress', 'system_code', 'bioguide_id'], 'bills': ['bill_id'], 'nominations': ['nomination_id'], 'url_state': ['requested_url'], 'url_variants': ['canonical_url', 'variant_url'], 'videos': ['video_key'], 'channels': ['handle'], 'recording_matches': ['match_id'], 'committee_records': ['record_key'], 'meeting_coverage': ['event_id', 'aspect']}
 
 
 def test_all_tables_and_nested_fields_are_available(reader):
     info = reader.dataset_info({})
     assert not info['missing_entities']
-    # Identity comes from the release's schema; the reader keeps no second map.
-    declared = {f['name'].removesuffix('.parquet'): f['identity']['fields'] for f in
-                json.loads((REPO / 'model/registries/release-schema.json').read_text())['files']
-                if f['identity']['scope'] == 'published identifier' and f['name'] not in ('links.parquet', 'retired_links.parquet')}
+    declared = EXPECTED_ENTITY_KEYS
     assert info['entity_keys'] == declared
     assert declared.keys() <= info['tables'].keys()
     assert info['tables']['rosters']['rows'] == 2
@@ -32,17 +33,18 @@ def test_all_tables_and_nested_fields_are_available(reader):
         {'bill_id': '119-hr-1', 'yea': 220, 'purpose': 'Add transit safety'}]
 
 
-def test_documents_view_holds_one_copy_of_each_column_on_keyed_detail(tmp_path):
+def test_documents_view_holds_one_copy_of_each_column_on_keyed_detail(current, tmp_path):
     # Older releases pair list and detail; newer detail files also repeat list's columns.
     root = tmp_path / 'release'
-    shutil.copytree(CURRENT, root)
+    shutil.copytree(current, root)
     listed = pq.read_table(root / 'list.parquet')
     detail = pq.read_table(root / 'detail.parquet')
     for name in listed.column_names:
-        detail = detail.append_column(name, listed[name])
+        if name not in detail.column_names:
+            detail = detail.append_column(name, listed[name])
     pq.write_table(detail, root / 'detail.parquet')
     keyed = Reader(prepare(tmp_path / 'keyed', manifest(root)))
-    old = Reader(prepare(tmp_path / 'old', CURRENT / 'manifest.json'))
+    old = Reader(prepare(tmp_path / 'old', current / 'manifest.json'))
     try:
         assert list(keyed.schemas['documents']) == list(old.schemas['documents'])
         assert keyed.query_sql({'sql': 'SELECT filename FROM documents ORDER BY list_row'})['rows'] == \
@@ -137,17 +139,15 @@ def test_paging_is_complete_and_bound_to_query(reader):
         reader.search_documents({'cursor':'invalid'})
 
 
-def test_absent_empty_and_unknown_are_distinct(tmp_path):
-    reader = Reader(prepare(tmp_path, CURRENT/'manifest.json'))
+def test_absent_empty_and_unknown_are_distinct(current, tmp_path):
+    reader = Reader(prepare(tmp_path, current/'manifest.json'))
     try:
-        # This release's schema states no identity: the reader does not invent one.
         info = reader.dataset_info({})
-        assert info['entity_keys'] == {} and info['missing_entities'] == []
-        assert info['entity_identity'] == 'not published in this release'
-        with pytest.raises(ExplorerError,match='no published identity'):
-            reader.search_entities({'table':'committees'})
-        with pytest.raises(ExplorerError,match='no single identifier'):
-            reader.get_entity({'table':'committees','id':'hsif00'})
+        assert 'bills' in info['missing_entities']
+        assert reader.dataset_info({'table': 'committees'})['available']
+        assert reader.search_entities({'table': 'committees'})['rows'] == []
+        with pytest.raises(ExplorerError, match='Entity is absent from this release'):
+            reader.get_entity({'table': 'committees', 'id': 'hsif00'})
         assert reader.search_documents({})['rows'][0]['congress'] is None
         assert reader.search_documents({})['rows'][0]['saved_url'] is None
         with pytest.raises(ExplorerError,match='not published'):
@@ -181,14 +181,16 @@ def test_raw_binary_types_precision_nulls_and_bounded_results(reader):
     assert reader.query_sql({'sql':'SELECT 2 AS alive'})['rows'] == [{'alive':2}]
 
 
-def test_retired_keys_redirect_or_explain_their_removal(tmp_path):
+def test_retired_keys_redirect_or_explain_their_removal(current, tmp_path):
     root = tmp_path / 'release'
-    shutil.copytree(CURRENT, root)
+    shutil.copytree(current, root)
     live = pq.read_table(root / 'links.parquet').to_pylist()[0]
     with duckdb.connect() as db:
         db.execute(f"""COPY (SELECT * FROM (VALUES
             (unhex('aaaaaaaaaaaaaaaa'),unhex('{live['link_key'].hex()}'),'{'d'*64}','old.pdf',NULL::BLOB[]),
-            (unhex('bbbbbbbbbbbbbbbb'),NULL::BLOB,'{'e'*64}','gone.pdf',[unhex('{live['link_key'].hex()}')])) v(link_key,successor_key,last_release_id,last_filename,address_versions))
+            (unhex('bbbbbbbbbbbbbbbb'),NULL::BLOB,'{'e'*64}','gone.pdf',[unhex('{live['link_key'].hex()}')]),
+            (unhex('dddddddddddddddd'),NULL::BLOB,'{'f'*64}','no-editions.pdf',[]::BLOB[]),
+            (unhex('eeeeeeeeeeeeeeee'),NULL::BLOB,'{'f'*64}','unknown-editions.pdf',NULL::BLOB[])) v(link_key,successor_key,last_release_id,last_filename,address_versions))
             TO '{root / 'retired_links.parquet'}' (FORMAT PARQUET)""")
     reader = Reader(prepare(tmp_path / 'selection', manifest(root)))
     try:
@@ -200,14 +202,18 @@ def test_retired_keys_redirect_or_explain_their_removal(tmp_path):
             reader.get_document(dict(link_key='bb' * 8, release_id=release))
         with pytest.raises(ExplorerError, match='absent or ambiguous'):
             reader.get_document(dict(link_key='cc' * 8, release_id=release))
+        for key in ('dd', 'ee'):
+            with pytest.raises(ExplorerError, match='no longer in the archive') as removed:
+                reader.get_document(dict(link_key=key * 8, release_id=release))
+            assert 'other versions' not in str(removed.value)
         with pytest.raises(ExplorerError, match='another release'):  # references stay bound to one release
             reader.get_document(dict(link_key='aa' * 8, release_id='0' * 64))
     finally:
         reader.close()
 
 
-def edited_release(phase2, tmp_path, *, drop=(), schema=None, files=()):
-    """A copy of the phase 2 fixture with files dropped or added and its schema edited."""
+def edited_release(phase2, tmp_path, *, drop=(), declarations=None, files=()):
+    """Keep native row edits distinct from genuinely assembled public declarations."""
     root = tmp_path / 'release'
     shutil.copytree(phase2.parent, root)
     (root / 'manifest.json').unlink()
@@ -215,10 +221,12 @@ def edited_release(phase2, tmp_path, *, drop=(), schema=None, files=()):
         (root / name).unlink()
     for name, table in files:
         pq.write_table(table, root / name)
-    if schema:
-        value = json.loads((root / 'schema.json').read_text())
-        schema(value)
-        (root / 'schema.json').write_text(json.dumps(value))
+    if declarations:
+        from catalog_fixtures import assemble_catalog_fixture
+        definitions = tmp_path/'definitions'
+        definitions.mkdir()
+        artifacts = assemble_catalog_fixture(REPO, definitions, change_definitions=declarations)
+        shutil.copytree(artifacts, root, dirs_exist_ok=True)
     return Reader(prepare(tmp_path / 'selection', manifest(root)))
 
 
@@ -226,12 +234,22 @@ def test_a_new_keyed_table_reaches_its_documents_from_the_schema_alone(phase2, t
     import pyarrow as pa
     listed = pq.read_table(phase2.parent / 'list.parquet')
     keys = pa.array([['x-1'] if i == 0 else [] for i in range(listed.num_rows)], pa.list_(pa.string()))
-    def declare(schema):
-        schema['files'].append(dict(name='x.parquet', columns=[dict(name='x_id', type='string', meaning='A new entity')],
-            identity=dict(fields=['x_id'], scope='published identifier', validation='fixture', kind='primary_key')))
-        schema['relationships'].append(dict(id='document_x', source=dict(table='list', fields=['x_keys[]']),
-            target=dict(table='x', fields=['x_id']), meaning='Fixture'))
-    reader = edited_release(phase2, tmp_path, schema=declare, files=[('list.parquet', listed.append_column('x_keys', keys)),
+    def declare(project, contract, product):
+        owner = next(alias for alias,row in project['artifacts'].items() if row['kind']=='product')
+        project['artifacts']['x'] = dict(kind='dataset', path='archive.odcs.json', object='x', catalogId='urn:test:reader:dataset:x')
+        product['outputPorts'].append(dict(name='x', contractId=contract['id'], version=contract['version']))
+        project['catalog']['ports'].append(dict(product=owner, direction='output', port='x', version=contract['version'], dataset='x'))
+        contract['schema'].append(dict(name='x', logicalType='object', businessName='New entity', dataGranularityDescription='One x',
+            properties=[dict(name='x_id', logicalType='string', physicalType='string', required=True),
+                        dict(name='name', logicalType='string', physicalType='string', required=True)]))
+        next(item for item in contract['schema'] if item['name']=='list')['properties'].append(
+            dict(name='x_keys', logicalType='array', physicalType='list<string>', required=True, items=dict(logicalType='string', physicalType='string')))
+        project['catalog']['identities'].append(dict(dataset='x', kind='key', scope='dataset_version', meaning='Fixture identifier',
+            fields=[dict(path=[dict(field='x_id')], virtual=False, physicalType='string')]))
+        project['catalog']['relationships'].append(dict(id='urn:test:reader:relationship:document_x',
+            source=dict(dataset='list', paths=[[{'field':'x_keys'},{'each':True}]]), target=dict(dataset='x', paths=[[{'field':'x_id'}]]),
+            match='equal', cardinality='many_to_many', scope='same_release', resolution='unresolved_allowed', nulls='reject', meaning='Fixture document links'))
+    reader = edited_release(phase2, tmp_path, declarations=declare, files=[('list.parquet', listed.append_column('x_keys', keys)),
         ('x.parquet', pa.table({'x_id': ['x-1', 'x-2'], 'name': ['First x', 'Second x']}))])
     try:
         assert reader.dataset_info({})['entity_keys']['x'] == ['x_id']
@@ -276,14 +294,13 @@ NO_TEXT = {'url_state', 'url_variants', 'meeting_coverage', 'witness_key_map'}
 
 def test_every_entity_table_is_text_searchable_or_explicitly_not(reader):
     from congressional_explorer_mcp.reader import TEXT_FIELDS
-    schema = json.loads((REPO / 'model/registries/release-schema.json').read_text())
-    columns = {f['name'].removesuffix('.parquet'): {c['name'] for c in f['columns']} for f in schema['files']}
+    columns = {name: set(reader.schemas[name]) for name in reader.entity_keys}
     for table in reader.dataset_info({})['entity_keys']:
         assert bool(columns[table] & set(TEXT_FIELDS)) != (table in NO_TEXT), table
 
 
-def test_upstream_relations_are_published_as_stated(reader, tmp_path, phase2):
-    published = json.loads((REPO / 'model/registries/release-schema.json').read_text())['upstream_relations']
+def test_upstream_relations_are_published_as_stated(current, reader, tmp_path, phase2):
+    published = json.loads((REPO / 'model/ddk/project.ddk.json').read_text())['extensions']['urn:congressional-tech:archive:upstream-relations']
     info = reader.dataset_info({})
     assert [u['id'] for u in info['upstream_relations']] == [u['id'] for u in published]
     assert len(published) == 7
@@ -291,28 +308,19 @@ def test_upstream_relations_are_published_as_stated(reader, tmp_path, phase2):
     assert {k: one[k] for k in ('family', 'table', 'key_columns', 'joins', 'row_meaning', 'limits')} == \
         {k: published[2][k] for k in ('family', 'table', 'key_columns', 'joins', 'row_meaning', 'limits')}
     assert one['upstream'] is True and one['missing_tables'] == []
-    old = Reader(prepare(tmp_path / 'old', CURRENT / 'manifest.json'))
-    try:
-        assert old.dataset_info({})['upstream_relations'] == 'not published in this release'
-    finally:
-        old.close()
 
 
 def test_document_dates_carry_their_basis(reader):
     row = reader.search_documents({'limit': 1})['rows'][0]
     assert {'document_date', 'document_date_source', 'first_captured', 'date_kind'} <= row.keys()
-    assert 'document_date_status' not in row
+    assert row['document_date_status'] is None
 
 
 def test_document_summaries_carry_a_published_date_status(phase2, tmp_path):
     detail = pq.read_table(phase2.parent / 'detail.parquet')
     status = pa.array(['suspect', *[None] * (detail.num_rows - 1)], pa.string())
-    detail = detail.add_column(detail.schema.get_field_index('document_date_source') + 1, 'document_date_status', status)
-    def declare(value):
-        columns = next(f for f in value['files'] if f['name'] == 'detail.parquet')['columns']
-        at = next(i for i, c in enumerate(columns) if c['name'] == 'document_date_source') + 1
-        columns.insert(at, dict(name='document_date_status', type='string', meaning='accepted or suspect', nullable=True))
-    reader = edited_release(phase2, tmp_path, files=[('detail.parquet', detail)], schema=declare)
+    detail = detail.set_column(detail.schema.get_field_index('document_date_status'), 'document_date_status', status)
+    reader = edited_release(phase2, tmp_path, files=[('detail.parquet', detail)])
     try:
         assert reader.search_documents({'limit': 1})['rows'][0]['document_date_status'] == 'suspect'
         documents = reader.get_entity({'table': 'meetings', 'id': 118001, 'section': 'documents'})['rows']
@@ -321,28 +329,47 @@ def test_document_summaries_carry_a_published_date_status(phase2, tmp_path):
         reader.close()
 
 
-@pytest.mark.parametrize('shape', ['row_position_detail', 'retired_links'])
-def test_document_address_tables_are_never_entities(phase2, tmp_path, shape):
-    # Releases 448651e7 and c94bfedc key detail by list_row; links is still a document address, read by get_document.
-    files = []
-    def edit(schema):
-        if shape == 'row_position_detail':
-            detail = next(f for f in schema['files'] if f['name'] == 'detail.parquet')
-            detail['identity'] = dict(fields=['list_row'], scope='release', validation='fixture', kind='row_position')
-        else:
-            schema['files'].append(dict(name='retired_links.parquet', columns=[],
-                identity=dict(fields=['link_key'], scope='published identifier', validation='fixture', kind='primary_key')))
-            schema['relationships'].append(dict(id='retired_link_successor', source=dict(table='retired_links', fields=['successor_key']),
-                target=dict(table='links', fields=['link_key']), meaning='Fixture'))
-    if shape == 'retired_links':
-        import pyarrow as pa
-        files = [('retired_links.parquet', pa.table({'link_key': [b'\xaa' * 8], 'successor_key': [None]}, schema=pa.schema(
-            [('link_key', pa.binary()), ('successor_key', pa.binary())])))]
-    reader = edited_release(phase2, tmp_path, schema=edit, files=files)
+def test_document_address_tables_are_never_entities(phase2, tmp_path):
+    files = [('retired_links.parquet', pa.table({'link_key': [b'\xaa' * 8], 'successor_key': [None],
+        'last_release_id': ['d' * 64], 'last_filename': ['old.pdf'], 'address_versions': [None]}, schema=pa.schema(
+        [('link_key', pa.binary(8)), ('successor_key', pa.binary(8)), ('last_release_id', pa.string()),
+         ('last_filename', pa.string()), ('address_versions', pa.list_(pa.binary(8)))])))]
+    reader = edited_release(phase2, tmp_path, files=files)
     try:
         keys = reader.dataset_info({})['entity_keys']
         assert not {'links', 'retired_links'} & keys.keys() and 'meetings' in keys
         with pytest.raises(ExplorerError, match='no published identity'):
             reader.search_entities({'table': 'links'})
+    finally:
+        reader.close()
+
+
+def test_detail_requires_current_date_status_field(phase2, tmp_path):
+    detail = pq.read_table(phase2.parent/'detail.parquet').drop(['document_date_status'])
+    with pytest.raises(ExplorerError, match='detail is missing document_date_status'):
+        edited_release(phase2, tmp_path, files=[('detail.parquet', detail)])
+
+
+def test_retired_lookup_requires_address_versions_but_table_can_be_absent(current, tmp_path):
+    root = tmp_path/'release'
+    shutil.copytree(current, root)
+    (root/'retired_links.parquet').unlink(missing_ok=True)
+    reader = Reader(prepare(tmp_path/'without-retired', manifest(root)))
+    try:
+        with pytest.raises(ExplorerError, match='absent or ambiguous'):
+            reader.get_document(dict(link_key='aa' * 8, release_id=reader.release_id))
+    finally:
+        reader.close()
+    # A present old-shaped table cannot turn unknown version history into null.
+    pq.write_table(pa.table({'link_key': [b'\xaa' * 8], 'successor_key': [None],
+        'last_release_id': ['d' * 64], 'last_filename': ['old.pdf']}, schema=pa.schema([
+            ('link_key', pa.binary(8)), ('successor_key', pa.binary(8)),
+            ('last_release_id', pa.string()), ('last_filename', pa.string())])), root/'retired_links.parquet')
+    reader = Reader(prepare(tmp_path/'missing-versions', manifest(root)))
+    try:
+        live = pq.read_table(root/'links.parquet').to_pylist()[0]['link_key'].hex()
+        assert reader.get_document(dict(link_key=live, release_id=reader.release_id))['rows']
+        with pytest.raises(ExplorerError, match='retired_links is missing address_versions'):
+            reader.get_document(dict(link_key='aa' * 8, release_id=reader.release_id))
     finally:
         reader.close()

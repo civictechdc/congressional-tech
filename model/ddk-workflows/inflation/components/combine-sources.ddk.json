@@ -1,0 +1,45 @@
+{
+  "specVersion": "0.1",
+  "kind": "component",
+  "id": "urn:congressional-tech:inflation:component:combine-sources",
+  "version": "1.0.0",
+  "role": "transform",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "aggregate": {
+        "type": "boolean"
+      },
+      "weights": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "aggregate"
+    ],
+    "additionalProperties": false
+  },
+  "inputs": {
+    "bls": {
+      "dataset": "historical-grid",
+      "allowAdditionalFields": true
+    }
+  },
+  "outputs": {
+    "table": {
+      "dataset": "inflation-table"
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "meaning": "Derive BLS YoY on a gap-free calendar grid, join available FRED/manual sources and optionally add an explicitly derived blend.",
+      "domainOwner": "apps/inflation_gsheets/src/fetch-inflation-sources.py",
+      "executionStatus": "interface_only",
+      "runtimeBinding": "unqualified",
+      "limitations": "Exact CSV column presence/revision policy remains maintained script-owned. BLS grid is index levels; combined columns are monthly year-over-year percent. Aggregate is optional, derived and not official. Optional source outage can omit columns; current implementation tolerates all-source failure with exit 0 despite workflow commentary. Required freshness/partial-source policy remains unresolved; declarations do not invent source availability or retained raw receipts."
+    }
+  }
+}

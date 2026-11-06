@@ -10,6 +10,7 @@ import {
 } from './archive-metadata.ts';
 import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
 import {savedCopy} from '../reader/archive.ts';
+import {transcriptSourceLabel} from '../reader/archive-entities.ts';
 
 function savedCaptionUrl(track: any, rawBase?: string) {
   if (rawBase && track?.sha256) {
@@ -226,12 +227,6 @@ export function HearingDetail({
       <RecordingObservations observations={observations}/>
     </div>}
 
-    {(meeting.original_package_observations??[]).map((group:any)=><details key={group.package_id} className="archive-entity-section">
-      <summary>Original package observations for {group.package_id}</summary>
-      <p className="archive-source-meta">These observations describe the package. Hearing associations are unavailable in this release.</p>
-      <RecordingObservations observations={group.observations}/>
-    </details>)}
-
     {transcripts.length>0&&<div className="archive-entity-section">
       <h3>Official Transcripts</h3>
       <ul className="archive-entity-list">
@@ -244,6 +239,7 @@ export function HearingDetail({
               :tr.url?<PublicLink url={tr.url}>{label}</PublicLink>
                 :tr.package_id?<PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(tr.package_id)}`}>{label}</PublicLink>:<span>{label}</span>}
             {tr.jacket_number&&tr.title&&<span className="archive-source-meta"> (Jacket {tr.jacket_number})</span>}
+            <span className="archive-source-meta"> · {transcriptSourceLabel(tr.source)}</span>
           </li>;
         })}
       </ul>

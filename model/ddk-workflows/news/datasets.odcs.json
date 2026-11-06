@@ -1,0 +1,579 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:news:semantic-datasets",
+  "version": "1.0.0",
+  "name": "Political news semantic datasets",
+  "status": "draft",
+  "description": {
+    "purpose": "Describe retained news observations, item identity, interpreted records and selected release views.",
+    "limitations": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred."
+  },
+  "schema": [
+    {
+      "id": "fetch-outcomes",
+      "name": "Supplied news fetch outcomes",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One caller-supplied fetch attempt; no live HTTP availability is established.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/adapters/common.py#FetchOutcome",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "url",
+          "logicalType": "string",
+          "description": "Literal requested source URL.",
+          "required": true
+        },
+        {
+          "name": "outcome",
+          "logicalType": "string",
+          "description": "Fetch outcome; metadata-only success is distinct from failed or not modified.",
+          "required": false,
+          "enum": [
+            {
+              "value": "succeeded"
+            },
+            {
+              "value": "not_modified"
+            },
+            {
+              "value": "failed"
+            }
+          ]
+        },
+        {
+          "name": "metadata_only",
+          "logicalType": "boolean",
+          "description": "True forbids retained payload fields.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "outlets",
+      "name": "news.outlets",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One outlet identity; later older polls may add evidence but cannot regress newer scalar claims.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/outlet",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "captures",
+      "name": "news.captures",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One fetch occurrence. Metadata-only/failed/not-modified records do not assert retained payload.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/capture",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        },
+        {
+          "name": "provider",
+          "logicalType": "string",
+          "description": "Provider identity, distinct from source publisher.",
+          "required": true
+        },
+        {
+          "name": "observed_at",
+          "logicalType": "timestamp",
+          "description": "Actual fetch observation time.",
+          "required": true
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "description": "Capture outcome.",
+          "required": true,
+          "enum": [
+            {
+              "value": "succeeded"
+            },
+            {
+              "value": "not_modified"
+            },
+            {
+              "value": "failed"
+            }
+          ]
+        },
+        {
+          "name": "access",
+          "logicalType": "string",
+          "description": "Retained-payload rights/access distinction.",
+          "required": true,
+          "enum": [
+            {
+              "value": "metadata_only"
+            },
+            {
+              "value": "restricted"
+            },
+            {
+              "value": "redistributable"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "discoveries",
+      "name": "news.discoveries",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One provider-specific observation of an item from a capture; shared item identity does not merge observations.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/discovery",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "items",
+      "name": "news.items",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One outlet/canonical URL identity; aliases and first seen evidence survive updates.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/item",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        },
+        {
+          "name": "canonical_url",
+          "logicalType": "string",
+          "description": "Item identity URL; originals remain aliases.",
+          "required": true
+        },
+        {
+          "name": "first_seen_at",
+          "logicalType": "timestamp",
+          "description": "Earliest supported source observation.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "versions",
+      "name": "news.versions",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One immutable interpreted item version with publication precision and access evidence.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/version",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "entities",
+      "name": "news.entities",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One entity identity with source evidence; merge decisions are separate records.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/entity",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "identity-decisions",
+      "name": "news.identity_decisions",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One immutable supported merge/reject/undo decision and its evidence.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/identity_decision",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "runs",
+      "name": "news.runs",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One processor/config/input execution identity and explicit outcome.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/run",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "description": "Processor outcome remains explicit; unfinished/failed work cannot imply success.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "mentions",
+      "name": "news.mentions",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One version/run/surface mention with ambiguity and source spans preserved.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/mention",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "classifications",
+      "name": "news.classifications",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One version/run/taxonomy classification, not an inferred source fact.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/classification",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "stories",
+      "name": "news.stories",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One story grouping produced by a run.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/story",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "story-members",
+      "name": "news.story_members",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One version membership observation for a story/run.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/story_member",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "releases",
+      "name": "news.releases",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One validated pinned news release; availability and cursor activation are separate decisions.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/contract/schema/news-lake.schema.json#/$defs/release",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Stable record identity; replay of conflicting append-only content must refuse.",
+          "required": true
+        },
+        {
+          "name": "recorded_at",
+          "logicalType": "timestamp",
+          "description": "Source record creation time; not publication or fetch time.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "politician-articles",
+      "name": "politician_articles",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One resolved person-root/item pair under one selected release; unresolved mentions assert no person membership.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/analysis/views.py#politician_articles",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "release_id",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        },
+        {
+          "name": "person_root_id",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        },
+        {
+          "name": "item_id",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        },
+        {
+          "name": "version_id",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "coverage-daily",
+      "name": "coverage_daily",
+      "logicalType": "object",
+      "description": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred.",
+      "dataGranularityDescription": "One selected-release/date bucket, including explicit undated bucket; identical text groups do not count independent reporting.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/news_lake/src/news_lake/analysis/views.py#coverage_daily",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "release_id",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        },
+        {
+          "name": "date",
+          "logicalType": "date",
+          "description": "Publication date where supported, otherwise discovery date; nullable for undated bucket.",
+          "required": false
+        },
+        {
+          "name": "undated",
+          "logicalType": "boolean",
+          "description": "True when no supported bucket date.",
+          "required": true
+        },
+        {
+          "name": "items",
+          "logicalType": "integer",
+          "description": "Distinct survivor items.",
+          "required": true
+        },
+        {
+          "name": "outlets",
+          "logicalType": "integer",
+          "description": "Distinct supported outlets.",
+          "required": true
+        },
+        {
+          "name": "stories",
+          "logicalType": "integer",
+          "description": "Distinct selected stories.",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

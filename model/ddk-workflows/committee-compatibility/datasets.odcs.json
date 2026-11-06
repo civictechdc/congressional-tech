@@ -1,0 +1,216 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:committee-compatibility:semantic-datasets",
+  "version": "1.0.0",
+  "name": "Committee Explorer compatibility export semantic datasets",
+  "status": "draft",
+  "description": {
+    "purpose": "Describe compatibility browser tables and their complete publication manifest.",
+    "limitations": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog."
+  },
+  "schema": [
+    {
+      "id": "meeting",
+      "name": "meeting",
+      "logicalType": "object",
+      "description": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog.",
+      "dataGranularityDescription": "One supported proceeding meeting.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../apps/committee_youtube/src/committee_explorer/parquet.py#TABLE_SCHEMAS",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Existing public record identity; preserve current identity continuity.",
+          "required": true
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "description": "Congress number where supported.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "committee-term",
+      "name": "committee_term",
+      "logicalType": "object",
+      "description": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog.",
+      "dataGranularityDescription": "One committee identity within its Congress term.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../apps/committee_youtube/src/committee_explorer/parquet.py#TABLE_SCHEMAS",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Existing public record identity; preserve current identity continuity.",
+          "required": true
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "description": "Congress number where supported.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "appearance",
+      "name": "appearance",
+      "logicalType": "object",
+      "description": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog.",
+      "dataGranularityDescription": "One supported person appearance/source occurrence.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../apps/committee_youtube/src/committee_explorer/parquet.py#TABLE_SCHEMAS",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Existing public record identity; preserve current identity continuity.",
+          "required": true
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "description": "Congress number where supported.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "material",
+      "name": "material",
+      "logicalType": "object",
+      "description": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog.",
+      "dataGranularityDescription": "One supported document or recording material.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../apps/committee_youtube/src/committee_explorer/parquet.py#TABLE_SCHEMAS",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Existing public record identity; preserve current identity continuity.",
+          "required": true
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "description": "Congress number where supported.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "data-issue",
+      "name": "data_issue",
+      "logicalType": "object",
+      "description": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog.",
+      "dataGranularityDescription": "One explicit unresolved/resolved data issue.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../apps/committee_youtube/src/committee_explorer/parquet.py#TABLE_SCHEMAS",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "Existing public record identity; preserve current identity continuity.",
+          "required": true
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "description": "Congress number where supported.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "sources",
+      "name": "source_record",
+      "logicalType": "object",
+      "description": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog.",
+      "dataGranularityDescription": "One retained source observation; source payload and typed browser projection remain distinct.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../apps/committee_youtube/src/committee_explorer/parquet.py#SOURCE_SCHEMA",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        },
+        {
+          "name": "provider",
+          "logicalType": "string",
+          "description": "Source provider identity; missing origin must not be guessed.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "manifest",
+      "name": "Publication manifest",
+      "logicalType": "object",
+      "description": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog.",
+      "dataGranularityDescription": "One complete publication with exact input snapshots, partition digests and explicit source scopes.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/committee_meeting/src/committee_meeting/publication.py#PublicationManifest",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "publication_id",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        },
+        {
+          "name": "generated_at",
+          "logicalType": "timestamp",
+          "description": "Actual publication generation time.",
+          "required": true
+        },
+        {
+          "name": "schema_version",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

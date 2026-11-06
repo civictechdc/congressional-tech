@@ -2,7 +2,7 @@
   "version": 1,
   "date": "2026-11-06",
   "objective": "Full end-to-end DDK replacement for the congressional-tech workspace",
-  "phase": "preparation-approved-catalog-redesign-shared-dependency-blocked",
+  "phase": "greenfield-implementation-standard-catalog-required",
   "worktree": "/Users/mikewolfd/.codex/worktrees/9c45/congressional-tech",
   "branch": "codex/ddk-congress-replacement-20261106",
   "baselineCommit": "a06eb64bf3caa4a44e12a89bdd08939323de3092",
@@ -10,9 +10,11 @@
     "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/release-status.json",
     "lastObservedImplementationReady": true,
     "publicationRequiredForLocalImplementation": false,
-    "verifiedDDKImplementation": "8e9a53e81ec6258f2068557ff5e4788c80c32995",
-    "verifiedDDKDocumentation": "3d2622b7a1cd0a454451987cd0ff7faf29d86e21",
-    "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79"
+    "verifiedDDKImplementation": "fb70ab825243235b4ecf77c5ebb8c636d0d06e2d",
+    "verifiedDDKDocumentation": "a573a0d988ed9ba65ab63c01a4df06eef701adfe",
+    "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79",
+    "observedSuccessorCatalogCommit": "fb70ab825",
+    "successorInstalledQualification": "Qualified dev4 wheel installed through frozen uv sync and hash-qualified pip 24.3.1; native runtime unchanged"
   },
   "completed": [
     "Isolated branch at current local-main baseline; main working files preserved",
@@ -24,7 +26,7 @@
     "Archive metadata census independently matched eight native schemas, 23 public tables, 254 declared fields, 70 relationships and 16 recipes",
     "Corrected preparation independently approved after F1-F4 fixes",
     "Revised native/qualification/acquisition/activation design independently approved for local application work",
-    "Exact metadata-only native request inventory: eight pins,250 field/element IDs,51 inputs,251 live steps,678 dependency edges,40 output specs,23 SQL reports",
+    "Exact metadata-only native request inventory: eight pins, 250 field/element IDs, 51 inputs, 251 live steps, 678 dependency edges, 40 output specifications and 23 SQL reports",
     "Released DDK wheel digest verified and installed in worktree .venv through frozen uv dependency",
     "Preparation checkpoint committed as 706de09e",
     "Focused test preflight passed with retained Poppler 26.06.0 and the unchanged congressional native runtime pin",
@@ -32,23 +34,77 @@
     "Withdrew provisional default integration: archive_schema.py, archive_model_profile.py and viewer-publication package dependencies match baseline",
     "Moved the unchanged frozen DDK wheel to workspace development dependencies; uv lock and worktree-local uv sync --frozen succeeded",
     "Recorded the clarified simplification criteria; stopped extending the reverse-conversion bridge",
-    "Independent architecture reassessment requires redesign of the reverse bridge; retain semantic evidence and replace a real consumer with concrete code retirement"
+    "Independent architecture reassessment requires redesign of the reverse bridge; retain semantic evidence and replace a real consumer with concrete code retirement",
+    "Removed the draft reverse registry converter and legacy serialization annotations; standard declarations retain domain semantics and unchanged recipe SQL",
+    "Constructed the exact existing 251-step/40-output native request through one shared builder without executing it or introducing another controller",
+    "Extracted sole post-native finalizer; identical retry controls preserve file custody, conflicting controls refuse before writes, and partial controls complete exclusively",
+    "Twenty focused production-offline tests passed through the maintained runner; two independent reviewers found no remaining blocker in the finalizer repair",
+    "Eighteen historical MCP relationship/release tests passed in the independent worktree-local MCP environment",
+    "Verified 13 retained local input files: 49,613,341 bytes with exact hashes, footer counts and unchanged file custody; eight remote native pins remain unverified",
+    "Shared successor source admitted frozen Congress definitions and sixteen SQL companions, with 38 of 70 relationship checks passed and 32 unknown; no publishable artifacts or data qualification",
+    "Qualified dev4 installed; 21 application definition/profile/native SQL cases passed; 70 declaration checks and 38 scoped profile assessments admit 19 artifacts without observed data",
+    "Full MCP suite: 138 passed and three replacement-native fixture cases pending; seven catalog/browser cases including exact HTTP delivery and the final 30-page site build passed",
+    "Current native client retry/fallback removal committed as 261b8f56; 36 client and three real native cases passed",
+    "Committee current-format cleanup committed as 1758b519; 34 Python, 23 browser and generated-type checks passed",
+    "Greenfield current-field cleanup passed 41 browser unit/presentation cases, two final unknown-label cases, and five focused root cases; independent reader review closed all findings",
+    "All eight nonarchive workflow-definition cases passed against qualified dev4; execution adoption remains unqualified",
+    "Whole-job preparation handoff preserves the current 51-input, 251-step, 40-export, 23-report request and 222 blocking check names without opening input data; version 2 target adds three checks"
   ],
   "active": [
-    "Replace the frozen reverse-conversion experiment with a standard-catalog consumer increment that retires superseded current-path code",
-    "Await parent-owned external-target loader repair and separately qualified shared native capabilities",
-    "Run focused semantic/consumer and lifecycle acceptance once the supported path is runnable"
+    "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
+    "Integrate parent-owned native multi-output candidate, required qualification, retained recovery and exact catalog membership",
+    "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
+    "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
+    "Retire duplicate archive_schema validator/registry using direct admitted definitions for native checks; shared native schema mapping remains required before execution acceptance",
+    "Standardize new publication on policy-bound capture_profile v2 and 257 physical fields; retain the original 254-field baseline and add three explicit current fields without inventing v1 eligibility"
   ],
   "tests": {
     "replacementAcceptance": "not_run",
-    "pythonLanes": "no full lane run; focused partial run failed",
-    "browser": "not_run",
-    "native": "not_run",
+    "pythonLanes": "no full lane run; focused checks passed as separately recorded; earlier failed provisional experiment retained",
+    "browser": {
+      "historicalPreparatoryRun": {
+        "nativeFixture": "built once with unchanged congressional pin",
+        "initialNodePassed": 11,
+        "initialNodeFailed": 1,
+        "initialFailure": "Baseline stale detail count17; baseline implementation emits23 eager detail fields",
+        "retryPassed": 12,
+        "retryNativeRecomputed": false,
+        "peakRSSGiB": 0.373
+      },
+      "greenfieldPublicAcceptance": {
+        "passed": 6,
+        "failed": 0,
+        "scope": "genuine installed-dev3 two-dataset public catalog, actual retained7-row native files; negative metadata refuses before Parquet reads; no data qualification",
+        "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-browser-public-01",
+        "log": "semantic-checks.log",
+        "nativeRecomputed": false
+      },
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-browser-01",
+      "fullCatalogReader": {
+        "passed": 7,
+        "failed": 0,
+        "scope": "Full public catalog and 43 delivered files for 24 datasets, including 23 archive datasets and a future-table scenario; actual HTTP origin serves verified SQL companions and refuses unlisted paths. Seven retained list rows; no native recomputation or qualification.",
+        "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-consumer-current-05",
+        "log": "catalog-browser.log",
+        "fixture": "mcp-pytest/phase20/release"
+      },
+      "currentFieldsAndPresentation": {
+        "passed": 41,
+        "failed": 0,
+        "finalLabelCasesPassed": 2,
+        "scope": "Required field presence, nullable fields, optional-table states, recording associations, package context and unknown transcript source labels. Two existing label/render cases rerun after final own-property guard.",
+        "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-consumer-current-05",
+        "log": "node.log",
+        "finalLabelLog": "unknown-label-retry.log"
+      }
+    },
+    "native": "Replacement native acceptance not run; three focused news cases and publisher/gate cases passed against the unchanged incumbent pin",
     "preparationChecks": "JSON shape and source-locator checks only",
     "metadataCompiler": {
       "command": ".venv/bin/python -m viewer_publication.archive_schema --check",
       "exit": 1,
-      "result": "KeyError dataset in released DDK core._catalog_dependencies for schema-valid external relationship target; no metadata acceptance"
+      "result": "KeyError dataset in released DDK core._catalog_dependencies for schema-valid external relationship target; no metadata acceptance",
+      "scope": "Historical withdrawn dev2 integration; superseded by qualified dev4 selectedProfile checks below"
     },
     "focusedDefinitionTests": {
       "command": ".venv/bin/python scripts/dev.py test production-offline --path packages/viewer_publication/tests/test_ddk_definitions.py -- -x -q",
@@ -60,65 +116,280 @@
       "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-01",
       "log": "initial.log",
       "junit": "initial.junit.xml",
-      "scopeNote": "Historical run of the provisional integration before its default wiring/CLI/hash additions were withdrawn; remaining experiment tests have not passed"
+      "scopeNote": "Historical run of the provisional dev2 integration before default wiring/CLI/hash additions were withdrawn. Qualified dev4 selectedProfile checks below supersede this failure."
     },
-    "sourceWithdrawal": "git diff --exit-code confirms both incumbent runtime source files and viewer-publication pyproject match baseline; syntax inspection and git diff --check passed; not runtime acceptance"
+    "sourceWithdrawal": "Historical checkpoint: incumbent runtime files and viewer-publication pyproject matched baseline when the provisional reverse bridge was withdrawn. Subsequent shared request/finalizer extraction is recorded separately.",
+    "nativeRequest": {
+      "passed": 8,
+      "scope": "partial; planning and existing mocked executor checks, no native computation",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-native-request-01",
+      "log": "test-runner-02.log",
+      "junit": "junit-02.xml"
+    },
+    "retainedControlsAndTransport": {
+      "passed": 20,
+      "seconds": 1.607,
+      "scope": "production-offline partial: 4 of 498 lane files; no native computation",
+      "doctor": "passed",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-controls-01",
+      "log": "test.log",
+      "junit": "junit.xml"
+    },
+    "historicalMCP": {
+      "passed": 18,
+      "scope": "partial: test_relationships.py and test_release.py; no full lane claim",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-mcp-historical-01",
+      "log": "test.log",
+      "junit": "junit.xml"
+    },
+    "readingVersionEvidence": {
+      "prior": "reading-drift-01 captured all57sourcefiles matching original baseline",
+      "current": "Only docspec_client client.py/transport.py in that closure changed, plus the rdflib dependency (7.6 to 7.2.1); 62 maintained parser/metadata cases passed and doctor fixed fixtures matched",
+      "decision": "Retain declared reading versions for this scoped change; no saved diagnostic rebaseline; bounded fixture evidence is not corpus equivalence",
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-reading-dependencies-01/equivalence.json"
+    },
+    "definitionTranscription": {
+      "initial": {
+        "passed": 9,
+        "failed": 1,
+        "scope": "2 archive transcription cases and8 workflow metadata cases; only a prose assertion failed"
+      },
+      "repair": {
+        "passed": 1,
+        "failed": 0,
+        "scope": "YouTube case checks structured ownership and no physical binding instead of prose"
+      },
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-definition-transcription-01"
+    },
+    "publicMCP": {
+      "state": "11 focused cases passed with genuine installed-dev3 two-dataset public fixture; no full archive data qualification",
+      "initialFailure": "Tiny fixture missing requiredChecks; corrected explicitly without waiving checks",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-mcp-public-01",
+      "log": "retry-02.log",
+      "junit": "retry-02.junit.xml",
+      "passed": 11,
+      "failed": 0
+    },
+    "committeeCurrentFormat": {
+      "pythonPassed": 34,
+      "browserPassed": 23,
+      "generatedTypes": "passed",
+      "scope": "current draft3 reader and model focused checks; no full lane",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-committee-current-01"
+    },
+    "currentProtocol": {
+      "initialPassed": 21,
+      "initialFailed": 1,
+      "repair": "test update digest assertion corrected to replacements.digest; failed parameter retry passed",
+      "followup": "Shared retry and exact caller choice forwarding passed all 36 cases; 21 earlier passes and the repaired parameter remain prior evidence",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-current-protocol-02",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 0.375,
+      "scope": "Production-offline partial: two of 501 files; no full lane or native replacement claim"
+    },
+    "metadataDependencyRegression": {
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 2.05,
+      "peakRSSGiB": 0.321,
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-reading-dependencies-01",
+      "scope": "Production-offline partial: two of 501 files; no full lane"
+    },
+    "selectedProfile": {
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Production-offline partial: three of 501 files; declaration support and native SQL definition parity, without actual candidate data qualification",
+      "relationshipsPassed": 70,
+      "profileAssessments": 38,
+      "externalExistence": "not_assessed",
+      "currentPhysicalFields": 257,
+      "baselinePhysicalFields": 254,
+      "additionalCurrentCaptureFields": 3,
+      "additionalRequiredNullChecks": 2,
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-catalog-profile-04",
+      "log": "retry-03.log",
+      "junit": "retry-03.junit.xml",
+      "earlierFailures": "Uninstalled sqlglot test dependency replaced by maintained DuckDB parser; six virtual row-position semantics explicitly supplied; virtual note linked to identity instead of a false physical property"
+    },
+    "currentNativeNews": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "peakRSSGiB": 0.336,
+      "scope": "Focused pinned-native IPC run/update, native merge and producer custody; no full lane",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-news-current-01",
+      "log": "retry-02.log",
+      "junit": "retry-02.junit.xml",
+      "initialAttempt": "Three skips because DOCSPEC_BINARY was unset; retry explicitly names unchanged pinned binary"
+    },
+    "fullMCP": {
+      "passed": 138,
+      "failed": 0,
+      "skipped": 3,
+      "seconds": 26.756,
+      "peakRSSGiB": 0.707,
+      "scope": "Complete 13-file MCP suite; three replacement-native producer-fixture cases remain unavailable",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-consumer-current-05",
+      "log": "mcp.log",
+      "junit": "mcp.junit.xml",
+      "watchdog": "mcp-watchdog.json"
+    },
+    "siteBuild": {
+      "exit": 0,
+      "pages": 30,
+      "peakRSSGiB": 0.59,
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-consumer-current-05",
+      "log": "build-02.log",
+      "watchdog": "build-watchdog-02.json"
+    },
+    "controlParentPreflight": {
+      "passed": 7,
+      "failed": 0,
+      "scope": "Known ancestor/control-set collisions and invalid bytes refuse before any write; exact retries preserve custody and partial recovery; independent reviewer closed the finding",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-controls-02"
+    },
+    "releaseComparison": {
+      "passed": 39,
+      "failed": 0,
+      "scope": "All hand-worked comparison cases use genuine admitted public catalogs; changed catalog/report bytes and changed declared keys refuse",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-comparison-catalog-04"
+    },
+    "publicationCatalog": {
+      "passed": 88,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 6.471,
+      "peakRSSGiB": 0.307,
+      "scope": "Complete publisher/release-gate modules; production-offline partial: two of 501 files. Genuine catalog fixtures preserve hand-worked cause/link/pointer/recovery assertions; no replacement native qualification.",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-publication-catalog-04",
+      "log": "retry-02.log",
+      "junit": "retry-02.junit.xml",
+      "watchdog": "watchdog-02.json",
+      "review": "Independent review found broad unsupported-origin admission; positive current-model admission fixed it. Reviewer confirmed closure after the 88-case run."
+    },
+    "currentPointer": {
+      "initialPassed": 61,
+      "initialFailed": 1,
+      "repairedCasePassed": 1,
+      "scope": "Current bootstrap/predecessor pairing, durable pointer bytes and lost-ack reconciliation; real canary retains missing-body refusal after genuine catalog fixture migration",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-pointer-current-01",
+      "junit": "junit.xml",
+      "repairJunit": "retry-03.junit.xml",
+      "intermediateFailure": "Real fixture server lacked query companion paths; source now serves only exact admitted assets and verifies release-directory containment",
+      "review": "Independent reviewer confirmed pairing and durability; corrected an initially mistaken fixture caveat after inspecting the passing retry"
+    },
+    "currentFieldDefinitions": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Three current-field browser cases and two declaration-transcription cases; production-offline partial: two of 502 files",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-consumer-current-05",
+      "log": "root.log",
+      "junit": "root.junit.xml"
+    },
+    "workflowDefinitions": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Four products, 28 semantic datasets and 14 interface-only productions on qualified dev4; production-offline partial: one of 502 files; no source execution or native adoption",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-consumer-current-05",
+      "log": "workflows.log",
+      "junit": "workflows.junit.xml"
+    }
   },
   "commits": {
     "taskCommits": [
-      "706de09e"
+      "706de09e",
+      "f054f0a5",
+      "261b8f56",
+      "1758b519"
     ],
-    "uncommitted": "Frozen provisional definitions/compiler/development dependency experiment; final review and redesign checkpoint recorded separately; no implementation acceptance",
-    "constraint": "Git checkpoint used approved elevated access after the default sandbox denied shared Git metadata; no denied operation bypassed"
+    "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
+    "checkpoint": "This containing checkpoint records the standard catalog and consumer migration; the shared whole-job producer and full acceptance remain pending."
   },
   "sharedDependencies": [
-    "Immediate DDK core._catalog_dependencies external target bug: src/ddk/core.py:52 indexes target.dataset unconditionally; preserve schema-valid external endpoints and unresolved evidence without crashing",
-    "Exact original native table-pin protection and nested field/element-ID/schema mappings, including supported nested compatibility",
-    "Managed native update/computed/multi-table operation profile preserving existing materialization and recovery",
-    "Bounded exact-candidate quality path and native cross-table invariant evidence acceptance",
-    "Durable acquisition adoption and per-workflow activation/reconciliation protocols"
+    "Exact original native table-pin protection and nested field/element-ID/schema mappings",
+    "Managed native multi-output JobSpec preserving the actual materialized graph, retained recovery and selection",
+    "Complete bounded candidate-bound quality and accepted native evidence/catalog version membership",
+    "Durable acquisition adoption and workflow-specific publication/reconciliation paths"
   ],
   "evidence": {
     "partialPreparationSnapshot": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/preparation-01",
     "partialSnapshotStatus": "incomplete; nonexistent qualified-03/runtime-verification.json stopped capture before success record",
     "nativeVerification": "/Users/mikewolfd/Work/artifacts/ddk-stack-20261105/runtime/verification.json",
     "nativeVerificationSHA256": "520c8a157564c6be95df2415f4863e92702111a6fa9d6a6bce75fb9f1585fea7",
-    "qualifiedDistribution": "/Users/mikewolfd/Work/artifacts/ddk-stack-20261105/distribution/qualified-03"
+    "qualifiedDistribution": "/Users/mikewolfd/Work/artifacts/ddk-stack-20261105/distribution/qualified-03",
+    "localInputCustody": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/input-admission-01/local-input-custody.json",
+    "sharedRelationshipRequest": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/shared-relationships-01/request.json",
+    "sharedRelationshipSourceRun": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/catalog-successor/congress-relationships-01/summary.json",
+    "installedCatalog": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/catalog-install-04/installed.json",
+    "readingClosureEquivalence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reading-drift-01/closure.json",
+    "wholeJobPreparation": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-01/handoff.json",
+      "sha256": "f0351407f9490c28bb1ae0fa0c64f2eb51f03f4741f5914abc733aeb6eab5796",
+      "size": 71146,
+      "scope": "Unbound preparation only: exact current capture-v1 request, source-owned policy schemas and 222 required check columns. Inputs were not opened; no production recovery policy or predecessor was selected."
+    },
+    "captureVersion2RuleDelta": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-01/capture-v2-rule-delta.json",
+      "sha256": "94403c117010dc968b4d3b9b2554bdb862c7174ce4f7100937d73e7e88319cf0",
+      "size": 3605,
+      "scope": "Three additional required checks if the remaining graph is unchanged: invalid_recovery_requirements and two required capture-field null checks. Expected total 225; not accepted production policy."
+    }
   },
   "constraints": {
-    "lastLocalDiskFreeGiB": 8.5,
-    "latestParentDiskFreeGiB": 7.7,
-    "heavyJobsAdmitted": false,
-    "sharedWritesDefaultSandbox": "denied",
-    "latestParentMessage": "tool refused: requires approval while approval policy is never",
+    "lastLocalDiskFreeGiB": 90.79,
+    "sharedWritesDefaultSandbox": "full access now enabled",
+    "latestParentMessage": "delivery succeeds; parent owns shared successor and native build lane",
     "productionCutoverAuthorized": false,
     "externalReplacementPublicationAuthorized": false,
-    "sharedDDKRuntimeOwner": "parent"
+    "sharedDDKRuntimeOwner": "parent",
+    "resourceNote": "Bounded local checks ran under the shared watchdog with measured peaks. Parent owns the successor build lane; complete replacement-native acceptance remains pending.",
+    "boundedLocalChecksAdmitted": true,
+    "replacementNativeAcceptanceAdmitted": false
   },
   "delivery": {
     "fullReplacementComplete": false,
-    "independentCodeReview": "Three original application findings addressed in source; execution blocked. The provisional bridge is under architecture redesign and is not accepted integration.",
+    "independentCodeReview": "Independent source reviews closed retained-control, definition/profile, MCP/browser, companion delivery, comparison/publication and pointer findings. All final consumer findings are closed; full replacement producer and candidate acceptance remain pending.",
     "supersededInfrastructureRetired": false,
-    "remainingScope": "Every capability requires independent executable proof; wider source/consumer census and authentic retained-data acceptance remain incomplete",
-    "architectureReview": "RECONSIDER provisional bridge as end-state; default integration withdrawn; logical native boundaries remain useful"
+    "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
+    "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed"
   },
   "definitionImplementation": {
-    "state": "Frozen, opt-in migration experiment only; default production wiring and broad DDK-specific model hashes withdrawn",
+    "state": "Qualified dev4 profile admits the complete declarations; MCP, browser, comparison and publication readers require the standard public catalog",
     "owner": "application definitions and consumer adapter; shared DDK fix parent-owned",
     "remaining": [
-      "standard-catalog consumer path that removes reverse conversion and duplicate checking",
-      "separate computation, qualification and metadata dependencies",
-      "parent-owned external-target loader fix and qualified package",
-      "independent consumer and full replacement acceptance"
+      "Exact native schema and complete candidate binding through the shared whole-JobSpec API",
+      "Current producer authority migration and actual caller adoption across the full scope",
+      "Executable computation, qualification and metadata invalidation acceptance",
+      "Three MCP native fixture journeys against a replacement-produced release"
     ],
-    "wheelSHA256": "b705e81c15636522c4e0e41f202ee3717d264800cdf0984c91f76ab925b4cd0e"
+    "wheelSHA256": "7c4c6bb481316c95e13c5518089f90c71664ca7387c09eb1ae0f94219fe267b8"
   },
   "simplification": {
     "requirement": "Standardize and streamline the whole catalog-to-validation stack; reduce custom machinery rather than accumulate compatibility patches",
-    "decision": "Freeze the reverse-conversion experiment; retain its evidence; withdraw default runtime wiring and DDK-specific blanket model hashes",
-    "nextIncrement": "Move a real consumer to the standard catalog and remove the superseded current-path code in the same increment",
-    "historicalCompatibility": "Preserve immutable releases and version-specific readers; incidental new JSON formatting is not a parity requirement",
+    "decision": "Removed reverse-conversion draft; migrate direct consumers and retire obsolete current-path definitions after qualified native adoption",
+    "nextIncrement": "Replace producer execution with the shared whole-JobSpec owner and retire the old production schema/controller paths atomically",
+    "historicalCompatibility": "Not required: greenfield migration updates every reader together. Old artifacts remain retained evidence; new-stack history and recovery remain required.",
     "performance": "No speed or resource improvement measured; qualify fresh/rerun/delta/metadata-only/rule-only behavior under resource controls",
     "design": "docs/replacement-ddk/design.md#simplification-is-part-of-acceptance"
+  },
+  "migration": {
+    "mode": "greenfield",
+    "consumerCutover": "all producers and consumers update together",
+    "excluded": [
+      "Old reader and metadata formats",
+      "Importing legacy controller and journal state solely for compatibility"
+    ],
+    "preserved": [
+      "Valid retained source/native inputs",
+      "Exact data meaning and membership",
+      "New-stack durable phases, qualification, recovery and protection"
+    ],
+    "authority": "Direct user clarification in this chat, confirmed by parent for both applications"
   }
 }

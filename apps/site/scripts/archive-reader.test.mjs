@@ -36,8 +36,14 @@ test('one reader opens native releases, searches arrays and resolves indexed key
   assert.equal(await reader.resolve('ff'.repeat(8)),null);
   const entry = await reader.entry(0);
   assert.equal(entry.detail.alternates[0].format,'xml');
-  // The committed fixture has 17 detail-only columns after removing the list columns.
-  assert.equal(reader.metrics.detailColumns,17);
+  // Independent current inventory: date status plus five eager page fields are
+  // included; page_metadata and selected_text stay lazy.
+  const detailFields=['link_key','saved_body','saved_suffix','saved_media_type','saved_bytes',
+    'document_date_source','document_date_status','in_archive_since','removed_on','review_note','review_decided_at',
+    'src_start','src_len','rec_start','rec_len','alternates','package_id','facts',
+    'description','published_on','modified_on','publisher_labels','main_content'];
+  assert.deepEqual(Object.keys(entry.detail).sort(),[...detailFields].sort());
+  assert.equal(reader.metrics.detailColumns,detailFields.length);
   assert.equal(entry.detail.filename,undefined);
   assert.equal(entry.document.filename,'Agenda.pdf');
   assert.equal(entry.sources.length,1);
@@ -151,12 +157,28 @@ test('pasted-address versions apply hearing and format filters with capture pagi
 });
 
 test('mandatory release files cannot be omitted as empty optional entities',async()=>{
-  for(const omitted of ['url_state.parquet','recoveries.parquet','schema.json','capture_scope.json']){
+  for(const omitted of ['url_state.parquet','recoveries.parquet','catalog.ddk.json','catalog.report.json','catalog.lock.json','capture_scope.json']){
     const files=manifest.files.filter(item=>item.name!==omitted),id=createHash('sha256').update(JSON.stringify([manifest.schema_version,files.map(f=>[f.name,f.sha256,f.size,f.rows])])).digest('hex');
     const fetcher=async(url,options)=>new URL(url).pathname==='/manifest.json'?Response.json({release_id:id}):String(url).endsWith('/manifest.json')?Response.json({...manifest,files,release_id:id}):localFetch(url,options);
     await assert.rejects(openArchive('https://fixture.test/manifest.json',{fetcher}),/required|missing/i);
   }
   const reader=await openArchive('https://fixture.test/manifest.json',{fetcher:localFetch});assert.equal((await reader.recoveryRange(0,1)).length,1);
+});
+
+test('catalog metadata refuses partial delivery, malformed controls and unsafe paths',async()=>{
+  // Deliberately malformed controls must refuse; no passed report is invented.
+  const data=Buffer.from('transport fixture'),sha256=createHash('sha256').update(data).digest('hex');
+  const names=['catalog.ddk.json','catalog.report.json','catalog.lock.json','discovery.dcat.json',`queries/${'a'.repeat(64)}.sql`];
+  const descriptors=names.map(name=>({name,sha256,size:data.length,rows:0}));
+  const open=async extra=>{
+    const base=manifest.files.filter(item=>!item.name.startsWith('catalog.')&&item.name!=='discovery.dcat.json'&&!item.name.startsWith('queries/')&&!item.name.startsWith('lineage/'));
+    const files=[...base,...extra],id=createHash('sha256').update(JSON.stringify([manifest.schema_version,files.map(f=>[f.name,f.sha256,f.size,f.rows])])).digest('hex');
+    const fetcher=async(url,options)=>new URL(url).pathname==='/manifest.json'?Response.json({release_id:id}):String(url).endsWith('/manifest.json')?Response.json({...manifest,files,release_id:id}):extra.some(item=>String(url).endsWith('/'+item.name))?new Response(data):localFetch(url,options);
+    return openArchive('https://fixture.test/manifest.json',{fetcher});
+  };
+  await assert.rejects(open(descriptors),SyntaxError);
+  await assert.rejects(open(descriptors.filter(item=>item.name!=='catalog.ddk.json')),/Required archive file is missing/i);
+  await assert.rejects(open([...descriptors,{...descriptors.at(-1),name:'queries/not-a-digest.sql'}]),/file descriptor/i);
 });
 
 test('Phase-2 entity Parquet files load lazily, support cross-filtering, and resolve rich entity details',async()=>{

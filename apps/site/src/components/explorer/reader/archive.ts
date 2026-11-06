@@ -101,18 +101,18 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   if(!response.ok)throw new Error('Could not read the archive manifest.');
   const manifest=await response.json();
   if(!Array.isArray(manifest.files))throw new Error('Invalid archive manifest.');
-  // v1 is the first release format. v0 is accepted only with the same required
-  // columns; future revisions must add an explicit previous-version decoder.
-  if(![0,1].includes(manifest.schema_version))throw new Error('Unsupported archive schema version.');
+  if(manifest.schema_version!==1)throw new Error('Unsupported archive schema version.');
   const files=new Map<string,any>();
   for(const item of manifest.files){
-    if(!/^(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(parquet|json)$/.test(item.name)||files.has(item.name)||!Number.isSafeInteger(item.size)||item.size<0||!Number.isSafeInteger(item.rows)||item.rows<0||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('Invalid archive file descriptor.');
+    if(item.name==='schema.json')throw new Error('Legacy schema metadata is not supported.');
+    if(!/^(?:(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(parquet|json)|catalog\.(ddk|report|lock)\.json|discovery\.dcat\.json|queries\/[a-f0-9]{64}\.sql|lineage\/[0-9]{4}\.openlineage\.json)$/.test(item.name)||files.has(item.name)||!Number.isSafeInteger(item.size)||item.size<0||!Number.isSafeInteger(item.rows)||item.rows<0||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('Invalid archive file descriptor.');
     if(item.shard!=null){
       const range=item.row_range;
       if(!['detail','sources'].includes(item.shard)||!new RegExp('^'+item.shard+'-[0-9]{5}[.]parquet$').test(item.name)||!Array.isArray(range)||range.length!==2||!range.every(Number.isSafeInteger)||range[0]<0||range[1]<=range[0]||range[1]-range[0]!==item.rows)throw new Error('Invalid archive shard range.');
     }else if(item.row_range!=null||/-[0-9]{5}[.]parquet$/.test(item.name))throw new Error('Invalid archive shard descriptor.');
     files.set(item.name,item);
   }
+  const catalogControls=['catalog.ddk.json','catalog.report.json','catalog.lock.json'];
   const shards=new Map<string,any[]>();
   for(const descriptor of files.values())if(descriptor.shard){const group=shards.get(descriptor.shard)??[];group.push(descriptor);shards.set(descriptor.shard,group);}
   for(const [name,group] of shards){
@@ -120,7 +120,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     if(files.has(name+'.parquet'))throw new Error('Ambiguous archive shards.');
     for(const item of group){if(item.row_range[0]!==end)throw new Error('Archive shard ranges contain a gap or overlap.');end=item.row_range[1];}
   }
-  for(const name of ['list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet','recoveries.parquet','url_state.parquet','schema.json','capture_scope.json'])if(!files.has(name)&&!shards.has(name.replace('.parquet','')))throw new Error(`Required archive file is missing: ${name}`);
+  for(const name of ['list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet','recoveries.parquet','url_state.parquet','capture_scope.json',...catalogControls])if(!files.has(name)&&!shards.has(name.replace('.parquet','')))throw new Error(`Required archive file is missing: ${name}`);
   const identity=[manifest.schema_version,manifest.files.map((f: any)=>[f.name,f.sha256,f.size,f.rows])];
   if(manifest.release_id!==releaseId||await digest(utf8.encode(JSON.stringify(identity)))!==releaseId)throw new Error('Archive release identity failed verification.');
   const verified=async(name: string)=>{
@@ -128,6 +128,22 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     return withVerifiedBytes({deadlineMs:30_000,maxBytes:heapBytes},'Archive bytes',
       read=>read(immutableFetch,new URL(name,base).href,descriptor.sha256,descriptor.size,name));
   };
+  const jsonControl=async(name:string)=>JSON.parse(new TextDecoder().decode(await verified(name)));
+  let discovery:Promise<any>|undefined;
+  const discoverySchema=()=>discovery??=(async()=>{
+    const catalog=await jsonControl('catalog.ddk.json'),report=await jsonControl('catalog.report.json');
+    if(catalog.kind!=='catalog'||catalog.specVersion!=='0.1')throw new Error('Unsupported DDK catalog version.');
+    if(catalog.audience!=='public')throw new Error('Browser discovery requires an admitted public catalog.');
+    if(report.decision!=='passed')throw new Error('Catalog metadata checking did not pass.');
+    if(!Array.isArray(catalog.files)||!catalog.files.some((item:any)=>item.path==='catalog.report.json'))throw new Error('Catalog checking report is not bound to its companions.');
+    for(const item of catalog.files){
+      if(files.get(item.path)?.sha256!==item.sha256)throw new Error('Catalog companion differs from release delivery.');
+    }
+    const definitions=catalog.extensions?.['urn:ddk:catalog:assembly']?.datasetDefinitions;
+    if(!definitions||!Array.isArray(catalog.datasets)||catalog.datasets.some((item:any)=>!definitions[item.alias]))throw new Error('Catalog does not disclose effective field definitions.');
+    return catalog;
+  })();
+  await discoverySchema();
   const tables=new Map<string,Promise<any>>();
   async function table(name: string, whole=false){
     if(!tables.has(name)){const pending=(async()=>{
@@ -146,7 +162,10 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
         transport.retain(ranges);
       }
       if(Number(metadata.num_rows)!==descriptor.rows)throw new Error('Archive row count failed verification.');
-      return {file,metadata,names:fields(metadata)};
+      const names=fields(metadata);
+      if((name==='detail.parquet'||descriptor.shard==='detail')&&!names.includes('document_date_status'))throw new Error('Archive detail is missing document_date_status.');
+      if(name==='retired_links.parquet'&&!names.includes('address_versions'))throw new Error('Archive retired_links is missing address_versions.');
+      return {file,metadata,names};
     })();tables.set(name,pending);pending.catch(()=>{if(tables.get(name)===pending)tables.delete(name);});}
     return tables.get(name);
   }
@@ -166,7 +185,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   tables.delete('list.parquet'); // The compressed list is released after its columns are packed.
   const value=(name: string,i: number)=>columns.get(name)?.get(i);
   const row=(i: number)=>Object.fromEntries([...columns].map(([name,col])=>[name,col.get(i)]).concat([['list_row',i]]));
-  // Newer detail files repeat every list column; the packed list already holds them.
+  // Detail repeats list columns; the packed list already holds them.
   const projection=(name: string,input: any)=>{
     if(name!=='detail.parquet')return {};
     const selected=detailProjection(input.names,[...columns.keys()]);
@@ -433,7 +452,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     retired,
     witnessKeyMap,
     locate,
-    schema:async()=>JSON.parse(new TextDecoder().decode(await verified('schema.json'))),
+    catalog:discoverySchema,
     async openSaved(detail: any){
       const saved=savedCopy(detail,options.rawBase??new URL('/',pointerUrl).href);
       if(saved.compressedDownload||detail.saved_suffix!=='.gz')return saved;

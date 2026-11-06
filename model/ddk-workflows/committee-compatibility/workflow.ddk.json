@@ -1,0 +1,87 @@
+{
+  "specVersion": "0.1",
+  "kind": "design",
+  "id": "urn:congressional-tech:committee-compatibility:design",
+  "version": "1.0.0",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "sources": {},
+  "steps": {
+    "export": {
+      "component": "export-parquet",
+      "inputs": {},
+      "arguments": {
+        "format": {
+          "literal": "parquet"
+        }
+      }
+    }
+  },
+  "exports": {
+    "meeting": {
+      "from": {
+        "step": "export",
+        "output": "meeting"
+      },
+      "dataset": "meeting",
+      "allowAdditionalFields": true
+    },
+    "committee-term": {
+      "from": {
+        "step": "export",
+        "output": "committee-term"
+      },
+      "dataset": "committee-term",
+      "allowAdditionalFields": true
+    },
+    "appearance": {
+      "from": {
+        "step": "export",
+        "output": "appearance"
+      },
+      "dataset": "appearance",
+      "allowAdditionalFields": true
+    },
+    "material": {
+      "from": {
+        "step": "export",
+        "output": "material"
+      },
+      "dataset": "material",
+      "allowAdditionalFields": true
+    },
+    "data-issue": {
+      "from": {
+        "step": "export",
+        "output": "data-issue"
+      },
+      "dataset": "data-issue",
+      "allowAdditionalFields": true
+    },
+    "sources": {
+      "from": {
+        "step": "export",
+        "output": "sources"
+      },
+      "dataset": "sources",
+      "allowAdditionalFields": true
+    },
+    "manifest": {
+      "from": {
+        "step": "export",
+        "output": "manifest"
+      },
+      "dataset": "manifest",
+      "allowAdditionalFields": true
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "evidence": "declared interfaces only; no executable runtime adapter selected",
+      "unqualified": "Source payload schemas, exact physical output schema, data values, recovery, availability and publication remain separate obligations."
+    }
+  }
+}

@@ -1,0 +1,2926 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:contract",
+  "version": "1.0.0",
+  "name": "Congress Archive release definitions",
+  "status": "active",
+  "schema": [
+    {
+      "id": "list",
+      "name": "list",
+      "physicalName": "list.parquet",
+      "logicalType": "object",
+      "businessName": "Searchable documents",
+      "dataGranularityDescription": "One document edition in this release",
+      "properties": [
+        {
+          "name": "filename",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Displayed filename",
+          "required": true
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Document or publisher title when known",
+          "required": false
+        },
+        {
+          "name": "document_kind",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Document kinds",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Embedded classification values, not foreign keys."
+          }
+        },
+        {
+          "name": "document_family",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Filename document families",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Embedded filename classification values."
+          }
+        },
+        {
+          "name": "committee_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Congress.gov committee system codes",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict"
+          }
+        },
+        {
+          "name": "chambers",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Chambers associated with the document",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Embedded chamber labels."
+          }
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "Congress number when unambiguous",
+          "required": false
+        },
+        {
+          "name": "format",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Original file format",
+          "required": true
+        },
+        {
+          "name": "document_date",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Date of the document as read; detail.document_date_status says whether it is accepted or suspect",
+          "required": false
+        },
+        {
+          "name": "first_captured",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "First good fetch date",
+          "required": false
+        },
+        {
+          "name": "date_kind",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Basis of the archive date",
+          "required": true
+        },
+        {
+          "name": "saved_kind",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Original file or recovery",
+          "required": true
+        },
+        {
+          "name": "hidden",
+          "logicalType": "boolean",
+          "physicalType": "boolean",
+          "description": "Excluded from search by review; public links still resolve",
+          "required": true
+        },
+        {
+          "name": "meeting_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Decimal event IDs",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict"
+          }
+        },
+        {
+          "name": "measure_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Bill and nomination identifiers",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict"
+          }
+        },
+        {
+          "name": "bioguide_ids",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Member Bioguide identifiers",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict"
+          }
+        },
+        {
+          "name": "witness_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Witness appearance identifiers",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict"
+          }
+        },
+        {
+          "name": "version_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Hex endpoint keys shared by editions",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Shared lowercase hexadecimal endpoint keys identify different editions, not alternate formats of one document. A document can have several keys."
+          }
+        }
+      ],
+      "description": "Coverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list.parquet bullet): a type without \"nullable\" there is required."
+    },
+    {
+      "id": "detail",
+      "name": "detail",
+      "physicalName": "detail.parquet",
+      "logicalType": "object",
+      "businessName": "The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection",
+      "dataGranularityDescription": "One document edition, in exactly the same order as list",
+      "properties": [
+        {
+          "name": "link_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "description": "Stable public body or original-link key",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "saved_body",
+          "logicalType": "string",
+          "physicalType": "fixed[32]",
+          "description": "SHA-256 of original bytes",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "saved_suffix",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Recorded physical object suffix",
+          "required": true
+        },
+        {
+          "name": "saved_media_type",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Media type of the saved file",
+          "required": true
+        },
+        {
+          "name": "saved_bytes",
+          "logicalType": "integer",
+          "physicalType": "int64",
+          "description": "Size of original bytes before storage compression",
+          "required": true
+        },
+        {
+          "name": "document_date_source",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Filename, content or meeting date basis",
+          "required": false
+        },
+        {
+          "name": "document_date_status",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated",
+          "required": false
+        },
+        {
+          "name": "in_archive_since",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Earliest known archive import date",
+          "required": false
+        },
+        {
+          "name": "removed_on",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Date the publisher removed the document",
+          "required": false
+        },
+        {
+          "name": "review_note",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Review explanation",
+          "required": false
+        },
+        {
+          "name": "review_decided_at",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Date of the applying review",
+          "required": false
+        },
+        {
+          "name": "src_start",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "First source row for this document\nZero-based physical sources row offset; src_len is the contiguous row count.",
+          "required": true
+        },
+        {
+          "name": "src_len",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Number of source rows for this document",
+          "required": true
+        },
+        {
+          "name": "rec_start",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "First recovery row for this document\nZero-based physical recoveries row offset; rec_len is the contiguous row count.",
+          "required": true
+        },
+        {
+          "name": "rec_len",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Number of recovery rows for this document",
+          "required": true
+        },
+        {
+          "name": "alternates",
+          "logicalType": "array",
+          "physicalType": "list<struct<format dict,body fixed[32],suffix dict,size int64>>",
+          "description": "One saved file per other format",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<format dict,body fixed[32],suffix dict,size int64>",
+            "properties": [
+              {
+                "name": "format",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "body",
+                "logicalType": "string",
+                "physicalType": "fixed[32]",
+                "logicalTypeOptions": {
+                  "format": "binary"
+                }
+              },
+              {
+                "name": "suffix",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "size",
+                "logicalType": "integer",
+                "physicalType": "int64"
+              }
+            ],
+            "description": "Other formats of the same document; each has its own body and suffix."
+          }
+        },
+        {
+          "name": "package_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "GovInfo package identifier",
+          "required": false
+        },
+        {
+          "name": "facts",
+          "logicalType": "array",
+          "physicalType": "list<struct<field dict,value string>>",
+          "description": "Selected filename facts, one value per entry",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<field dict,value string>",
+            "properties": [
+              {
+                "name": "field",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "value",
+                "logicalType": "string",
+                "physicalType": "string"
+              }
+            ],
+            "description": "Embedded selected filename field/value observations; not a generic entity join."
+          }
+        },
+        {
+          "name": "description",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "The publisher's page summary as declared, never the title or the site's own description; NULL when none survives selection",
+          "required": false
+        },
+        {
+          "name": "published_on",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "The page's declared publication date on its stated local date; a page date, never a hearing or document date",
+          "required": false
+        },
+        {
+          "name": "modified_on",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "The page's declared modification date on its stated local date; never changes document_date, date_kind or first_captured",
+          "required": false
+        },
+        {
+          "name": "publisher_labels",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "The page's declared sections (article:section, articleSection) as stated",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Embedded declared section labels; not a key into another table."
+          }
+        },
+        {
+          "name": "page_metadata",
+          "logicalType": "array",
+          "physicalType": "list<struct<field dict,value string,format dict,path string,date date32,precision dict,resolved string,selected boolean,context_url string>>",
+          "description": "Publisher declarations with literal value, selection status and JSON Pointer into the pinned reading. Distinct literals for a field show a conflict. Declared addresses carry each qualifying capture URL and resolution against that address. A missing context or a detail size limit leaves resolutions empty.",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<field dict,value string,format dict,path string,date date32,precision dict,resolved string,selected boolean,context_url string>",
+            "properties": [
+              {
+                "name": "field",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "value",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "format",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "path",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "physicalType": "date32"
+              },
+              {
+                "name": "precision",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "resolved",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "selected",
+                "logicalType": "boolean",
+                "physicalType": "boolean"
+              },
+              {
+                "name": "context_url",
+                "logicalType": "string",
+                "physicalType": "string"
+              }
+            ],
+            "description": "Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin."
+          }
+        },
+        {
+          "name": "main_content",
+          "logicalType": "object",
+          "physicalType": "struct<outcome dict,selector string,text_sha256 string,text_bytes int32,snippet string,reader_version string,reading_status string,reason string,facts_limited boolean,text_available boolean,decision_id string,evidence_limited boolean>",
+          "description": "Publisher-marked text preview and citation. Outcome distinguishes marked text, short marked text, fallback to the saved page, a failed reading, a recorded unreadable decision, exclusion, and an unattempted reading. The original body and reader version identify the source. The selector locates marked text. decision_id identifies a recorded unreadable decision. evidence_limited signals that the size limit omitted publisher evidence.\nEmbedded reference to selected text. Verify selected_text with text_sha256 and find the marked element in saved_body with selector.",
+          "required": false,
+          "properties": [
+            {
+              "name": "outcome",
+              "logicalType": "string",
+              "physicalType": "dict"
+            },
+            {
+              "name": "selector",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "text_sha256",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "text_bytes",
+              "logicalType": "integer",
+              "physicalType": "int32"
+            },
+            {
+              "name": "snippet",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "reader_version",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "reading_status",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "reason",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "facts_limited",
+              "logicalType": "boolean",
+              "physicalType": "boolean"
+            },
+            {
+              "name": "text_available",
+              "logicalType": "boolean",
+              "physicalType": "boolean"
+            },
+            {
+              "name": "decision_id",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "evidence_limited",
+              "logicalType": "boolean",
+              "physicalType": "boolean"
+            }
+          ]
+        },
+        {
+          "name": "selected_text",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Bounded plain text from the cited marked element. Load only on request. Its SHA-256 and length are in main_content. The original remains available for larger or unselected pages.",
+          "required": false
+        },
+        {
+          "name": "filename",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Displayed filename",
+          "required": true
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Document or publisher title when known",
+          "required": false
+        },
+        {
+          "name": "document_kind",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Document kinds",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.document_kind; see that field."
+          }
+        },
+        {
+          "name": "document_family",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Filename document families",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.document_family; see that field."
+          }
+        },
+        {
+          "name": "committee_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Congress.gov committee system codes",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.committee_keys; see that field."
+          }
+        },
+        {
+          "name": "chambers",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Chambers associated with the document",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.chambers; see that field."
+          }
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "Congress number when unambiguous",
+          "required": false
+        },
+        {
+          "name": "format",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Original file format",
+          "required": true
+        },
+        {
+          "name": "document_date",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Date of the document as read; detail.document_date_status says whether it is accepted or suspect",
+          "required": false
+        },
+        {
+          "name": "first_captured",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "First good fetch date",
+          "required": false
+        },
+        {
+          "name": "date_kind",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Basis of the archive date",
+          "required": true
+        },
+        {
+          "name": "saved_kind",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Original file or recovery",
+          "required": true
+        },
+        {
+          "name": "hidden",
+          "logicalType": "boolean",
+          "physicalType": "boolean",
+          "description": "Excluded from search by review; public links still resolve",
+          "required": true
+        },
+        {
+          "name": "meeting_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Decimal event IDs",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.meeting_keys; see that field."
+          }
+        },
+        {
+          "name": "measure_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Bill and nomination identifiers",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.measure_keys; see that field."
+          }
+        },
+        {
+          "name": "bioguide_ids",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Member Bioguide identifiers",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.bioguide_ids; see that field."
+          }
+        },
+        {
+          "name": "witness_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Witness appearance identifiers",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.witness_keys; see that field."
+          }
+        },
+        {
+          "name": "version_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Hex endpoint keys shared by editions",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict",
+            "description": "Same values as list.version_keys; see that field."
+          }
+        }
+      ],
+      "description": "Coverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list and detail bullets)."
+    },
+    {
+      "id": "links",
+      "name": "links",
+      "physicalName": "links.parquet",
+      "logicalType": "object",
+      "businessName": "Public document link lookup",
+      "dataGranularityDescription": "One stable link key mapped to one release-local document row",
+      "properties": [
+        {
+          "name": "link_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "description": "Stable public body or original-link key\nFirst 8 body SHA-256 bytes, or first 8 SHA-256 bytes of url: plus exact original URL for recovery links. Binary key; hex is a display encoding.",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "list_row",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Zero-based row in list.parquet",
+          "required": true
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nBoth columns are required by data model §8.1."
+    },
+    {
+      "id": "retired_links",
+      "name": "retired_links",
+      "physicalName": "retired_links.parquet",
+      "logicalType": "object",
+      "businessName": "Redirects and removal notices for link keys no longer published",
+      "dataGranularityDescription": "One retired link key with its successor or a removal notice",
+      "properties": [
+        {
+          "name": "link_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "description": "A link key an earlier release published and this release no longer publishes in links\nDisjoint from links.link_key. A key published again leaves the ledger. Data model §8.2, Retired keys.",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "successor_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "description": "The current document's primary link key that the retired key redirects to; null means a removal notice",
+          "required": false,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "last_release_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "The latest release that published the key",
+          "required": true
+        },
+        {
+          "name": "last_filename",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "The filename the key resolved to in that release",
+          "required": false
+        },
+        {
+          "name": "address_versions",
+          "logicalType": "array",
+          "physicalType": "list<fixed[8]>",
+          "description": "With a removal notice: the current documents (primary link keys) listed at the retired document's addresses, other editions shown as versions, never as a redirect\nSet only when successor_key is null; an address can hold several editions (data model §7.5), so the notice lists them instead of choosing one.",
+          "required": false,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "fixed[8]",
+            "logicalTypeOptions": {
+              "format": "binary"
+            }
+          }
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (retired_links.parquet row)."
+    },
+    {
+      "id": "urls",
+      "name": "urls",
+      "physicalName": "urls.parquet",
+      "logicalType": "object",
+      "businessName": "Normalized source address lookup",
+      "dataGranularityDescription": "One lookup key and document row pair; an address can identify several editions",
+      "properties": [
+        {
+          "name": "lookup_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "description": "Fixed normalized address lookup key\nFirst 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. This is not capture-profile url_key.",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "list_row",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Zero-based row in list.parquet",
+          "required": true
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nBoth columns are required by data model §8.1."
+    },
+    {
+      "id": "sources",
+      "name": "sources",
+      "physicalName": "sources.parquet",
+      "logicalType": "object",
+      "businessName": "Publisher addresses and listing context",
+      "dataGranularityDescription": "One source address/context occurrence within a document",
+      "properties": [
+        {
+          "name": "list_row",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Zero-based row in list.parquet",
+          "required": true
+        },
+        {
+          "name": "ordinal",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Order within a document",
+          "required": true
+        },
+        {
+          "name": "url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Source address\nRequired. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured.",
+          "required": true
+        },
+        {
+          "name": "member_path",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Path inside an archive container\nPath inside a captured archive container. Interpret together with the source URL; not a document key.",
+          "required": false
+        },
+        {
+          "name": "is_saved",
+          "logicalType": "boolean",
+          "physicalType": "boolean",
+          "description": "Whether this source names the saved file",
+          "required": true
+        },
+        {
+          "name": "first_seen",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "First observed date of this source",
+          "required": false
+        },
+        {
+          "name": "listed_on",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Publisher page listing the source",
+          "required": false
+        },
+        {
+          "name": "link_text",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Publisher link label",
+          "required": false
+        },
+        {
+          "name": "doc_type",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Publisher document type",
+          "required": false
+        },
+        {
+          "name": "posted",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Publisher link posting date",
+          "required": false
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (sources.parquet row)."
+    },
+    {
+      "id": "recoveries",
+      "name": "recoveries",
+      "physicalName": "recoveries.parquet",
+      "logicalType": "object",
+      "businessName": "Recovered document files",
+      "dataGranularityDescription": "One recovered file occurrence within a document",
+      "properties": [
+        {
+          "name": "list_row",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Zero-based row in list.parquet",
+          "required": true
+        },
+        {
+          "name": "ordinal",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Order within a document",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Recovery display kind",
+          "required": true
+        },
+        {
+          "name": "body",
+          "logicalType": "string",
+          "physicalType": "fixed[32]",
+          "description": "SHA-256 of original recovered bytes",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "suffix",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Physical recovered body suffix",
+          "required": true
+        },
+        {
+          "name": "bytes",
+          "logicalType": "integer",
+          "physicalType": "int64",
+          "description": "Original recovered byte count",
+          "required": true
+        },
+        {
+          "name": "imported_at",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Recovery import date; unknown when the input has no import record, as in the v5 seed",
+          "required": false
+        },
+        {
+          "name": "recovered_url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Address where the recovered copy was found",
+          "required": true
+        },
+        {
+          "name": "identity_note",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Authored explanation of how the recovery relates to the original; null when the decision recorded none (kind still states the relationship)",
+          "required": false
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (recoveries.parquet row)."
+    },
+    {
+      "id": "meetings",
+      "name": "meetings",
+      "physicalName": "meetings.parquet",
+      "logicalType": "object",
+      "businessName": "Congressional meetings and hearings",
+      "dataGranularityDescription": "One event, shared House/Senate event ID namespace",
+      "properties": [
+        {
+          "name": "event_id",
+          "logicalType": "integer",
+          "physicalType": "int64",
+          "description": "Congressional meeting event ID",
+          "required": true
+        },
+        {
+          "name": "chamber",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "House, Senate or joint",
+          "required": false
+        },
+        {
+          "name": "chamber_basis",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "source if the meeting record supplies a chamber, source_chamber_unknown if the meeting record has no supported chamber, or meeting_detail_missing if only a document references the event. Earlier releases omit this field.",
+          "required": true
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Document or publisher title when known",
+          "required": false
+        },
+        {
+          "name": "meeting_date",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Meeting date",
+          "required": false
+        },
+        {
+          "name": "meeting_type",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Publisher meeting category\nAs stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label.",
+          "required": false
+        },
+        {
+          "name": "session",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "Congress session number",
+          "required": false
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Current meeting status",
+          "required": false
+        },
+        {
+          "name": "sittings",
+          "logicalType": "array",
+          "physicalType": "list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>",
+          "description": "Scheduled times and locations, as Congress.gov states them when it has a sitting",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<start timestamp,end timestamp,place string,room string,building string,address string>",
+            "properties": [
+              {
+                "name": "start",
+                "logicalType": "timestamp",
+                "physicalType": "timestamp"
+              },
+              {
+                "name": "end",
+                "logicalType": "timestamp",
+                "physicalType": "timestamp"
+              },
+              {
+                "name": "place",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "room",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "building",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "address",
+                "logicalType": "string",
+                "physicalType": "string"
+              }
+            ],
+            "description": "Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number."
+          }
+        },
+        {
+          "name": "committees",
+          "logicalType": "array",
+          "physicalType": "list<struct<system_code dict,role dict>>",
+          "description": "Host committee codes and roles",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<system_code dict,role dict>",
+            "properties": [
+              {
+                "name": "system_code",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "role",
+                "logicalType": "string",
+                "physicalType": "dict"
+              }
+            ],
+            "description": "Host/participant roles belong to this meeting-committee association."
+          }
+        },
+        {
+          "name": "subject_keys",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Bill, nomination and treaty subjects",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict"
+          }
+        },
+        {
+          "name": "transcripts",
+          "logicalType": "array",
+          "physicalType": "list<struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>>",
+          "description": "Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a complete caption or subtitle track of the meeting's recording, never a stream segment; formats, video_key, language, production)",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>",
+            "properties": [
+              {
+                "name": "source",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "package_id",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "list_row",
+                "logicalType": "integer",
+                "physicalType": "int32"
+              },
+              {
+                "name": "formats",
+                "logicalType": "array",
+                "physicalType": "list<string>",
+                "items": {
+                  "logicalType": "string",
+                  "physicalType": "string"
+                },
+                "description": "Format names (pdf, html, ...) the package is retained in, in format-preference order; values, not keys."
+              },
+              {
+                "name": "video_key",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "language",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "production",
+                "logicalType": "string",
+                "physicalType": "dict"
+              }
+            ],
+            "description": "One entry per GovInfo package. list_row is the package's listed document whose saved format ranks first (then lowest row); formats are the distinct saved and alternate formats over all the package's listed documents, in format-preference order. A package listed as several documents (editions) keeps one entry."
+          }
+        },
+        {
+          "name": "videos",
+          "logicalType": "array",
+          "physicalType": "list<struct<name string,url string,video_key string>>",
+          "description": "Recorded meeting links",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<name string,url string,video_key string>",
+            "properties": [
+              {
+                "name": "name",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "url",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "video_key",
+                "logicalType": "string",
+                "physicalType": "string"
+              }
+            ],
+            "description": "Publisher recording links; video_key joins retained recordings when available."
+          }
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "Congress the publisher record states; null when no record states it, never inferred from documents",
+          "required": false
+        },
+        {
+          "name": "congress_gov_updated",
+          "logicalType": "timestamp",
+          "physicalType": "timestamp",
+          "description": "Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time",
+          "required": false
+        },
+        {
+          "name": "house_xml_updated",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time",
+          "required": false
+        },
+        {
+          "name": "congress_gov_meeting_type",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Congress.gov's type label (Hearing, Markup, Meeting)",
+          "required": false
+        },
+        {
+          "name": "access",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "open, closed, partly_closed or unknown, as the publisher type or title states",
+          "required": false
+        },
+        {
+          "name": "access_basis",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "The source and field that state access, such as congress_gov/title",
+          "required": false
+        },
+        {
+          "name": "not_held",
+          "logicalType": "boolean",
+          "physicalType": "bool",
+          "description": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where the meeting's own print was held that day under its title, or a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record",
+          "required": false
+        },
+        {
+          "name": "rescheduled_to",
+          "logicalType": "integer",
+          "physicalType": "int64",
+          "description": "Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording, transcript file or witnesses of its own and either the publisher states Rescheduled or only the later twin has a recording; a hearing never moves to a markup; derived",
+          "required": false
+        },
+        {
+          "name": "rescheduled_basis",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "publisher_status or recording_on_later_twin",
+          "required": false
+        },
+        {
+          "name": "document_references",
+          "logicalType": "array",
+          "physicalType": "list<struct<collection string, ordinal int32, url string, role string, format string, description string, name string>>",
+          "description": "Congress.gov document links in source collection order. Null means the metadata is unavailable or unstated. An empty list means a supplied collection contained no links.",
+          "required": false,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<collection string, ordinal int32, url string, role string, format string, description string, name string>",
+            "properties": [
+              {
+                "name": "collection",
+                "logicalType": "string",
+                "physicalType": "string",
+                "description": "Source collection name, meetingDocuments or witnessDocuments. Witness documents are linked to this event without a witness identity claim."
+              },
+              {
+                "name": "ordinal",
+                "logicalType": "integer",
+                "physicalType": "int32",
+                "description": "Zero-based occurrence within its source collection. Different references to the same URL keep their own values."
+              },
+              {
+                "name": "url",
+                "logicalType": "string",
+                "physicalType": "string",
+                "description": "Publisher link. Use the existing document address lookup to find saved copies."
+              },
+              {
+                "name": "role",
+                "logicalType": "string",
+                "physicalType": "string",
+                "description": "Publisher documentType. Null when omitted."
+              },
+              {
+                "name": "format",
+                "logicalType": "string",
+                "physicalType": "string",
+                "description": "Publisher format, independent of the format of the saved body. Null when omitted."
+              },
+              {
+                "name": "description",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "name",
+                "logicalType": "string",
+                "physicalType": "string"
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references."
+    },
+    {
+      "id": "witnesses",
+      "name": "witnesses",
+      "physicalName": "witnesses.parquet",
+      "logicalType": "object",
+      "businessName": "Witness appearances",
+      "dataGranularityDescription": "One source-occurrence witness observation at a meeting, package, or page; not a deduplicated person",
+      "properties": [
+        {
+          "name": "witness_key",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Lowercase hex of first 8 bytes of SHA-256 of [\"witness-occurrence-v2\", occasion, source, record_sha_hex, source_locator, context_key]",
+          "required": true
+        },
+        {
+          "name": "occasion",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Appearance occasion key (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix})\nmeeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances.",
+          "required": true
+        },
+        {
+          "name": "source",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Observation source family (house_xml, congress_gov, senate_page, or mods)",
+          "required": true
+        },
+        {
+          "name": "record_sha",
+          "logicalType": "string",
+          "physicalType": "fixed[32]",
+          "description": "SHA-256 of the source body or inline record supplying this witness observation",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "source_locator",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Deterministic occurrence locator within the retained source record",
+          "required": true
+        },
+        {
+          "name": "context_key",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Lowercase hex SHA-256 of compact JSON [source_url, member_path] for the bound capture context",
+          "required": true
+        },
+        {
+          "name": "event_id",
+          "logicalType": "integer",
+          "physicalType": "int64",
+          "description": "Meeting event ID when occasion is a meeting",
+          "required": false
+        },
+        {
+          "name": "package_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "GovInfo CHRG package ID when occasion is a package or matched transcript",
+          "required": false
+        },
+        {
+          "name": "page_url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Senate hearing page URL when occasion is a page",
+          "required": false
+        },
+        {
+          "name": "name",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Display name of the witness",
+          "required": false
+        },
+        {
+          "name": "position",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Witness title or position",
+          "required": false
+        },
+        {
+          "name": "organization",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Witness organization or affiliation",
+          "required": false
+        },
+        {
+          "name": "on_behalf_of",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Represented entity when distinct from organization",
+          "required": false
+        },
+        {
+          "name": "location",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Witness locality or state",
+          "required": false
+        },
+        {
+          "name": "panel",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Panel heading or label",
+          "required": false
+        },
+        {
+          "name": "panel_order",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "1-based panel order within the occasion",
+          "required": false
+        },
+        {
+          "name": "display_order",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "1-based witness display order within the occasion or panel",
+          "required": false
+        },
+        {
+          "name": "witness_type",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Source witness classification; for GovInfo prints, statement_for_record or member_statement marks an entry that is a statement, not a witness",
+          "required": false
+        },
+        {
+          "name": "testified",
+          "logicalType": "boolean",
+          "physicalType": "boolean",
+          "description": "Whether the witness testified",
+          "required": false
+        },
+        {
+          "name": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Bioguide identifier when the witness is a Member of Congress",
+          "required": false
+        },
+        {
+          "name": "superseded_by",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "witness_key of the same person stated on the same meeting by a higher-ranked source (source priority, then record); null for the row to show",
+          "required": false
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+    },
+    {
+      "id": "witness_key_map",
+      "name": "witness_key_map",
+      "physicalName": "witness_key_map.parquet",
+      "logicalType": "object",
+      "businessName": "Earlier witness keys and the current witness each resolves to",
+      "dataGranularityDescription": "One witness key this release no longer publishes, with its successor, its candidates, or neither",
+      "properties": [
+        {
+          "name": "old_key",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "A witness_key that an earlier body or capture context held for an occasion produces and this release does not publish in witnesses\nDisjoint from witnesses.witness_key. A re-fetched body, a newly bound capture context, or a meeting link that moves a print or Senate page off its package or page occasion gives each witness a new key (witness-occurrence-v2 is unchanged); the earlier keys are listed here. A name alone never maps (ct-30fp).",
+          "required": true
+        },
+        {
+          "name": "witness_key",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "The current witnesses.witness_key the old key resolves to; null when status is ambiguous or unresolved\nThe successor can itself be superseded_by a higher-ranked row of the same person; follow witnesses.superseded_by to the row to show.",
+          "required": false
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "unambiguous (one successor), ambiguous (several candidates, listed in candidate_keys, none chosen) or unresolved (no candidate)",
+          "required": true
+        },
+        {
+          "name": "basis",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "The strongest evidence found: occurrence (the same body and locator, published under another occasion or capture context), content (the same occasion, source and print, with an equal name and equal other attributes, at least one of them stated or the same locator; repeats of one person pair in list order) or locator (the same locator, occasion, source and print, an edited name of the same family and given name, every other attribute equal and a position, organization or Bioguide ID stated); null when unresolved",
+          "required": false
+        },
+        {
+          "name": "candidate_keys",
+          "logicalType": "array",
+          "physicalType": "list<string>",
+          "description": "With status ambiguous: the current witness keys the old key could resolve to, sorted; empty otherwise",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "string"
+          }
+        },
+        {
+          "name": "occasion",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "The occasion the old key's body is filed under in this release (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix})",
+          "required": true
+        },
+        {
+          "name": "source",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Observation source family of the old key (house_xml, congress_gov, senate_page, or mods)",
+          "required": true
+        }
+      ],
+      "description": "Coverage limits:\nDerived from earlier bodies the lake still holds, not from earlier releases: a key published only from a body no longer held has no row\nNullability basis:\nwitness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w)."
+    },
+    {
+      "id": "recordings",
+      "name": "recordings",
+      "physicalName": "recordings.parquet",
+      "logicalType": "object",
+      "businessName": "Meeting recordings and captured tracks",
+      "dataGranularityDescription": "One provider-prefixed recording",
+      "properties": [
+        {
+          "name": "video_key",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Provider-prefixed recording identifier",
+          "required": true
+        },
+        {
+          "name": "event_ids",
+          "logicalType": "array",
+          "physicalType": "list<int64>",
+          "description": "Sorted meeting event IDs associated with this recording",
+          "required": true,
+          "items": {
+            "logicalType": "integer",
+            "physicalType": "int64"
+          }
+        },
+        {
+          "name": "tracks",
+          "logicalType": "array",
+          "physicalType": "list<struct<body fixed[32],suffix dict,format dict,language dict,production dict>>",
+          "description": "Captured caption, subtitle, and playlist tracks from their latest good fetch",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<body fixed[32],suffix dict,format dict,language dict,production dict>",
+            "properties": [
+              {
+                "name": "body",
+                "logicalType": "string",
+                "physicalType": "fixed[32]",
+                "logicalTypeOptions": {
+                  "format": "binary"
+                }
+              },
+              {
+                "name": "suffix",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "format",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "language",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "production",
+                "logicalType": "string",
+                "physicalType": "dict"
+              }
+            ],
+            "description": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows."
+          }
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+    },
+    {
+      "id": "committees",
+      "name": "committees",
+      "physicalName": "committees.parquet",
+      "logicalType": "object",
+      "businessName": "Current and historical committees",
+      "dataGranularityDescription": "One Congress.gov system code",
+      "properties": [
+        {
+          "name": "system_code",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Congress.gov committee system code",
+          "required": true
+        },
+        {
+          "name": "name",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Official committee name",
+          "required": true
+        },
+        {
+          "name": "chamber",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "House, Senate or joint",
+          "required": true
+        },
+        {
+          "name": "committee_type",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Committee category",
+          "required": false
+        },
+        {
+          "name": "parent_system_code",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Parent committee code",
+          "required": false
+        },
+        {
+          "name": "names",
+          "logicalType": "array",
+          "physicalType": "list<struct<name string,start date32,end date32>>",
+          "description": "Dated committee names",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<name string,start date32,end date32>",
+            "properties": [
+              {
+                "name": "name",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "start",
+                "logicalType": "date",
+                "physicalType": "date32"
+              },
+              {
+                "name": "end",
+                "logicalType": "date",
+                "physicalType": "date32"
+              }
+            ],
+            "description": "Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended."
+          }
+        },
+        {
+          "name": "website",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Official committee website",
+          "required": false
+        },
+        {
+          "name": "is_current",
+          "logicalType": "boolean",
+          "physicalType": "boolean",
+          "description": "Current committee record",
+          "required": false
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+    },
+    {
+      "id": "members",
+      "name": "members",
+      "physicalName": "members.parquet",
+      "logicalType": "object",
+      "businessName": "Current and historical members",
+      "dataGranularityDescription": "One Bioguide member",
+      "properties": [
+        {
+          "name": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Bioguide member identifier",
+          "required": true
+        },
+        {
+          "name": "name",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Member display name ({name_first} {name_last})",
+          "required": true
+        },
+        {
+          "name": "terms",
+          "logicalType": "array",
+          "physicalType": "list<struct<chamber dict,state dict,district int16,party dict,start date32,end date32>>",
+          "description": "Congressional service terms ordered latest first",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<chamber dict,state dict,district int16,party dict,start date32,end date32>",
+            "properties": [
+              {
+                "name": "chamber",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "state",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "district",
+                "logicalType": "integer",
+                "physicalType": "int16"
+              },
+              {
+                "name": "party",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "start",
+                "logicalType": "date",
+                "physicalType": "date32"
+              },
+              {
+                "name": "end",
+                "logicalType": "date",
+                "physicalType": "date32"
+              }
+            ],
+            "description": "Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats."
+          }
+        },
+        {
+          "name": "cross_ids",
+          "logicalType": "object",
+          "physicalType": "struct<lis string,opensecrets string,govtrack string,icpsr string,wikidata string,fec list<string>>",
+          "description": "Cross-walk identifiers across legislative datasets\nExternal dataset identifiers; an identifier does not imply that dataset is included in this release.",
+          "required": true,
+          "properties": [
+            {
+              "name": "lis",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "opensecrets",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "govtrack",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "icpsr",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "wikidata",
+              "logicalType": "string",
+              "physicalType": "string"
+            },
+            {
+              "name": "fec",
+              "logicalType": "array",
+              "physicalType": "list<string>",
+              "items": {
+                "logicalType": "string",
+                "physicalType": "string"
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+    },
+    {
+      "id": "rosters",
+      "name": "rosters",
+      "physicalName": "rosters.parquet",
+      "logicalType": "object",
+      "businessName": "Committee and subcommittee seats across published Congresses",
+      "dataGranularityDescription": "One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id; only Congresses populated in the pinned upstream committee_assignments snapshot appear)",
+      "properties": [
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "Congress number for the committee assignment\nKeyed by (congress, system_code, bioguide_id); populated from the pinned upstream committee_assignments snapshot, whose populated Congresses the coverage congress_start and congress_end bound. Earlier Congresses appear only after an upstream backfill is pinned.",
+          "required": true
+        },
+        {
+          "name": "system_code",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Lowercase committee or subcommittee system code",
+          "required": true
+        },
+        {
+          "name": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Assigned member Bioguide identifier",
+          "required": true
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Committee leadership or seat position title",
+          "required": false
+        },
+        {
+          "name": "rank",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "Numeric party rank on the committee",
+          "required": false
+        },
+        {
+          "name": "party",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Party caucus for the committee assignment",
+          "required": false
+        }
+      ],
+      "description": "Coverage limits:\nCommittee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+    },
+    {
+      "id": "bills",
+      "name": "bills",
+      "physicalName": "bills.parquet",
+      "logicalType": "object",
+      "businessName": "Referenced bills and embedded legislative facts",
+      "dataGranularityDescription": "One bill referenced by documents, meetings, or committee activities, or a substantive/enacted bill (congress >= 113), plus 1-hop related bills of referenced bills; bounded by upstream retained data",
+      "properties": [
+        {
+          "name": "bill_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Canonical bill identifier ({congress}-{type}-{number})",
+          "required": true
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Official or primary bill title",
+          "required": false
+        },
+        {
+          "name": "short_title",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Short title when present",
+          "required": false
+        },
+        {
+          "name": "sponsor_bioguide_id",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Primary sponsor Bioguide identifier",
+          "required": false
+        },
+        {
+          "name": "introduced",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Date the measure was introduced",
+          "required": false
+        },
+        {
+          "name": "latest_action_date",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Date of the latest recorded action",
+          "required": false
+        },
+        {
+          "name": "latest_action_text",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Text of the latest recorded action",
+          "required": false
+        },
+        {
+          "name": "stage",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Lifecycle stage derived by spicy-regs",
+          "required": false
+        },
+        {
+          "name": "policy_area",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "CRS policy area",
+          "required": false
+        },
+        {
+          "name": "public_law_number",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Enacted Public Law number (e.g. 118-50) when enacted",
+          "required": false
+        },
+        {
+          "name": "cosponsor_count",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Published cosponsor count",
+          "required": false
+        },
+        {
+          "name": "related_bills",
+          "logicalType": "array",
+          "physicalType": "list<struct<bill_id string,title string,relationship_types list<dict>>>",
+          "description": "Related, companion, and vehicle measures linked to this bill",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<bill_id string,title string,relationship_types list<dict>>",
+            "properties": [
+              {
+                "name": "bill_id",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "title",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "relationship_types",
+                "logicalType": "array",
+                "physicalType": "list<dict>",
+                "items": {
+                  "logicalType": "string",
+                  "physicalType": "dict",
+                  "description": "Embedded Congress.gov relationship labels, not foreign keys."
+                }
+              }
+            ],
+            "description": "Embedded related, companion, and omnibus vehicle measures with canonical bill_id, title, and relationship_types."
+          }
+        },
+        {
+          "name": "committees",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Referred committee system codes",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict"
+          }
+        },
+        {
+          "name": "cbo_estimates",
+          "logicalType": "array",
+          "physicalType": "list<struct<publication_id string,date date32,description string>>",
+          "description": "CBO cost estimates associated with the bill",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<publication_id string,date date32,description string>",
+            "properties": [
+              {
+                "name": "publication_id",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "physicalType": "date32"
+              },
+              {
+                "name": "description",
+                "logicalType": "string",
+                "physicalType": "string"
+              }
+            ],
+            "description": "Embedded publication IDs, dates and descriptions, not full CBO estimate text."
+          }
+        },
+        {
+          "name": "floor_votes",
+          "logicalType": "array",
+          "physicalType": "list<struct<vote_id string,basis dict,chamber dict,date date32,question string,result string,yea int16,nay int16>>",
+          "description": "Roll-call votes tied by vote record or bill action",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<vote_id string,basis dict,chamber dict,date date32,question string,result string,yea int16,nay int16>",
+            "properties": [
+              {
+                "name": "vote_id",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "basis",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "chamber",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "physicalType": "date32"
+              },
+              {
+                "name": "question",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "result",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "yea",
+                "logicalType": "integer",
+                "physicalType": "int16"
+              },
+              {
+                "name": "nay",
+                "logicalType": "integer",
+                "physicalType": "int16"
+              }
+            ],
+            "description": "One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions."
+          }
+        },
+        {
+          "name": "amendments",
+          "logicalType": "array",
+          "physicalType": "list<struct<amendment_id string,purpose string,sponsor_bioguide_id dict,latest_action_date date32,latest_action_text string>>",
+          "description": "Direct and chained amendments to the bill",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<amendment_id string,purpose string,sponsor_bioguide_id dict,latest_action_date date32,latest_action_text string>",
+            "properties": [
+              {
+                "name": "amendment_id",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "purpose",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "sponsor_bioguide_id",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "latest_action_date",
+                "logicalType": "date",
+                "physicalType": "date32"
+              },
+              {
+                "name": "latest_action_text",
+                "logicalType": "string",
+                "physicalType": "string"
+              }
+            ],
+            "description": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill."
+          }
+        },
+        {
+          "name": "committee_activities",
+          "logicalType": "array",
+          "physicalType": "list<struct<system_code dict,activity dict,date date32>>",
+          "description": "Committee referral, markup, and report activities",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<system_code dict,activity dict,date date32>",
+            "properties": [
+              {
+                "name": "system_code",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "activity",
+                "logicalType": "string",
+                "physicalType": "dict"
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "physicalType": "date32"
+              }
+            ],
+            "description": "Embedded committee events; several activities can refer to the same committee."
+          }
+        }
+      ],
+      "description": "Coverage limits:\nAmendments cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+    },
+    {
+      "id": "nominations",
+      "name": "nominations",
+      "physicalName": "nominations.parquet",
+      "logicalType": "object",
+      "businessName": "Referenced nominations and embedded legislative facts",
+      "dataGranularityDescription": "One nomination including its part when present; bounded by upstream retained data",
+      "properties": [
+        {
+          "name": "nomination_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Canonical nomination identifier ({congress}-pn-{number}[-{part}])",
+          "required": true
+        },
+        {
+          "name": "description",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Nomination description",
+          "required": false
+        },
+        {
+          "name": "organization",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Executive or independent agency name",
+          "required": false
+        },
+        {
+          "name": "received",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Date received in the Senate",
+          "required": false
+        },
+        {
+          "name": "latest_action_date",
+          "logicalType": "date",
+          "physicalType": "date32",
+          "description": "Date of latest action",
+          "required": false
+        },
+        {
+          "name": "latest_action_text",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Text of latest action",
+          "required": false
+        },
+        {
+          "name": "committees",
+          "logicalType": "array",
+          "physicalType": "list<dict>",
+          "description": "Referred Senate committee system codes",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "dict"
+          }
+        },
+        {
+          "name": "committee_activities",
+          "logicalType": "array",
+          "physicalType": "list<struct<system_code string, activities list<struct<name string, date string>>>>",
+          "description": "Committee groups and activity names and dates as supplied, in source order. Null means unavailable or unstated. An empty list means the source supplied no entries.",
+          "required": false,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<system_code string, activities list<struct<name string, date string>>>",
+            "properties": [
+              {
+                "name": "system_code",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "activities",
+                "logicalType": "array",
+                "physicalType": "list<struct<name string, date string>>",
+                "items": {
+                  "logicalType": "object",
+                  "physicalType": "struct<name string, date string>",
+                  "properties": [
+                    {
+                      "name": "name",
+                      "logicalType": "string",
+                      "physicalType": "string"
+                    },
+                    {
+                      "name": "date",
+                      "logicalType": "string",
+                      "physicalType": "string",
+                      "description": "Exact source date or timestamp string, including offset and precision. Null when missing."
+                    }
+                  ]
+                },
+                "description": "Null when not supplied or unreadable, empty when the source supplied an empty list."
+              }
+            ]
+          }
+        },
+        {
+          "name": "transcripts",
+          "logicalType": "array",
+          "physicalType": "list<string>",
+          "description": "Printed hearing package IDs from nomination hearing references",
+          "required": true,
+          "items": {
+            "logicalType": "string",
+            "physicalType": "string",
+            "description": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions."
+          }
+        },
+        {
+          "name": "floor_votes",
+          "logicalType": "array",
+          "physicalType": "list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>",
+          "description": "Senate roll-call votes on the nomination",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<vote_id string,date date32,question string,result string,yea int16,nay int16>",
+            "properties": [
+              {
+                "name": "vote_id",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "physicalType": "date32"
+              },
+              {
+                "name": "question",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "result",
+                "logicalType": "string",
+                "physicalType": "string"
+              },
+              {
+                "name": "yea",
+                "logicalType": "integer",
+                "physicalType": "int16"
+              },
+              {
+                "name": "nay",
+                "logicalType": "integer",
+                "physicalType": "int16"
+              }
+            ],
+            "description": "Embedded Senate roll-call summaries; no individual member positions."
+          }
+        }
+      ],
+      "description": "Coverage limits:\nNominations cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss."
+    },
+    {
+      "id": "url_state",
+      "name": "url_state",
+      "physicalName": "url_state.parquet",
+      "logicalType": "object",
+      "businessName": "Capture scheduling state",
+      "dataGranularityDescription": "One exact requested URL, including requests without a successful capture",
+      "properties": [
+        {
+          "name": "requested_url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Exact address scheduled for capture\nExact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue.",
+          "required": true
+        },
+        {
+          "name": "attempts",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Number of fetch lines for the address",
+          "required": true
+        },
+        {
+          "name": "last_attempt",
+          "logicalType": "timestamp",
+          "physicalType": "timestamp<microsecond,UTC>",
+          "description": "Latest attempt time",
+          "required": false
+        },
+        {
+          "name": "last_status",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "Latest attempt HTTP status",
+          "required": false
+        },
+        {
+          "name": "last_outcome",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Latest attempt outcome",
+          "required": false
+        },
+        {
+          "name": "last_good_at",
+          "logicalType": "timestamp",
+          "physicalType": "timestamp<microsecond,UTC>",
+          "description": "Latest good fetch time",
+          "required": false
+        },
+        {
+          "name": "next_attempt_at",
+          "logicalType": "timestamp",
+          "physicalType": "timestamp<microsecond,UTC>",
+          "description": "Next scheduled fetch time",
+          "required": false
+        },
+        {
+          "name": "capture_disposition",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Eligibility under the pinned recovery and capture scope policy",
+          "required": true
+        },
+        {
+          "name": "capture_reason",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Reason for the capture eligibility decision",
+          "required": true
+        },
+        {
+          "name": "capture_decision_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Qualified recovery decision supporting satisfaction, when present",
+          "required": false
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §7.7.\nCurrent publication requires a policy-bound capture_profile version 2. capture_disposition and capture_reason are required; capture_decision_id is nullable."
+    },
+    {
+      "id": "url_variants",
+      "name": "url_variants",
+      "physicalName": "url_variants.parquet",
+      "logicalType": "object",
+      "businessName": "Active capture URL aliases",
+      "dataGranularityDescription": "One canonical/variant URL pair used by capture policy",
+      "properties": [
+        {
+          "name": "canonical_url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Active canonical URL for capture joins\nCapture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash.",
+          "required": true
+        },
+        {
+          "name": "variant_url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Active alternate URL for capture joins",
+          "required": true
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+    },
+    {
+      "id": "videos",
+      "name": "videos",
+      "physicalName": "videos.parquet",
+      "logicalType": "object",
+      "businessName": "Collected committee channel uploads, matched or not",
+      "dataGranularityDescription": "One upload a retained YouTube cache lists",
+      "properties": [
+        {
+          "name": "video_key",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "youtube:{id} video identity",
+          "required": true
+        },
+        {
+          "name": "handle",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Channel handle whose cache table lists it",
+          "required": true
+        },
+        {
+          "name": "channel_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "YouTube channel ID, null when the cache has none",
+          "required": false
+        },
+        {
+          "name": "system_code",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Committee of the curated channel; channel membership does not make a video a hearing",
+          "required": false
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Title as the channel states it",
+          "required": false
+        },
+        {
+          "name": "source_description",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Description as the channel states it, distinct from any HTML description",
+          "required": false
+        },
+        {
+          "name": "published_at",
+          "logicalType": "timestamp",
+          "physicalType": "timestamp",
+          "description": "YouTube's publication time for the upload",
+          "required": false
+        },
+        {
+          "name": "video_published_at",
+          "logicalType": "timestamp",
+          "physicalType": "timestamp",
+          "description": "YouTube's video publication time",
+          "required": false
+        },
+        {
+          "name": "duration_seconds",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Duration in seconds when retained",
+          "required": false
+        },
+        {
+          "name": "available",
+          "logicalType": "boolean",
+          "physicalType": "bool",
+          "description": "Whether the last check found it available",
+          "required": false
+        },
+        {
+          "name": "has_caption",
+          "logicalType": "boolean",
+          "physicalType": "bool",
+          "description": "Whether YouTube states a caption exists",
+          "required": false
+        },
+        {
+          "name": "details_checked_at",
+          "logicalType": "timestamp",
+          "physicalType": "timestamp",
+          "description": "When details were last checked",
+          "required": false
+        },
+        {
+          "name": "stated_event_ids",
+          "logicalType": "array",
+          "physicalType": "list<int64>",
+          "description": "Event IDs the video's own text names: claims, since committees mistag",
+          "required": true,
+          "items": {
+            "logicalType": "integer",
+            "physicalType": "int64",
+            "description": "A claim the video makes, not a verified link; recording_matches keeps it as claimed."
+          }
+        },
+        {
+          "name": "record_sha",
+          "logicalType": "string",
+          "physicalType": "fixed[32]",
+          "description": "SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+    },
+    {
+      "id": "channels",
+      "name": "channels",
+      "physicalName": "channels.parquet",
+      "logicalType": "object",
+      "businessName": "Curated committee YouTube channel directory",
+      "dataGranularityDescription": "One curated channel handle",
+      "properties": [
+        {
+          "name": "handle",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Channel handle",
+          "required": true
+        },
+        {
+          "name": "channel_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "YouTube channel ID",
+          "required": false
+        },
+        {
+          "name": "system_code",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Committee the directory maps it to",
+          "required": true
+        },
+        {
+          "name": "committee_label",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Committee label in the directory",
+          "required": false
+        },
+        {
+          "name": "role",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "primary, secondary or member",
+          "required": true
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Channel's own title when cached",
+          "required": false
+        },
+        {
+          "name": "custom_url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Channel's custom URL when cached",
+          "required": false
+        },
+        {
+          "name": "uploads_scan_complete",
+          "logicalType": "boolean",
+          "physicalType": "bool",
+          "description": "Whether the cache scanned every upload",
+          "required": false
+        },
+        {
+          "name": "mapping_basis",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "curated_directory: a curated mapping with no further evidence column",
+          "required": true
+        },
+        {
+          "name": "record_sha",
+          "logicalType": "string",
+          "physicalType": "fixed[32]",
+          "description": "SHA-256 of the cache body, null with no cached channel row",
+          "required": false,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+    },
+    {
+      "id": "recording_matches",
+      "name": "recording_matches",
+      "physicalName": "recording_matches.parquet",
+      "logicalType": "object",
+      "businessName": "Recording links and decisions with their basis",
+      "dataGranularityDescription": "One observation that a subject has, or lacks, a recording",
+      "properties": [
+        {
+          "name": "match_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis]",
+          "required": true
+        },
+        {
+          "name": "subject_kind",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "event or package",
+          "required": true
+        },
+        {
+          "name": "subject_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Original subject identifier, including a stated event number without a meeting",
+          "required": true
+        },
+        {
+          "name": "event_id",
+          "logicalType": "integer",
+          "physicalType": "int64",
+          "description": "Meeting subject; null for a package or a stated number no meeting has",
+          "required": false
+        },
+        {
+          "name": "package_id",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "GPO package subject",
+          "required": false
+        },
+        {
+          "name": "video_key",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Video identity; can lack a video row",
+          "required": false
+        },
+        {
+          "name": "url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Off-channel recording URL",
+          "required": false
+        },
+        {
+          "name": "basis",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "publisher_link, video_states_event_id or curated",
+          "required": true
+        },
+        {
+          "name": "decision",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "The verdict as stated, or linked",
+          "required": false
+        },
+        {
+          "name": "score",
+          "logicalType": "integer",
+          "physicalType": "int16",
+          "description": "100 publisher link, 95 stated event ID; null otherwise",
+          "required": false
+        },
+        {
+          "name": "recording_scope",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "full, excerpt or unknown",
+          "required": false
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes",
+          "required": true
+        },
+        {
+          "name": "note",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Curator note, or the unmatched stated number",
+          "required": false
+        },
+        {
+          "name": "source_ref",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Evidence reference: the record or decision",
+          "required": false
+        },
+        {
+          "name": "meeting_links",
+          "logicalType": "array",
+          "physicalType": "list<struct<event_id int64, basis dict, scope dict>>",
+          "description": "Supported meeting links ordered by event ID. Empty means no supported link.",
+          "required": true,
+          "items": {
+            "logicalType": "object",
+            "physicalType": "struct<event_id int64, basis dict, scope dict>",
+            "properties": [
+              {
+                "name": "event_id",
+                "logicalType": "integer",
+                "physicalType": "int64"
+              },
+              {
+                "name": "basis",
+                "logicalType": "string",
+                "physicalType": "dict",
+                "description": "direct_event for the observation’s stated event or print_agreement for vetted printed-hearing evidence."
+              },
+              {
+                "name": "scope",
+                "logicalType": "string",
+                "physicalType": "dict",
+                "description": "event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting."
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Coverage limits:\nScored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+    },
+    {
+      "id": "committee_records",
+      "name": "committee_records",
+      "physicalName": "committee_records.parquet",
+      "logicalType": "object",
+      "businessName": "Amendment and vote documents House meeting XML lists",
+      "dataGranularityDescription": "One document link in a meeting record; a vote row is a document link, not a ballot or tally",
+      "properties": [
+        {
+          "name": "record_key",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text]",
+          "required": true
+        },
+        {
+          "name": "event_id",
+          "logicalType": "integer",
+          "physicalType": "int64",
+          "description": "Meeting event ID",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "amendment or vote",
+          "required": true
+        },
+        {
+          "name": "bill",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Bill as stated",
+          "required": false
+        },
+        {
+          "name": "number",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Amendment or vote number as stated",
+          "required": false
+        },
+        {
+          "name": "sponsor_bioguide",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Sponsor as stated",
+          "required": false
+        },
+        {
+          "name": "amendment_type",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Amendment type as stated",
+          "required": false
+        },
+        {
+          "name": "enbloc",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "En bloc number as stated",
+          "required": false
+        },
+        {
+          "name": "source_description",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Description as stated",
+          "required": false
+        },
+        {
+          "name": "url",
+          "logicalType": "string",
+          "physicalType": "string",
+          "description": "Document URL, null when the record states none",
+          "required": false
+        },
+        {
+          "name": "record_sha",
+          "logicalType": "string",
+          "physicalType": "fixed[32]",
+          "description": "SHA-256 of the House XML body",
+          "required": true,
+          "logicalTypeOptions": {
+            "format": "binary"
+          }
+        },
+        {
+          "name": "ordinal",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Position in that record, so duplicate links stay distinct",
+          "required": true
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+    },
+    {
+      "id": "meeting_coverage",
+      "name": "meeting_coverage",
+      "physicalName": "meeting_coverage.parquet",
+      "logicalType": "object",
+      "businessName": "Typed coverage facts per meeting",
+      "dataGranularityDescription": "One aspect of one meeting: recording, transcript, documents, witnesses or captions",
+      "properties": [
+        {
+          "name": "event_id",
+          "logicalType": "integer",
+          "physicalType": "int64",
+          "description": "Meeting event ID",
+          "required": true
+        },
+        {
+          "name": "aspect",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "recording, transcript, documents, witnesses or captions",
+          "required": true
+        },
+        {
+          "name": "state",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge\nconfirmed_absent only from an undisputed curated negative verdict with event scope; package context alone does not establish absence and zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public.",
+          "required": true
+        },
+        {
+          "name": "basis",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Which relation states it",
+          "required": true
+        },
+        {
+          "name": "count",
+          "logicalType": "integer",
+          "physicalType": "int32",
+          "description": "Rows behind present",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "logicalType": "string",
+          "physicalType": "dict",
+          "description": "Why a state holds, when known: recording_decision_unresolved_or_conflicting, package_context_only, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions)",
+          "required": false
+        }
+      ],
+      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known."
+    }
+  ]
+}

@@ -15,7 +15,9 @@ from . import __version__
 
 PUBLICATION = 'https://congressional-data.spicygov.ai/viewer-publications/manifest.json'
 CONTROL_BYTES = 32 << 20
-NAME = re.compile(r'(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(?:parquet|json)')
+NAME = re.compile(r'(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(?:parquet|json)'
+                  r'|catalog\.(?:ddk|report|lock)\.json|discovery\.dcat\.json'
+                  r'|queries/[a-f0-9]{64}\.sql|lineage/[0-9]{4}\.openlineage\.json')
 
 
 def encoded(value):
@@ -36,7 +38,7 @@ def stamp(path):
 
 
 def same_stamp(path, recorded):
-    return isinstance(recorded, list) and len(recorded) in (4, 5) and stamp(path) == recorded[-4:]
+    return isinstance(recorded, list) and len(recorded) == 4 and stamp(path) == recorded
 
 
 @contextmanager
@@ -83,7 +85,7 @@ def resolve(location):
     names, groups = set(), {}
     for item in manifest['files']:
         name = item['name']
-        if (not NAME.fullmatch(name) or name in names or name == 'documents.parquet'
+        if (not NAME.fullmatch(name) or name in names or name in {'documents.parquet', 'schema.json'}
                 or not re.fullmatch('[a-f0-9]{64}', item['sha256'])
                 or any(type(item[key]) is not int or item[key] < 0 for key in ('size', 'rows'))):
             raise ExplorerError('Invalid or duplicate release file')
@@ -108,7 +110,9 @@ def resolve(location):
                     raise ExplorerError('Mixed, overlapping or incomplete shards')
                 end = item['row_range'][1]
     required = {'list', 'detail', 'links', 'urls', 'sources', 'recoveries', 'url_state'}
-    if not required <= groups.keys() or not {'schema.json', 'capture_scope.json'} <= names:
+    catalog_controls = {'catalog.ddk.json', 'catalog.report.json', 'catalog.lock.json'}
+    if (not required <= groups.keys() or 'capture_scope.json' not in names
+            or not catalog_controls <= names):
         raise ExplorerError('Release lacks required archive tables or controls')
     if sum(i['rows'] for i in groups['list']) != sum(i['rows'] for i in groups['detail']):
         raise ExplorerError('Document list and detail counts differ')
@@ -193,10 +197,6 @@ def _prepare(root, publication, archive_origin):
             and set(previous.get('files', {})) == {item['sha256'] for item in manifest['files']} \
             and all(Path(f['path']).exists() for f in previous.get('files', {}).values()):
         value = load_selection(root)
-        if any(len(item['stamp']) != 4 for item in value['files'].values()):
-            for item in value['files'].values():
-                item['stamp'] = item['stamp'][-4:]
-            atomic_json(selected, value)
         return value
     files, controls = {}, {}
     for item in manifest['files']:
@@ -211,6 +211,8 @@ def _prepare(root, publication, archive_origin):
     value = dict(version=1, release_id=manifest['release_id'], manifest=manifest,
                  files=files, tables=tables, controls=controls,
                  archive_origin=origin)
+    from .catalog import CatalogDiscovery
+    CatalogDiscovery(value)
     # Footer counts detect unusable delivery. The producer owns semantic model
     # invariants; preparation does not rebuild or rescan those relationships.
     import duckdb
@@ -235,4 +237,6 @@ def load_selection(data_dir):
         target = Path(item['path'])
         if target.is_symlink() or not target.exists() or not same_stamp(target, item['stamp']):
             raise ExplorerError('Prepared file changed; choose a fresh data directory')
+    from .catalog import CatalogDiscovery
+    CatalogDiscovery(value)
     return value

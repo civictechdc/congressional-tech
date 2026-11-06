@@ -1,0 +1,139 @@
+{
+  "specVersion": "0.1",
+  "kind": "project",
+  "id": "urn:congressional-tech:committee-compatibility:project",
+  "version": "1.0.0",
+  "artifacts": {
+    "meeting": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "meeting",
+      "catalogId": "urn:congressional-tech:committee-compatibility:dataset:meeting",
+      "role": "application"
+    },
+    "committee-term": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "committee-term",
+      "catalogId": "urn:congressional-tech:committee-compatibility:dataset:committee-term",
+      "role": "application"
+    },
+    "appearance": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "appearance",
+      "catalogId": "urn:congressional-tech:committee-compatibility:dataset:appearance",
+      "role": "application"
+    },
+    "material": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "material",
+      "catalogId": "urn:congressional-tech:committee-compatibility:dataset:material",
+      "role": "application"
+    },
+    "data-issue": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "data-issue",
+      "catalogId": "urn:congressional-tech:committee-compatibility:dataset:data-issue",
+      "role": "application"
+    },
+    "sources": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "sources",
+      "catalogId": "urn:congressional-tech:committee-compatibility:dataset:sources",
+      "role": "application"
+    },
+    "manifest": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "manifest",
+      "catalogId": "urn:congressional-tech:committee-compatibility:dataset:manifest",
+      "role": "application"
+    },
+    "export-parquet": {
+      "kind": "component",
+      "path": "components/export-parquet.ddk.json"
+    },
+    "product": {
+      "kind": "product",
+      "path": "product.odps.json"
+    },
+    "workflow": {
+      "kind": "design",
+      "path": "workflow.ddk.json"
+    }
+  },
+  "requiredChecks": [
+    "core.documents",
+    "core.references",
+    "core.graph",
+    "core.calls",
+    "core.datasets",
+    "core.policies"
+  ],
+  "catalog": {
+    "id": "urn:congressional-tech:committee-compatibility:catalog",
+    "ports": [
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "meeting",
+        "version": "1.0.0",
+        "dataset": "meeting"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "committee-term",
+        "version": "1.0.0",
+        "dataset": "committee-term"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "appearance",
+        "version": "1.0.0",
+        "dataset": "appearance"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "material",
+        "version": "1.0.0",
+        "dataset": "material"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "data-issue",
+        "version": "1.0.0",
+        "dataset": "data-issue"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "sources",
+        "version": "1.0.0",
+        "dataset": "sources"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "manifest",
+        "version": "1.0.0",
+        "dataset": "manifest"
+      }
+    ]
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "scope": "minimal semantic dataset and component declarations; not exact schema or data qualification",
+      "physicalSchemaOwner": "maintained output modules linked by authoritativeDefinitions",
+      "sourceValidationOwner": "maintained domain source models/parsers; preserve extras, null/absence and refusal behavior",
+      "availability": "no observed representation, service or successful execution asserted"
+    }
+  }
+}

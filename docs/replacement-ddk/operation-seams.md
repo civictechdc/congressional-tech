@@ -91,21 +91,20 @@ reconciled by their actual owner. An uncertain started network call remains
 uncertain and charged; only the existing explicit retry decision can authorize
 another call. Do not treat cancellation of the caller's wait as remote cancellation.
 
-Historical `DurableCapture` journals are migration inputs, not a second active
-controller. The adoption operation verifies their exact request/custody and
-records completed phases under native ownership before switching the caller.
-Unsealed, conflicting or uncertain entries preserve their diagnostic state. Both
-process-loss and host-loss survival must be specified: runner temporary storage
-alone does not satisfy the latter. The final caller uses one durable owner; until
-this capability qualifies, capture migration remains incomplete rather than
-silently falling back to a wrapper around the old stack.
+The greenfield caller starts new native operation state. It does not import
+historical `DurableCapture` journals or old model/publication checkpoint formats.
+A bounded input manifest can identify valid retained bodies, receipts and
+completed results; old uncertain effects remain evidence without automatic
+replay. Both process-loss and host-loss survival must be specified for new work:
+runner temporary storage alone does not satisfy the latter. The new caller uses
+one durable owner and preserves sealed completion and effect reconciliation.
 
 ## Per-workflow recovery and protection
 
 | Workflow | Immutable request/completion identity | Recovery action | Visibility authority | Last protected consumer |
 | --- | --- | --- | --- | --- |
-| Archive capture | Exact selected capture scope + request/attempt ID; sealed downloaded body and frozen receipt | Inspect native/adopted phase; read back original body/receipt key after acknowledgment loss; refuse unknown started call | Raw create-only receipt owner; capture is not model publication | Pending interpretation, current/historical provenance and recovery obligation |
-| Archive model/release | Frozen input table pins + SQL/definition identities; complete candidate and export receipts | Resume valid native materialized steps, qualification and exports; reconcile exact external pointer/ETag | Native dataset authority then existing application publication authority | Selected and retained historical readers, rollback pins, source-link obligations |
+| Archive capture | Exact selected capture scope + request/attempt ID; sealed downloaded body and frozen receipt | Inspect the original native phase; read back original body/receipt key after acknowledgment loss; refuse unknown started call | Raw create-only receipt owner; capture is not model publication | Pending interpretation, provenance and recovery obligation |
+| Archive model/release | Frozen input table pins + SQL/definition identities; complete candidate and export receipts | Resume valid native materialized steps, qualification and exports; reconcile exact external pointer/ETag | Native dataset authority then application publication authority | Selected and prior new-stack versions, rollback pins, source-link obligations |
 | News | Source/page checkpoint + cycle/attempt/fence; exact native dataset pins and manifest | Inspect original cycle; do not reopen closed checkpoint or repeat accepted data commits; recover availability then cursor activation | Native/news control owner with its existing fence | Selected/unretired release, pending cursor activation and current readers |
 | Weekly/committee | Source snapshots, stable-ID/history state and exact export file inventory | Read back preserved raw snapshot and original ref outcome; retain prior ref if preservation failed | Bot-owned `pipeline-data` ref and separate site deployment selection | Current reports, historical ID/state readback and unpublished snapshot recovery |
 | CPI/Sheets | Provider source periods and retained responses when available; exact two-file revision and formula definitions | Preserve prior complete published revision on failed/incomplete required refresh; reconcile its published revision before retrying | Application file publisher; workbook owner for any later live formula update | Current/historical time-series interpretation and documented spreadsheet consumers |

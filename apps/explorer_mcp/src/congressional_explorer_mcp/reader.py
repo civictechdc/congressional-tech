@@ -9,6 +9,7 @@ import duckdb
 from .models import (MAX_BYTES, ExplorerError, exact_scalar,
                      DocumentSearch, DocumentQuery, EntitySearch, EntityQuery, SqlQuery)
 from .release import encoded, quote, literal
+from .catalog import CatalogDiscovery
 
 # Published display columns that text search reads, wherever a table has them.
 TEXT_FIELDS = ('name', 'title', 'short_title', 'public_law_number', 'description', 'organization', 'position', 'video_key',
@@ -21,31 +22,6 @@ DOCUMENT_SUMMARY_COLUMNS = (
 )
 
 
-def published_entities(schema):
-    """Entity tables and their document links as the release's schema states them; the schema is the one identity owner.
-
-    An entity table has a primary key that is a published identifier. A table keyed by a document's
-    address (detail's identity, or what detail links to: links, retired_links) is read through
-    get_document instead. A document link is the list.<column>[] relationship whose target fields
-    are the entity's whole identity.
-    """
-    files = {item['name'].removesuffix('.parquet'): item for item in schema.get('files', [])}
-    relationships = schema.get('relationships', []) if schema.get('relationships_version') == 1 else []
-    addresses = [(files.get('detail', {}).get('identity') or {}).get('fields')]
-    addresses += [r['target']['fields'] for r in relationships if r['source'].get('table') == 'detail' and 'table' in r['target']]
-    keys = {}
-    for name, item in files.items():
-        identity = item.get('identity') or {}
-        if identity.get('kind') == 'primary_key' and identity.get('scope') == 'published identifier' \
-                and identity.get('fields') and identity['fields'] not in addresses:
-            keys[name] = list(identity['fields'])
-    links = {}
-    for relation in relationships:
-        source, target, fields = relation['source'], relation['target'], relation['source'].get('fields', [])
-        if source.get('table') == 'list' and len(fields) == 1 and fields[0].endswith('[]') \
-                and target.get('table') in keys and target.get('fields') == keys[target['table']]:
-            links.setdefault(target['table'], fields[0].removesuffix('[]'))
-    return keys, links
 
 
 class Reader:
@@ -65,7 +41,7 @@ class Reader:
                     queries.append(f'SELECT * EXCLUDE(file_row_number){extra} FROM read_parquet('
                                    f"{literal(part['path'])},file_row_number=true)")
                 self.db.execute(f'CREATE VIEW {quote(table)} AS ' + ' UNION ALL '.join(queries))
-            # Newer detail files repeat list's columns; older ones share only list_row.
+            # Detail repeats list columns; expose each once in the joined view.
             list_names = {row[0] for row in self.db.execute('DESCRIBE "list"').fetchall()}
             repeated = [row[0] for row in self.db.execute('DESCRIBE detail').fetchall() if row[0] in list_names]
             self.db.execute('CREATE VIEW documents AS SELECT l.*,d.* EXCLUDE(' + ','.join(map(quote, repeated)) + ') '
@@ -76,9 +52,11 @@ class Reader:
             self.db.execute('SET lock_configuration=true')
             self.schemas = {table: {row[0]: row[1] for row in self.db.execute(f'DESCRIBE {quote(table)}').fetchall()}
                             for table in [*selection['tables'], 'documents']}
-            self.document_summary = DOCUMENT_SUMMARY_COLUMNS + (
-                ',d.document_date_status' if 'document_date_status' in self.schemas['detail'] else '')
-            self.entity_keys, self.document_links = published_entities(selection['controls']['schema'])
+            if 'document_date_status' not in self.schemas['detail']:
+                raise ExplorerError('Published detail is missing document_date_status')
+            self.document_summary = DOCUMENT_SUMMARY_COLUMNS + ',d.document_date_status'
+            self.discovery = CatalogDiscovery(selection)
+            self.entity_keys, self.document_links = self.discovery.entities(selection)
         except BaseException:
             self.close()
             raise
@@ -93,78 +71,7 @@ class Reader:
             raise ExplorerError(f'Table {table!r} is not published in this release; use get_dataset_info')
 
     def dataset_info(self, query):
-        table, relationship, recipe = (query.get(key) for key in ('table', 'relationship', 'recipe'))
-        if sum(value is not None for value in (table, relationship, recipe)) > 1:
-            raise ExplorerError('Choose one table, relationship, or recipe selector')
-        schema = self.selection['controls']['schema']
-        declared = {item['name'].removesuffix('.parquet'): item for item in schema['files']}
-        version = schema.get('relationships_version')
-        relationships = schema.get('relationships', []) if version == 1 else []
-        recipes = schema.get('recipes', []) if version == 1 else []
-
-        def availability(value, required):
-            missing = sorted(set(required) - self.selection['tables'].keys())
-            return dict(value, available=not missing, missing_tables=missing)
-
-        def relation_info(value):
-            return availability(value, [endpoint['table'] for endpoint in (value['source'], value['target']) if 'table' in endpoint])
-
-        def recipe_info(value):
-            return availability(value, value['requires'])
-
-        upstream = schema.get('upstream_relations')
-        if relationship is not None and upstream and relationship not in {r['id'] for r in relationships}:
-            value = next((value for value in upstream if value['id'] == relationship), None)
-            if value is not None:
-                # Held upstream (SpicyRegs) at the stated generation; this server reads none of its rows.
-                local = sorted({join['table'] for join in value['joins']} - self.selection['tables'].keys())
-                return dict(release_id=self.release_id, upstream=True, **value, missing_tables=local)
-        for selector, values, describe in ((relationship, relationships, relation_info), (recipe, recipes, recipe_info)):
-            if selector is not None:
-                if version != 1:
-                    message = 'no published relationship metadata' if version is None else f'unsupported relationship metadata version {version}'
-                    raise ExplorerError(f'This release has {message}; inspect its tables and raw schema')
-                value = next((value for value in values if value['id'] == selector), None)
-                if value is None:
-                    raise ExplorerError(f'Unknown relationship or recipe {selector!r}; use get_dataset_info for published IDs')
-                return dict(release_id=self.release_id, relationships_version=version, **describe(value))
-        if table is not None:
-            if table in self.selection['controls']:
-                result = self.selection['controls'][table]
-                if len(encoded(result)) > MAX_BYTES - 4096:
-                    raise ExplorerError('Published control exceeds 128 KiB; use a table, relationship, or recipe selector')
-                return result
-            if table not in declared:
-                self.require(table)
-            meaning = declared.get(table, {})
-            return dict(release_id=self.release_id, table=table, available=table in self.schemas, columns=self.schemas.get(table, {}),
-                meanings=meaning.get('columns', []), purpose=meaning.get('purpose'), row_meaning=meaning.get('row_meaning'),
-                identity=meaning.get('identity'), scope=meaning.get('gaps', []), notes=meaning.get('notes', {}),
-                relationships_version=version,
-                outgoing=[r['id'] for r in relationships if r['source'].get('table') == table],
-                incoming=[r['id'] for r in relationships if r['target'].get('table') == table],
-                recipes=[r['id'] for r in recipes if table in r['requires']])
-        tables = {name: dict(rows=sum(p['rows'] for p in parts), columns=list(self.schemas[name]))
-                  for name, parts in self.selection['tables'].items()}
-        return dict(release_id=self.release_id, tables=tables,
-            views=dict(documents='List and detail joined by release-local list_row'),
-            entity_keys=self.entity_keys,
-            entity_identity='published' if self.entity_keys else 'not published in this release',
-            missing_entities=sorted(self.entity_keys.keys() - tables.keys()),
-            relationships_version=version,
-            relationship_metadata='published' if version == 1 else ('not published in this release' if version is None else 'unsupported version'),
-            relationships=[relation_info({key: r[key] for key in ('id', 'source', 'target')}) for r in relationships],
-            recipes=[recipe_info({key: r[key] for key in ('id', 'title', 'requires')}) for r in recipes],
-            upstream_relations=upstream if upstream is not None else 'not published in this release',
-            coverage=[dict(file=f['name'], coverage=f.get('coverage', {}))
-                      for f in self.selection['manifest']['files'] if f['name'].endswith('.parquet')],
-            notes=['Missing tables are unavailable, not empty. Null entity fields mean the release did not supply those values.',
-                   'Witnesses are appearances; names do not establish identity or document ownership.',
-                   'SQL preserves published types. BLOB values use DuckDB JSON escaping; hex(binary_column) gives portable identifiers.',
-                   'References and cursors bind to this release. File URLs are returned for you to fetch and read.',
-                   'Pass a relationship or recipe ID for join meaning or example SQL; examples are never run by discovery.',
-                   'upstream_relations are SpicyRegs tables pinned by generation and path when available; this server does not read them.'],
-            limits=dict(page_rows=100, sql_rows=200, response_bytes=MAX_BYTES, duckdb_memory='512MB', spill='512MB'))
+        return self.discovery.dataset_info(self, query)
 
     def rows(self, sql, args=(), *, limit=100):
         """Serialize and byte-bound each row in DuckDB before Python decoding."""
@@ -264,8 +171,9 @@ class Reader:
         if not match and 'retired_links' in self.schemas:
             # Data model §8.2, Retired keys: a key this release no longer publishes redirects
             # to its successor or explains its removal; it never vanishes silently.
-            versions = ("list_transform(address_versions,lambda v:lower(hex(v)))" if 'address_versions' in self.schemas['retired_links']
-                        else 'NULL')
+            if 'address_versions' not in self.schemas['retired_links']:
+                raise ExplorerError('Published retired_links is missing address_versions')
+            versions = "list_transform(address_versions,lambda v:lower(hex(v)))"
             retired = self.db.execute(f'SELECT hex(successor_key),last_release_id,last_filename,{versions} FROM retired_links '
                                       'WHERE link_key=unhex(?)', [query.link_key]).fetchall()
             if len(retired) == 1:

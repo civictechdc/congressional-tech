@@ -1050,31 +1050,34 @@
   },
   {
     "id": "C44",
-    "behavior": "Read older archive schemas and keyed-detail/list pairing without invented definitions",
+    "behavior": "Read the single current public catalog and keyed-detail/list pairing without invented definitions",
     "baseline_sources": [
       "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:68"
     ],
     "current_tests": [
-      "apps/explorer_mcp/tests/test_reader.py:35::test_documents_view_holds_one_copy_of_each_column_on_keyed_detail"
+      "apps/explorer_mcp/tests/test_reader.py:35::test_documents_view_holds_one_copy_of_each_column_on_keyed_detail",
+      "apps/explorer_mcp/tests/test_reader.py::test_detail_requires_current_date_status_field",
+      "apps/explorer_mcp/tests/test_reader.py::test_retired_lookup_requires_address_versions_but_table_can_be_absent",
+      "packages/viewer_publication/tests/test_archive_reader.py::test_current_reader_requires_current_fields_and_preserves_nulls"
     ],
     "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
     "acceptance_proof": {
       "status": "plan_only",
       "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C44 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
       "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
-      "case_and_expected": "Archive-contract current/next and retained historical controls/bytes where available. No duplicate columns; old stated identity only; missing/unknown metadata explicit; legacy nonarchive pointer refuses early.",
+      "case_and_expected": "Require the exact public catalog/report/lock tuple and effective definitions. Refuse unsupported or partial controls and present tables missing current fields. Keep one copy of repeated list/detail columns, nullable document_date_status, retired-key successor/removal/address_versions history and optional-table absence. Old consumer formats are outside the user-authorized greenfield acceptance scope.",
       "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
     },
     "authentic_evidence": [],
     "status": "unverified",
     "gaps": [
-      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
-      "All historical payload availability unverified; no corpus replay."
+      "Full replacement/native candidate acceptance remains unverified; focused current-reader tests do not establish data qualification.",
+      "Latest current-field refusal and nullable-value cases await central execution. Historical raw evidence and retired-key history remain required; old reader-format compatibility is explicitly retired."
     ]
   },
   {
     "id": "C45",
-    "behavior": "Committee Explorer Parquet export, explicit retired-JSON refusal, historical JSON readback/history migration and distribution workflow",
+    "behavior": "Committee Explorer current Parquet export, explicit retired-JSON refusal and distribution workflow",
     "baseline_sources": [
       "apps/committee_youtube/src/committee_explorer/export.py:350",
       "apps/committee_youtube/src/committee_explorer/browser.py:13",
@@ -1102,7 +1105,7 @@
       "status": "plan_only",
       "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C45 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
       "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
-      "case_and_expected": "Run current Parquet export with stable IDs/history, unchanged reuse, changed inputs and interruption before CURRENT. Call export(format=json) and CLI --format json and require their explicit refusal before assembly. Separately supply a retained historical manifest with committee_explorer.records/sources JSON partitions to load_previous; verify digest checking, transitive issue/source history migration and no new JSON export. Run state pack/unpack, browser package/verify, exact pipeline snapshot save and Pages revision dispatch as separately bound activation subcases; live enablement remains unverified.",
+      "case_and_expected": "Run current Parquet export with stable IDs, source/issue history, unchanged reuse, changed inputs and interruption before CURRENT. Require explicit refusal of new JSON export before assembly. Run state pack/unpack, browser package/verify, exact pipeline snapshot save and Pages revision dispatch as separately bound activation cases. Retained raw evidence/history requires a supported current-format path; old JSON consumer-format readback is outside the user-authorized greenfield acceptance scope.",
       "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
     },
     "authentic_evidence": [],
@@ -1111,12 +1114,12 @@
       "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
       "Full nested compatibility schema/retained artifact/machine-reader census remains incomplete; changed-input partial updates explicitly unfinished.",
       "Browser package() keeps exact Parquet bytes, filters download/legacy meeting and print-decision parts, derives distribution ID and enforces 900MB. Detailed distribution acceptance still required.",
-      "Legacy JSON export is deliberately retired; README --format json text is stale. Historical JSON partitions/control readback remains a separate required compatibility case; no successful new JSON export is required."
+      "New JSON export is retired. Historical JSON readback is baseline source evidence, no longer a required consumer-format compatibility case after the greenfield decision. Raw source and issue history still require a supported current-format path."
     ],
     "current_test_scope": {
       "Parquet export/reuse/history": "test_packaged_publication_reuses_on_clean_runner_without_model_assembly and test_changed_native_data_refreshes_records_and_preserves_ids assert maintained Parquet behavior; history test protects prior snapshot on incomplete/conflicting save.",
       "JSON refusal": "test_missing_receipt_rebuilds_and_json_reuse_is_rejected asserts export(format=json) raises requires parquet.",
-      "historical JSON readback": "load_previous at export.py:178-203 explicitly migrates retained records/sources JSON if SQLite history is absent; a dedicated cold readback/migration assertion is still required.",
+      "historical JSON readback": "Baseline load_previous at export.py:178-203 migrates retained records/sources JSON when SQLite history is absent. Greenfield acceptance no longer requires an old-format reader; current-format raw evidence/history remains required.",
       "workflow": "Source declares push/completed-run/manual triggers and state/export/browser/snapshot/Pages callers; source presence does not prove current remote enablement or replacement execution."
     }
   },

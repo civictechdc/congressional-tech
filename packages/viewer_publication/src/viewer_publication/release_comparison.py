@@ -1,7 +1,7 @@
 """Gate 1 (ct-tk10): compare a candidate release with the live (base) release, key by key and value by value.
 
 Rows are matched on published identity, never on `list_row`, which is release-local.
-Every manifest file is covered: a special handler, the registry's primary key, a
+Every manifest file is covered: a special handler, the catalog's declared key, a
 `file added`/`file removed` group, or a refusal for a changed file with no comparison.
 Row groups sum to the file's row delta (the `list` sum always does), so a matching sum
 proves only that no row was dropped. Value groups (`changed <column>`) count matched rows
@@ -159,16 +159,32 @@ def value_group(column, count):
 
 
 def identities(dirs):
-    """Primary keys from the candidate's published schema, else the base's, else the registry."""
+    """Read each release's own admitted keys; refuse conflicting comparison keys."""
     found = {}
-    sources = [d / 'schema.json' for d in (dirs['candidate'], dirs['base'])]
-    for path in sources:
-        if path.exists():
-            for table in json.loads(path.read_text()).get('files', []):
-                found.setdefault(table['name'].removesuffix('.parquet'), table['identity'])
-    from viewer_publication.archive_schema import build_schema
-    for table in build_schema()['files']:
-        found.setdefault(table['name'].removesuffix('.parquet'), table['identity'])
+    for side in ('base', 'candidate'):
+        directory = dirs[side]
+        manifest = json.loads((directory/'manifest.json').read_text())
+        entries = {item['name']: item for item in manifest['files']}
+        controls = {}
+        for name in ('catalog.ddk.json', 'catalog.report.json'):
+            data = (directory/name).read_bytes()
+            entry = entries[name]
+            if len(data) != entry['size'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
+                raise ValueError('Comparison catalog control differs from release membership: '+name)
+            controls[name] = json.loads(data)
+        catalog, report = controls['catalog.ddk.json'], controls['catalog.report.json']
+        if catalog['kind'] != 'catalog' or catalog['specVersion'] != '0.1' or catalog['audience'] != 'public' or report['decision'] != 'passed':
+            raise ValueError('Comparison requires admitted public catalogs with passed metadata checking')
+        if not any(item['path'] == 'catalog.report.json' and item['sha256'] == entries['catalog.report.json']['sha256'] for item in catalog['files']):
+            raise ValueError('Comparison catalog does not bind its checking report')
+        definitions = catalog['extensions']['urn:ddk:catalog:assembly']['datasetDefinitions']
+        for identity in catalog['identities']:
+            if identity['kind'] != 'key' or any(field['virtual'] or len(field['path']) != 1 for field in identity['fields']):
+                continue
+            name = definitions[identity['dataset']]['name']
+            old = found.setdefault(name, identity)
+            if any(old[key] != identity[key] for key in ('kind', 'scope', 'fields')):
+                raise ValueError('Comparison identity changed across releases: '+name)
     return found
 
 
@@ -396,9 +412,9 @@ def recoveries(d: Diff):
 
 
 def generic(table):
-    """Registry primary key: rows added and removed by identity, then value groups on matched rows."""
+    """Catalog key: added and removed identities, then value groups on matched rows."""
     def run(d: Diff):
-        fields = d.identities[table]['fields']
+        fields = [field['path'][0]['field'] for field in d.identities[table]['fields']]
         using = ','.join(f'"{f}"' for f in fields)
         removed = d.one(f'SELECT count(*) FROM base_{table} ANTI JOIN candidate_{table} USING({using})')
         added = d.one(f'SELECT count(*) FROM candidate_{table} ANTI JOIN base_{table} USING({using})')
@@ -567,7 +583,7 @@ def account(d: Diff):
         same = bool(base and candidate and base['sha256'] == candidate['sha256'])
         groups, notes = [], {}
         handler = HANDLERS.get(stem)
-        if handler is None and name.endswith('.parquet') and d.identities.get(stem, {}).get('kind') == 'primary_key':
+        if handler is None and name.endswith('.parquet') and d.identities.get(stem, {}).get('kind') == 'key':
             handler = generic(stem)
         if base is None or candidate is None:
             side = 'base' if base is None else 'candidate'

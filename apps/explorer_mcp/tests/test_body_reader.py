@@ -20,7 +20,7 @@ from congressional_explorer_mcp.models import DocumentQuery, ExplorerError, MAX_
 from congressional_explorer_mcp.reader import Reader
 from congressional_explorer_mcp.release import encoded, prepare
 from congressional_explorer_mcp.server import create_server
-from conftest import CURRENT, manifest, replace_rows
+from conftest import manifest, replace_rows
 
 
 def make_pdf_bytes(pages: list[str]) -> bytes:
@@ -106,10 +106,10 @@ def local_archive_server(routes: dict[str, bytes | Callable]):
         server.server_close()
 
 
-def _prepare_body_fixture(tmp_path: Path, specs: list[dict], archive_origin: str | None):
+def _prepare_body_fixture(current, tmp_path: Path, specs: list[dict], archive_origin: str | None):
     """Build a release fixture where the first N document rows have custom formats, digests, and suffixes."""
     root = tmp_path / 'release'
-    shutil.copytree(CURRENT, root)
+    shutil.copytree(current, root)
 
     def update_list(rows):
         for i, spec in enumerate(specs):
@@ -169,7 +169,7 @@ def test_server_instructions_and_document_query_schema(tmp_path, phase2):
     asyncio.run(run())
 
 
-def test_get_document_text_reads_pdf_gzip_html_xml_and_plain_text_and_caches(tmp_path):
+def test_get_document_text_reads_pdf_gzip_html_xml_and_plain_text_and_caches(current, tmp_path):
     pdf_raw = make_pdf_bytes([
         'Page One: Witness Statement of John Ray III on FTX corporate controls.',
         'Page Two: Detailed balance sheet findings and commingled customer assets.',
@@ -218,7 +218,7 @@ def test_get_document_text_reads_pdf_gzip_html_xml_and_plain_text_and_caches(tmp
     }
 
     with local_archive_server(routes) as (origin, requests):
-        selected_dir, selected, by_row = _prepare_body_fixture(
+        selected_dir, selected, by_row = _prepare_body_fixture(current,
             tmp_path,
             [
                 dict(filename='Ray-Testimony.pdf', title='John Ray Statement', format='pdf',
@@ -311,7 +311,7 @@ def test_get_document_text_reads_pdf_gzip_html_xml_and_plain_text_and_caches(tmp
         asyncio.run(run())
 
 
-def test_get_document_text_fails_closed_on_security_and_integrity_faults(tmp_path):
+def test_get_document_text_fails_closed_on_security_and_integrity_faults(current, tmp_path):
     valid_pdf = make_pdf_bytes(['Verified page text'])
     expected_sha = sha256(valid_pdf).digest()
     wrong_bytes = make_pdf_bytes(['Tampered body text'])
@@ -333,7 +333,7 @@ def test_get_document_text_fails_closed_on_security_and_integrity_faults(tmp_pat
     }
 
     with local_archive_server(routes) as (origin, _):
-        selected_dir, selected, by_row = _prepare_body_fixture(
+        selected_dir, selected, by_row = _prepare_body_fixture(current,
             tmp_path,
             [
                 # Row 0: SHA-256 mismatch
@@ -399,7 +399,7 @@ def test_get_document_text_fails_closed_on_security_and_integrity_faults(tmp_pat
             reader.close()
 
 
-def test_get_document_text_respects_max_bytes_and_timeout(tmp_path):
+def test_get_document_text_respects_max_bytes_and_timeout(current, tmp_path):
     huge_text = ('Paragraph of congressional testimony with detailed analysis. ' * 3000).encode('utf-8')
     huge_gz = gzip.compress(huge_text, mtime=0)
     huge_sha = sha256(huge_gz).digest()
@@ -418,7 +418,7 @@ def test_get_document_text_respects_max_bytes_and_timeout(tmp_path):
     }
 
     with local_archive_server(routes) as (origin, _):
-        selected_dir, selected, by_row = _prepare_body_fixture(
+        selected_dir, selected, by_row = _prepare_body_fixture(current,
             tmp_path,
             [
                 dict(filename='Huge.txt', format='text', saved_body=huge_sha, saved_suffix='.gz',

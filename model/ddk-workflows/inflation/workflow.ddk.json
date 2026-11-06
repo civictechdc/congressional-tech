@@ -1,0 +1,47 @@
+{
+  "specVersion": "0.1",
+  "kind": "design",
+  "id": "urn:congressional-tech:inflation:design",
+  "version": "1.0.0",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "sources": {
+    "selected-grid": {
+      "dataset": "historical-grid"
+    }
+  },
+  "steps": {
+    "combine": {
+      "component": "combine-sources",
+      "inputs": {
+        "bls": {
+          "source": "selected-grid"
+        }
+      },
+      "arguments": {
+        "aggregate": {
+          "literal": true
+        }
+      }
+    }
+  },
+  "exports": {
+    "observations": {
+      "from": {
+        "step": "combine",
+        "output": "table"
+      },
+      "dataset": "inflation-table",
+      "allowAdditionalFields": true
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "evidence": "declared interfaces only; no executable runtime adapter selected",
+      "unqualified": "Source payload schemas, exact physical output schema, data values, recovery, availability and publication remain separate obligations."
+    }
+  }
+}

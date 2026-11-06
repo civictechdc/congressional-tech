@@ -1,0 +1,30 @@
+{
+  "specVersion": "0.1",
+  "kind": "component",
+  "id": "urn:congressional-tech:youtube:component:capture-channels",
+  "version": "1.0.0",
+  "role": "reader",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "inputs": {},
+  "outputs": {
+    "channels": {
+      "dataset": "channels"
+    },
+    "videos": {
+      "dataset": "videos"
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "meaning": "Refresh stable channel IDs; preserve pending scan markers and retained prior video metadata.",
+      "domainOwner": "youtube_api.fetch.main.parse_args_and_run",
+      "executionStatus": "interface_only",
+      "runtimeBinding": "unqualified",
+      "limitations": "TinyDB cache rows and SDK/yt-dlp saved representations remain owned by youtube_api. Source models allow unknown publisher fields; no exact HTTP envelope or native physical table mapping is declared. Failure/unknown is not absence; caption negatives are scoped English WebVTT observations."
+    }
+  }
+}

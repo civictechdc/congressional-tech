@@ -1,0 +1,3802 @@
+{
+  "specVersion": "0.1",
+  "kind": "project",
+  "id": "urn:congressional-tech:archive:project",
+  "version": "1.0.0",
+  "artifacts": {
+    "list": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "list",
+      "catalogId": "urn:congressional-tech:archive:dataset:list",
+      "role": "application"
+    },
+    "detail": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "detail",
+      "catalogId": "urn:congressional-tech:archive:dataset:detail",
+      "role": "application"
+    },
+    "links": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "links",
+      "catalogId": "urn:congressional-tech:archive:dataset:links",
+      "role": "application"
+    },
+    "retired-links": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "retired_links",
+      "catalogId": "urn:congressional-tech:archive:dataset:retired_links",
+      "role": "application"
+    },
+    "urls": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "urls",
+      "catalogId": "urn:congressional-tech:archive:dataset:urls",
+      "role": "application"
+    },
+    "sources": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "sources",
+      "catalogId": "urn:congressional-tech:archive:dataset:sources",
+      "role": "application"
+    },
+    "recoveries": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "recoveries",
+      "catalogId": "urn:congressional-tech:archive:dataset:recoveries",
+      "role": "application"
+    },
+    "meetings": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "meetings",
+      "catalogId": "urn:congressional-tech:archive:dataset:meetings",
+      "role": "application"
+    },
+    "witnesses": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "witnesses",
+      "catalogId": "urn:congressional-tech:archive:dataset:witnesses",
+      "role": "application"
+    },
+    "witness-key-map": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "witness_key_map",
+      "catalogId": "urn:congressional-tech:archive:dataset:witness_key_map",
+      "role": "application"
+    },
+    "recordings": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "recordings",
+      "catalogId": "urn:congressional-tech:archive:dataset:recordings",
+      "role": "application"
+    },
+    "committees": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "committees",
+      "catalogId": "urn:congressional-tech:archive:dataset:committees",
+      "role": "application"
+    },
+    "members": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "members",
+      "catalogId": "urn:congressional-tech:archive:dataset:members",
+      "role": "application"
+    },
+    "rosters": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "rosters",
+      "catalogId": "urn:congressional-tech:archive:dataset:rosters",
+      "role": "application"
+    },
+    "bills": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "bills",
+      "catalogId": "urn:congressional-tech:archive:dataset:bills",
+      "role": "application"
+    },
+    "nominations": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "nominations",
+      "catalogId": "urn:congressional-tech:archive:dataset:nominations",
+      "role": "application"
+    },
+    "url-state": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "url_state",
+      "catalogId": "urn:congressional-tech:archive:dataset:url_state",
+      "role": "application"
+    },
+    "url-variants": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "url_variants",
+      "catalogId": "urn:congressional-tech:archive:dataset:url_variants",
+      "role": "application"
+    },
+    "videos": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "videos",
+      "catalogId": "urn:congressional-tech:archive:dataset:videos",
+      "role": "application"
+    },
+    "channels": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "channels",
+      "catalogId": "urn:congressional-tech:archive:dataset:channels",
+      "role": "application"
+    },
+    "recording-matches": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "recording_matches",
+      "catalogId": "urn:congressional-tech:archive:dataset:recording_matches",
+      "role": "application"
+    },
+    "committee-records": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "committee_records",
+      "catalogId": "urn:congressional-tech:archive:dataset:committee_records",
+      "role": "application"
+    },
+    "meeting-coverage": {
+      "kind": "dataset",
+      "path": "archive.odcs.json",
+      "object": "meeting_coverage",
+      "catalogId": "urn:congressional-tech:archive:dataset:meeting_coverage",
+      "role": "application"
+    },
+    "archive-product": {
+      "kind": "product",
+      "path": "archive.odps.json"
+    }
+  },
+  "requiredChecks": [
+    "core.documents",
+    "core.references",
+    "core.graph",
+    "core.calls",
+    "core.datasets",
+    "core.policies",
+    "catalog.relationships"
+  ],
+  "catalog": {
+    "id": "urn:congressional-tech:archive:catalog",
+    "ports": [
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "list",
+        "version": "1.0.0",
+        "dataset": "list"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "detail",
+        "version": "1.0.0",
+        "dataset": "detail"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "links",
+        "version": "1.0.0",
+        "dataset": "links"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "retired_links",
+        "version": "1.0.0",
+        "dataset": "retired-links"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "urls",
+        "version": "1.0.0",
+        "dataset": "urls"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "sources",
+        "version": "1.0.0",
+        "dataset": "sources"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "recoveries",
+        "version": "1.0.0",
+        "dataset": "recoveries"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "meetings",
+        "version": "1.0.0",
+        "dataset": "meetings"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "witnesses",
+        "version": "1.0.0",
+        "dataset": "witnesses"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "witness_key_map",
+        "version": "1.0.0",
+        "dataset": "witness-key-map"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "recordings",
+        "version": "1.0.0",
+        "dataset": "recordings"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "committees",
+        "version": "1.0.0",
+        "dataset": "committees"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "members",
+        "version": "1.0.0",
+        "dataset": "members"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "rosters",
+        "version": "1.0.0",
+        "dataset": "rosters"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "bills",
+        "version": "1.0.0",
+        "dataset": "bills"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "nominations",
+        "version": "1.0.0",
+        "dataset": "nominations"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "url_state",
+        "version": "1.0.0",
+        "dataset": "url-state"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "url_variants",
+        "version": "1.0.0",
+        "dataset": "url-variants"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "videos",
+        "version": "1.0.0",
+        "dataset": "videos"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "channels",
+        "version": "1.0.0",
+        "dataset": "channels"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "recording_matches",
+        "version": "1.0.0",
+        "dataset": "recording-matches"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "committee_records",
+        "version": "1.0.0",
+        "dataset": "committee-records"
+      },
+      {
+        "product": "archive-product",
+        "direction": "output",
+        "port": "meeting_coverage",
+        "version": "1.0.0",
+        "dataset": "meeting-coverage"
+      }
+    ],
+    "identities": [
+      {
+        "dataset": "list",
+        "kind": "row_position",
+        "scope": "release",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "list_row"
+              }
+            ],
+            "virtual": true,
+            "physicalType": "int64"
+          }
+        ],
+        "meaning": "shared ordered native export; release. list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases."
+      },
+      {
+        "dataset": "detail",
+        "kind": "key",
+        "scope": "release",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "link_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "fixed[8]"
+          }
+        ],
+        "meaning": "native publication key checks; release; a recovery-only document's key can move in a later release only as the data model section 8.2 states. list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases."
+      },
+      {
+        "dataset": "detail",
+        "kind": "row_position",
+        "scope": "release",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "list_row"
+              }
+            ],
+            "virtual": true,
+            "physicalType": "int64"
+          }
+        ],
+        "meaning": "Zero-based release-local physical row position; readers add this column; release; a recovery-only document's key can move in a later release only as the data model section 8.2 states. list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases. This table repeats every list column, so a bare column name in `\"list\" JOIN detail USING (list_row)` is ambiguous; qualify columns (l.filename, d.link_key)."
+      },
+      {
+        "dataset": "links",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "link_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "fixed[8]"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "retired-links",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "link_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "fixed[8]"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "urls",
+        "kind": "key",
+        "scope": "release",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "lookup_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "fixed[8]"
+          },
+          {
+            "path": [
+              {
+                "field": "list_row"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "int32"
+          }
+        ],
+        "meaning": "native publication key checks; release"
+      },
+      {
+        "dataset": "sources",
+        "kind": "key",
+        "scope": "release",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "list_row"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "int32"
+          },
+          {
+            "path": [
+              {
+                "field": "ordinal"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "int32"
+          }
+        ],
+        "meaning": "native publication key checks; release"
+      },
+      {
+        "dataset": "recoveries",
+        "kind": "key",
+        "scope": "release",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "list_row"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "int32"
+          },
+          {
+            "path": [
+              {
+                "field": "ordinal"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "int32"
+          }
+        ],
+        "meaning": "native publication key checks; release"
+      },
+      {
+        "dataset": "meetings",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "event_id"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "int64"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "witnesses",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "witness_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "witness-key-map",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "old_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "recordings",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "video_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "committees",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "system_code"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "members",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "bioguide_id"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "rosters",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "congress"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "int16"
+          },
+          {
+            "path": [
+              {
+                "field": "system_code"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "dict"
+          },
+          {
+            "path": [
+              {
+                "field": "bioguide_id"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "dict"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "bills",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "bill_id"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "nominations",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "nomination_id"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "url-state",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "requested_url"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "url-variants",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "canonical_url"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          },
+          {
+            "path": [
+              {
+                "field": "variant_url"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "videos",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "video_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "channels",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "handle"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "recording-matches",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "match_id"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "committee-records",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "record_key"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "string"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "meeting-coverage",
+        "kind": "key",
+        "scope": "dataset_version",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "event_id"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "int64"
+          },
+          {
+            "path": [
+              {
+                "field": "aspect"
+              }
+            ],
+            "virtual": false,
+            "physicalType": "dict"
+          }
+        ],
+        "meaning": "native publication key checks; published identifier"
+      },
+      {
+        "dataset": "detail",
+        "kind": "key",
+        "scope": "release",
+        "fields": [
+          {
+            "path": [
+              {
+                "field": "list_row"
+              }
+            ],
+            "virtual": true,
+            "physicalType": "int64"
+          }
+        ],
+        "meaning": "Declared unique physical row position within this exact release; this is not an observed uniqueness result.; release; a recovery-only document's key can move in a later release only as the data model section 8.2 states. list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases."
+      }
+    ],
+    "relationships": [
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_detail",
+        "source": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "detail",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "meaning": "Same physical row position, including shard offsets.",
+        "cardinality": "one_to_one",
+        "nulls": "reject",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_public_link",
+        "source": {
+          "dataset": "detail",
+          "paths": [
+            [
+              {
+                "field": "link_key"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "links",
+          "paths": [
+            [
+              {
+                "field": "link_key"
+              }
+            ]
+          ]
+        },
+        "meaning": "Resolve the document’s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release; stable public link identifier"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:links_document",
+        "source": {
+          "dataset": "links",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "meaning": "Release-local document row.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:urls_document",
+        "source": {
+          "dataset": "urls",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "meaning": "Release-local document row.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:sources_document",
+        "source": {
+          "dataset": "sources",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "meaning": "Release-local document row.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:recoveries_document",
+        "source": {
+          "dataset": "recoveries",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "meaning": "Release-local document row.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_meetings",
+        "source": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "meeting_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Meetings explicitly associated with the document.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "required",
+        "match": "project_rule",
+        "scope": "same_release",
+        "scopeDescription": "selected release",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:decimal_string_to_integer",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_committees",
+        "source": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "committee_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "meaning": "Committee attribution; does not imply authorship.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_bills",
+        "source": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "measure_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "bill_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Exact typed measure identifiers; values for the other measure type do not match.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:meeting_bills",
+        "source": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "subject_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "bill_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Measures explicitly named as meeting subjects.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_nominations",
+        "source": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "measure_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "nominations",
+          "paths": [
+            [
+              {
+                "field": "nomination_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Exact typed measure identifiers; values for the other measure type do not match.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:meeting_nominations",
+        "source": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "subject_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "nominations",
+          "paths": [
+            [
+              {
+                "field": "nomination_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Measures explicitly named as meeting subjects.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_members",
+        "source": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "bioguide_ids"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "bioguide_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Members explicitly associated with the document; no role inferred.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:witness_submitted_documents",
+        "source": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "witness_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "witnesses",
+          "paths": [
+            [
+              {
+                "field": "witness_key"
+              }
+            ]
+          ]
+        },
+        "meaning": "Documents attached from this witness appearance’s own document URLs; not every document from the meeting.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_editions",
+        "source": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "version_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "version_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "meaning": "Different document rows sharing a version endpoint key; exclude the same row and deduplicate when keys overlap.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "project_rule",
+        "scope": "same_release",
+        "scopeDescription": "selected release",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:shared_list_value",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:meeting_committees",
+        "source": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "committees"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "meaning": "Committee participation and its published role.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:meeting_transcript_documents",
+        "source": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "transcripts"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "list",
+          "paths": [
+            [
+              {
+                "field": "list_row"
+              }
+            ]
+          ]
+        },
+        "meaning": "Retained printed hearing document; accompanying package_id preserves the source reference.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:meeting_recordings",
+        "source": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "videos"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "video_key"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "recordings",
+          "paths": [
+            [
+              {
+                "field": "video_key"
+              }
+            ]
+          ]
+        },
+        "meaning": "Publisher video reference to a retained recording.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:recording_meetings",
+        "source": {
+          "dataset": "recordings",
+          "paths": [
+            [
+              {
+                "field": "event_ids"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Meetings explicitly associated with one recording; not an inferred transcript identity.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:witness_meeting",
+        "source": {
+          "dataset": "witnesses",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Meeting occasion when known; package/page occasions may have no event ID.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:witness_transcript_documents",
+        "source": {
+          "dataset": "witnesses",
+          "paths": [
+            [
+              {
+                "field": "package_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "detail",
+          "paths": [
+            [
+              {
+                "field": "package_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Appearance participation in a printed hearing package; separate from ownership of submitted documents.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:witness_member",
+        "source": {
+          "dataset": "witnesses",
+          "paths": [
+            [
+              {
+                "field": "bioguide_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "bioguide_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Published Bioguide identification of a witness who is a member; never infer by name.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:committee_parent",
+        "source": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "parent_system_code"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "meaning": "Subcommittee’s parent committee when identified.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:roster_committee",
+        "source": {
+          "dataset": "rosters",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "meaning": "Committee or subcommittee assignment for the roster row's Congress.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "rosters.congress (Congresses populated in the pinned committee_assignments snapshot)"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:roster_member",
+        "source": {
+          "dataset": "rosters",
+          "paths": [
+            [
+              {
+                "field": "bioguide_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "bioguide_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Assigned member for the roster row's Congress.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "rosters.congress (Congresses populated in the pinned committee_assignments snapshot)"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:bill_sponsor",
+        "source": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "sponsor_bioguide_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "bioguide_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Primary sponsor when supplied; null is allowed.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:amendment_sponsor",
+        "source": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "amendments"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "sponsor_bioguide_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "bioguide_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Sponsor of the nested amendment, not necessarily the bill sponsor.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:bill_activity_committee",
+        "source": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "committee_activities"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "meaning": "Committee performing an embedded activity; repeated activities are meaningful.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:bills_committees",
+        "source": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "committees"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "meaning": "Published committee referrals.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:bills_votes",
+        "source": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "floor_votes"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "vote_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:95bc9c9d99202062"
+        },
+        "meaning": "External vote identity; the local embedded record provides only the published summary. External target: spicy-regs roll-call-votes.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:nominations_committees",
+        "source": {
+          "dataset": "nominations",
+          "paths": [
+            [
+              {
+                "field": "committees"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "meaning": "Published committee referrals.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:nominations_votes",
+        "source": {
+          "dataset": "nominations",
+          "paths": [
+            [
+              {
+                "field": "floor_votes"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "vote_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:95bc9c9d99202062"
+        },
+        "meaning": "External vote identity; the local embedded record provides only the published summary. External target: spicy-regs roll-call-votes.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:nomination_transcript_documents",
+        "source": {
+          "dataset": "nominations",
+          "paths": [
+            [
+              {
+                "field": "transcripts"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "detail",
+          "paths": [
+            [
+              {
+                "field": "package_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Printed hearing packages associated with this nomination; use exact package IDs.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_body",
+        "source": {
+          "dataset": "detail",
+          "paths": [
+            [
+              {
+                "field": "saved_body"
+              }
+            ],
+            [
+              {
+                "field": "saved_suffix"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:4e3f0ee3f6f0f2f4"
+        },
+        "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately. External target: archive body store.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:alternate_bodies",
+        "source": {
+          "dataset": "detail",
+          "paths": [
+            [
+              {
+                "field": "alternates"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "body"
+              }
+            ],
+            [
+              {
+                "field": "alternates"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "suffix"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:4e3f0ee3f6f0f2f4"
+        },
+        "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately. External target: archive body store.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:recovery_body",
+        "source": {
+          "dataset": "recoveries",
+          "paths": [
+            [
+              {
+                "field": "body"
+              }
+            ],
+            [
+              {
+                "field": "suffix"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:4e3f0ee3f6f0f2f4"
+        },
+        "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately. External target: archive body store.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:recording_tracks",
+        "source": {
+          "dataset": "recordings",
+          "paths": [
+            [
+              {
+                "field": "tracks"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "body"
+              }
+            ],
+            [
+              {
+                "field": "tracks"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "suffix"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:4e3f0ee3f6f0f2f4"
+        },
+        "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately. External target: archive body store.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:member_lis",
+        "source": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "cross_ids"
+              },
+              {
+                "field": "lis"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:ee02b90bbc1969f1"
+        },
+        "meaning": "Published member crosswalk identifier; null or an empty list means unavailable. External target: Senate LIS.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:member_opensecrets",
+        "source": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "cross_ids"
+              },
+              {
+                "field": "opensecrets"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:3860bd237aa59e1e"
+        },
+        "meaning": "Published member crosswalk identifier; null or an empty list means unavailable. External target: OpenSecrets.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:member_govtrack",
+        "source": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "cross_ids"
+              },
+              {
+                "field": "govtrack"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:ce89e33957f7bf63"
+        },
+        "meaning": "Published member crosswalk identifier; null or an empty list means unavailable. External target: GovTrack.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:member_icpsr",
+        "source": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "cross_ids"
+              },
+              {
+                "field": "icpsr"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:2bcd5c8ae9818dd0"
+        },
+        "meaning": "Published member crosswalk identifier; null or an empty list means unavailable. External target: ICPSR.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:member_wikidata",
+        "source": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "cross_ids"
+              },
+              {
+                "field": "wikidata"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:a8269b6531320c99"
+        },
+        "meaning": "Published member crosswalk identifier; null or an empty list means unavailable. External target: Wikidata.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:member_fec",
+        "source": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "cross_ids"
+              },
+              {
+                "field": "fec"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:7a04676ecd7228d8"
+        },
+        "meaning": "Published member crosswalk identifier; null or an empty list means unavailable. External target: FEC.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:bill_cbo_publications",
+        "source": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "cbo_estimates"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "publication_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:7fb151823cb39078"
+        },
+        "meaning": "Published cost-estimate identifier; date and description remain embedded in the bill. External target: CBO publications.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:bill_amendments",
+        "source": {
+          "dataset": "bills",
+          "paths": [
+            [
+              {
+                "field": "amendments"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "amendment_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:e43e10f2c1946f49"
+        },
+        "meaning": "Published amendment identifiers; purpose, sponsor and latest action remain embedded in the bill. External target: spicy-regs amendments.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:document_package",
+        "source": {
+          "dataset": "detail",
+          "paths": [
+            [
+              {
+                "field": "package_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:2aa617eebe482411"
+        },
+        "meaning": "Publisher package identity; it can exist without a retained local document. External target: GovInfo packages.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:meeting_transcript_packages",
+        "source": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "transcripts"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "package_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:2aa617eebe482411"
+        },
+        "meaning": "Publisher package identity; it can exist without a retained local document. External target: GovInfo packages.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:witness_package",
+        "source": {
+          "dataset": "witnesses",
+          "paths": [
+            [
+              {
+                "field": "package_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:2aa617eebe482411"
+        },
+        "meaning": "Publisher package identity; it can exist without a retained local document. External target: GovInfo packages.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:nomination_packages",
+        "source": {
+          "dataset": "nominations",
+          "paths": [
+            [
+              {
+                "field": "transcripts"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:2aa617eebe482411"
+        },
+        "meaning": "Publisher package identity; it can exist without a retained local document. External target: GovInfo packages.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:source_address",
+        "source": {
+          "dataset": "sources",
+          "paths": [
+            [
+              {
+                "field": "url"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:source_listing_page",
+        "source": {
+          "dataset": "sources",
+          "paths": [
+            [
+              {
+                "field": "listed_on"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:recovery_address",
+        "source": {
+          "dataset": "recoveries",
+          "paths": [
+            [
+              {
+                "field": "recovered_url"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:witness_page",
+        "source": {
+          "dataset": "witnesses",
+          "paths": [
+            [
+              {
+                "field": "page_url"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:witness_key_map_successor",
+        "source": {
+          "dataset": "witness-key-map",
+          "paths": [
+            [
+              {
+                "field": "witness_key"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "witnesses",
+          "paths": [
+            [
+              {
+                "field": "witness_key"
+              }
+            ]
+          ]
+        },
+        "meaning": "The current appearance an earlier witness key resolves to; a saved link to the old key opens this row.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:witness_key_map_candidates",
+        "source": {
+          "dataset": "witness-key-map",
+          "paths": [
+            [
+              {
+                "field": "candidate_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "witnesses",
+          "paths": [
+            [
+              {
+                "field": "witness_key"
+              }
+            ]
+          ]
+        },
+        "meaning": "Current appearances an ambiguous earlier key could resolve to; none is chosen.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:meeting_video_address",
+        "source": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "videos"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "url"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:committee_website",
+        "source": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "website"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:capture_request_address",
+        "source": {
+          "dataset": "url-state",
+          "paths": [
+            [
+              {
+                "field": "requested_url"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:capture_canonical_address",
+        "source": {
+          "dataset": "url-variants",
+          "paths": [
+            [
+              {
+                "field": "canonical_url"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:capture_variant_address",
+        "source": {
+          "dataset": "url-variants",
+          "paths": [
+            [
+              {
+                "field": "variant_url"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fd1d05c5a9e82882"
+        },
+        "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches. External target: web URL.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "external identifier or retained object; no local entity table implied",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:meeting_treaties",
+        "source": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "subject_keys"
+              },
+              {
+                "each": true
+              }
+            ]
+          ]
+        },
+        "target": {
+          "external": "urn:congressional-tech:archive:external:fa8d1cf926ba824d"
+        },
+        "meaning": "Subject identifiers of the form {congress}-treaty-{number}; bill and nomination values in the same list use their separate relationships. No treaty entity table is published. External target: Congress.gov treaties.",
+        "cardinality": "many_to_many",
+        "nulls": "skip",
+        "resolution": "external",
+        "match": "project_rule",
+        "scope": "external",
+        "scopeDescription": "typed treaty identifiers only",
+        "rule": {
+          "id": "urn:congressional-tech:archive:match:identifier",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:video_channel",
+        "source": {
+          "dataset": "videos",
+          "paths": [
+            [
+              {
+                "field": "handle"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "channels",
+          "paths": [
+            [
+              {
+                "field": "handle"
+              }
+            ]
+          ]
+        },
+        "meaning": "The curated channel whose cache lists the video.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:match_meeting",
+        "source": {
+          "dataset": "recording-matches",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "The original event subject when the number resolves to a meeting.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:match_meeting_associations",
+        "source": {
+          "dataset": "recording-matches",
+          "paths": [
+            [
+              {
+                "field": "meeting_links"
+              },
+              {
+                "each": true
+              },
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "Meetings linked by the observation’s direct event evidence or by print agreement. See basis and scope before drawing conclusions about a sitting.",
+        "cardinality": "many_to_many",
+        "nulls": "reject",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:match_recording",
+        "source": {
+          "dataset": "recording-matches",
+          "paths": [
+            [
+              {
+                "field": "video_key"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "videos",
+          "paths": [
+            [
+              {
+                "field": "video_key"
+              }
+            ]
+          ]
+        },
+        "meaning": "The collected video; a publisher or curated key can lack one.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:committee_record_meeting",
+        "source": {
+          "dataset": "committee-records",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "The meeting whose record lists the document.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:committee_record_sponsor",
+        "source": {
+          "dataset": "committee-records",
+          "paths": [
+            [
+              {
+                "field": "sponsor_bioguide"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "members",
+          "paths": [
+            [
+              {
+                "field": "bioguide_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "The sponsor as stated.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:coverage_meeting",
+        "source": {
+          "dataset": "meeting-coverage",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "meetings",
+          "paths": [
+            [
+              {
+                "field": "event_id"
+              }
+            ]
+          ]
+        },
+        "meaning": "The meeting a coverage fact describes.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:channel_committee",
+        "source": {
+          "dataset": "channels",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "committees",
+          "paths": [
+            [
+              {
+                "field": "system_code"
+              }
+            ]
+          ]
+        },
+        "meaning": "The committee of a curated mapping.",
+        "cardinality": "many_to_one",
+        "nulls": "reject",
+        "resolution": "unresolved_allowed",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      },
+      {
+        "id": "urn:congressional-tech:archive:relationship:retired_link_successor",
+        "source": {
+          "dataset": "retired-links",
+          "paths": [
+            [
+              {
+                "field": "successor_key"
+              }
+            ]
+          ]
+        },
+        "target": {
+          "dataset": "links",
+          "paths": [
+            [
+              {
+                "field": "link_key"
+              }
+            ]
+          ]
+        },
+        "meaning": "A retired key redirects to the document its successor key resolves to.",
+        "cardinality": "many_to_one",
+        "nulls": "skip",
+        "resolution": "required",
+        "match": "equal",
+        "scope": "same_release",
+        "scopeDescription": "selected release"
+      }
+    ],
+    "recipes": [
+      {
+        "id": "urn:congressional-tech:archive:recipe:bill_documents",
+        "sql": "queries/bill_documents.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "list": "list",
+          "detail": "detail"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:document_detail"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "bill_id": {
+              "type": "string",
+              "examples": [
+                "119-hr-1"
+              ]
+            }
+          },
+          "required": [
+            "bill_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One document edition",
+        "title": "Documents directly annotated with a bill",
+        "notes": [
+          "Matches direct list.measure_keys annotations only. Use bill_hearing_transcripts for transcripts linked through meeting subjects.",
+          "Does not require the bounded bills table to contain this identifier. Hidden rows are excluded; remove NOT coalesce(l.hidden,false) to include them."
+        ],
+        "contextualRelationships": [
+          "urn:congressional-tech:archive:relationship:document_bills"
+        ],
+        "parameterOrder": [
+          "bill_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:bill_hearing_transcripts",
+        "sql": "queries/bill_hearing_transcripts.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "meetings": "meetings",
+          "list": "list",
+          "detail": "detail"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:meeting_transcript_documents",
+          "urn:congressional-tech:archive:relationship:document_detail"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "bill_id": {
+              "type": "string",
+              "examples": [
+                "119-hr-1"
+              ]
+            }
+          },
+          "required": [
+            "bill_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One visible transcript document edition with its distinct supporting meeting IDs in numeric order",
+        "title": "Hearing transcripts linked to a bill through meetings",
+        "notes": [
+          "Follows meetings.subject_keys and meetings.transcripts[].list_row even when the document has no direct measure_keys annotation.",
+          "Repeated paths and multiple meetings produce one row per document. Supporting meetings explain the association; they do not establish witness participation or historical completeness.",
+          "Does not require the bounded bills table to contain this identifier. Missing required tables mean unavailable, not an empty complete result.",
+          "Returns at most 100 documents in list_row order. Use list_row filtering for further pages; query_sql also enforces its row and byte limits."
+        ],
+        "contextualRelationships": [
+          "urn:congressional-tech:archive:relationship:meeting_bills"
+        ],
+        "parameterOrder": [
+          "bill_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:hearing_documents",
+        "sql": "queries/hearing_documents.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "list": "list",
+          "detail": "detail",
+          "meetings": "meetings"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:document_meetings",
+          "urn:congressional-tech:archive:relationship:document_detail"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "integer",
+              "examples": [
+                335321
+              ]
+            }
+          },
+          "required": [
+            "event_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One document associated with the selected hearing",
+        "title": "Documents and hearing titles",
+        "notes": [
+          "meeting_keys stores decimal text; event_id is an integer."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "event_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:hearing_dossier",
+        "sql": "queries/hearing_dossier.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "meetings": "meetings",
+          "witnesses": "witnesses",
+          "list": "list",
+          "detail": "detail",
+          "recording_matches": "recording-matches"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:witness_meeting",
+          "urn:congressional-tech:archive:relationship:document_meetings",
+          "urn:congressional-tech:archive:relationship:document_detail",
+          "urn:congressional-tech:archive:relationship:match_meeting_associations"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "integer",
+              "examples": [
+                335321
+              ]
+            }
+          },
+          "required": [
+            "event_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One hearing with embedded witnesses, visible documents, and recording matches",
+        "title": "One-row hearing dossier with witnesses, documents, and recordings",
+        "notes": [
+          "Uses correlated subqueries with coalesce(..., []) so nested lists do not Cartesian-multiply rows or drop zero-child hearings.",
+          "Uses m.event_id inside each subquery so only one ? parameter is required.",
+          "Lists current appearances only (superseded_by IS NULL); each superseded row restates the same person from a lower-ranked source.",
+          "Each recording observation appears once with its matching meeting links. Check association scope separately from recording scope."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "event_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:witness_documents",
+        "sql": "queries/witness_documents.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "list": "list",
+          "detail": "detail",
+          "witnesses": "witnesses"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:witness_submitted_documents",
+          "urn:congressional-tech:archive:relationship:document_detail"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "witness_key": {
+              "type": "string",
+              "examples": [
+                "0001497931f99cd1"
+              ]
+            }
+          },
+          "required": [
+            "witness_key"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One submitted document for this appearance",
+        "title": "Documents submitted by a witness appearance",
+        "notes": [
+          "Use a witness_key, never a person-name join.",
+          "Returns documents annotated with exactly this witness_key; pass the current appearance (superseded_by IS NULL) from hearing_dossier or witnesses."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "witness_key"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:witness_transcripts",
+        "sql": "queries/witness_transcripts.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "witnesses": "witnesses",
+          "detail": "detail",
+          "list": "list"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:witness_transcript_documents",
+          "urn:congressional-tech:archive:relationship:document_detail"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "witness_key": {
+              "type": "string",
+              "examples": [
+                "0000b43c099edbc2"
+              ]
+            }
+          },
+          "required": [
+            "witness_key"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One retained transcript document for the appearance",
+        "title": "Printed hearings containing a witness appearance",
+        "notes": [
+          "No package_id on the appearance or on the rows it supersedes means no published package association; submitted documents use a different relationship.",
+          "Follows superseded_by: a current appearance from a source without package_id reaches the package its superseded source row carries."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "witness_key"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:witness_by_any_key",
+        "sql": "queries/witness_by_any_key.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "witnesses": "witnesses",
+          "witness_key_map": "witness-key-map"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:witness_key_map_successor"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "witness_key": {
+              "type": "string",
+              "examples": [
+                "0001497931f99cd1"
+              ]
+            }
+          },
+          "required": [
+            "witness_key"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "The current appearance for the key, with the earlier key it was reached through",
+        "title": "A witness appearance by its current or an earlier key",
+        "notes": [
+          "No row: the key is unknown, or witness_key_map states it ambiguous (candidate_keys) or unresolved.",
+          "Never resolves by name."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "witness_key"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:committee_roster",
+        "sql": "queries/committee_roster.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "rosters": "rosters",
+          "committees": "committees",
+          "members": "members"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:roster_committee",
+          "urn:congressional-tech:archive:relationship:roster_member"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "system_code": {
+              "type": "string",
+              "examples": [
+                "hsif00"
+              ]
+            },
+            "congress": {
+              "type": "integer",
+              "examples": [
+                119
+              ]
+            }
+          },
+          "required": [
+            "system_code",
+            "congress"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One committee or subcommittee assignment for the selected Congress",
+        "title": "Committee members for a published Congress",
+        "notes": [
+          "An empty historical result does not establish that the committee had no members."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "system_code",
+          "congress"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:nomination_transcripts",
+        "sql": "queries/nomination_transcripts.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "nominations": "nominations",
+          "detail": "detail",
+          "list": "list"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:nomination_transcript_documents",
+          "urn:congressional-tech:archive:relationship:document_detail"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "nomination_id": {
+              "type": "string",
+              "examples": [
+                "119-pn-11-12"
+              ]
+            }
+          },
+          "required": [
+            "nomination_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One retained transcript document",
+        "title": "Printed hearings related to a nomination",
+        "notes": [
+          "Preserve the nomination part, for example 119-pn-11-12."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "nomination_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:bill_votes",
+        "sql": "queries/bill_votes.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "bills": "bills"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:bills_votes"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "bill_id": {
+              "type": "string",
+              "examples": [
+                "119-hr-1"
+              ]
+            }
+          },
+          "required": [
+            "bill_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One embedded roll-call summary for this bill",
+        "title": "Vote summaries associated with a bill",
+        "notes": [
+          "This is vote-level data, not member voting records. Unnest only the list you need; unnesting amendments as well would multiply votes."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "bill_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:nomination_votes",
+        "sql": "queries/nomination_votes.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "nominations": "nominations"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:nominations_votes"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "nomination_id": {
+              "type": "string",
+              "examples": [
+                "119-pn-730-2"
+              ]
+            }
+          },
+          "required": [
+            "nomination_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One embedded Senate vote summary",
+        "title": "Vote summaries associated with a nomination",
+        "notes": [],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "nomination_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:recording_tracks",
+        "sql": "queries/recording_tracks.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "recordings": "recordings"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:recording_tracks"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "integer",
+              "examples": [
+                335321
+              ]
+            }
+          },
+          "required": [
+            "event_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One captured recording track",
+        "title": "Captured tracks for a hearing",
+        "notes": [
+          "Construct the body URL using the recorded suffix; a track is not a list document."
+        ],
+        "contextualRelationships": [
+          "urn:congressional-tech:archive:relationship:recording_meetings"
+        ],
+        "parameterOrder": [
+          "event_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:document_editions",
+        "sql": "queries/document_editions.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "list": "list"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:document_editions"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "list_row": {
+              "type": "integer",
+              "examples": [
+                8
+              ]
+            }
+          },
+          "required": [
+            "list_row"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One other document edition",
+        "title": "Other editions sharing an endpoint",
+        "notes": [
+          "list_row belongs only to the selected release. Multiple shared endpoint keys must not duplicate a document."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "list_row"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:meeting_recordings",
+        "sql": "queries/meeting_recordings.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "recording_matches": "recording-matches"
+        },
+        "relationships": [],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "integer",
+              "examples": [
+                115538
+              ]
+            }
+          },
+          "required": [
+            "event_id"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One observation",
+        "title": "A meeting's recordings with basis and status",
+        "notes": [
+          "claimed rows are what a video says about itself; conflicting rows are retained, not settled.",
+          "A package_context link gives package evidence without establishing coverage for the event."
+        ],
+        "contextualRelationships": [
+          "urn:congressional-tech:archive:relationship:match_meeting_associations"
+        ],
+        "parameterOrder": [
+          "event_id"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:channel_unmatched_videos",
+        "sql": "queries/channel_unmatched_videos.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "videos": "videos",
+          "recording_matches": "recording-matches"
+        },
+        "relationships": [
+          "urn:congressional-tech:archive:relationship:match_recording"
+        ],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "handle": {
+              "type": "string",
+              "examples": [
+                "@AgRepublicans"
+              ]
+            }
+          },
+          "required": [
+            "handle"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One upload",
+        "title": "Videos of a channel with no recording match",
+        "notes": [
+          "Channel membership is not evidence that a video is a hearing."
+        ],
+        "contextualRelationships": [],
+        "parameterOrder": [
+          "handle"
+        ]
+      },
+      {
+        "id": "urn:congressional-tech:archive:recipe:coverage_counts",
+        "sql": "queries/coverage_counts.sql",
+        "dialect": "duckdb",
+        "inputs": {
+          "meeting_coverage": "meeting-coverage"
+        },
+        "relationships": [],
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "aspect": {
+              "type": "string",
+              "examples": [
+                "recording"
+              ]
+            }
+          },
+          "required": [
+            "aspect"
+          ],
+          "additionalProperties": false
+        },
+        "resultGrain": "One state",
+        "title": "Coverage counts for an aspect",
+        "notes": [
+          "unknown and not_stated are not absence."
+        ],
+        "contextualRelationships": [
+          "urn:congressional-tech:archive:relationship:coverage_meeting"
+        ],
+        "parameterOrder": [
+          "aspect"
+        ]
+      }
+    ]
+  },
+  "extensions": {
+    "urn:congressional-tech:archive:upstream-relations": [
+      {
+        "id": "bill_actions",
+        "family": "bill-family",
+        "table": "bill_actions",
+        "key_columns": [
+          "bill_id"
+        ],
+        "joins": [
+          {
+            "table": "bills",
+            "field": "bill_id"
+          }
+        ],
+        "row_meaning": "One recorded action on a bill",
+        "limits": "bills carries only the latest action: a summary is not a history."
+      },
+      {
+        "id": "bill_cosponsors",
+        "family": "bill-family",
+        "table": "bill_cosponsors",
+        "key_columns": [
+          "bill_id",
+          "bioguide_id"
+        ],
+        "joins": [
+          {
+            "table": "bills",
+            "field": "bill_id"
+          },
+          {
+            "table": "members",
+            "field": "bioguide_id"
+          }
+        ],
+        "row_meaning": "One cosponsorship",
+        "limits": "bills does not carry cosponsors."
+      },
+      {
+        "id": "member_votes",
+        "family": "roll-call-votes",
+        "table": "member_votes",
+        "key_columns": [
+          "vote_id",
+          "bioguide_id"
+        ],
+        "joins": [
+          {
+            "table": "bills",
+            "field": "floor_votes[].vote_id"
+          },
+          {
+            "table": "nominations",
+            "field": "floor_votes[].vote_id"
+          },
+          {
+            "table": "members",
+            "field": "bioguide_id"
+          }
+        ],
+        "row_meaning": "One member ballot",
+        "limits": "Local floor_votes hold totals, not ballots."
+      },
+      {
+        "id": "roll_call_votes",
+        "family": "roll-call-votes",
+        "table": "roll_call_votes",
+        "key_columns": [
+          "vote_id"
+        ],
+        "joins": [
+          {
+            "table": "bills",
+            "field": "floor_votes[].vote_id"
+          },
+          {
+            "table": "nominations",
+            "field": "floor_votes[].vote_id"
+          }
+        ],
+        "row_meaning": "One roll-call vote",
+        "limits": "Includes votes not tied to a local bill or nomination."
+      },
+      {
+        "id": "amendments",
+        "family": "amendments",
+        "table": "amendments",
+        "key_columns": [
+          "amendment_id"
+        ],
+        "joins": [
+          {
+            "table": "bills",
+            "field": "amendments[].amendment_id"
+          }
+        ],
+        "row_meaning": "One floor amendment",
+        "limits": "Coverage is limited by upstream; committee_records holds different, committee-stage documents."
+      },
+      {
+        "id": "nominations",
+        "family": "nominations",
+        "table": "nominations",
+        "key_columns": [
+          "congress",
+          "number",
+          "part_number"
+        ],
+        "joins": [],
+        "row_meaning": "One nomination part",
+        "limits": "Coverage is limited by upstream; local nominations cover what that generation holds."
+      },
+      {
+        "id": "committee_assignments",
+        "family": "committee-rosters",
+        "table": "committee_assignments",
+        "key_columns": [
+          "congress",
+          "system_code",
+          "bioguide_id"
+        ],
+        "joins": [
+          {
+            "table": "rosters",
+            "field": "system_code"
+          },
+          {
+            "table": "members",
+            "field": "bioguide_id"
+          }
+        ],
+        "row_meaning": "One committee assignment",
+        "limits": "Schema supports 113th–119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound."
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "specVersion": "0.1",
+  "kind": "component",
+  "id": "urn:congressional-tech:news:component:read-coverage",
+  "version": "1.0.0",
+  "role": "transform",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "inputs": {
+    "release": {
+      "dataset": "releases",
+      "allowAdditionalFields": true
+    }
+  },
+  "outputs": {
+    "rows": {
+      "dataset": "coverage-daily"
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "meaning": "Read selected pinned release with source date precision; no provider acquisition.",
+      "domainOwner": "news_lake.analysis.views.coverage_daily",
+      "executionStatus": "interface_only",
+      "runtimeBinding": "unqualified",
+      "limitations": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred."
+    }
+  }
+}

@@ -1040,8 +1040,25 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
 
 
 def build_prepared_release(prepared,*,engine,output,root=ROOT):
-    """Continue one prepared plan through grouping and the shared native exporter."""
-    from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS,MEETING_DICTIONARY
+    """Execute the one complete application graph with the incumbent native runner."""
+    from functools import partial
+    from viewer_publication.archive_format import _execute
+    return _prepared_release(prepared, output=output, root=root, finish=partial(_execute, engine=engine))
+
+
+def plan_prepared_release(prepared,*,output,root=ROOT):
+    """Return the complete native JobSpec, public schema and blocking checks.
+
+    Preparation has already bound the inputs. Rendering reads definitions only;
+    the caller supplies native execution, protection and lifecycle operations.
+    """
+    from viewer_publication.archive_format import native_release_job
+    return _prepared_release(prepared, output=output, root=root, finish=native_release_job)
+
+
+def _prepared_release(prepared,*,output,root,finish):
+    """Assemble the sole model graph before planning or execution."""
+    from viewer_publication.archive_format import _settings,LIST_COLUMNS,DETAIL_COLUMNS,MEETING_DICTIONARY
     from viewer_publication.archive_annotations import annotation_steps
     from viewer_publication.archive_provenance import attachment_steps,body_review_steps,recovered_copy_steps
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
@@ -1341,7 +1358,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ORDER BY record_sha_hex,page_url,name_key"""),
         ]
     if prepared.get('explorer_inputs'):meta_queries+=meta_explorer
-    manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
+    manifest=finish(inputs,steps,output=output,scratch=scratch,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
         metadata_queries=meta_queries,origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),

@@ -1,0 +1,105 @@
+{
+  "apiVersion": "v1.1.0",
+  "kind": "DataProduct",
+  "id": "urn:congressional-tech:news:product",
+  "version": "1.0.0",
+  "name": "Political news",
+  "status": "draft",
+  "description": {
+    "purpose": "Describe retained news observations, item identity, interpreted records and selected release views.",
+    "limitations": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred."
+  },
+  "team": {
+    "name": "Congressional Tech",
+    "members": [
+      {
+        "username": "congressional-tech",
+        "role": "owner"
+      }
+    ]
+  },
+  "inputPorts": [
+    {
+      "name": "fetch-outcomes",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    }
+  ],
+  "outputPorts": [
+    {
+      "name": "outlets",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "captures",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "discoveries",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "items",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "versions",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "entities",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "identity-decisions",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "runs",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "mentions",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "classifications",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "stories",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "story-members",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "releases",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "politician-articles",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "coverage-daily",
+      "contractId": "urn:congressional-tech:news:semantic-datasets",
+      "version": "1.0.0"
+    }
+  ]
+}

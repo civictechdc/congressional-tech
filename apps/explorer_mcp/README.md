@@ -238,7 +238,7 @@ producer's environment.
 
 | Tool | Purpose |
 |---|---|
-| `get_dataset_info` | Available tables, coverage and published relationship/recipe IDs. Pass `table` for columns, identity and incoming/outgoing IDs; `relationship` for join meaning; `recipe` for bounded SQL examples. Also accepts `table: "schema"`, `"capture_scope"`, and `"capture_profile"`. |
+| `get_dataset_info` | Available tables, coverage and published relationship/recipe IDs. Pass `table` for columns, identity and incoming/outgoing IDs; `relationship` for join meaning; `recipe` for bounded SQL examples. Also accepts `table: "catalog.ddk"`, `"catalog.report"`, `"capture_scope"`, and `"capture_profile"`. |
 | `search_documents` | Title/filename search and exact Congress, kind, format, committee, meeting, bill/nomination, member or witness filters. |
 | `get_document` | A document's summary, paged source links, paged recoveries, or verified extracted body text and snippet search (`section: "text"`). |
 | `search_entities` | Search the eight phase 2 entity tables with text and exact scalar filters. |
@@ -257,10 +257,11 @@ Pass those fields to `get_document`, adding `section: "sources"` or
 filters and page size. A running server stays on its selected release; run
 `prepare` and restart it to adopt a newer one.
 
-Entity keys come from the selected release's `schema.json`: every file whose
-`identity` is a published-identifier primary key (`get_dataset_info` returns
-them as `entity_keys`, and absent ones as `missing_entities`). Document links are
-the schema's `list.<column>[]` relationships to that key. In the current release:
+Entity keys come from the selected release's admitted public `catalog.ddk.json`:
+physical DDK key identities identify entity rows (`get_dataset_info` returns
+them as `entity_keys`, and absent tables as `missing_entities`). Document address
+tables remain separate. Catalog relationships from list fields to those keys
+identify document links. In the current release:
 
 | Table | Key |
 |---|---|
@@ -276,12 +277,12 @@ the schema's `list.<column>[]` relationships to that key. In the current release
 | `committee_records` | `record_key` |
 | `rosters`, `meeting_coverage`, `url_variants` | Compound fields; use `search_entities` or SQL |
 
-A release whose schema states no identity has no entity keys; use `query_sql`.
+Tables without an entity identity remain available through `query_sql`.
 `upstream_relations` in `get_dataset_info` name SpicyRegs detail tables (bill
 actions, cosponsors, member ballots, ...) with their pinned generation; the MCP
 does not read them. `search_documents` rows carry `document_date_source`
-(filename, content or meeting) beside `document_date`, and `date_kind` beside
-`first_captured`; none of these is a page-update date.
+(filename, content or meeting) and nullable `document_date_status` beside
+`document_date`, and `date_kind` beside `first_captured`; none is a page-update date.
 
 Entity IDs and integer entity filters accept integers or base-10 integer strings.
 Leading zeros and surrounding whitespace normalize to the same value, including
@@ -305,18 +306,17 @@ SQL exposes all rows, including hidden rows; add a filter when needed.
 
 ## Query relationships directly
 
-Start with `get_dataset_info`. For releases publishing native relationship
-metadata, call it with `{"table":"witnesses"}`, then
-`{"relationship":"witness_submitted_documents"}` or
-`{"recipe":"witness_transcripts"}`. Use one selector at a time. The response
+Start with `get_dataset_info`. Call it with `{"table":"witnesses"}`, then
+`{"relationship":"urn:congressional-tech:archive:relationship:witness_submitted_documents"}` or
+`{"recipe":"urn:congressional-tech:archive:recipe:witness_transcripts"}`. Use one selector at a time. The response
 explains keys, result grain, parameters and missing required tables. Recipes do
 not run until the caller submits their SQL to `query_sql`.
 
-The producer owns this metadata in `schema.json`; the MCP has no separate join
-registry. New definitions within the supported metadata version appear without
-MCP changes. Older releases report that relationships were not published, and
-unknown versions report unsupported metadata while table and SQL access remain
-available. The complete producer reference is generated at
+The selected public catalog owns this metadata; the MCP has no separate join
+registry or legacy schema decoder. Catalog, report and lock files are mandatory;
+unsupported or incomplete metadata refuses. Metadata checking does not establish
+native data qualification. New admitted definitions appear without MCP changes.
+The frozen baseline producer reference is at
 [`docs/release-relationships.md`](https://github.com/civictechdc/congressional-tech/blob/main/docs/release-relationships.md).
 
 These examples use the defined phase 2 fields and require those tables in the

@@ -12,13 +12,14 @@ import pytest
 from viewer_publication.archive_format import release_identity
 from viewer_publication.release_gate import (RETIRED, fetch_base, fetch_release, load_causes, render_notes,
                                              require_release_gates)
+from test_release_comparison import current_catalog, descriptor
 
 K = lambda letter: (letter * 8).encode()
 SCOPE = {'version': 1, 'entries': []}
 
 
 def release_dir(root, documents, retired=None, *, scope=SCOPE, **extra_tables):
-    """A real, internally consistent release: documents are rows of link-key letters."""
+    """Hand-worked rows and real public declarations; no full native qualification."""
     root.mkdir(parents=True)
     tables = {
         'list': pa.table({'filename': [f'{keys}.pdf' for keys in documents]}),
@@ -42,7 +43,13 @@ def release_dir(root, documents, retired=None, *, scope=SCOPE, **extra_tables):
     data = json.dumps(scope).encode()
     (root / 'capture_scope.json').write_bytes(data)
     files.append(dict(name='capture_scope.json', sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0))
-    manifest = dict(schema_version=1, files=files, facet_counts=[], release_id=release_identity(1, files))
+    for name,data in current_catalog().artifacts.items():
+        path=root/name
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes(data)
+        files.append(descriptor(name,data))
+    manifest = dict(schema_version=1, files=files, facet_counts=[], release_id=release_identity(1, files),
+                    origin=dict(kind='model',gaps=[]))
     (root / 'manifest.json').write_text(json.dumps(manifest))
     return manifest
 
@@ -201,6 +208,24 @@ def test_fetch_release_refuses_wrong_identity_or_digest(pair, tmp_path):
     (base / 'links.parquet').write_bytes(b'tampered')
     with pytest.raises(ValueError):
         fetch_release(reader(base), manifest['release_id'], tmp_path / 'third')
+
+
+def test_fetch_release_retains_standard_catalog_companion_and_refuses_escape(tmp_path):
+    from hashlib import sha256
+    from viewer_publication.archive_format import release_identity
+    name = 'queries/' + 'a' * 64 + '.sql'
+    data = b'SELECT 1'
+    def source(asset):
+        entries = [dict(name=asset, sha256=sha256(data).hexdigest(), size=len(data), rows=0)]
+        identity = release_identity(1, entries)
+        value = dict(schema_version=1, files=entries, release_id=identity)
+        return identity, lambda requested: BytesIO(json.dumps(value).encode() if requested == 'manifest.json' else data)
+    identity, read = source(name)
+    fetch_release(read, identity, tmp_path / 'copy')
+    assert (tmp_path / 'copy' / name).read_bytes() == data
+    identity, read = source('../outside.sql')
+    with pytest.raises(ValueError, match='asset path'):
+        fetch_release(read, identity, tmp_path / 'refused')
 
 
 def test_notes_render_witness_statement_and_link_counts(pair, tmp_path):

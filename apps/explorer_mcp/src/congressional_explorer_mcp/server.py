@@ -58,9 +58,11 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         Pass one selector: table for columns, identity and incoming/outgoing IDs;
         relationship for keys and join meaning (also a pinned upstream relation's ID); recipe for parameterized DuckDB SQL.
         upstream_relations name SpicyRegs detail tables (actions, cosponsors, ballots, ...) by generation; they are not in this release.
-        Also accepts table=schema, capture_scope, or capture_profile for published controls.
+        Also accepts table=catalog.ddk, catalog.report, capture_scope, or capture_profile for published controls.
         Recipe example parameters illustrate parameter format; substitute keys discovered via search_entities or search_documents.
-        Examples are guidance, never executed by this tool. Older releases may lack relationship metadata.
+        DDK catalog recipes return a JSON Schema for parameters and explicit parameterOrder for positional ? SQL values.
+        Table definitions keep native ODCS field types, nested properties and required flags; relationships keep typed field paths.
+        Examples are guidance, never executed by this tool. Each release must include its admitted public catalog.
         """
         return await call('dataset_info', dict(table=table, relationship=relationship, recipe=recipe))
 

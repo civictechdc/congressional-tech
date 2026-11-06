@@ -14,17 +14,17 @@ from congressional_explorer_mcp.release import encoded, prepare, literal
 from congressional_explorer_mcp.reader import Reader
 
 REPO = Path(__file__).resolve().parents[3]
-CURRENT = REPO / 'model/fixtures/archive-contract/current'
+SEED = REPO / 'model/fixtures/archive-contract/current'
 
 
 def manifest(root, shards=None):
     shards = shards or {}
     files = []
-    for path in sorted(root.iterdir()):
-        if path.name == 'manifest.json' or path.suffix not in ('.json', '.parquet'):
+    for path in sorted(root.rglob('*')):
+        if path.name == 'manifest.json' or path.suffix not in ('.json', '.parquet', '.sql'):
             continue
         data = path.read_bytes()
-        files.append(dict(name=path.name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(),
+        files.append(dict(name=path.relative_to(root).as_posix(), sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(),
             size=len(data), rows=pq.read_metadata(path).num_rows if path.suffix == '.parquet' else 0,
             producer='mcp-test', coverage={'gaps': ['Synthetic phase 2 reader fixture']}, **shards.get(path.name, {})))
     value = dict(schema_version=1, files=files)
@@ -41,10 +41,28 @@ def replace_rows(root, name, update):
     pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
 
 
+@pytest.fixture(scope='session')
+def current(tmp_path_factory):
+    from catalog_fixtures import assemble_catalog_fixture
+    root = tmp_path_factory.mktemp('current-public')
+    output = assemble_catalog_fixture(REPO, root)
+    release = root/'release'
+    shutil.copytree(SEED, release)
+    (release/'schema.json').unlink(missing_ok=True)
+    # Hand-worked reader data: unknown status stays null; field presence is current.
+    detail = pq.read_table(release/'detail.parquet')
+    if 'document_date_status' not in detail.column_names:
+        detail = detail.append_column('document_date_status', pa.nulls(detail.num_rows, pa.string()))
+        pq.write_table(detail, release/'detail.parquet')
+    shutil.copytree(output, release, dirs_exist_ok=True)
+    manifest(release)
+    return release
+
+
 @pytest.fixture(scope='module')
-def phase2(tmp_path_factory):
+def phase2(tmp_path_factory, current):
     root = tmp_path_factory.mktemp('phase2') / 'release'
-    shutil.copytree(CURRENT, root)
+    shutil.copytree(current, root)
     def link(rows):
         rows[0].update(congress=119, committee_keys=['hsif00'], measure_keys=['119-hr-1', '119-pn-730-2'],
                        meeting_keys=['118001', '335321'],
@@ -53,7 +71,7 @@ def phase2(tmp_path_factory):
     replace_rows(root, 'list', link)
     def meeting(rows):
         rows[0].update(committees=[dict(system_code='hsif00', role='host')], subject_keys=['119-hr-1', '119-pn-730-2'],
-            transcripts=[dict(package_id='CHRG-118hhrg1', list_row=0)],
+            transcripts=[dict(source='printed_hearing', package_id='CHRG-118hhrg1', list_row=0)],
             videos=[dict(name='Hearing video', url='https://video.example/1', video_key='youtube:abc')])
         m2 = deepcopy(rows[0])
         m2.update(event_id=335321, transcripts=[], videos=[])
@@ -122,8 +140,6 @@ def phase2(tmp_path_factory):
             'Substitute amendment agreed by voice vote' AS source_description,0::INTEGER AS ordinal""")
         write('url_variants', """SELECT 'https://fixture.test/a' AS canonical_url,'http://fixture.test/a' AS variant_url""")
         write('future_data', "SELECT 'new published column' AS future_field,42.123456789012345678::DECIMAL(38,18) AS amount")
-    # Read only the producer-owned JSON. The MCP runtime has no producer dependency.
-    (root / 'schema.json').write_bytes((REPO / 'model/registries/release-schema.json').read_bytes())
     return manifest(root)
 
 

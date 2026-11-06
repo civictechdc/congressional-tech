@@ -1,0 +1,61 @@
+{
+  "specVersion": "0.1",
+  "kind": "design",
+  "id": "urn:congressional-tech:youtube:design",
+  "version": "1.0.0",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "sources": {},
+  "steps": {
+    "capture": {
+      "component": "capture-channels",
+      "inputs": {},
+      "arguments": {}
+    },
+    "captions": {
+      "component": "capture-captions",
+      "inputs": {
+        "videos": {
+          "step": "capture",
+          "output": "videos"
+        }
+      },
+      "arguments": {}
+    }
+  },
+  "exports": {
+    "channels": {
+      "from": {
+        "step": "capture",
+        "output": "channels"
+      },
+      "dataset": "channels",
+      "allowAdditionalFields": true
+    },
+    "videos": {
+      "from": {
+        "step": "capture",
+        "output": "videos"
+      },
+      "dataset": "videos",
+      "allowAdditionalFields": true
+    },
+    "captions": {
+      "from": {
+        "step": "captions",
+        "output": "index"
+      },
+      "dataset": "caption-index",
+      "allowAdditionalFields": true
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "evidence": "declared interfaces only; no executable runtime adapter selected",
+      "unqualified": "Source payload schemas, exact physical output schema, data values, recovery, availability and publication remain separate obligations."
+    }
+  }
+}

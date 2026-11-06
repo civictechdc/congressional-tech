@@ -225,6 +225,19 @@ test('hearing captions keep separate saved bodies and label HLS as a download',(
     'Download saved HLS playlist','Playback is unavailable here.','download=""'])assert(html.includes(text),text);
 });
 
+test('hearing evidence labels explicit package context and leaves unknown transcript sources unknown',()=>{
+  const html=renderToStaticMarkup(React.createElement(HearingDetail,{meeting:{event_id:100,
+    recording_associations_state:'ready',recording_observations:[
+      {match_id:'context',package_id:'CHRG-118hhrg1',meeting_link:{event_id:100,basis:'print_agreement',scope:'package_context'}},
+      {match_id:'event',meeting_link:{event_id:100,basis:'direct_event',scope:'event'}},
+    ],transcripts:[{source:null,package_id:'CHRG-118hhrg1'},
+      ...['publisher_uncategorized','__proto__','constructor','toString'].map(source=>({source}))],
+  }}));
+  for(const text of ['Related package recording evidence','Recording evidence for this event','Source not stated',
+    'publisher_uncategorized','__proto__','constructor','toString'])assert(html.includes(text),text);
+  assert(!html.includes('Printed hearing'));
+});
+
 test('nomination committee actions retain publisher precision and stay separate from floor votes',()=>{
   const html=renderToStaticMarkup(React.createElement(SubjectDetail,{subject:{
     nomination_id:'119-pn-1011',kind:'nomination',description:'Charles Baldis',
@@ -249,7 +262,7 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
       committees:[{committee_key:'hspw00',system_code:'hspw00',name:'House Committee on Transportation and Infrastructure'}],
       subjects:[{subject_key:'118-hr-1234',short_title:'Surface Transportation Modernization Act'},{subject_key:'118-pn-730-2',citation:'PN730-2',title:'Jane Doe nomination'}],
       videos:[{video_key:'youtube:yt118001',source:'youtube',url:'https://www.youtube.com/watch?v=yt118001',title:'Hearing Livestream',duration_s:5420,tracks:[{label:'English captions',url:'https://fixture.test/captions.vtt'}]}],
-      transcripts:[{jacket_number:'55-123',title:'Official Hearing Transcript',list_row:0}],
+      transcripts:[{source:'printed_hearing',jacket_number:'55-123',title:'Official Hearing Transcript',list_row:0}],
       witnesses:[{witness_key:'smith_jane',name:'Dr. Jane Smith',organization:'National Transit Institute',position:'Director',panel:1,documents:[row]}],
     },
     onSelect:()=>{},

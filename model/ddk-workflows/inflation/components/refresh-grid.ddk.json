@@ -1,0 +1,32 @@
+{
+  "specVersion": "0.1",
+  "kind": "component",
+  "id": "urn:congressional-tech:inflation:component:refresh-grid",
+  "version": "1.0.0",
+  "role": "transform",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "inputs": {
+    "baseline": {
+      "dataset": "historical-grid",
+      "allowAdditionalFields": true
+    }
+  },
+  "outputs": {
+    "grid": {
+      "dataset": "historical-grid"
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "meaning": "Refresh recent BLS index years without discarding earlier baseline; preserve empty unpublished cells.",
+      "domainOwner": "apps/inflation_gsheets/src/fetch-cpi-convert-csv.py",
+      "executionStatus": "interface_only",
+      "runtimeBinding": "unqualified",
+      "limitations": "Exact CSV column presence/revision policy remains maintained script-owned. BLS grid is index levels; combined columns are monthly year-over-year percent. Aggregate is optional, derived and not official. Optional source outage can omit columns; current implementation tolerates all-source failure with exit 0 despite workflow commentary. Required freshness/partial-source policy remains unresolved; declarations do not invent source availability or retained raw receipts."
+    }
+  }
+}

@@ -18,7 +18,7 @@ from congress_api.retention.derived_files import copy_checked
 from congress_shared.custody import custody_identity,write_atomic_bytes
 from congress_shared.storage import single_put_md5
 from viewer_publication.archive_gate import gate_and_flip,validate_receipt
-from viewer_publication.archive_format import release_identity
+from viewer_publication.archive_format import archive_asset_name, release_identity
 from viewer_publication.client import require_publication_client
 from viewer_publication.archive_comparison_acceptance import require_comparison
 from viewer_publication.release_gate import client_reader,fetch_release,require_release_gates
@@ -278,12 +278,6 @@ def read_pointer(client,*,bucket,evidence=None):
             size=len(proof),key='archive outgoing pointer response')
     value=json.loads(raw)
     if not isinstance(value,dict):raise ValueError('Invalid archive pointer shape')
-    legacy=(type(value.get('version')) in (int,str) and str(value['version'])=='1'
-        and type(value.get('publisher_version')) in (int,str) and str(value['publisher_version'])=='10'
-        and isinstance(value.get('catalog_id'),str) and bool(value['catalog_id'])
-        and isinstance(value.get('manifest'),str) and bool(value['manifest'])
-        and 'release_id' not in value and 'previous_release_id' not in value)
-    if legacy:return None,etag
     if 'release_id' not in value:raise ValueError('Unknown archive pointer shape')
     _sha(value['release_id'])
     if value.get('previous_release_id') is not None:_sha(value['previous_release_id'])
@@ -351,14 +345,11 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
     result,_=_read_pinned_json(result_pin)
     if 'error' in result or not isinstance(result.get('outputs'),list) or not isinstance(result.get('queries'),list):
         raise ValueError('Native model result is incomplete or failed')
-    if (isinstance(input_record.get('profile'),dict) and input_record['profile'].get('kind')=='seed_v5') or (
-            isinstance(manifest.get('origin'),dict) and (manifest['origin'].get('kind')=='seed_v5'
-            or manifest['origin'].get('display_only') is True)):
+    origin=manifest.get('origin')
+    if not isinstance(origin,dict) or origin.get('kind')!='model' or origin.get('display_only') is True:
+        raise ValueError('Candidate requires the current model origin')
+    if isinstance(input_record.get('profile'),dict) and input_record['profile'].get('kind')=='seed_v5':
         raise ValueError('Seed manifest requires its pinned seed profile')
-    if isinstance(manifest.get('origin'),dict) and manifest['origin'].get('kind')=='converted_catalog':
-        # A converted legacy catalog skips the unique document-key check (its
-        # documents can share a saved body); it is a parity fixture, never a release.
-        raise ValueError('A converted catalog is a parity fixture and is never published')
     for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']:
         checks=[entry for entry in result['queries'] if entry['name']==name]
         if (len(checks)!=1 or len(checks[0]['data'])!=1 or not checks[0]['data'][0]
@@ -370,8 +361,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
     names=set();listed=0
     for item in manifest['files']:
         name=item['name'];_sha(item['sha256'])
-        if (not isinstance(name,str) or not name or name in names or '/' in name or '\\' in name
-                or name in {'.','..','manifest.json'} or any(c in name for c in '%?#') or any(ord(c)<32 for c in name)):
+        if not archive_asset_name(name) or name in names:
             raise ValueError('Invalid candidate file name')
         if (not isinstance(item['md5'],str) or re.fullmatch('[a-f0-9]{32}',item['md5']) is None
                 or type(item['rows']) is not int or item['rows']<0
@@ -380,7 +370,10 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
         names.add(name)
         if name=='list.parquet':listed+=item['rows']
         source=release/name
-        if not source.is_file() or source.is_symlink():raise ValueError('Missing or unsafe candidate asset')
+        if (not source.is_file() or source.is_symlink()
+                or any((release/Path(*Path(name).parts[:index])).is_symlink()
+                       for index in range(1,len(Path(name).parts)))):
+            raise ValueError('Missing or unsafe candidate asset')
         if name.endswith('.parquet'):
             exports=[entry for entry in result['outputs'] if entry['name']==name]
             if len(exports)!=1 or any(exports[0][key]!=item[key] for key in ['sha256','md5','size','rows']):
@@ -444,7 +437,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             if base_release is None:raise ValueError('Gates 1 and 2 require the fetched live release')
             fetch_release(client_reader(client,bucket,live),live,base_release)
         elif not first_release:
-            # A missing or legacy-format pointer is not proof that nothing was published:
+            # A missing pointer is not proof that nothing was published:
             # the gates would check nothing. Only an explicit, recorded bootstrap may proceed.
             raise ValueError('No live release to compare with; a first release must be declared (first_release)')
         else:
@@ -487,7 +480,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             begin=perf_counter();prefix=PREFIX+release_id+'/'
             for item in manifest['files']:
                 store.upload_file(prefix+item['name'],Path(release)/item['name'],item,
-                    content_type='application/vnd.apache.parquet' if item['name'].endswith('.parquet') else 'application/json')
+                    content_type=('application/vnd.apache.parquet' if item['name'].endswith('.parquet')
+                                  else 'text/plain; charset=utf-8' if item['name'].endswith('.sql') else 'application/json'))
             store.upload_file(prefix+'manifest.json',manifest_pin['path'],
                 dict(sha256=sha256(raw).hexdigest(),md5=md5(raw).hexdigest(),size=len(raw)),content_type='application/json')
             if input_record['entity_digests']:

@@ -1,0 +1,36 @@
+{
+  "specVersion": "0.1",
+  "kind": "component",
+  "id": "urn:congressional-tech:news:component:publish-records",
+  "version": "1.0.0",
+  "role": "transform",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "inputs": {
+    "captures": {
+      "dataset": "captures",
+      "allowAdditionalFields": true
+    },
+    "items": {
+      "dataset": "items",
+      "allowAdditionalFields": true
+    }
+  },
+  "outputs": {
+    "release": {
+      "dataset": "releases"
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "meaning": "Illustrative required semantic inputs only: actual publication accepts every declared record kind plus selections/checkpoints through the maintained runtime. No executable binding is claimed.",
+      "domainOwner": "news_lake.storage.docspec.lake.DocSpecLake.publish_release",
+      "executionStatus": "interface_only",
+      "runtimeBinding": "unqualified",
+      "limitations": "Incoming JSON validation, extras/null/refusal behavior and raw payload custody remain domain-owned. Native output shape/IDs are owned by news_lake.storage.docspec.schema and the pinned runtime. Minimal scalar semantics below omit nested fields and conditional constraints; no full-shape/runtime admission is implied. RSS/GDELT/Media Cloud live HTTP/article fetching is deferred."
+    }
+  }
+}

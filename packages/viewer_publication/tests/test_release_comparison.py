@@ -1,7 +1,12 @@
-"""Row accounting across releases, on tiny releases whose answers are worked out by hand."""
-from hashlib import sha256
+"""Hand-worked row accounting with real public declaration catalogs.
+
+The bounded row sets are comparison cases, not full native qualified candidates.
+"""
+from functools import lru_cache
+from hashlib import md5, sha256
 import json
 from pathlib import Path
+import shutil
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -9,6 +14,7 @@ import pytest
 
 ROOT = Path(__file__).parents[3]
 from viewer_publication import release_comparison as release_diff
+from viewer_publication.archive_format import release_identity
 
 S, I, B = pa.string(), pa.int32(), pa.binary()
 SCHEMAS = {
@@ -23,11 +29,29 @@ SCHEMAS = {
 SCOPE = {'version': 1, 'entries': [{'family': 'x', 'patterns': [], 'exclusions': ['/oembed/']}]}
 
 
+@lru_cache(maxsize=1)
+def current_catalog():
+    """One real public declaration assembly per test session; no data qualification."""
+    from ddk.catalog import assemble_catalog
+    from viewer_publication.archive_relationships import ArchiveRelationshipProfileV1
+    result = assemble_catalog(ROOT/'model/ddk/project.ddk.json',
+        disclosure_policy=ROOT/'model/ddk/public-disclosure.json',
+        relationship_profile=ArchiveRelationshipProfileV1(), permitted_roots=[ROOT])
+    assert result.report['decision'] == 'passed', result.report
+    assert result.catalog['audience'] == 'public'
+    assert not result.catalog['versions'] and not result.catalog['checks']
+    return result
+
+
+def descriptor(name, data, rows=0):
+    return dict(name=name, rows=rows, size=len(data), sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest())
+
+
 def key(letter):
     return (letter * 8).encode()
 
 
-def release(directory, *, documents, sources=(), schemas=SCHEMAS, **tables):
+def release(directory, *, documents, sources=(), schemas=SCHEMAS, catalog=None, **tables):
     """`documents` lists each row's link-key letters; list and links follow from it."""
     directory.mkdir()
     data = {'list': [{'filename': keys} for keys in documents],
@@ -39,9 +63,18 @@ def release(directory, *, documents, sources=(), schemas=SCHEMAS, **tables):
         rows = data.get(name, [])
         path = directory / f'{name}.parquet'
         pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema(fields)), path)
-        files.append({'name': path.name, 'rows': len(rows), 'sha256': sha256(path.read_bytes()).hexdigest()})
-    (directory / 'capture_scope.json').write_text(json.dumps(SCOPE))
-    (directory / 'manifest.json').write_text(json.dumps({'release_id': directory.name, 'files': files}))
+        files.append(descriptor(path.name, path.read_bytes(), len(rows)))
+    artifacts = (current_catalog() if catalog is None else catalog).artifacts
+    for name,data in artifacts.items():
+        path = directory/name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        files.append(descriptor(name, data))
+    scope = json.dumps(SCOPE).encode()
+    (directory/'capture_scope.json').write_bytes(scope)
+    files.append(descriptor('capture_scope.json', scope))
+    (directory / 'manifest.json').write_text(json.dumps(dict(schema_version=1,
+        release_id=release_identity(1,files), files=files)))
     return directory
 
 
@@ -496,3 +529,42 @@ def test_null_urls_removed_from_the_candidate_are_not_reported_as_persisting(tmp
     groups = counts(result, 'sources')
     assert groups[('NULL url', 'defect: a published source address must not be null')] == -2
     assert not any('also present' in name for name, _ in groups)
+
+
+@pytest.mark.parametrize('control', ['catalog.ddk.json', 'catalog.report.json'])
+def test_comparison_refuses_changed_catalog_control_bytes(tmp_path, control):
+    prev = release(tmp_path/'prev', documents=['A'])
+    live = release(tmp_path/'live', documents=['A'])
+    path = live/control
+    original = path.read_bytes()
+    if control == 'catalog.ddk.json':
+        changed = original.replace(b'"public"', b'"local "', 1)
+    else:
+        changed = original.replace(b'"passed"', b'"failed"', 1)
+    assert changed != original and len(changed) == len(original)
+    path.write_bytes(changed)
+    with pytest.raises(ValueError, match='catalog control differs from release membership'):
+        release_diff.identities(dict(base=prev, candidate=live))
+
+
+def test_comparison_refuses_different_genuinely_admitted_keys(tmp_path):
+    from ddk.catalog import assemble_catalog
+    from viewer_publication.archive_relationships import ArchiveRelationshipProfileV1
+    source = tmp_path/'definitions'
+    shutil.copytree(ROOT/'model/ddk', source)
+    path = source/'project.ddk.json'
+    project = json.loads(path.read_text())
+    identity = next(row for row in project['catalog']['identities'] if row['dataset'] == 'url-variants')
+    identity['fields'] = [field for field in identity['fields'] if field['path'] == [{'field': 'variant_url'}]]
+    assert len(identity['fields']) == 1
+    path.write_text(json.dumps(project))
+    changed = assemble_catalog(path, disclosure_policy=source/'public-disclosure.json',
+        relationship_profile=ArchiveRelationshipProfileV1(), permitted_roots=[ROOT,tmp_path])
+    assert changed.report['decision'] == 'passed', changed.report
+    assert changed.catalog['audience'] == 'public'
+    schemas = {**SCHEMAS, 'url_variants': [('canonical_url',S),('variant_url',S)]}
+    rows = [dict(canonical_url='https://example.test/a', variant_url='http://example.test/a')]
+    prev = release(tmp_path/'prev', documents=['A'], schemas=schemas, url_variants=rows)
+    live = release(tmp_path/'live', documents=['A'], schemas=schemas, catalog=changed, url_variants=rows)
+    with pytest.raises(ValueError, match='identity changed across releases: url_variants'):
+        release_diff.identities(dict(base=prev, candidate=live))

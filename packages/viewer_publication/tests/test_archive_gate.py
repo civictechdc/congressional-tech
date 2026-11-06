@@ -90,13 +90,24 @@ def test_local_contract_precedes_upload_canary_and_contract_failure_stops_it():
 
 
 def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
-    """Synthetic hand fixture references absent saved bodies; real reader must refuse."""
+    """Hand rows with genuine declarations lack saved bodies; real reader must refuse."""
     import os
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_fixture import build_fixture_release
+    from viewer_publication.archive_format import release_identity
+    from test_release_comparison import current_catalog, descriptor
     release = tmp_path / 'release'
     manifest = build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
         scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
+    # These declarations admit the reader's metadata, not this hand fixture's data.
+    manifest['files']=[item for item in manifest['files'] if item['name']!='schema.json']
+    for name, data in current_catalog().artifacts.items():
+        path=release/name
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes(data)
+        manifest['files'].append(descriptor(name,data))
+    manifest['release_id']=release_identity(1,manifest['files'])
+    (release/'manifest.json').write_text(json.dumps(manifest))
     store = Pointer({'release_id': 'a' * 64, 'previous_release_id': None})
     def canary():
         result = subprocess.run(['npm', 'run', 'canary:archive-local', '--workspaces=false', '--', '--release', str(release)],
@@ -144,19 +155,13 @@ def test_shared_receipt_validator_and_final_gate_have_the_same_policy(name,recei
     assert receipt==original
 
 
-def test_first_engine_release_replaces_the_actual_legacy_pointer_with_its_observed_etag():
-    from io import BytesIO
-    raw=(ROOT/'apps/site/scripts/fixtures/old-viewer-pointer.json').read_bytes()
-    response=dict(Body=BytesIO(raw),ETag='observed-legacy-etag',ContentLength=len(raw))
-    try:legacy=json.loads(response['Body'].read(response['ContentLength']))
-    finally:response['Body'].close()
-    assert 'catalog_id' in legacy and 'release_id' not in legacy
-    store=Pointer(legacy);store.etag=response['ETag']
-    gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id=None,
-        expected_etag=response['ETag'],contract=passed,canary=passed)
-    assert store.value==dict(release_id='b'*64,previous_release_id=None)
-    assert store.puts[0]['IfMatch']==response['ETag']
-    assert 'IfNoneMatch' not in store.puts[0]
+def test_observed_etag_without_a_previous_release_refuses_before_reader_checks():
+    store=Pointer({'unexpected':'shape'})
+    def reached():pytest.fail('Incomplete pointer binding reached a reader check')
+    with pytest.raises(ValueError,match='pinned together'):
+        gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id=None,
+            expected_etag=store.etag,contract=reached,canary=reached)
+    assert store.puts==[] and store.value=={'unexpected':'shape'}
 
 
 @pytest.mark.parametrize('previous',[None,'a'*64])

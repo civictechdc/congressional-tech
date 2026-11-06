@@ -73,9 +73,10 @@ def test_real_stdio_tools_and_errors(tmp_path,phase2):
                 result=await client.call_tool(name,{'query':query} if query is not None else {})
                 return result.data
             assert (await call('get_dataset_info'))['release_id'] == selected['release_id']
-            relation = (await client.call_tool('get_dataset_info', {'relationship': 'document_meetings'})).data
-            assert relation['match'] == 'decimal_string_to_integer'
-            recipe = (await client.call_tool('get_dataset_info', {'recipe': 'bill_documents'})).data
+            relation = (await client.call_tool('get_dataset_info', {'relationship': 'urn:congressional-tech:archive:relationship:document_meetings'})).data
+            assert relation['match'] == 'project_rule'
+            assert relation['rule'] == {'id': 'urn:congressional-tech:archive:match:decimal_string_to_integer', 'version': '1.0.0'}
+            recipe = (await client.call_tool('get_dataset_info', {'recipe': 'urn:congressional-tech:archive:recipe:bill_documents'})).data
             assert (await call('query_sql', {'sql': recipe['sql'], 'parameters': ['119-hr-1']}))['rows'][0]['filename'] == 'Agenda.pdf'
             found=await call('search_documents',{'measure_key':'119-hr-1'})
             assert (await call('get_document',found['rows'][0]['reference']))['rows'][0]['filename'] == 'Agenda.pdf'
@@ -114,8 +115,8 @@ def test_real_stdio_exact_ids_and_bill_transcript_discovery(tmp_path, linked_tra
             assert second['rows'] == expected['rows'][1:2]
 
             info = (await client.call_tool('get_dataset_info', {})).data
-            assert 'bill_hearing_transcripts' in {r['id'] for r in info['recipes']}
-            recipe = (await client.call_tool('get_dataset_info', {'recipe': 'bill_hearing_transcripts'})).data
+            assert 'urn:congressional-tech:archive:recipe:bill_hearing_transcripts' in {r['id'] for r in info['recipes']}
+            recipe = (await client.call_tool('get_dataset_info', {'recipe': 'urn:congressional-tech:archive:recipe:bill_hearing_transcripts'})).data
             result = await call('query_sql', {'sql': recipe['sql'], 'parameters': ['119-hr-1']})
             assert [(r['list_row'], r['meeting_ids']) for r in result['rows']] == [(1, [118001, 118002]), (2, [118001])]
             for row in result['rows']:

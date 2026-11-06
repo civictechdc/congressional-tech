@@ -2,11 +2,77 @@
 import os
 from pathlib import Path
 import subprocess
+import pytest
 
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_fixture import add_witness_key_map, build_fixture_release
 
 ROOT = Path(__file__).parents[3]
+
+
+@pytest.mark.parametrize('missing', ['none', 'document_date_status', 'address_versions'])
+def test_current_reader_requires_current_fields_and_preserves_nulls(tmp_path, missing):
+    """Real public metadata and hand-worked seven-row Parquet; no native build."""
+    import json
+    import shutil
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from test_release_comparison import current_catalog, descriptor
+    from viewer_publication.archive_format import release_identity
+
+    release = tmp_path/'release'
+    shutil.copytree(ROOT/'model/fixtures/archive-contract/current', release)
+    (release/'schema.json').unlink()
+    detail = pq.read_table(release/'detail.parquet')
+    if 'document_date_status' in detail.column_names:
+        detail = detail.drop(['document_date_status'])
+    if missing != 'document_date_status':
+        detail = detail.append_column('document_date_status', pa.nulls(detail.num_rows, pa.string()))
+    pq.write_table(detail, release/'detail.parquet')
+    retired = pa.table({'link_key': [b'\xaa'*8, b'\xbb'*8], 'successor_key': [None, None], 'last_release_id': ['d'*64]*2,
+        'last_filename': ['removed.pdf']*2, 'address_versions': [None, []]}, schema=pa.schema([
+            ('link_key', pa.binary(8)), ('successor_key', pa.binary(8)), ('last_release_id', pa.string()),
+            ('last_filename', pa.string()), ('address_versions', pa.list_(pa.binary(8)))]))
+    if missing == 'address_versions':
+        retired = retired.drop(['address_versions'])
+    pq.write_table(retired, release/'retired_links.parquet')
+    for name, data in current_catalog().artifacts.items():
+        path = release/name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    files = [descriptor(path.relative_to(release).as_posix(), path.read_bytes(),
+        pq.read_metadata(path).num_rows if path.suffix == '.parquet' else 0)
+        for path in sorted(release.rglob('*')) if path.is_file() and path.name != 'manifest.json']
+    manifest = dict(schema_version=1, release_id=release_identity(1, files), files=files)
+    (release/'manifest.json').write_text(json.dumps(manifest))
+    script = """
+      import assert from 'node:assert/strict';
+      import {readFile} from 'node:fs/promises';
+      import {join} from 'node:path';
+      import {openArchive} from './src/components/explorer/reader/archive.ts';
+      const root=process.env.ARCHIVE_FIXTURE, missing=process.env.ARCHIVE_MISSING_FIELD;
+      const manifest=JSON.parse(await readFile(join(root,'manifest.json')));
+      const fetcher=async(url,options={})=>{
+        const path=new URL(url).pathname;
+        if(path==='/manifest.json')return Response.json({release_id:manifest.release_id});
+        const bytes=await readFile(join(root,path.split('/').slice(3).join('/')));
+        if(!options.headers?.Range)return new Response(bytes);
+        const [start,end]=options.headers.Range.slice(6).split('-').map(Number);
+        return new Response(bytes.subarray(start,end+1),{status:206,headers:{'Content-Range':`bytes ${start}-${end}/${bytes.length}`}});
+      };
+      const reader=await openArchive('https://fixture.test/manifest.json',{fetcher});
+      if(missing==='none'){
+        assert.equal((await reader.entry(0)).detail.document_date_status,null);
+        for(const key of ['aa','bb'])assert.deepEqual((await reader.locate(key.repeat(8))).removed.versions,[]);
+      }else{
+        const operation=missing==='document_date_status'?reader.entry(0):reader.locate('aa'.repeat(8));
+        await assert.rejects(operation,new RegExp('missing '+missing));
+      }
+    """
+    result = subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT/'apps/site',
+        env=dict(os.environ, ARCHIVE_FIXTURE=str(release), ARCHIVE_MISSING_FIELD=missing),
+        capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout+result.stderr
 
 
 def test_shared_reader_contract(tmp_path):

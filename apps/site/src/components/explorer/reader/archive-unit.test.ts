@@ -217,8 +217,11 @@ test('a meeting names each transcript source it holds (ct-1i4q)', async () => {
     {source: 'committee_transcript', list_row: 9},
     {source: 'captions', video_key: 'youtube:abc'}, {source: 'captions', video_key: 'youtube:def'},
   ]), ['Printed hearing', 'Committee transcript', 'Captions or subtitles']);
-  // Older releases list prints without a source.
-  assert.deepEqual(transcriptSourceLabels([{package_id: 'CHRG-118hhrg1', list_row: 3}]), ['Printed hearing']);
+  assert.deepEqual(transcriptSourceLabels([{source: null, package_id: 'CHRG-118hhrg1', list_row: 3},
+    {source: ''}, {}, {source: 'publisher_uncategorized'}]), ['Source not stated', 'publisher_uncategorized']);
+  assert.deepEqual(transcriptSourceLabels(['__proto__', 'constructor', 'toString'].map(source=>({source}))),
+    ['__proto__', 'constructor', 'toString']);
+  assert.deepEqual(transcriptSourceLabels([]), []);
   assert.deepEqual(transcriptSourceLabels(null), []);
 });
 
@@ -237,7 +240,7 @@ test('default hearing, document and member views keep each current witness occur
   const document={list_row:0,witness_keys:['earlier','repeated']};
   const reader=createArchiveEntities({
     count:1,files:new Map(Object.keys(table).map(name=>[name+'.parquet',{}])),columns:new Map(),
-    row:()=>document,value:()=>null,entity:async name=>table[name]??[],
+    row:()=>document,value:()=>null,entity:async name=>table[name]??[],entityHasColumn:async()=>true,
     resolve:async()=>0,entry:async()=>({document}),versions:async()=>[],
   });
   const keys=(rows:any[])=>rows.map(w=>w.witness_key).sort();
@@ -257,7 +260,7 @@ test('a nomination keeps its own data when optional hearings fail',async()=>{
   let loadMeetings=async ():Promise<any[]>=>{throw new Error('Hearings unavailable');};
   const reader=createArchiveEntities({
     count:0,files:new Map(['bills','meetings','nominations'].map(name=>[name+'.parquet',{}])),columns:new Map(),
-    row:()=>null,value:()=>null,resolve:async()=>null,entry:async()=>null,versions:async()=>[],
+    row:()=>null,value:()=>null,resolve:async()=>null,entry:async()=>null,versions:async()=>[],entityHasColumn:async()=>true,
     entity:async name=>{
       reads.push(name);
       if(name==='nominations')return [nomination,unreadable];
@@ -282,4 +285,38 @@ test('a nomination keeps its own data when optional hearings fail',async()=>{
   await started;
   controller.abort();
   await assert.rejects(pending,{name:'AbortError'});
+});
+
+test('recording observations use only explicit meeting links, including package context',async()=>{
+  const {createArchiveEntities}=await import('./archive-entities.ts');
+  const rows=[
+    {match_id:'unlinked-event',event_id:100,meeting_links:[]},
+    {match_id:'other-package-event',package_id:'CHRG-118hhrg1',meeting_links:[{event_id:101,basis:'print_agreement',scope:'package_context'}]},
+    {match_id:'context',package_id:'CHRG-118hhrg1',meeting_links:[{event_id:100,basis:'print_agreement',scope:'package_context'}]},
+    {match_id:'direct',event_id:100,meeting_links:[{event_id:100,basis:'direct_event',scope:'event'}]},
+  ];
+  const table:Record<string,any[]>={meetings:[{event_id:100,transcripts:[{source:'printed_hearing',package_id:'CHRG-118hhrg1'}]}],recording_matches:rows};
+  const reader=createArchiveEntities({count:0,files:new Map(Object.keys(table).map(name=>[name+'.parquet',{}])),columns:new Map(),
+    row:()=>null,value:()=>null,entity:async name=>table[name]??[],entityHasColumn:async()=>true,
+    resolve:async()=>null,entry:async()=>null,versions:async()=>[]});
+  const meeting=await reader.getMeeting(100);
+  assert.equal(meeting?.recording_associations_state,'ready');
+  assert.deepEqual(meeting?.recording_observations.map(item=>[item.match_id,item.meeting_link.scope]),[['context','package_context'],['direct','event']]);
+  assert.ok(!Object.hasOwn(meeting,'original_package_observations'));
+});
+
+for(const [scenario,present,hasColumn,rows,state] of [
+  ['absent optional table',false,false,[],'missing'],
+  ['present empty table',true,true,[],'ready'],
+  ['present empty links',true,true,[{match_id:'unlinked',event_id:100,meeting_links:[]}],'ready'],
+  ['missing current field',true,false,[{match_id:'old-shape',event_id:100}],'unavailable'],
+  ['null required links',true,true,[{match_id:'null-links',event_id:100,meeting_links:null}],'unavailable'],
+] as const)test(`recording associations distinguish ${scenario}`,async()=>{
+  const {createArchiveEntities}=await import('./archive-entities.ts');
+  const reader=createArchiveEntities({count:0,files:new Map(['meetings',...(present?['recording_matches']:[])].map(name=>[name+'.parquet',{}])),columns:new Map(),
+    row:()=>null,value:()=>null,entity:async name=>name==='meetings'?[{event_id:100}]:[...rows],
+    entityHasColumn:async()=>hasColumn,resolve:async()=>null,entry:async()=>null,versions:async()=>[]});
+  const meeting=await reader.getMeeting(100);
+  assert.equal(meeting?.recording_associations_state,state);
+  assert.deepEqual(meeting?.recording_observations,[]);
 });

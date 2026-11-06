@@ -1,0 +1,39 @@
+{
+  "apiVersion": "v1.1.0",
+  "kind": "DataProduct",
+  "id": "urn:congressional-tech:youtube:product",
+  "version": "1.0.0",
+  "name": "Committee YouTube",
+  "status": "draft",
+  "description": {
+    "purpose": "Describe retained channel/video metadata and caption observations.",
+    "limitations": "TinyDB cache rows and SDK/yt-dlp saved representations remain owned by youtube_api. Source models allow unknown publisher fields; no exact HTTP envelope or native physical table mapping is declared. Failure/unknown is not absence; caption negatives are scoped English WebVTT observations."
+  },
+  "team": {
+    "name": "Congressional Tech",
+    "members": [
+      {
+        "username": "congressional-tech",
+        "role": "owner"
+      }
+    ]
+  },
+  "inputPorts": [],
+  "outputPorts": [
+    {
+      "name": "channels",
+      "contractId": "urn:congressional-tech:youtube:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "videos",
+      "contractId": "urn:congressional-tech:youtube:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "caption-index",
+      "contractId": "urn:congressional-tech:youtube:semantic-datasets",
+      "version": "1.0.0"
+    }
+  ]
+}

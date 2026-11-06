@@ -1,0 +1,40 @@
+{
+  "specVersion": "0.1",
+  "kind": "project",
+  "id": "urn:congressional-tech:non-archive-workflows:project",
+  "version": "1.0.0",
+  "artifacts": {
+    "scope": {
+      "kind": "policy",
+      "path": "scope.ddk.json"
+    }
+  },
+  "imports": {
+    "news": {
+      "path": "news/project.ddk.json"
+    },
+    "youtube": {
+      "path": "youtube/project.ddk.json"
+    },
+    "committee-compatibility": {
+      "path": "committee-compatibility/project.ddk.json"
+    },
+    "inflation": {
+      "path": "inflation/project.ddk.json"
+    }
+  },
+  "requiredChecks": [
+    "core.documents",
+    "core.references",
+    "core.graph",
+    "core.calls",
+    "core.datasets",
+    "core.policies"
+  ],
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "scope": "non-archive semantic metadata only; no physical converter, replacement runtime or observed availability",
+      "qualification": "standard admission and declared graph checks only; domain/native/data checks remain separate"
+    }
+  }
+}

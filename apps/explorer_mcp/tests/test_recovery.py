@@ -15,7 +15,6 @@ import pytest
 from congressional_explorer_mcp import release
 from congressional_explorer_mcp.models import ExplorerError
 from congressional_explorer_mcp.reader import Reader
-from conftest import CURRENT
 
 
 def test_hard_parent_death_stops_query_and_removes_only_owned_scratch(tmp_path, phase2):
@@ -83,9 +82,9 @@ if __name__=='__main__': asyncio.run(main())
 
 
 @pytest.mark.parametrize('stage', ['payload', 'selection'])
-def test_disk_full_preserves_selection_and_cleans_partial_files(tmp_path, phase2, monkeypatch, stage):
+def test_disk_full_preserves_selection_and_cleans_partial_files(current, tmp_path, phase2, monkeypatch, stage):
     cache = tmp_path/'cache'
-    before = release.prepare(cache, CURRENT/'manifest.json')
+    before = release.prepare(cache, current/'manifest.json')
     previous_bytes = (cache/'selection.json').read_bytes()
     temporary_file = release.NamedTemporaryFile
     target = cache/'objects' if stage=='payload' else cache
@@ -117,9 +116,9 @@ def test_disk_full_preserves_selection_and_cleans_partial_files(tmp_path, phase2
 
 
 @pytest.mark.parametrize('failure', ['eof', 'reset'])
-def test_partial_transfer_preserves_previous_selection(tmp_path, phase2, monkeypatch, failure):
+def test_partial_transfer_preserves_previous_selection(current, tmp_path, phase2, monkeypatch, failure):
     cache = tmp_path/'cache'
-    before = release.prepare(cache, CURRENT/'manifest.json')
+    before = release.prepare(cache, current/'manifest.json')
     opened = release.opened
 
     class Interrupted:
@@ -147,9 +146,9 @@ def test_partial_transfer_preserves_previous_selection(tmp_path, phase2, monkeyp
     assert release.prepare(cache, phase2)['release_id'] != before['release_id']
 
 
-def test_update_and_rollback_preserve_running_readers(tmp_path, phase2):
+def test_update_and_rollback_preserve_running_readers(current, tmp_path, phase2):
     cache = tmp_path/'cache'
-    first = release.prepare(cache, CURRENT/'manifest.json')
+    first = release.prepare(cache, current/'manifest.json')
     old_reader = Reader(first)
     newer = None
     try:
@@ -159,7 +158,7 @@ def test_update_and_rollback_preserve_running_readers(tmp_path, phase2):
         assert newer.dataset_info({})['release_id'] == second['release_id']
         assert old_reader.query_sql({'sql':'SELECT count(*) AS n FROM documents'})['rows'] == [{'n':7}]
         assert newer.query_sql({'sql':'SELECT count(*) AS n FROM witnesses'})['rows'] == [{'n':5}]
-        rolled_back = release.prepare(cache, CURRENT/'manifest.json')
+        rolled_back = release.prepare(cache, current/'manifest.json')
         assert rolled_back['release_id'] == first['release_id']
         assert release.load_selection(cache)['release_id'] == first['release_id']
         assert newer.query_sql({'sql':'SELECT count(*) AS n FROM witnesses'})['rows'] == [{'n':5}]
@@ -170,9 +169,9 @@ def test_update_and_rollback_preserve_running_readers(tmp_path, phase2):
             newer.close()
 
 
-def test_corrupt_old_object_refuses_rollback_without_damaging_selected_release(tmp_path, phase2):
+def test_corrupt_old_object_refuses_rollback_without_damaging_selected_release(current, tmp_path, phase2):
     cache = tmp_path/'cache'
-    first = release.prepare(cache, CURRENT/'manifest.json')
+    first = release.prepare(cache, current/'manifest.json')
     second = release.prepare(cache, phase2)
     old_list = Path(first['tables']['list'][0]['path'])
     assert old_list.name not in second['files']
@@ -180,10 +179,10 @@ def test_corrupt_old_object_refuses_rollback_without_damaging_selected_release(t
     with old_list.open('r+b') as stream:
         stream.write(b'BROKEN')
     with pytest.raises(ExplorerError, match='corrupt cached object'):
-        release.prepare(cache, CURRENT/'manifest.json')
+        release.prepare(cache, current/'manifest.json')
     assert release.load_selection(cache)['release_id'] == second['release_id']
     # Recovery is explicit: independently prepare the retained release in a fresh cache.
-    recovered = release.prepare(tmp_path/'recovered', CURRENT/'manifest.json')
+    recovered = release.prepare(tmp_path/'recovered', current/'manifest.json')
     assert recovered['release_id'] == first['release_id']
 
 
@@ -206,9 +205,9 @@ def test_dead_worker_cleans_scratch_and_next_query_recovers(selection):
     asyncio.run(run())
 
 
-def test_hard_killed_prepare_resumes_without_retiring_live_objects(tmp_path, phase2):
+def test_hard_killed_prepare_resumes_without_retiring_live_objects(current, tmp_path, phase2):
     cache = tmp_path/'cache'
-    before = release.prepare(cache, CURRENT/'manifest.json')
+    before = release.prepare(cache, current/'manifest.json')
     live = Reader(before)
     status = tmp_path/'downloading'
     helper = tmp_path/'prepare.py'
@@ -256,9 +255,9 @@ release.prepare(sys.argv[1],sys.argv[2])
         parent.communicate(timeout=5)
 
 
-def test_partial_cleanup_requires_the_exclusive_prepare_lock(tmp_path):
+def test_partial_cleanup_requires_the_exclusive_prepare_lock(current, tmp_path):
     import fcntl
-    release.prepare(tmp_path, CURRENT/'manifest.json')
+    release.prepare(tmp_path, current/'manifest.json')
     partial = tmp_path/'objects/.download-held.partial'
     partial.write_bytes(b'active writer bytes')
     selection_partial = tmp_path/'.selection-interrupted.partial'
@@ -266,7 +265,7 @@ def test_partial_cleanup_requires_the_exclusive_prepare_lock(tmp_path):
     with (tmp_path/'prepare.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with pytest.raises(ExplorerError, match='Another prepare'):
-            release.prepare(tmp_path, CURRENT/'manifest.json')
+            release.prepare(tmp_path, current/'manifest.json')
         assert partial.exists() and selection_partial.exists()
-    release.prepare(tmp_path, CURRENT/'manifest.json')
+    release.prepare(tmp_path, current/'manifest.json')
     assert not partial.exists() and not selection_partial.exists()

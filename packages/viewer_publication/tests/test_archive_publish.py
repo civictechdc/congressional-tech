@@ -83,12 +83,63 @@ def candidate(root,*,payload=b'qualified export bytes',rows=1):
     (output/'list.parquet').write_bytes(payload)
     entry=dict(name='list.parquet',sha256=sha256(payload).hexdigest(),md5=md5(payload).hexdigest(),size=len(payload),rows=rows)
     release_id=release_identity(1,[entry])
-    manifest=dict(schema_version=1,files=[entry],facet_counts=[],release_id=release_id)
+    manifest=dict(schema_version=1,files=[entry],facet_counts=[],release_id=release_id,
+        origin=dict(kind='model',gaps=[]))
     path=output/'manifest.json';path.write_bytes(encoded(manifest))
     result=root/'result.json'
     result.write_bytes(encoded(dict(outputs=[entry],queries=[dict(name=name,data=[dict(violation=0)])
         for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
     return dict(release=output,manifest_pin=pin(path),result_pin=pin(result)),manifest
+
+
+@pytest.mark.parametrize('name', ['queries/' + 'a' * 64 + '.sql', 'discovery.dcat.json',
+                                  'lineage/0000.openlineage.json'])
+def test_candidate_accepts_exact_standard_companion_paths(tmp_path, name):
+    """Transport-only bytes exercise paths; this fixture makes no DDK qualification claim."""
+    from viewer_publication.archive_publish import _candidate
+    artifacts, value = candidate(tmp_path)
+    data = b'SELECT 1' if name.endswith('.sql') else b'{}'
+    path = artifacts['release'] / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    value['files'].append(dict(name=name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0))
+    value['release_id'] = release_identity(1, value['files'])
+    manifest_path = Path(artifacts['manifest_pin']['path'])
+    manifest_path.write_bytes(encoded(value))
+    artifacts['manifest_pin'] = pin(manifest_path)
+    assert _candidate(**artifacts, input_record={}, receipt_keys=[])[2] == value['release_id']
+
+
+@pytest.mark.parametrize('name', ['../outside.sql', '/absolute.sql', 'queries/../outside.sql',
+                                  'queries/not-a-digest.sql', 'queries/' + 'a' * 64 + '.sql?x',
+                                  'queries\\' + 'a' * 64 + '.sql'])
+def test_candidate_refuses_nonstandard_or_escaping_companion_paths(tmp_path, name):
+    from viewer_publication.archive_publish import _candidate
+    artifacts, value = candidate(tmp_path)
+    value['files'].append(dict(name=name, sha256='a' * 64, md5='b' * 32, size=0, rows=0))
+    manifest_path = Path(artifacts['manifest_pin']['path'])
+    manifest_path.write_bytes(encoded(value))
+    artifacts['manifest_pin'] = pin(manifest_path)
+    with pytest.raises(ValueError, match='file name'):
+        _candidate(**artifacts, input_record={}, receipt_keys=[])
+
+
+def test_candidate_refuses_symlink_parent_for_standard_companion(tmp_path):
+    from viewer_publication.archive_publish import _candidate
+    artifacts, value = candidate(tmp_path)
+    outside = tmp_path / 'outside'
+    outside.mkdir()
+    name = 'a' * 64 + '.sql'
+    data = b'SELECT 1'
+    (outside / name).write_bytes(data)
+    (artifacts['release'] / 'queries').symlink_to(outside, target_is_directory=True)
+    value['files'].append(dict(name='queries/' + name, sha256=sha256(data).hexdigest(),
+                               md5=md5(data).hexdigest(), size=len(data), rows=0))
+    manifest_path = Path(artifacts['manifest_pin']['path'])
+    manifest_path.write_bytes(encoded(value))
+    artifacts['manifest_pin'] = pin(manifest_path)
+    with pytest.raises(ValueError, match='unsafe candidate asset'):
+        _candidate(**artifacts, input_record={}, receipt_keys=[])
 
 
 @pytest.fixture(autouse=True)
@@ -272,14 +323,15 @@ def test_wrong_content_release_identity_refuses_before_upload(tmp_path):
     assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
 
 
-@pytest.mark.parametrize('origin,message',[(dict(kind='converted_catalog',gaps=[]),'converted catalog'),
-    (dict(kind='seed_v5',gaps=[]),'seed profile'),(dict(kind='model',gaps=[],display_only=True),'seed profile')])
-def test_non_model_origins_refuse_before_upload(tmp_path,origin,message):
+@pytest.mark.parametrize('origin', [None, 'model', {}, dict(kind='unknown'),
+    dict(kind='converted_catalog',gaps=[]), dict(kind='seed_v5',gaps=[]),
+    dict(kind='model',gaps=[],display_only=True)])
+def test_non_model_origins_refuse_before_upload(tmp_path,origin):
     artifacts,_=candidate(tmp_path/'run')
     manifest=Path(artifacts['manifest_pin']['path']);value=json.loads(manifest.read_text())
     value['origin']=origin;manifest.write_bytes(encoded(value));artifacts['manifest_pin']=pin(manifest)
     store=Store();native=Native(store)
-    with pytest.raises(ValueError,match=message):
+    with pytest.raises(ValueError,match='current model origin'):
         launch(tmp_path/'run',store=store,native=native,artifacts=artifacts)
     assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
 
@@ -468,12 +520,9 @@ def test_release_gate_pass_reaches_contract(tmp_path,real_gates):
     assert json.loads(store.objects['viewer-publications/manifest.json'])['previous_release_id']==live
 
 
-@pytest.mark.parametrize('pointer',['missing','legacy'])
-def test_no_live_release_refuses_unless_a_first_release_is_declared(tmp_path,pointer,real_gates):
-    """Fail closed: a missing or legacy pointer is not proof that nothing was published."""
+def test_no_live_release_refuses_unless_a_first_release_is_declared(tmp_path,real_gates):
+    """A missing pointer is not proof that nothing was published."""
     store=Store();native=Native(store)
-    if pointer=='legacy':
-        store.objects['viewer-publications/manifest.json']=encoded(dict(version=1,publisher_version=10,catalog_id='old',manifest='m.json'))
     artifacts,_=candidate(tmp_path/'run');value,keys=record()
     live,etag=read_pointer(store,bucket='derived-fixture')
     def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
@@ -485,6 +534,16 @@ def test_no_live_release_refuses_unless_a_first_release_is_declared(tmp_path,poi
     result=publish_candidate(work=tmp_path/'bootstrap',first_release=True,**common)
     assert result['status']=='published' and result['first_release'] is True
     assert json.loads(store.objects['viewer-publications/status.json'])['first_release'] is True
+
+
+def test_unknown_pointer_shape_refuses_without_publication(tmp_path):
+    store=Store()
+    raw=encoded(dict(schema_version=999,release='unrecognized'))
+    store.objects['viewer-publications/manifest.json']=raw
+    with pytest.raises(ValueError,match='Unknown archive pointer shape'):
+        read_pointer(store,bucket='derived-fixture')
+    assert store.objects['viewer-publications/manifest.json']==raw
+    assert not store.requests
 
 
 def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_path,real_gates):

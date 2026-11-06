@@ -1,0 +1,281 @@
+{
+  "specVersion": "0.1",
+  "kind": "project",
+  "id": "urn:congressional-tech:news:project",
+  "version": "1.0.0",
+  "artifacts": {
+    "fetch-outcomes": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "fetch-outcomes",
+      "catalogId": "urn:congressional-tech:news:dataset:fetch-outcomes",
+      "role": "source_record"
+    },
+    "outlets": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "outlets",
+      "catalogId": "urn:congressional-tech:news:dataset:outlets",
+      "role": "application"
+    },
+    "captures": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "captures",
+      "catalogId": "urn:congressional-tech:news:dataset:captures",
+      "role": "application"
+    },
+    "discoveries": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "discoveries",
+      "catalogId": "urn:congressional-tech:news:dataset:discoveries",
+      "role": "application"
+    },
+    "items": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "items",
+      "catalogId": "urn:congressional-tech:news:dataset:items",
+      "role": "application"
+    },
+    "versions": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "versions",
+      "catalogId": "urn:congressional-tech:news:dataset:versions",
+      "role": "application"
+    },
+    "entities": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "entities",
+      "catalogId": "urn:congressional-tech:news:dataset:entities",
+      "role": "application"
+    },
+    "identity-decisions": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "identity-decisions",
+      "catalogId": "urn:congressional-tech:news:dataset:identity-decisions",
+      "role": "application"
+    },
+    "runs": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "runs",
+      "catalogId": "urn:congressional-tech:news:dataset:runs",
+      "role": "application"
+    },
+    "mentions": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "mentions",
+      "catalogId": "urn:congressional-tech:news:dataset:mentions",
+      "role": "application"
+    },
+    "classifications": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "classifications",
+      "catalogId": "urn:congressional-tech:news:dataset:classifications",
+      "role": "application"
+    },
+    "stories": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "stories",
+      "catalogId": "urn:congressional-tech:news:dataset:stories",
+      "role": "application"
+    },
+    "story-members": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "story-members",
+      "catalogId": "urn:congressional-tech:news:dataset:story-members",
+      "role": "application"
+    },
+    "releases": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "releases",
+      "catalogId": "urn:congressional-tech:news:dataset:releases",
+      "role": "application"
+    },
+    "politician-articles": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "politician-articles",
+      "catalogId": "urn:congressional-tech:news:dataset:politician-articles",
+      "role": "application"
+    },
+    "coverage-daily": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "coverage-daily",
+      "catalogId": "urn:congressional-tech:news:dataset:coverage-daily",
+      "role": "application"
+    },
+    "rss-records": {
+      "kind": "component",
+      "path": "components/rss-records.ddk.json"
+    },
+    "gdelt-records": {
+      "kind": "component",
+      "path": "components/gdelt-records.ddk.json"
+    },
+    "mediacloud-records": {
+      "kind": "component",
+      "path": "components/mediacloud-records.ddk.json"
+    },
+    "publish-records": {
+      "kind": "component",
+      "path": "components/publish-records.ddk.json"
+    },
+    "read-coverage": {
+      "kind": "component",
+      "path": "components/read-coverage.ddk.json"
+    },
+    "product": {
+      "kind": "product",
+      "path": "product.odps.json"
+    },
+    "workflow": {
+      "kind": "design",
+      "path": "workflow.ddk.json"
+    }
+  },
+  "requiredChecks": [
+    "core.documents",
+    "core.references",
+    "core.graph",
+    "core.calls",
+    "core.datasets",
+    "core.policies"
+  ],
+  "catalog": {
+    "id": "urn:congressional-tech:news:catalog",
+    "ports": [
+      {
+        "product": "product",
+        "direction": "input",
+        "port": "fetch-outcomes",
+        "version": "1.0.0",
+        "dataset": "fetch-outcomes"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "outlets",
+        "version": "1.0.0",
+        "dataset": "outlets"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "captures",
+        "version": "1.0.0",
+        "dataset": "captures"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "discoveries",
+        "version": "1.0.0",
+        "dataset": "discoveries"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "items",
+        "version": "1.0.0",
+        "dataset": "items"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "versions",
+        "version": "1.0.0",
+        "dataset": "versions"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "entities",
+        "version": "1.0.0",
+        "dataset": "entities"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "identity-decisions",
+        "version": "1.0.0",
+        "dataset": "identity-decisions"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "runs",
+        "version": "1.0.0",
+        "dataset": "runs"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "mentions",
+        "version": "1.0.0",
+        "dataset": "mentions"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "classifications",
+        "version": "1.0.0",
+        "dataset": "classifications"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "stories",
+        "version": "1.0.0",
+        "dataset": "stories"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "story-members",
+        "version": "1.0.0",
+        "dataset": "story-members"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "releases",
+        "version": "1.0.0",
+        "dataset": "releases"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "politician-articles",
+        "version": "1.0.0",
+        "dataset": "politician-articles"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "coverage-daily",
+        "version": "1.0.0",
+        "dataset": "coverage-daily"
+      }
+    ]
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "scope": "minimal semantic dataset and component declarations; not exact schema or data qualification",
+      "physicalSchemaOwner": "maintained output modules linked by authoritativeDefinitions",
+      "sourceValidationOwner": "maintained domain source models/parsers; preserve extras, null/absence and refusal behavior",
+      "availability": "no observed representation, service or successful execution asserted"
+    }
+  }
+}

@@ -55,7 +55,7 @@ def fetch_release(read, release_id, dest, names=None):
     Existing identical files are kept, so a resumed publish does not download them again.
     """
     from congress_api.retention.derived_files import copy_checked
-    from viewer_publication.archive_format import release_identity
+    from viewer_publication.archive_format import archive_asset_name, release_identity
     _sha(release_id, 'Release ID')
     dest = Path(dest)
     dest.mkdir(parents=True, exist_ok=True)
@@ -65,6 +65,8 @@ def fetch_release(read, release_id, dest, names=None):
     if manifest.get('release_id') != release_id or release_identity(manifest['schema_version'], manifest['files']) != release_id:
         raise ValueError(f'Fetched manifest does not identify release {release_id}')
     entries = {item['name']: item for item in manifest['files']}
+    if len(entries) != len(manifest['files']) or any(not archive_asset_name(name) for name in entries):
+        raise ValueError('Invalid or duplicate release asset path')
     wanted = list(entries) if names is None else [n for n in names if n != 'manifest.json']
     for name in wanted:
         if name not in entries:
@@ -72,6 +74,9 @@ def fetch_release(read, release_id, dest, names=None):
                 raise ValueError(f'Release {release_id[:12]} has no {name}')
             continue
         item = entries[name]
+        if ((dest/name).is_symlink() or any((dest/Path(*Path(name).parts[:index])).is_symlink()
+                                           for index in range(1,len(Path(name).parts)))):
+            raise ValueError('Unsafe retained release asset path')
         if (dest / name).is_file():
             from congress_api.retention.provenance import file_pin
             if file_pin(dest / name) == dict(sha256=item['sha256'], size=item['size']):

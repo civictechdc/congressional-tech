@@ -1,0 +1,172 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:inflation:semantic-datasets",
+  "version": "1.0.0",
+  "name": "Inflation and Sheets semantic datasets",
+  "status": "draft",
+  "description": {
+    "purpose": "Describe the historical CPI grid read by Sheets and the separate multi-source inflation table.",
+    "limitations": "Exact CSV column presence/revision policy remains maintained script-owned. BLS grid is index levels; combined columns are monthly year-over-year percent. Aggregate is optional, derived and not official. Optional source outage can omit columns; current implementation tolerates all-source failure with exit 0 despite workflow commentary. Required freshness/partial-source policy remains unresolved; declarations do not invent source availability or retained raw receipts."
+  },
+  "schema": [
+    {
+      "id": "historical-grid",
+      "name": "historical-cpi.csv",
+      "logicalType": "object",
+      "description": "Exact CSV column presence/revision policy remains maintained script-owned. BLS grid is index levels; combined columns are monthly year-over-year percent. Aggregate is optional, derived and not official. Optional source outage can omit columns; current implementation tolerates all-source failure with exit 0 despite workflow commentary. Required freshness/partial-source policy remains unresolved; declarations do not invent source availability or retained raw receipts.",
+      "dataGranularityDescription": "One year with twelve month index-level cells for BLS CUUR0000SA0; unpublished months remain empty.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../apps/inflation_gsheets/src/fetch-cpi-convert-csv.py",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "year",
+          "logicalType": "integer",
+          "description": "Gregorian observation year.",
+          "required": true
+        },
+        {
+          "name": "January",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "February",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "March",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "April",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "May",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "June",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "July",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "August",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "September",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "October",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "November",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        },
+        {
+          "name": "December",
+          "logicalType": "number",
+          "description": "BLS CPI-U all-items US city-average index level; empty is unpublished/missing, not zero.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "inflation-table",
+      "name": "inflation-sources.csv",
+      "logicalType": "object",
+      "description": "Exact CSV column presence/revision policy remains maintained script-owned. BLS grid is index levels; combined columns are monthly year-over-year percent. Aggregate is optional, derived and not official. Optional source outage can omit columns; current implementation tolerates all-source failure with exit 0 despite workflow commentary. Required freshness/partial-source policy remains unresolved; declarations do not invent source availability or retained raw receipts.",
+      "dataGranularityDescription": "One month-start observation with available year-over-year percentage columns and optional derived aggregate.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../apps/inflation_gsheets/src/fetch-inflation-sources.py",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "date",
+          "logicalType": "date",
+          "description": "Calendar month pinned to YYYY-MM-01; no invented event timestamp.",
+          "required": true
+        },
+        {
+          "name": "bls_yoy",
+          "logicalType": "number",
+          "description": "Year-over-year percent; optional source may be unavailable or have missing months.",
+          "required": false
+        },
+        {
+          "name": "fred_median",
+          "logicalType": "number",
+          "description": "Year-over-year percent; optional source may be unavailable or have missing months.",
+          "required": false
+        },
+        {
+          "name": "fred_trimmed",
+          "logicalType": "number",
+          "description": "Year-over-year percent; optional source may be unavailable or have missing months.",
+          "required": false
+        },
+        {
+          "name": "fred_sticky",
+          "logicalType": "number",
+          "description": "Year-over-year percent; optional source may be unavailable or have missing months.",
+          "required": false
+        },
+        {
+          "name": "adobe",
+          "logicalType": "number",
+          "description": "Year-over-year percent; optional source may be unavailable or have missing months.",
+          "required": false
+        },
+        {
+          "name": "pricestats",
+          "logicalType": "number",
+          "description": "Year-over-year percent; optional source may be unavailable or have missing months.",
+          "required": false
+        },
+        {
+          "name": "aggregate",
+          "logicalType": "number",
+          "description": "Optional weighted blend of available measures; derived, judgment-laden and not an official figure.",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

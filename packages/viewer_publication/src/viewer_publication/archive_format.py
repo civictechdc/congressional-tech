@@ -1,13 +1,26 @@
 """Shared native release layout; application models supply complete document rows."""
 from hashlib import md5, sha256
+from io import BytesIO
 from congress_shared.custody import write_atomic_bytes
 
 from viewer_publication.archive_model_lifetimes import retire_relations
 import json
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).parents[4]
+CATALOG_ARTIFACT = re.compile(r'catalog\.(?:ddk|report|lock)\.json|discovery\.dcat\.json'
+                              r'|queries/[a-f0-9]{64}\.sql|lineage/[0-9]{4}\.openlineage\.json')
+
+
+def archive_asset_name(name):
+    """Keep flat archive names and the standard catalog companion paths safe."""
+    return (isinstance(name, str) and bool(name) and '\\' not in name
+            and name not in {'.', '..', 'manifest.json'}
+            and not any(character in name for character in '%?#')
+            and not any(ord(character) < 32 for character in name)
+            and ('/' not in name or CATALOG_ARTIFACT.fullmatch(name) is not None))
 
 
 EMPTY_STRINGS = "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')"
@@ -189,9 +202,71 @@ def _core(steps, output,*,lookup_extra=None):
 
 
 def _content(path, value):
-    data = (json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False) + '\n').encode()
+    data = _content_data(value)
     write_atomic_bytes(path,data,fsync_dir=True)
-    return dict(name=path.name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0, producer='archive', coverage={})
+    return _content_record(path.name, data)
+
+
+def _content_data(value):
+    return (json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False) + '\n').encode()
+
+
+def _content_record(name, data):
+    return dict(name=name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0, producer='archive', coverage={})
+
+
+def _retain_controls(output, controls):
+    """Preflight the complete byte set, then keep or exclusively add each file."""
+    from congress_api.retention.derived_files import copy_checked
+
+    if output.is_symlink() or not output.is_dir():
+        raise ValueError('Unsafe retained release directory')
+    for name, data in controls.items():
+        if name != 'manifest.json' and not archive_asset_name(name):
+            raise ValueError('Invalid release control path')
+        if not isinstance(data, bytes):
+            raise ValueError('Release control content must be bytes')
+        path = output/name
+        parents = [Path(*Path(name).parts[:index]) for index in range(1, len(Path(name).parts))]
+        if path.is_symlink() or any((output/parent).is_symlink() for parent in parents):
+            raise ValueError('Unsafe retained release control path')
+        if any(parent.as_posix() in controls or ((output/parent).exists() and not (output/parent).is_dir())
+               for parent in parents):
+            raise ValueError('Release control parent is not a directory: '+name)
+        if path.exists() and (not path.is_file() or path.stat().st_size != len(data) or path.read_bytes() != data):
+            raise ValueError('Retained release control differs: '+name)
+    for name, data in controls.items():
+        path = output/name
+        if not path.exists():
+            copy_checked(BytesIO(data), path, size=len(data),
+                         expected=dict(sha256=sha256(data).hexdigest(), bytes=len(data)),
+                         key=name, exclusive=True)
+
+
+def _catalog_artifacts(result):
+    """Snapshot an admitted public DDK output set; never recheck definitions here.
+
+    A durable caller must retain this exact byte set beside schema, diagnostics,
+    extra_outputs, origin, capture_scope, content_files and entity_digests as
+    inputs to finalization. A resumed caller
+    supplies those retained values, rather than assembling current definitions.
+    """
+    if result is None:
+        return {}
+    if result.report['decision'] != 'passed' or not result.artifacts:
+        raise ValueError('DDK catalog checking must pass before release finalization')
+    if result.catalog is None or result.catalog['audience'] != 'public':
+        raise ValueError('Archive finalization requires an admitted public DDK catalog')
+    artifacts = dict(result.artifacts)
+    if not {'catalog.ddk.json', 'catalog.report.json', 'catalog.lock.json'} <= artifacts.keys():
+        raise ValueError('DDK output set lacks required catalog artifacts')
+    for name, data in artifacts.items():
+        relative = Path(name)
+        if (not CATALOG_ARTIFACT.fullmatch(name) or relative.is_absolute()
+                or '..' in relative.parts or name != relative.as_posix()
+                or not isinstance(data, bytes)):
+            raise ValueError('Invalid DDK output artifact delivery')
+    return artifacts
 
 
 def release_identity(schema_version,files):
@@ -234,8 +309,20 @@ SPICY_PRODUCER_FAMILIES = {
 }
 
 
-def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None):
-    output.mkdir(parents=True, exist_ok=False)
+def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary=None, capture_scope=None,
+                       extra_outputs=(), diagnostics=(), metadata_queries=(),
+                       content_files=None, lookup_extra=None, entity_digests=None):
+    """Construct the shared native JobSpec without opening inputs or executing it.
+
+    Return the unchanged native job shape, its public schema and its blocking
+    diagnostic definitions. The existing executor uses this construction; a
+    retained executor can consume it with native lifecycle/selection in DocSpec.
+    Only small schema definitions are read. Caller relations remain reusable.
+    ``capture_scope`` is accepted at the shared model boundary; its JSON control
+    file belongs to finalization and adds no separate native job operation.
+    """
+    output, scratch = Path(output), Path(scratch)
+    steps = list(steps)
     outputs = _core(steps, output,lookup_extra=lookup_extra)
     # Entity files and the capture fixture have their full declared schema,
     # including when this documents-only input provides no rows for them.
@@ -250,8 +337,7 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         fields=json.loads((ROOT/'model/registries/capture-eligibility-fields.json').read_text())
         next(item for item in schema['files'] if item['name']=='url_state.parquet')['columns'].extend(fields)
     from viewer_publication.archive_schema import publication_checks
-    diagnostics = [*diagnostics, *publication_checks(schema, aux_names, published=[item['name'] for item in outputs],
-        keyed_documents=origin['kind'] != 'converted_catalog')]
+    diagnostics = [*diagnostics, *publication_checks(schema, aux_names, published=[item['name'] for item in outputs])]
     outputs.extend(extra_outputs)
     facets = [f"SELECT '{name}' AS facet,cast({name} AS VARCHAR) AS value,count(*) AS count FROM ordered WHERE NOT hidden GROUP BY {name}" for name in ['format', 'congress', 'saved_kind']]
     facets += [f"SELECT '{name}' AS facet,value,count(*) AS count FROM (SELECT unnest({name}) AS value FROM ordered WHERE NOT hidden) GROUP BY value" for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys']]
@@ -321,6 +407,15 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         sum(CASE WHEN document_date_status='suspect' THEN 1 ELSE 0 END) AS suspect,
         sum(CASE WHEN document_date IS NULL THEN 1 ELSE 0 END) AS undated FROM ordered"""))
     spec = retire_relations(dict(scratch=str(scratch / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=queries))
+    return spec, schema, diagnostics
+
+
+def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None):
+    output.mkdir(parents=True, exist_ok=False)
+    spec, schema, diagnostics = native_release_job(inputs, steps, output=output, scratch=scratch,
+        origin=origin, auxiliary=auxiliary, extra_outputs=extra_outputs, diagnostics=diagnostics,
+        metadata_queries=metadata_queries, content_files=content_files, lookup_extra=lookup_extra,
+        entity_digests=entity_digests)
     spec_path = scratch / 'job.json'
     spec_path.write_text(json.dumps(spec, ensure_ascii=False, separators=(',', ':')))
     from docspec_client.models import DocSpecFailure
@@ -331,6 +426,25 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
             (scratch / 'result.json').write_text(error.stdout)
         raise
     write_atomic_bytes(scratch/'result.json',json.dumps(result,ensure_ascii=False,separators=(',',':')).encode(),fsync_dir=True)
+    return finalize_native_release(result, schema, diagnostics, output=output, origin=origin,
+        capture_scope=capture_scope, extra_outputs=extra_outputs, content_files=content_files,
+        entity_digests=entity_digests)
+
+
+def finalize_native_release(result, schema, diagnostics, *, output, origin, capture_scope,
+                            extra_outputs, content_files, entity_digests, catalog_result=None):
+    """Finalize retained native outputs using only the exact prepared controls.
+
+    The maintained execution owner prepares definitions and companions, runs the
+    candidate, binds its required quality evidence, then supplies the qualified
+    public catalog here. Retain schema, diagnostics, extra_outputs, origin, capture_scope, content_files
+    (including capture_profile), entity_digests and the artifact bytes with the
+    execution inputs. Resumption must not reload current definitions or controls.
+    This function owns no runtime controller, journal or qualification evaluator.
+    """
+    if 'error' in result:
+        raise ValueError('A failed native result cannot finalize a release')
+    catalog_artifacts = _catalog_artifacts(catalog_result)
     reports = {query['name']: query['data'] for query in result['queries']}
     if any(reports['invariants'][0].values()) or any(any(row.values()) for query in diagnostics for row in reports[query['name']]):
         raise ValueError('Release key invariant failed; native results retained in scratch')
@@ -360,13 +474,23 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         entry.pop('footer_bytes', None)
     from viewer_publication.archive_schema import validate_parquet_fields
     validate_parquet_fields(schema, [output / f['name'] for f in files])
-    files.append(_content(output / 'schema.json', schema))
-    files.append(_content(output / 'capture_scope.json', dict(version=1, entries=[]) if capture_scope is None else capture_scope))
+    controls = {'schema.json': _content_data(schema),
+                'capture_scope.json': _content_data(dict(version=1, entries=[]) if capture_scope is None else capture_scope)}
     for name,value in (content_files or {}).items():
-        files.append(_content(output/name,value))
+        if name == 'manifest.json' or name in controls:
+            raise ValueError('Release control collides with a prepared control')
+        controls[name] = _content_data(value)
+    occupied = {item['name'] for item in files}
+    if (occupied & (controls.keys() | catalog_artifacts.keys())
+            or controls.keys() & catalog_artifacts.keys()):
+        raise ValueError('DDK artifact collides with a release file')
+    for name, data in sorted(catalog_artifacts.items()):
+        controls[name] = data
+    files.extend(_content_record(name, data) for name, data in controls.items())
     release_id = release_identity(1,files)
     manifest = dict(schema_version=1, files=files, facet_counts=reports['facets'], release_id=release_id, origin=origin)
-    _content(output / 'manifest.json', manifest)
+    controls['manifest.json'] = _content_data(manifest)
+    _retain_controls(output, controls)
     return manifest
 
 

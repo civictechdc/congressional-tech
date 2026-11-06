@@ -1,0 +1,127 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:youtube:semantic-datasets",
+  "version": "1.0.0",
+  "name": "Committee YouTube semantic datasets",
+  "status": "draft",
+  "description": {
+    "purpose": "Describe retained channel/video metadata and caption observations.",
+    "limitations": "TinyDB cache rows and SDK/yt-dlp saved representations remain owned by youtube_api. Source models allow unknown publisher fields; no exact HTTP envelope or native physical table mapping is declared. Failure/unknown is not absence; caption negatives are scoped English WebVTT observations."
+  },
+  "schema": [
+    {
+      "id": "channels",
+      "name": "YouTube channel cache",
+      "logicalType": "object",
+      "description": "TinyDB cache rows and SDK/yt-dlp saved representations remain owned by youtube_api. Source models allow unknown publisher fields; no exact HTTP envelope or native physical table mapping is declared. Failure/unknown is not absence; caption negatives are scoped English WebVTT observations.",
+      "dataGranularityDescription": "One literal configured/retained handle row bound to verified channel ID, retaining full current SDK item.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/youtube_api/src/youtube_api/fetch/youtube_event_fetcher.py#store_channel",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "handle",
+          "logicalType": "string",
+          "description": "Literal configured handle; do not infer channel ID from spelling.",
+          "required": true
+        },
+        {
+          "name": "channelId",
+          "logicalType": "string",
+          "description": "Verified configured/retained returned channel ID; unavailable legacy value stays absent.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "videos",
+      "name": "YouTube video cache",
+      "logicalType": "object",
+      "description": "TinyDB cache rows and SDK/yt-dlp saved representations remain owned by youtube_api. Source models allow unknown publisher fields; no exact HTTP envelope or native physical table mapping is declared. Failure/unknown is not absence; caption negatives are scoped English WebVTT observations.",
+      "dataGranularityDescription": "One retained video observation row within its channel cache; repeated occurrences/history are not silently deleted.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/youtube_api/src/youtube_api/fetch/youtube_event_fetcher.py#parse_video_details",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "videoId",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        },
+        {
+          "name": "publishedAt",
+          "logicalType": "string",
+          "description": "Uploads-playlist addition timestamp; not independent video publication time.",
+          "required": false
+        },
+        {
+          "name": "videoPublishedAt",
+          "logicalType": "string",
+          "description": "Native video publication timestamp, separately retained when returned.",
+          "required": false
+        },
+        {
+          "name": "caption",
+          "logicalType": "boolean",
+          "description": "Current native reported caption flag; unknown is not false.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "caption-index",
+      "name": "YouTube caption index",
+      "logicalType": "object",
+      "description": "TinyDB cache rows and SDK/yt-dlp saved representations remain owned by youtube_api. Source models allow unknown publisher fields; no exact HTTP envelope or native physical table mapping is declared. Failure/unknown is not absence; caption negatives are scoped English WebVTT observations.",
+      "dataGranularityDescription": "One indexed video with a current scoped successful English manual/automatic/no-track check; failed fetches are not negative index rows.",
+      "authoritativeDefinitions": [
+        {
+          "type": "implementation",
+          "url": "../../../packages/youtube_api/src/youtube_api/captions/main.py#fetch_one",
+          "description": "Maintained source/output authority; this semantic declaration does not replace its physical schema or domain validation."
+        }
+      ],
+      "properties": [
+        {
+          "name": "video_id",
+          "logicalType": "string",
+          "description": "",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "logicalType": "string",
+          "description": "Uploader, automatic or scoped no-English-track result.",
+          "required": true,
+          "enum": [
+            {
+              "value": "manual"
+            },
+            {
+              "value": "auto"
+            },
+            {
+              "value": "none"
+            }
+          ]
+        },
+        {
+          "name": "characters",
+          "logicalType": "integer",
+          "description": "Derived plain-text character count.",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

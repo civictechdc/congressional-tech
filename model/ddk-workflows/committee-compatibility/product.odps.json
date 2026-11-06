@@ -1,0 +1,59 @@
+{
+  "apiVersion": "v1.1.0",
+  "kind": "DataProduct",
+  "id": "urn:congressional-tech:committee-compatibility:product",
+  "version": "1.0.0",
+  "name": "Committee Explorer compatibility export",
+  "status": "draft",
+  "description": {
+    "purpose": "Describe compatibility browser tables and their complete publication manifest.",
+    "limitations": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog."
+  },
+  "team": {
+    "name": "Congressional Tech",
+    "members": [
+      {
+        "username": "congressional-tech",
+        "role": "owner"
+      }
+    ]
+  },
+  "inputPorts": [],
+  "outputPorts": [
+    {
+      "name": "meeting",
+      "contractId": "urn:congressional-tech:committee-compatibility:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "committee-term",
+      "contractId": "urn:congressional-tech:committee-compatibility:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "appearance",
+      "contractId": "urn:congressional-tech:committee-compatibility:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "material",
+      "contractId": "urn:congressional-tech:committee-compatibility:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "data-issue",
+      "contractId": "urn:congressional-tech:committee-compatibility:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "sources",
+      "contractId": "urn:congressional-tech:committee-compatibility:semantic-datasets",
+      "version": "1.0.0"
+    },
+    {
+      "name": "manifest",
+      "contractId": "urn:congressional-tech:committee-compatibility:semantic-datasets",
+      "version": "1.0.0"
+    }
+  ]
+}

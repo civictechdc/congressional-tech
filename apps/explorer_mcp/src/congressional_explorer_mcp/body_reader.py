@@ -383,7 +383,7 @@ def _load_or_extract_pages(
         target.get('saved_body'),
         target.get('saved_suffix'),
     )
-    # Keep legacy entries out of the new reader and leave their paths usable by older installs.
+    # The cache version binds pages to the current extraction and validation rules.
     cache_path = (
         Path(data_dir) / 'bodies' / f'{body_hex}.v{BODY_CACHE_VERSION}.json'
         if data_dir is not None else None

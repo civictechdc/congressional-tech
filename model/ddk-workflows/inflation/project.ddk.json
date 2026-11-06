@@ -1,0 +1,73 @@
+{
+  "specVersion": "0.1",
+  "kind": "project",
+  "id": "urn:congressional-tech:inflation:project",
+  "version": "1.0.0",
+  "artifacts": {
+    "historical-grid": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "historical-grid",
+      "catalogId": "urn:congressional-tech:inflation:dataset:historical-grid",
+      "role": "application"
+    },
+    "inflation-table": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "inflation-table",
+      "catalogId": "urn:congressional-tech:inflation:dataset:inflation-table",
+      "role": "application"
+    },
+    "refresh-grid": {
+      "kind": "component",
+      "path": "components/refresh-grid.ddk.json"
+    },
+    "combine-sources": {
+      "kind": "component",
+      "path": "components/combine-sources.ddk.json"
+    },
+    "product": {
+      "kind": "product",
+      "path": "product.odps.json"
+    },
+    "workflow": {
+      "kind": "design",
+      "path": "workflow.ddk.json"
+    }
+  },
+  "requiredChecks": [
+    "core.documents",
+    "core.references",
+    "core.graph",
+    "core.calls",
+    "core.datasets",
+    "core.policies"
+  ],
+  "catalog": {
+    "id": "urn:congressional-tech:inflation:catalog",
+    "ports": [
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "historical-grid",
+        "version": "1.0.0",
+        "dataset": "historical-grid"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "inflation-table",
+        "version": "1.0.0",
+        "dataset": "inflation-table"
+      }
+    ]
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "scope": "minimal semantic dataset and component declarations; not exact schema or data qualification",
+      "physicalSchemaOwner": "maintained output modules linked by authoritativeDefinitions",
+      "sourceValidationOwner": "maintained domain source models/parsers; preserve extras, null/absence and refusal behavior",
+      "availability": "no observed representation, service or successful execution asserted"
+    }
+  }
+}

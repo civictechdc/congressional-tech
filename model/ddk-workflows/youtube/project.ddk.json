@@ -1,0 +1,87 @@
+{
+  "specVersion": "0.1",
+  "kind": "project",
+  "id": "urn:congressional-tech:youtube:project",
+  "version": "1.0.0",
+  "artifacts": {
+    "channels": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "channels",
+      "catalogId": "urn:congressional-tech:youtube:dataset:channels",
+      "role": "application"
+    },
+    "videos": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "videos",
+      "catalogId": "urn:congressional-tech:youtube:dataset:videos",
+      "role": "application"
+    },
+    "caption-index": {
+      "kind": "dataset",
+      "path": "datasets.odcs.json",
+      "object": "caption-index",
+      "catalogId": "urn:congressional-tech:youtube:dataset:caption-index",
+      "role": "application"
+    },
+    "capture-channels": {
+      "kind": "component",
+      "path": "components/capture-channels.ddk.json"
+    },
+    "capture-captions": {
+      "kind": "component",
+      "path": "components/capture-captions.ddk.json"
+    },
+    "product": {
+      "kind": "product",
+      "path": "product.odps.json"
+    },
+    "workflow": {
+      "kind": "design",
+      "path": "workflow.ddk.json"
+    }
+  },
+  "requiredChecks": [
+    "core.documents",
+    "core.references",
+    "core.graph",
+    "core.calls",
+    "core.datasets",
+    "core.policies"
+  ],
+  "catalog": {
+    "id": "urn:congressional-tech:youtube:catalog",
+    "ports": [
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "channels",
+        "version": "1.0.0",
+        "dataset": "channels"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "videos",
+        "version": "1.0.0",
+        "dataset": "videos"
+      },
+      {
+        "product": "product",
+        "direction": "output",
+        "port": "caption-index",
+        "version": "1.0.0",
+        "dataset": "caption-index"
+      }
+    ]
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "scope": "minimal semantic dataset and component declarations; not exact schema or data qualification",
+      "physicalSchemaOwner": "maintained output modules linked by authoritativeDefinitions",
+      "sourceValidationOwner": "maintained domain source models/parsers; preserve extras, null/absence and refusal behavior",
+      "availability": "no observed representation, service or successful execution asserted"
+    }
+  }
+}

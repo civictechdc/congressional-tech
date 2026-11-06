@@ -1,0 +1,3109 @@
+{
+  "identifiers": [
+    "urn:congressional-tech:archive:catalog",
+    "urn:congressional-tech:archive:contract",
+    "urn:congressional-tech:archive:dataset:bills",
+    "urn:congressional-tech:archive:dataset:channels",
+    "urn:congressional-tech:archive:dataset:committee_records",
+    "urn:congressional-tech:archive:dataset:committees",
+    "urn:congressional-tech:archive:dataset:detail",
+    "urn:congressional-tech:archive:dataset:links",
+    "urn:congressional-tech:archive:dataset:list",
+    "urn:congressional-tech:archive:dataset:meeting_coverage",
+    "urn:congressional-tech:archive:dataset:meetings",
+    "urn:congressional-tech:archive:dataset:members",
+    "urn:congressional-tech:archive:dataset:nominations",
+    "urn:congressional-tech:archive:dataset:recording_matches",
+    "urn:congressional-tech:archive:dataset:recordings",
+    "urn:congressional-tech:archive:dataset:recoveries",
+    "urn:congressional-tech:archive:dataset:retired_links",
+    "urn:congressional-tech:archive:dataset:rosters",
+    "urn:congressional-tech:archive:dataset:sources",
+    "urn:congressional-tech:archive:dataset:url_state",
+    "urn:congressional-tech:archive:dataset:url_variants",
+    "urn:congressional-tech:archive:dataset:urls",
+    "urn:congressional-tech:archive:dataset:videos",
+    "urn:congressional-tech:archive:dataset:witness_key_map",
+    "urn:congressional-tech:archive:dataset:witnesses",
+    "urn:congressional-tech:archive:external:2aa617eebe482411",
+    "urn:congressional-tech:archive:external:2bcd5c8ae9818dd0",
+    "urn:congressional-tech:archive:external:3860bd237aa59e1e",
+    "urn:congressional-tech:archive:external:4e3f0ee3f6f0f2f4",
+    "urn:congressional-tech:archive:external:7a04676ecd7228d8",
+    "urn:congressional-tech:archive:external:7fb151823cb39078",
+    "urn:congressional-tech:archive:external:95bc9c9d99202062",
+    "urn:congressional-tech:archive:external:a8269b6531320c99",
+    "urn:congressional-tech:archive:external:ce89e33957f7bf63",
+    "urn:congressional-tech:archive:external:e43e10f2c1946f49",
+    "urn:congressional-tech:archive:external:ee02b90bbc1969f1",
+    "urn:congressional-tech:archive:external:fa8d1cf926ba824d",
+    "urn:congressional-tech:archive:external:fd1d05c5a9e82882",
+    "urn:congressional-tech:archive:match:decimal_string_to_integer",
+    "urn:congressional-tech:archive:match:identifier",
+    "urn:congressional-tech:archive:match:shared_list_value",
+    "urn:congressional-tech:archive:product",
+    "urn:congressional-tech:archive:project",
+    "urn:congressional-tech:archive:recipe:bill_documents",
+    "urn:congressional-tech:archive:recipe:bill_hearing_transcripts",
+    "urn:congressional-tech:archive:recipe:bill_votes",
+    "urn:congressional-tech:archive:recipe:channel_unmatched_videos",
+    "urn:congressional-tech:archive:recipe:committee_roster",
+    "urn:congressional-tech:archive:recipe:coverage_counts",
+    "urn:congressional-tech:archive:recipe:document_editions",
+    "urn:congressional-tech:archive:recipe:hearing_documents",
+    "urn:congressional-tech:archive:recipe:hearing_dossier",
+    "urn:congressional-tech:archive:recipe:meeting_recordings",
+    "urn:congressional-tech:archive:recipe:nomination_transcripts",
+    "urn:congressional-tech:archive:recipe:nomination_votes",
+    "urn:congressional-tech:archive:recipe:recording_tracks",
+    "urn:congressional-tech:archive:recipe:witness_by_any_key",
+    "urn:congressional-tech:archive:recipe:witness_documents",
+    "urn:congressional-tech:archive:recipe:witness_transcripts",
+    "urn:congressional-tech:archive:relationship-profile",
+    "urn:congressional-tech:archive:relationship:alternate_bodies",
+    "urn:congressional-tech:archive:relationship:amendment_sponsor",
+    "urn:congressional-tech:archive:relationship:bill_activity_committee",
+    "urn:congressional-tech:archive:relationship:bill_amendments",
+    "urn:congressional-tech:archive:relationship:bill_cbo_publications",
+    "urn:congressional-tech:archive:relationship:bill_sponsor",
+    "urn:congressional-tech:archive:relationship:bills_committees",
+    "urn:congressional-tech:archive:relationship:bills_votes",
+    "urn:congressional-tech:archive:relationship:capture_canonical_address",
+    "urn:congressional-tech:archive:relationship:capture_request_address",
+    "urn:congressional-tech:archive:relationship:capture_variant_address",
+    "urn:congressional-tech:archive:relationship:channel_committee",
+    "urn:congressional-tech:archive:relationship:committee_parent",
+    "urn:congressional-tech:archive:relationship:committee_record_meeting",
+    "urn:congressional-tech:archive:relationship:committee_record_sponsor",
+    "urn:congressional-tech:archive:relationship:committee_website",
+    "urn:congressional-tech:archive:relationship:coverage_meeting",
+    "urn:congressional-tech:archive:relationship:document_bills",
+    "urn:congressional-tech:archive:relationship:document_body",
+    "urn:congressional-tech:archive:relationship:document_committees",
+    "urn:congressional-tech:archive:relationship:document_detail",
+    "urn:congressional-tech:archive:relationship:document_editions",
+    "urn:congressional-tech:archive:relationship:document_meetings",
+    "urn:congressional-tech:archive:relationship:document_members",
+    "urn:congressional-tech:archive:relationship:document_nominations",
+    "urn:congressional-tech:archive:relationship:document_package",
+    "urn:congressional-tech:archive:relationship:document_public_link",
+    "urn:congressional-tech:archive:relationship:links_document",
+    "urn:congressional-tech:archive:relationship:match_meeting",
+    "urn:congressional-tech:archive:relationship:match_meeting_associations",
+    "urn:congressional-tech:archive:relationship:match_recording",
+    "urn:congressional-tech:archive:relationship:meeting_bills",
+    "urn:congressional-tech:archive:relationship:meeting_committees",
+    "urn:congressional-tech:archive:relationship:meeting_nominations",
+    "urn:congressional-tech:archive:relationship:meeting_recordings",
+    "urn:congressional-tech:archive:relationship:meeting_transcript_documents",
+    "urn:congressional-tech:archive:relationship:meeting_transcript_packages",
+    "urn:congressional-tech:archive:relationship:meeting_treaties",
+    "urn:congressional-tech:archive:relationship:meeting_video_address",
+    "urn:congressional-tech:archive:relationship:member_fec",
+    "urn:congressional-tech:archive:relationship:member_govtrack",
+    "urn:congressional-tech:archive:relationship:member_icpsr",
+    "urn:congressional-tech:archive:relationship:member_lis",
+    "urn:congressional-tech:archive:relationship:member_opensecrets",
+    "urn:congressional-tech:archive:relationship:member_wikidata",
+    "urn:congressional-tech:archive:relationship:nomination_packages",
+    "urn:congressional-tech:archive:relationship:nomination_transcript_documents",
+    "urn:congressional-tech:archive:relationship:nominations_committees",
+    "urn:congressional-tech:archive:relationship:nominations_votes",
+    "urn:congressional-tech:archive:relationship:recording_meetings",
+    "urn:congressional-tech:archive:relationship:recording_tracks",
+    "urn:congressional-tech:archive:relationship:recoveries_document",
+    "urn:congressional-tech:archive:relationship:recovery_address",
+    "urn:congressional-tech:archive:relationship:recovery_body",
+    "urn:congressional-tech:archive:relationship:retired_link_successor",
+    "urn:congressional-tech:archive:relationship:roster_committee",
+    "urn:congressional-tech:archive:relationship:roster_member",
+    "urn:congressional-tech:archive:relationship:source_address",
+    "urn:congressional-tech:archive:relationship:source_listing_page",
+    "urn:congressional-tech:archive:relationship:sources_document",
+    "urn:congressional-tech:archive:relationship:urls_document",
+    "urn:congressional-tech:archive:relationship:video_channel",
+    "urn:congressional-tech:archive:relationship:witness_key_map_candidates",
+    "urn:congressional-tech:archive:relationship:witness_key_map_successor",
+    "urn:congressional-tech:archive:relationship:witness_meeting",
+    "urn:congressional-tech:archive:relationship:witness_member",
+    "urn:congressional-tech:archive:relationship:witness_package",
+    "urn:congressional-tech:archive:relationship:witness_page",
+    "urn:congressional-tech:archive:relationship:witness_submitted_documents",
+    "urn:congressional-tech:archive:relationship:witness_transcript_documents"
+  ],
+  "aliases": [
+    "archive-product",
+    "bills",
+    "channels",
+    "committee-records",
+    "committee_records",
+    "committees",
+    "detail",
+    "links",
+    "list",
+    "meeting-coverage",
+    "meeting_coverage",
+    "meetings",
+    "members",
+    "nominations",
+    "recording-matches",
+    "recording_matches",
+    "recordings",
+    "recoveries",
+    "retired-links",
+    "retired_links",
+    "rosters",
+    "sources",
+    "url-state",
+    "url-variants",
+    "url_state",
+    "url_variants",
+    "urls",
+    "videos",
+    "witness-key-map",
+    "witness_key_map",
+    "witnesses"
+  ],
+  "descriptions": true,
+  "recipes": [
+    "urn:congressional-tech:archive:recipe:bill_documents",
+    "urn:congressional-tech:archive:recipe:bill_hearing_transcripts",
+    "urn:congressional-tech:archive:recipe:hearing_documents",
+    "urn:congressional-tech:archive:recipe:hearing_dossier",
+    "urn:congressional-tech:archive:recipe:witness_documents",
+    "urn:congressional-tech:archive:recipe:witness_transcripts",
+    "urn:congressional-tech:archive:recipe:witness_by_any_key",
+    "urn:congressional-tech:archive:recipe:committee_roster",
+    "urn:congressional-tech:archive:recipe:nomination_transcripts",
+    "urn:congressional-tech:archive:recipe:bill_votes",
+    "urn:congressional-tech:archive:recipe:nomination_votes",
+    "urn:congressional-tech:archive:recipe:recording_tracks",
+    "urn:congressional-tech:archive:recipe:document_editions",
+    "urn:congressional-tech:archive:recipe:meeting_recordings",
+    "urn:congressional-tech:archive:recipe:channel_unmatched_videos",
+    "urn:congressional-tech:archive:recipe:coverage_counts"
+  ],
+  "definitionFields": {
+    "urn:congressional-tech:archive:dataset:list": [
+      [],
+      [
+        {
+          "field": "filename"
+        }
+      ],
+      [
+        {
+          "field": "title"
+        }
+      ],
+      [
+        {
+          "field": "document_kind"
+        }
+      ],
+      [
+        {
+          "field": "document_kind"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "document_family"
+        }
+      ],
+      [
+        {
+          "field": "document_family"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "committee_keys"
+        }
+      ],
+      [
+        {
+          "field": "committee_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "chambers"
+        }
+      ],
+      [
+        {
+          "field": "chambers"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "congress"
+        }
+      ],
+      [
+        {
+          "field": "format"
+        }
+      ],
+      [
+        {
+          "field": "document_date"
+        }
+      ],
+      [
+        {
+          "field": "first_captured"
+        }
+      ],
+      [
+        {
+          "field": "date_kind"
+        }
+      ],
+      [
+        {
+          "field": "saved_kind"
+        }
+      ],
+      [
+        {
+          "field": "hidden"
+        }
+      ],
+      [
+        {
+          "field": "meeting_keys"
+        }
+      ],
+      [
+        {
+          "field": "meeting_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "measure_keys"
+        }
+      ],
+      [
+        {
+          "field": "measure_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "bioguide_ids"
+        }
+      ],
+      [
+        {
+          "field": "bioguide_ids"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "witness_keys"
+        }
+      ],
+      [
+        {
+          "field": "witness_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "version_keys"
+        }
+      ],
+      [
+        {
+          "field": "version_keys"
+        },
+        {
+          "each": true
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:detail": [
+      [],
+      [
+        {
+          "field": "link_key"
+        }
+      ],
+      [
+        {
+          "field": "saved_body"
+        }
+      ],
+      [
+        {
+          "field": "saved_suffix"
+        }
+      ],
+      [
+        {
+          "field": "saved_media_type"
+        }
+      ],
+      [
+        {
+          "field": "saved_bytes"
+        }
+      ],
+      [
+        {
+          "field": "document_date_source"
+        }
+      ],
+      [
+        {
+          "field": "document_date_status"
+        }
+      ],
+      [
+        {
+          "field": "in_archive_since"
+        }
+      ],
+      [
+        {
+          "field": "removed_on"
+        }
+      ],
+      [
+        {
+          "field": "review_note"
+        }
+      ],
+      [
+        {
+          "field": "review_decided_at"
+        }
+      ],
+      [
+        {
+          "field": "src_start"
+        }
+      ],
+      [
+        {
+          "field": "src_len"
+        }
+      ],
+      [
+        {
+          "field": "rec_start"
+        }
+      ],
+      [
+        {
+          "field": "rec_len"
+        }
+      ],
+      [
+        {
+          "field": "alternates"
+        }
+      ],
+      [
+        {
+          "field": "alternates"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "alternates"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "format"
+        }
+      ],
+      [
+        {
+          "field": "alternates"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "body"
+        }
+      ],
+      [
+        {
+          "field": "alternates"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "suffix"
+        }
+      ],
+      [
+        {
+          "field": "alternates"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "size"
+        }
+      ],
+      [
+        {
+          "field": "package_id"
+        }
+      ],
+      [
+        {
+          "field": "facts"
+        }
+      ],
+      [
+        {
+          "field": "facts"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "facts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "field"
+        }
+      ],
+      [
+        {
+          "field": "facts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "value"
+        }
+      ],
+      [
+        {
+          "field": "description"
+        }
+      ],
+      [
+        {
+          "field": "published_on"
+        }
+      ],
+      [
+        {
+          "field": "modified_on"
+        }
+      ],
+      [
+        {
+          "field": "publisher_labels"
+        }
+      ],
+      [
+        {
+          "field": "publisher_labels"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "field"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "value"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "format"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "path"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "date"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "precision"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "resolved"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "selected"
+        }
+      ],
+      [
+        {
+          "field": "page_metadata"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "context_url"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "outcome"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "selector"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "text_sha256"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "text_bytes"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "snippet"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "reader_version"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "reading_status"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "reason"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "facts_limited"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "text_available"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "decision_id"
+        }
+      ],
+      [
+        {
+          "field": "main_content"
+        },
+        {
+          "field": "evidence_limited"
+        }
+      ],
+      [
+        {
+          "field": "selected_text"
+        }
+      ],
+      [
+        {
+          "field": "filename"
+        }
+      ],
+      [
+        {
+          "field": "title"
+        }
+      ],
+      [
+        {
+          "field": "document_kind"
+        }
+      ],
+      [
+        {
+          "field": "document_kind"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "document_family"
+        }
+      ],
+      [
+        {
+          "field": "document_family"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "committee_keys"
+        }
+      ],
+      [
+        {
+          "field": "committee_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "chambers"
+        }
+      ],
+      [
+        {
+          "field": "chambers"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "congress"
+        }
+      ],
+      [
+        {
+          "field": "format"
+        }
+      ],
+      [
+        {
+          "field": "document_date"
+        }
+      ],
+      [
+        {
+          "field": "first_captured"
+        }
+      ],
+      [
+        {
+          "field": "date_kind"
+        }
+      ],
+      [
+        {
+          "field": "saved_kind"
+        }
+      ],
+      [
+        {
+          "field": "hidden"
+        }
+      ],
+      [
+        {
+          "field": "meeting_keys"
+        }
+      ],
+      [
+        {
+          "field": "meeting_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "measure_keys"
+        }
+      ],
+      [
+        {
+          "field": "measure_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "bioguide_ids"
+        }
+      ],
+      [
+        {
+          "field": "bioguide_ids"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "witness_keys"
+        }
+      ],
+      [
+        {
+          "field": "witness_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "version_keys"
+        }
+      ],
+      [
+        {
+          "field": "version_keys"
+        },
+        {
+          "each": true
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:links": [
+      [],
+      [
+        {
+          "field": "link_key"
+        }
+      ],
+      [
+        {
+          "field": "list_row"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:retired_links": [
+      [],
+      [
+        {
+          "field": "link_key"
+        }
+      ],
+      [
+        {
+          "field": "successor_key"
+        }
+      ],
+      [
+        {
+          "field": "last_release_id"
+        }
+      ],
+      [
+        {
+          "field": "last_filename"
+        }
+      ],
+      [
+        {
+          "field": "address_versions"
+        }
+      ],
+      [
+        {
+          "field": "address_versions"
+        },
+        {
+          "each": true
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:urls": [
+      [],
+      [
+        {
+          "field": "lookup_key"
+        }
+      ],
+      [
+        {
+          "field": "list_row"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:sources": [
+      [],
+      [
+        {
+          "field": "list_row"
+        }
+      ],
+      [
+        {
+          "field": "ordinal"
+        }
+      ],
+      [
+        {
+          "field": "url"
+        }
+      ],
+      [
+        {
+          "field": "member_path"
+        }
+      ],
+      [
+        {
+          "field": "is_saved"
+        }
+      ],
+      [
+        {
+          "field": "first_seen"
+        }
+      ],
+      [
+        {
+          "field": "listed_on"
+        }
+      ],
+      [
+        {
+          "field": "link_text"
+        }
+      ],
+      [
+        {
+          "field": "doc_type"
+        }
+      ],
+      [
+        {
+          "field": "posted"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:recoveries": [
+      [],
+      [
+        {
+          "field": "list_row"
+        }
+      ],
+      [
+        {
+          "field": "ordinal"
+        }
+      ],
+      [
+        {
+          "field": "kind"
+        }
+      ],
+      [
+        {
+          "field": "body"
+        }
+      ],
+      [
+        {
+          "field": "suffix"
+        }
+      ],
+      [
+        {
+          "field": "bytes"
+        }
+      ],
+      [
+        {
+          "field": "imported_at"
+        }
+      ],
+      [
+        {
+          "field": "recovered_url"
+        }
+      ],
+      [
+        {
+          "field": "identity_note"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:meetings": [
+      [],
+      [
+        {
+          "field": "event_id"
+        }
+      ],
+      [
+        {
+          "field": "chamber"
+        }
+      ],
+      [
+        {
+          "field": "chamber_basis"
+        }
+      ],
+      [
+        {
+          "field": "title"
+        }
+      ],
+      [
+        {
+          "field": "meeting_date"
+        }
+      ],
+      [
+        {
+          "field": "meeting_type"
+        }
+      ],
+      [
+        {
+          "field": "session"
+        }
+      ],
+      [
+        {
+          "field": "status"
+        }
+      ],
+      [
+        {
+          "field": "sittings"
+        }
+      ],
+      [
+        {
+          "field": "sittings"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "sittings"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "start"
+        }
+      ],
+      [
+        {
+          "field": "sittings"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "end"
+        }
+      ],
+      [
+        {
+          "field": "sittings"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "place"
+        }
+      ],
+      [
+        {
+          "field": "sittings"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "room"
+        }
+      ],
+      [
+        {
+          "field": "sittings"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "building"
+        }
+      ],
+      [
+        {
+          "field": "sittings"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "address"
+        }
+      ],
+      [
+        {
+          "field": "committees"
+        }
+      ],
+      [
+        {
+          "field": "committees"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "committees"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "system_code"
+        }
+      ],
+      [
+        {
+          "field": "committees"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "role"
+        }
+      ],
+      [
+        {
+          "field": "subject_keys"
+        }
+      ],
+      [
+        {
+          "field": "subject_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "source"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "package_id"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "list_row"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "formats"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "formats"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "video_key"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "language"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "production"
+        }
+      ],
+      [
+        {
+          "field": "videos"
+        }
+      ],
+      [
+        {
+          "field": "videos"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "videos"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "name"
+        }
+      ],
+      [
+        {
+          "field": "videos"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "url"
+        }
+      ],
+      [
+        {
+          "field": "videos"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "video_key"
+        }
+      ],
+      [
+        {
+          "field": "congress"
+        }
+      ],
+      [
+        {
+          "field": "congress_gov_updated"
+        }
+      ],
+      [
+        {
+          "field": "house_xml_updated"
+        }
+      ],
+      [
+        {
+          "field": "congress_gov_meeting_type"
+        }
+      ],
+      [
+        {
+          "field": "access"
+        }
+      ],
+      [
+        {
+          "field": "access_basis"
+        }
+      ],
+      [
+        {
+          "field": "not_held"
+        }
+      ],
+      [
+        {
+          "field": "rescheduled_to"
+        }
+      ],
+      [
+        {
+          "field": "rescheduled_basis"
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "collection"
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "ordinal"
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "url"
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "role"
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "format"
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "description"
+        }
+      ],
+      [
+        {
+          "field": "document_references"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "name"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:witnesses": [
+      [],
+      [
+        {
+          "field": "witness_key"
+        }
+      ],
+      [
+        {
+          "field": "occasion"
+        }
+      ],
+      [
+        {
+          "field": "source"
+        }
+      ],
+      [
+        {
+          "field": "record_sha"
+        }
+      ],
+      [
+        {
+          "field": "source_locator"
+        }
+      ],
+      [
+        {
+          "field": "context_key"
+        }
+      ],
+      [
+        {
+          "field": "event_id"
+        }
+      ],
+      [
+        {
+          "field": "package_id"
+        }
+      ],
+      [
+        {
+          "field": "page_url"
+        }
+      ],
+      [
+        {
+          "field": "name"
+        }
+      ],
+      [
+        {
+          "field": "position"
+        }
+      ],
+      [
+        {
+          "field": "organization"
+        }
+      ],
+      [
+        {
+          "field": "on_behalf_of"
+        }
+      ],
+      [
+        {
+          "field": "location"
+        }
+      ],
+      [
+        {
+          "field": "panel"
+        }
+      ],
+      [
+        {
+          "field": "panel_order"
+        }
+      ],
+      [
+        {
+          "field": "display_order"
+        }
+      ],
+      [
+        {
+          "field": "witness_type"
+        }
+      ],
+      [
+        {
+          "field": "testified"
+        }
+      ],
+      [
+        {
+          "field": "bioguide_id"
+        }
+      ],
+      [
+        {
+          "field": "superseded_by"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:witness_key_map": [
+      [],
+      [
+        {
+          "field": "old_key"
+        }
+      ],
+      [
+        {
+          "field": "witness_key"
+        }
+      ],
+      [
+        {
+          "field": "status"
+        }
+      ],
+      [
+        {
+          "field": "basis"
+        }
+      ],
+      [
+        {
+          "field": "candidate_keys"
+        }
+      ],
+      [
+        {
+          "field": "candidate_keys"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "occasion"
+        }
+      ],
+      [
+        {
+          "field": "source"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:recordings": [
+      [],
+      [
+        {
+          "field": "video_key"
+        }
+      ],
+      [
+        {
+          "field": "event_ids"
+        }
+      ],
+      [
+        {
+          "field": "event_ids"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "tracks"
+        }
+      ],
+      [
+        {
+          "field": "tracks"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "tracks"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "body"
+        }
+      ],
+      [
+        {
+          "field": "tracks"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "suffix"
+        }
+      ],
+      [
+        {
+          "field": "tracks"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "format"
+        }
+      ],
+      [
+        {
+          "field": "tracks"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "language"
+        }
+      ],
+      [
+        {
+          "field": "tracks"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "production"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:committees": [
+      [],
+      [
+        {
+          "field": "system_code"
+        }
+      ],
+      [
+        {
+          "field": "name"
+        }
+      ],
+      [
+        {
+          "field": "chamber"
+        }
+      ],
+      [
+        {
+          "field": "committee_type"
+        }
+      ],
+      [
+        {
+          "field": "parent_system_code"
+        }
+      ],
+      [
+        {
+          "field": "names"
+        }
+      ],
+      [
+        {
+          "field": "names"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "names"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "name"
+        }
+      ],
+      [
+        {
+          "field": "names"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "start"
+        }
+      ],
+      [
+        {
+          "field": "names"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "end"
+        }
+      ],
+      [
+        {
+          "field": "website"
+        }
+      ],
+      [
+        {
+          "field": "is_current"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:members": [
+      [],
+      [
+        {
+          "field": "bioguide_id"
+        }
+      ],
+      [
+        {
+          "field": "name"
+        }
+      ],
+      [
+        {
+          "field": "terms"
+        }
+      ],
+      [
+        {
+          "field": "terms"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "terms"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "chamber"
+        }
+      ],
+      [
+        {
+          "field": "terms"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "state"
+        }
+      ],
+      [
+        {
+          "field": "terms"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "district"
+        }
+      ],
+      [
+        {
+          "field": "terms"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "party"
+        }
+      ],
+      [
+        {
+          "field": "terms"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "start"
+        }
+      ],
+      [
+        {
+          "field": "terms"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "end"
+        }
+      ],
+      [
+        {
+          "field": "cross_ids"
+        }
+      ],
+      [
+        {
+          "field": "cross_ids"
+        },
+        {
+          "field": "lis"
+        }
+      ],
+      [
+        {
+          "field": "cross_ids"
+        },
+        {
+          "field": "opensecrets"
+        }
+      ],
+      [
+        {
+          "field": "cross_ids"
+        },
+        {
+          "field": "govtrack"
+        }
+      ],
+      [
+        {
+          "field": "cross_ids"
+        },
+        {
+          "field": "icpsr"
+        }
+      ],
+      [
+        {
+          "field": "cross_ids"
+        },
+        {
+          "field": "wikidata"
+        }
+      ],
+      [
+        {
+          "field": "cross_ids"
+        },
+        {
+          "field": "fec"
+        }
+      ],
+      [
+        {
+          "field": "cross_ids"
+        },
+        {
+          "field": "fec"
+        },
+        {
+          "each": true
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:rosters": [
+      [],
+      [
+        {
+          "field": "congress"
+        }
+      ],
+      [
+        {
+          "field": "system_code"
+        }
+      ],
+      [
+        {
+          "field": "bioguide_id"
+        }
+      ],
+      [
+        {
+          "field": "title"
+        }
+      ],
+      [
+        {
+          "field": "rank"
+        }
+      ],
+      [
+        {
+          "field": "party"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:bills": [
+      [],
+      [
+        {
+          "field": "bill_id"
+        }
+      ],
+      [
+        {
+          "field": "title"
+        }
+      ],
+      [
+        {
+          "field": "short_title"
+        }
+      ],
+      [
+        {
+          "field": "sponsor_bioguide_id"
+        }
+      ],
+      [
+        {
+          "field": "introduced"
+        }
+      ],
+      [
+        {
+          "field": "latest_action_date"
+        }
+      ],
+      [
+        {
+          "field": "latest_action_text"
+        }
+      ],
+      [
+        {
+          "field": "stage"
+        }
+      ],
+      [
+        {
+          "field": "policy_area"
+        }
+      ],
+      [
+        {
+          "field": "public_law_number"
+        }
+      ],
+      [
+        {
+          "field": "cosponsor_count"
+        }
+      ],
+      [
+        {
+          "field": "related_bills"
+        }
+      ],
+      [
+        {
+          "field": "related_bills"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "related_bills"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "bill_id"
+        }
+      ],
+      [
+        {
+          "field": "related_bills"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "title"
+        }
+      ],
+      [
+        {
+          "field": "related_bills"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "relationship_types"
+        }
+      ],
+      [
+        {
+          "field": "related_bills"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "relationship_types"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "committees"
+        }
+      ],
+      [
+        {
+          "field": "committees"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "cbo_estimates"
+        }
+      ],
+      [
+        {
+          "field": "cbo_estimates"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "cbo_estimates"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "publication_id"
+        }
+      ],
+      [
+        {
+          "field": "cbo_estimates"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "date"
+        }
+      ],
+      [
+        {
+          "field": "cbo_estimates"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "description"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "vote_id"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "basis"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "chamber"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "date"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "question"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "result"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "yea"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "nay"
+        }
+      ],
+      [
+        {
+          "field": "amendments"
+        }
+      ],
+      [
+        {
+          "field": "amendments"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "amendments"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "amendment_id"
+        }
+      ],
+      [
+        {
+          "field": "amendments"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "purpose"
+        }
+      ],
+      [
+        {
+          "field": "amendments"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "sponsor_bioguide_id"
+        }
+      ],
+      [
+        {
+          "field": "amendments"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "latest_action_date"
+        }
+      ],
+      [
+        {
+          "field": "amendments"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "latest_action_text"
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "system_code"
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "activity"
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "date"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:nominations": [
+      [],
+      [
+        {
+          "field": "nomination_id"
+        }
+      ],
+      [
+        {
+          "field": "description"
+        }
+      ],
+      [
+        {
+          "field": "organization"
+        }
+      ],
+      [
+        {
+          "field": "received"
+        }
+      ],
+      [
+        {
+          "field": "latest_action_date"
+        }
+      ],
+      [
+        {
+          "field": "latest_action_text"
+        }
+      ],
+      [
+        {
+          "field": "committees"
+        }
+      ],
+      [
+        {
+          "field": "committees"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "system_code"
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "activities"
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "activities"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "name"
+        }
+      ],
+      [
+        {
+          "field": "committee_activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "activities"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "date"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        }
+      ],
+      [
+        {
+          "field": "transcripts"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "vote_id"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "date"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "question"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "result"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "yea"
+        }
+      ],
+      [
+        {
+          "field": "floor_votes"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "nay"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:url_state": [
+      [],
+      [
+        {
+          "field": "requested_url"
+        }
+      ],
+      [
+        {
+          "field": "attempts"
+        }
+      ],
+      [
+        {
+          "field": "last_attempt"
+        }
+      ],
+      [
+        {
+          "field": "last_status"
+        }
+      ],
+      [
+        {
+          "field": "last_outcome"
+        }
+      ],
+      [
+        {
+          "field": "last_good_at"
+        }
+      ],
+      [
+        {
+          "field": "next_attempt_at"
+        }
+      ],
+      [
+        {
+          "field": "capture_disposition"
+        }
+      ],
+      [
+        {
+          "field": "capture_reason"
+        }
+      ],
+      [
+        {
+          "field": "capture_decision_id"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:url_variants": [
+      [],
+      [
+        {
+          "field": "canonical_url"
+        }
+      ],
+      [
+        {
+          "field": "variant_url"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:videos": [
+      [],
+      [
+        {
+          "field": "video_key"
+        }
+      ],
+      [
+        {
+          "field": "handle"
+        }
+      ],
+      [
+        {
+          "field": "channel_id"
+        }
+      ],
+      [
+        {
+          "field": "system_code"
+        }
+      ],
+      [
+        {
+          "field": "title"
+        }
+      ],
+      [
+        {
+          "field": "source_description"
+        }
+      ],
+      [
+        {
+          "field": "published_at"
+        }
+      ],
+      [
+        {
+          "field": "video_published_at"
+        }
+      ],
+      [
+        {
+          "field": "duration_seconds"
+        }
+      ],
+      [
+        {
+          "field": "available"
+        }
+      ],
+      [
+        {
+          "field": "has_caption"
+        }
+      ],
+      [
+        {
+          "field": "details_checked_at"
+        }
+      ],
+      [
+        {
+          "field": "stated_event_ids"
+        }
+      ],
+      [
+        {
+          "field": "stated_event_ids"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "record_sha"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:channels": [
+      [],
+      [
+        {
+          "field": "handle"
+        }
+      ],
+      [
+        {
+          "field": "channel_id"
+        }
+      ],
+      [
+        {
+          "field": "system_code"
+        }
+      ],
+      [
+        {
+          "field": "committee_label"
+        }
+      ],
+      [
+        {
+          "field": "role"
+        }
+      ],
+      [
+        {
+          "field": "title"
+        }
+      ],
+      [
+        {
+          "field": "custom_url"
+        }
+      ],
+      [
+        {
+          "field": "uploads_scan_complete"
+        }
+      ],
+      [
+        {
+          "field": "mapping_basis"
+        }
+      ],
+      [
+        {
+          "field": "record_sha"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:recording_matches": [
+      [],
+      [
+        {
+          "field": "match_id"
+        }
+      ],
+      [
+        {
+          "field": "subject_kind"
+        }
+      ],
+      [
+        {
+          "field": "subject_id"
+        }
+      ],
+      [
+        {
+          "field": "event_id"
+        }
+      ],
+      [
+        {
+          "field": "package_id"
+        }
+      ],
+      [
+        {
+          "field": "video_key"
+        }
+      ],
+      [
+        {
+          "field": "url"
+        }
+      ],
+      [
+        {
+          "field": "basis"
+        }
+      ],
+      [
+        {
+          "field": "decision"
+        }
+      ],
+      [
+        {
+          "field": "score"
+        }
+      ],
+      [
+        {
+          "field": "recording_scope"
+        }
+      ],
+      [
+        {
+          "field": "status"
+        }
+      ],
+      [
+        {
+          "field": "note"
+        }
+      ],
+      [
+        {
+          "field": "source_ref"
+        }
+      ],
+      [
+        {
+          "field": "meeting_links"
+        }
+      ],
+      [
+        {
+          "field": "meeting_links"
+        },
+        {
+          "each": true
+        }
+      ],
+      [
+        {
+          "field": "meeting_links"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "event_id"
+        }
+      ],
+      [
+        {
+          "field": "meeting_links"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "basis"
+        }
+      ],
+      [
+        {
+          "field": "meeting_links"
+        },
+        {
+          "each": true
+        },
+        {
+          "field": "scope"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:committee_records": [
+      [],
+      [
+        {
+          "field": "record_key"
+        }
+      ],
+      [
+        {
+          "field": "event_id"
+        }
+      ],
+      [
+        {
+          "field": "kind"
+        }
+      ],
+      [
+        {
+          "field": "bill"
+        }
+      ],
+      [
+        {
+          "field": "number"
+        }
+      ],
+      [
+        {
+          "field": "sponsor_bioguide"
+        }
+      ],
+      [
+        {
+          "field": "amendment_type"
+        }
+      ],
+      [
+        {
+          "field": "enbloc"
+        }
+      ],
+      [
+        {
+          "field": "source_description"
+        }
+      ],
+      [
+        {
+          "field": "url"
+        }
+      ],
+      [
+        {
+          "field": "record_sha"
+        }
+      ],
+      [
+        {
+          "field": "ordinal"
+        }
+      ]
+    ],
+    "urn:congressional-tech:archive:dataset:meeting_coverage": [
+      [],
+      [
+        {
+          "field": "event_id"
+        }
+      ],
+      [
+        {
+          "field": "aspect"
+        }
+      ],
+      [
+        {
+          "field": "state"
+        }
+      ],
+      [
+        {
+          "field": "basis"
+        }
+      ],
+      [
+        {
+          "field": "count"
+        }
+      ],
+      [
+        {
+          "field": "reason"
+        }
+      ]
+    ]
+  },
+  "projectExtensions": [
+    {
+      "project": {
+        "id": "urn:congressional-tech:archive:project",
+        "version": "1.0.0"
+      },
+      "extensions": [
+        "urn:congressional-tech:archive:upstream-relations"
+      ]
+    }
+  ]
+}

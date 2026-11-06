@@ -1,0 +1,55 @@
+{
+  "specVersion": "0.1",
+  "kind": "component",
+  "id": "urn:congressional-tech:committee-compatibility:component:export-parquet",
+  "version": "1.0.0",
+  "role": "reader",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "format": {
+        "type": "string",
+        "enum": [
+          "parquet"
+        ]
+      }
+    },
+    "required": [
+      "format"
+    ],
+    "additionalProperties": false
+  },
+  "inputs": {},
+  "outputs": {
+    "meeting": {
+      "dataset": "meeting"
+    },
+    "committee-term": {
+      "dataset": "committee-term"
+    },
+    "appearance": {
+      "dataset": "appearance"
+    },
+    "material": {
+      "dataset": "material"
+    },
+    "data-issue": {
+      "dataset": "data-issue"
+    },
+    "sources": {
+      "dataset": "sources"
+    },
+    "manifest": {
+      "dataset": "manifest"
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "meaning": "Preserve current Parquet reader/public identities, source scope and guarded publication. Source snapshot acquisition is a separate workflow.",
+      "domainOwner": "committee_explorer.export.export",
+      "executionStatus": "interface_only",
+      "runtimeBinding": "unqualified",
+      "limitations": "Parquet is the only supported new export format; JSON export is retired. Exact output fields, Arrow types and nullability remain owned by committee_explorer.parquet.TABLE_SCHEMAS/SOURCE_SCHEMA. These minimal semantic definitions do not reproduce those schemas. Incoming assembled Catalog graph validation remains committee_meeting-owned; output partitions are not individually a complete Catalog."
+    }
+  }
+}

@@ -1,8 +1,8 @@
 # DDK replacement: proposed design and delivery boundary
 
-Status: reviewed preparation; first implementation under simplification review,
-November 6, 2026. This is a full
-replacement plan, not an implemented stack or an accepted migration. The release prerequisite is the
+Status: implementation in progress, November 6, 2026. Direct standard-catalog
+consumers and a shared native request/finalization boundary are under acceptance.
+The full replacement remains incomplete. The release prerequisite is the
 parent-owned `implementationReady` value in
 `/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/release-status.json`.
 It was false at first inspection. The parent subsequently changed it to true
@@ -11,6 +11,13 @@ as a prerequisite. Local replacement implementation is now authorized; shared
 runtime changes still require separate qualification.
 
 ## Outcome and scope
+
+The user selected a greenfield migration with every producer and consumer
+updated together. The new public DDK catalog is mandatory. Old reader formats,
+metadata fallbacks and importers for old controller/journal state are outside
+acceptance. Retained originals and native results remain reusable when their
+exact identity, interpretation and custody are established. New-stack recovery,
+qualification, protection and coherent release membership remain required.
 
 The replacement must carry every maintained source through its existing domain
 interpretation into exact, recoverable versions that the existing user journeys
@@ -72,7 +79,7 @@ does not imply the others passed.
    its own conditional-write/reconciliation semantics; the replacement must use
    those semantics through a single supported native/application boundary.
    Catalog assembly records that selection. Consumer caches key by the selected
-   release and retain explicit historical bindings.
+   release. Prior versions produced by the new stack remain explicitly bound.
 
 The concrete request, qualification and per-workflow activation boundaries are
 specified in [operation seams](operation-seams.md). That document records target
@@ -123,10 +130,10 @@ code in the same increment. Its acceptance must show these concrete improvements
   identities. Description-only changes regenerate metadata; rule-only changes
   requalify the existing candidate; data changes recompute affected native work.
   Retain full provenance without making every provenance byte a compute trigger.
-- Historical readers remain a small, version-specific compatibility boundary.
-  Preserve old immutable releases and their bytes. New releases preserve meaning,
-  ordered data, field IDs, multiplicity and consumer behavior; they need not
-  reproduce incidental JSON object-member ordering or generated prose formatting.
+- One current catalog format serves all updated readers. Remove old-format
+  decoders, schema fallbacks and compatibility-only aliases. Preserve meaning,
+  ordered data, field IDs and multiplicity; old release bytes remain evidence
+  without requiring new readers to decode them.
 - Each migrated path names the old code and independently maintained definitions
   it retires. Acceptance is incomplete while both current implementations remain
   active or while the new route merely calls the old controller wholesale.
@@ -172,8 +179,9 @@ are a later change; they cannot silently change an admitted request. Preserve
 completed expensive readings, OCR, joins and exports where dependency identity and
 custody still match. Qualification-only changes can reuse computation.
 
-Raw originals, selected versions, useful expensive completions, historical reader
-bindings and failure evidence retain their existing owner. Cheap disposable
+Raw originals, selected versions, useful expensive completions and failure
+evidence retain their existing owner. New-stack reader bindings are protected.
+Cheap disposable
 scratch may retire only after the owning runtime checks readers, writers,
 rollback pins and pending operations. No cleanup is authorized by this plan.
 Do not copy a corpus into this worktree or export/reimport native data merely to
@@ -205,13 +213,13 @@ the shared immutable binary address or bypass doctor. The current runtime pin
 (`b1270b2e`, digest `b89b43e2...`). This is an explicit compatibility obligation,
 not proof of incompatibility.
 
-The human initially asked to avoid further permission prompts while remote, then
-reported full access enabled. A fresh default probe still refused shared evidence,
-Git metadata and uv cache writes. Worktree edits remain writable. Use the actual
-tool permissions; do not bypass a denied operation. Git commits and additional
-durable evidence writes may wait if access is unavailable. This does not authorize a
-production cutover, external replacement publication, source acquisition or
-shared DDK/runtime edits.
+The human enabled full access. Root can now write durable evidence and Git
+metadata and communicate with the parent session. Earlier permission failures
+remain historical evidence; they no longer block root work. Some existing agents
+retain narrower permissions, so root executes durable-path checks centrally.
+Use actual tool permissions and do not bypass a denied operation. Full access
+does not authorize production cutover, external replacement publication, source
+acquisition or changes to parent-owned shared DDK/runtime code.
 
 ## Completion and next work
 

@@ -1,0 +1,1 @@
+SELECT state,count(*) AS meetings FROM meeting_coverage WHERE aspect=? GROUP BY state ORDER BY state

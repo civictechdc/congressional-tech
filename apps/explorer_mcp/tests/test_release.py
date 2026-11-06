@@ -11,11 +11,11 @@ import pytest
 from congressional_explorer_mcp import release
 from congressional_explorer_mcp.models import ExplorerError
 from congressional_explorer_mcp.reader import Reader
-from conftest import CURRENT, manifest, replace_rows
+from conftest import manifest, replace_rows
 
 
-def test_same_release_reuses_verified_files_without_payload_or_footer_reads(tmp_path, monkeypatch):
-    first = release.prepare(tmp_path, CURRENT/'manifest.json')
+def test_same_release_reuses_verified_files_without_payload_or_footer_reads(current, tmp_path, monkeypatch):
+    first = release.prepare(tmp_path, current/'manifest.json')
     opened = release.opened
     calls = []
     @contextmanager
@@ -26,24 +26,24 @@ def test_same_release_reuses_verified_files_without_payload_or_footer_reads(tmp_
     monkeypatch.setattr(release, 'opened', record)
     import duckdb
     monkeypatch.setattr(duckdb, 'connect', lambda **kwargs: pytest.fail('Unchanged release reread Parquet footers'))
-    assert release.prepare(tmp_path, CURRENT/'manifest.json') == first
-    assert calls == [str(CURRENT/'manifest.json')]
+    assert release.prepare(tmp_path, current/'manifest.json') == first
+    assert calls == [str(current/'manifest.json')]
     assert sum(p.stat().st_size for p in (tmp_path/'objects').iterdir()) == sum(f['size'] for f in first['manifest']['files'])
 
 
-def test_pointer_and_direct_manifest_choose_identical_release(tmp_path):
-    public = tmp_path/'public'; identity = json.loads((CURRENT/'manifest.json').read_bytes())['release_id']
+def test_pointer_and_direct_manifest_choose_identical_release(current, tmp_path):
+    public = tmp_path/'public'; identity = json.loads((current/'manifest.json').read_bytes())['release_id']
     target = public/'releases'/identity
-    shutil.copytree(CURRENT, target)
+    shutil.copytree(current, target)
     (public/'manifest.json').write_bytes(release.encoded({'release_id':identity}))
     selected = release.prepare(tmp_path/'cache', public/'manifest.json')
     assert selected['release_id'] == identity
     assert selected['tables']['list'][0]['rows'] == 7
 
 
-def test_interrupted_prepare_keeps_previous_selection_and_reuses_completed_files(tmp_path, phase2, monkeypatch):
+def test_interrupted_prepare_keeps_previous_selection_and_reuses_completed_files(current, tmp_path, phase2, monkeypatch):
     cache = tmp_path/'cache'
-    before = release.prepare(cache, CURRENT/'manifest.json')
+    before = release.prepare(cache, current/'manifest.json')
     opened = release.opened
     @contextmanager
     def interrupt(location):
@@ -69,8 +69,8 @@ def test_interrupted_prepare_keeps_previous_selection_and_reuses_completed_files
     assert transferred == ['witnesses.parquet']
 
 
-def test_bad_checksum_never_selects_candidate(tmp_path, phase2):
-    cache = tmp_path/'cache'; before = release.prepare(cache, CURRENT/'manifest.json')
+def test_bad_checksum_never_selects_candidate(current, tmp_path, phase2):
+    cache = tmp_path/'cache'; before = release.prepare(cache, current/'manifest.json')
     broken = tmp_path/'broken'; shutil.copytree(phase2.parent, broken)
     with (broken/'bills.parquet').open('ab') as stream:
         stream.write(b'wrong')
@@ -80,47 +80,34 @@ def test_bad_checksum_never_selects_candidate(tmp_path, phase2):
     assert not list((cache/'objects').glob('*.partial'))
 
 
-def test_changed_cache_and_concurrent_prepare_are_rejected(tmp_path):
-    selected = release.prepare(tmp_path, CURRENT/'manifest.json')
+def test_changed_cache_and_concurrent_prepare_are_rejected(current, tmp_path):
+    selected = release.prepare(tmp_path, current/'manifest.json')
     with (tmp_path/'prepare.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with pytest.raises(ExplorerError,match='Another prepare'):
-            release.prepare(tmp_path, CURRENT/'manifest.json')
+            release.prepare(tmp_path, current/'manifest.json')
     path = Path(next(iter(selected['files'].values()))['path'])
     path.chmod(0o644)
     with pytest.raises(ExplorerError,match='changed'):
         release.load_selection(tmp_path)
     with pytest.raises(ExplorerError,match='changed'):
-        release.prepare(tmp_path, CURRENT/'manifest.json')
+        release.prepare(tmp_path, current/'manifest.json')
 
 
-def test_legacy_five_field_stamp_survives_st_dev_change_and_missing_object_heals(tmp_path, monkeypatch):
-    selected = release.prepare(tmp_path, CURRENT/'manifest.json')
+def test_current_four_field_custody_and_missing_object_recovery(current, tmp_path):
+    selected = release.prepare(tmp_path, current/'manifest.json')
     assert all(len(item['stamp']) == 4 for item in selected['files'].values())
-    selection_path = tmp_path / 'selection.json'
-    legacy = json.loads(selection_path.read_bytes())
-    for item in legacy['files'].values():
-        item['stamp'] = [999999, *item['stamp']]
-    selection_path.write_bytes(release.encoded(legacy))
-    loaded = release.load_selection(tmp_path)
-    assert loaded['release_id'] == selected['release_id']
-    import duckdb
-    monkeypatch.setattr(duckdb, 'connect', lambda **kwargs: pytest.fail('Stamp upgrade reread Parquet footers'))
-    upgraded = release.prepare(tmp_path, CURRENT/'manifest.json')
-    assert all(len(item['stamp']) == 4 for item in upgraded['files'].values())
-    assert all(len(item['stamp']) == 4 for item in json.loads(selection_path.read_bytes())['files'].values())
-    monkeypatch.undo()
-    missing_sha, missing_item = next(iter(upgraded['files'].items()))
+    missing_sha, missing_item = next(iter(selected['files'].items()))
     Path(missing_item['path']).unlink()
     with pytest.raises(ExplorerError, match='changed'):
         release.load_selection(tmp_path)
-    healed = release.prepare(tmp_path, CURRENT/'manifest.json')
+    healed = release.prepare(tmp_path, current/'manifest.json')
     assert Path(healed['files'][missing_sha]['path']).exists()
     assert release.load_selection(tmp_path)['release_id'] == selected['release_id']
 
 
-def test_shards_preserve_positions_duplicates_and_source_order(tmp_path):
-    source=tmp_path/'release'; shutil.copytree(CURRENT,source)
+def test_shards_preserve_positions_duplicates_and_source_order(current, tmp_path):
+    source=tmp_path/'release'; shutil.copytree(current,source)
     def sources(rows):
         rows.insert(1, dict(rows[0], ordinal=1))
     replace_rows(source,'sources',sources)
@@ -156,8 +143,8 @@ def test_shards_preserve_positions_duplicates_and_source_order(tmp_path):
         reader.close()
 
 
-def test_bad_footer_count_and_legacy_shape_fail_before_selection(tmp_path):
-    source=tmp_path/'bad'; shutil.copytree(CURRENT,source)
+def test_bad_footer_count_and_legacy_shape_fail_before_selection(current, tmp_path):
+    source=tmp_path/'bad'; shutil.copytree(current,source)
     path=source/'manifest.json'; value=json.loads(path.read_bytes())
     next(f for f in value['files'] if f['name']=='sources.parquet')['rows'] += 1
     value['release_id']=sha256(release.encoded([1,[[f[k] for k in ('name','sha256','size','rows')] for f in value['files']]])).hexdigest()

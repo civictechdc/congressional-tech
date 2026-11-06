@@ -1,0 +1,32 @@
+{
+  "specVersion": "0.1",
+  "kind": "component",
+  "id": "urn:congressional-tech:youtube:component:capture-captions",
+  "version": "1.0.0",
+  "role": "transform",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "inputs": {
+    "videos": {
+      "dataset": "videos",
+      "allowAdditionalFields": true
+    }
+  },
+  "outputs": {
+    "index": {
+      "dataset": "caption-index"
+    }
+  },
+  "extensions": {
+    "https://congressional-tech.org/ddk/workflow-semantics/v1": {
+      "meaning": "Retain timing tracks and extracted metadata before current index result; no video payload download.",
+      "domainOwner": "youtube_api.captions.main.fetch_one",
+      "executionStatus": "interface_only",
+      "runtimeBinding": "unqualified",
+      "limitations": "TinyDB cache rows and SDK/yt-dlp saved representations remain owned by youtube_api. Source models allow unknown publisher fields; no exact HTTP envelope or native physical table mapping is declared. Failure/unknown is not absence; caption negatives are scoped English WebVTT observations."
+    }
+  }
+}
