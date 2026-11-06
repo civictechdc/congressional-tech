@@ -22,7 +22,7 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
 OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records')
-OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements'}
+OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
@@ -92,6 +92,9 @@ def validate_spec(value,*,base):
     if not REQUIRED<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Model job requires version 1 and all explicit inputs')
     result=dict(value,**{name:_selector(value[name],base) for name in TABLES})
+    if value.get('text_index') is not None:
+        from viewer_publication.archive_text_index import validate_policy
+        result['text_index']=validate_policy(value['text_index'],base)
     if value.get('recovery_requirements') is not None:
         requirement=value['recovery_requirements']
         _pin(requirement,{'path','sha256','size','acceptance_policy'})
@@ -257,6 +260,9 @@ def execute(spec):
             manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
                 catalog_version=spec['catalog_version'],engine=engine,
                 output=Path(spec['output']),scratch=Path(spec['scratch']))
+    if spec.get('text_index'):
+        from viewer_publication.archive_text_index import finish_text_index
+        manifest=finish_text_index(spec,spec['output'])
     return dict(status='built',executed=True,release_id=manifest['release_id'],
         output=spec['output'],scratch=spec['scratch'],rows={entry['name']:entry['rows'] for entry in manifest['files']})
 
@@ -273,6 +279,8 @@ def main(argv=None):
         result=(execute(spec) if args.execute else dict(status='planned',executed=False,
             inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},output=spec['output'],scratch=spec['scratch'],
             parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version']))
+        if not args.execute and spec.get('text_index'):
+            result['text_index']=spec['text_index']
     except (ValueError,OSError) as error:parser.error(str(error))
     print(json.dumps(result,sort_keys=True));return 0
 

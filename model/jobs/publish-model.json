@@ -99,5 +99,17 @@
     "schema_id": 0,
     "snapshot": 387616457107628486,
     "table_uuid": "01a1adb1-19bb-7421-901b-f03c541a3c01"
+  },
+  "text_index": {
+    "python": "../../apps/explorer_mcp/.venv/bin/python",
+    "work": "../../.cache/archive-release/text-index/work",
+    "archive_origin": "https://congressional-data.spicygov.ai",
+    "definition": "28894ec4d8a700f27a379809bb8759dca2983e9a33595a1c5949c9b0d27c5663",
+    "body_timeout": 600,
+    "memory_mb": 768,
+    "large_memory_mb": 4096,
+    "max_work_bytes": 42949672960,
+    "min_free_bytes": 16106127360,
+    "snapshot_mode": "freeze"
   }
 }

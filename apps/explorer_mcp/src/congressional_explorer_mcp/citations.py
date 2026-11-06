@@ -4,7 +4,7 @@ from hashlib import sha256
 from .models import ExplorerError
 
 CITATION_VERSION = 1
-TEXT_READER_VERSION = 'archive-body-text-v2'
+TEXT_READER_VERSION = 'archive-body-text-v3'
 
 
 def caption_source_id(video_key,body_hex,language=None,production=None):

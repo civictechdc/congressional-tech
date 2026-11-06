@@ -20,6 +20,7 @@ from congressional_explorer_mcp.models import DocumentQuery, ExplorerError, MAX_
 from congressional_explorer_mcp.reader import Reader
 from congressional_explorer_mcp.release import encoded, prepare
 from congressional_explorer_mcp.server import create_server
+from congressional_explorer_mcp.body_reader import BODY_CACHE_VERSION
 from conftest import CURRENT, manifest, replace_rows
 
 
@@ -287,7 +288,7 @@ def test_get_document_text_reads_pdf_gzip_html_xml_and_plain_text_and_caches(tmp
                 assert page_hit['total_chars'] == page2['total_chars']
 
                 # Cache verification: 4 calls to row 0 only made 1 HTTP request and wrote a versioned cache entry
-                cache_file = selected_dir / 'bodies' / f'{pdf_sha.hex()}.v2.json'
+                cache_file = selected_dir / 'bodies' / f'{pdf_sha.hex()}.v{BODY_CACHE_VERSION}.json'
                 assert cache_file.is_file()
                 assert requests.count(f'/bodies/sha256/{pdf_sha.hex()[:2]}/{pdf_sha.hex()}.pdf') == 1
 
@@ -383,14 +384,14 @@ def test_get_document_text_fails_closed_on_security_and_integrity_faults(tmp_pat
                 mp.setattr(body_reader, 'extract_pages', forbid_extract)
                 with pytest.raises(ExplorerError, match='SHA-256|checksum|digest|mismatch'):
                     read_via_target(0)
-            assert not (selected_dir / 'bodies' / f'{expected_sha.hex()}.v2.json').exists()
+            assert not (selected_dir / 'bodies' / f'{expected_sha.hex()}.v{BODY_CACHE_VERSION}.json').exists()
 
             # 2. Decompression bomb exceeding cap fails closed without caching
             with pytest.MonkeyPatch.context() as mp:
                 mp.setattr(body_reader, 'MAX_BODY_BYTES', 1 << 20)
                 with pytest.raises(ExplorerError, match='exceeds|size|limit'):
                     read_via_target(1)
-            assert not (selected_dir / 'bodies' / f'{bomb_sha.hex()}.v2.json').exists()
+            assert not (selected_dir / 'bodies' / f'{bomb_sha.hex()}.v{BODY_CACHE_VERSION}.json').exists()
 
             # 3. Unsupported binary format fails closed
             with pytest.raises(ExplorerError, match='Unsupported|format|binary'):

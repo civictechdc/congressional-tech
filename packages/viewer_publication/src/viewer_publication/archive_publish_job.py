@@ -203,6 +203,8 @@ def nightly_spec(spec,root):
     root=Path(root).resolve()
     work=root/'archive-publish'
     model=dict(spec['_model'],output=str(root/'archive-release'),scratch=str(root/'archive-model'))
+    if model.get('text_index'):
+        model['text_index']=dict(model['text_index'],work=os.environ.get('CONGRESS_TEXT_INDEX_WORK',str(root.parent/'text-index-work')))
     resume=(work/'completed-model.json').exists() or (
         (work/'model-intent.json').exists() and (Path(model['output'])/'manifest.json').exists())
     return dict(spec,work=str(work),_model=model,_daily=dict(spec['_daily'],work=str(root/'archive-daily')),
@@ -579,6 +581,8 @@ def main(argv=None):
         result=execute(spec) if args.execute else dict(status='planned',executed=False,
             model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
             targets=spec['targets'],site_dist=spec['site_dist'])
+        if not args.execute and spec.get('_model',{}).get('text_index'):
+            result['text_index']=spec['_model']['text_index']
         if not args.execute and 'daily' in spec:result['daily']=spec['daily']
     except PublicationInputsChanged as error:
         if args.nightly_work is None or not spec.get('resume'):parser.error(str(error))

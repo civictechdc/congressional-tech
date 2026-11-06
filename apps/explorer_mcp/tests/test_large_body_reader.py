@@ -150,7 +150,7 @@ def test_font_dependency_warning_cannot_silently_qualify_partial_text(tmp_path,m
     assert result['attempts'][0]['code']=='backend_dependency_missing'
     assert result['attempts'][0]['evidence']['warnings']['count']==1
     assert pages(result)[0]['text']=='The fallback retains this text.'
-    assert any('fontTools is required' in record.getMessage() for record in caplog.records)
+    assert 'fontTools is required' in result['attempts'][0]['evidence']['warnings']['samples'][0]
 
 
 def test_tool_timeout_stops_the_actual_child(tmp_path):

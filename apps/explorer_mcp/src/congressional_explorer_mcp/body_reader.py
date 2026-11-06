@@ -27,7 +27,7 @@ MAX_RAW_BYTES = MAX_BODY_BYTES
 MAX_CACHE_ENTRIES = 256
 MAX_CACHE_BYTES = 128 << 20
 MAX_PAGE_MATCH_ITERATIONS = 10_000
-BODY_CACHE_VERSION = 2
+BODY_CACHE_VERSION = 3
 SNIPPET_CONTEXT_CHARS = 160
 
 TEXT_FORMATS = frozenset({'pdf', 'html', 'htm', 'xhtml', 'xml', 'text', 'txt', 'json', 'csv', 'md', 'vtt', 'srt', 'ttml', 'dfxp', 'm3u8'})
@@ -233,23 +233,30 @@ def verify_and_decode_body(raw_bytes: bytes, saved_body_hex: str, saved_suffix: 
     raise ExplorerError('Fetched document body SHA-256 does not match published saved_body')
 
 
-def _extract_pdf_pages(payload: bytes, *, deadline: float | None = None) -> list[str]:
+def _extract_pdf_pages(payload: bytes, *, deadline: float | None = None, backend_info=None) -> list[str]:
     _check_deadline(deadline)
     header_pos = payload.find(b'%PDF-', 0, 1024)
     if header_pos < 0:
         raise ExplorerError('Invalid or corrupt PDF body')
     pdf_data = payload[header_pos:]
+    # Keep bounded parser warnings with the actual backend, including successful reads.
+    from .large_body_reader import _pdf_warnings
+    diagnostics = {}
     # 1. Primary: pypdf
     try:
         from pypdf import PdfReader
-        reader = PdfReader(io.BytesIO(pdf_data), strict=False)
-        if len(reader.pages) > 0:
+        with _pdf_warnings() as observed:
+            reader = PdfReader(io.BytesIO(pdf_data), strict=False)
             pages = []
             for page in reader.pages:
                 _check_deadline(deadline)
                 pages.append((page.extract_text() or '').strip())
-            if any(pages):
-                return pages
+        diagnostics = observed.evidence()
+        if any(pages) and not observed.fonttools_missing:
+            if backend_info is not None:
+                from importlib.metadata import version
+                backend_info.update(name='pypdf', version=version('pypdf'), fonttools=version('fonttools'), warnings=diagnostics)
+            return pages
     except TimeoutError:
         raise
     except Exception:
@@ -273,6 +280,10 @@ def _extract_pdf_pages(payload: bytes, *, deadline: float | None = None) -> list
                     raw_pages.pop()
                 pages = [p.strip() for p in raw_pages]
                 if any(pages):
+                    if backend_info is not None:
+                        from .large_body_reader import large_pdf_definition
+                        backend_info.update(name='pdftotext', tool=large_pdf_definition()['facts']['tools']['pdftotext'],
+                                            pypdf_warnings=diagnostics, stderr=proc.stderr[:4096].decode(errors='replace'))
                     return pages
         except subprocess.TimeoutExpired as error:
             raise TimeoutError('Document text read timed out') from error
@@ -290,22 +301,28 @@ def _extract_xml_text(payload: bytes) -> str:
     return parser.get_text()
 
 
-def extract_pages(payload: bytes, fmt: str, *, deadline: float | None = None) -> list[str]:
+def extract_pages(payload: bytes, fmt: str, *, deadline: float | None = None, backend_info=None) -> list[str]:
     _check_deadline(deadline)
     if fmt == 'pdf' or payload.startswith(b'%PDF-'):
-        return _extract_pdf_pages(payload, deadline=deadline)
+        return _extract_pdf_pages(payload, deadline=deadline, **({'backend_info': backend_info} if backend_info is not None else {}))
     if b'\x00' in payload[:8192]:
         raise ExplorerError('Unsupported binary document body')
     if fmt in ('html', 'xml'):
+        if backend_info is not None:
+            backend_info.update(name='html.parser.HTMLParser', encoding='utf-8-replace')
         return [_extract_xml_text(payload)]
     try:
         text = payload.decode('utf-8-sig')
+        if backend_info is not None:
+            backend_info.update(name='stdlib-text', encoding='utf-8-sig')
     except UnicodeDecodeError:
         text = payload.decode('latin-1')
+        if backend_info is not None:
+            backend_info.update(name='stdlib-text', encoding='latin-1')
     return [text.strip()]
 
 
-def _read_cached_pages(cache_path: Path, body_hex: str, *, max_bytes: int = MAX_BODY_BYTES) -> list[str] | None:
+def _read_cached_pages(cache_path: Path, body_hex: str, *, max_bytes: int = MAX_BODY_BYTES, backend_info=None) -> list[str] | None:
     if cache_path.is_symlink():
         raise ExplorerError('Cached document body entry is a symlink')
     if not cache_path.exists():
@@ -329,6 +346,8 @@ def _read_cached_pages(cache_path: Path, body_hex: str, *, max_bytes: int = MAX_
         or not all(isinstance(p, str) for p in cached['pages'])
     ):
         raise ExplorerError('Corrupt cached document body')
+    if backend_info is not None:
+        backend_info.update(cached.get('backend') or dict(name='retained-cache', version=BODY_CACHE_VERSION, original_backend='unrecorded'))
     return cached['pages']
 
 
@@ -340,6 +359,7 @@ def _write_cached_pages(
     *,
     max_entries: int = MAX_CACHE_ENTRIES,
     max_cache_bytes: int = MAX_CACHE_BYTES,
+    backend_info=None,
 ) -> None:
     cache_dir = cache_path.parent
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -349,6 +369,7 @@ def _write_cached_pages(
             format=fmt,
             page_count=len(pages),
             pages=pages,
+            backend=backend_info,
         )
     # A count limit alone permits 256 x 64 MiB of disposable text. Keep one
     # byte quota as well, and avoid caching entries the reader cannot reopen.
@@ -386,8 +407,10 @@ def _load_or_extract_pages(
     timeout: float,
     max_bytes: int,
     deadline: float | None = None,
+    backend_info=None,
 ) -> tuple[list[str], str, str, str]:
     _check_deadline(deadline)
+    backend_info = backend_info if backend_info is not None else {}
     fmt = _normalize_format(target.get('format'), target.get('saved_media_type'), target.get('filename'))
     saved_url, body_hex, suffix = _validate_archive_url(
         target.get('saved_url'),
@@ -401,7 +424,7 @@ def _load_or_extract_pages(
         if data_dir is not None else None
     )
     if cache_path is not None:
-        cached_pages = _read_cached_pages(cache_path, body_hex, max_bytes=max_bytes)
+        cached_pages = _read_cached_pages(cache_path, body_hex, max_bytes=max_bytes, backend_info=backend_info)
         if cached_pages is not None:
             return cached_pages, fmt, body_hex, saved_url
 
@@ -416,9 +439,9 @@ def _load_or_extract_pages(
     )
     _check_deadline(deadline)
     decoded = verify_and_decode_body(raw_bytes, body_hex, suffix, max_bytes=max_bytes)
-    pages = extract_pages(decoded, fmt, deadline=deadline)
+    pages = extract_pages(decoded, fmt, deadline=deadline, **({'backend_info': backend_info} if backend_info is not None else {}))
     if cache_path is not None and pages:
-        _write_cached_pages(cache_path, body_hex, fmt, pages)
+        _write_cached_pages(cache_path, body_hex, fmt, pages, backend_info=backend_info)
     return pages, fmt, body_hex, saved_url
 
 
@@ -460,6 +483,14 @@ def read_document_body(
         max_bytes=MAX_BODY_BYTES,
         deadline=deadline,
     )
+    return read_document_pages(target, query, pages, deadline=deadline)
+
+
+def read_document_pages(target, query, pages, *, deadline=None):
+    query = query if isinstance(query, DocumentQuery) else DocumentQuery.model_validate(query)
+    deadline = deadline or time.monotonic() + 10
+    fmt = _normalize_format(target.get('format'), target.get('saved_media_type'), target.get('filename'))
+    body_hex, saved_url = target['saved_body'], target.get('saved_url')
     page_count = len(pages)
     if query.page is not None and query.page > page_count:
         raise ExplorerError(f'Requested page {query.page} exceeds document page_count ({page_count})')
@@ -480,12 +511,13 @@ def read_document_body(
     )
     if target.get('redirected_from'):
         base['redirected_from'] = target['redirected_from']
-    source_text = pages[query.page - 1] if query.page is not None else '\n\n'.join(p for p in pages if p)
+    lengths = pages.lengths if hasattr(pages, 'lengths') else [len(text) for text in pages]
+    total_chars = lengths[query.page-1] if query.page is not None else sum(lengths) + 2*max(0,sum(bool(n) for n in lengths)-1)
 
     if query.query and query.query.strip():
         snippet_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 4096) // 6))
         pattern = _compile_query(query.query.strip(), deadline)
-        scoped_pages = [(query.page, pages[query.page - 1])] if query.page is not None else list(enumerate(pages, start=1))
+        scoped_pages = [(query.page, pages[query.page - 1])] if query.page is not None else enumerate(pages, start=1)
         matches: list[dict] = []
         total_matches = 0
         used_chars = 0
@@ -532,7 +564,7 @@ def read_document_body(
         result = dict(
             base,
             query=query.query,
-            total_chars=len(source_text),
+            total_chars=total_chars,
             match_count=total_matches,
             matches=matches,
             snippets=[m['snippet'] for m in matches],
@@ -555,8 +587,25 @@ def read_document_body(
         return result
 
     char_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 2048) // 2))
-    total_chars = len(source_text)
-    window = source_text[query.offset : query.offset + char_budget]
+    if query.page is not None:
+        window = pages.window(query.page-1,query.offset,char_budget) if hasattr(pages,'window') else pages[query.page-1][query.offset:query.offset+char_budget]
+    else:
+        fragments, position, wanted = [], 0, query.offset
+        nonempty = [index for index,length in enumerate(lengths) if length]
+        for ordinal,index in enumerate(nonempty):
+            size = lengths[index]
+            if position + size > wanted and sum(map(len,fragments)) < char_budget:
+                begin = max(0,wanted-position)
+                remaining = char_budget-sum(map(len,fragments))
+                fragments.append(pages.window(index,begin,remaining) if hasattr(pages,'window') else pages[index][begin:begin+remaining])
+            position += size
+            if ordinal < len(nonempty)-1:
+                if position+2 > wanted and sum(map(len,fragments)) < char_budget:
+                    fragments.append('\n\n'[max(0,wanted-position):][:char_budget-sum(map(len,fragments))])
+                position += 2
+            if sum(map(len,fragments)) >= char_budget:
+                break
+        window = ''.join(fragments)
     has_more = (query.offset + len(window)) < total_chars
     next_offset = (query.offset + len(window)) if has_more else None
     next_page = (query.page + 1) if (query.page is not None and query.page < page_count) else None

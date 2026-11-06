@@ -387,6 +387,10 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
                 raise ValueError('Candidate differs from the native export result')
     if release_identity(manifest['schema_version'],manifest['files'])!=release_id:
         raise ValueError('Candidate release identity differs from its content metadata')
+    index_policy=(input_record.get('profile') or {}).get('text_index')
+    if index_policy is not None or manifest.get('text_index'):
+        from viewer_publication.archive_text_index import validate_attachment
+        validate_attachment(manifest,release,index_policy.get('definition') if index_policy else None)
     if listed==0:raise ValueError('An empty document list cannot be published')
     return manifest,raw,release_id,{}
 
@@ -487,7 +491,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             begin=perf_counter();prefix=PREFIX+release_id+'/'
             for item in manifest['files']:
                 store.upload_file(prefix+item['name'],Path(release)/item['name'],item,
-                    content_type='application/vnd.apache.parquet' if item['name'].endswith('.parquet') else 'application/json')
+                    content_type=('application/vnd.apache.parquet' if item['name'].endswith('.parquet')
+                                  else 'application/vnd.sqlite3' if item['name'].endswith('.sqlite') else 'application/json'))
             store.upload_file(prefix+'manifest.json',manifest_pin['path'],
                 dict(sha256=sha256(raw).hexdigest(),md5=md5(raw).hexdigest(),size=len(raw)),content_type='application/json')
             if input_record['entity_digests']:

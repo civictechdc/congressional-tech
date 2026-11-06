@@ -235,6 +235,12 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             # The exporter writes its manifest last. Missing final metadata means
             # this attempt is unfinished; preserve it and start only this stage.
             if (Path(stage['output'])/'manifest.json').is_file():
+                engine.verify_runtime()
+                _require_model_definition(checkpoint,engine)
+                from viewer_publication.archive_text_index import finish_text_index,semantic_policy
+                if model_spec.get('text_index') and checkpoint['profile']['profile'].get('text_index')!=semantic_policy(model_spec['text_index']):
+                    raise PublicationInputsChanged('Text preparation runtime changed since the retained intent')
+                finish_text_index(model_spec,stage['output'])
                 checkpoint.update(_completed_artifacts(stage));promote_checkpoint=True
             else:pending=checkpoint;checkpoint=None
     status=dict(status='failed',input_digest=None,live_release=None,live_release_basis='unknown',rows={},bytes=0)
@@ -273,6 +279,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                     catalog_version=model_spec['catalog_version'],engine=engine,scratch=stage['scratch'],
                     prior_links=prior,base_retired=retired)
                 profile=prepared['profile']
+                if model_spec.get('text_index'):
+                    from viewer_publication.archive_text_index import semantic_policy
+                    profile['profile']['text_index']=semantic_policy(model_spec['text_index'])
                 entity_digests=prepared.get('entity_digests') or {}
             else:
                 _require_model_definition(checkpoint,engine)
@@ -333,6 +342,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                     entity_digests=entity_digests,admitted_names=admitted_names,pointer=pointer,pointer_etag=etag,stage=stage,
                     **daily_pin),seal=bool(daily_pin))
                 manifest=build_prepared_release(prepared,engine=engine,output=stage['output'])
+                if model_spec.get('text_index'):
+                    from viewer_publication.archive_text_index import finish_text_index
+                    manifest=finish_text_index(model_spec,stage['output'])
                 result=json.loads((prepared['scratch']/'result.json').read_text())
                 reports=_reports(result)
                 _admitted(reports,admitted_names)

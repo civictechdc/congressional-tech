@@ -36,6 +36,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 0  # gate 5 checks each producing commit is reachable from HEAD
       - uses: ./.github/actions/setup-python-project
+      - name: Install the locked corpus text preparation runtime
+        run: uv sync --frozen --python 3.12.13 --project apps/explorer_mcp
       - name: Admit the model binding before runtime or storage access
         id: publisher_binding
         run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding --github-output "$GITHUB_OUTPUT"

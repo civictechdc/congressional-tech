@@ -15,7 +15,7 @@ from . import __version__
 
 PUBLICATION = 'https://congressional-data.spicygov.ai/viewer-publications/manifest.json'
 CONTROL_BYTES = 32 << 20
-NAME = re.compile(r'(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(?:parquet|json)')
+NAME = re.compile(r'(?:(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(?:parquet|json)|search_index\.sqlite)')
 
 
 def encoded(value):

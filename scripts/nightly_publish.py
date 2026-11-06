@@ -109,6 +109,7 @@ def publish_env(main, worktree):
         R2_SECRET_ACCESS_KEY=credentials['DOCSPEC_S3_SECRET_ACCESS_KEY'],
         DOCSPEC_RUNTIME_CONFIG=str(remote_runtime / 'runtime.json'),
         DOCSPEC_JOB_CONFIG=str(worktree / '.cache/local-runtime/runtime.json'),
+        CONGRESS_TEXT_INDEX_WORK=str(main / '.cache/archive-release/text-index/work'),
     )
     return env
 
@@ -188,6 +189,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
 
         try:
             run_step('uv sync', ['uv', 'sync', '--frozen'])
+            run_step('MCP index runtime', ['uv','sync','--frozen','--python','3.12.13','--project','apps/explorer_mcp'])
             run_step('npm ci', ['npm', '--prefix', 'apps/site', 'ci'])
             run_step('browser', ['node', 'apps/site/node_modules/playwright/cli.js', 'install', '--only-shell', 'chromium'])
             run_step('local runtime', [python, 'scripts/dev.py', 'write-local-runtime', '--limits',

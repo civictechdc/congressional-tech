@@ -96,6 +96,17 @@ class Reader(HearingReader, LegislativeReader):
         if table not in self.schemas:
             raise ExplorerError(f'Table {table!r} is not published in this release; use get_dataset_info')
 
+    def search_text(self, value):
+        from .models import TextSearch
+        from .text_index import TextIndex
+        return TextIndex(self.selection).search(TextSearch.model_validate(value))
+
+    def resolve_index_citation(self, value):
+        if not self.selection['manifest'].get('text_index'):
+            return dict(state='unavailable',reason='This release has no retained full-text index')
+        from .text_index import TextIndex
+        return TextIndex(self.selection).resolve(value)
+
     def entity_summary_fields(self, table):
         # Scalar fields keep summaries useful for new tables and older schemas,
         # without decoding the nested lists that dominate large entity records.
@@ -106,6 +117,7 @@ class Reader(HearingReader, LegislativeReader):
         return dict(release_id=self.release_id, tables=sorted(self.selection['tables']),
             capabilities=['metadata_search', 'entity_lookup', 'document_metadata', 'verified_document_text',
                           'batch_documents', 'read_only_sql', 'published_relationships_and_recipes'],
+            corpus_text_index=self.selection['manifest'].get('text_index') or 'unavailable in this release',
             discovery=dict(status='get_dataset_status()', table='get_dataset_info(table=...)',
                            relationship='get_dataset_info(relationship=...)', recipe='get_dataset_info(recipe=...)',
                            all='get_dataset_info()'),
@@ -140,6 +152,7 @@ class Reader(HearingReader, LegislativeReader):
         return dict(release_id=self.release_id, published_at=published_at,
             publication_status='published' if published_at else 'publication date unavailable in this release',
             publication_basis=publication.get('basis'), collections=collections,
+            text_index=self.selection['manifest'].get('text_index') or 'unavailable in this release',
             notes=['Source updates are publisher-supplied update dates, not archive captures or legislative activity dates.',
                    'Observed record dates and Congress bounds do not establish complete history.',
                    'Release publication time describes selection of the release, not when its sources changed.'])
@@ -353,6 +366,23 @@ class Reader(HearingReader, LegislativeReader):
         if len(match) != 1:
             raise ExplorerError('Document link is absent or ambiguous in this release')
         return match[0][0], redirected_from
+
+    def indexed_caption_text(self,value):
+        if not self.selection['manifest'].get('text_index'):return None
+        from .hearing_models import TranscriptQuery
+        from .text_index import TextIndex
+        return TextIndex(self.selection).read_caption(value['source'],TranscriptQuery.model_validate(value['query']))
+
+    def indexed_source_text(self,value):
+        if not self.selection['manifest'].get('text_index'):return None
+        from .text_index import TextIndex
+        return TextIndex(self.selection).read_document(value['source'],DocumentQuery.model_validate(value['query']))
+
+    def indexed_document_text(self,value):
+        if not self.selection['manifest'].get('text_index'):return None
+        from .text_index import TextIndex
+        query=DocumentQuery.model_validate(value)
+        return TextIndex(self.selection).read_document(self.document_body_target(query),query)
 
     def document_body_target(self, value):
         query = value if isinstance(value, DocumentQuery) else DocumentQuery.model_validate(value)

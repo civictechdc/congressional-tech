@@ -135,6 +135,34 @@ class DocumentBatch(Query):
     items: list[DocumentQuery] = Field(min_length=1, max_length=10)
 
 
+class TextSearch(Page):
+    text: str = Field(min_length=1, max_length=2000)
+    match: Literal['phrase', 'all', 'any'] = 'phrase'
+    committee_key: str | None = Field(default=None, max_length=64)
+    document_type: str | None = Field(default=None, max_length=128)
+    witness_key: str | None = Field(default=None, max_length=256)
+    speaker: str | None = Field(default=None, max_length=256)
+    source_kind: Literal['document', 'caption'] | None = None
+    date_from: str | None = Field(default=None, pattern=r'^\d{4}-\d{2}-\d{2}$')
+    date_to: str | None = Field(default=None, pattern=r'^\d{4}-\d{2}-\d{2}$')
+    include_suspect: StrictBool = False
+
+    @field_validator('text')
+    @classmethod
+    def _text(cls, value):
+        if not value.strip():
+            raise ValueError('Search text must contain a word or phrase')
+        return value
+
+    @field_validator('date_from', 'date_to')
+    @classmethod
+    def _date(cls, value):
+        if value is not None:
+            from datetime import date
+            date.fromisoformat(value)
+        return value
+
+
 class SqlQuery(Query):
     sql: str = Field(min_length=1, max_length=32768)
     parameters: list[Any] = Field(default_factory=list, max_length=100)

@@ -9,7 +9,13 @@ authors = [{name = "Civic Tech DC"}]
 keywords = ["mcp", "congress", "hearings", "legislation", "duckdb"]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: MacOS", "Operating System :: POSIX :: Linux"]
 requires-python = ">=3.12"
-dependencies = ["duckdb==2.0.0", "fastmcp==4.1.4", "pypdf==6.21.4", "regex==2026.9.29"]
+dependencies = [
+    "duckdb==2.0.0",
+    "fastmcp==4.1.4",
+    "fonttools==4.66.0",
+    "pypdf==6.21.4",
+    "regex==2026.9.29",
+]
 
 [project.urls]
 Homepage = "https://civictechdc.github.io/congressional-tech/mcp/"

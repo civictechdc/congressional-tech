@@ -10,7 +10,7 @@ from fastmcp.exceptions import ToolError
 from pydantic import StrictInt, StrictStr
 
 from . import __version__
-from .models import (DocumentSearch, DocumentQuery, DocumentBatch, EntitySearch, EntityQuery,
+from .models import (DocumentSearch, DocumentQuery, DocumentBatch, TextSearch, EntitySearch, EntityQuery,
                      SqlQuery, ExplorerError, MAX_BYTES, BillActions, RollCalls, MemberBallots,
                      ActivityQuery, ResearchQuery)
 from .worker import Worker
@@ -38,7 +38,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         'Use query_sql for arbitrary joins, nested lists and aggregations across all release tables. '
         'Document references and page cursors belong to one release. Saved file URLs are for you to fetch and read. '
         'Missing tables mean unavailable, not zero records. Witnesses identify appearances, not deduplicated people. '
-        "This server searches metadata and reads verified archived document bodies via get_document(section='text'). "
+        "Use search_documents for metadata and search_text for indexed document bodies and caption cues. "
+        "Read verified archived document text with get_document(section='text'); get_dataset_status describes index coverage. "
         'Use get_hearing_bundle for a hearing dossier; get_transcript discovers release-bound official, committee and caption sources. '
         'Pass a returned citation to resolve_citation to reopen its original passage.'))
 
@@ -176,6 +177,19 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         return await call('dataset_status', {})
 
     @mcp.tool(annotations=annotations)
+    async def search_text(query: TextSearch) -> dict:
+        """Search the release's prepared full document bodies, testimony and retained caption cues.
+
+        Phrase matching is literal token order; match=all/any combines words. Metadata search remains search_documents.
+        Filter exact committee_key, document_type, witness_key (source association), source_kind or dates.
+        Speaker matches literal publisher caption voice labels only. Unknown speakers are never inferred from witness names.
+        Dates use published accepted qualification by default; include_suspect preserves explicitly requested literal suspect dates.
+        Results include bounded exact snippets, body/page/offset or caption cue locations, citations and indexed coverage.
+        The server queries the immutable prebuilt index and does not fetch or extract corpus bodies during search.
+        """
+        return await call('search_text', query.model_dump())
+
+    @mcp.tool(annotations=annotations)
     async def get_dataset_info(table: str | None = None, relationship: str | None = None, recipe: str | None = None) -> dict:
         """Discover tables, entity keys, coverage, and published relationship/recipe IDs.
 
@@ -207,6 +221,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     async def read_document(query, *, body_budget=None):
         if query.section == 'text':
+            indexed=await call('indexed_document_text',query.model_dump())
+            if indexed is not None:
+                return indexed
             from .body_reader import MAX_BODY_BYTES, read_document_body
             target = await call('document_body_target', query.model_dump())
             if body_budget is not None:

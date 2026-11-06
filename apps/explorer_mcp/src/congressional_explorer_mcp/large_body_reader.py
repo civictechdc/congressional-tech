@@ -253,15 +253,17 @@ class _PDFWarnings(logging.Handler):
 @contextmanager
 def _pdf_warnings():
     logger = logging.getLogger('pypdf')
-    level = logger.level
+    level, propagate = logger.level, logger.propagate
     warnings = _PDFWarnings()
     logger.addHandler(warnings)
     logger.setLevel(logging.WARNING)
+    logger.propagate = False
     try:
         yield warnings
     finally:
         logger.removeHandler(warnings)
         logger.setLevel(level)
+        logger.propagate = propagate
 
 
 def _pypdf(source, output, definition):

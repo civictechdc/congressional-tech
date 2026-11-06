@@ -53,9 +53,9 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     descriptions = dict(prepare='Download or refresh the published data', inspect='Show the selected release',
         serve='Run the MCP server (stdio by default)', config='Print client configuration without changing settings',
-        check='Check installed tools and available research paths over MCP')
+        check='Check installed tools and available research paths over MCP', index_text='Prepare or resume the full corpus text index')
     for name, description in descriptions.items():
-        command = sub.add_parser(name, help=description)
+        command = sub.add_parser(name.replace('_', '-'), help=description)
         command.add_argument('--data-dir', type=Path, default=os.environ.get('CONGRESS_MCP_DATA_DIR', Path.home() / '.cache/congress-explorer-mcp'))
         if name == 'config':
             command.add_argument('--client', choices=('codex', 'claude-desktop', 'claude-code', 'cursor'), required=True)
@@ -65,6 +65,9 @@ def main(argv=None):
         if name == 'check':
             command.add_argument('--probe-plan', type=Path, help='JSON with retained event_id, document_reference and search_text')
             command.add_argument('--require-research', action='store_true', help='Require real caption, page and indexed citation round trips')
+        if name == 'index_text':
+            from .index_cli import arguments
+            arguments(command)
         if name == 'serve':
             command.add_argument('--transport', choices=('stdio', 'http'), default='stdio')
             command.add_argument('--host', default='127.0.0.1', help='HTTP listen address')
@@ -77,6 +80,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     args.data_dir = args.data_dir.expanduser().absolute()
     try:
+        if args.command == 'index-text':
+            from .index_cli import index_text
+            print(json.dumps(index_text(args), indent=2))
+            return 0
         if args.command == 'config':
             print(client_config(args.data_dir, args.client))
             return 0
