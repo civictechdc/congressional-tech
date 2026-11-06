@@ -76,5 +76,28 @@
     "recoveries": [],
     "reviews": [],
     "unreadable": []
+  },
+  "derived_parsers": [
+    "html_metadata"
+  ],
+  "derived_scopes": {
+    "html_metadata": {
+      "captures": {
+        "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures/metadata/00006-01a1adbe-8f3b-72d1-b2a8-d6a598eb6f12.gz.metadata.json",
+        "schema_id": 0,
+        "snapshot": 3719403341459182653,
+        "table_uuid": "01a1a35c-8940-77f2-a48f-c52881d2ccb2"
+      },
+      "versions": {
+        "html": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",
+        "html_metadata": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
+        "json": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
+        "readings": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
+        "sniff": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
+        "xml": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f"
+      },
+      "max_stored_bytes": 67108864,
+      "batch_size": 1
+    }
   }
 }
