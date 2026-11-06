@@ -7,6 +7,10 @@ Origin rules (CORS, cache headers, CSP, and ``?filename=``) are managed declarat
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
+from hashlib import sha256
+import gzip
+import io
 from collections.abc import Callable, Mapping
 import json
 from pathlib import Path
@@ -21,6 +25,9 @@ from congress_api.retention.r2_edge_rules import (
     build_declarative_ruleset_spec,
     evaluate_response_headers,
     load_edge_config,
+    body_integrity_configuration,
+    plan_body_integrity_rule,
+    PUBLIC_HOSTNAME,
 )
 
 
@@ -158,6 +165,60 @@ def verify_live_edge(
     return {"status": "verified", "base_url": base, "checks": checks}
 
 
+class _NoProbeRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self,req,fp,code,msg,headers,newurl):
+        raise ValueError('Integrity probe must not follow a redirect')
+
+
+def verify_body_delivery(*,config=None,repeats=2,timeout=15,http_open=None):
+    """Verify ordinary 200 identity/gzip GETs against the original archived SHA.
+
+    Transport gzip is decoded only when declared by Content-Encoding. No body
+    reconstruction, Range request, alternate object, or integrity bypass is used.
+    Failures are returned as evidence so a before/after run can retain them.
+    """
+    from viewer_publication.constants import USER_AGENT
+    probe=body_integrity_configuration(config)['integrity_probe']
+    if type(repeats) is not int or not 1<=repeats<=3 or not 0<timeout<=30:
+        raise ValueError('Probe requires 1..3 repeats and a timeout up to 30 seconds')
+    url='https://'+PUBLIC_HOSTNAME+probe['path']
+    opener=http_open or urllib.request.build_opener(_NoProbeRedirect()).open
+    checks=[]
+    for iteration in range(repeats):
+      for encoding in ('identity','gzip'):
+        check=dict(at=datetime.now(timezone.utc).isoformat(),iteration=iteration+1,accept_encoding=encoding,url=url)
+        request=urllib.request.Request(url,headers={'User-Agent':USER_AGENT,'Accept-Encoding':encoding},method='GET')
+        try:
+            with opener(request,timeout=timeout) as response:
+                check['http_status']=response.status
+                headers={key.lower():value for key,value in response.headers.items()}
+                check['headers']={key:headers[key] for key in ('content-type','content-encoding','content-length','cache-control',
+                    'etag','cf-ray','cf-cache-status','x-content-type-options','referrer-policy','content-security-policy') if key in headers}
+                if response.status!=200:raise ValueError('Integrity probe requires an ordinary 200 GET')
+                if response.geturl()!=url:raise ValueError('Integrity probe response identifies another URL')
+                length=headers.get('content-length')
+                if length and int(length)>probe['max_bytes']:raise ValueError('Integrity probe wire limit exceeded before read')
+                wire=response.read(probe['max_bytes']+1)
+            if len(wire)>probe['max_bytes']:raise ValueError('Integrity probe wire limit exceeded')
+            check.update(wire_bytes=len(wire),wire_sha256=sha256(wire).hexdigest())
+            transfer=headers.get('content-encoding','identity').strip().lower()
+            if transfer=='gzip':
+                with gzip.GzipFile(fileobj=io.BytesIO(wire)) as stream:decoded=stream.read(probe['max_bytes']+1)
+            elif transfer in ('','identity'):decoded=wire
+            else:raise ValueError('Unsupported Content-Encoding on bounded integrity probe')
+            if len(decoded)>probe['max_bytes']:raise ValueError('Integrity probe decoded limit exceeded')
+            digest=sha256(decoded).hexdigest()
+            check.update(decoded_bytes=len(decoded),decoded_sha256=digest,
+                passed=len(decoded)==probe['decoded_bytes'] and digest==probe['decoded_sha256'])
+            if not check['passed']:check['reason']='Delivered bytes differ from the original archived identity'
+        except (OSError,ValueError,EOFError,urllib.error.HTTPError) as error:
+            check.update(passed=False,reason=str(error)[:500])
+        checks.append(check)
+    return dict(status='verified' if all(check['passed'] for check in checks) else 'failed',
+        expected_decoded_sha256=probe['decoded_sha256'],expected_decoded_bytes=probe['decoded_bytes'],
+        max_bytes=probe['max_bytes'],checks=checks)
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -180,18 +241,31 @@ def main(
     live_p.add_argument("--base-url", default="https://congressional-data.spicygov.ai")
     live_p.add_argument("--pdf-path", help="Optional /bodies/sha256/<xx>/<sha256>.pdf path to probe")
 
+    plan_p=subparsers.add_parser('plan-config',help='Plan only append/PATCH of the owned rule from a successful phase readback; no writes')
+    plan_p.add_argument('--observed',type=Path,required=True,help='Provider readback JSON: {status:200,data:{success:true,result:{...}}}')
+    plan_p.add_argument('--zone-id',required=True)
+    body_p=subparsers.add_parser('verify-body',help='Compare the original failed HTML body by ordinary identity/gzip GET; no writes')
+    body_p.add_argument('--repeats',type=int,default=2)
+    body_p.add_argument('--out',type=Path,help='New JSON evidence path; existing evidence is never overwritten')
     args = parser.parse_args(argv)
     if args.command == "verify-config":
         cfg = load_edge_config(args.config)
         result = validate_edge_config(cfg, terraform_path=args.terraform)
-    else:
+    elif args.command=='verify-live':
         result = verify_live_edge(
             args.base_url,
             pdf_path=args.pdf_path,
             http_probe=http_probe,
         )
+    elif args.command=='plan-config':
+        result=plan_body_integrity_rule(json.loads(args.observed.read_text()),args.zone_id)
+    else:
+        if args.out and args.out.exists():raise ValueError('Preserve existing integrity evidence; choose a new output path')
+        result=verify_body_delivery(repeats=args.repeats)
+        if args.out:
+            with args.out.open('x') as stream:json.dump(result,stream,indent=2);stream.write('\n')
     sys.stdout.write(json.dumps(result, indent=2) + "\n")
-    return 0
+    return 1 if result.get('status')=='failed' else 0
 
 
 if __name__ == "__main__":
