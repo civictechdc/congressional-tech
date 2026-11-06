@@ -539,11 +539,13 @@ Incoming: `document_bills`, `meeting_bills`, `bill_action_bill`, `roll_call_bill
 
 ## `nominations` — Referenced nominations and embedded legislative facts
 
-One nomination including its part when present; bounded by upstream retained data.
+One nomination including its part when present, referenced by archive documents or meetings; bounded by upstream retained data.
 
 Identity: `nomination_id` (primary_key; published identifier).
 
 Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
+
+Coverage: Local nomination profiles include only nominations referenced by published archive documents or meetings; other retained upstream nominations are outside this collection.
 
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
@@ -1345,7 +1347,7 @@ These are upstream source relations. A release names a relation’s generation a
 | `member_votes` | `roll-call-votes/member_votes` | `vote_id, member_key` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id`, `members.bioguide_id` | One member ballot | This release publishes all selected upstream rows in member_votes.parquet when that local table is available; generation metadata alone does not establish local availability. |
 | `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | This release publishes all selected upstream rows in roll_call_votes.parquet when that local table is available; generation metadata alone does not establish local availability. |
 | `amendments` | `amendments/amendments` | `amendment_id` | `bills.amendments[].amendment_id` | One floor amendment | Coverage is limited by upstream; committee_records holds different, committee-stage documents. |
-| `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | Coverage is limited by upstream; local nominations cover what that generation holds. |
+| `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | This pin describes the retained upstream source. The local nominations table includes only nominations referenced by published archive documents or meetings, so upstream rows can lack a local profile. |
 | `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Schema supports 113th–119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound. |
 
 ## Query recipes (DuckDB)
@@ -1674,6 +1676,10 @@ SELECT * FROM nominations WHERE (? IS NULL OR received>=CAST(? AS DATE)) AND (? 
 Used by run_research_query with additional exact association filters and release-bound paging.
 
 since inclusive, until exclusive; null bounds are open. Missing values remain unknown.
+
+Reads only local nomination profiles referenced by archive documents or meetings. An empty result does not establish that the Senate has no pending nominations.
+
+Pending means a known latest action without supported confirmed, withdrawn, returned or rejected wording in the selected snapshot. It does not establish present-day status; missing latest actions are unknown and excluded.
 
 ### `research_hearings_by_committee` — Hearings by committee
 

@@ -1644,10 +1644,11 @@
         }
       ],
       "gaps": [
-        "Nominations cover the 119th Congress only until spicy-regs backfills"
+        "Nominations cover the 119th Congress only until spicy-regs backfills",
+        "Local nomination profiles include only nominations referenced by published archive documents or meetings; other retained upstream nominations are outside this collection"
       ],
       "purpose": "Referenced nominations and embedded legislative facts",
-      "row_meaning": "One nomination including its part when present; bounded by upstream retained data",
+      "row_meaning": "One nomination including its part when present, referenced by archive documents or meetings; bounded by upstream retained data",
       "identity": {
         "fields": [
           "nomination_id"
@@ -4597,7 +4598,9 @@
       "result_row": "One published nominations row",
       "notes": [
         "Used by run_research_query with additional exact association filters and release-bound paging.",
-        "since inclusive, until exclusive; null bounds are open. Missing values remain unknown."
+        "since inclusive, until exclusive; null bounds are open. Missing values remain unknown.",
+        "Reads only local nomination profiles referenced by archive documents or meetings. An empty result does not establish that the Senate has no pending nominations.",
+        "Pending means a known latest action without supported confirmed, withdrawn, returned or rejected wording in the selected snapshot. It does not establish present-day status; missing latest actions are unknown and excluded."
       ]
     },
     {
@@ -4765,7 +4768,7 @@
       ],
       "joins": [],
       "row_meaning": "One nomination part",
-      "limits": "Coverage is limited by upstream; local nominations cover what that generation holds."
+      "limits": "This pin describes the retained upstream source. The local nominations table includes only nominations referenced by published archive documents or meetings, so upstream rows can lack a local profile."
     },
     {
       "id": "committee_assignments",
