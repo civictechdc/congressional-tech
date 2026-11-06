@@ -51,7 +51,7 @@ def extraction_definition():
     caption=dict(plain,units=hashes(index_builder,('_caption_units',)),caption_reader=sha256(Path(caption_reader.__file__).read_bytes()).hexdigest())
     definitions={key:sha256(encoded(value)).hexdigest() for key,value in
                  dict(document=plain,text=plain,html=html,xml=html,pdf=pdf,caption=caption,playlist=caption).items()}
-    association=hashes(index_builder,('seed','_seed_captions','_source','_key','qualify_caption_sources','coverage','_prune_retired_text','_restore_historical','build','source_data_id'))
+    association=hashes(index_builder,('seed','_seed_captions','_source','_key','qualify_caption_sources','_next_body_query','_exclude_ineligible_pending','coverage','_prune_retired_text','_restore_historical','build','source_data_id'))
     layout={name:sha256(inspect.getsource(value).encode()).hexdigest() for name,value in
             [('initialize',initialize),('inflate',inflate),('consume',index_builder._consume)]}
     consumer={name:sha256(inspect.getsource(value).encode()).hexdigest() for name,value in
@@ -113,6 +113,11 @@ def initialize(db, layout_definition=None):
         context TEXT NOT NULL,seen TEXT NOT NULL,reason TEXT);
       CREATE INDEX IF NOT EXISTS source_bodies ON sources(body_key);
       CREATE INDEX IF NOT EXISTS source_generation ON sources(seen);
+      CREATE INDEX IF NOT EXISTS source_body_generation_order ON sources(body_key,seen,source_key);
+      CREATE INDEX IF NOT EXISTS caption_root_generation ON sources(seen,json_extract(context,'$.root_key'))
+        WHERE kind='caption' AND json_extract(context,'$.resource_ordinal')=0;
+      CREATE INDEX IF NOT EXISTS pending_body_order ON bodies((json_extract(target,'$.unit_kind')='playlist') DESC,body_key)
+        WHERE state='pending';
       CREATE INDEX IF NOT EXISTS source_caption_identity ON sources(json_extract(context,'$.reference.source_id'));
       CREATE INDEX IF NOT EXISTS passage_bodies ON passages(body_key);
       CREATE TABLE IF NOT EXISTS changes(source_data_id TEXT,source_key TEXT,disposition TEXT,prior_body_key TEXT,body_key TEXT,
@@ -296,7 +301,8 @@ class TextIndex:
             complete=coverage['archive_state'] in ('complete_retained_track','complete_retained_resources')
             result=dict(release_id=target['release_id'],event_id=reference.get('event_id'),source=target,rows=[],offset=query.offset,
                 has_more=False,missing_resources=[],state='available' if complete else 'partial',reader_version=CAPTION_READER_VERSION,
-                coverage=('complete_snapshot' if coverage.get('publisher_snapshot')!='live_or_open' else 'partial_live_snapshot') if complete else 'partial',
+                coverage=('retained_file' if not context.get('playlist') else
+                          ('complete_snapshot' if coverage.get('publisher_snapshot')!='live_or_open' else 'partial_live_snapshot')) if complete else 'partial',
                 caption_resource_coverage=coverage,reading_origin='accepted immutable corpus text index',raw_bytes_fetched=0)
             resources=db.execute('SELECT s.context,s.reason,s.body_key,b.state,b.extra FROM sources s LEFT JOIN bodies b USING(body_key) WHERE '+
                 ' AND '.join(conditions)+" AND json_extract(s.context,'$.resource_ordinal')>=? ORDER BY json_extract(s.context,'$.resource_ordinal') LIMIT ?",

@@ -300,10 +300,41 @@ def coverage(db, identity):
         speaker_attribution='Literal caption voice labels only; document witness links describe source association.')
 
 
-def qualify_caption_sources(db, identity):
+def _next_body_query(identity,only_sources=None):
+    """Use ordered eligible work, or source-PK lookups for a bounded pilot set."""
+    order="json_extract(b.target,'$.unit_kind')='playlist' DESC,b.body_key"
+    if only_sources:
+        # CROSS JOIN fixes the small source-key set as the driving input. A shared
+        # body may occur more than once; LIMIT 1 still selects the same body key.
+        values=','.join('(?)' for _ in only_sources)
+        sql=f"""WITH selected_keys(source_key) AS (VALUES {values})
+          SELECT b.* FROM selected_keys k CROSS JOIN sources s CROSS JOIN bodies b
+          WHERE s.source_key=k.source_key AND s.seen=? AND s.reason IS NULL
+            AND b.body_key=s.body_key AND b.state='pending' ORDER BY {order} LIMIT 1"""
+        return sql,[*only_sources,identity]
+    return f"""SELECT b.* FROM bodies b WHERE b.state='pending' AND EXISTS
+      (SELECT 1 FROM sources s WHERE s.body_key=b.body_key AND s.seen=? AND s.reason IS NULL)
+      ORDER BY {order} LIMIT 1""",[identity]
+
+
+def _exclude_ineligible_pending(db,identity):
+    # Membership is reversible. Root qualification reenrolls newly eligible child
+    # keys; source pending/unavailable reasons continue to govern completion.
+    with db:
+        db.execute("""UPDATE bodies SET state='excluded: no eligible source'
+          WHERE state='pending' AND NOT EXISTS (SELECT 1 FROM sources s
+          WHERE s.body_key=bodies.body_key AND s.seen=? AND s.reason IS NULL)""",[identity])
+
+
+def qualify_caption_sources(db, identity, root_key=None):
     """Judge each declared relationship separately from reusable body extraction."""
-    roots = db.execute("SELECT source_key,context,reason,body_key FROM sources WHERE kind='caption' AND seen=? AND json_extract(context,'$.resource_ordinal')=0", [identity]).fetchall()
-    done = set()
+    conditions="kind='caption' AND seen=? AND json_extract(context,'$.resource_ordinal')=0"
+    arguments=[identity]
+    if root_key is not None:
+        conditions+=" AND json_extract(context,'$.root_key')=?";arguments.append(root_key)
+    roots=db.execute('SELECT source_key,context,reason,body_key FROM sources WHERE '+conditions,arguments).fetchall()
+    done=set();affected_bodies=set()
+    waiting_states={'pending','retryable','refused','excluded: no eligible source'}
     with db:
       for source in roots:
         context = json.loads(source['context']); source_id = context['reference']['source_id']
@@ -321,35 +352,36 @@ def qualify_caption_sources(db, identity):
             state = root['state'] if root else 'unavailable'
             result['retained_resources'] = int(state in ('indexed', 'empty'))
             result['indexed_cues'] = root['units'] if root else 0
-            result['archive_state'] = 'complete_retained_track' if state in ('indexed','empty') else ('pending' if state in ('pending','retryable') else 'unavailable')
+            result['archive_state'] = 'complete_retained_track' if state in ('indexed','empty') else ('pending' if state in waiting_states else 'unavailable')
             result['unreadable_resources'] = int(state == 'unreadable')
-            result['pending_resources'] = int(state in ('pending','retryable'))
+            result['pending_resources'] = int(state in waiting_states)
         else:
             uris = extra.get('uris', [])
             result['declared_resources'] = len(uris)
-            rows = db.execute('''SELECT s.source_key,s.context,s.reason,b.state,b.units FROM sources s LEFT JOIN bodies b USING(body_key)
+            rows = db.execute('''SELECT s.source_key,s.context,s.reason,s.body_key,b.state,b.units FROM sources s LEFT JOIN bodies b USING(body_key)
               WHERE s.seen=? AND json_extract(s.context,'$.reference.source_id')=? AND json_extract(s.context,'$.resource_ordinal')>0''', [identity, source_id]).fetchall()
             ordinals = {json.loads(row['context'])['resource_ordinal'] for row in rows}
             valid_map = bool(root and root['state']=='manifest' and ordinals==set(range(1,len(uris)+1)))
             seen_ordinals = set()
             for row in rows:
                 child = json.loads(row['context']); ordinal = child['resource_ordinal']
+                if row['body_key'] is not None:affected_bodies.add(row['body_key'])
                 original_missing = row['reason'] == 'unavailable: caption resource not retained'
                 reason = row['reason'] if original_missing else None
                 if not original_missing:
-                    if root is None or root['state'] in ('pending','retryable'):
+                    if root is None or root['state'] in waiting_states:
                         reason = 'pending: playlist root verification'
                     elif root['state'] != 'manifest':
                         reason = 'unavailable: verified playlist root is unsupported or unreadable'
                     elif not valid_map or not 1<=ordinal<=len(uris) or uris[ordinal-1]!=child.get('declared_uri'):
                         reason = 'unavailable: verified playlist declaration mismatch'
-                db.execute('UPDATE sources SET reason=? WHERE source_key=?', [reason,row['source_key']])
+                db.execute('UPDATE sources SET reason=? WHERE source_key=? AND reason IS NOT ?', [reason,row['source_key'],reason])
                 if ordinal in seen_ordinals:
                     continue
                 seen_ordinals.add(ordinal)
                 result['missing_resources'] += int(original_missing)
                 result['declaration_mismatches'] += int(reason is not None and 'mismatch' in reason)
-                result['pending_resources'] += int((reason or '').startswith('pending:') or (reason is None and row['state'] in ('pending','retryable')))
+                result['pending_resources'] += int((reason or '').startswith('pending:') or (reason is None and row['state'] in waiting_states))
                 result['unreadable_resources'] += int(row['state']=='unreadable')
                 result['retained_resources'] += int(reason is None and row['state'] in ('indexed','empty'))
                 if reason is None and row['state']=='indexed':
@@ -361,12 +393,18 @@ def qualify_caption_sources(db, identity):
                     result['archive_state']='pending'
                 else:
                     result['archive_state']='complete_retained_resources'
-            elif root and root['state'] in ('pending','retryable') and not source['reason']:
+            elif root and root['state'] in waiting_states and not source['reason']:
                 result['archive_state']='pending'
             db.execute('INSERT OR REPLACE INTO root_coverage VALUES(?,?,?)', [source_id,identity,encoded(result).decode()])
             continue
         db.execute('INSERT OR REPLACE INTO root_coverage VALUES(?,?,?)', [source_id,identity,encoded(result).decode()])
-      db.execute("UPDATE bodies SET state='pending' WHERE state='excluded: no eligible source' AND body_key IN (SELECT body_key FROM sources WHERE seen=? AND reason IS NULL)",[identity])
+      if root_key is None:
+          db.execute("""UPDATE bodies SET state='pending' WHERE state='excluded: no eligible source'
+            AND EXISTS (SELECT 1 FROM sources s WHERE s.body_key=bodies.body_key AND s.seen=? AND s.reason IS NULL)""",[identity])
+      else:
+          db.executemany("""UPDATE bodies SET state='pending' WHERE body_key=? AND state='excluded: no eligible source'
+            AND EXISTS (SELECT 1 FROM sources s WHERE s.body_key=bodies.body_key AND s.seen=? AND s.reason IS NULL)""",
+            [(body,identity) for body in affected_bodies])
 
 
 def _prune_retired_text(db, identity):
@@ -472,18 +510,16 @@ def build(selection, work, output=None, *, expected_definition=None, limit=None,
                 with db:
                     db.execute("UPDATE bodies SET state='pending' WHERE state='unreadable' AND body_key IN (SELECT body_key FROM sources WHERE seen=?)", [identity])
             processed = reused = restored = 0
-            selection_clause = ' AND source_key IN (' + ','.join('?' for _ in only_sources) + ')' if only_sources else ''
+            _exclude_ineligible_pending(db,identity)
             while limit is None or processed < limit:
-                row = db.execute('''SELECT b.* FROM bodies b WHERE b.state='pending' AND b.body_key IN
-                  (SELECT body_key FROM sources WHERE seen=? AND reason IS NULL''' + selection_clause + ''')
-                  ORDER BY json_extract(target,'$.unit_kind')='playlist' DESC,b.body_key LIMIT 1''', [identity, *(only_sources or [])]).fetchone()
+                row=db.execute(*_next_body_query(identity,only_sources)).fetchone()
                 if row is None:
                     break
                 target = json.loads(row['target'])
                 if _restore_historical(db,row['body_key'],history,work):
                     restored+=1;processed+=1
                     if target['unit_kind']=='playlist':
-                        qualify_caption_sources(db,identity)
+                        qualify_caption_sources(db,identity,row['body_key'])
                     continue
                 body_started = time.monotonic()
                 prior_bytes = (work / 'work.sqlite').stat().st_size
@@ -573,7 +609,7 @@ def build(selection, work, output=None, *, expected_definition=None, limit=None,
                     completed.unlink(missing_ok=True)
                 processed += 1
                 if target['unit_kind']=='playlist':
-                    qualify_caption_sources(db, identity)
+                    qualify_caption_sources(db,identity,row['body_key'])
             qualify_caption_sources(db, identity)
             pending = db.execute("SELECT count(*) FROM bodies WHERE state IN ('pending','retryable','refused') AND body_key IN (SELECT body_key FROM sources WHERE seen=? AND reason IS NULL)", [identity]).fetchone()[0]
             pending += db.execute("SELECT count(*) FROM sources WHERE seen=? AND reason LIKE 'pending:%'", [identity]).fetchone()[0]

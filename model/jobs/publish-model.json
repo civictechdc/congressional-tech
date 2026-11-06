@@ -104,7 +104,7 @@
     "python": "../../apps/explorer_mcp/.venv/bin/python",
     "work": "../../.cache/archive-release/text-index/work",
     "archive_origin": "https://congressional-data.spicygov.ai",
-    "definition": "72a3aefd875b2fd360adf57ec0972297c15ac3e1d7ab7a468bcdebdb50d3247e",
+    "definition": "c4b295a9b95976a6fe8e0ee6976200e5949b3a083de7155210e59ae51e0a1c74",
     "body_timeout": 600,
     "memory_mb": 768,
     "large_memory_mb": 4096,

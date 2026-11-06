@@ -502,6 +502,7 @@ def test_retained_caption_page_preserves_cues_cursor_and_zero_raw_reads(tmp_path
         with closing(Reader(selected)) as reader:
             query=TranscriptQuery(event_id=118001,kind='captions',source_id=identity,limit=1)
             first=reader.indexed_caption_text(dict(source=target,query=query.model_dump()))
+            assert first['coverage']=='retained_file'
             assert first['rows'][0]['identifier']=='first' and first['rows'][0]['settings']=='align:start'
             assert first['rows'][0]['mpeg_start_seconds']==11 and first['has_more']
             next_query=query.model_copy(update=dict(cursor=first['next_cursor']))
