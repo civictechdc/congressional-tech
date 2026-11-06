@@ -1,0 +1,20 @@
+[
+  {
+    "source": "house_xml",
+    "receipt_key": "receipts/house/witness-xml/undated/assemble-20260930.jsonl.gz",
+    "receipt_line": 1,
+    "capture_index": 0,
+    "run_id": "source-models/manual-house-pdf/house-repeated-documents.normalized.json",
+    "reason": "manual review/fixture derivative; byte custody does not establish publisher observation authority",
+    "evidence": "ct-x78c: receipt embeds source_bodies from manual-house-pdf; body 69547a916ec086bb82bb6d504c5400381051f9c8d508634b37904fbc3eb7064e is byte-identical to packages/congress_api/tests/fixtures/meeting_inventory/house-repeated-documents.xml. This excludes the identified receipt context regardless of digest or import date."
+  },
+  {
+    "source": "house_xml",
+    "receipt_key": "receipts/house/witness-xml/undated/assemble-20260930.jsonl.gz",
+    "receipt_line": 2,
+    "capture_index": 0,
+    "run_id": "source-models/manual-house-pdf/house-repeated-documents.model.json",
+    "reason": "manual review/fixture derivative; byte custody does not establish publisher observation authority",
+    "evidence": "ct-x78c: receipt embeds source_bodies from manual-house-pdf; body 69547a916ec086bb82bb6d504c5400381051f9c8d508634b37904fbc3eb7064e is byte-identical to packages/congress_api/tests/fixtures/meeting_inventory/house-repeated-documents.xml. This excludes the identified receipt context regardless of digest or import date."
+  }
+]

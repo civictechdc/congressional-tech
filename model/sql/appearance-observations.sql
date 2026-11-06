@@ -2,92 +2,22 @@
 -- list. appearance_records_resolved ranks these narrow rows and re-reads the lists of the selected
 -- ones by (record_sha_hex,source), the selected records' key. Inlined, this chain (and its captures
 -- join) was planned once per reference: six copies.
-WITH candidate_appearance_shas AS (
- -- The raw binary digest, so captures probes this small candidate set instead of being the hash
- -- build (2.07M rows, 1.33 GB) behind an expression key (AGENTS.md).
- SELECT DISTINCT arrow_cast(decode(record_sha_hex,'hex'),'FixedSizeBinary(32)') AS sha256
- FROM selected_appearance_records
- WHERE record_sha_hex IS NOT NULL
-), capture_contexts AS (
- SELECT
-  encode(c.sha256,'hex') AS record_sha_hex,
-  CASE
-   WHEN coalesce(c.sniffed_format,'') NOT IN ('html','pdf','zip','vtt','m3u8')
-    AND lower(coalesce(c.media_type,'')) NOT LIKE '%html%'
-    AND lower(coalesce(c.url,c.requested_url,'')) NOT LIKE '%.html%'
-    AND (c.family='congress/meetings'
-     OR regexp_like(coalesce(c.url,c.requested_url,''),'(?i)(?:api[.]|www[.])?congress[.]gov/(?:v3/)?committee-meeting/[0-9]+/(?:house|senate|joint|nochamber)/[0-9]+')
-     OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%api.congress.gov%/committee-meeting%'
-     OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%congress.gov/committee-meeting%') THEN 'congress_gov'
-   WHEN (upper(coalesce(c.url,'')) LIKE '%CHRG%'
-     OR upper(coalesce(c.requested_url,'')) LIKE '%CHRG%'
-     OR upper(coalesce(c.context_url,'')) LIKE '%CHRG%'
-     OR upper(coalesce(c.member_path,'')) LIKE '%CHRG%')
-    AND (c.family='govinfo/mods'
-     OR ((lower(coalesce(c.url,'')) LIKE '%mods%'
-       OR lower(coalesce(c.requested_url,'')) LIKE '%mods%'
-       OR lower(coalesce(c.context_url,'')) LIKE '%mods%'
-       OR lower(coalesce(c.member_path,'')) LIKE '%mods%')
-      AND (coalesce(c.sniffed_format,'')='xml'
-       OR lower(coalesce(c.media_type,'')) LIKE '%xml%'
-       OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%.xml%'
-       OR lower(coalesce(c.context_url,'')) LIKE '%/mods%'
-       OR lower(coalesce(c.member_path,'')) LIKE '%.xml%'))) THEN 'mods'
-   WHEN c.member_path IS NULL
-    AND coalesce(c.family,'')<>'documents'
-    AND coalesce(c.sniffed_format,'') NOT IN ('pdf','xml','json','zip','vtt','m3u8')
-    AND lower(coalesce(c.media_type,'')) NOT LIKE '%pdf%'
-    AND lower(coalesce(c.url,c.requested_url,'')) NOT LIKE '%.pdf%'
-    AND (c.family IN ('senate/hearings','senate/pages','senate/hearing-page')
-     OR (lower(coalesce(c.url,c.requested_url,'')) LIKE '%.senate.gov%'
-      AND (lower(coalesce(c.url,c.requested_url,'')) LIKE '%hearing%'
-       OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%meeting%'
-       OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%business%'))) THEN 'senate_page'
-   ELSE 'house_xml'
-  END AS source,
-  coalesce(c.url,c.requested_url,c.context_url) AS source_url,
-  c.member_path,
-  max(arrow_cast(try_cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at
- FROM captures c
- JOIN candidate_appearance_shas cas ON c.sha256=cas.sha256
- WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
-  AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
- GROUP BY c.sha256,
-  CASE
-   WHEN coalesce(c.sniffed_format,'') NOT IN ('html','pdf','zip','vtt','m3u8')
-    AND lower(coalesce(c.media_type,'')) NOT LIKE '%html%'
-    AND lower(coalesce(c.url,c.requested_url,'')) NOT LIKE '%.html%'
-    AND (c.family='congress/meetings'
-     OR regexp_like(coalesce(c.url,c.requested_url,''),'(?i)(?:api[.]|www[.])?congress[.]gov/(?:v3/)?committee-meeting/[0-9]+/(?:house|senate|joint|nochamber)/[0-9]+')
-     OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%api.congress.gov%/committee-meeting%'
-     OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%congress.gov/committee-meeting%') THEN 'congress_gov'
-   WHEN (upper(coalesce(c.url,'')) LIKE '%CHRG%'
-     OR upper(coalesce(c.requested_url,'')) LIKE '%CHRG%'
-     OR upper(coalesce(c.context_url,'')) LIKE '%CHRG%'
-     OR upper(coalesce(c.member_path,'')) LIKE '%CHRG%')
-    AND (c.family='govinfo/mods'
-     OR ((lower(coalesce(c.url,'')) LIKE '%mods%'
-       OR lower(coalesce(c.requested_url,'')) LIKE '%mods%'
-       OR lower(coalesce(c.context_url,'')) LIKE '%mods%'
-       OR lower(coalesce(c.member_path,'')) LIKE '%mods%')
-      AND (coalesce(c.sniffed_format,'')='xml'
-       OR lower(coalesce(c.media_type,'')) LIKE '%xml%'
-       OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%.xml%'
-       OR lower(coalesce(c.context_url,'')) LIKE '%/mods%'
-       OR lower(coalesce(c.member_path,'')) LIKE '%.xml%'))) THEN 'mods'
-   WHEN c.member_path IS NULL
-    AND coalesce(c.family,'')<>'documents'
-    AND coalesce(c.sniffed_format,'') NOT IN ('pdf','xml','json','zip','vtt','m3u8')
-    AND lower(coalesce(c.media_type,'')) NOT LIKE '%pdf%'
-    AND lower(coalesce(c.url,c.requested_url,'')) NOT LIKE '%.pdf%'
-    AND (c.family IN ('senate/hearings','senate/pages','senate/hearing-page')
-     OR (lower(coalesce(c.url,c.requested_url,'')) LIKE '%.senate.gov%'
-      AND (lower(coalesce(c.url,c.requested_url,'')) LIKE '%hearing%'
-       OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%meeting%'
-       OR lower(coalesce(c.url,c.requested_url,'')) LIKE '%business%'))) THEN 'senate_page'
-   ELSE 'house_xml'
-  END,
-  coalesce(c.url,c.requested_url,c.context_url),c.member_path
+WITH capture_contexts AS (
+ SELECT record_sha_hex,source,source_url,member_path,
+  max(arrow_cast(try_cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at
+ FROM appearance_capture_contexts
+ WHERE exclusion_reason IS NULL AND mode='fetch' AND complete AND outcome IN ('stored','unchanged')
+  AND http_status BETWEEN 200 AND 299
+ GROUP BY record_sha_hex,source,source_url,member_path
+), body_eligibility AS (
+ -- Preserve ordinary context-free fallback. When reviewed exclusions exist for these bytes,
+ -- only a positive nonexcluded fetch or retained-file observation restores roster authority;
+ -- failed captures and archive members cannot make an excluded manual copy authoritative.
+ SELECT record_sha_hex,source,
+  NOT bool_or(exclusion_reason IS NOT NULL)
+   OR bool_or(exclusion_reason IS NULL AND source_qualified) AS eligible,
+  min(exclusion_reason) AS exclusion_reason
+ FROM appearance_capture_contexts GROUP BY record_sha_hex,source
 ), meeting_updates AS (
  SELECT record_sha_hex,
   max(arrow_cast(try_cast(m['updated'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS updated
@@ -110,12 +40,11 @@ WITH candidate_appearance_shas AS (
  -- Retained lists name their event only in the receipt's file path; those rows are not good fetches,
  -- so every capture row of the body counts (captures.original_path, relative paths only).
  SELECT h.record_sha_hex,try_cast((regexp_match(c.original_path,'(?i)(?:^|/)wlist/([0-9]+)[.]xml$'))[1] AS BIGINT)
- FROM captures c
- -- Join on the raw binary digest so the small candidate set prunes the captures scan (AGENTS.md).
- JOIN (SELECT DISTINCT record_sha_hex,arrow_cast(decode(record_sha_hex,'hex'),'FixedSizeBinary(32)') AS sha256
-  FROM selected_appearance_records
-  WHERE source='house_xml' AND status='completed' AND event_id IS NULL) h ON c.sha256=h.sha256
- WHERE c.original_path IS NOT NULL
+ FROM appearance_capture_contexts c
+ JOIN (SELECT record_sha_hex FROM selected_appearance_records
+  WHERE source='house_xml' AND status='completed' AND event_id IS NULL) h
+  ON c.record_sha_hex=h.record_sha_hex
+ WHERE c.original_path IS NOT NULL AND c.exclusion_reason IS NULL
 ), list_events AS (
  -- One event only: links or paths that disagree state no event.
  SELECT record_sha_hex,min(event_id) AS event_id FROM stated_list_events WHERE event_id IS NOT NULL
@@ -128,6 +57,8 @@ WITH candidate_appearance_shas AS (
   r.error_type,
   r.source,
   ms.priority,
+  coalesce(be.eligible,true) AS observation_eligible,
+  CASE WHEN NOT coalesce(be.eligible,true) THEN be.exclusion_reason END AS observation_exclusion_reason,
   u.updated,
   cc.retrieved_at,
   coalesce(cc.source_url,r.context_url) AS source_url,
@@ -166,6 +97,7 @@ WITH candidate_appearance_shas AS (
   END AS collection_state
  FROM selected_appearance_records r
  JOIN meeting_sources ms ON ms.kind='appearance' AND r.source=ms.source
+ LEFT JOIN body_eligibility be ON r.record_sha_hex=be.record_sha_hex AND r.source=be.source
  LEFT JOIN capture_contexts cc ON r.record_sha_hex=cc.record_sha_hex AND r.source=cc.source
  LEFT JOIN meeting_updates u ON r.record_sha_hex=u.record_sha_hex
  LEFT JOIN list_events le ON r.source='house_xml' AND r.record_sha_hex=le.record_sha_hex

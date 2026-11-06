@@ -1,0 +1,12 @@
+{
+  "body_sha256": "ba982aafcdb8d02568e8b44f46bfdabd6e99226a2e61fd4c909612404821e55a",
+  "decoded_bytes": 25862,
+  "receipt_key": "receipts/house/witness-xml/undated/assemble-20260930-completion.jsonl.gz",
+  "receipt_line": 59,
+  "capture_index": 0,
+  "source_file": "external-sources/hearing-text/docs_house_xml/wlist/100876.xml",
+  "resolution": "digest_verified",
+  "routing_receipt": "receipts/house/witness-xml/undated/assemble-20260930-routing.jsonl.gz:245",
+  "acquired_at": null,
+  "evidence": "ct-x78c event-100876-receipt-provenance-summary.json; prior_observation_digest_match=true; fixture bytes copied without modification from retained body"
+}

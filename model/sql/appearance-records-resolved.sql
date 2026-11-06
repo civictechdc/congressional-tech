@@ -4,7 +4,7 @@ WITH ranked_context_observations AS (
    PARTITION BY occasion,source,context_key,coalesce(package_id,'')
    ORDER BY (effective_state IN ('present','empty')) DESC,(effective_state='absent') ASC,updated DESC NULLS LAST,retrieved_at DESC NULLS LAST,(effective_state='present') DESC,record_sha_hex ASC
   ) AS ctx_rn
- FROM appearance_observations
+ FROM appearance_observations WHERE observation_eligible
 ), current_context_observations AS (
  SELECT *
  FROM ranked_context_observations

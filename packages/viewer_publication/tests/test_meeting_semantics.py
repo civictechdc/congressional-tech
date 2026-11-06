@@ -14,7 +14,7 @@ import pytest
 from congress_api.parsers.meeting_facts import stated_facts
 from congress_api.retention.provenance import json_input, list_of, parquet_output, run_job, struct
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_model import witness_key_steps
+from viewer_publication.archive_model import REGISTRIES, witness_key_steps
 from viewer_publication.meeting_detail_observations import EMPTY_OBSERVATIONS
 
 ROOT = Path(__file__).parents[3]
@@ -217,7 +217,9 @@ CAPTURES = ("SELECT cast(NULL AS VARCHAR) AS mode,cast(NULL AS BOOLEAN) AS compl
             "cast(NULL AS INT) AS http_status,arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS family,"
             "cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS requested_url,cast(NULL AS VARCHAR) AS context_url,"
             "cast(NULL AS VARCHAR) AS member_path,cast(NULL AS VARCHAR) AS sniffed_format,cast(NULL AS VARCHAR) AS media_type,"
-            "cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS original_path WHERE false")
+            "cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS original_path,"
+            "cast(NULL AS VARCHAR) AS receipt_key,cast(NULL AS BIGINT) AS receipt_line,"
+            "cast(NULL AS BIGINT) AS capture_index,cast(NULL AS VARCHAR) AS run_id,cast(NULL AS VARCHAR) AS fidelity WHERE false")
 
 
 def witness(name, links=(), kind=None):
@@ -243,13 +245,20 @@ def facts(named=(), held=(DAY,), title=TITLE):
     return dict(named_meetings=list(named), held_dates=list(held), title=title)
 
 
-def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False, print_links=False, capture_contexts=()):
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False, print_links=False, capture_contexts=(), capture_rows=(), details=False, observation_exclusions=None):
     """Witness rows per name, from the maintained package-link and appearance SQL; with keys, the
     published rows and witness_key_map."""
     import json
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     ms_rows = [r for r in json.loads((ROOT / 'model/registries/meeting-sources.json').read_text()) if r['kind'] == 'appearance']
     inputs = [
+        json_input(tmp_path, 'appearance_observation_exclusions',
+                   json.loads((ROOT / 'model/registries/appearance-observation-exclusions.json').read_text()) if observation_exclusions is None else observation_exclusions,
+                   **REGISTRIES['appearance_observation_exclusions']),
+        json_input(tmp_path, 'capture_inputs', list(capture_rows), mode='Utf8',complete='Boolean',outcome='Utf8',
+                   http_status='Int32',sha_hex='Utf8',family='Utf8',url='Utf8',requested_url='Utf8',context_url='Utf8',
+                   member_path='Utf8',sniffed_format='Utf8',media_type='Utf8',retrieved_at='Utf8',original_path='Utf8',
+                   receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',run_id='Utf8',fidelity='Utf8'),
         json_input(tmp_path, 'appearance_records_input', records, record_sha_hex='Utf8', parser_version='Utf8', status='Utf8',
                    error_type='Utf8', source='Utf8', event_id='Int64', package_id='Utf8', declared_base='Utf8',
                    collection_state='Utf8', context_url='Utf8', appearances=list_of(struct(**APPEARANCE)), created='Utf8'),
@@ -282,15 +291,21 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
                  f"arrow_cast(decode('{sha}','hex'),'FixedSizeBinary(32)') AS sha256,'house/witness-xml' AS family,cast(NULL AS VARCHAR) AS url,"
                  f"cast(NULL AS VARCHAR) AS requested_url,cast(NULL AS VARCHAR) AS context_url,cast(NULL AS VARCHAR) AS member_path,"
                  f"cast(NULL AS VARCHAR) AS sniffed_format,cast(NULL AS VARCHAR) AS media_type,cast(NULL AS VARCHAR) AS retrieved_at,"
-                 f"'{path}' AS original_path" for sha, path in paths) + ''.join(
+                 f"'{path}' AS original_path,cast(NULL AS VARCHAR) AS receipt_key,cast(NULL AS BIGINT) AS receipt_line,"
+                 "cast(NULL AS BIGINT) AS capture_index,cast(NULL AS VARCHAR) AS run_id,cast(NULL AS VARCHAR) AS fidelity" for sha, path in paths) + ''.join(
                  f" UNION ALL SELECT 'fetch' AS mode,true AS complete,'stored' AS outcome,cast(200 AS INT) AS http_status,"
                  f"{sha} AS sha256,'govinfo/mods' AS family,{text(url)} AS url,{text(url)} AS requested_url,"
                  f"cast(NULL AS VARCHAR) AS context_url,{text(member_path)} AS member_path,'xml' AS sniffed_format,"
-                 f"'application/xml' AS media_type,'2026-10-31' AS retrieved_at,cast(NULL AS VARCHAR) AS original_path"
-                 for sha, url, member_path in capture_contexts), materialize=True),
+                 f"'application/xml' AS media_type,'2026-10-31' AS retrieved_at,cast(NULL AS VARCHAR) AS original_path,"
+                 "cast(NULL AS VARCHAR) AS receipt_key,cast(NULL AS BIGINT) AS receipt_line,"
+                 "cast(NULL AS BIGINT) AS capture_index,cast(NULL AS VARCHAR) AS run_id,cast(NULL AS VARCHAR) AS fidelity"
+                 for sha, url, member_path in capture_contexts) + " UNION ALL SELECT mode,complete,outcome,http_status,"
+                 "arrow_cast(decode(sha_hex,'hex'),'FixedSizeBinary(32)'),family,url,requested_url,context_url,member_path,"
+                 "sniffed_format,media_type,retrieved_at,original_path,receipt_key,receipt_line,capture_index,run_id,fidelity FROM capture_inputs", materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
              *senate_step,
+             dict(name='appearance_capture_contexts', sql=sql('appearance-capture-contexts'), materialize=True),
              dict(name='appearance_observations', sql=sql('appearance-observations'), materialize=True),
              dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True),
              dict(name='witness_precedence', sql=sql('witness-precedence'), materialize=True)]
@@ -303,9 +318,15 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
     queries = [dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,r.source_locator,s.name AS superseded_by FROM appearance_records_resolved r
             LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
             LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')]
+    if details:
+        queries += [dict(name='resolved', sql='SELECT * FROM appearance_records_resolved ORDER BY ordinal'),
+                    dict(name='observations', sql='SELECT * FROM appearance_observations ORDER BY record_sha_hex'),
+                    dict(name='capture_contexts', sql='SELECT * FROM appearance_capture_contexts ORDER BY receipt_key,receipt_line,capture_index')]
     if print_links:
         queries.append(dict(name='print_links', sql='SELECT package_id,event_id FROM package_meeting_links ORDER BY package_id,event_id'))
     result = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
+    if details:
+        return result
     found = result['rows']
     if print_links:
         return found, result['print_links']
