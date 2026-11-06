@@ -324,7 +324,10 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys,mon
     assert archive_backfill_job.main(['--spec',str(root/'model/jobs/backfill.json'),'--plan'])==0
     backfill_plan=json.loads(capsys.readouterr().out)
     assert backfill_plan['status']=='planned' and backfill_plan['executed'] is False
-    assert set(backfill_plan['tables'])==set(ALL_TABLE_NAMES)
+    # Canonical backfill includes the qualified committee and playlist readings;
+    # expensive recording-byte acquisition remains a separate opt-in scope.
+    assert set(backfill_plan['tables'])==set(ALL_TABLE_NAMES)|{'committee_records','playlist_records'}
+    assert 'video_records' not in backfill_plan['tables']
     committed=archive_backfill_job.load_spec(root/'model/jobs/backfill.json')
     publisher=json.loads((root/'model/jobs/publish.json').read_text())['producers']
     assert {name:(Path(pin['path']).name,pin['sha256']) for name,pin in committed['producers'].items()}=={
