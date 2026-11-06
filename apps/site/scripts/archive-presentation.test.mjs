@@ -220,6 +220,7 @@ test('hearing captions keep separate saved bodies and label HLS as a download',(
       {sha256:second,suffix:'',language:'en',format:'m3u8',production:'archive'},
     ]}]},
   }));
+  assert(html.includes('data-recording-key="recording-a"'));
   for(const text of ['https://fixture.test/video',`https://raw.test/bodies/sha256/aa/${first}.gz`,
     `https://raw.test/bodies/sha256/bb/${second}`,'en · vtt · live','en · m3u8 · archive',
     'Download saved HLS playlist','Playback is unavailable here.','download=""'])assert(html.includes(text),text);
