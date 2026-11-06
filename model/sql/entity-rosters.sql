@@ -42,41 +42,29 @@ WITH committee_code_map AS (
  SELECT
   trim(bioguide_id) AS m_bioguide_id,
   nullif(trim(term_party),'') AS term_party,
-  try_cast(substr(trim(term_start),1,4) AS INT) AS start_year,
-  try_cast(substr(trim(term_end),1,4) AS INT) AS end_year,
   try_cast(substr(trim(term_start),1,10) AS DATE) AS start_date,
-  try_cast(substr(trim(term_end),1,10) AS DATE) AS end_date
+  try_cast(substr(trim(term_end),1,10) AS DATE) AS end_date,
+  nullif(trim(term_end),'') IS NULL AS end_missing
  FROM spicy_member_terms
  WHERE bioguide_id IS NOT NULL AND nullif(trim(term_party),'') IS NOT NULL
 ), member_congress_candidates AS (
  SELECT
   c.congress AS m_congress,
   t.m_bioguide_id,
-  t.term_party,
-  t.start_date,
-  CASE
-   WHEN t.start_year < 1789 + (cast(c.congress AS INT) - 1) * 2 + 2
-    AND coalesce(t.end_year,9999) >= 1789 + (cast(c.congress AS INT) - 1) * 2
-    AND (t.end_date IS NULL OR t.end_date > make_date(1789 + (cast(c.congress AS INT) - 1) * 2,1,3))
-   THEN 0
-   WHEN t.start_year < 1789 + (cast(c.congress AS INT) - 1) * 2 + 2
-    AND coalesce(t.end_year,9999) >= 1789 + (cast(c.congress AS INT) - 1) * 2
-   THEN 1
-   ELSE 2
-  END AS overlap_rank
+  t.term_party
  FROM distinct_roster_congresses c
- CROSS JOIN member_term_parsed t
+ JOIN member_term_parsed t
+  ON t.start_date < make_date(1789 + (cast(c.congress AS INT) - 1) * 2 + 2,1,3)
+  AND (t.end_missing OR (
+   t.end_date > t.start_date
+   AND t.end_date > make_date(1789 + (cast(c.congress AS INT) - 1) * 2,1,3)
+  ))
 ), member_parties AS (
- SELECT m_congress,m_bioguide_id,term_party
- FROM (
-  SELECT m_congress,m_bioguide_id,term_party,
-   row_number() OVER (
-    PARTITION BY m_congress,m_bioguide_id
-    ORDER BY overlap_rank ASC,start_date DESC NULLS LAST
-   ) AS rn
-  FROM member_congress_candidates
- )
- WHERE rn=1
+ -- Without a roster observation date, conflicting parties cannot be resolved.
+ SELECT m_congress,m_bioguide_id,min(term_party) AS term_party
+ FROM member_congress_candidates
+ GROUP BY m_congress,m_bioguide_id
+ HAVING min(term_party)=max(term_party)
 ), with_party AS (
  SELECT
   d.congress,
