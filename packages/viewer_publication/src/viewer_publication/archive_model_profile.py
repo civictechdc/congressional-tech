@@ -90,7 +90,8 @@ def _definition_hashes(root):
     files+=list((root/'model/lake').glob('*.json'))
     package=root/'packages/viewer_publication/src/viewer_publication'
     files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py','archive_schema.py','archive_model_lifetimes.py','legislative_data.py',
-        'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py','archive_text_index.py')]
+        'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py','archive_text_index.py',
+        'lookup_aliases.py','meeting_detail_observations.py')]
     files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
     files += [root/'packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv']
     files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/reading_versions.py',

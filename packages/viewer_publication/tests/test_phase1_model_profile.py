@@ -140,6 +140,39 @@ def test_semantic_profile_pins_the_failure_producer_separately_from_leaf_parsers
     } <= hashes.keys()
 
 
+@pytest.mark.parametrize('helper',['lookup_aliases.py','meeting_detail_observations.py'])
+def test_retained_model_refuses_changed_publication_helper(tmp_path,monkeypatch,helper):
+    import shutil
+    from types import SimpleNamespace
+    from viewer_publication import archive_model_profile as model_profile
+    from viewer_publication.archive_controller import PublicationInputsChanged,_require_model_definition
+
+    definition_hashes=model_profile._definition_hashes
+    for name in definition_hashes(model_profile.ROOT):
+        target=tmp_path/name
+        target.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copyfile(model_profile.ROOT/name,target)
+    monkeypatch.setattr(model_profile,'_definition_hashes',lambda root:definition_hashes(tmp_path))
+    limits=tmp_path/'limits.json'
+    limits.write_text('{}')
+    engine=SimpleNamespace(source_revision='a'*40,binary_sha256='b'*64,
+        platform='test',build_features=[],limits=limits)
+    args=dict(parser_versions=VERSIONS,catalog_version='catalog-1',engine_revision=engine.source_revision,
+        runtime_pins=dict(binary_sha256=engine.binary_sha256,platform=engine.platform,build_features=[],limits={}),
+        lake_versions=dict(captures='c'*64),writer_settings=dict(row_group_rows=65536),
+        snapshots={'captures':dict(metadata_location='/pinned/metadata.json')},root=tmp_path)
+    original=model_profile.profile_record(**args)
+    saved=dict(profile=original,entity_digests={},
+        admitted_names=['invariants','model_invariants','url_state_invariants','profile_completeness'])
+    _require_model_definition(saved,engine)
+
+    path=tmp_path/'packages/viewer_publication/src/viewer_publication'/helper
+    path.write_text(path.read_text()+'\n# Deliberately changed helper definition.\n')
+    assert model_profile.profile_record(**args)['profile_sha256']!=original['profile_sha256']
+    with pytest.raises(PublicationInputsChanged,match='Model definitions changed'):
+        _require_model_definition(saved,engine)
+
+
 def test_validate_parser_versions_rejects_scalar_entity_versions():
     from viewer_publication.archive_model_profile import validate_parser_versions
     with pytest.raises(ValueError, match='source-scoped'):
