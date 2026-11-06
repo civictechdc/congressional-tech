@@ -26,7 +26,6 @@ from hashlib import sha256
 import json
 import re
 import unicodedata
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 from urllib.parse import urljoin
@@ -44,6 +43,7 @@ from ..parsers.house_xml import (
     parse_house_witnesses,
     strip_house_meeting_prefix,
 )
+from ..parsers.xml_repair import parse_xml_with_repairs
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import LABEL_NAME, drop_footnote_text, is_name, witness as parse_gpo_witness
@@ -252,6 +252,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             files={
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
+                "parsers_xml_repair": pkg_dir / "parsers/xml_repair.py",
                 "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
                 "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
@@ -437,22 +438,11 @@ def extract_house_xml_observation(
                 "collection_state": "unrecognized",
                 "appearances": [],
             }
+        xml_root = parse_xml_with_repairs(raw_bytes).root
         try:
-            root = parse_house_witnesses(raw_bytes)
-        except ET.ParseError:
-            return {
-                "event_id": explicit_event_id,
-                "package_id": None,
-                "declared_base": None,
-                "collection_state": "unrecognized",
-                "appearances": [],
-            }
+            root = parse_house_witnesses(xml_root)
         except ValueError:
-            try:
-                xml_root = ET.fromstring(raw_bytes)
-            except ET.ParseError:
-                xml_root = None
-            if xml_root is not None and xml_root.tag == "committee-meeting":
+            if xml_root.tag == "committee-meeting":
                 raw_mid = (xml_root.get("meeting-id") or "").strip()
                 resolved_eid = _opt_int(strip_house_meeting_prefix(raw_mid)) or explicit_event_id
                 return {

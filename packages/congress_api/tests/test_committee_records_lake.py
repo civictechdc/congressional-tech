@@ -40,7 +40,7 @@ def test_amendment_without_a_url_is_retained():
 
 
 def test_other_xml_roots_give_an_empty_row_never_parsed_again():
-    for payload in (b'<witness-list/>', b'not xml', b''):
+    for payload in (b'<witness-list/>', b'<other/>', b'', b' \n\t'):
         row = build(payload)
         assert row['status'] == 'completed' and row['records'] == [] and row['event_id'] is None
 

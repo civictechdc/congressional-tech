@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Mapping, Sequence
-import xml.etree.ElementTree as ET
 
 import pyarrow as pa
 
@@ -55,6 +54,7 @@ def current_versions(*, root: Path = ROOT) -> dict[str, str]:
         "shared_producer": package / "lake/_record_producer.py",
         "documents": package / "parsers/house_documents.py",
         "house_xml": package / "parsers/house_xml.py",
+        "xml_repair": package / "parsers/xml_repair.py",
         "lock": Path(root) / "uv.lock",
         "schema": Path(root) / "model/lake/committee-records.schema.json",
     }, values={"source": SOURCE})}
@@ -72,7 +72,7 @@ def build_row(record_sha: str | bytes, source: str, payload: bytes | str, *, par
     raw = payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
     try:
         root = parse_house_meeting(raw) if raw.strip() else None
-    except (ET.ParseError, ValueError):
+    except ValueError:
         root = None
     if root is not None and root.tag == "committee-meeting" and active(root):
         event_id = strip_house_meeting_prefix((root.get("meeting-id") or "").strip()) or None

@@ -233,6 +233,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
         files={
             "shared_producer": pkg_dir / "lake/_record_producer.py",
             "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
+            "parsers_xml_repair": pkg_dir / "parsers/xml_repair.py",
             "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
             "parsers_meeting_facts": pkg_dir / "parsers/meeting_facts.py",
             "parsers_text": pkg_dir / "parsers/text.py",
@@ -798,7 +799,7 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
             return []
         try:
             root = parse_house_meeting(raw_bytes)
-        except (ET.ParseError, ValueError):
+        except ValueError:
             # If the XML is a `<witness-list>` or another non-meeting XML root, it has 0 meetings.
             return []
 
