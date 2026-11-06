@@ -508,17 +508,21 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
             SELECT decode(u.body_sha256,'hex') AS body_sha FROM unreadable u
             WHERE u.parser='html_metadata' AND u.body_sha256 IS NOT NULL
                 AND EXISTS (SELECT 1 FROM unreadable newer WHERE newer.supersedes=u.id)'''),
+        # Baseline captures repeat a body for each capture occurrence. Membership
+        # needs one key, otherwise anti/semi joins repeat duplicate match work.
+        dict(name='baseline_keys',materialize=True,sql='''
+            SELECT DISTINCT sha256 FROM baseline WHERE sha256 IS NOT NULL'''),
         dict(name='candidate_shas',materialize=True,
         sql='''SELECT DISTINCT c.sha256 AS body_sha FROM captures c
             WHERE c.sha256 IS NOT NULL AND NOT EXISTS
-                (SELECT 1 FROM baseline b WHERE b.sha256=c.sha256)
+                (SELECT 1 FROM baseline_keys b WHERE b.sha256=c.sha256)
             UNION SELECT c.sha256 AS body_sha FROM reconsidered_shas r JOIN captures c
                 ON r.body_sha=c.sha256''')],outputs=[
         parquet_output(scope_work,'body-scope',
             "SELECT lower(encode(body_sha,'hex')) AS body_sha FROM candidate_shas",['body_sha'])],queries=[
         dict(name='reconsidered_baseline',sql='''SELECT count(DISTINCT r.body_sha) AS n
             FROM reconsidered_shas r JOIN captures c ON r.body_sha=c.sha256
-            WHERE EXISTS (SELECT 1 FROM baseline b WHERE b.sha256=r.body_sha)''')])
+            WHERE EXISTS (SELECT 1 FROM baseline_keys b WHERE b.sha256=r.body_sha)''')])
     scoped=work/'scope'
     count=_scope_html_inputs(scope_work/'body-scope.parquet',heads,engine=engine,work=scoped,allow_empty=True)
     source=_body_source(spec,raw_store,work/'readings')
