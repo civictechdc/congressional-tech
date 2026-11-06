@@ -13,6 +13,7 @@ import json
 import os
 
 import pyarrow.parquet as pq
+import pytest
 
 from congress_api.lake import filenames, readings
 from congress_api.lake.capture_staging import stage_captures
@@ -155,7 +156,8 @@ def test_a_recovered_copy_is_another_address_of_the_published_document(tmp_path)
     assert details[b]['title'] == 'Cheney written testimony'
 
 
-def test_the_merge_audit_names_each_signal_a_merged_link_would_lose(tmp_path):
+@pytest.mark.parametrize('adjudicated', [False, True])
+def test_the_merge_audit_names_each_signal_a_merged_link_would_lose(tmp_path, adjudicated):
     """The audit reads the published relations: a link the document does not list as an address,
     key, lookup or recovery, or whose committee key and title the document shows nowhere, is lost."""
     from congress_api.retention.provenance import json_input, list_of, struct
@@ -166,20 +168,24 @@ def test_the_merge_audit_names_each_signal_a_merged_link_would_lose(tmp_path):
                document_kind=[], document_family=[], committee_keys=[], chambers=[], meeting_keys=[], measure_keys=[], bioguide_ids=[], facts=[])
     kept, lost = DEAD_B1, DEAD_A
     inputs = [
+        json_input(tmp_path, 'document_bill_decisions', [dict(component='c',id='decision',
+            rejected_package_ids=['BILLS-118hr4775ih'],excluded_measure_keys=['118-hr-4775'])] if adjudicated else [],
+            component='Utf8',id='Utf8',rejected_package_ids=strings,excluded_measure_keys=strings),
         json_input(tmp_path, 'recovered_copy_members', [dict(source_id='kept', component='c'), dict(source_id='lost', component='c')],
                    source_id='Utf8', component='Utf8'),
         json_input(tmp_path, 'document_members', [dict(source_id='kept', component='c', source_url=kept, filename=''),
                    dict(source_id='lost', component='c', source_url=lost, filename=''), dict(source_id='copy', component='c', source_url=COPY_A, filename='a.pdf')],
                    source_id='Utf8', component='Utf8', source_url='Utf8', filename='Utf8'),
-        json_input(tmp_path, 'source_annotations', [dict(ann, source_id='kept', title='Shown title'),
-                   dict(ann, source_id='lost', title='Committee title', committee_keys=['HSED13']), dict(ann, source_id='copy')],
+        json_input(tmp_path, 'source_annotations', [dict(ann, source_id='kept', title='Shown title', package_id='BILLS-118hr4775ih', measure_keys=['118-hr-4775']),
+                   dict(ann, source_id='lost', title='Committee title', committee_keys=['HSED13'],
+                        package_id='BILLS-118hr9999ih', measure_keys=['118-hr-9999']), dict(ann, source_id='copy')],
                    source_id='Utf8', title='Utf8', reading_title='Utf8', listing_title='Utf8', congress='Int32', filename_date='Date32',
                    content_date='Date32', package_id='Utf8', document_kind=strings, document_family=strings, committee_keys=strings,
                    chambers=strings, meeting_keys=strings, measure_keys=strings, bioguide_ids=strings, facts=facts),
         json_input(tmp_path, 'document_identities', [dict(component='c', document_id='doc')], component='Utf8', document_id='Utf8'),
         json_input(tmp_path, 'ordered', [dict(doc_key='doc', list_row=0, filename='a.pdf', title='Shown title', congress=None, document_date=None,
-                   package_id=None, document_kind=[], document_family=[], committee_keys=[], chambers=[], meeting_keys=[], measure_keys=[],
-                   bioguide_ids=[], facts=[])], doc_key='Utf8', list_row='Int32', filename='Utf8', title='Utf8', congress='Int16',
+                   package_id=None if adjudicated else 'BILLS-118hr4775ih', document_kind=[], document_family=[], committee_keys=[], chambers=[], meeting_keys=[],
+                   measure_keys=['118-hr-4755'] if adjudicated else ['118-hr-4775'], bioguide_ids=[], facts=[])], doc_key='Utf8', list_row='Int32', filename='Utf8', title='Utf8', congress='Int16',
                    document_date='Date32', package_id='Utf8', document_kind=strings, document_family=strings, committee_keys=strings,
                    chambers=strings, meeting_keys=strings, measure_keys=strings, bioguide_ids=strings, facts=facts),
         json_input(tmp_path, 'saved_files', [dict(component='c', source_id='copy', filename='a.pdf', saved_rank=1)],
@@ -194,4 +200,5 @@ def test_the_merge_audit_names_each_signal_a_merged_link_would_lose(tmp_path):
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
         queries=[dict(name='a', sql=f"SELECT source_id,{','.join('lost_' + f for f in LOST_FLAGS)} FROM ({sql}) g ORDER BY source_id")])
     rows = {row.pop('source_id'): {k for k, v in row.items() if v} for row in result['a']}
-    assert rows == {'kept': set(), 'lost': {'lost_address', 'lost_link', 'lost_lookup', 'lost_recovery', 'lost_committees'}}
+    assert rows == {'kept': set(), 'lost': {'lost_address', 'lost_link', 'lost_lookup', 'lost_recovery',
+        'lost_committees', 'lost_measures'} | ({'lost_package'} if adjudicated else set())}

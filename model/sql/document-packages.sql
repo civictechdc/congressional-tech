@@ -17,6 +17,7 @@ WITH candidates AS (
   arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))') AS first_fetched,e.package_id
  FROM bill_package_evidence e
  JOIN saved_files pdf ON e.pdf_sha=pdf.body_sha AND pdf.format='pdf'
+ WHERE e.package_disposition='support'
 ), ranked AS (
  -- Scan from least to most preferred so the last row has both the winning
  -- package and the complete bill range. Every candidate has a package ID.
@@ -37,7 +38,8 @@ WITH candidates AS (
   coalesce(evidence>1 AND starts_with(package_id,'BILLS-') AND min_bill_measure<>max_bill_measure,false) AS bill_package_conflict
  FROM ranked WHERE next_package IS NULL
 )
-SELECT c.component,CASE WHEN NOT p.bill_package_conflict THEN p.package_id END AS package_id,
+SELECT c.component,CASE WHEN NOT p.bill_package_conflict AND NOT coalesce(bd.package_withheld,false) THEN p.package_id END AS package_id,
  coalesce(p.bill_package_conflict,false) AS bill_package_conflict
 FROM (SELECT DISTINCT component FROM saved_files) c
 LEFT JOIN preferred p ON c.component=p.component
+LEFT JOIN document_bill_decisions bd ON c.component=bd.component
