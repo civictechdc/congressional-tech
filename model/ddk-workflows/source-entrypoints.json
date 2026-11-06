@@ -3869,9 +3869,9 @@
       ],
       "docstring_first_line": "Bind actual native model evidence to the one guarded publication controller.",
       "classification": "schema_consumer_or_operator_command",
-      "owner": "Maintained owning module; detailed consumer/operations inventory remains authoritative.",
-      "replacement_status": "unverified",
-      "qualification": "Declaration/body-call census only; no invocation, live availability or source-population completeness asserted."
+      "owner": "Native retained-job actions own model completion and recovery; archive_publish retains external conditional writes.",
+      "replacement_status": "retired",
+      "qualification": "Removed model phase journal and daily checkpoint import. Shared publication intent is unavailable; external activation refuses before effects."
     },
     {
       "path": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
@@ -3986,9 +3986,9 @@
       "direct_read_or_fetch_call_sites": [],
       "docstring_first_line": "Build release discovery metadata from the producer's existing schema registry.",
       "classification": "schema_consumer_or_operator_command",
-      "owner": "Maintained owning module; detailed consumer/operations inventory remains authoritative.",
-      "replacement_status": "unverified",
-      "qualification": "Declaration/body-call census only; no invocation, live availability or source-population completeness asserted."
+      "owner": "DDK definitions in model/ddk and maintained ddk.catalog assembler",
+      "replacement_status": "retired",
+      "qualification": "Historical census entry. Source removed;66 focused current-definition/native-relationship/recipe/profile checks passed in checks-schema-retirement-01."
     },
     {
       "path": "packages/viewer_publication/src/viewer_publication/backfill_uncompressed_pdfs.py",

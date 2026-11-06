@@ -842,68 +842,55 @@ The **input identity** is the SHA-256 of UTF-8 compact JSON `[receipt_keys, [[pr
 
 The **release ID** is the SHA-256 of UTF-8 compact JSON `[schema_version, [[name, sha256, size, rows], ...]]`, in `files[]` order. Content-only files have `rows = 0`. The manifest does not hash itself.
 
-### 8.4 Native relationship metadata
+### 8.4 Standard catalog and native qualification
 
-`model/registries/release-schema.json` is the producer-owned source for table
-purpose, row meaning, identities, relationship endpoints and query examples.
-`viewer_publication.archive_schema` validates it and the existing release writer
-publishes it as `schema.json`. The schema file's content hash participates in the
-existing release identity; the archive `schema_version` remains 1. Additive
-relationship metadata uses `relationships_version: 1`.
+`model/ddk/archive.odcs.json` owns table meaning, field definitions and required
+values. `project.ddk.json` owns identities, relationships, recipe dependencies
+and parameter order; `queries/` owns their SQL. The Open Data Contract Standard
+(ODCS) describes datasets, the Open Data Product Standard (ODPS) describes the
+archive product, and Data Design Kit (DDK) checks and assembles those definitions.
+There is one maintained definition path. The old registry is retained only as
+an inert migration test oracle at `model/fixtures/release-schema-baseline.json`.
 
-A metadata-only release can reuse unchanged native Parquet exports and their
-original model pins. Its semantic profile adds `relationship_metadata_update`
-with `base_release_id`, `registry_sha256`, `schema_sha256` (lowercase SHA-256
-values) and `relationships_version: 1`. The canonical profile builder validates
-this marker for publication identity and retained-input checks. It records new
-metadata without claiming that current model code rebuilt the original data.
-The resulting release still passes the existing field/key checks, reader gates
-and conditional pointer update.
+Every current reader requires the same public `catalog.ddk.json`,
+`catalog.report.json`, `catalog.lock.json` and exact SQL companions. All files
+participate in the existing release identity. Readers derive availability from
+that release's manifest: an absent table is unavailable, a published empty table
+has zero rows, and a null value remains unknown or absent. Definitions for absent
+tables stay discoverable. A definition does not establish source completeness,
+external availability or a passed data check.
 
-Each table declares an `identity`: either a validated `primary_key` (possibly
-compound), or a `row_position`. `list_row` is a virtual, zero-based position for
-`list` and `detail`, continued across manifest shard row ranges. It is not a
-physical column in those files and is valid only in the selected release.
-Identities describe uniqueness, not sort order. Binary hashes retain their
-published byte types; hexadecimal is a display encoding.
+DDK identities distinguish physical keys from release-local row positions.
+`list_row` is a virtual, zero-based position for `list` and `detail`, continued
+across manifest shard ranges. Binary keys retain their native bytes; hexadecimal
+is a display spelling. Typed relationship paths name fields and list elements,
+with explicit match rules, cardinality, null behavior and resolution requirements.
+Required references must resolve within their declared scope; optional or
+bounded references retain their stated uncertainty.
 
-A relationship declares its source and target field paths, match rule,
-cardinality, nullable behavior, resolution requirement, meaning and scope.
-`[]` denotes list elements. Cardinality describes source and target rows across
-all their list elements. Local targets name published tables. External targets
-name identifiers or body files without claiming that an external dataset is
-present. `required` references must resolve when both files are published;
-`unresolved_allowed` preserves valid references outside a bounded local release.
-Null optional references mean unknown or absent, not a failed join.
+The retained native job owns physical schemas, complete output membership,
+execution, reports and acceptance. DDK derives required-field and key checks
+from the captured definitions and binds them to counters reading the exact
+completed exports. Application SQL owns domain relationships. The shared DDK
+metadata API then checks the observed native schema and accepted rule evidence
+against those same definitions. These decisions do not read document bodies,
+copy exports or repeat native acceptance.
 
-The writer derives `available` and `missing_tables` from the actual release
-files for tables, relationships and recipes. Availability means the required
-local files exist, including an empty file; it does not certify that every
-optional reference resolves or every external URL is fetchable. Definitions for
-absent files remain discoverable. Older releases without a relationship version
-have no published relationship metadata. Readers must not silently reconstruct
-it from their own hardcoded joins; unknown metadata versions leave ordinary
-schema and table access available.
+The application retains the original accepted receipt and exact small definition
+files beside the request. It writes public catalog controls separately from native
+data, then requests selection of the checked candidate. The publisher delivers the
+explicit file inventory through its existing conditional activation authority.
+A resumed request keeps the original receipt and definition bytes. It cannot attach
+current definitions to an older computation or turn an unknown result into a pass.
 
-Publication reuses the existing native construction and key checks for document
-row alignment, link and URL lookup keys, source/recovery ordinals, and capture
-URLs. The same native job validates entity keys, primary-link resolution, and
-required document-to-meeting, document-to-witness and meeting-transcript row
-references. Output footers check declared key/reference paths and types against
-the actual Parquet shapes. These checks read no document bodies and add no
-whole-release Parquet scan.
-
-The [generated reference](release-relationships.md) includes every table's
-columns, incoming/outgoing relationship IDs, scope and bounded DuckDB recipes.
-Generate it with `.venv/bin/python -m viewer_publication.archive_schema`; `--check`
-refuses documentation drift. SQL examples are dialect-labelled guidance with
-positional parameters and result-row meanings. Discovery never executes them.
-Consumers may derive inverse listings and availability, but they must preserve
-the producer's relationship meaning.
+See the [catalog and relationship guide](release-relationships.md) for authoring
+and discovery, and the [migration boundary diagram](replacement-ddk/design.md)
+for ownership and outstanding native qualification. Source implementation and
+passing metadata checks do not establish complete production migration.
 
 ## 9. Keys Between Layers
 
-*The key table is normative. The producer registry and generated [release relationship reference](release-relationships.md) describe its published table joins, including nested references; §8.4 defines their machine-readable form.*
+*The key table is normative. The standard DDK catalog and [relationship guide](release-relationships.md) describe its published table joins, including nested references; §8.4 defines their machine-readable form.*
 
 ```mermaid
 erDiagram

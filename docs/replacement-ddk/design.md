@@ -93,8 +93,9 @@ an operation. The concrete required extensions are in [runtime gaps](runtime-gap
 
 The final application command composes declared components and supported native
 operations. It must not invoke the incumbent controller wholesale and relabel the
-receipt as DDK execution. Existing controllers remain a comparison oracle until
-the complete replacement path passes; two production writers are not introduced.
+receipt as DDK execution. Retained original outputs remain comparison evidence.
+The old model controller is removed; external activation remains unavailable
+until the replacement path can preserve its required publication guarantees.
 
 ## Ownership and complete lifecycle
 
@@ -117,20 +118,25 @@ flowchart TB
     subgraph domain["Application — source and domain meaning"]
         acquire["3. Acquire and interpret through domain adapters"]
         logic["Parsers, correction rules and transformation SQL"]
+        request["Verify the pinned runtime; retain the original request and local input paths"]
+        retry["Retry presents that same request and digest"]
     end
 
     subgraph native["DocSpec — durable operation and data authority"]
         admit["Admit operation identity, scope and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
-        input_admission["Admit exact schemas, interpretation and producer evidence"]
-        compute["4. Prepare and execute one complete JobSpec"]
+        input_admission["Admit exact inputs and original producer evidence — native support pending"]
+        prepare["4. Infer every named schema without executing data"]
+        compute["5. Execute the captured JobSpec with exact input custody"]
         candidate["Retain candidate, required reports and useful checkpoints"]
-        accept["5. Accept complete candidate-bound evidence"]
-        select["Select the exact native result under current authority"]
-        intent["Accept a frozen publication intent"]
+        accept["6. Accept complete native report evidence"]
+        requalify["Policy-only change: requalify the retained candidate under fresh authority"]
+        select["8. Select the checked candidate under original authority"]
+        intent["Freeze result, qualification, inventory, destination and original authority — native support pending"]
         lifetime["Protect live obligations; retire disposable work after its last consumer"]
         retain --> input_admission --> compute --> candidate
-        accept --> select
+        prepare --> compute
+        candidate --> requalify --> accept
     end
 
     subgraph quality["Selected evidence verifier — exact supported semantics"]
@@ -140,46 +146,100 @@ flowchart TB
     subgraph catalog["DDK — generated metadata"]
         schema_binding["Bind observed native schemas to captured dataset definitions"]
         rule_binding["Match authored fields and keys to accepted export counters"]
-        assemble["6. Assemble accepted versions, evidence and definitions"]
-        artifacts["Freeze matching catalog, report, lock and companion bytes"]
+        first_receipt["Retain exact accepted receipt bytes beside the request"]
+        assemble["7. Check exact schemas, required values and keys"]
+        artifacts["Freeze the explicitly disclosed catalog and companions"]
         discovery["Later discovery and lineage views"]
-        schema_binding --> assemble
+        first_receipt --> schema_binding --> assemble
         rule_binding --> assemble --> artifacts
     end
 
     subgraph publication["Application publisher — external release authority"]
         files["Name retained export paths and separate control files"]
-        publish["7. Deliver immutable assets and activate with the expected token"]
+        permission["Verify publisher permission and restore fence"]
+        publish["9. Deliver exact assets and activate with the expected token"]
         observation["Record the original attempt's observed outcome separately"]
         publish --> observation
     end
 
     subgraph readers["Consumers — one exact release"]
-        consume["8. Resolve catalog and data together: API, MCP and site"]
+        consume["10. Resolve one catalog and file inventory: API, MCP and site"]
     end
 
-    check --> admit
+    check --> request --> admit
+    retry --> request
     admit --> acquire
     sources --> acquire
     acquire --> retain
     logic -.-> compute
+    check --> prepare
     frozen -.-> verify
     candidate -->|"Counters read the exact completed exports"| verify --> accept
-    select --> schema_binding
+    accept --> first_receipt
     frozen -.-> schema_binding
     candidate -->|"Exact output identities and schemas"| schema_binding
     frozen -.-> rule_binding
     accept -->|"Original SQL, complete output coverage and accepted results"| rule_binding
     artifacts --> files
+    files -->|"Controls finalized after local qualification"| select
     candidate -->|"Retained paths; no export copy"| files
-    files --> intent --> publish
+    select --> intent --> permission --> publish
     publish --> consume
     observation -.-> discovery
     artifacts -.-> discovery
     candidate -.-> lifetime
+    request -.->|"Retained input paths stay live through uncertain outcomes"| lifetime
     observation -.-> lifetime
     consume -.->|"Reader protection and release"| lifetime
+    classDef pending stroke-dasharray: 5 5
+    class input_admission,intent pending
 ```
+
+The application composition now captures one immutable release request, uses the
+maintained native `prepare`, `accept` and `select` calls, and requires a checked
+DDK result before finalization. It preserves the first accepted receipt for
+catalog assembly so a later observation cannot change the release's catalog
+bytes. The catalog records that observation; it does not predict a later selection.
+The finalizer joins the accepted native candidate to that exact qualification,
+writes controls in a separate directory and preserves the original data paths.
+Only then does the caller request native selection and return the complete file
+inventory. Pending and failed observations preserve their evidence and return no
+selected release.
+
+Disclosure remains an explicit definition file. Native observations used for
+local qualification do not automatically become public catalog facts. The
+current public catalog may disclose definitions while withholding runtime facts;
+withheld facts remain unknown to public consumers. No second public assembly
+with current definitions, inferred identifiers or broad grants fills that gap.
+
+The preserved small fixture has completed native computation, requalification,
+acceptance, DDK qualification, control finalization and native selection. The
+original runtime computed its eleven exports and five reports. A restricted
+schema-preparation repair supplied corrected report schemas; the original runtime
+then requalified the same candidate under a distinct policy. All eleven export
+files and the completion record kept their original custody, and no data was
+recomputed. The first failed observation remains retained. This qualifies reuse
+of that captured fixture only; a fresh run with the final repaired runtime and the
+current richer fixture is still required.
+
+The model entry now supplies explicit native selection authority, requires
+original producer prerequisites and verifies the configured executable before
+submission. Held local inputs survive uncertain admission. An explicit retry
+consumes the original request and digest without rebuilding paths or capturing
+new definitions. A requalification request may reference the original pinned
+rules file in another request directory; catalog admission permits that exact
+file, not its surrounding directory.
+
+Original native-source custody, qualified producer prerequisite interpretation,
+frozen publication intent and full application activation remain open shared
+requirements. The incumbent model phase controller and daily checkpoint import
+have been removed. The publisher verifies accepted native paths and retains its
+conditional write and asset-reconciliation behavior. Its external activation
+entry refuses before effects until the shared intent capability exists.
+The intent must preserve the accepted result, qualification, exact inventory,
+destination, expected token and real publisher authority even after a newer
+dataset selection. The publisher separately enforces permission and restore
+fences; reading the latest selection cannot reconstruct an original attempt.
 
 Acquisition admission precedes every new external attempt. A caller timeout does
 not create another operation. The same native owner retains completed effects,

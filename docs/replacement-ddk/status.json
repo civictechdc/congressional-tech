@@ -10,11 +10,11 @@
     "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/release-status.json",
     "lastObservedImplementationReady": true,
     "publicationRequiredForLocalImplementation": false,
-    "verifiedDDKImplementation": "5e90d70f74ef88053a75b8d991caf262ad74bbd0",
-    "verifiedDDKDocumentation": "5e90d70f74ef88053a75b8d991caf262ad74bbd0",
+    "verifiedDDKImplementation": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
+    "verifiedDDKDocumentation": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
     "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79",
-    "observedSuccessorCatalogCommit": "5e90d70f74ef88053a75b8d991caf262ad74bbd0",
-    "successorInstalledQualification": "Qualified dev5 wheel installed through frozen uv sync and hash-qualified pip; all 108 installed members match the wheel. Catalog/API slice adopted; application native pin unchanged.",
+    "observedSuccessorCatalogCommit": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
+    "successorInstalledQualification": "Unchanged dev6 wheel installed normally with its SHA-256; 112 installed members verified. All ten shared runtime pins match the 234-test exact-Congress metadata supplement, including Arrow25.0.1 and PyParsing3.2.5. Native application pin unchanged.",
     "qualifiedSharedNative": "d96e00172d7d4be26da4532cda35aa05f2a3709e; source-only Build/Update only; not the application native pin or experimental whole-job preparation"
   },
   "completed": [
@@ -59,14 +59,25 @@
     "Migrated comparison, publisher and local HTTP probes to exact logical-name/file-path inventories; native outputs can remain separate from controls. 131 Python, four probe-wrapper and nine HTTP/catalog-reader cases passed; independent review approved after correcting media types to use logical names.",
     "Removed footer-driven old meeting/witness input formats and optional document-reference SQL; current producer schemas, all callers and explicit microsecond UTC definitions independently reviewed. Two native behavior cases passed; scoped definition/request/job checks passed 58 cases and retained one known parser-pin refusal.",
     "Constructed exact authored native rule bindings from the same SQL generator, using completed output namespaces; shared writer construction, immutable inputs and saved/reloaded metadata are checked. 68 focused cases passed; independent review closed construction findings. Maintained typed API/native namespace acceptance remains pending.",
-    "Moved witness and earlier-key reader cases into the original native JobSpec with complete schemas and exact native result pins; removed post-native Parquet/manifest mutation and generic synthetic auxiliary defaults. 33 focused cases passed; committed browser artifacts await the replacement producer."
+    "Moved witness and earlier-key reader cases into the original native JobSpec with complete schemas and exact native result pins; removed post-native Parquet/manifest mutation and generic synthetic auxiliary defaults. 33 focused cases passed; committed browser artifacts await the replacement producer.",
+    "Installed qualified dev6 with exact existing Arrow25.0.1/PyParsing3.2.5 tuple; verified all 95 supplement evidence records and ten runtime pins without a dependency upgrade.",
+    "Implemented mandatory retained prepare/accept/DDK-check/finalize/select composition with immutable captured definitions, original accepted receipt bytes, separate controls and native paths; independent red/green source review closed recovery, path and incomplete-observation findings.",
+    "Retired archive_schema and its live registry. Preserved byte-identical baseline as an inert test oracle; current DDK/native relationship checks, recipes and model-definition hashes passed 66 focused cases.",
+    "Captured current fixture through source06 schema-only preparation:4 inputs, 31 steps, 11 outputs, 5 reports. Execution, admission and selection remain unclaimed.",
+    "Committed exact dev6 adoption and normal lock-derived pip installation as36f61f6e;112 installed wheel members and PEP610 digest verified;116 focused current checks passed. CI and devcontainer use the maintained installer command.",
+    "Requalified and selected the preserved source11 fixture under a distinct schema policy using restricted source14 preparation only; original pins, 11 exports and completion custody unchanged; no data recomputation.",
+    "Removed the old model phase controller and daily checkpoint import. Native request retries retain their original input paths; runtime pins and original producer prerequisites are mandatory.",
+    "Publisher consumes verified accepted native evidence and exact export paths. Existing conditional writes and asset reconciliation remain; external and nightly activation refuse before effects until native intent support exists.",
+    "Committed current reader duration/nominee behavior as 68b077ad; 45 focused checks and independent green review passed.",
+    "Committed captured native release requests and schema/controller retirement as aaf2b45c; external activation remains explicitly unavailable pending native intent.",
+    "Committed exact-inventory parity and converter retirement as eb6f7466; 49 actual-path cases and independent red follow-up passed."
   ],
   "active": [
-    "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
+    "Run fresh hand/rich fixtures and cold recovery with the next qualified native tuple; preserve the separately accepted original source11 fixture",
+    "Finish exact native source custody, original producer prerequisites and frozen publication intent, then qualify the maintained application entry end to end",
     "Integrate parent-owned native multi-output candidate, required qualification, retained recovery and exact catalog membership",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
-    "Retire duplicate archive_schema validator/registry using direct admitted definitions for native checks; shared native schema mapping remains required before execution acceptance",
     "Standardize new publication on policy-bound capture_profile v2 and 257 physical fields; retain the original 254-field baseline and add three explicit current fields without inventing v1 eligibility",
     "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings"
   ],
@@ -541,6 +552,122 @@
         "reason": "After explicit auxiliary caller repair, the old F0 conversion fixture fails duplicate_document_key=1. No acceptance claimed for the legacy conversion harness.",
         "scope": "Native hand fixture and metadata repeat checks pass; F0 parity fixture integration remains open."
       }
+    },
+    "catalogDev6Adoption": {
+      "passed": 72,
+      "failed": 0,
+      "scope": "Catalog, native request and retained control checks;3 of 502 lane files, not a full lane",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-catalog-dev6-02",
+      "pyarrow": "25.0.1",
+      "pyparsing": "3.2.5"
+    },
+    "finalizerGuards": {
+      "passed": 12,
+      "failed": 0,
+      "scope": "Current early profile, controls path and unfinished observation guards;1 of 502 lane files",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-finalizer-guards-02",
+      "peakRSSGiB": 0.2
+    },
+    "schemaRetirement": {
+      "passed": 66,
+      "failed": 0,
+      "scope": "Current definitions, native planted relationship defects, DDK recipe execution and model definition hashes;4 of 503 lane files",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-schema-retirement-01",
+      "peakRSSGiB": 0.33
+    },
+    "retainedFixtureSchemaPreparation": {
+      "inputs": 4,
+      "liveSteps": 31,
+      "outputs": 11,
+      "reports": 5,
+      "execution": "not_run",
+      "admission": "not_run",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-schema-ddk06",
+      "peakRSSGiB": 0.54
+    },
+    "nativeFixtureSource11": {
+      "status": "completed native computation, adapter refused before acceptance",
+      "code": "DOCSPEC-JOB-EVIDENCE",
+      "reason": "Prepared counter fields are non-null; actual scalar-subquery report fields become nullable. Exact schema checking preserved.",
+      "outputs": 11,
+      "reports": 5,
+      "accepted": false,
+      "selected": false,
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-native-source11-01",
+      "peakRSSGiB": 0.32
+    },
+    "richFixtureSchemaPreparation": {
+      "inputs": 13,
+      "liveSteps": 35,
+      "outputs": 17,
+      "reports": 5,
+      "execution": "not_run",
+      "input_admission": "not_run",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-schema-source11-02",
+      "peakRSSGiB": 0.22
+    },
+    "catalogDev6CurrentIntegration": {
+      "passed": 116,
+      "failed": 0,
+      "scope": "Catalog, native request, retained controls and development environment;4 of503 lane files, not a full lane",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-dev6-integration-03",
+      "peakRSSGiB": 0.34
+    },
+    "retainedFixtureRequalification": {
+      "status": "passed",
+      "release_id": "92696bd8bc7b724a2134b268faef82a9eab8a7897aeae0fcf37677113e00f037",
+      "scope": "source14 schema preparation only; original source11 native computation and retained requalification/accept/select",
+      "newComputation": false,
+      "unchangedExportsAndCompletion": 12,
+      "inventoryFiles": 34,
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-requalify-source11-14-01/result.json",
+      "originalFailurePreserved": true
+    },
+    "modelPublisherBoundaries": {
+      "status": "passed",
+      "passed": 119,
+      "laneScope": "production-offline partial: 4 of 504 files",
+      "deselected": 3,
+      "notQualified": [
+        "two native producer cases requiring unsupported original producer prerequisites",
+        "checked-in model parser versions affected by whole-lock fingerprint drift"
+      ],
+      "peakRssGiB": 0.27,
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-publisher-boundaries-02/test.log"
+    },
+    "acceptedTinyConsumers": {
+      "status": "passed",
+      "nodeChecks": 21,
+      "pythonCases": 6,
+      "scope": "tiny captured fixture only; partial offline lane and no rendered browser qualification",
+      "originalFilesUnchanged": 34,
+      "canary": "Missing-body refusal, zero writes, original pointer and ETag unchanged",
+      "receipt": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-consumer-dev6/accepted-tiny-01/receipt.json",
+      "receiptSha256": "04929bd850570cffcca9e4f71faf894bcb42496d17ebb83efd8dbd6ebae66491"
+    },
+    "retiredControllerParity": {
+      "status": "passed",
+      "passed": 52,
+      "fullLane": false,
+      "scope": "Parity, relationship and nightly activation boundaries; partial 3 of 504 lane files",
+      "peakRssGiB": 0.28,
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-retired-controller-parity-02/test.log"
+    },
+    "parityProductionPath": {
+      "status": "passed",
+      "passed": 49,
+      "fullLane": false,
+      "scope": "Actual scalar metadata and URL extraction paths, matching cases and planted defects; partial 1 of 504 lane files",
+      "peakRssGiB": 0.31,
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-parity-production-path-02/test.log",
+      "review": "Independent red follow-up closed its scalar-path test gap; no complete descriptor acceptance claim"
+    },
+    "currentReaderFields": {
+      "status": "passed",
+      "passed": 45,
+      "scope": "Archive reader units and presentation; no rendered browser or rich native release claim",
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-unit-current-01/test.log",
+      "review": "Independent green follow-up closed the transient-video cache defect"
     }
   },
   "commits": {
@@ -552,10 +679,14 @@
       "e75f8b9e",
       "a8abadff",
       "6e48e204",
-      "96251d9c"
+      "96251d9c",
+      "36f61f6e",
+      "68b077ad",
+      "aaf2b45c",
+      "eb6f7466"
     ],
     "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
-    "checkpoint": "This checkpoint adopts qualified dev5 for one shared private/public catalog assembly; producer/runtime adoption and full replacement acceptance remain pending."
+    "checkpoint": "Reviewed application reader, captured native request, schema/controller retirement and exact-inventory comparison changes are committed. Native producer adoption and full replacement acceptance remain pending."
   },
   "sharedDependencies": [
     "Exact original native table-pin protection and nested field/element-ID/schema mappings",
@@ -572,7 +703,7 @@
     "localInputCustody": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/input-admission-01/local-input-custody.json",
     "sharedRelationshipRequest": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/shared-relationships-01/request.json",
     "sharedRelationshipSourceRun": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/catalog-successor/congress-relationships-01/summary.json",
-    "installedCatalog": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/catalog-install-05/installed.json",
+    "installedCatalog": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/catalog-install-06/installed.json",
     "readingClosureEquivalence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reading-drift-01/closure.json",
     "wholeJobPreparation": {
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-01/handoff.json",
@@ -657,7 +788,10 @@
       "sha256": "3e04cf57346d8428de31daacb925603d772e277088e2cdfbca1af62c78f2f053",
       "size": 16553,
       "status": "Independently reviewed requirements only; no native admission. Supersedes immutable definition-01."
-    }
+    },
+    "catalogDev6ExactPins": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/catalog-api-dev6/congress-pins-supplement-02/handoff.json",
+    "nativeCounterSchemaMismatch": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-native-source11-01/counter-schema-diff.json",
+    "retainedFixtureSelectedInventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-requalify-source11-14-01/files.json"
   },
   "constraints": {
     "lastLocalDiskFreeGiB": 90.79,
@@ -669,32 +803,33 @@
     "resourceNote": "Bounded local checks ran under the shared watchdog with measured peaks. Parent owns the successor build lane; complete replacement-native acceptance remains pending.",
     "boundedLocalChecksAdmitted": true,
     "replacementNativeAcceptanceAdmitted": false,
-    "currentProducerEntrypoint": "Refusal reverified under dev5/e966b803 lock: checked-in original parser/catalog pins differ from whole-lock fingerprints. No pin restamping, compatibility exception or production bypass."
+    "currentProducerEntrypoint": "Current dev6 caller requires original producer prerequisites. The checked-in model parser/catalog versions also retain the known whole-lock fingerprint refusal. No row restamping, compatibility exception or production bypass."
   },
   "delivery": {
     "fullReplacementComplete": false,
-    "independentCodeReview": "Independent source reviews closed retained-control, definition/profile, MCP/browser, companion delivery, comparison/publication and pointer findings. All final consumer findings are closed; full replacement producer and candidate acceptance remain pending.",
+    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Full model, rich fixture and native publication acceptance remain pending.",
     "supersededInfrastructureRetired": false,
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
-    "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed"
+    "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
+    "archiveModelControllerRetired": true
   },
   "definitionImplementation": {
-    "state": "Qualified dev5 profile admits complete declarations; native check definitions use the complete private view from the same assembly that supplies public catalog artifacts. MCP/browser/comparison/publication use the standard public catalog.",
+    "state": "Qualified dev6 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Actual retained application execution remains under acceptance.",
     "owner": "application definitions and consumer adapter; shared DDK fix parent-owned",
     "remaining": [
-      "Exact native schema and complete candidate binding through the shared whole-JobSpec API",
-      "Current producer authority migration and actual caller adoption across the full scope",
-      "Executable computation, qualification and metadata invalidation acceptance",
-      "Three MCP native fixture journeys against a replacement-produced release"
+      "Actual full native JobSpec execution and original snapshot/producer admission",
+      "Current acquisition and nonarchive caller adoption across the full scope",
+      "Fresh rich fixture, cold recovery and complete consumer acceptance",
+      "Native frozen publication intent and application activation integration"
     ],
-    "wheelSHA256": "b5b64cf8e670b9fb9a1546d4f3bc5aead70e47124f2acfb51cec9028286007eb"
+    "wheelSHA256": "41dbccda3367ea794f0040c165abd86f43d918ecee036cbce7307a0b98b18149"
   },
   "simplification": {
     "requirement": "Standardize and streamline the whole catalog-to-validation stack; reduce custom machinery rather than accumulate compatibility patches",
-    "decision": "Removed reverse-conversion draft; migrate direct consumers and retire obsolete current-path definitions after qualified native adoption",
-    "nextIncrement": "Replace producer execution with the shared whole-JobSpec owner and retire the old production schema/controller paths atomically",
+    "decision": "One maintained DDK definition and rule generator; removed old schema validator and registry from production. Native lifecycle composition adds no application journal, mutable selection or data export copy.",
+    "nextIncrement": "Qualify fresh native execution, admit original source evidence and connect the existing publisher to native frozen intent without restoring an application phase journal",
     "historicalCompatibility": "Not required: greenfield migration updates every reader together. Old artifacts remain retained evidence; new-stack history and recovery remain required.",
-    "performance": "No speed or resource improvement measured; qualify fresh/rerun/delta/metadata-only/rule-only behavior under resource controls",
+    "performance": "Removed duplicate schema generator/validator and separate registry; no measured execution speedup claimed. Focused schema retirement peaked at 0.33 GiB RSS.",
     "design": "docs/replacement-ddk/design.md#simplification-is-part-of-acceptance"
   },
   "migration": {

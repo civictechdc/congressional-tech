@@ -37,7 +37,7 @@ candidate. DDK records those references without computing competing phase keys.
 
 | Decision | Required candidate-bound evidence | Owning action |
 | --- | --- | --- |
-| Native archive input admission | Gate 5 producer proofs bound to every exact source snapshot, before model preparation/build (`archive_publish_job.py:526-530`, `producer_proof.py:18-28`) | Native/application admission validates the original proof inventory once; publication reuses this bound evidence |
+| Native archive input admission | Original producer proofs bound to every exact source snapshot before model computation. `archive_model.py` and prepared-request execution require the prerequisite inventory; its native interpretation is still pending. | Native admission validates the original proof inventory once; publication reuses this bound evidence. A nonempty caller list is not itself proof. |
 | Native archive data selection | Complete output table membership and schema; six standard native SQL families: `invariants`, `model_invariants`, `url_state_invariants`, `profile_completeness`, `entity_profile_completeness`, `relationship_invariants`, plus required `explorer_invariants` when the Explorer closure is present; exact rule bytes, engine/evaluator identity, all required outcomes and checked scope | DocSpec accepts the complete conditional check inventory declared by the actual job, then selects only when accepted evidence and current authority conditions match |
 | External archive release activation | Existing application gates, including explained value/cause changes, public-link continuity, supported access, schema/reader checks and actual candidate consumer evidence as defined by the current publisher; preserved Gate 5 admission evidence, exact candidate/release/asset digests and previous selection | Application publisher performs the existing conditional pointer operation and reconciles exact readback; DDK records the result |
 | News availability and checkpoint advancement | Exact pins across required native tables/views, `check_corpus` result and independent semantic acceptance, completed fenced cycle and release membership | Native/news publication owner records availability before advancing the applicable source checkpoints |
@@ -55,9 +55,10 @@ invariants. One complete candidate/release binding joins the two decisions.
 Missing, duplicate, wrong-candidate, wrong-rule, stale, failed, unknown or not-run
 required outcomes prevent the applicable selection. A qualification-only policy
 change can reuse the computed candidate, with an explicit new policy request.
-The hard-wired single-table Data Contract CLI gate in dev2 does not yet implement
-this cross-table acceptance route. Keep both this restriction and the complete
-Arrow materialization issue explicit; they require different fixes.
+The original tiny fixture has passed the native SQL evidence route and DDK
+checking. This does not qualify the full archive invariant inventory, production
+resource bounds or original producer admission. The initial dev2 single-table
+restriction remains historical evidence in the gap inventory.
 
 The parent-owned `docs/replacement-runtime-plan.md` further fixes candidate
 composition and retry semantics: initially refuse a changed composition while
@@ -72,8 +73,9 @@ inputs. Native computation dependencies remain the exact consumed schemas,
 implementations and values required by that phase. Metadata-only recipe or
 description changes require catalog regeneration; rule changes can require
 requalification. Neither automatically invalidates expensive native computation.
-The incumbent model profile remains its existing conservative compatibility
-boundary until the successor runtime's narrower reuse identity is qualified.
+The current model entry still refuses unmatched producer versions. Retained rows
+keep their original stamps until native admission can verify their original
+producer evidence independently of the current workspace lockfile.
 
 ## Durable acquisition request and completion
 
