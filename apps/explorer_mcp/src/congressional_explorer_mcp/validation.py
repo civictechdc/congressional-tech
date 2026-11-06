@@ -3,6 +3,7 @@ from hashlib import sha256
 import time
 
 from . import TOOL_NAMES, __version__
+from .citations import TEXT_READER_VERSION
 
 
 async def check_client(client, release_id=None, *, plan=None, require_research=False):
@@ -145,7 +146,7 @@ async def check_client(client, release_id=None, *, plan=None, require_research=F
     if 'resolve_citation' not in called:
         # Exercise a release-bound refusal without fetching unavailable originals.
         result = await call('resolve_citation', {'citation': dict(version=1, source=dict(reference, release_id='0' * 64),
-            saved_body='0' * 64, reader_version='archive-body-text-v2', location=dict(kind='body_text', page=1, offset=0, length=1), text_sha256='0' * 64)})
+            saved_body='0' * 64, reader_version=TEXT_READER_VERSION, location=dict(kind='body_text', page=1, offset=0, length=1), text_sha256='0' * 64)})
         assert result['state'] in ('unavailable', 'different_source')
         record('stale-citation-refusal')
     for query, expected in [({'sql': 'SELECT FROM'}, 'Parser Error'),
