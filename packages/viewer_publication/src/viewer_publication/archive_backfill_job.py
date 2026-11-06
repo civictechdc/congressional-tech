@@ -65,6 +65,9 @@ def load_spec(path):
     if 'record_only' in value:
         from viewer_publication.archive_record_backfill import load_record_only
         return load_record_only(value,base=path.parent)
+    if 'house_xml_disposition' in value:
+        from viewer_publication.archive_house_xml_dispositions import load_dispositions
+        return load_dispositions(value, base=path.parent)
     if 'house_xml_version_transition' in value:
         from viewer_publication.archive_house_xml_transition import load_transition
         return load_transition(value, base=path.parent)
@@ -165,6 +168,8 @@ def plan(spec):
     if spec.get('status')=='blocked':return dict(spec)
     if 'record_only' in spec:
         return dict(status='planned',executed=False,work=spec['work'],**spec['record_only'])
+    if 'house_xml_disposition' in spec:
+        return dict(status='planned', executed=False, work=spec['work'], **spec['house_xml_disposition'])
     if 'house_xml_version_transition' in spec:
         return dict(status='planned', executed=False, work=spec['work'],
                     model_spec=spec['house_xml_version_transition'])
@@ -314,6 +319,9 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
     if 'record_only' in spec:
         from viewer_publication.archive_record_backfill import execute_record_only
         return execute_record_only(spec,runtime_factory=runtime_factory)
+    if 'house_xml_disposition' in spec:
+        from viewer_publication.archive_house_xml_dispositions import execute_dispositions
+        return execute_dispositions(spec, runtime_factory=runtime_factory)
     if 'house_xml_version_transition' in spec:
         from viewer_publication.archive_house_xml_transition import execute_transition
         return execute_transition(spec, runtime_factory=runtime_factory)
