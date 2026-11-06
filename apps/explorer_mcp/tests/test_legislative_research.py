@@ -50,6 +50,8 @@ def test_activity_nomination_actions_are_not_bounded_by_received_dates(tmp_path,
 
     root=tmp_path/'release';shutil.copytree(phase2.parent,root)
     table=pq.read_table(root/'nominations.parquet')
+    table=table.set_column(table.schema.get_field_index('latest_action_text'),'latest_action_text',
+        pa.array(['Referred to committee for confirmation.','Confirmed']))
     activities=pa.list_(pa.struct([
         ('system_code',pa.string()),
         ('activities',pa.list_(pa.struct([('date',pa.string()),('name',pa.string())]))),
@@ -92,6 +94,9 @@ def test_activity_nomination_actions_are_not_bounded_by_received_dates(tmp_path,
             received=(await client.call_tool('run_research_query',{'query':dict(name='pending_nominations',since='2025-02-01',until='2025-02-02')})).data
             assert received['rows']==[] and received['date_field']=='received'
             assert received['coverage']['interval_coverage']['nominations']=='outside_retained_dates'
+            received_day=(await client.call_tool('run_research_query',{'query':dict(name='pending_nominations',since='2025-01-03',until='2025-01-04')})).data
+            assert [row['nomination_id'] for row in received_day['rows']]==['119-pn-730-2']
+            assert received_day['coverage']['interval_coverage']['nominations']=='retained_records_only'
     asyncio.run(run())
 
 
