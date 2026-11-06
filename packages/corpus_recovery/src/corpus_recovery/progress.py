@@ -9,7 +9,6 @@ import argparse
 from hashlib import sha256
 import json
 from pathlib import Path
-import re
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -18,7 +17,7 @@ from congress_shared.campaign import load_campaign
 from congress_shared.custody import bounded_control_read, canonical_json_bytes, write_atomic_bytes
 from congress_api.retention.provenance import file_pin, parquet_output, run_job
 from corpus_recovery.acceptance import VERSION
-from corpus_recovery.campaign import plan
+from corpus_recovery.campaign import _control, operation_id, plan, validated_acknowledgement
 
 
 def _read(path):
@@ -28,34 +27,35 @@ def _read(path):
     return json.loads(raw), dict(path=str(path), sha256=sha256(raw).hexdigest(), size=len(raw))
 
 
-def _operation(path, campaign):
+def _operation(path, campaign, requests=None):
     root = Path(path)
-    binding, binding_pin = _read(root / 'binding.json')
-    fields = {'descriptor_sha256', 'request_sha256', 'policy'}
-    if (set(binding) not in (fields, fields | {'identity_note_policy'})
-            or binding['descriptor_sha256'] != campaign.descriptor_sha256
-            or binding['policy'] != VERSION
-            or ('identity_note_policy' in binding and
-                (not isinstance(binding['identity_note_policy'], str) or not binding['identity_note_policy'].strip()))
-            or not isinstance(binding['request_sha256'], str)
-            or not re.fullmatch('[0-9a-f]{64}', binding['request_sha256'])):
-        raise ValueError('Import operation does not bind the original descriptor and request')
-    operation_id = sha256(canonical_json_bytes(binding)).hexdigest()
-    row = dict(operation_id=operation_id, status='incomplete', target_url=None,
+    binding, binding_pin = _control(root / 'binding.json')
+    operation = operation_id(campaign, binding)
+    row = dict(operation_id=operation, status='incomplete', target_url=None,
                candidate_url=None, body_sha256=None, qualification_sha256=None,
                receipt_key=None, provenance_key=None)
     pins = [binding_pin]
     result_path = root / 'result.json'
     if not result_path.exists():
         return row, pins
-    result, result_pin = _read(result_path)
+    result, result_pin = _control(result_path)
     pins.append(result_pin)
     if result.get('status') not in {'accepted', 'rejected', 'review_required'}:
         raise ValueError('Unknown import result status')
     row['status'] = result['status']
+    if row['status'] == 'accepted':
+        request_path = (requests or {}).get(binding['request_sha256'])
+        result, validated_pins = validated_acknowledgement(root, campaign, binding,
+                                                          result=result, request_path=request_path)
+        pins.extend(validated_pins)
+        decision = result['decision']
+        row.update(target_url=decision['original_url'], candidate_url=decision['recovered_url'],
+                   body_sha256=decision['body_sha256'], qualification_sha256=decision['qualification_sha256'],
+                   receipt_key=result['receipt_key'], provenance_key=result['provenance_key'])
+        return row, pins
     evidence_path = root / 'identity-evidence.json'
     if evidence_path.exists():
-        evidence, evidence_pin = _read(evidence_path)
+        evidence, evidence_pin = _control(evidence_path)
         pins.append(evidence_pin)
         if (evidence_pin['sha256'] != result.get('evidence_sha256')
                 or evidence.get('version') != VERSION
@@ -63,24 +63,11 @@ def _operation(path, campaign):
             raise ValueError('Import identity evidence differs from its result or requirement')
         row.update(target_url=evidence['target']['url'], candidate_url=evidence['candidate']['url'],
                    body_sha256=evidence['body_sha256'], qualification_sha256=evidence['qualification_sha256'])
-    if row['status'] == 'accepted':
-        decision = result.get('decision', {})
-        if (not evidence_path.exists() or decision.get('id') != operation_id
-                or decision.get('acceptance_status') != 'accepted'
-                or decision.get('acceptance_policy') != VERSION
-                or decision.get('target_requirement') != campaign.requirement
-                or any(decision.get(k) != row[v] for k, v in (
-                    ('original_url', 'target_url'), ('recovered_url', 'candidate_url'),
-                    ('body_sha256', 'body_sha256'), ('qualification_sha256', 'qualification_sha256')))
-                or decision.get('evidence_sha256') != result.get('evidence_sha256')
-                or not all(isinstance(result.get(k), str) and result[k] for k in ('receipt_key', 'provenance_key'))):
-            raise ValueError('Accepted import lacks its acknowledged original operation bindings')
-        row.update(receipt_key=result['receipt_key'], provenance_key=result['provenance_key'])
     return row, pins
 
 
 def report_campaign(descriptor, *, output, engine, operation_dirs=(), final_descriptor=None,
-                    release_comparison=None):
+                    release_comparison=None, request_paths=()):
     """Join initial/final target ledgers to imports without acquisition or raw writes.
 
     ``final_descriptor`` may change only state/profile/requirements pins. It must
@@ -117,9 +104,13 @@ def report_campaign(descriptor, *, output, engine, operation_dirs=(), final_desc
             raise ValueError('Release comparison must name both releases and pin the execution descriptor after final planning')
         comparison = dict(pin=pin, base_release=value['base_release'], candidate_release=value['candidate_release'],
                           comparison_ok=value['ok'])
+    requests = {}
+    for path in request_paths:
+        _, pin = _control(path)
+        requests[pin['sha256']] = path
     rows, operation_pins, seen = [], [], {}
     for directory in operation_dirs:
-        row, pins = _operation(directory, campaign)
+        row, pins = _operation(directory, campaign, requests)
         if row['operation_id'] in seen:
             if seen[row['operation_id']] != row:
                 raise ValueError('Conflicting results for the same import operation')
@@ -182,13 +173,15 @@ def main(argv=None):
     parser.add_argument('--output', required=True)
     parser.add_argument('--runtime', required=True)
     parser.add_argument('--operation', action='append', default=[])
+    parser.add_argument('--request', action='append', default=[], help='Original request for an operation predating retained request snapshots')
     parser.add_argument('--final-campaign')
     parser.add_argument('--release-comparison')
     args = parser.parse_args(argv)
     from docspec_client.client import NativeDatasets
     result = report_campaign(args.campaign, output=args.output,
                              engine=NativeDatasets.from_config(args.runtime), operation_dirs=args.operation,
-                             final_descriptor=args.final_campaign, release_comparison=args.release_comparison)
+                             final_descriptor=args.final_campaign, release_comparison=args.release_comparison,
+                             request_paths=args.request)
     print(json.dumps(result, indent=2))
 
 

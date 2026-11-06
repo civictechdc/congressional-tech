@@ -116,6 +116,17 @@ and keys without reopening body/source files, repeating qualification or
 reauthoring provenance. Later explanation-authoring changes therefore cannot
 rewrite the acknowledged operation. Corrupt acknowledgement/evidence refuses.
 Qualification and identity evidence remain with the operation.
+
+The operation retains the exact request bytes for metadata-only replay and
+reporting. Both consumers use one validator: every decision field must match
+the pinned request/evidence and selected note policy, the receipt key must match
+the frozen receipt metadata/content, and the provenance key must match the
+original timestamp and operation ID. Older operations without a request snapshot
+can be reported with `progress --request ORIGINAL_REQUEST` (repeatable); its
+digest must match the original binding. Reporting leaves those operations
+unchanged. A same-binding retry can retain the missing request snapshot without
+reading bodies or source records. Missing/corrupt retained metadata refuses;
+another supplied request cannot hide a corrupt existing snapshot.
 Version-2 provenance is a trusted producer attestation; the native model verifies
 its typed inputs and retained-body match, while this producer proves the referenced
 qualification and identity evidence. Generic provenance writers remain trusted

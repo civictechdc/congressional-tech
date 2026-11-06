@@ -4,6 +4,7 @@ No body-store scan or network call is part of planning. Native SQL joins and
 exports the campaign universe; Python handles bounded control artifacts only.
 """
 import argparse
+from datetime import date
 import fcntl
 from hashlib import sha256
 import json
@@ -12,7 +13,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from congress_shared.campaign import load_campaign
-from congress_shared.custody import canonical_json_bytes, verify_local_file, write_atomic_bytes, bounded_control_read
+from congress_shared.custody import CONTROL_LIMITS, canonical_json_bytes, verify_local_file, write_atomic_bytes, bounded_control_read
 from congress_api.retention.provenance import (file_pin, instant, parquet_output, run_job,
     timestamp_key, validate_provenance, write_records)
 from corpus_recovery.acceptance import VERSION, decide, identity_source, read_pin, pin_path, receipt_binding
@@ -135,34 +136,102 @@ def _member(campaign,target,candidate,engine,work):
         raise ValueError('Candidate is not an unambiguous pinned campaign member')
 
 
-def _acknowledged_import(root,campaign,binding,request,match_basis):
-    """Replay a completed acknowledgement without reauthoring immutable decisions."""
-    path=root/'result.json'
-    if not path.exists():return None
-    with path.open('rb') as stream:result=json.loads(bounded_control_read(stream))
-    if result.get('status') not in {'accepted','rejected','review_required'}:
-        raise ValueError('Unknown retained import result status')
-    if result.get('status')!='accepted':return None
-    record=result.get('decision',{})
-    validate_provenance('recoveries',record)
-    operation=sha256(canonical_json_bytes(binding)).hexdigest()
-    if (record['id']!=operation or record.get('recovery_record_version')!=2
-            or record.get('acceptance_status')!='accepted' or record.get('acceptance_policy')!=VERSION
-            or record.get('target_requirement')!=campaign.requirement
-            or record.get('match_basis')!=match_basis
-            or record.get('body_sha256')!=request['body']['sha256']
-            or record.get('evidence_sha256')!=result.get('evidence_sha256')
-            or not all(isinstance(result.get(k),str) and result[k] for k in ('receipt_key','provenance_key'))):
-        raise ValueError('Acknowledged import differs from its original operation bindings')
-    evidence,_=read_pin(dict(path=str((root/'identity-evidence.json').resolve()),
-                             sha256=result['evidence_sha256']),root)
+_UNPINNED=object()
+
+
+def _control(path, *, expected_sha256=_UNPINNED):
+    """Read bounded operation metadata with the maintained pin/custody checks."""
+    path=Path(path).resolve()
+    if path.stat().st_size>CONTROL_LIMITS['manifest']:
+        raise ValueError('Oversized campaign operation metadata')
+    digest=file_pin(path)['sha256'] if expected_sha256 is _UNPINNED else expected_sha256
+    value,verified=read_pin(dict(path=str(path),sha256=digest),path.parent)
+    return value,dict(path=str(path),sha256=verified.sha256,size=verified.size_bytes)
+
+
+def operation_id(campaign,binding):
+    fields={'descriptor_sha256','request_sha256','policy'}
+    if (set(binding) not in (fields,fields|{'identity_note_policy'})
+            or binding['descriptor_sha256']!=campaign.descriptor_sha256 or binding['policy']!=VERSION
+            or ('identity_note_policy' in binding and binding['identity_note_policy']!='authored-or-null-v1')
+            or not isinstance(binding['request_sha256'],str)
+            or len(binding['request_sha256'])!=64 or any(c not in '0123456789abcdef' for c in binding['request_sha256'])):
+        raise ValueError('Import operation does not bind the original descriptor and request')
+    return sha256(canonical_json_bytes(binding)).hexdigest()
+
+
+def _decision_record(campaign,binding,request,evidence,evidence_sha256):
+    # Legacy accepted decisions used this fixed rule reason. New authoring must
+    # use ct-nh41's maintained policy, never reinterpret a legacy operation.
+    note='source_identifiers_match'
+    if 'identity_note_policy' in binding:
+        from corpus_recovery.identity_notes import POLICY,authored_note
+        if POLICY!=binding['identity_note_policy']:
+            raise ValueError('Acknowledgement note policy differs from the maintained authoring policy')
+        note=authored_note(request.get('identity_note'))
+    return dict(id=operation_id(campaign,binding),original_url=evidence['target']['url'],
+        recovered_url=evidence['candidate']['url'],recovered_filename=None,body_sha256=evidence['body_sha256'],
+        kind=request['relationship'],match_basis=request.get('match_basis','official_document_identifier'),
+        evidence_sha256=evidence_sha256,identity_note=note,decided_by=request['decided_by'],decided_at=request['decided_at'],
+        supersedes=request.get('supersedes'),recovery_record_version=2,target_requirement=campaign.requirement,
+        acceptance_status='accepted',acceptance_policy=VERSION,qualification_sha256=evidence['qualification_sha256'])
+
+
+def validated_acknowledgement(root,campaign,binding, *, request_path=None,result=None):
+    """Validate original decision and keys from bounded metadata, without bodies or sources."""
+    root=Path(root)
+    operation=operation_id(campaign,binding)
+    pins=[]
+    if result is None:
+        result,pin=_control(root/'result.json');pins.append(pin)
+    if (set(result)!={'status','receipt_key','decision','provenance_key','evidence_sha256'}
+            or result.get('status')!='accepted'):
+        raise ValueError('Expected an accepted import acknowledgement')
+    snapshots=[p for p in (root/'request.json',root/'request.json.gz') if p.exists()]
+    if len(snapshots)>1:
+        raise ValueError('Ambiguous retained request snapshots')
+    if snapshots:
+        request_path=snapshots[0]
+    if request_path is None:
+        raise ValueError('Acknowledgement needs its original request; supply the pinned request for a legacy operation')
+    request,pin=_control(request_path,expected_sha256=binding['request_sha256']);pins.append(pin)
+    evidence,evidence_pin=_control(root/'identity-evidence.json',expected_sha256=result.get('evidence_sha256'))
+    pins.append(evidence_pin)
     if (evidence.get('version')!=VERSION or evidence.get('requirement')!=campaign.requirement
-            or evidence['target']['url']!=record['original_url'] or evidence['candidate']['url']!=record['recovered_url']
-            or evidence['body_sha256']!=record['body_sha256']
-            or evidence['qualification_sha256']!=record['qualification_sha256']):
-        raise ValueError('Acknowledged import differs from its retained identity evidence')
+            or evidence.get('relationship')!=request['relationship']
+            or evidence.get('body_sha256')!=request['body']['sha256']
+            or evidence.get('receipt_sha256')!=request['receipt']['sha256']
+            or any(evidence[side]['source_sha256']!=request[side]['source']['sha256']
+                   or evidence[side]['source_url']!=request[side]['source_url'] for side in ('target','candidate'))):
+        raise ValueError('Acknowledged import differs from its original request/evidence bindings')
+    expected=_decision_record(campaign,binding,request,evidence,evidence_pin['sha256'])
+    validate_provenance('recoveries',expected)
+    if result.get('decision')!=expected or result.get('evidence_sha256')!=evidence_pin['sha256']:
+        raise ValueError('Acknowledged import differs from its original operation bindings')
+    frozen=root/'receipts'/operation
+    metadata,pin=_control(frozen/'receipt.json');pins.append(pin)
+    if set(metadata)!={'key','sha256'} or not isinstance(metadata['key'],str):
+        raise ValueError('Invalid frozen receipt identity')
+    receipt,pin=_control(frozen/'receipt.gz',expected_sha256=metadata['sha256']);pins.append(pin)
+    parts=metadata['key'].split('/')
+    if (len(parts)!=4 or parts[:2]!=['receipts','documents'] or date.fromisoformat(parts[2]).isoformat()!=parts[2]
+            or parts[3]!=f"{receipt['run_id']}-{operation}.jsonl.gz" or result.get('receipt_key')!=metadata['key']):
+        raise ValueError('Acknowledged receipt key differs from its frozen receipt identity')
+    retained=receipt.get('recovery_evidence',{})
+    acquisition=retained.get('acquisition',{})
+    if (receipt.get('family')!='documents' or receipt.get('mode')!='retained_import'
+            or receipt.get('requested_url')!=expected['recovered_url'] or receipt.get('transport')!='retained-import'
+            or receipt_binding(receipt,url=expected['recovered_url'],digest=expected['body_sha256'],size=evidence['body_bytes'])!=evidence['retrieved_at']
+            or retained.get('original_url')!=expected['original_url'] or retained.get('imported_at')!=expected['decided_at']
+            or retained.get('match_basis')!=expected['match_basis'] or acquisition.get('prior_access_category')!=expected['kind']
+            or acquisition.get('recovered_url')!=expected['recovered_url'] or acquisition.get('evidence_sha256')!=evidence_pin['sha256']
+            or acquisition.get('observed_capture_timestamp')!=evidence['retrieved_at']):
+        raise ValueError('Frozen receipt differs from its original request/evidence bindings')
+    provenance=f"provenance/recoveries/{timestamp_key(request['decided_at'])}-{operation}.jsonl"
+    if result.get('provenance_key')!=provenance:
+        raise ValueError('Acknowledged provenance key differs from its original decision identity')
     campaign.require_custody()
-    return result
+    return result,pins
 
 
 def import_candidate(descriptor, request_path, *, output, engine, writer, store,
@@ -177,7 +246,7 @@ def import_candidate(descriptor, request_path, *, output, engine, writer, store,
     campaign=load_campaign(descriptor)
     request_path=Path(request_path)
     pin=file_pin(request_path)
-    request,_=read_pin(dict(path=str(request_path.resolve()),sha256=pin['sha256']),request_path.parent)
+    request,request_file=read_pin(dict(path=str(request_path.resolve()),sha256=pin['sha256']),request_path.parent)
     match_basis=request.get('match_basis','official_document_identifier')
     if not isinstance(match_basis,str) or match_basis not in {'official_document_identifier','source_catalog_document_identifier'}:
         raise ValueError('Unsupported campaign match basis')
@@ -186,11 +255,22 @@ def import_candidate(descriptor, request_path, *, output, engine, writer, store,
     with (root/'operation.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         saved=root/'binding.json'
-        if saved.exists() and json.loads(saved.read_text())!=binding:
+        if saved.exists() and _control(saved)[0]!=binding:
             raise ValueError('Recovery operation inputs changed; use a new operation')
         if not saved.exists():_write(saved,binding)
-        acknowledged=_acknowledged_import(root,campaign,binding,request,match_basis)
-        if acknowledged is not None:return acknowledged
+        snapshot=root/('request.json.gz' if request_path.suffix=='.gz' else 'request.json')
+        if not snapshot.exists():
+            with request_path.open('rb') as stream:raw=bounded_control_read(stream)
+            request_file._require_custody(request_path)
+            write_atomic_bytes(snapshot,raw)
+        else:
+            _control(snapshot,expected_sha256=binding['request_sha256'])
+        if (root/'result.json').exists():
+            retained,_=_control(root/'result.json')
+            if retained.get('status') not in {'accepted','rejected','review_required'}:
+                raise ValueError('Unknown retained import result status')
+            if retained['status']=='accepted':
+                return validated_acknowledgement(root,campaign,binding,result=retained)[0]
         target=identity_source(request['target'],request_path.parent)
         candidate=identity_source(request['candidate'],request_path.parent)
         _member(campaign,target['url'],candidate['url'],engine,root/'membership')
@@ -222,12 +302,7 @@ def import_candidate(descriptor, request_path, *, output, engine, writer, store,
             match_basis=match_basis,imported_at=request['decided_at'],
             evidence_sha256=decision['evidence_sha256'])
         receipt_key,_=import_retained(writer,source,operation_id=operation,freeze_dir=root/'receipts',verified_body=body)
-        record=dict(id=operation,original_url=target['url'],recovered_url=candidate['url'],
-            recovered_filename=None,body_sha256=body.sha256,kind=request['relationship'],
-            match_basis=source['match_basis'],evidence_sha256=decision['evidence_sha256'],
-            identity_note=decision['reason'],decided_by=request['decided_by'],decided_at=request['decided_at'],
-            supersedes=request.get('supersedes'),recovery_record_version=2,target_requirement=campaign.requirement,
-            acceptance_status='accepted',acceptance_policy=VERSION,qualification_sha256=qualification['qualification_sha256'])
+        record=_decision_record(campaign,binding,request,decision['evidence'],decision['evidence_sha256'])
         validate_provenance('recoveries',record)
         provenance_key,_=write_records(store,'recoveries',[record],timestamp=timestamp_key(request['decided_at'])+'-'+operation)
         result=dict(status='accepted',receipt_key=receipt_key,decision=record,provenance_key=provenance_key,
