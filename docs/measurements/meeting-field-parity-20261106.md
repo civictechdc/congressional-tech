@@ -64,7 +64,7 @@ Each event below has an older archive source update in both inspected archive ou
 | 338792 | `2026-09-26 02:08:23+00:00` | `2026-09-28 22:08:22+00:00` | Same sitting and location. |
 | 338794 | `2026-09-26 02:08:23+00:00` | `2026-10-01 00:08:27+00:00` | Archive start 14:30 UTC; newer source start 15:00 UTC on October 1. Location comparison withheld. |
 
-Event `119575` also retains a separate Congress.gov raw-custody/freshness gap. Its verified House building does not establish an accepted empty Congress.gov detail.
+The separate document-reference review leaves event `119575`'s exact Congress.gov raw version unqualified and its null document references unaccepted as empty. The supported House building does not resolve that independently owned gap. [Document-reference disposition](../../.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/candidate-acceptance/720c495b-independent/HANDOFF.md)
 
 Retain these source versions. Any later refresh belongs to the maintained detail-acquisition/publication path; compare the resulting exact detail before changing a producer or claiming convergence.
 
