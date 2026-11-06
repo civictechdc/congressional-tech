@@ -39,11 +39,21 @@ representation and statement links.
 
 ## Source and document evidence
 
-The bounded read verified 1,885 House XML body digests, 13,248,385 decoded bytes,
-and found all 7,933 selected House occurrence locators. Their role, organization,
-representation and removal checks found zero differences. The ledger also writes
-the reverse raw-locator inventory: zero raw House locators outside its selected
-scope. Raw name correspondence remains unadjudicated across the population.
+The bounded read verified 1,885 House XML body digests, 13,248,385 decoded bytes.
+After independent review, 7,913 selected House locators have qualified positional
+correspondence; twenty occurrences in four bodies remain explicitly unqualified.
+The ledger refuses raw positional attribution when removal, panel order, explicit
+IDs or unsupported shapes could change the meaning of a native locator. It does
+not reproduce the producer's filtering and sorting rules. This corrects the
+initial measurement's assumption that all 7,933 native positions were raw positions.
+Qualified role, organization and representation checks found zero differences.
+The reverse raw-locator inventory excludes unqualified bodies; its zero differences
+do not qualify the twenty omitted bindings.
+
+The supplemental detailed House name check now qualifies 7,913 selected-source
+correspondences and six retained-original correspondences, leaving twenty under
+review. All nineteen oath occurrence bindings remain qualified. Thin CSV and
+non-House name correspondence remain unadjudicated.
 
 The 14,805 other source-scoped native occurrences remain explicitly unread in
 this audit. Missing local bodies would be labeled separately; the ledger makes
@@ -53,8 +63,8 @@ acquires sources.
 Document checks compare source-listed URLs with visible documents annotated with
 each witness key, and flag annotated document rows without an own-source URL.
 They retain source document types and distinguish shared document rows from
-distinct source links. There are **9,715 input records with exact-link flags** and
-**4,840 source occurrences with document rows needing review**. These are leads,
+distinct source links. There are **9,699 input records with exact-link flags** and
+**4,832 source occurrences with document rows needing review**. These are leads,
 not confirmed omissions or wrong associations: aliases, shared editions, source
 status and other supporting evidence still need interpretation. `ct-x78c` owns
 that review. No broad link or parser repair is claimed here.
@@ -63,10 +73,14 @@ Two House residuals are now specific:
 
 - All twelve unmatched House input records concern six witnesses at `100876`.
   Digest-verified source `ba982aafcdb8d02568e8b44f46bfdabd6e99226a2e61fd4c909612404821e55a`
-  lists seven witnesses with empty removal dates. The selected House source lists
-  one. The six older occurrences and links remain in retained raw evidence and
-  legacy records. `ct-x78c` owns the selection/preservation decision; acquisition
-  is unnecessary for this comparison.
+  lists seven witnesses with empty removal dates. The selected one-witness body
+  exactly matches the repeated-documents test fixture. Original receipt lines 1-2
+  of `assemble-20260930.jsonl.gz` trace it to local `manual-source-review` model
+  outputs, not a later publisher fetch. The first causal failure is source
+  admission: derived review evidence competed as roster authority. Root owns the
+  bounded eligibility/input repair and ct-m104 its final output qualification.
+  Preserve raw history and normal newer-list replacement; do not union rosters,
+  infer attendance or reacquire these already retained sources.
 - All nineteen House field differences contain `No, but took Oath`. Preserve that
   literal fact; a native boolean alone cannot represent the oath detail.
   `ct-x78c` owns its eventual disposition.
@@ -80,9 +94,10 @@ The retained candidate keeps both Allen keys (`db779668e63d56bb`,
 `2a0208241fb6a49d`), both Keel keys (`7021b9cc93c3b30d`, `a10966305b2c9ab0`)
 and Ayers at `100346` (`e0ca0e7375ff80be`) active. All four Allen source URLs and
 all three Keel URLs appear on the associated candidate documents. The two Allen
-biographies share one candidate document row. Final readers must validate that
-shared-edition provenance before using filename-based exclusive-owner assertions.
-The two Allen statements have distinct rows.
+biographies share one candidate document row. Independently accepted source
+provenance confirms the shared biography body correctly carries both role keys;
+each statement carries its own. Final readers must preserve those role sets
+without inferring ownership from the selected filename or requiring a fourth body.
 
 The release, site and MCP owners must exercise these keys, source links, the
 Ayers receipt-path case, historical keys and testimony/statement controls on the
@@ -100,14 +115,19 @@ Use the checkout's frozen environment and the repository watchdog.
 
 Durable evidence is under the main checkout's
 `.cache/archive-release/implementation/reviewed-non-news-20261106/ct-x78c/`:
-`ledger-720c-final/`, `accounting-readback.json`, `house-residuals.json`,
-`reader-handoff.json`, `focused-final.log` and `ledger-final.watchdog.json`.
-The final measurement took 4.2 seconds and peaked at 0.505 GiB RSS.
+`ledger-720c-locator-fix/`, `locator-fix-coverage-reconciliation.json`,
+`house-name-correspondence-locator-fix.jsonl`, `SOURCE-ADMISSION-HANDOFF.md` and
+`reader-handoff.json` provide the corrected result. The original `ledger-720c-final/`
+and its readback remain historical evidence, superseded for raw positional
+attribution. Focused logs, the corrected measurement watchdog and independent
+review are under the shared `merge-prune-20261106T180951Z/reviews/ct-x78c/` directory.
 
-Thirteen focused checks passed through the project runner, explicitly a partial
+Eighteen focused checks passed through the project runner, explicitly a partial
 production-offline result. They cover conservation, input/asset identity changes,
 wrong roles, raw-role disagreement, historical status, ambiguous representation,
 repeated claims, unread/unusable evidence and document associations in both
-directions. An independent reviewer confirmed the planted assertions and limits.
+directions, plus removed-before-active, reordered-panel and ID-locator controls.
+The four-skill independent reviewer identified the original locator defect; the
+follow-up refuses unproved attribution instead of attaching another person's facts.
 Doctor's workspace-evidence warnings remain in the log; no byte-hashed parser,
 reading version, runtime pin or model file changed.

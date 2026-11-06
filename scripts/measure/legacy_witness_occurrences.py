@@ -128,8 +128,32 @@ class HouseEvidence:
             except ET.ParseError:
                 result = dict(state='read_unusable_xml', occurrences={})
             else:
+                # A native position is not necessarily a raw document position.
+                # Refuse shapes that require filtering, reordering or ID-based
+                # interpretation instead of duplicating the producer's rules.
+                panels = root.findall('panel')
+                unqualified = set()
+                if root.tag != 'witness-list' or root.get('remove-date'):
+                    unqualified.add('unsupported_or_removed_root')
+                if len(panels) != len(root.findall('.//panel')):
+                    unqualified.add('nested_panels')
+                for panel_no, panel in enumerate(panels, 1):
+                    if panel.get('sort-order') != str(panel_no):
+                        unqualified.add('unproved_panel_order')
+                    if panel.get('remove-date'):
+                        unqualified.add('removed_panel')
+                    for witness in panel.findall('witness'):
+                        if witness.get('remove-date'):
+                            unqualified.add('removed_witness')
+                        if witness.get('id') or witness.get('witness-id'):
+                            unqualified.add('id_based_locator')
+                if unqualified:
+                    result = dict(state='read_unqualified_locator', occurrences={},
+                                  reasons=sorted(unqualified))
+                    self.cache[body_sha] = result
+                    return result
                 occurrences = {}
-                for panel_no, panel in enumerate(root.findall('.//panel'), 1):
+                for panel_no, panel in enumerate(panels, 1):
                     for witness_no, witness in enumerate(panel.findall('witness'), 1):
                         locator = f'house_xml:panel[{panel_no}]/witness[{witness_no}]'
                         occurrences[locator] = dict(
@@ -148,9 +172,11 @@ class HouseEvidence:
 
     def occurrence(self, row):
         evidence = self.read(row['record_sha'])
+        if evidence['state'] != 'read':
+            return dict(state=evidence['state'], literal=None,
+                        reasons=evidence.get('reasons', []))
         occurrence = evidence['occurrences'].get(row['source_locator'])
-        return dict(state=(evidence['state'] if evidence['state'] != 'read' else
-                           'read_locator_found' if occurrence else 'read_locator_absent'),
+        return dict(state='read_locator_found' if occurrence else 'read_locator_absent',
                     literal=occurrence)
 
 
@@ -297,6 +323,9 @@ def run(args):
                    raw_house_bodies_read=sum(r['state'] != 'not_located_in_local_mirror' for r in house.cache.values()),
                    raw_house_decoded_bytes=house.bytes_read,
                    raw_house_occurrences_not_in_selected_scope=len(raw_not_selected),
+                   raw_house_unqualified_locators={body_sha: evidence['reasons']
+                                                  for body_sha, evidence in house.cache.items()
+                                                  if evidence['state'] == 'read_unqualified_locator'},
                    records_with_source_links_not_exactly_linked=sum(bool(r['source_links_not_exactly_linked']) for r in ledger),
                    source_occurrences_with_raw_field_differences=sum(bool(r['raw_field_differences']) for r in occurrences),
                    source_occurrences_with_document_rows_requiring_review=sum(bool(r['published_document_rows_without_source_link']) for r in occurrences),
@@ -304,6 +333,7 @@ def run(args):
                    limits=['Matching uses exact source scope, name and populated legacy role fields; no name aliases.',
                            'Candidate field matches are not source-verified migration verdicts. Raw name correspondence remains unadjudicated.',
                            'Raw House XML is read once per selected digest; role/representation and removal differences are flagged. Other sources remain unread.',
+                           'Raw positional evidence is unqualified for removed, reordered, ID-based or unsupported source shapes; its reverse locator inventory is not compared.',
                            'A missing mirror body does not establish upstream source unavailability.',
                            'Repeated input records remain separate; a shared occurrence is not a duplicate verdict.',
                            'Exact source URL differences are reported, without assuming an HTTP/HTTPS alias.',
