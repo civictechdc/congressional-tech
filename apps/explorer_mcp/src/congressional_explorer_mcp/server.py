@@ -78,6 +78,10 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         return result
 
     async def caption_read(target,query):
+        if worker.selection['manifest'].get('text_index'):
+            retained=await call('indexed_caption_text',dict(source=target,query=query.model_dump()))
+            if retained is not None:
+                return bounded(retained)
         from .caption_reader import read_caption_page
         async def resources(ordinal,limit):
             return await call('caption_resource_page',dict(source=target,ordinal=ordinal,limit=limit))

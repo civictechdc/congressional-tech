@@ -21,25 +21,39 @@ async def resolve_passage(citation,call,caption_read,*,data_dir=None,timeout=10.
     if not isinstance(source,dict) or not isinstance(location,dict) or not re.fullmatch('[a-f0-9]{64}',citation.get('text_sha256','')):
         raise ExplorerError('Invalid passage citation')
     # This cheap selected-release check also initializes a lazily prepared server.
-    current=(await call('query_sql',dict(sql='SELECT 1 AS ready',limit=1)))['release_id']
+    selected=await call('overview',{})
+    current=selected['release_id']
     if source.get('release_id')!=current:
         return dict(state='unavailable',reason='Citation belongs to another pinned release',citation=citation,selected_release_id=current)
     try:
+        if isinstance(selected.get('corpus_text_index'),dict):
+            retained=await call('resolve_index_citation',dict(citation=citation))
+            if retained.get('state') in ('resolved','different_source'):
+                return retained
         if location.get('kind')=='caption_cue':
-            cursor=caption_cursor(source,location['resource_ordinal'],location['cue_index'],0)
             if 'event_id' in source:
-                query=TranscriptQuery(**source,limit=1,cursor=cursor)
+                hearing_reference=dict(source)
+                hearing_reference.pop('video_key',None)
+                query=TranscriptQuery(**hearing_reference,limit=1)
                 target=(await call('transcript_inventory',query.model_dump()))['target']
             else:
                 target=await call('caption_source_target',source)
-                query=TranscriptQuery(event_id=0,release_id=current,kind='captions',source_id=source['source_id'],limit=1,cursor=cursor)
+                query=TranscriptQuery(event_id=0,release_id=current,kind='captions',source_id=source['source_id'],limit=1)
+            if source.get('video_key') is not None and source['video_key']!=target['video_key']:
+                return dict(state='different_source',reason='Caption recording differs',citation=citation)
             if target['saved_body']!=citation.get('saved_body'):
                 return dict(state='different_source',reason='Caption root body differs',citation=citation)
+            if isinstance(selected.get('corpus_text_index'),dict):
+                retained=await call('resolve_index_citation',dict(citation=citation,source=target))
+                if retained.get('state') in ('resolved','different_source'):
+                    return retained
+            query.cursor=caption_cursor(target['reference'],location['resource_ordinal'],location['cue_index'],0)
             result=await caption_read(target,query)
             rows=result['rows']
             if not rows:
                 return dict(state='unavailable',reason='Cited cue could not be read',citation=citation,details=result)
             row=rows[0]
+            reading_citation=row.get('citation') or {}
             if any(row.get(key)!=location.get(key) for key in ('resource_ordinal','cue_index','segment_body','start','end')):
                 return dict(state='different_source',reason='Caption resource or cue location differs',citation=citation)
             text=row['text']
@@ -73,8 +87,15 @@ async def resolve_passage(citation,call,caption_read,*,data_dir=None,timeout=10.
                     return dict(state='different_source',reason='Publisher-selected block differs',citation=citation)
                 reader_version=result['reader_version']
             text=result['text'][:length]
+            reading_citation=result.get('citation') or {}
         if reader_version!=citation.get('reader_version'):
             return dict(state='different_source',reason='Text reading version differs',citation=citation)
+        for field in ('extraction_definition','reading_definition','backend'):
+            if citation.get(field) is not None:
+                if reading_citation.get(field) is None:
+                    return dict(state='unavailable',reason='The original retained reading is unavailable',citation=citation)
+                if citation[field]!=reading_citation[field]:
+                    return dict(state='different_source',reason='Retained reading or backend differs',citation=citation)
         if sha256(text.encode()).hexdigest()!=citation['text_sha256']:
             return dict(state='different_source',reason='Text at the cited location differs',citation=citation)
         return dict(state='resolved',citation=citation,text=text,source=source,location=location)
