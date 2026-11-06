@@ -19,7 +19,7 @@ import pyarrow.parquet as pq
 
 from congress_api.lake import filenames, readings
 from congress_api.lake.capture_staging import stage_captures
-from congress_api.retention.provenance import parquet_output, run_job
+from congress_api.retention.provenance import json_input, parquet_output, run_job
 from docspec_client.client import NativeDatasets
 
 FINANCE = 'https://www.finance.senate.gov/'
@@ -297,3 +297,64 @@ def test_supported_linked_date_can_fill_an_ineligible_shown_alias(tmp_path, also
     assert [(c['field'], c['shown_value'], c['shown_url'], c['other_value'], c['other_url'])
             for c in conflicts if c['field'] == 'filename_date'] == [
         ('filename_date', '2021-03-17', requested, '1901-02-27', shown)]
+
+
+def test_reference_association_does_not_duplicate_the_shown_date_conflict(tmp_path):
+    from viewer_publication.archive_annotations import annotation_steps
+    from viewer_publication.archive_model import FILENAME_CONFLICTS_SQL, registry_inputs, source_steps
+    alias = 'transcript-02271901'
+    shown = 'https://www.foreign.senate.gov/download/' + alias
+    requested = FINANCE + 'download/03172021-ramos-testimony&download=1'
+
+    def capture(line, url, requested_url, *, reference=False, disposition=None):
+        return dict(receipt_key='fixture.jsonl', receipt_line=line, capture_index=0,
+            run_id='fixture', mode='fetch', outcome='reference' if reference else 'stored',
+            url=url, requested_url=requested_url, context_url=url, member_path=None,
+            h_content_disposition=disposition, retrieved_at='2026-10-27T12:00:00Z',
+            body_hex=None if reference else 'a' * 64, format=None if reference else 'pdf',
+            is_real_file=not reference, record_role=None if reference else 'document')
+
+    captures = [capture(1, shown, shown), capture(2, shown, requested),
+        # Before association the disposition and requested names differ, so the
+        # requested pair survives. The held target then supplies its shown pair.
+        capture(3, shown + '#mention', shown, reference=True,
+            disposition='attachment; filename="Reference.pdf"')]
+    inputs = registry_inputs(tmp_path / 'registries')
+    inputs += [json_input(tmp_path, 'fixture_captures', captures,
+        receipt_key='Utf8', receipt_line='Int32', capture_index='Int32', run_id='Utf8',
+        mode='Utf8', outcome='Utf8', url='Utf8', requested_url='Utf8', context_url='Utf8',
+        member_path='Utf8', h_content_disposition='Utf8', retrieved_at='Utf8',
+        body_hex='Utf8', format='Utf8', is_real_file='Boolean', record_role='Utf8'),
+        json_input(tmp_path, 'current_recoveries', [], id='Utf8', original_url='Utf8',
+            recovered_filename='Utf8', kind='Utf8'),
+        json_input(tmp_path, 'url_variants', [], canonical_url='Utf8', variant_url='Utf8')]
+    catalog = filenames.current_version()
+    names = [filenames.read_filename(name, url, catalog_version=catalog)
+             for name, url in [(alias, shown), ('03172021-ramos-testimony&download=1', requested)]]
+    name_path = tmp_path / 'readings.parquet'
+    pq.write_table(pa.Table.from_pylist(names, schema=filenames.SCHEMA), name_path)
+    inputs.append(dict(name='filename_readings', kind='parquet', path=str(name_path)))
+    steps = [dict(name='capture_evidence', sql="""SELECT * EXCLUDE(body_hex,is_real_file,record_role),
+        decode(body_hex,'hex') AS sha256,cast(NULL AS VARCHAR) AS fidelity,
+        cast(NULL AS VARCHAR) AS media_type FROM fixture_captures"""),
+        dict(name='good_fetches', sql="""SELECT receipt_key,receipt_line,capture_index,
+        requested_url,decode(body_hex,'hex') AS sha256,context_url,member_path
+        FROM fixture_captures WHERE is_real_file"""),
+        dict(name='record_roles', sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
+    steps += source_steps() + annotation_steps(catalog)[:2]
+    result = run_job(tmp_path / 'job', NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        inputs=inputs, steps=steps, outputs=[], queries=[
+            dict(name='reference', sql="""SELECT source_id,filename,source_url,requested_filename,requested_url,
+                encode(sha256,'hex') AS acquisition_body FROM capture_sources WHERE outcome='reference'"""),
+            dict(name='overlap', sql="""SELECT l.requested_filename,l.requested_url
+                FROM source_filename_readings o JOIN source_linked_filename_readings l USING(source_id)
+                WHERE l.requested_filename=o.filename AND l.requested_url=o.source_url"""),
+            dict(name='conflicts', sql=FILENAME_CONFLICTS_SQL)])
+    reference, = result['reference']
+    assert (reference['filename'], reference['source_url']) == (alias, shown)
+    assert (reference['requested_filename'], reference['requested_url']) == (alias, shown)
+    assert reference['acquisition_body'] is None
+    assert result['overlap'] == [dict(requested_filename=alias, requested_url=shown)]
+    conflict, = [row for row in result['conflicts'] if row['field'] == 'filename_date']
+    assert (conflict['shown_value'], conflict['shown_url'], conflict['other_value'], conflict['other_url']) == (
+        '2021-03-17', requested, '1901-02-27', shown)

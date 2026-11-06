@@ -659,8 +659,8 @@ FILENAME_CONFLICTS_SQL=' UNION ALL '.join(
     WHERE nullif({shown},'') IS NOT NULL AND nullif({other},'') IS NOT NULL AND {shown}<>{other}"""
     for name,shown,other,filled in _NAME_FIELDS)
 # A qualified linked date can supersede an ineligible shown alias. Retain that
-# shown disagreement too; the ordinary linked comparison already names it when
-# a separate capture also requested the shown address.
+# shown disagreement too, unless reference association has made the same shown
+# pair available to the ordinary linked comparison (capture-sources.sql).
 FILENAME_CONFLICTS_SQL += """ UNION ALL
  SELECT o.source_id,'filename_date' AS field,cast(o.filename_date AS VARCHAR) AS shown_value,
  o.filename_date_name AS shown_name,o.filename_date_url AS shown_url,
