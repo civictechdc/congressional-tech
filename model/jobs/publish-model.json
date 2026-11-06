@@ -58,19 +58,19 @@
   "parser_versions": {
     "appearance_records": {
       "congress_gov": "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
-      "house_xml": "7ecb6f0a62538695c0b5b2b93654cc148e0fb11fcb72c7e189cc8ce328a86abd",
+      "house_xml": "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
       "mods": "1775aa40163a47b0c6d07fd5b7d950f8a0580c11ac8d76e4c20c2696107cbcb8",
       "senate_page": "a8b682c51963a8951253ffcfa39833577ce163f8807f9c3b526c32f7c05cdba2"
     },
     "committee_records": {
-      "house_xml": "83d27c2ae65792ef9e00a878329068b6fe4a757386efce09e8beebc4cd54d2f3"
+      "house_xml": "e1c6ad0d1398f1d1985e085a0fb9b94c6c42ad38a2d9175ad3e8908eb46c531e"
     },
     "html": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",
     "html_metadata": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
     "json": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
     "meeting_records": {
       "congress_gov": "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
-      "house_xml": "684f3663274217a2c24a19a5a71887aa0f5f9f8c61dc5a590959e48ab84dd24b"
+      "house_xml": "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5"
     },
     "playlist_records": {
       "hls": "53e6d0904cbc43c20c215505d012fdd054a5eb262d842478dfbdd6891ee4a557"

@@ -5,7 +5,8 @@ from xml.etree.ElementTree import Element
 
 from congress_api.models.content import RawContent
 from congress_api.models.house import XML_MODELS, HouseMeetingXML, HouseWitnessListXML
-from congress_api.parsers.xml import parse_xml, xml_element
+from congress_api.parsers.xml import xml_element
+from congress_api.parsers.xml_repair import parse_xml_with_repairs
 
 HOUSE_MEETING_PREFIXES = ("HHRG", "HMKP", "HMTG")
 
@@ -29,7 +30,7 @@ def _parse_house_xml[T: HouseMeetingXML | HouseWitnessListXML](
         return root
     raw = root if isinstance(root, bytes) else root.encode('utf-8') if isinstance(root, str) else None
     if raw is not None:
-        root = parse_xml(raw)
+        root = parse_xml_with_repairs(raw).root
     if root.tag != tag:
         raise ValueError(f'Expected a House {tag} XML document')
     result = cast(T, xml_element(root, XML_MODELS))

@@ -33,3 +33,15 @@ Defer this to a later intentional House record transition that explicitly suppor
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: keep malformed-XML handling for a source-scoped transition that accepts unreadable decisions. The completed-only document-reference backfill does not qualify this change.
+
+**2026-11-06T17:21:30Z**
+
+Isolated implementation is ready on `codex/ct-yr9o-house-xml-20261106` (base `742dbe70`). All three House builders now send irreparable syntax errors through the maintained unreadable writer. User follow-up also requested a normalized repair path: one opt-in strict-first helper escapes clearly literal ampersands in text/quoted attributes, returns rule/count plus original/normalized hashes, and accepts only a complete strict parse. Raw bodies remain unchanged. Unknown entities, DTD repair, encoding guesses and truncation are refused. General readings and MODS keep their strict behavior.
+
+The three House version pins intentionally move; non-House versions match the base, and publish.json binds the updated model specification. Generic reading diagnostics match the base exactly with the pinned tools; existing sniff/bundle warnings predate this change. Declared reading versions and compatibility entries remain unchanged.
+
+Focused production-offline verification passed: 53 cases, partial selection of 4 lane files, not a full-lane result. Cases include real builders on malformed inputs, selected XML-error routing, supported repair, one durable decision per body/parser/pin despite duplicate captures, a fresh-engine same-pin rerun with no work, wrong-root/blank/valid-empty controls and missing bytes remaining pending until arrival. Watchdog peak: 0.34 GiB RSS. Original bodies for witness lists 105459 and 111420 preserve their selected empty fields.
+
+Pattern inspection found two XML errors in the retained readings import source, both truncated House resolutions (4cad751b9ec4 and 9da6a0c457ee), with saved bytes matching their recorded hashes. One ends inside an attribute; the other ends mid-sentence. These need complete source bytes, not invented closing tags. They are not meeting/witness lists and do not establish current affected counts or corpus repair gains. See docs/house-xml-normalization.md and main .cache/archive-release/implementation/reviewed-non-news-20261106/ct-yr9o/.
+
+Ticket remains open for the release owner's frozen-candidate scope inspection and source-scoped transition accepting changed unreadable/repair outcomes, qualifying carried-forward values and reconciling selected table/decision inputs. The completed-only document-reference backfill does not qualify this transition. No corpus replay, broad acquisition, shared import, model build, main merge, push or publication occurred.
