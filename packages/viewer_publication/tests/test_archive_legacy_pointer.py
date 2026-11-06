@@ -1,4 +1,5 @@
 """First engine publication replaces the exact old pointer through its ETag."""
+from datetime import datetime, timezone
 import json
 from hashlib import sha256
 import os
@@ -89,7 +90,9 @@ def test_actual_model_first_flip_uses_old_etag_and_no_old_release(tmp_path):
             run={'id':'first-engine'},public_origin='https://archive.fixture.test',contract=passed,canary=passed)
     assert result['status']=='published'
     pointer=json.loads(store.objects['viewer-publications/manifest.json'])
-    assert pointer==dict(release_id=result['release_id'],previous_release_id=None)
+    assert set(pointer)=={'release_id','previous_release_id','published_at'}
+    assert pointer['release_id']==result['release_id'] and pointer['previous_release_id'] is None
+    assert datetime.fromisoformat(pointer['published_at']).tzinfo==timezone.utc
     put=next(r for r in store.requests if r['Key']=='viewer-publications/manifest.json')
     assert put['IfMatch']=='initial' and 'IfNoneMatch' not in put
     assert (tmp_path/'publish/outgoing-pointer.json').read_bytes()==raw

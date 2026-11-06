@@ -223,7 +223,7 @@ def _release(tmp_path, *, with_metadata, extra_pages=(), unreadable=()):
     import gzip
     import pyarrow.parquet as pq
     from congress_api.lake import filenames, readings
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from congress_api.retention.provenance import parquet_output
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])

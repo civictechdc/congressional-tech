@@ -136,7 +136,7 @@ def test_capture_shell_passes_budgets_and_only_existing_weekly_seeds(tmp_path):
     step = next(step for step in workflow('capture-archive.yml')['jobs']['capture']['steps']
                 if 'capture_schedule' in step.get('run', ''))
     env = dict(PATH=os.defpath, RUNNER_TEMP=str(tmp_path), ARCHIVE_POINTER='https://public.test/manifest.json',
-               REQUEST_BUDGET='19', BYTE_BUDGET='2048', SPOOL_BUDGET='1024')
+               REQUEST_BUDGET='19', BYTE_BUDGET='2048', SPOOL_BUDGET='1024', REVIEWED_CUTOFF_URLS='')
     result = subprocess.run(['bash', '-eo', 'pipefail', '-c', step['run']], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr

@@ -91,6 +91,7 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "transcript_jackets",
         "videos",
         "document_urls",
+        "document_references",
         "collection_states",
         "access",
         "access_basis",
