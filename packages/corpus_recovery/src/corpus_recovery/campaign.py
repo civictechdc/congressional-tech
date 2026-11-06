@@ -18,6 +18,7 @@ from congress_api.retention.provenance import (file_pin, instant, parquet_output
 from corpus_recovery.acceptance import VERSION, decide, identity_source, read_pin, pin_path, receipt_binding
 from corpus_recovery.qualification import qualify, QualificationConfig
 from corpus_recovery.reconcile import import_retained
+from corpus_recovery.identity_notes import POLICY as IDENTITY_NOTE_POLICY, authored_note
 
 
 def _q(value):
@@ -148,8 +149,10 @@ def import_candidate(descriptor, request_path, *, output, engine, writer, store,
     request_path=Path(request_path)
     pin=file_pin(request_path)
     request,_=read_pin(dict(path=str(request_path.resolve()),sha256=pin['sha256']),request_path.parent)
+    note=authored_note(request.get('identity_note'))
     root=Path(output);root.mkdir(parents=True,exist_ok=True)
-    binding=dict(descriptor_sha256=campaign.descriptor_sha256,request_sha256=pin['sha256'],policy=VERSION)
+    binding=dict(descriptor_sha256=campaign.descriptor_sha256,request_sha256=pin['sha256'],policy=VERSION,
+                 identity_note_policy=IDENTITY_NOTE_POLICY)
     with (root/'operation.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         saved=root/'binding.json'
@@ -190,7 +193,7 @@ def import_candidate(descriptor, request_path, *, output, engine, writer, store,
         record=dict(id=operation,original_url=target['url'],recovered_url=candidate['url'],
             recovered_filename=None,body_sha256=body.sha256,kind=request['relationship'],
             match_basis=source['match_basis'],evidence_sha256=decision['evidence_sha256'],
-            identity_note=decision['reason'],decided_by=request['decided_by'],decided_at=request['decided_at'],
+            identity_note=note,decided_by=request['decided_by'],decided_at=request['decided_at'],
             supersedes=request.get('supersedes'),recovery_record_version=2,target_requirement=campaign.requirement,
             acceptance_status='accepted',acceptance_policy=VERSION,qualification_sha256=qualification['qualification_sha256'])
         validate_provenance('recoveries',record)
