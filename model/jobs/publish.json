@@ -7,8 +7,8 @@
   },
   "daily": {
     "path": "publish-daily.json",
-    "sha256": "e4222deaab510e6ff82dddc2c27bca4ed6600ca83f4c60b808eaba25f769edb7",
-    "size": 1679
+    "sha256": "a46ab8600414fd882d34d302270f912aba4c958b8289b1af2ddb33db05f342d9",
+    "size": 2723
   },
   "bucket": "congressional-tech-raw",
   "work": "../../output/archive-publish",
