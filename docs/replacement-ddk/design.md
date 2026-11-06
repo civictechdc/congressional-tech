@@ -139,7 +139,7 @@ flowchart TB
 
     subgraph catalog["DDK — generated metadata"]
         schema_binding["Bind observed native schemas to captured dataset definitions"]
-        rule_binding["Match required field/key rules to qualified native counters"]
+        rule_binding["Match authored fields and keys to accepted export counters"]
         assemble["6. Assemble accepted versions, evidence and definitions"]
         artifacts["Freeze matching catalog, report, lock and companion bytes"]
         discovery["Later discovery and lineage views"]
@@ -164,7 +164,7 @@ flowchart TB
     acquire --> retain
     logic -.-> compute
     frozen -.-> verify
-    candidate --> verify --> accept
+    candidate -->|"Counters read the exact completed exports"| verify --> accept
     select --> schema_binding
     frozen -.-> schema_binding
     candidate -->|"Exact output identities and schemas"| schema_binding
@@ -221,6 +221,14 @@ relation. A nullable Arrow field does not establish whether rows contain nulls;
 the qualified full-output null counter answers that question. Coverage metadata
 does not itself prove a rule passed. Unsupported nested or value rules remain
 unknown, and checking a different definition set cannot repair the candidate.
+
+The native job exposes completed files to final reports as
+`outputs."<exact output name>"`. Required-field and key counters read that
+namespace, replacing their former reads of intermediate views. The same SQL
+generator supplies the report and its authored-rule bindings; the explicit
+application profile reproduces them from captured definitions and the original
+job, including its actual writer and column selection. DDK verifies the accepted
+counter evidence. This adds no second data-quality scan or execution controller.
 
 The publication intent fixes the original attempt, accepted native result,
 qualification, immutable release inventory and expected publisher token. Once the

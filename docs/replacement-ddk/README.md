@@ -29,6 +29,15 @@ not a passing lane. All six previously abbreviated timestamps and their enclosin
 sitting types now state microseconds in UTC, matching unchanged original SQL.
 Independent review approved these changes.
 
+The native rule profile now generates required-field and key counters against
+completed exports and binds them to exact authored fields. It shares writer SQL
+with the real builder and refuses changed reports, outputs or projections.
+Sixty-eight focused construction, wrong-value, dependency and native-lifetime
+cases passed; independent review closed the construction findings. The installed
+dev5 package and application runtime still lack the new API. Typed DDK artifact
+composition, actual completed-export namespace execution and final producer
+integration remain pending the qualified shared handoff.
+
 | Artifact | Purpose |
 | --- | --- |
 | [Status](status.json) | Current implementation, tests, dependencies and retained evidence |

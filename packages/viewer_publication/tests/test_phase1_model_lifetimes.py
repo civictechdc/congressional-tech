@@ -47,6 +47,31 @@ def test_missing_or_forward_model_dependency_refuses_before_native_execution():
             dict(name='later', sql='SELECT 1')], outputs=[], queries=[]))
 
 
+def test_completed_output_namespace_is_available_only_to_final_reports():
+    from copy import deepcopy
+    from viewer_publication.archive_model_lifetimes import retire_relations
+
+    spec = dict(inputs=[], steps=[dict(name='facts', sql='SELECT 1 AS id', materialize=True)],
+        outputs=[dict(name='facts.parquet', sql='SELECT * FROM facts')],
+        queries=[dict(name='nulls', sql='SELECT count(*) FROM outputs."facts.parquet" WHERE id IS NULL')])
+    assert retire_relations(spec)['steps'] == spec['steps']
+    # A qualified native export does not become a CTE or an upstream view.
+    mixed = deepcopy(spec)
+    mixed['queries'][0]['sql'] = '''WITH "facts.parquet" AS (SELECT * FROM facts)
+        SELECT * FROM outputs."facts.parquet" JOIN "facts.parquet" USING(id)'''
+    assert retire_relations(mixed)['steps'] == spec['steps']
+    for phase in ('steps', 'outputs', 'queries'):
+        invalid = deepcopy(spec)
+        invalid[phase][0]['sql'] = 'SELECT * FROM outputs."facts.parquet"' if phase != 'queries' else 'SELECT * FROM outputs."missing.parquet"'
+        with pytest.raises(ValueError, match='unavailable completed output'):
+            retire_relations(invalid)
+    for sql in ('SELECT * FROM other."facts.parquet"', 'SELECT * FROM external.outputs."facts.parquet"'):
+        invalid = deepcopy(spec)
+        invalid['queries'][0]['sql'] = sql
+        with pytest.raises(ValueError, match='unqualified named relations'):
+            retire_relations(invalid)
+
+
 def test_actual_raw_lake_model_releases_every_relation_after_its_last_reader(tmp_path):
     """Run the real producers and guards, then independently simulate ownership.
 

@@ -13,6 +13,9 @@ def retire_relations(spec):
     their providers therefore remain registered until native job teardown.
     """
     steps = spec['steps']
+    output_names = {item['name'] for item in spec['outputs']}
+    if len(output_names) != len(spec['outputs']):
+        raise ValueError('Duplicate native output name')
     available = {item['name'] for item in spec['inputs']}
     dependencies = {}
     final = set()
@@ -27,10 +30,15 @@ def retire_relations(spec):
                 raise ValueError('Model reader has unavailable relations: ' + name + ': ' + ', '.join(sorted(readers-available)))
             dependencies[name] = readers
             available.add(name)
-        for reader in [*spec['outputs'], *spec.get('queries', ())]:
+        for reader in spec['outputs']:
             readers = _dependencies(parser, reader['sql'])
             if readers - available:
                 raise ValueError('Final model reader has unavailable relations: ' + reader['name'])
+            final |= readers
+        for query in spec.get('queries', ()):
+            readers = _dependencies(parser, query['sql'], completed_outputs=output_names)
+            if readers - available:
+                raise ValueError('Final model reader has unavailable relations: ' + query['name'])
             final |= readers
     # C7 cannot self-release. Omit relations with no path to an actual reader,
     # including unused views that would otherwise retain their input providers.

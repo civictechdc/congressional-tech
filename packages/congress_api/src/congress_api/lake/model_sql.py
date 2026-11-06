@@ -20,7 +20,7 @@ import duckdb
 ROOT = Path(__file__).resolve().parents[5]
 
 
-def _dependencies(parser, sql):
+def _dependencies(parser, sql, *, completed_outputs=()):
     # DuckDB's maintained parser accepts the model's expressions without binding
     # functions or opening tables. DataFusion spells anti joins LEFT/RIGHT ANTI;
     # remove only that lexer token in the parser copy, retaining both operands.
@@ -45,6 +45,11 @@ def _dependencies(parser, sql):
             return set()
         found = set()
         if node.get('type') == 'BASE_TABLE':
+            if node.get('schema_name') == 'outputs' and not node.get('catalog_name'):
+                name = node['table_name']
+                if name not in completed_outputs:
+                    raise ValueError('Model reader names an unavailable completed output: ' + name)
+                return set()  # Owned by native export custody, not an upstream view.
             name = node['table_name'].casefold()
             if node.get('schema_name') or node.get('catalog_name'):
                 raise ValueError('Model dependencies require unqualified named relations')

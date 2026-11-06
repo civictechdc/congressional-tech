@@ -161,6 +161,11 @@ CORE_RELATIONS = {'list': 'ordered', 'detail': 'details', 'links': 'links', 'url
     'sources': 'source_rows', 'recoveries': 'recovery_rows'}
 
 
+def release_output_sql(name):
+    """The public writer selects every row; export settings select its fields."""
+    return 'SELECT * FROM ' + CORE_RELATIONS.get(name, name + '_export')
+
+
 def _core(steps, output,*,lookup_extra=None):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
     detail_inputs = ','.join('o.'+name for name in dict.fromkeys([*order,*LIST_COLUMNS,'list_row',
@@ -189,15 +194,15 @@ def _core(steps, output,*,lookup_extra=None):
     ]
     steps += _lookup_steps('lookup_sources')
     specs = [
-        ('list', CORE_RELATIONS['list'], _settings('whole', order, columns=LIST_COLUMNS,
+        ('list', _settings('whole', order, columns=LIST_COLUMNS,
             dictionary=LIST_DICTIONARY, delta=['filename', 'title'])),
-        ('detail', CORE_RELATIONS['detail'], _settings('ranged', order, columns=DOCUMENT_COLUMNS, dictionary=[*DETAIL_DICTIONARY, *LIST_DICTIONARY], delta=['filename', 'title'])),
-        ('links', CORE_RELATIONS['links'], _settings('lookup', ['link_key'])),
-        ('urls', CORE_RELATIONS['urls'], _settings('lookup', ['lookup_key', 'list_row'])),
-        ('sources', CORE_RELATIONS['sources'], _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'url', 'member_path', 'is_saved', 'first_seen', 'listed_on', 'link_text', 'doc_type', 'posted'])),
-        ('recoveries', CORE_RELATIONS['recoveries'], _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'kind', 'body', 'suffix', 'bytes', 'imported_at', 'recovered_url', 'identity_note'], dictionary=['kind', 'suffix'])),
+        ('detail', _settings('ranged', order, columns=DOCUMENT_COLUMNS, dictionary=[*DETAIL_DICTIONARY, *LIST_DICTIONARY], delta=['filename', 'title'])),
+        ('links', _settings('lookup', ['link_key'])),
+        ('urls', _settings('lookup', ['lookup_key', 'list_row'])),
+        ('sources', _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'url', 'member_path', 'is_saved', 'first_seen', 'listed_on', 'link_text', 'doc_type', 'posted'])),
+        ('recoveries', _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'kind', 'body', 'suffix', 'bytes', 'imported_at', 'recovered_url', 'identity_note'], dictionary=['kind', 'suffix'])),
     ]
-    outputs = [dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + table, settings=settings) for name, table, settings in specs]
+    outputs = [dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql=release_output_sql(name), settings=settings) for name, settings in specs]
     return outputs
 
 
@@ -330,7 +335,7 @@ def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary=None
     aux_names = {name for name, _, _, _ in aux_items}
     for name, sql, keys, dictionary in aux_items:
         steps.append(_step(name + '_export', sql, materialize=True))
-        outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
+        outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql=release_output_sql(name),
             settings=_settings('whole', keys, dictionary=dictionary)))
     schema = _release_schema([item['name'] for item in outputs], entity_digests)
     if (content_files or {}).get('capture_profile.json',{}).get('version')==2:

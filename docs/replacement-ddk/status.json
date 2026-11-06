@@ -57,7 +57,8 @@
     "Implemented exact native report-policy construction and updated the complete ownership diagram after independent red/green review; native caller integration remains open.",
     "Declared archive-model production and exact public/private/source catalog dispositions; 15 focused cases passed and independent review approved bfebe773.",
     "Migrated comparison, publisher and local HTTP probes to exact logical-name/file-path inventories; native outputs can remain separate from controls. 131 Python, four probe-wrapper and nine HTTP/catalog-reader cases passed; independent review approved after correcting media types to use logical names.",
-    "Removed footer-driven old meeting/witness input formats and optional document-reference SQL; current producer schemas, all callers and explicit microsecond UTC definitions independently reviewed. Two native behavior cases passed; scoped definition/request/job checks passed 58 cases and retained one known parser-pin refusal."
+    "Removed footer-driven old meeting/witness input formats and optional document-reference SQL; current producer schemas, all callers and explicit microsecond UTC definitions independently reviewed. Two native behavior cases passed; scoped definition/request/job checks passed 58 cases and retained one known parser-pin refusal.",
+    "Constructed exact authored native rule bindings from the same SQL generator, using completed output namespaces; shared writer construction, immutable inputs and saved/reloaded metadata are checked. 68 focused cases passed; independent review closed construction findings. Maintained typed API/native namespace acceptance remains pending."
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -506,6 +507,21 @@
       },
       "fullLane": false,
       "review": "Independent read-only red team approved source and caller changes."
+    },
+    "nativeRuleBindings": {
+      "passed": 68,
+      "lane": "production-offline",
+      "scope": "4-file partial: catalog/profile generator, native request parity, SQL dependency parser and existing real-model lifetime simulation",
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-native-facet-bindings-04",
+      "peakProcessTreeRSSGiB": 0.51,
+      "peakPhysicalGiB": 0.38,
+      "seconds": 15,
+      "review": "Independent green team approved after shared writer validation and deterministic saved/reloaded reconstruction fixes.",
+      "limits": [
+        "Installed dev5 does not yet contain ddk.catalog_native_rules.",
+        "The native lifetime case still executes the incumbent publication checks; it does not qualify native outputs namespace support.",
+        "No full lane, source admission, candidate acceptance or publication claim."
+      ]
     }
   },
   "commits": {

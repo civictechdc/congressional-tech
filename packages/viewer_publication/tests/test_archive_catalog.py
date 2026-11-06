@@ -53,7 +53,8 @@ def test_standard_declarations_preserve_every_retained_native_invariant(admitted
     auxiliary = {name.removesuffix('.parquet') for name in published} - CORE_RELATIONS.keys()
     expected = next(item['sql'] for item in retained['graph']['queries']
                     if item['id'] == 'relationship_invariants')
-    actual, = publication_checks(admitted_catalog, auxiliary, published)
+    reports, _bindings = publication_checks(admitted_catalog, auxiliary, published)
+    actual, = reports
     assert actual['name'] == 'relationship_invariants'
 
     def expressions(sql):
@@ -76,8 +77,26 @@ def test_standard_declarations_preserve_every_retained_native_invariant(admitted
     expected_checks.update(expressions('''SELECT
         (SELECT count(*) FROM url_state_export WHERE "capture_disposition" IS NULL) AS null_url_state_capture_disposition,
         (SELECT count(*) FROM url_state_export WHERE "capture_reason" IS NULL) AS null_url_state_capture_reason'''))
-    # Catalog order carries no meaning. Every retained expression survives;
-    # the current policy-bound capture shape adds exactly two required fields.
+    # Preserve the frozen predicates while checking completed exports instead
+    # of producer views. All domain-reference expressions stay unchanged.
+    output_for_relation = {CORE_RELATIONS.get(name.removesuffix('.parquet'),
+                            name.removesuffix('.parquet') + '_export'): name for name in published}
+
+    def completed_export(value):
+        if isinstance(value, dict):
+            if value.get('type') == 'BASE_TABLE':
+                value['table_name'] = output_for_relation[value['table_name']]
+                value['schema_name'] = 'outputs'
+            for item in value.values():
+                completed_export(item)
+        elif isinstance(value, list):
+            for item in value:
+                completed_export(item)
+
+    for name, expression in expected_checks.items():
+        if (name.startswith('null_') or (name.startswith('invalid_') and name.endswith('_key'))
+                or name == 'duplicate_document_key'):
+            completed_export(expression)
     assert expressions(actual['sql']) == expected_checks
 
 
@@ -96,6 +115,137 @@ def test_unknown_required_semantics_do_not_create_native_check_definitions():
     assert result.report['decision'] != 'passed'
     with pytest.raises(ValueError, match='require admitted local DDK declarations'):
         publication_checks(result, set(), ['list.parquet'])
+
+
+@pytest.mark.parametrize('rows, expected_required, expected_unique', [
+    (['A000001', 'B000002'], 0, 0),
+    (['A000001', None], 1, 1),
+    (['A000001', 'A000001'], 0, 1),
+    (['A000001', 'A000001', None], 1, 2),
+])
+def test_bound_native_columns_detect_nulls_and_duplicate_keys(admitted_catalog, rows,
+                                                             expected_required, expected_unique):
+    """Read the actual generated report expressions and plant wrong output values."""
+    from viewer_publication.archive_catalog import publication_checks
+
+    reports, bindings = publication_checks(admitted_catalog, {'members'}, ['members.parquet'])
+    report, = reports
+    required, = [item for item in bindings if item['facet'] == 'required'
+                 and item['paths'] == (({'field': 'bioguide_id'},),)]
+    unique, = [item for item in bindings if item['facet'] == 'key_unique']
+    for binding in (required, unique):
+        assert binding['dataset'] == 'members'
+        assert binding['paths'] == (({'field': 'bioguide_id'},),)
+        assert binding['output'] == 'members.parquet'
+        assert binding['report'] == report['name']
+    with duckdb.connect(config={'enable_external_access': False, 'threads': 1}) as database:
+        database.execute('CREATE SCHEMA outputs')
+        database.execute('CREATE TABLE outputs."members.parquet"(bioguide_id VARCHAR)')
+        database.executemany('INSERT INTO outputs."members.parquet" VALUES (?)', [(value,) for value in rows])
+        parsed = json.loads(database.execute('SELECT json_serialize_sql(?)', [report['sql']]).fetchone()[0])
+        assert not parsed['error']
+        select = parsed['statements'][0]['node']
+        expressions = {item['alias']: item for item in select['select_list']}
+        select['select_list'] = [expressions[item['column']] for item in (required, unique)]
+        query = database.execute('SELECT json_deserialize_sql(?)', [json.dumps(parsed)]).fetchone()[0]
+        assert database.execute(query).fetchone() == (expected_required, expected_unique)
+
+
+def test_binding_scope_preserves_composite_keys_and_excludes_unpublished_outputs(admitted_catalog):
+    from viewer_publication.archive_catalog import publication_checks
+
+    _reports, bindings = publication_checks(admitted_catalog, {'rosters'}, ['rosters.parquet'])
+    assert {item['output'] for item in bindings} == {'rosters.parquet'}
+    key, = [item for item in bindings if item['facet'] == 'key_unique']
+    not_null, = [item for item in bindings if item['facet'] == 'key_not_null']
+    assert key['paths'] == (({'field': 'congress'},), ({'field': 'system_code'},), ({'field': 'bioguide_id'},))
+    assert key['column'] == 'invalid_rosters_key'
+    assert not_null['paths'] == key['paths'] and not_null['column'] == key['column']
+    assert all('passed' not in item and 'status' not in item for item in bindings)
+
+
+@pytest.fixture
+def captured_rule_job(admitted_catalog):
+    from types import SimpleNamespace
+    from viewer_publication.archive_catalog import ASSEMBLY, native_catalog_mapping, publication_checks
+    from viewer_publication.archive_format import CORE_RELATIONS
+
+    frozen = json.loads((ROOT / 'docs/replacement-ddk/native-profile.json').read_text())
+    outputs = frozen['graph']['outputs']
+    job = dict(inputs=[], steps=[item['specification'] for item in frozen['graph']['steps']],
+        outputs=[dict(name=item['name'], sql=item['sql'], settings=item['settings']) for item in outputs])
+    mapping = native_catalog_mapping(admitted_catalog, job,
+        private_outputs=[item['name'] for item in outputs if item['scope'] != 'public_release'])
+    auxiliary = {name.removesuffix('.parquet') for name in mapping['outputs']} - CORE_RELATIONS.keys()
+    job['queries'], _bindings = publication_checks(admitted_catalog, auxiliary, mapping['outputs'])
+    catalog = admitted_catalog.local_catalog
+    context = SimpleNamespace(production={'alias': mapping['production']},
+        datasets=catalog['extensions'][ASSEMBLY]['datasetDefinitions'], identities=catalog['identities'],
+        inputs=mapping['inputs'], outputs=mapping['outputs'], out_of_catalog=mapping['out_of_catalog'])
+    return context, job
+
+
+def test_profile_reproduces_original_rules_without_execution(captured_rule_job):
+    from types import MappingProxyType, SimpleNamespace
+    from viewer_publication.archive_catalog import _verified_native_rule_records
+
+    context, job = captured_rule_job
+    bindings = _verified_native_rule_records(context, job)
+    assert bindings
+    assert {item['facet'] for item in bindings} == {'required', 'key_unique', 'key_not_null'}
+    assert {item['output'] for item in bindings} == set(context.outputs)
+    assert all(set(item) == {'dataset', 'output', 'facet', 'paths', 'report', 'column'} for item in bindings)
+
+    def freeze(value):
+        if isinstance(value, dict):
+            return MappingProxyType({key: freeze(item) for key, item in value.items()})
+        if isinstance(value, list):
+            return tuple(freeze(item) for item in value)
+        return value
+
+    frozen_context = SimpleNamespace(**{key: freeze(value) for key, value in vars(context).items()})
+    assert _verified_native_rule_records(frozen_context, freeze(job)) == bindings
+    reloaded = SimpleNamespace(**json.loads(json.dumps(vars(context), sort_keys=True)))
+    assert _verified_native_rule_records(reloaded, json.loads(json.dumps(job, sort_keys=True))) == bindings
+
+
+@pytest.mark.parametrize('defect', ['producer_view', 'changed_counter', 'missing_output', 'wrong_projection',
+                                  'new_setting', 'duplicate_output', 'duplicate_report', 'other_dataset',
+                                  'missing_writer_sql', 'other_writer_relation', 'filtered_writer', 'changed_expression'])
+def test_profile_refuses_wrong_original_output_or_rule_mapping(captured_rule_job, defect):
+    from copy import deepcopy
+    from viewer_publication.archive_catalog import _verified_native_rule_records
+
+    context, original = captured_rule_job
+    job = deepcopy(original)
+    output = next(item for item in job['outputs'] if item['name'] == 'members.parquet')
+    if defect == 'producer_view':
+        job['queries'][0]['sql'] = job['queries'][0]['sql'].replace('outputs."members.parquet"', 'members_export')
+    elif defect == 'changed_counter':
+        job['queries'][0]['sql'] = job['queries'][0]['sql'].replace('count(*)', 'cast(0 AS BIGINT)')
+    elif defect == 'missing_output':
+        job['outputs'].remove(output)
+    elif defect == 'wrong_projection':
+        output['settings']['columns'] = ['name']
+    elif defect == 'new_setting':
+        output['settings']['filter'] = 'bioguide_id IS NOT NULL'
+    elif defect == 'duplicate_output':
+        job['outputs'].append(deepcopy(output))
+    elif defect == 'duplicate_report':
+        job['queries'].append(deepcopy(job['queries'][0]))
+    elif defect == 'other_dataset':
+        context = deepcopy(context)
+        context.outputs['members.parquet'] = 'committees'
+    elif defect == 'missing_writer_sql':
+        del output['sql']
+    elif defect == 'other_writer_relation':
+        output['sql'] = 'SELECT * FROM other_members'
+    elif defect == 'filtered_writer':
+        output['sql'] += ' WHERE bioguide_id IS NOT NULL'
+    elif defect == 'changed_expression':
+        output['sql'] = "SELECT 'A000001' AS bioguide_id FROM members_export"
+    with pytest.raises(ValueError, match='Native'):
+        _verified_native_rule_records(context, job)
 
 
 def test_native_mapping_accounts_for_public_private_and_source_members(admitted_catalog):
