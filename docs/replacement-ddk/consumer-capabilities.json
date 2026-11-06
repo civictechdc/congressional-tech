@@ -1,0 +1,1421 @@
+[
+  {
+    "id": "C01",
+    "behavior": "Preserve all 23 public tables, fields, nested types, nullability and grains",
+    "baseline_sources": [
+      "model/registries/release-schema.json:3"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_archive_schema.py:198::test_output_footers_cannot_silently_drift_from_reference_types"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C01 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Compare all output schemas and rows; include fixed[8]/fixed[32], int64 beyond JS safe range, required lists, nullable values and published empty table. No missing field, coercion or lost multiplicity.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ],
+    "definition_migration_proposal": {
+      "authored_owner": [
+        "model/ddk/project.ddk.json",
+        "model/ddk/archive.odcs.json",
+        "model/ddk/archive.odps.json",
+        "model/ddk/queries/*.sql"
+      ],
+      "generated_compatibility": [
+        "model/registries/release-schema.json",
+        "docs/release-relationships.md"
+      ],
+      "thin_consumer_adapter": "packages/viewer_publication/src/viewer_publication/archive_schema.py",
+      "layout_consumer": "packages/viewer_publication/src/viewer_publication/archive_format.py",
+      "definition_identity_consumer": "packages/viewer_publication/src/viewer_publication/archive_model_profile.py",
+      "physical_schema_owner_first_slice": "model/lake/*.schema.json stays physical field-ID authority; native mapping extension required",
+      "status": "proposal_only_not_implemented",
+      "dual_authority_rule": "The old registry becomes generated or is retired when consumers move; no independent authored mirror."
+    }
+  },
+  {
+    "id": "C02",
+    "behavior": "Select eight lake schemas by exact snapshot/schema/UUID/parser/catalog versions",
+    "baseline_sources": [
+      "packages/viewer_publication/src/viewer_publication/archive_model.py:872",
+      "model/jobs/publish-model.json:4",
+      "model/jobs/publish-model.json:96",
+      "model/sql/selected-records.sql:3"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_phase2_model_entities.py:1507::test_entity_record_version_selection_and_completeness_admission"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C02 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Retain old/current versions per body/parser/source and a qualified older reading. Select one applicable version before joins/restamp; uncovered version refuses or remains pending.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C03",
+    "behavior": "Distinguish bytes, editions, formats, endpoints, sources and recovery occurrences",
+    "baseline_sources": [
+      "model/sql/document-versions.sql:1"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_phase1_model_groups.py:15::test_native_model_groups_preserve_editions_and_publisher_context"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C03 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Same bytes/two URLs, two editions/one URL, alternate PDF/HTML, duplicate ZIP member names and related recovery. Preserve exact occurrence/provenance; related files never become original.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C04",
+    "behavior": "Publish all 70 relationship definitions and version/availability semantics",
+    "baseline_sources": [
+      "packages/viewer_publication/src/viewer_publication/archive_schema.py:159"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_relationships.py:112::test_unknown_version_preserves_sql_and_table_access"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C04 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Current/absent/unknown metadata and future relationship with missing target. Preserve endpoints/cardinality/scope; do not reconstruct missing metadata from current code.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C05",
+    "behavior": "Execute all 16 published recipes with correct result grains",
+    "baseline_sources": [
+      "model/registries/release-schema.json:3454"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_relationships.py:69::test_every_recipe_executes_and_has_the_declared_result_grain"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C05 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Discover then execute every recipe through candidate query_sql with discovered keys; duplicate endpoint and transcript paths retain one document and supporting meeting IDs; avoid nested-list multiplication.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C06",
+    "behavior": "Run all six required invariant suites and preserve refused/empty/pending meaning",
+    "baseline_sources": [
+      "packages/viewer_publication/src/viewer_publication/archive_schema.py:219"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_archive_schema.py:95::test_native_checks_detect_duplicates_nulls_and_missing_nested_targets"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C06 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Plant duplicate key, null required list, missing nested target, plausible wrong value and absent suite. Independently detect each fault; valid published empty remains available. Separate reviewer confirms planted raw case.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/final-acceptance/acceptance.json:1"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C07",
+    "behavior": "Read current or direct historical immutable release with release-bound citations",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/release.py:68"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_release.py:34::test_pointer_and_direct_manifest_choose_identical_release"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C07 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Open two retained direct manifests in separate caches while current advances. Exact old bytes stay readable and references cannot silently cross releases.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C08",
+    "behavior": "Prepare/update/rollback atomically while retaining running readers and completed transfers",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/release.py:163"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_recovery.py:150::test_update_and_rollback_preserve_running_readers"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C08 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Interrupt after verified asset; simulate disk full and corrupt old object; update/rollback with old reader alive. Keep previous selection, reuse completed immutable assets, protect live references.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C09",
+    "behavior": "Selective correction/delete closure and unaffected-row reuse",
+    "baseline_sources": [
+      "model/sql/meeting-records-ranked.sql:67"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_archive_selective.py:358::test_selected_records_recompute_and_unselected_are_copied_verbatim"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C09 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Fixed correction across growing population; unchanged rerun; same-stamp omission versus explicit empty/later omission; changed dedup winner. Preserve unaffected values and correct all downstream/retirement effects; measure opens/bytes/rewrites.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C10",
+    "behavior": "MCP get_dataset_info discovers controls/tables/keys/coverage/relations/recipes/upstream pins",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:95"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_relationships.py:12::test_discovery_uses_producer_definitions_and_stays_bounded"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C10 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Exercise all selectors, conflicting selectors and oversized controls. Examples never execute during discovery; missing tables explicit and response <=128 KiB.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C11",
+    "behavior": "MCP search_documents performs metadata search and exact filter intersection",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:242"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_exact_entities.py:109::test_document_search_meeting_key_and_case_variants_normalize_and_share_cursors"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C11 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Combine text/congress/format/kind/committee/meeting/measure/witness/member. Match exact keys and normalization; strict hidden flag; metadata search is not body search.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C12",
+    "behavior": "MCP document summaries resolve public/hidden/reviewed keys and date evidence",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:311"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_reader.py:102::test_document_identity_hidden_reviews_sources_and_recoveries"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C12 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Read live, hidden, retired, absent and wrong-release keys. Preserve source/body/alternate/date basis/status/review values; defer large text.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C13",
+    "behavior": "MCP pages ordered source/recovery occurrences and authored identity notes",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:354"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_release.py:122::test_shards_preserve_positions_duplicates_and_source_order"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C13 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "More than one page, duplicate URL with distinct context/member, null authored note. Preserve order, ordinals, kind and multiplicity; no invented identity finding.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C14",
+    "behavior": "Read publisher declarations and selected text with body/selector/reader evidence",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:363"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_native_release.py:152::test_native_html_reader_fixture_through_stdio"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C14 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Conflicting/rejected/relative declarations, partial/unreadable result, omitted text and offset slices. Keep literal versus selected evidence, exact citations and unavailable state.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Current page metadata/selected_text fields absent from retained e145 schema; authentic current-source proof required."
+    ]
+  },
+  {
+    "id": "C15",
+    "behavior": "Read verified PDF/HTML/XML/plain bodies and bounded per-document snippets/cache",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/body_reader.py:432"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_body_reader.py:314::test_get_document_text_fails_closed_on_security_and_integrity_faults"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C15 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Authentic formats plus wrong digest, redirect, gzip bomb, regex timeout, cache mutation, unsupported format and scanned PDF. Exact pages/offsets; 64MiB decode/128KiB reply; no invented OCR.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C16",
+    "behavior": "MCP entity search uses published identity and exact scalar types/case handling",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:382"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_reader.py:225::test_a_new_keyed_table_reaches_its_documents_from_the_schema_alone"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C16 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Every keyed family, future keyed table, compound roster, huge integer, bool, mixed-case handle and no-text family. Refuse lossy IDs/nested/BLOB/unknown filters; address tables stay document routes.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C17",
+    "behavior": "MCP single-key entities and directly associated document pages",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:421"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_reader.py:70::test_entity_to_documents"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C17 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Each single-key family, absent and compound keys; direct witness submitted documents versus package transcript. No meeting-wide document ownership inference; exact direct relationship preserved.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C18",
+    "behavior": "MCP native read-only SQL joins/nested types/parameters and bounded typed output",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:198"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_reader.py:169::test_raw_binary_types_precision_nulls_and_bounded_results"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C18 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Join all families; lists/decimal/int64/BLOB/null; writes/network/extensions/config, duplicate columns, giant row and truncation. One SELECT, <=200 SQL rows, <=128KiB; precision preserved.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C19",
+    "behavior": "MCP pagination binds normalized query/limit/release and enumerates rows once",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:207"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_reader.py:125::test_paging_is_complete_and_bound_to_query"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C19 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Traverse documents/entities/sources/recoveries; changed query/release/limit refuses; equivalent normalized integer query retains valid cursor and complete stable order.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C20",
+    "behavior": "Worker offline isolation, memory/spill, queue, timeout/cancellation/restart and scratch cleanup",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/worker.py:72"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_server.py:15::test_timeout_cancellation_restart_and_spill_cleanup"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C20 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Cancel active/queued work, kill parent/worker, overflow queue, retry. Respect 512MB DuckDB memory/512MB spill; only owned scratch removed; no external reads/writes.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C21",
+    "behavior": "Desktop/stdio first-use setup and CLI prepare/inspect/config/check plus aliases",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/cli.py:55"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_desktop.py:14::test_desktop_entry_prepares_on_first_call_and_reuses_snapshot"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C21 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "All supported client configs, first-use retry/concurrency/cancel, corrupt selection and explicit refresh. One initializer; exact selected release; no silent query refresh/cache deletion.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C22",
+    "behavior": "Hosted stateless HTTP MCP and deployment-pinned cold-start replicas",
+    "baseline_sources": [
+      "apps/explorer_mcp/cloudflare/src/gateway.ts:4"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_http.py:56::test_http_tools_and_stateless_clients_match_local",
+      "apps/explorer_mcp/cloudflare/tests/gateway.test.ts:12::forwards the MCP payload and response while discarding caller credentials",
+      "apps/explorer_mcp/cloudflare/tests/gateway.test.ts:35::rejects oversized requests without relying on Content-Length",
+      "apps/explorer_mcp/cloudflare/tests/gateway.test.ts:49::checks origins, paths, and methods before touching the container"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C22 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Loopback / and /mcp; independent clients and restarts; origins/methods/chunked >64KiB/rate/upstream failure. Preserve 403/404/405/413/429/503/Retry-After and same selected tools/release as stdio.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "No hosted deployment or live network check. Historical e145 publication predates hosting source."
+    ]
+  },
+  {
+    "id": "C23",
+    "behavior": "Browser manifest/range/shard integrity, release pinning and one reload on drift",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive.ts:63"
+    ],
+    "current_tests": [
+      "apps/site/scripts/archive-reader.test.mjs:70"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C23 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Retained manifest and sharded fixture; bad bytes/ranges/footer, missing asset, pointer change and retry. Half-open absolute positions preserve attachments; exactly one pointer recheck/reload; failed cache retryable.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C24",
+    "behavior": "Site metadata/bill-code/URL search, facets, entity intersections, sort and paging",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive.ts:403"
+    ],
+    "current_tests": [
+      "apps/site/scripts/archive-reader.test.mjs:144"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C24 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Every filter, committee descendants, bill spelling, Unicode/dot-path/query URL, blank title, date/title order and cancel. Exact keys/order/count; hidden excluded; credentials refused; editions retained.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C25",
+    "behavior": "Site document inspector shows copies/occurrences/editions/related entities and date meanings",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive-entities.ts:914"
+    ],
+    "current_tests": [
+      "apps/site/scripts/archive-presentation.test.mjs:27"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C25 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Open row then stable key; sharded attachments, formats versus versions, suspect/undated/import day. list_row release-local; no substitution among document/page/import/capture/hearing dates.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C26",
+    "behavior": "Retired document redirects, removal/history notices and never-published keys",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive.ts:290"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_reader.py:184::test_retired_keys_redirect_or_explain_their_removal"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C26 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Read alias, supported successor, removal only, other address editions, never-published after correction/delete. No silent vanished links; last release/filename retained; successor must exist.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C27",
+    "behavior": "Site entity browse tabs/deep-link query aliases/back-forward behavior",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/archive/ArchiveExplorer.tsx:68"
+    ],
+    "current_tests": [
+      "apps/site/scripts/archive-presentation.test.mjs:389"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C27 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Hearings/committees/witnesses/members/combined or typed bill/nomination subjects with q/congress/chamber/committee and offsets. Same sets/order/count and meaningful unavailable states.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C28",
+    "behavior": "Hearing dossier exposes current occurrences/files/transcript sources/recordings/evidence",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive-entities.ts:517"
+    ],
+    "current_tests": [
+      "apps/site/scripts/archive-presentation.test.mjs:198"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C28 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "House/Senate/closed/rescheduled, package/direct event, superseded/member/record statements and optional failure. No same-name collapse or statement-as-testimony; exact evidence uncertainty visible.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C29",
+    "behavior": "Committee historical names/parents/subcommittees and Congress-scoped rosters",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive-entities.ts:636"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_phase2_model_entities.py:2960::test_roster_coverage_metadata_agrees_with_published_rows"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C29 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Date/Congress name interval; parent with different prefix; unavailable roster Congress and populated seats. Exact rank/title/party; missing coverage not zero seats.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C30",
+    "behavior": "Witness occurrence identity, supersession and old-key unique/ambiguous/unresolved mapping",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive-entities.ts:714"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_relationships.py:129::test_transcript_participation_does_not_claim_submitted_documents"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C30 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Same-name occasions, repeated observations, superseded MODS, old key candidates and package-only. Current excludes superseded only; exact history remains; no name-based identity/authorship.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C31",
+    "behavior": "Member terms/cross IDs/rosters/explicit appearances/sponsored bills/documents",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive-entities.ts:755"
+    ],
+    "current_tests": [
+      "apps/site/scripts/archive-presentation.test.mjs:238"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C31 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Terms/party/state changes and linked witness/roster/bills plus missing reference catalog. Exact Bioguide and explicit participation; membership not attendance; unknown values retained.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C32",
+    "behavior": "Bill/nomination summaries/committee activities/votes/print packages/hearing trails",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive-entities.ts:786"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_relationships.py:159::test_bill_transcripts_deduplicate_paths_and_keep_supporting_meetings",
+      "apps/site/scripts/archive-presentation.test.mjs:228"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C32 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Related versions/split nomination, raw activity precision, optional hearing failure and duplicate print paths. Exact IDs/coverage; totals not ballots; committee links not floor amendments.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C33",
+    "behavior": "Browser optional relation states/cancel/retry and primary selection survival",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive-entities.ts:3"
+    ],
+    "current_tests": [
+      "apps/site/src/components/explorer/reader/archive-worker.test.ts:6"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C33 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Fail optional relation/display range, cancel shared consumer, retry, release drift. Primary row stays; no poisoned cache; integrity errors propagate; ready/missing/unavailable remain explicit where supported.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "ArchiveExplorer.tsx:229 catches some entity errors to null; universal refusal/absence parity is not established."
+    ]
+  },
+  {
+    "id": "C34",
+    "behavior": "Saved file open/download uses physical suffix/media/original bytes and HLS context",
+    "baseline_sources": [
+      "apps/site/src/components/explorer/reader/archive.ts:454"
+    ],
+    "current_tests": [
+      "apps/site/src/components/explorer/reader/archive-unit.test.ts:43"
+    ],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C34 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Retained .pdf/.gz/raw/alternate, already-decoded gzip, large download, HLS and popup refusal. No suffix inference from display type; int64 survives clone; decode once; HLS not standalone playback.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C35",
+    "behavior": "Recording observations preserve original subject/evidence/conflicts and event/package scope",
+    "baseline_sources": [
+      "model/sql/entity-recording-matches.sql:1"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_phase2_model_entities.py:132::test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C35 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Direct event, print agreement, multi-sitting package context, excerpt, claimed/conflicting/unresolved and repeated URL. Keep independent observations; package locator not full event footage.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "subject_id/meeting_links absent from retained e145 schema; revised association semantics require authentic evidence."
+    ]
+  },
+  {
+    "id": "C36",
+    "behavior": "Five coverage aspects and explicit present/partial/claimed/unresolved/unknown/empty states",
+    "baseline_sources": [
+      "model/sql/entity-meeting-coverage.sql:1"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_phase2_model_entities.py:1067::test_phase2_invariant15_diagnostics_and_entity_completeness_guards"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C36 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Each state, Senate page pending, unattached package witnesses, zero table versus absent table. Exactly five rows/event; zero count not absence; date bounds not complete census.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-manifest.json:1 (retained asset presence/identity only; not semantic candidate proof)"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "entity-meeting-coverage.sql:72 says person once while counting current occurrences; clarify wording without silently changing grain."
+    ]
+  },
+  {
+    "id": "C37",
+    "behavior": "Seven pinned external detail descriptors and bounded local reference summaries",
+    "baseline_sources": [
+      "model/jobs/spicy-regs/spicy-regs.json:1"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_reader.py:285::test_upstream_relations_are_published_as_stated"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C37 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Discover actions/cosponsors/ballots/rollcalls/amendments/nominations/assignments; separately qualify owning catalog field/key/generation. No claim local MCP reads external detail.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "MCP does not read external detail; authentic owning-generation cross-project joins remain unqualified."
+    ]
+  },
+  {
+    "id": "C38",
+    "behavior": "YouTube report dashboard filters/totals/charts and accessible table fallback",
+    "baseline_sources": [
+      "apps/site/src/components/dashboard/data.ts:60"
+    ],
+    "current_tests": [],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C38 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Retained CSV and all/cooperative Congress/chamber/party filters, quoted row and zero result. Independently sum report values; Event-ID regex absence is not missing official hearing.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "No dedicated dashboard tests/authentic browser-report acceptance found."
+    ]
+  },
+  {
+    "id": "C39",
+    "behavior": "Legacy dashboard bookmark forwarding and retired Coverage/Gaps notices",
+    "baseline_sources": [
+      "apps/site/src/pages/dashboard.astro:1"
+    ],
+    "current_tests": [],
+    "replacement_owner": "Maintained site reader/UI; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C39 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Old aliases/opaque event ID with one/two/no map matches, coverage/gaps, BASE_URL/hash. Only unambiguous redirect; no invented equivalence for closed views.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "No dedicated legacy-dashboard bookmark assertion was located; archive-browser.mjs is an asset-transport helper, not bookmark acceptance."
+    ]
+  },
+  {
+    "id": "C40",
+    "behavior": "Producer parse/refusal and absent/empty/unrecognized collection semantics",
+    "baseline_sources": [
+      "model/sql/meeting-records-ranked.sql:68"
+    ],
+    "current_tests": [
+      "packages/congress_api/tests/test_record_producer_unreadable.py:81::test_unparseable_house_xml_is_never_a_completed_row"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C40 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Malformed XML/readable-decision/same-stamp omission/explicit empty/unrecognized/later omission. Failure not valid empty; exact source precedence and no false success.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/qualification-7f9ebddd2cb6/combined-results.json:187"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Three retained malformed-House-XML expected failures admit invalid XML as completed; repair or explicit disposition required."
+    ]
+  },
+  {
+    "id": "C41",
+    "behavior": "Evidence-limited research aggregates and occurrence/coverage denominators",
+    "baseline_sources": [
+      "docs/congress-explorer-personas.md:143"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_relationships.py:99::test_nested_lists_do_not_multiply_votes_or_document_editions"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C41 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Committee/month/organization/lag/coverage/cross-chamber queries plus independent raw examples. Occurrence not deduplicated people; observed dates not population completeness; preserve unknown/refused denominators.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized."
+    ]
+  },
+  {
+    "id": "C42",
+    "behavior": "Retain honest unsupported global full-text/OCR/live comparison/person inference/attendance/monitoring",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/server.py:71"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_body_reader.py:314::test_get_document_text_fails_closed_on_security_and_integrity_faults"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C42 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Exercise unsupported persona requests and bounded document reads. Do not promise global index, OCR, speaker alignment, demographic/name dedup, current website equality or standing alert.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Desired persona questions exceed implemented routes; retain limitation or separately design added behavior."
+    ]
+  },
+  {
+    "id": "C43",
+    "behavior": "Source-backed dates/printed metadata/page citations and retained conflicts",
+    "baseline_sources": [
+      "model/sql/document-hearing-date-corrections.sql:1"
+    ],
+    "current_tests": [
+      "packages/viewer_publication/tests/test_phase2_model_entities.py:2072::test_printed_hearing_date_and_conflicting_bill_packages_reach_the_export"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C43 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Retained cover disputes, package conflicts/invalid filename and exact page text. Preserve literal/source/status/claim; act year not date; package link alone not proof of quotation.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [
+      "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/final-acceptance/acceptance.json:1"
+    ],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Three retained date disputes: CHRG-112hhrg68347, CHRG-112hhrg80849, CHRG-113hhrg82590."
+    ]
+  },
+  {
+    "id": "C44",
+    "behavior": "Read older archive schemas and keyed-detail/list pairing without invented definitions",
+    "baseline_sources": [
+      "apps/explorer_mcp/src/congressional_explorer_mcp/reader.py:68"
+    ],
+    "current_tests": [
+      "apps/explorer_mcp/tests/test_reader.py:35::test_documents_view_holds_one_copy_of_each_column_on_keyed_detail"
+    ],
+    "replacement_owner": "Maintained MCP journey/query layer; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C44 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Archive-contract current/next and retained historical controls/bytes where available. No duplicate columns; old stated identity only; missing/unknown metadata explicit; legacy nonarchive pointer refuses early.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "All historical payload availability unverified; no corpus replay."
+    ]
+  },
+  {
+    "id": "C45",
+    "behavior": "Committee Explorer Parquet export, explicit retired-JSON refusal, historical JSON readback/history migration and distribution workflow",
+    "baseline_sources": [
+      "apps/committee_youtube/src/committee_explorer/export.py:350",
+      "apps/committee_youtube/src/committee_explorer/browser.py:13",
+      "apps/committee_youtube/src/committee_explorer/browser.py:35",
+      "apps/committee_youtube/src/committee_explorer/query.py:11",
+      "apps/committee_youtube/src/committee_explorer/export.py:178",
+      "apps/committee_youtube/src/committee_explorer/export.py:380",
+      "apps/committee_youtube/src/committee_explorer/export.py:1111",
+      ".github/workflows/publish-explorer.yml:5",
+      ".github/workflows/publish-explorer.yml:89",
+      ".github/workflows/publish-explorer.yml:123",
+      ".github/workflows/publish-explorer.yml:139",
+      ".github/workflows/publish-explorer.yml:147",
+      ".github/workflows/publish-explorer.yml:154",
+      ".github/workflows/publish-explorer.yml:161"
+    ],
+    "current_tests": [
+      "apps/committee_youtube/tests/test_explorer_reuse.py:28::test_packaged_publication_reuses_on_clean_runner_without_model_assembly",
+      "apps/committee_youtube/tests/test_explorer_reuse.py:51::test_changed_native_data_refreshes_records_and_preserves_ids",
+      "apps/committee_youtube/tests/test_explorer_history.py:309::test_incomplete_or_conflicting_save_cannot_replace_previous_snapshot",
+      "apps/committee_youtube/tests/test_explorer_reuse.py:134::test_missing_receipt_rebuilds_and_json_reuse_is_rejected"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C45 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Run current Parquet export with stable IDs/history, unchanged reuse, changed inputs and interruption before CURRENT. Call export(format=json) and CLI --format json and require their explicit refusal before assembly. Separately supply a retained historical manifest with committee_explorer.records/sources JSON partitions to load_previous; verify digest checking, transitive issue/source history migration and no new JSON export. Run state pack/unpack, browser package/verify, exact pipeline snapshot save and Pages revision dispatch as separately bound activation subcases; live enablement remains unverified.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Full nested compatibility schema/retained artifact/machine-reader census remains incomplete; changed-input partial updates explicitly unfinished.",
+      "Browser package() keeps exact Parquet bytes, filters download/legacy meeting and print-decision parts, derives distribution ID and enforces 900MB. Detailed distribution acceptance still required.",
+      "Legacy JSON export is deliberately retired; README --format json text is stale. Historical JSON partitions/control readback remains a separate required compatibility case; no successful new JSON export is required."
+    ],
+    "current_test_scope": {
+      "Parquet export/reuse/history": "test_packaged_publication_reuses_on_clean_runner_without_model_assembly and test_changed_native_data_refreshes_records_and_preserves_ids assert maintained Parquet behavior; history test protects prior snapshot on incomplete/conflicting save.",
+      "JSON refusal": "test_missing_receipt_rebuilds_and_json_reuse_is_rejected asserts export(format=json) raises requires parquet.",
+      "historical JSON readback": "load_previous at export.py:178-203 explicitly migrates retained records/sources JSON if SQLite history is absent; a dedicated cold readback/migration assertion is still required.",
+      "workflow": "Source declares push/completed-run/manual triggers and state/export/browser/snapshot/Pages callers; source presence does not prove current remote enablement or replacement execution."
+    }
+  },
+  {
+    "id": "C46",
+    "behavior": "YouTube fetch/cache identity and atomic durable pages for downstream readers",
+    "baseline_sources": [
+      "packages/youtube_api/src/youtube_api/fetch/youtube_event_fetcher.py:1"
+    ],
+    "current_tests": [
+      "packages/youtube_api/tests/test_youtube_fetch_fidelity.py:76::test_interrupted_playlist_scan_replays_beyond_its_own_partial_writes"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C46 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Retained fake channel/playlist/video pages, duplicate IDs/changed handle/unknown fields/failed channel. Preserve configured IDs/literal handles/history, atomic page completion and nonzero partial failure.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Authentic cache cohort must be supplied by source inventory; no payload census/acquisition here."
+    ]
+  },
+  {
+    "id": "C47",
+    "behavior": "YouTube EventIdReport CSV with explicit playlist-added/video-publication date basis",
+    "baseline_sources": [
+      "packages/youtube_api/src/youtube_api/analyze/main.py:40"
+    ],
+    "current_tests": [
+      "packages/youtube_api/tests/test_youtube_interpretation.py:18::test_adjacent_congress_ranges_count_boundary_videos_once"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C47 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "UTC boundary/missing-invalid-naive time/multiple handles/unknown caption/failed committee. Eight exact fields; no time fallback; half-open Congress counts once; exclusions explicit nonzero outcome.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Authentic current report-to-cache parity not run."
+    ]
+  },
+  {
+    "id": "C48",
+    "behavior": "YouTube English caption tracks/text/index and scoped success/none/error receipts",
+    "baseline_sources": [
+      "packages/youtube_api/src/youtube_api/captions/main.py:41"
+    ],
+    "current_tests": [],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C48 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Retained downloader metadata/track fake manual-auto-none/declared-unreadable/blocked-after-success. Error not absence; last success/timing tracks preserved; text not transcript of record; valid receipt reusable.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Dedicated command tests/authentic retained-track acceptance not located; Senate-caption tests are not YouTube parity."
+    ]
+  },
+  {
+    "id": "C49",
+    "behavior": "News publish/read exact immutable releases over 12 content tables plus release records",
+    "baseline_sources": [
+      "packages/news_lake/src/news_lake/storage/releases.py:306"
+    ],
+    "current_tests": [
+      "packages/news_lake/tests/test_releases.py:183::test_release_pins_exact_validated_snapshots"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C49 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Invalid/empty batch, append/upsert, optional evolution, selections/checkpoints, crash/pending/retired/missing snapshot. Schema-owned routing, exact pins, null forbidden at record boundary, old snapshot isolation.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Authentic news releases and complete field-path/cardinality catalog not recovered; actual schema routes 13 tables despite stale CLI docstring saying 10 raw."
+    ]
+  },
+  {
+    "id": "C50",
+    "behavior": "News person-root/current-item/selected-run views, corrections, undated dates and syndication",
+    "baseline_sources": [
+      "packages/news_lake/src/news_lake/analysis/views.py:150"
+    ],
+    "current_tests": [
+      "packages/news_lake/tests/test_docspec_backend.py:1693::test_incremental_update_bridges_scales_with_delta_not_corpus_and_cross_date_syndication"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C50 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Decision/retraction/version/selected-zero/pending changes, adjacent/overlap spans, unknown dates and full versus incremental fresh process. Three bridges/two views exact; removals retract; syndication not independent reporting.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Reference Python/PyIceberg paths are differential oracles, not independent raw proof; authentic news acceptance absent."
+    ]
+  },
+  {
+    "id": "C51",
+    "behavior": "News authorized/expired export and consumer-visible lifecycle commands",
+    "baseline_sources": [
+      "packages/news_lake/src/news_lake/analysis/export.py:43"
+    ],
+    "current_tests": [
+      "packages/news_lake/tests/test_docspec_backend.py:1231::test_news_lake_cli_publish_views_export_and_compact_lifecycle"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C51 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Same release authorized/unauthorized at fixed expiry, protected old reader during compaction. Omit only policy restricted/expired payload/text; metadata kept; source immutable; published identity required.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "No native export/retirement/compaction action. Live providers/production extractor/full retention policy remain deferred."
+    ]
+  },
+  {
+    "id": "C52",
+    "behavior": "Inflation CPI grid and documented Google Sheets named ranges/functions",
+    "baseline_sources": [
+      "apps/inflation_gsheets/src/fetch-cpi-convert-csv.py:16",
+      "apps/inflation_gsheets/README.md:33",
+      ".github/workflows/bls-cpi-update.yml:24"
+    ],
+    "current_tests": [],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C52 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Frozen CSV/BLS response revised year/placeholder/missing month; actual named formula integer/fractional years. Preserve CPI-level units and ratio dollars; missing unknown; exact deployed formula parity required.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Remote Sheet/formulas not inspected; README is stated baseline only. No app tests; duplicate-year replacement can erase months absent in partial response."
+    ]
+  },
+  {
+    "id": "C53",
+    "behavior": "Inflation monthly YoY comparison, optional aggregate and unavailable-source semantics",
+    "baseline_sources": [
+      "apps/inflation_gsheets/src/fetch-inflation-sources.py:73",
+      "apps/inflation_gsheets/src/fetch-inflation-sources.py:146",
+      ".github/workflows/bls-cpi-update.yml:27"
+    ],
+    "current_tests": [],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C53 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "Frozen BLS/FRED/manual data, daily duplicate month/null/missing/all-down; weighted/default aggregate. Month-start YoY%, last monthly reading, no null-zero, renormalized weights, opt-in derived label and prior CSV preservation.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults."
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "All sources unavailable exits 0 without write contrary to workflow comment requiring BLS/FRED; policy unresolved; no live Sheet/source parity/tests."
+    ]
+  },
+  {
+    "id": "C54",
+    "behavior": "All remaining console/module/report/transcript/schema routes remain required scope",
+    "baseline_sources": [
+      "pyproject.toml:30"
+    ],
+    "current_tests": [
+      "packages/congress_api/tests/test_shared_command_setup.py:70::test_command_help_explicitly_sets_legacy_logging",
+      "packages/congress_api/tests/test_shared_command_setup.py:201::test_transcript_and_inventory_default_inputs"
+    ],
+    "replacement_owner": "Maintained domain parser/matching/report logic; DDK owns reusable definitions/catalog/checks/evidence; DocSpec owns execution/durable phases/protection/reconciliation/managed selection",
+    "acceptance_proof": {
+      "status": "plan_only",
+      "proposed_command": ".venv/bin/python scripts/measure/ddk_consumer_acceptance.py --case C54 --frozen-inputs <accepted-consumer-inputs.json> --baseline-release e145d24c389e43e05a0bcb3f71cd1f75ee919a066dfa810f0ba39a16283d4a99 --candidate <candidate-reference>",
+      "command_state": "Proposed harness/candidate adapter is not implemented or qualified. Parent gate now permits local implementation; this document is a plan, and production cutover remains unauthorized.",
+      "case_and_expected": "For each named command freeze arguments/offline inputs/output schemas/exit states and independently read downstream artifacts. No alias/output silently disappears; domain ownership remains while duplicated generic infrastructure is removed.",
+      "independence": "Invoke actual baseline and replacement entry points in fresh processes over identical frozen inputs. Independently derive expected identifiers/values/types/null-empty-refusal-pending states/multiplicity from raw evidence; never use producing parser/model as sole oracle. Label authentic evidence separately from synthetic faults.",
+      "required_subcases": [
+        {
+          "id": "C54.committee_metadata",
+          "behavior": "Congress-scoped committee lists with distinct current detail/history",
+          "sources": [
+            ".github/workflows/update-data.yml:159",
+            "packages/congress_api/src/congress_api/cli/committees.py:9",
+            "packages/congress_api/src/congress_api/acquisition/committees.py:32"
+          ],
+          "tests": [
+            "packages/congress_api/tests/test_committee_metadata.py:26",
+            "packages/congress_api/tests/test_committee_metadata.py:53",
+            "packages/congress_api/tests/test_committee_metadata.py:69"
+          ],
+          "test_scope": "Existing tests assert paginated/historical preservation, failed-refresh byte preservation and rejected-page retention; they do not qualify new durable runtime or remote job activation.",
+          "acceptance": "Replay frozen list/detail responses for missing/latest-two/historical Congresses. Independently expect historical list status unchanged by current detail; repeat/empty/invalid page must refuse and retain rejected bytes/previous snapshot. Resume fresh process with exact request cohort and verify outputs/source observations, not producer-derived expectations.",
+          "authentic_gap": "Fixed authentic list/detail response cohort and each historical Congress denominator remain unverified.",
+          "status": "unverified",
+          "owner": "Congressional acquisition/domain owner with DocSpec durable execution and DDK reusable definitions/evidence"
+        },
+        {
+          "id": "C54.house_sites",
+          "behavior": "All-history discovery, targeted retry and offline reparse",
+          "sources": [
+            "packages/congress_api/src/congress_api/cli/house_sites.py:19",
+            "packages/congress_api/src/congress_api/acquisition/house_sites.py:296",
+            "packages/congress_api/src/congress_api/acquisition/house_sites.py:447",
+            "packages/congress_api/src/congress_api/acquisition/house_sites.py:499"
+          ],
+          "tests": [
+            "packages/congress_api/tests/test_house_sites.py:46",
+            "packages/congress_api/tests/test_house_sites.py:60",
+            "packages/congress_api/tests/test_house_sites.py:78",
+            "packages/congress_api/tests/test_house_sites.py:161"
+          ],
+          "test_scope": "Tests assert literal retained bodies, pending-budget queue resume, failed refresh retaining page/receipts and offline no-HTTP; targeted-manifest adoption/host-loss/reparse equivalence still need independent procedure.",
+          "acceptance": "Use fixed official directory and retained pages; stop with pending queue, resume fresh process, reject a changed retry manifest, retain discovery-gap/failure evidence. Offline reparse must make zero acquisition calls, preserve original bytes/timestamps/queues/unrelated pages, and independently recover expected date/link facts.",
+          "authentic_gap": "Complete directory/site/layout/history population and authentic targeted retry manifests are not yet inventoried.",
+          "status": "unverified",
+          "owner": "Congressional acquisition/domain owner with DocSpec durable execution and DDK reusable definitions/evidence"
+        },
+        {
+          "id": "C54.house_xml_fallback",
+          "behavior": "House XML/witness/page fallback with explicit absence/failure/incomplete work",
+          "sources": [
+            "packages/congress_api/src/congress_api/cli/house.py:22",
+            "packages/congress_api/src/congress_api/acquisition/house.py:40",
+            "packages/congress_api/src/congress_api/acquisition/house.py:47",
+            "packages/congress_api/src/congress_api/acquisition/house.py:85"
+          ],
+          "tests": [
+            "packages/congress_api/tests/test_house_committee_fallback.py:141",
+            "packages/congress_api/tests/test_house_committee_fallback.py:184",
+            "packages/congress_api/tests/test_house_document_source_models.py:162"
+          ],
+          "test_scope": "Tests cover primary/fallback selection, explicit primary error and rejected raw XML retention. They do not establish full source-history completeness or replacement process-loss recovery.",
+          "acceptance": "Replay stored 200/404, wrong XML root, malformed XML, failure, matched/ambiguous/uncollected fallback and refresh-limit cases. Independently assert confirmed publisher absence differs from transport/parser refusal, retained raw/source context survives, no alternate file is promoted to identity repair, and incomplete work remains explicit after resume.",
+          "authentic_gap": "Source-specific retained raw XML/page/body cohort, refresh history and uncovered fallback population remain unverified.",
+          "status": "unverified",
+          "owner": "Congressional acquisition/domain owner with DocSpec durable execution and DDK reusable definitions/evidence"
+        },
+        {
+          "id": "C54.senate_captions",
+          "behavior": "Senate live/archive subtitles and paired protected outputs",
+          "sources": [
+            "packages/congress_api/src/congress_api/cli/senate_captions.py:25",
+            "packages/congress_api/src/congress_api/transcripts/senate.py:57",
+            "packages/congress_api/src/congress_api/transcripts/senate.py:134",
+            "packages/congress_api/src/congress_api/transcripts/senate.py:158"
+          ],
+          "tests": [
+            "packages/congress_api/tests/test_senate_caption_recovery.py:15",
+            "packages/congress_api/tests/test_senate_caption_recovery.py:31",
+            "packages/congress_api/tests/test_senate_caption_recovery.py:68"
+          ],
+          "test_scope": "Tests assert real zero-duration cue preservation, archive-only receipt scope and staged-gzip failure retaining prior bytes; not YouTube command parity or complete runner-loss recovery.",
+          "acceptance": "Freeze master/playlist/segments and fallback responses, including zero-duration cues and incomplete/absent track. Kill between gzip/text/receipt/index boundaries then resume fresh process; independently compare exact cues/text/scope, preserve previous successful evidence, and require nonzero partial failure while completed index rows remain.",
+          "authentic_gap": "All committee/player/live/archive variants and authentic segment completeness remain unverified.",
+          "status": "unverified",
+          "owner": "Congressional acquisition/domain owner with DocSpec durable execution and DDK reusable definitions/evidence"
+        }
+      ]
+    },
+    "authentic_evidence": [],
+    "status": "unverified",
+    "gaps": [
+      "No replacement implementation or acceptance execution. Current parent gate permits local implementation; production cutover remains unauthorized.",
+      "Detailed remaining House/Senate/GPO/inventory/transcribe/house-naming/committee schema plus module-CLI consumer census incomplete and required; source/lifecycle inventories must close it.",
+      "Four review-named branches now have explicit subcases, but source/consumer denominators and authentic cohorts remain open. This does not close the remaining CLI/module/report census."
+    ]
+  }
+]

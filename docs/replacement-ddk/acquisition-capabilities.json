@@ -1,0 +1,1696 @@
+{
+  "schema_version": 1,
+  "scope": "Preparation inventory across archive, YouTube, weekly snapshots, news_lake and inflation; not exhaustive source or replacement acceptance",
+  "baseline_commit": "a06eb64bf3caa4a44e12a89bdd08939323de3092",
+  "all_proofs": "planned_not_run",
+  "test_execution": "none; source/tests inspected only",
+  "audit_limits": [
+    "Named metadata/small retained reports and two 4 KiB decoded original prefixes only.",
+    "No authentic archive receipt line, news live payload, CPI/FRED raw response, complete caption track or PDF independently read.",
+    "No corpus census, full decode/hash, source download, runtime run, Git change or publication performed."
+  ],
+  "capabilities": [
+    {
+      "id": "A01",
+      "behavior": "Enumerate source families, upstream endpoints/windows and raw-prefix discovery separately; do not infer source completeness from output.",
+      "baseline_sources": [
+        "model/registries/capture-scope.json:4-128",
+        "model/jobs/publish-daily.json:50-73",
+        "packages/congress_api/src/congress_api/parsers/source_family.py:7-179"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_capture_scheduler.py:229-240",
+        "packages/congress_api/tests/test_daily_receipt_discovery.py:14-29"
+      ],
+      "replacement_owner": "DDK source/catalog definitions and evidence composition; domain source census; DocSpec discovery execution",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Build a finite source/window matrix from maintained configuration and retained source manifests independently of producer output. Anti-join both ways against attempted/read/excluded/pending inventories. Fail on an undeclared source or an unaccounted declared source.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "13 capture families and 22 daily prefixes are bounded configuration inventories, not a whole-workspace or whole-source census.",
+        "Default govinfo/collections and senate/hearing-page acquisition family names are absent from the daily prefix list; all caller overrides are unproved.",
+        "Bounded pyproject console census now binds declared entrypoints, but script-only campaigns, historical source populations and complete upstream endpoint/window denominators remain open; closure requires a separately frozen source/caller inventory with read/excluded/failed/pending dispositions."
+      ]
+    },
+    {
+      "id": "A02",
+      "behavior": "Select one release once; reject display-only seed authority, changed scheduler inputs, incompatible schemas and missing profile pins before work.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/acquisition/capture_scheduler.py:129-204",
+        "packages/congress_api/src/congress_api/acquisition/capture_scheduler.py:435-455"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_capture_scheduler.py:480-510",
+        "packages/congress_api/tests/test_capture_scheduler_seed_refusal.py:23-66"
+      ],
+      "replacement_owner": "DocSpec selection and admission execution; DDK reusable manifest/profile checks; domain capture authority",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Drive the public and local release loaders with retained manifest copies and a counted transport. Mutate each scheduler input, origin marker and file size independently. Assert zero raw/network calls after refusal and exact selected input identities after success.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/public-pointer.json:1"
+      ],
+      "status": "unverified",
+      "gaps": [
+        "No replacement loader executed.",
+        "No current remote pointer readback performed."
+      ]
+    },
+    {
+      "id": "A03",
+      "behavior": "Preserve literal requested, observed, final and context addresses while shared URL identity suppresses aliases and exact campaign membership bounds requests.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/acquisition/capture_scheduler.py:435-437",
+        "packages/congress_api/src/congress_api/acquisition/capture_scheduler.py:518-602",
+        "packages/congress_api/src/congress_api/acquisition/capture_scheduler.py:855-860"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_capture_scheduler.py:573-593",
+        "packages/congress_api/tests/test_capture_scheduler.py:1037-1067",
+        "packages/congress_api/tests/test_capture_scheduler.py:1152"
+      ],
+      "replacement_owner": "Domain URL normalization/repair semantics; DDK rule definitions; DocSpec native key execution",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently parse retained address observations; compare literal evidence and normalized scheduling keys separately. Use shared addresses, distinct targets, malformed spellings and failed first campaign candidates; assert one allowed request per actual address with all source associations retained.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "The maintained key rules and campaign acceptance policy need exact DDK binding; replacement parity is unrun."
+      ]
+    },
+    {
+      "id": "A04",
+      "behavior": "Congress collection windows advance only after every page is complete and valid; repeated/stalled pagination refuses advancement; JSON detail 500 can retain XML recovery.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/acquisition/meetings.py:183-299",
+        "packages/congress_api/src/congress_api/acquisition/meetings.py:313-345"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_capture_scheduler.py:332-479",
+        "packages/congress_api/tests/test_congress_xml_recovery.py:51-135"
+      ],
+      "replacement_owner": "Domain Congress discovery/parsing; DocSpec durable page phases and cursor reconciliation; DDK checks",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Read bounded retained list/detail originals using an independent JSON/XML reader and derive expected IDs/page boundaries. Inject a later-page failure, repeated page and wrong-meeting XML; compare cursor and receipt evidence before and after fresh-process resume.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No complete upstream endpoint/date-window inventory audited.",
+        "No authentic list/detail receipt body independently decoded in this audit."
+      ]
+    },
+    {
+      "id": "A05",
+      "behavior": "GovInfo collection pages and package parts preserve source-provided URLs and package/file distinctions; Senate listing discovery obeys date, overlap and route bounds.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/acquisition/gpo.py:343-405",
+        "packages/congress_api/src/congress_api/acquisition/senate.py:89-164",
+        "packages/congress_api/src/congress_api/acquisition/senate.py:490-527"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_gpo_package_manifest.py:13-31",
+        "packages/congress_api/tests/test_gpo_metadata_recovery.py:19-46",
+        "packages/congress_api/tests/test_gpo_identity_reuse.py:21-56"
+      ],
+      "replacement_owner": "Domain source adapters and package/event identity; DocSpec bounded acquisition; DDK source and check definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Use independently read retained package/listing pages to enumerate files, URLs, dates and next-page boundaries. Exercise empty, repeated, full-undated, multipart and errata cases. Compare discovered identities and explicit exclusions with every raw entry in the bounded set.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Current generic capture path is not proved to bootstrap every GovInfo/Senate listing route.",
+        "Historical parsed source context is not exact HTTP bytes; fidelity must remain explicit."
+      ]
+    },
+    {
+      "id": "A06",
+      "behavior": "Keep origin HTTP status distinct from provider status; retain direct/prior response evidence; validate every redirect and stop escalation on origin throttle or provider-account failure.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/acquisition/fetcher.py:62-132",
+        "packages/congress_api/src/congress_api/acquisition/fetcher.py:170-185"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_source_capture.py:30-88",
+        "packages/congress_api/tests/test_capture_durable.py:311-447"
+      ],
+      "replacement_owner": "Domain transport/escalation policy; DocSpec protected execution and request reconciliation; DDK policy/check definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Replay bounded retained response facts through counted local adapters with independent expected origin/provider fields. Cover challenge HTML at a PDF URL, redirects outside scope, 404/410, Retry-After, provider 401/402/403/429 and incomplete transfer; assert exact rung counts and prior evidence.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Authentic provider refusal receipts were not opened; mocked regressions alone do not qualify each provider."
+      ]
+    },
+    {
+      "id": "A07",
+      "behavior": "Reserve request, paid-cost, wire-byte, spool and entity capacity before calls; charge unknown outcomes; include workers and protected quarantine in admission.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/acquisition/admission.py:15-69",
+        "packages/congress_api/src/congress_api/acquisition/capture_scheduler.py:711-765",
+        "packages/congress_api/src/congress_api/acquisition/capture_scheduler.py:961-1045"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_capture_durable.py:274-288",
+        "packages/congress_api/tests/test_capture_durable.py:371-409",
+        "packages/congress_api/tests/test_capture_durable.py:480-521",
+        "packages/congress_api/tests/test_capture_scheduler.py:704-715"
+      ],
+      "replacement_owner": "DocSpec resource/admission execution and durable phases; domain cost/pacing inputs; DDK reusable limit definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Use a deterministic multi-worker event trace and independent integer ledger to sum admitted requests, maximum outstanding cost, all redirect/rung wire bytes and simultaneous scratch. Kill a worker during a reserved call and verify the next process preserves charges and refuses excess work.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Current captured entity capacity is qualified only through 16 MiB.",
+        "No replacement resource measurement; no heavy probe run; current disk-free observation is not a reservation."
+      ]
+    },
+    {
+      "id": "A08",
+      "behavior": "Store raw originals by original SHA-256 with optional storage gzip, immutable create and checked transfer metadata; body reuse preserves content identity.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/retention/body_store.py:38-47",
+        "packages/congress_api/src/congress_api/retention/body_store.py:73-114",
+        "packages/congress_api/src/congress_api/retention/body_store.py:194-293"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_body_store_contract.py:69-172",
+        "packages/congress_api/tests/test_body_store_contract.py:224-253"
+      ],
+      "replacement_owner": "DocSpec immutable object storage, custody and collision reconciliation; DDK data shapes/checks; domain fidelity",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently hash a bounded retained original and its actual stored encoding, then exercise create, matching existing body, wrong shard, wrong digest, missing object and conflicting metadata. Count physical writes and assert old bytes cannot change.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/bundle-raw/bodies/sha256/04/044f1c5412079a563cabdb6b9882e0a459870cd275af4b41cc6c0a48f3eed11d",
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/bundle-raw/bodies/sha256/c9/c90e782a00651261a9ac21ae8d30df88757b3b66ae99a5ff794f0dc8ca65336e.gz"
+      ],
+      "status": "unverified",
+      "gaps": [
+        "Two retained body prefixes were read without complete decode or digest verification; this is not a raw integrity audit."
+      ]
+    },
+    {
+      "id": "A09",
+      "behavior": "Retain each acquisition occurrence, prior attempt and body pointer; store bodies first, then a create-only receipt with exact writer/time/fidelity facts.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/retention/receipt_writer.py:82-205",
+        "packages/congress_api/src/congress_api/retention/receipt_writer.py:247-262",
+        "packages/congress_api/src/congress_api/lake/captures.py:41-49"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_receipt_writer_contract.py:22-58",
+        "packages/congress_api/tests/test_captures_final34.py"
+      ],
+      "replacement_owner": "Domain receipt and occurrence semantics; DocSpec immutable writes/reconciliation; DDK reusable record definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently decode retained receipt lines and enumerate every final/prior/member body locator. Compare exact occurrence multiplicity with replacement captures both ways; share one byte-identical body across multiple source occurrences and assert storage dedup never removes occurrences.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No authentic archive receipt line was decoded in this inventory.",
+        "Historical receipt variants are finite observed rules; unknown variants must fail visibly rather than disappear."
+      ]
+    },
+    {
+      "id": "A10",
+      "behavior": "Retain an archive container and complete allowed members, preserve duplicate member positions/names, and record container/member refusal reasons without treating partial expansion as complete.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/retention/archive_expander.py:38-109",
+        "packages/congress_api/src/congress_api/retention/receipt_writer.py:138-178"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_receipt_writer_contract.py:263-288",
+        "packages/congress_api/tests/test_capture_scheduler.py:212-228"
+      ],
+      "replacement_owner": "Domain container/member meaning; DocSpec bounded expansion phases and raw storage; DDK checks/limits",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Use an independent ZIP directory/member reader on bounded retained containers. Enumerate entry position, name and bytes, including duplicate names, nested archives, Office containers, encryption, corrupt CRC and size limits. Require a disposition for every member and preserve the original container.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No authentic archive container audited; surviving-member samples cannot prove whole-container completeness."
+      ]
+    },
+    {
+      "id": "A11",
+      "behavior": "Distinguish stored/unchanged documents, failed bodies, retry-later, request failures and size limits; 202, empty and incomplete 206 are not documents.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/retention/receipt_writer.py:39-53",
+        "packages/congress_api/src/congress_api/lake/receipt_metadata.py:47-87",
+        "packages/congress_api/src/congress_api/lake/captures.py:504-537"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_receipt_writer_contract.py:230-243",
+        "packages/congress_api/tests/test_captures_entry_http_status.py",
+        "packages/congress_api/tests/test_captures_domain_outcomes.py"
+      ],
+      "replacement_owner": "Domain admission/disposition policy; DDK reusable definitions/checks; DocSpec execution",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Derive expected disposition independently from raw response framing/status, measured body length and content range. Challenge prior success followed by final failure, complete prior body followed by final success, zero length, 202 and partial 206; compare both body and fetch outcomes.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Current Python/SQL shared-definition agreement is useful consistency evidence but is not an independent raw judgment."
+      ]
+    },
+    {
+      "id": "A12",
+      "behavior": "Reject credential-bearing recorded URLs and absolute local paths before body storage; retain safe relative member names and stable error codes.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/retention/body_store.py:50-70",
+        "packages/congress_api/src/congress_api/retention/receipt_writer.py:110-131",
+        "packages/congress_api/src/congress_api/retention/receipt_writer.py:221-237"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_body_store_contract.py:59-68",
+        "packages/congress_api/tests/test_receipt_writer_contract.py:86-98",
+        "packages/congress_api/tests/test_receipt_writer_contract.py:289-310"
+      ],
+      "replacement_owner": "Domain public-evidence policy; DDK shapes/checks; DocSpec pre-write admission",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Recursively inspect serialized outputs independently and inject credentials/path text into redirects, nested observations, headers, recovery evidence and error fields. Assert no physical write precedes rejection and legitimate relative member names survive.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "The inventory did not recursively audit historical raw receipts or all exported public rows."
+      ]
+    },
+    {
+      "id": "A13",
+      "behavior": "Discover new raw receipts by explicit families and inclusive dated prefixes, select missing keys before copying bytes and preserve deferred oldest work.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/receipt_inventory.py:43-99",
+        "packages/congress_api/src/congress_api/lake/receipt_inventory.py:230-241",
+        "packages/congress_api/src/congress_api/lake/daily.py:233-275"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_daily_receipt_discovery.py:14-86",
+        "packages/congress_api/tests/test_daily_producers.py:299-368"
+      ],
+      "replacement_owner": "DocSpec metadata selection/native anti-joins and conditional read custody; domain family/window policy; DDK evidence",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Freeze a small raw-key listing and prior captures independently. Add same-day, late older-day, undated and oversized receipts; compare every missing/deferred key and counted receipt read. Change a copied body under the same listed key and require refusal.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Incremental mode intentionally omits older/non-dated prefixes outside its watermark; a separate complete audit/backfill must account for them.",
+        "No raw-prefix census was run."
+      ]
+    },
+    {
+      "id": "A14",
+      "behavior": "Map finite receipt shapes into typed capture rows with stable locators, bodyless records and separate prior/final outcomes; refuse unknown modes, outcomes, shape or conflicting facts.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/captures.py:85-143",
+        "packages/congress_api/src/congress_api/lake/captures.py:146-218",
+        "packages/congress_api/src/congress_api/lake/captures.py:640-711"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_captures_line_kinds.py",
+        "packages/congress_api/tests/test_captures_inline_payloads.py",
+        "packages/congress_api/tests/test_captures_source_counts.py",
+        "packages/congress_api/tests/test_capture_backfill_guard.py"
+      ],
+      "replacement_owner": "Domain capture mapping; DocSpec native execution; DDK schema/check/evidence definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Build expected rows from an independently coded raw receipt reader that does not import captures, registry or producer SQL. Compare values, locators, multiplicity and dispositions both ways over every selected receipt; plant a wrong but in-domain prior/final outcome and prove detection.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Capture generation guards cannot independently parse raw receipts or detect every in-domain wrong value.",
+        "Bounded regressions are not corpus-wide shape coverage."
+      ]
+    },
+    {
+      "id": "A15",
+      "behavior": "Plan missing readings from pinned metadata before raw access; deduplicate bodies independently of occurrence count; one combined pass reuses writer facts and accepted readings.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/readings.py:257-302",
+        "packages/congress_api/src/congress_api/lake/readings.py:491-568",
+        "packages/congress_api/src/congress_api/lake/readings.py:622-674"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_readings_once.py:25-81",
+        "packages/congress_api/tests/test_readings_budget_backfill.py:57-108",
+        "packages/congress_api/tests/test_readings_metadata_first.py:47-69"
+      ],
+      "replacement_owner": "DocSpec native worklists, parser workers and reusable completions; domain parser meaning; DDK declared definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Use file-open/read instrumentation outside the producer to count original opens and bytes for repeated bodies and unchanged reruns. Independently read small retained HTML/XML/JSON originals to compare links/order/base/title/date values. Over-budget planning must create no raw reads.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No replacement code or parser run; no new source-open or performance claim.",
+        "HTML metadata is a separate derived pass and must not be incorrectly folded into leaf completion."
+      ]
+    },
+    {
+      "id": "A16",
+      "behavior": "Distinguish original gzip content from storage gzip by the supported identity rule; pin conditional stored versions and keep ambiguous/mismatched reads pending.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/readings.py:60-90",
+        "packages/congress_api/src/congress_api/lake/readings.py:114-156",
+        "packages/congress_api/src/congress_api/lake/readings.py:527-564"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_readings_once.py:282-298",
+        "packages/congress_api/tests/test_readings_gzip_rule.py:27-92",
+        "packages/congress_api/tests/test_readings_listed_etag.py"
+      ],
+      "replacement_owner": "DocSpec raw read/custody execution; domain encoding semantics; DDK check definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently stream-hash stored and decoded bytes of bounded raw-gzip, storage-gzip, suffix-free gzip and equal-size counterexamples. Compare chosen representation and original SHA, and force ETag/body changes between range reads to verify pending/refusal rather than fabricated parsed values.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/bundle-raw/bodies/sha256/c9/c90e782a00651261a9ac21ae8d30df88757b3b66ae99a5ff794f0dc8ca65336e.gz"
+      ],
+      "status": "unverified",
+      "gaps": [
+        "The c90e782a prefix was decoded only for inspection; complete content identity was not verified."
+      ]
+    },
+    {
+      "id": "A17",
+      "behavior": "Keep unread bytes pending, parser/resource refusal explicit and unreadable decisions durable/versioned/supersedable before append.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/readings.py:636-687",
+        "packages/congress_api/src/congress_api/lake/readings.py:730-736",
+        "packages/congress_api/src/congress_api/lake/_record_producer.py:590-609",
+        "packages/congress_api/src/congress_api/lake/_record_producer.py:724-749"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_readings_metadata_first.py:61-69",
+        "packages/congress_api/tests/test_readings_budget_backfill.py:123-137",
+        "packages/congress_api/tests/test_readings_budget_backfill.py:166-207"
+      ],
+      "replacement_owner": "Domain decision meaning; DocSpec durable phase/append protection; DDK decision definitions and evidence",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Trace an independently selected raw key through missing copy, transient read failure, deterministic size refusal, malformed content and superseded unreadable decision. Assert exactly the supported terminal versus pending outcome and no append before durable decision acknowledgment.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No complete unreadable/pending population audited; known refusal is not proof that the content has no useful facts."
+      ]
+    },
+    {
+      "id": "A18",
+      "behavior": "Retain accepted historical readings only under bound compatibility evidence; select one applicable parser version and selectively recompute an exact changed subset.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/compatible_versions.py:1-25",
+        "packages/congress_api/src/congress_api/lake/compatible_versions.py:43-57",
+        "packages/congress_api/src/congress_api/lake/compatible_versions.py:94-115",
+        "model/sql/selected-records.sql:1-12",
+        "model/jobs/publish-model.json:58-83"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_readings_once.py:223-281",
+        "packages/congress_api/tests/test_capture_backfill_execution.py",
+        "packages/congress_api/tests/test_capture_backfill_proof.py"
+      ],
+      "replacement_owner": "Domain compatibility/predicate decision; DDK definition/evidence binding; DocSpec selective native execution",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Freeze old/new definition pins and affected raw-input predicate before execution. Independently compare every kept typed row and active refusal both ways, enumerate recomputed keys and assert one selected version per logical key; do not equate a sample with full predicate coverage.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No existing compatibility evidence requalified here.",
+        "Record tables are recomputed by current compatibility design; replacement must not silently widen reading reuse to them."
+      ]
+    },
+    {
+      "id": "A19",
+      "behavior": "Read bounded native PDF structure and at most the opening two pages for cover facts; abstain on ambiguity/encryption; OCR and full-PDF text extraction are not current archive capabilities.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/retention/pdf_tools.py:39-42",
+        "packages/congress_api/src/congress_api/retention/pdf_tools.py:125-180",
+        "packages/congress_api/src/congress_api/retention/pdf_tools.py:203-218",
+        "packages/congress_api/src/congress_api/parsers/document_cover.py:220-251"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_fold_pdf_text.py",
+        "packages/congress_api/tests/test_engine_first_readings.py"
+      ],
+      "replacement_owner": "Domain cover interpretation; DocSpec bounded tool phases and version pins; DDK declared reading/check definition",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "For bounded retained PDFs independently inspect first/second pages and compare cover outputs plus explicit abstentions; include scanned, password-required, blank, ambiguous and malformed files. Assert no OCR/full-document reader runs and tools stay within fixed resource bounds.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No PDF original read in this inventory.",
+        "If the replacement objective requires OCR or full document text, those are new unresolved requirements, not baseline parity."
+      ]
+    },
+    {
+      "id": "A20",
+      "behavior": "Caption availability/absence retains observation time, tested language/URL scope, raw timing track or explicit extracted metadata and prior successful observation across later errors.",
+      "baseline_sources": [
+        "packages/youtube_api/src/youtube_api/captions/main.py:41-109",
+        "packages/congress_api/src/congress_api/parsers/observations.py",
+        "packages/congress_api/tests/test_source_observation_interpretation.py:37-84"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_caption_source_fidelity.py",
+        "packages/congress_api/tests/test_caption_inventory_receipts.py",
+        "packages/congress_api/tests/test_source_observation_interpretation.py:37-84"
+      ],
+      "replacement_owner": "Domain caption/absence meaning; DocSpec raw/capture phase protection; DDK evidence definition",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently inspect retained VTT track plus metadata/receipt for a manual, automatic, absent and failed check. Verify language scope, exact tested URL/time, chosen track and prior success; require an unscoped or failed negative to remain unknown/error.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No full caption track audited.",
+        "yt-dlp info is extracted metadata; it must not be relabeled an original YouTube HTTP response."
+      ]
+    },
+    {
+      "id": "A21",
+      "behavior": "Generated transcripts retain provider response/generated text before interpretation, preserve missing raw HTTP body explicitly, and produce named turns and rendered files without accidental overwrite.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/retention/transcripts.py:17-54",
+        "packages/congress_api/src/congress_api/transport/gemini.py:92-141",
+        "packages/congress_api/src/congress_api/transcripts/generate.py:60-75",
+        "packages/congress_api/src/congress_api/transcripts/generate.py:136-171",
+        "packages/congress_api/src/congress_api/cli/transcribe.py:41-54",
+        "packages/congress_api/src/congress_api/cli/transcribe.py:72-100"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_weekly_retention_tables.py:276-293",
+        "packages/congress_api/tests/test_congress_source_models.py:120-132"
+      ],
+      "replacement_owner": "Domain transcript/Gemini interpretation; DocSpec expensive window phases and output custody; DDK source/run/evidence shapes",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Replay retained response captures offline with fixed model/config/window identities. Independently compare speaker/time/turn order and source fidelity fields, interrupt after an expensive window and before each final file write, and assert only valid completed windows are reused.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Fresh-process expensive-window reuse through the current transcribe wrapper was not established.",
+        "SDK decoded HTTP text is not original transport bytes.",
+        "No authentic Gemini response or transcript body audited.",
+        "Incumbent test coverage cited here is retention/context only. No cited test qualifies Gemini retry/split semantics, expensive-window completion reuse across processes or atomic paired JSON/rendered output; planned proofs are additional obligations."
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_weekly_retention_tables.py:276-293",
+          "category": "retention_only",
+          "assertions": "Retains one fake SDK HTTP/generated response into file/weekly table and reads one model identity; does not exercise window completion, retries/splits, process restart or paired final output."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_congress_source_models.py:120-132",
+          "category": "context_only",
+          "assertions": "Mocked package-only context obtains native nonempty title and correct chamber; no generation, acquisition resume or final-file publication is exercised."
+        }
+      ]
+    },
+    {
+      "id": "A22",
+      "behavior": "Resume sealed downloads/frozen receipts after process death without repeat acquisition; preserve unknown remote calls and bounded explicit retry evidence.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/acquisition/capture_journal.py:50-87",
+        "packages/congress_api/src/congress_api/acquisition/capture_journal.py:94-175",
+        "packages/congress_api/src/congress_api/retention/receipt_writer.py:221-245",
+        "packages/congress_api/src/congress_api/acquisition/capture_scheduler.py:779-842"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_capture_durable.py:33-83",
+        "packages/congress_api/tests/test_capture_durable.py:150-160",
+        "packages/congress_api/tests/test_receipt_writer_contract.py:167-192"
+      ],
+      "replacement_owner": "DocSpec durable phases, reconciliation and protection; domain immutable request identity; DDK completion evidence shape",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Exercise the actual replacement wrapper in fresh processes, killing after download/body acknowledgment/frozen receipt/receipt acknowledgment/local completion. Independently count adapter calls, stored occurrences and retained charges; ambiguous calls must block automatically and retain quarantine.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Existing kill tests were inspected, not executed.",
+        "A hosted runner losing its temporary work can lose phase payloads: workflow uploads only summary/selection evidence, not the journal and frozen receipts."
+      ]
+    },
+    {
+      "id": "A23",
+      "behavior": "Daily production budgets pending bodies before new receipts, checks custody before captures advance, refuses stale mappings, refreshes heads and returns pins only after required producers complete.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/daily.py:537-578",
+        "packages/congress_api/src/congress_api/lake/daily.py:582-650"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_daily_producers.py:245-278",
+        "packages/congress_api/tests/test_daily_producers.py:313-445",
+        "packages/viewer_publication/tests/test_archive_publish_job.py:94-159"
+      ],
+      "replacement_owner": "DocSpec native producer execution/head reconciliation; domain producer completeness; DDK evidence composition",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Freeze a bounded current-head set and independently enumerate pending/new work. Inject refusal at each producer/append boundary and concurrent head advancement; compare exact committed rows, complete receipt set and handoff pins after resume, with no publisher eligibility on partial completion.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/nightly/20261104T174328Z/summary.json:1-10",
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/acceptance-six-tickets-20261105/attempt-46wmfs5a/report.md:14-18"
+      ],
+      "status": "unverified",
+      "gaps": [
+        "No native daily run or complete current table audit performed."
+      ]
+    },
+    {
+      "id": "A24",
+      "behavior": "Correct only exact observed capture locators using measured stored-byte evidence; restore absent raw keys from exact originals; preserve unrelated fields and raw bytes.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/retention/raw_repair.py:28-114",
+        "packages/congress_api/src/congress_api/retention/raw_repair.py:129-175"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_raw_repair.py:45-97",
+        "packages/congress_api/tests/test_raw_verifier.py:59-192"
+      ],
+      "replacement_owner": "Domain correction meaning and review evidence; DocSpec guarded replacement/restoration; DDK repair definitions/checks",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently measure a bounded stored object and enumerate its source locators. Apply a prepared correction in isolated storage and compare every unrelated typed field/multiplicity both ways; refuse stale selection, conflicting evidence, wrong exact source bytes and existing raw key.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No repairs/restorations performed; historical raw verification receipts were not requalified."
+      ]
+    },
+    {
+      "id": "A25",
+      "behavior": "Rebuild derived lake generations with typed bidirectional equality; purge only exact unkept UUID/pins under a complete protected-reference inventory, never raw objects.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/maintenance.py:106-195",
+        "model/jobs/maintenance.json:1-57"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_lake_maintenance.py:45-134"
+      ],
+      "replacement_owner": "DocSpec native maintenance/protection/purge; domain keep/retirement policy; DDK check/evidence definition",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently compare old/new schema and all typed rows in an isolated bounded generation; simulate retained snapshot/UUID aliases, live reader/writer pins and a concurrent protection change. Assert old data stays and raw prefixes never receive delete operations.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No complete protected-reference inventory or cleanup audit performed.",
+        "DDK must not introduce a second retention authority."
+      ]
+    },
+    {
+      "id": "A26",
+      "behavior": "Build/qualify/upload immutable publication assets before a guarded pointer flip; keep unchanged release evidence and reconcile lost selection acknowledgment; preserve retired link behavior.",
+      "baseline_sources": [
+        "packages/viewer_publication/src/viewer_publication/archive_publish.py:394-507",
+        "model/sql/retired-links.sql:1-61"
+      ],
+      "current_tests": [
+        "packages/viewer_publication/tests/test_archive_publish.py:131-209",
+        "packages/viewer_publication/tests/test_archive_publish.py:298-410"
+      ],
+      "replacement_owner": "DocSpec native execution, protection, transfer/selection reconciliation; domain reader/gate/retired-link semantics; DDK evidence/check composition",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Use actual local site/API reader checks against bounded retained old/new releases and a counted isolated store. Fail after upload, canary and pointer commit; verify reader-visible old/new states and exact readback. Independently compare retired keys/successors/removal notices and all unchanged publication bytes.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/live-status.json:1",
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/public-pointer.json:1"
+      ],
+      "status": "unverified",
+      "gaps": [
+        "Historical publication receipts are not current remote verification.",
+        "No replacement end-to-end or consumer check ran."
+      ]
+    },
+    {
+      "id": "A27",
+      "behavior": "Coordinate scheduled capture, Mac nightly publish and hosted maintenance with explicit enablement/locks; supervisor success requires real child wait and phase owner reconciliation.",
+      "baseline_sources": [
+        ".github/workflows/capture-archive.yml:3-68",
+        ".github/workflows/archive-jobs.yml:3-28",
+        "scripts/nightly_publish.py:1-19",
+        "scripts/nightly_publish.py:126-166",
+        "scripts/corpus_recovery/run_corpus_recovery.py:85-142"
+      ],
+      "current_tests": [
+        "packages/viewer_publication/tests/test_archive_publish_job.py:284-304",
+        "packages/viewer_publication/tests/test_archive_publish_job.py:848-929",
+        "scripts/corpus_recovery/tests/test_run_corpus_recovery.py"
+      ],
+      "replacement_owner": "Domain operational schedule/authorization; DocSpec job supervision, locks and durable recovery; DDK observable evidence definition",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "In isolated filesystem/processes drive actual schedule entry commands and kill launcher/child independently. Verify one active writer, real nonzero failure propagation, retained completed phases, refusal of ambiguous dispatch and explicit remote-phase reconciliation before resume.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/nightly/20261104T174328Z/summary.json:1-10",
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/handoffs/cursor-resume-20261105/publication-approved/completion.json:12-13"
+      ],
+      "status": "unverified",
+      "gaps": [
+        "Current launchd/GitHub enablement not remotely inspected.",
+        "Recovery supervisor explicitly reports remote_state_verified=false.",
+        "Runner temporary work durability across runner loss is not established."
+      ]
+    },
+    {
+      "id": "A28",
+      "behavior": "Preserve newest source facts, explicit empty versus absent/unrecognized records, superseded history and source-context identity; omission in partial input does not imply deletion.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/lake/_record_producer.py:552-587",
+        "model/sql/selected-records.sql:1-12",
+        "packages/congress_api/src/congress_api/parsers/archive_readings.py:70-99"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_phase2_meeting_appearance_lake.py:617-675",
+        "packages/congress_api/tests/test_phase2_meeting_appearance_lake.py:1545-1569",
+        "packages/congress_api/tests/test_phase2_meeting_appearance_lake.py:1965-1988",
+        "packages/congress_api/tests/test_house_source_fidelity.py:53-80"
+      ],
+      "replacement_owner": "Domain update/remove/current-source selection semantics; DocSpec versioned storage; DDK evidence/check definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently read ordered retained snapshots with repeated names, true empty lists, absent fields, unrecognized replacement, shrinking corrected lists and source-context A/B/A reuse. Compare current and historical selected facts, explicit removal dates and occurrence locators; do not use the producer ranking as the oracle.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/acceptance-six-tickets-20261105/attempt-46wmfs5a/report.md:14-18",
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/acceptance-six-tickets-20261105/attempt-46wmfs5a/report.md:29-43"
+      ],
+      "status": "unverified",
+      "gaps": [
+        "Current inline ranking uses updateDate and witness count; equal-date shrinking correction/removal needs explicit raw acceptance cases.",
+        "Focused six-ticket report does not prove every source occurrence survived.",
+        "Earlier A28 links to source_observation_interpretation:12-34 and daily_producers:548-636 were adjacent admission/inline/version tests, not snapshot-removal or source-context freshness proofs; they are not counted for this capability.",
+        "True shrinking corrections, missing-field replacement and complete source-history removal conservation still require independent ordered raw expectations."
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_phase2_meeting_appearance_lake.py:617-675",
+          "category": "empty_and_version_reuse",
+          "assertions": "An empty House witness observation remains a typed row; unchanged parser skips payload, changed parser reprocesses; empty Congress meeting record remains represented. This is not an ordered deletion/correction test."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_phase2_meeting_appearance_lake.py:1545-1569",
+          "category": "unrecognized_vs_empty",
+          "assertions": "Malformed Congress witness items produce unrecognized plus empty appearances; native part explicitly skips without DOCSPEC_JOB_CONFIG."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_phase2_meeting_appearance_lake.py:1965-1988",
+          "category": "native_selection",
+          "assertions": "The earlier multi-context X@A/Y@A/X@B fixture selects Updated Witness Y for meeting 3001, retains joint witness Z, and maps an errored record to failed/unresolved. It does not establish raw-corpus removal semantics."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_source_fidelity.py:53-80",
+          "category": "publisher_removal_and_fallback",
+          "assertions": "Removed House panel emits no current witnesses/files; HTML fallback preserves files and empty XML does not hide fallback witnesses. Source fixture assertions are narrower than all ordered snapshot updates."
+        }
+      ]
+    },
+    {
+      "id": "A29",
+      "behavior": "Refresh YouTube channels by stable configured/retained channel ID while preserving literal handle identity; store full SDK items and replay incomplete upload scans without deleting old videos.",
+      "baseline_sources": [
+        "packages/youtube_api/src/youtube_api/fetch/youtube_event_fetcher.py:115-171",
+        "packages/youtube_api/src/youtube_api/fetch/youtube_event_fetcher.py:200-260",
+        "packages/youtube_api/src/youtube_api/fetch/youtube_event_fetcher.py:263-300"
+      ],
+      "current_tests": [
+        "packages/youtube_api/tests/test_channel_identity.py:116-172",
+        "packages/youtube_api/tests/test_youtube_fetch_fidelity.py:27-137",
+        "packages/youtube_api/tests/test_youtube_reuse.py:90-176"
+      ],
+      "replacement_owner": "Domain channel/video identity and SDK-item fidelity; DocSpec atomic scan/page phases; DDK catalog/check definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently inspect bounded retained SDK items and channel CSV rows; compare all item fields, handle row order, stable IDs and duplicate video occurrences. Interrupt after a durable page, force refresh, remove a playlist entry and return unavailable metadata; assert complete history survives and unknown is not false.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/bundle-raw/bodies/sha256/04/044f1c5412079a563cabdb6b9882e0a459870cd275af4b41cc6c0a48f3eed11d"
+      ],
+      "status": "unverified",
+      "gaps": [
+        "Only a 4 KiB composite YouTube cache prefix audited; no full channel/video or configured-channel population comparison.",
+        "No original YouTube HTTP envelope is claimed."
+      ]
+    },
+    {
+      "id": "A30",
+      "behavior": "Preserve weekly pipeline source snapshot before updating bot-owned branch; retain accepted channel/package results and failed-refresh evidence after partial failure.",
+      "baseline_sources": [
+        ".github/workflows/update-data.yml:1-12",
+        ".github/workflows/update-data.yml:53-137",
+        ".github/scripts/save-pipeline-data.sh:1-20"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_pipeline_raw.py",
+        "packages/congress_api/tests/test_gpo_acquisition_xml_failures.py",
+        "packages/youtube_api/tests/test_youtube_fetch_fidelity.py:123-137"
+      ],
+      "replacement_owner": "Domain scheduled snapshot/source policy; DocSpec raw preservation and protected publication; DDK snapshot/evidence definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Drive the real save wrapper against isolated repositories/store with a known snapshot. Inject raw-body or receipt failure before branch push and report failure after accepted source work. Independently verify prior branch remains, snapshot bytes/receipts persist and fresh-process resume does not discard partial successes.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No current pipeline-data branch checkout or complete snapshot audited.",
+        "Hosted scheduling/retirement may still coexist with archive acquisition; active enablement is unverified."
+      ]
+    },
+    {
+      "id": "A31",
+      "behavior": "News adapters preserve outlet/item identity separately from per-fetch discovery; feed text extraction is deterministic placeholder; live HTTP/article-page crawling remains deferred.",
+      "baseline_sources": [
+        "packages/news_lake/src/news_lake/adapters/rss.py:1-15",
+        "packages/news_lake/src/news_lake/adapters/rss.py:94-144",
+        "packages/news_lake/src/news_lake/adapters/rss.py:171-210",
+        "packages/news_lake/src/news_lake/adapters/gdelt.py:45-111",
+        "packages/news_lake/src/news_lake/adapters/mediacloud.py:66-125"
+      ],
+      "current_tests": [
+        "packages/news_lake/tests/test_rss_adapter.py:60-203",
+        "packages/news_lake/tests/test_provider_adapters.py:71-256"
+      ],
+      "replacement_owner": "Domain news provider adapters/identity/date semantics; DDK reusable shapes/checks; DocSpec future acquisition execution",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently parse bounded authentic feed/provider responses and compare aliases, shared items, provider-specific occurrences, publication precision and text hashes. Distinguish successful new poll from replay, source acquisition time from publication time, and synthetic fixture from authentic capture. A separate executable probe must qualify any required live wiring.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Authentic news response/payload not audited.",
+        "Current provider adapters are offline skeletons; no live source acquisition completeness or article retrieval claim is supported."
+      ]
+    },
+    {
+      "id": "A32",
+      "behavior": "News captured payloads require explicit access/rights, payload URI and content hash; blocked/failed/not-modified results retain metadata only; adapter success does not establish physical raw custody.",
+      "baseline_sources": [
+        "packages/news_lake/src/news_lake/adapters/common.py:35-97"
+      ],
+      "current_tests": [
+        "packages/news_lake/tests/test_rss_adapter.py:87-97",
+        "packages/news_lake/tests/test_provider_adapters.py:112-126",
+        "packages/news_lake/tests/test_provider_adapters.py:170-184",
+        "packages/news_lake/tests/test_contract_semantics.py"
+      ],
+      "replacement_owner": "Domain news access/rights/source meaning; DocSpec raw storage/custody and retention execution; DDK record/check definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Use independently measured bounded stored payloads to bind URI/hash/size and test missing/corrupt URI, blocked payload, failed/not-modified metadata and authorization-filtered output. Count physical reads/writes and require an explicit disposition for source bytes that cannot be retained.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "FetchOutcome carries bytes and a caller-provided URI but the inspected adapter does not store/verify the raw URI.",
+        "Production raw acquisition/retirement ownership is an unresolved requirement."
+      ]
+    },
+    {
+      "id": "A33",
+      "behavior": "News page checkpoints advance only after records commit and never regress; publication journals exact native pins, validates before availability, then activates cursors; retired releases become unreadable.",
+      "baseline_sources": [
+        "packages/news_lake/src/news_lake/adapters/cursors.py:37-91",
+        "packages/news_lake/src/news_lake/cli.py:1-12",
+        "packages/news_lake/src/news_lake/storage/docspec/lake.py:639-769",
+        "packages/news_lake/src/news_lake/storage/releases.py:368-370",
+        "packages/news_lake/src/news_lake/storage/coordinator.py:60-92",
+        "packages/news_lake/src/news_lake/storage/docspec/schema.py:17",
+        "packages/news_lake/src/news_lake/storage/docspec/schema.py:212-220",
+        "packages/news_lake/src/news_lake/storage/docspec/lake.py:20-35",
+        "packages/news_lake/src/news_lake/storage/releases.py:25",
+        "packages/news_lake/tests/test_docspec_backend.py:1-8",
+        "packages/news_lake/tests/test_docspec_backend.py:383-396"
+      ],
+      "current_tests": [
+        "packages/news_lake/tests/test_cursors.py:46-216",
+        "packages/news_lake/tests/test_recovery.py:56-201",
+        "packages/news_lake/tests/test_releases.py:110-216",
+        "packages/news_lake/tests/test_releases.py:392",
+        "packages/news_lake/tests/test_docspec_backend.py"
+      ],
+      "replacement_owner": "DocSpec durable native preparation, fencing, protection and selected availability; domain news merge/cursor semantics; DDK evidence/check definitions",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Use the production DocSpec CLI and PyIceberg coordinator as BACKEND DIFFERENTIAL comparison only: both share _merge_upsert and check_corpus. Separately create expected source/time/evidence facts with a checker importing neither shared helper, shape/corpus validator nor production selection code. Feed independently decoded bounded authentic records in newer-then-older order with supplied/null/absent scalars, repeated evidence and empty collections. Compare exact current scalar winners, earliest first_seen and evidence membership/multiplicity under stated semantics. Poison one plausible merged scalar and omit one evidence member; the independent checker must reject both. Kill journal/table/pin/validation/manifest/availability/cursor boundaries in fresh processes and compare frozen native pins/reader visibility/cursors separately from raw semantic expectations.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Production runtime differs from retained PyIceberg oracle; passing oracle-only tests cannot qualify native path.",
+        "No news runtime, retained release, control database or raw payload was opened or run.",
+        "PyIceberg/backend parity shares _merge_upsert and check_corpus with native production, so it cannot certify independent merge/validation correctness. Independent raw/time/evidence expectations and poison-test rejection are required."
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/news_lake/tests/test_docspec_backend.py:1-8",
+          "category": "backend_differential_shared_semantics",
+          "assertions": "Documents parity with coordinator merge and analysis views; fixtures pass shared check_corpus. This is not an independent raw semantic oracle."
+        },
+        {
+          "reference": "packages/news_lake/tests/test_docspec_backend.py:383-396",
+          "category": "merge_backend_parity",
+          "assertions": "Constructs expected merged rows via merge_upsert_batch and _merge_upsert, then compares native storage and selected scalar/evidence assertions. Shared helper defects can survive."
+        },
+        {
+          "reference": "packages/news_lake/tests/test_cursors.py:46-216",
+          "category": "cursor_and_commit_recovery",
+          "assertions": "Maintained fixtures exercise monotonic checkpoints, commit-before-advance and recovery; authentic source-semantic fidelity remains separate."
+        },
+        {
+          "reference": "packages/news_lake/tests/test_recovery.py:56-201",
+          "category": "reference_recovery",
+          "assertions": "Crash/replay, upsert preservation and late older polls; does not independently establish raw input semantics."
+        },
+        {
+          "reference": "packages/news_lake/tests/test_releases.py:110-216",
+          "category": "release_visibility",
+          "assertions": "Candidate/retired/missing snapshot/old release visibility cases; runtime parity and raw semantic correctness require separate proofs."
+        },
+        {
+          "reference": "packages/news_lake/tests/test_releases.py:392",
+          "category": "journaled_snapshot_reuse",
+          "assertions": "Retry reuses journaled release snapshot identities; not a source-semantic oracle."
+        }
+      ]
+    },
+    {
+      "id": "A34",
+      "behavior": "BLS acquisition refreshes ten years of index observations into the historical year/month grid; nonnumeric placeholders become missing; revised years replace prior rows and older baseline remains.",
+      "baseline_sources": [
+        "apps/inflation_gsheets/src/fetch-cpi-convert-csv.py:16-64",
+        ".github/workflows/bls-cpi-update.yml:3-25"
+      ],
+      "current_tests": [],
+      "replacement_owner": "Domain inflation units/time/revision semantics; DocSpec future acquisition, raw retention and selected-file execution; DDK definitions/checks",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently read authentic bounded BLS JSON and retained historical grid with a standalone parser. Compare index levels, year/month axes, missing placeholders, revised prior years and preserved old years; fail partial/malformed source responses before replacing selected output. Record exact request/response source evidence.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No CPI-specific tests found by bounded filename search.",
+        "Current request response is parsed in memory and not retained with an acquisition receipt in the inspected path.",
+        "Workflow name says XLSX but current code calls JSON API; source body must govern replacement definition.",
+        "No authentic BLS response or CPI output audited."
+      ]
+    },
+    {
+      "id": "A35",
+      "behavior": "Inflation combines BLS calendar-aligned YoY, three FRED YoY series and optional manual Adobe/PriceStats series; preserve units, monthly last observations and explicit derived aggregate weights.",
+      "baseline_sources": [
+        "apps/inflation_gsheets/src/sources/__init__.py:17-31",
+        "apps/inflation_gsheets/src/sources/bls.py:32-66",
+        "apps/inflation_gsheets/src/sources/fred.py:32-80",
+        "apps/inflation_gsheets/src/sources/manual.py:24-50",
+        "apps/inflation_gsheets/src/sources/base.py:49-65",
+        "apps/inflation_gsheets/src/fetch-inflation-sources.py:126-175",
+        ".github/workflows/bls-cpi-update.yml:27-48"
+      ],
+      "current_tests": [],
+      "replacement_owner": "Domain inflation metric/aggregate/missingness policy; DDK definitions/checks/catalog/evidence; DocSpec future native execution/publication/recovery",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently calculate month-aligned YoY from a bounded historical grid and raw FRED/manual originals using calendar keys, then compare typed outputs including gaps, rounding, column order and weighted aggregate. Fail one source/all sources and inspect selected CSV/version: require the chosen stale/partial/refusal policy, durable source dispositions and resumable paired-output publication.",
+        "required_challenge": "Compare typed values and multiplicity in both directions where applicable; enumerate unread inputs. Plant a plausible in-domain wrong output or omitted completion and require the independent checker to reject it; another reviewer confirms the planted case."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No CPI-specific tests found by bounded filename search.",
+        "Workflow commentary requires BLS/FRED, but implementation catches all source errors and returns 0 even if none succeed; partial success can remove old columns.",
+        "Raw FRED CSV responses and manual-file source provenance have no audited receipt/custody boundary.",
+        "Current CSV writes and two-output Git publication lack a demonstrated durable atomic selection/recovery boundary."
+      ]
+    },
+    {
+      "id": "A36",
+      "behavior": "house-committee-sites discovers all available history from the retained official directory, resumes pending requests, preserves failed/gap observations and exact page bodies, supports same-manifest bounded retry and offline reparse without new acquisition.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/cli/house_sites.py:1-44",
+        "packages/congress_api/src/congress_api/acquisition/house_sites.py:84-100",
+        "packages/congress_api/src/congress_api/acquisition/house_sites.py:113-195",
+        "packages/congress_api/src/congress_api/acquisition/house_sites.py:249-293",
+        "packages/congress_api/src/congress_api/acquisition/house_sites.py:296-438",
+        "packages/congress_api/src/congress_api/acquisition/house_sites.py:447-476",
+        "packages/congress_api/src/congress_api/acquisition/house_sites.py:499-538"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_house_sites.py:46-94",
+        "packages/congress_api/tests/test_house_sites.py:216-226",
+        "packages/congress_api/tests/test_house_diagnostic_recovery.py:118-168",
+        "packages/congress_api/tests/test_house_diagnostic_recovery.py:171-240",
+        "packages/congress_api/tests/test_house_site_quality.py:104-124",
+        "packages/congress_api/tests/test_house_listing_identity.py:134-155"
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_house_sites.py:46-94",
+          "category": "discovery_resume_and_retention",
+          "assertions": "Retained event/page bytes, no date cutoff in example calendar request, fair two-site budget continuation, failed refresh preserves usable page and appends receipts."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_sites.py:216-226",
+          "category": "gap_semantics",
+          "assertions": "Blocked optional index plus HTML sitemap remains queue_exhausted_with_gaps while other event survives."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_diagnostic_recovery.py:118-168",
+          "category": "targeted_retry",
+          "assertions": "Only saved selected request is issued; prior receipts/errors and unrelated discovery survive; exact manifest rerun no-ops and invalid selection refuses without mutation."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_diagnostic_recovery.py:171-240",
+          "category": "targeted_retry_continuation",
+          "assertions": "Budget/stop resumes the same manifest; changed manifest/ordinary crawl refuses, unrelated site remains unchanged and failed/drained targets do not repeat."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_site_quality.py:104-124",
+          "category": "offline_reparse",
+          "assertions": "Original page/listing bytes, receipts, checked/retrieved timestamps and queues/errors remain intact while readings correct."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_listing_identity.py:134-155",
+          "category": "offline_reparse",
+          "assertions": "Retained listing is restored to discovery, page readings corrected and source receipts/work preserved."
+        }
+      ],
+      "replacement_owner": "Congressional acquisition/domain owner preserves source/identity/disposition semantics; DocSpec owns durable execution, protection and reconciliation; DDK owns reusable definitions, design checks, catalog and evidence composition.",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently read a bounded authentic directory plus retained listing/home/robots/sitemap/calendar/POST/event originals and create an expected literal request/discovery graph before invoking replacement. Exercise pending request crash, 25-result checkpoint, per-run/refresh budgets, excluded stale requests, optional gap, outside-owner redirect and parse failure. Resume in a fresh process; require every admitted request/source body/receipt/discovered/pending/failed/gap record and unrelated state conserved. Bind a targeted retry manifest including POST body; change it and require refusal before I/O. Offline reparse must issue zero network calls, create no new source observations and preserve timestamps/bytes while updating only intended readings.",
+        "required_challenge": "Use independently read raw facts, not the producer/parser/registry under test; compare both directions and count every unread input. Plant a plausible wrong in-domain value, missing evidence member or false completion; independent checker must reject it and another reviewer confirms rejection."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No authentic House all-history collection state or complete directory population was opened for this revision.",
+        "All discoverable is bounded by supported source links/routes, not proof of every upstream event.",
+        "A36 acceptance remains planned; maintaining output snapshots alone does not establish the acquisition lifecycle."
+      ]
+    },
+    {
+      "id": "A37",
+      "behavior": "congress-committees refreshes missing/latest two Congresses from retained meeting/GPO scope, retains Congress-specific list facts separately from current detail/history and preserves prior snapshot/rejected response on failed refresh.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/cli/committees.py:1-25",
+        "packages/congress_api/src/congress_api/acquisition/committees.py:23-103",
+        "packages/congress_api/src/congress_api/retention/committees.py:20-42",
+        ".github/workflows/update-data.yml:159-170"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_committee_metadata.py:26-49",
+        "packages/congress_api/tests/test_committee_metadata.py:52-81",
+        "packages/congress_api/tests/test_committee_metadata.py:132-162"
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_committee_metadata.py:26-49",
+          "category": "historical_list_and_paging",
+          "assertions": "Paginates two recent Congresses, preserves older list fields, adds detail and excludes key from source URLs."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_committee_metadata.py:52-81",
+          "category": "failure_retention",
+          "assertions": "Empty/request/stalled page keeps prior bytes; malformed response retained verbatim with offset and no credential."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_committee_metadata.py:132-162",
+          "category": "collision_and_roundtrip",
+          "assertions": "Duplicate pages refuse prior replacement; committee snapshot roundtrip remains distinct from meeting snapshot."
+        }
+      ],
+      "replacement_owner": "Congressional acquisition/domain owner preserves source/identity/disposition semantics; DocSpec owns durable execution, protection and reconciliation; DDK owns reusable definitions, design checks, catalog and evidence composition.",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently read authentic Congress-specific list pages and detail/history originals plus retained scope. Derive missing/recent Congress refresh set and list-vs-current-detail expectations without collector helpers. Use repeated, empty, malformed, wrong-code and later-detail failure cases; compare old list status/type/history and source timestamps literally. Kill before final write and require old bytes intact plus rejected source/pending obligations explicit. Replay exact successful input and require stable keys and no historical current-status rewrite.",
+        "required_challenge": "Use independently read raw facts, not the producer/parser/registry under test; compare both directions and count every unread input. Plant a plausible wrong in-domain value, missing evidence member or false completion; independent checker must reject it and another reviewer confirms rejection."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No authentic committee list/detail/history bodies audited; whether each historic Congress appears in retained meeting/GPO scope remains unverified.",
+        "List/detail state needs independent acquisition custody, not merely a generic URL capture obligation."
+      ]
+    },
+    {
+      "id": "A38",
+      "behavior": "house-meeting-records selects from native meeting/GPO gaps, acquires meeting/witness XML with page and retained committee fallback, distinguishes confirmed absence from HTTP/XML failure and preserves prior usable/failed/pending state.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/cli/house.py:1-37",
+        "packages/congress_api/src/congress_api/acquisition/house.py:40-148",
+        "packages/congress_api/src/congress_api/acquisition/house.py:186-282",
+        "packages/congress_api/src/congress_api/acquisition/house_fallback.py:12-62"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_house_committee_fallback.py:99-138",
+        "packages/congress_api/tests/test_house_committee_fallback.py:141-196",
+        "packages/congress_api/tests/test_house_committee_fallback.py:199-213",
+        "packages/congress_api/tests/test_house_source_fidelity.py:26-80"
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_house_committee_fallback.py:99-138",
+          "category": "fallback_identity_and_retention",
+          "assertions": "Retained fallback uses exact source without fetch, ambiguous/uncollected is not absence, and merge retains XML plus separate source context without duplicates."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_committee_fallback.py:141-196",
+          "category": "fallback_selection_and_failure",
+          "assertions": "Complete primary skips fallback; missing/known failed documents invoke fallback; prior evidence survives refresh failure; primary error remains explicit even when fallback matches."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_committee_fallback.py:199-213",
+          "category": "offline",
+          "assertions": "Saved fallback exported without HTTP and saved state conserved."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_house_source_fidelity.py:26-80",
+          "category": "source_fidelity",
+          "assertions": "Bill XML, repeated entries, removed panel and alternate/fallback files retain their intended source facts."
+        }
+      ],
+      "replacement_owner": "Congressional acquisition/domain owner preserves source/identity/disposition semantics; DocSpec owns durable execution, protection and reconciliation; DDK owns reusable definitions, design checks, catalog and evidence composition.",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently read bounded authentic meeting/GPO inputs and meeting XML/witness XML/page/committee originals. Derive source-based missing/known-failed selection, changed-first/oldest-refresh budget and confirmed-404 absence expectations. Preserve literal XML status, removed panels, exact raw bodies and fallback context. Inject request, invalid XML, ambiguous/no-site fallback and limit exhaustion; compare retained usable result, actual check/error evidence, pending set and nonzero incomplete outcome after process restart. Offline mode must create no source request.",
+        "required_challenge": "Use independently read raw facts, not the producer/parser/registry under test; compare both directions and count every unread input. Plant a plausible wrong in-domain value, missing evidence member or false completion; independent checker must reject it and another reviewer confirms rejection."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No complete source selection population or authentic House raw state audited in this correction.",
+        "Refresh/read fallback and retained page merge are distinct from capturing already-known URLs; both must pass."
+      ]
+    },
+    {
+      "id": "A39",
+      "behavior": "senate-captions acquires live/archive master, subtitle playlist and segments with scoped fallback evidence; preserves zero-duration cues, complete/negative/error distinctions, staged gzip/text protection, last-successful evidence and index continuation.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/cli/senate_captions.py:25-44",
+        "packages/congress_api/src/congress_api/transcripts/senate.py:50-155",
+        "packages/congress_api/src/congress_api/transcripts/senate.py:158-208",
+        "packages/congress_api/src/congress_api/retention/captions.py:20-47"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_senate_caption_recovery.py:15-28",
+        "packages/congress_api/tests/test_senate_caption_recovery.py:31-65",
+        "packages/congress_api/tests/test_senate_caption_recovery.py:68-97",
+        "packages/congress_api/tests/test_senate_caption_checks.py:82-172",
+        "packages/congress_api/tests/test_senate_caption_checks.py:174-211"
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_senate_caption_recovery.py:15-28",
+          "category": "authentic_cue_boundary",
+          "assertions": "Retained real armedA040924 segment preserves 51 zero-duration cues; reversed timing still fails."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_senate_caption_recovery.py:31-65",
+          "category": "archive_only_and_negative_scope",
+          "assertions": "Mock archive-only complete text and zero-duration receipt; archive-only 404 retains exact checked master and explicitly excludes embedded captions."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_senate_caption_recovery.py:68-97",
+          "category": "staged_gzip_retention",
+          "assertions": "Plain TXT failure after gzip staging preserves previous gzip bytes and last-successful receipt; does not prove atomic pairing of all final files."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_senate_caption_checks.py:82-172",
+          "category": "scope_and_fallback",
+          "assertions": "Precise observation time and segment scope; live/archive fallback preserves failed responses; incomplete/invalid segment and malformed/listed missing playlist remain errors."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_senate_caption_checks.py:174-211",
+          "category": "history_index_and_resume",
+          "assertions": "Prior text survives failed check; independent successful row survives failure; legacy negatives recheck and then current scoped capture skips; equivalent URLs deduplicate."
+        }
+      ],
+      "replacement_owner": "Congressional acquisition/domain owner preserves source/identity/disposition semantics; DocSpec owns durable execution, protection and reconciliation; DDK owns reusable definitions, design checks, catalog and evidence composition.",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently decode bounded authentic player/master/playlist/segment responses and enumerate every attempted fallback URL, selected segment order and cue including zero-duration updates. Compare literal source responses and expected scoped negative (no embedded-stream claim), available/error outcomes and text. Inject missing/malformed segments and failed live path with successful archive, then write failure after gzip stage and between cues/text/receipt/index writes. Fresh-process continuation must preserve prior complete gzip/text/last-success evidence, retain all failed response history, avoid false negative/index rows, and finish only valid pending outputs. Measure recording-by-segment worker bounds as separate obligation.",
+        "required_challenge": "Use independently read raw facts, not the producer/parser/registry under test; compare both directions and count every unread input. Plant a plausible wrong in-domain value, missing evidence member or false completion; independent checker must reject it and another reviewer confirms rejection."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Only existing maintained real cue fixture/test assertions were read; no authentic full master/playlist/track or output tree audited.",
+        "Current code protects prior gzip until text succeeds but this is not a demonstrated atomic multi-file transaction; stronger replacement selection/recovery still needs proof.",
+        "Scope excludes embedded archive video captions; missing WebVTT is not universal absence."
+      ]
+    },
+    {
+      "id": "A40",
+      "behavior": "congress-meetings console path lists overlapping update windows across all supported Congresses/chambers, saves pending detail URLs before requests and preserves valid neighbors/rejected responses while unfinished URLs survive watermark advances.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/cli/meetings.py:13-19",
+        "packages/congress_api/src/congress_api/acquisition/meetings.py:50-162"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_meeting_collection.py:27-79",
+        "packages/congress_api/tests/test_meeting_collection.py:151-209",
+        "packages/congress_api/tests/test_congress_xml_recovery.py:51-135"
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_meeting_collection.py:27-79",
+          "category": "pending_and_atomic_snapshot",
+          "assertions": "Failed older detail retries after newer watermark, output failure leaves pending and failed serialization preserves old bytes; duplicate source URL refuses."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_meeting_collection.py:151-209",
+          "category": "source_page_and_failure",
+          "assertions": "Short page with next continues; missing list/repeated pages and incomplete detail refuse; rejected response survives later snapshot write failure."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_congress_xml_recovery.py:51-135",
+          "category": "detail_xml_recovery",
+          "assertions": "JSON failure can use matching XML; unusable/wrong meeting preserves prior/pending; other status failures do not trigger XML and JSON success does not fetch XML."
+        }
+      ],
+      "replacement_owner": "Congressional acquisition/domain owner preserves source/identity/disposition semantics; DocSpec owns durable execution, protection and reconciliation; DDK owns reusable definitions, design checks, catalog and evidence composition.",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently enumerate expected retained detail endpoints and overlap boundary from raw list pages across old/new Congresses/chambers. Drive the actual console wrapper with pending old URL, later successful update, invalid list/detail and XML fallback; crash during snapshot/pending writes. Compare all parsed native facts and rejected payloads plus unresolved URLs, with no old failure skipped by a newer global updateDate. Count any repeated completed requests rather than assuming phase reuse.",
+        "required_challenge": "Use independently read raw facts, not the producer/parser/registry under test; compare both directions and count every unread input. Plant a plausible wrong in-domain value, missing evidence member or false completion; independent checker must reject it and another reviewer confirms rejection."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Maintained console main is separate from raw relist_endpoint_window and explicitly permits repeat completed requests after crash.",
+        "No whole endpoint/Congress/chamber census audited."
+      ]
+    },
+    {
+      "id": "A41",
+      "behavior": "gpo-fetch handles full/incremental relist, modified and parser-stale packages, exact package ZIP manifest reuse, retained MODS/manifest/transcript evidence and partial successful neighbors before failure; pending clears only after evidence and CSV persist.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/cli/gpo_fetch.py:13-55",
+        "packages/congress_api/src/congress_api/acquisition/gpo.py:87-158",
+        "packages/congress_api/src/congress_api/acquisition/gpo.py:163-254",
+        "packages/congress_api/src/congress_api/acquisition/gpo.py:256-322"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_gpo_io_efficiency.py:59-97",
+        "packages/congress_api/tests/test_gpo_io_efficiency.py:145-159",
+        "packages/congress_api/tests/test_gpo_acquisition_xml_failures.py:36-157",
+        "packages/congress_api/tests/test_gpo_source_fidelity.py:84-117",
+        "packages/congress_api/tests/test_gpo_source_fidelity.py:133-183"
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_gpo_io_efficiency.py:59-97",
+          "category": "settled_reuse_and_failed_retry",
+          "assertions": "Settled evidence causes no rewrite; success/failure/retry persists failed MODS, previous source/row and pending before eventual completion."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_gpo_io_efficiency.py:145-159",
+          "category": "evidence_before_progress",
+          "assertions": "Evidence write refusal preserves previous CSV/evidence and leaves new modification pending."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_gpo_acquisition_xml_failures.py:36-157",
+          "category": "rejected_xml_and_neighbors",
+          "assertions": "Malformed MODS/METS responses retain history; valid neighbors flush and rejected package remains retryable."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_gpo_source_fidelity.py:84-117",
+          "category": "bounded_parser_refresh",
+          "assertions": "Parser-stale rows refresh under limit without repeating confirmed transcript read."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_gpo_source_fidelity.py:133-183",
+          "category": "manifest_reuse",
+          "assertions": "Version-matched manifest is reused; changed/failed manifests refetch and legacy error manifest remains refreshable."
+        }
+      ],
+      "replacement_owner": "Congressional acquisition/domain owner preserves source/identity/disposition semantics; DocSpec owns durable execution, protection and reconciliation; DDK owns reusable definitions, design checks, catalog and evidence composition.",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently inspect bounded authentic collection/MODS/ZIP member/METS/transcript originals and derive packages changed, still pending, stale under refresh limit and source facts. Count transfer/read/write operations on unchanged rerun and parser-only refresh. Inject one rejected MODS/manifest, neighbor success, evidence/CSV/pending write failure and next-run newer watermark. Compare exact retained good/failed source history and native rows; require unfinished packages never disappear or gain false parser freshness.",
+        "required_challenge": "Use independently read raw facts, not the producer/parser/registry under test; compare both directions and count every unread input. Plant a plausible wrong in-domain value, missing evidence member or false completion; independent checker must reject it and another reviewer confirms rejection."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Authentic package populations and all individual test parameter assertions not rerun; current evidence is static code/test reading.",
+        "No blanket reuse of source ZIP or transcript implied: identity and failure predicates govern each."
+      ]
+    },
+    {
+      "id": "A42",
+      "behavior": "gpo-transcripts selects package/congress/committee/chamber, skips existing TXT without inventing original HTML, retains new raw HTML even when short/unconfirmed and atomically replaces each completed text file.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/cli/gpo_transcripts.py:13-24",
+        "packages/congress_api/src/congress_api/transcripts/gpo.py:39-88"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_gpo_source_models.py:109-129",
+        "packages/congress_api/tests/test_gpo_source_models.py:132-177"
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_gpo_source_models.py:109-129",
+          "category": "retention_and_legacy_skip",
+          "assertions": "Short source HTML retained with retrieval/acquisition facts even when no TXT; preexisting text skips network and fabricates no source HTML."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_gpo_source_models.py:132-177",
+          "category": "atomic_text_and_short_proceeding",
+          "assertions": "Replace failure leaves no complete/skippable TXT while source exists; real short complete proceeding text retained and unavailable stub withheld."
+        }
+      ],
+      "replacement_owner": "Congressional acquisition/domain owner preserves source/identity/disposition semantics; DocSpec owns durable execution, protection and reconciliation; DDK owns reusable definitions, design checks, catalog and evidence composition.",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently read bounded authentic source HTMLs and selected GPO rows; derive expected proceeding-vs-stub disposition from source passages and preserve every raw response. Include short complete proceeding, short stub, existing text-only file, failed source and TXT replace failure. Fresh-process rerun must preserve accepted existing files, retry only incomplete outputs and report failures; legacy text remains explicit unproven source fidelity.",
+        "required_challenge": "Use independently read raw facts, not the producer/parser/registry under test; compare both directions and count every unread input. Plant a plausible wrong in-domain value, missing evidence member or false completion; independent checker must reject it and another reviewer confirms rejection."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "No original GPO text output/source directory audited.",
+        "Existence-based legacy skip is baseline behavior, not proof existing TXT has valid raw custody; any stronger replacement admission must state migration policy."
+      ]
+    },
+    {
+      "id": "A43",
+      "behavior": "senate-meeting-records discovers scoped official listings/pages and attachment landing pages, retains source HTML/JSON and per-request times separately from schedule day, preserves prior pages/matches across errors, and distinguishes local failure from host outage.",
+      "baseline_sources": [
+        "packages/congress_api/src/congress_api/cli/senate.py:1-46",
+        "packages/congress_api/src/congress_api/acquisition/senate.py:89-164",
+        "packages/congress_api/src/congress_api/acquisition/senate.py:289-450"
+      ],
+      "current_tests": [
+        "packages/congress_api/tests/test_senate_record_receipts.py:43-67",
+        "packages/congress_api/tests/test_senate_record_receipts.py:70-140",
+        "packages/congress_api/tests/test_senate_official_events.py:155-203",
+        "packages/congress_api/tests/test_senate_official_events.py:286-306",
+        "packages/congress_api/tests/test_senate_official_events.py:340-446"
+      ],
+      "current_test_scope": [
+        {
+          "reference": "packages/congress_api/tests/test_senate_record_receipts.py:43-67",
+          "category": "observation_identity",
+          "assertions": "Cache import has import/schedule time without invented retrieval; live present/404 retains actual receipt/time and exact raw absent page."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_senate_record_receipts.py:70-140",
+          "category": "failure_and_import_retention",
+          "assertions": "Failed page/listing refresh preserves prior usable source and association; failed receipt exports separately; seed import differs from live observation."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_senate_official_events.py:155-203",
+          "category": "discovery_boundary",
+          "assertions": "Publication date is discovery hint, full undated WordPress page continues, and historical pre-June-2019 collection requires explicit site."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_senate_official_events.py:286-306",
+          "category": "terminal_vs_listing_failure",
+          "assertions": "Dead page retains reason and outputs; failed listing fails run."
+        },
+        {
+          "reference": "packages/congress_api/tests/test_senate_official_events.py:340-446",
+          "category": "host_outage_and_continuation",
+          "assertions": "Tests page-failure/host-answer/outage thresholds and marker roundtrip; complete raw failure population remains unverified."
+        }
+      ],
+      "replacement_owner": "Congressional acquisition/domain owner preserves source/identity/disposition semantics; DocSpec owns durable execution, protection and reconciliation; DDK owns reusable definitions, design checks, catalog and evidence composition.",
+      "acceptance_proof": {
+        "state": "planned_not_run",
+        "kind": "independent_executable_proof",
+        "method": "Independently read a bounded authentic site/listing/page/attachment set and native meeting scope. Freeze since/site boundary and derive event date/title, candidate links and source associations independently of matcher. Exercise legacy seed/live distinction, full-undated pages, retained association after failure, page 404 vs unknown transport outage, budget checkpoint/resume and explicit historical widening. Compare raw bytes, timestamps, retained good pages, failed/pending records and unrelated-site state; no partial source listing can retract an event.",
+        "required_challenge": "Use independently read raw facts, not the producer/parser/registry under test; compare both directions and count every unread input. Plant a plausible wrong in-domain value, missing evidence member or false completion; independent checker must reject it and another reviewer confirms rejection."
+      },
+      "authentic_evidence": [],
+      "status": "unverified",
+      "gaps": [
+        "Supported site/layout and upstream historical denominators remain open.",
+        "Matching/date/attachment correctness needs independent raw expectations; retained regression cases alone do not prove entire collection."
+      ]
+    }
+  ],
+  "implementation_ready_at_initial_inspection": false,
+  "implementation_ready_at_revision": true,
+  "gate_revision": {
+    "source": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/release-status.json",
+    "updatedAt": "2026-11-06T10:35:53.437087+00:00",
+    "decision": "Parent accepts verified local release for isolated local replacement implementation. This assigned revision remains documentation only; no replacement execution or production cutover."
+  },
+  "console_script_census": {
+    "scope": "All project.scripts declarations in bounded packages/*/pyproject.toml and apps/*/pyproject.toml; no command imported or invoked. Does not enumerate every script-only/python -m entrypoint.",
+    "commands": [
+      {
+        "command": "committee-explorer-export",
+        "declared_target": "committee_explorer.export:main",
+        "declaration": "apps/committee_youtube/pyproject.toml:21",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "congress-explorer-mcp",
+        "declared_target": "congressional_explorer_mcp.cli:main",
+        "declaration": "apps/explorer_mcp/pyproject.toml:20",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "congressional-explorer-mcp",
+        "declared_target": "congressional_explorer_mcp.cli:main",
+        "declaration": "apps/explorer_mcp/pyproject.toml:21",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "committee-meeting-schema",
+        "declared_target": "committee_meeting.main:main",
+        "declaration": "packages/committee_meeting/pyproject.toml:10",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "house-committee-sites",
+        "declared_target": "congress_api.cli.house_sites:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:37",
+        "capability_ids": [
+          "A36"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "house-meeting-records",
+        "declared_target": "congress_api.cli.house:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:38",
+        "capability_ids": [
+          "A38"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "senate-meeting-records",
+        "declared_target": "congress_api.cli.senate:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:39",
+        "capability_ids": [
+          "A05",
+          "A43"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "meeting-inventory",
+        "declared_target": "congress_api.cli.inventory:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:40",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "gpo-fetch",
+        "declared_target": "congress_api.cli.gpo_fetch:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:41",
+        "capability_ids": [
+          "A05",
+          "A41"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "gpo-match",
+        "declared_target": "congress_api.cli.gpo_match:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:42",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "senate-captions",
+        "declared_target": "congress_api.cli.senate_captions:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:43",
+        "capability_ids": [
+          "A39"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "hearing-transcribe",
+        "declared_target": "congress_api.cli.transcribe:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:44",
+        "capability_ids": [
+          "A21"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "gpo-transcripts",
+        "declared_target": "congress_api.cli.gpo_transcripts:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:45",
+        "capability_ids": [
+          "A42"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "congress-meetings",
+        "declared_target": "congress_api.cli.meetings:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:46",
+        "capability_ids": [
+          "A04",
+          "A40"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "congress-committees",
+        "declared_target": "congress_api.cli.committees:parse_args_and_run",
+        "declaration": "packages/congress_api/pyproject.toml:47",
+        "capability_ids": [
+          "A37"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "house-naming",
+        "declared_target": "house_naming.cli:main",
+        "declaration": "packages/house-naming/pyproject.toml:22",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "house-naming-corpus",
+        "declared_target": "house_naming.filename_corpus:main",
+        "declaration": "packages/house-naming/pyproject.toml:23",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "news-lake",
+        "declared_target": "news_lake.cli:main",
+        "declaration": "packages/news_lake/pyproject.toml:20",
+        "capability_ids": [
+          "A31",
+          "A32",
+          "A33"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "youtube-fetch",
+        "declared_target": "youtube_api.fetch.main:parse_args_and_run",
+        "declaration": "packages/youtube_api/pyproject.toml:17",
+        "capability_ids": [
+          "A29"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      },
+      {
+        "command": "youtube-analyze",
+        "declared_target": "youtube_api.analyze.main:parse_args_and_run",
+        "declaration": "packages/youtube_api/pyproject.toml:18",
+        "capability_ids": [],
+        "classification": "derived_schema_analysis_or_consumer_handoff",
+        "status": "consumer_scope_unverified",
+        "remaining_obligation": "Consumer inventory owns detailed behavior; this bounded acquisition census does not retire or qualify this active command."
+      },
+      {
+        "command": "youtube-captions",
+        "declared_target": "youtube_api.captions.main:parse_args_and_run",
+        "declaration": "packages/youtube_api/pyproject.toml:19",
+        "capability_ids": [
+          "A20"
+        ],
+        "classification": "acquisition_or_record_publication",
+        "status": "bound_unverified",
+        "remaining_obligation": "Run exact command-specific planned proof with authentic retained inputs; declaration mapping is not behavior or population acceptance."
+      }
+    ],
+    "declared_count": 21,
+    "active_network_acquisition_commands": 11,
+    "record_publisher": "news-lake (offline input records; live HTTP not established)",
+    "unresolved_scope": [
+      "Complete upstream source/site/Congress/date-window denominator.",
+      "Script-only and module-only acquisition/campaign census, including webharvest/recovery tools; A02/A22/A27 cover maintained generic scheduler/recovery paths but not every caller.",
+      "Consumer-only console behavior handoffs remain unverified in consumer inventory.",
+      "Authentic source custody/completeness and every replacement executable proof remain unrun."
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "manager": "root",
+  "implementationAndReviewModel": "gpt-6.1-sol",
+  "reasoning": "xhigh",
+  "initialContext": "fork_turns=none for every agent",
+  "work": [
+    {
+      "agent": "acquisition_inventory",
+      "owns": [
+        "acquisition-lifecycle.md",
+        "acquisition-capabilities.json"
+      ],
+      "state": "43 capability rows corrected; independent acceptance approved"
+    },
+    {
+      "agent": "consumer_inventory",
+      "owns": [
+        "model-consumers.md",
+        "consumer-capabilities.json",
+        "DDK archive definition implementation"
+      ],
+      "state": "54 capability rows corrected; definition implementation awaiting compile repairs"
+    },
+    {
+      "agent": "greybeard_audit",
+      "owns": [
+        "blind source/ETL critique"
+      ],
+      "state": "complete; no implementation evidence"
+    },
+    {
+      "agent": "architecture_review",
+      "owns": [
+        "reviews/architecture-review.md"
+      ],
+      "state": "revised logical boundaries approved; shared implementation unqualified"
+    },
+    {
+      "agent": "acceptance_review",
+      "owns": [
+        "reviews/acceptance-review.md"
+      ],
+      "state": "corrected preparation increment approved; broader census and execution open"
+    },
+    {
+      "agent": "native_binding_inventory",
+      "owns": [
+        "native-profile.md",
+        "native-profile.json"
+      ],
+      "state": "complete metadata-only exact request and strengthened independent examples"
+    },
+    {
+      "agent": "root",
+      "owns": [
+        "design.md",
+        "operation-seams.md",
+        "acceptance-plan.md",
+        "runtime-gaps.md",
+        "README.md",
+        "status.json",
+        "integration and checks"
+      ],
+      "state": "active"
+    },
+    {
+      "agent": "definition_code_review",
+      "owns": [
+        "reviews/definition-code-review.md"
+      ],
+      "state": "independent static review in progress"
+    }
+  ],
+  "independence": "Reviewers received objective, constraints and artifact/source paths without other reviewers' conclusions. Implementation authors cannot close their own independent acceptance obligations.",
+  "sharedCode": "Parent alone owns shared DDK/DocSpec extensions; this worktree records requests and consumes separately qualified releases."
+}

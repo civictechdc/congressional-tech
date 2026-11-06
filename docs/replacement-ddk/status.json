@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "date": "2026-11-06",
+  "objective": "Full end-to-end DDK replacement for the congressional-tech workspace",
+  "phase": "preparation-approved-definition-implementation-blocked",
+  "worktree": "/Users/mikewolfd/.codex/worktrees/9c45/congressional-tech",
+  "branch": "codex/ddk-congress-replacement-20261106",
+  "baselineCommit": "a06eb64bf3caa4a44e12a89bdd08939323de3092",
+  "releaseGate": {
+    "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/release-status.json",
+    "lastObservedImplementationReady": true,
+    "publicationRequiredForLocalImplementation": false,
+    "verifiedDDKImplementation": "8e9a53e81ec6258f2068557ff5e4788c80c32995",
+    "verifiedDDKDocumentation": "3d2622b7a1cd0a454451987cd0ff7faf29d86e21",
+    "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79"
+  },
+  "completed": [
+    "Isolated branch at current local-main baseline; main working files preserved",
+    "Worktree-local uv sync --frozen",
+    "Ticket index refresh: 521 tickets and 2561 passages; ranked matches inspected as source documents",
+    "Source/retention inventory and repository-wide consumer map; all replacement capability claims unverified",
+    "Independent blind greybeard/ETL review",
+    "Independent semi-formal architecture review and acceptance audit",
+    "Archive metadata census independently matched eight native schemas, 23 public tables, 254 declared fields, 70 relationships and 16 recipes",
+    "Corrected preparation independently approved after F1-F4 fixes",
+    "Revised native/qualification/acquisition/activation design independently approved for local application work",
+    "Exact metadata-only native request inventory: eight pins,250 field/element IDs,51 inputs,251 live steps,678 dependency edges,40 output specs,23 SQL reports",
+    "Released DDK wheel digest verified and installed in worktree .venv through frozen uv dependency"
+  ],
+  "active": [
+    "Checkpoint completed preparation separately from unfinished implementation",
+    "Resolve application mapping issues and parent-owned DDK external-target loader defect",
+    "Run independent implementation review and appropriate focused tests after runnable compile"
+  ],
+  "tests": {
+    "replacementAcceptance": "not_run",
+    "pythonLanes": "not_run",
+    "browser": "not_run",
+    "native": "not_run",
+    "preparationChecks": "JSON shape and source-locator checks only",
+    "metadataCompiler": {
+      "command": ".venv/bin/python -m viewer_publication.archive_schema --check",
+      "exit": 1,
+      "result": "KeyError dataset in released DDK core._catalog_dependencies for schema-valid external relationship target; no metadata acceptance"
+    }
+  },
+  "commits": {
+    "taskCommits": [],
+    "uncommitted": "Completed preparation staged; DDK definition implementation and dependency wiring remain unstaged/unverified",
+    "constraint": "Default sandbox still denied shared Git metadata after human reported full access; no denied Git operation bypassed"
+  },
+  "sharedDependencies": [
+    "Immediate DDK core._catalog_dependencies external target bug: src/ddk/core.py:52 indexes target.dataset unconditionally; preserve schema-valid external endpoints and unresolved evidence without crashing",
+    "Exact original native table-pin protection and nested field/element-ID/schema mappings, including supported nested compatibility",
+    "Managed native update/computed/multi-table operation profile preserving existing materialization and recovery",
+    "Bounded exact-candidate quality path and native cross-table invariant evidence acceptance",
+    "Durable acquisition adoption and per-workflow activation/reconciliation protocols"
+  ],
+  "evidence": {
+    "partialPreparationSnapshot": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/preparation-01",
+    "partialSnapshotStatus": "incomplete; nonexistent qualified-03/runtime-verification.json stopped capture before success record",
+    "nativeVerification": "/Users/mikewolfd/Work/artifacts/ddk-stack-20261105/runtime/verification.json",
+    "nativeVerificationSHA256": "520c8a157564c6be95df2415f4863e92702111a6fa9d6a6bce75fb9f1585fea7",
+    "qualifiedDistribution": "/Users/mikewolfd/Work/artifacts/ddk-stack-20261105/distribution/qualified-03"
+  },
+  "constraints": {
+    "lastLocalDiskFreeGiB": 8.7,
+    "latestParentDiskFreeGiB": 7.7,
+    "heavyJobsAdmitted": false,
+    "sharedWritesDefaultSandbox": "denied",
+    "latestParentMessage": "tool refused: requires approval while approval policy is never",
+    "productionCutoverAuthorized": false,
+    "externalReplacementPublicationAuthorized": false,
+    "sharedDDKRuntimeOwner": "parent"
+  },
+  "delivery": {
+    "fullReplacementComplete": false,
+    "independentCodeReview": "not_run",
+    "supersededInfrastructureRetired": false,
+    "remainingScope": "Every capability requires independent executable proof; wider source/consumer census and authentic retained-data acceptance remain incomplete"
+  },
+  "definitionImplementation": {
+    "state": "incomplete; actual compiler failed",
+    "owner": "application definitions and consumer adapter; shared DDK fix parent-owned",
+    "remaining": [
+      "external-target DDK loader defect",
+      "row_position uniqueness mapping",
+      "recipe documented relationships versus actual input requirements",
+      "focused tests and independent review"
+    ],
+    "wheelSHA256": "b705e81c15636522c4e0e41f202ee3717d264800cdf0984c91f76ab925b4cd0e"
+  }
+}
