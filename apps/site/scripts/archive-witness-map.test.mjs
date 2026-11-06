@@ -5,10 +5,10 @@ import {join} from 'node:path';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 
 // The fixture release carries witnesses.parquet and witness_key_map.parquet;
-// witness-map-expected.json names its cases.
+// witness_map_expected.json names its cases.
 const folder = process.env.ARCHIVE_FIXTURE;
 const manifest = JSON.parse(await readFile(join(folder, 'manifest.json')));
-const expected = JSON.parse(await readFile(join(folder, 'witness-map-expected.json')));
+const expected = JSON.parse(await readFile(join(folder, 'witness_map_expected.json')));
 async function localFetch(url, options={}) {
   const path = new URL(url).pathname;
   if (path === '/manifest.json') return Response.json({release_id: manifest.release_id, previous_release_id:null});

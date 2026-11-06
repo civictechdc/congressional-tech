@@ -10,6 +10,16 @@
     {"name": "substitute", "filename": "Substitute.pdf", "title": "Official substitute", "body_byte": 65, "format": "pdf", "document_date": null, "first_captured": null, "hidden": false, "source_url": "https://fixture.test/unavailable.pdf", "recovery": {"kind": "official_substitute", "recovered_url": "https://fixture.test/official-statement.pdf", "identity_note": "The publisher supplied its official replacement", "imported_at": "2024-05-03"}}
   ],
   "meetings": [{"event_id": 118001, "chamber": "house", "title": "Transportation infrastructure hearing", "meeting_date": "2024-05-01"}],
+  "witnesses": [
+    {"witness_key": "a1a1a1a1a1a1a1a1", "occasion": "meeting:118001", "source": "congress_gov", "record_sha": "1111111111111111111111111111111111111111111111111111111111111111", "source_locator": "witness/1", "context_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "event_id": 118001, "name": "Dr. Jane Smith", "organization": "National Transit Institute", "display_order": 1},
+    {"witness_key": "a2a2a2a2a2a2a2a2", "occasion": "meeting:118001", "source": "congress_gov", "record_sha": "1111111111111111111111111111111111111111111111111111111111111111", "source_locator": "witness/2", "context_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "event_id": 118001, "name": "Pat Lee", "organization": "Port Authority", "display_order": 2},
+    {"witness_key": "a3a3a3a3a3a3a3a3", "occasion": "meeting:118001", "source": "congress_gov", "record_sha": "1111111111111111111111111111111111111111111111111111111111111111", "source_locator": "witness/3", "context_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "event_id": 118001, "name": "Pat Lee", "organization": "Port Authority", "display_order": 3}
+  ],
+  "witness_key_map": [
+    {"old_key": "b1b1b1b1b1b1b1b1", "witness_key": "a1a1a1a1a1a1a1a1", "status": "unambiguous", "basis": "content", "candidate_keys": [], "occasion": "meeting:118001", "source": "congress_gov"},
+    {"old_key": "b2b2b2b2b2b2b2b2", "witness_key": null, "status": "ambiguous", "basis": "content", "candidate_keys": ["a2a2a2a2a2a2a2a2", "a3a3a3a3a3a3a3a3"], "occasion": "meeting:118001", "source": "congress_gov"},
+    {"old_key": "b3b3b3b3b3b3b3b3", "witness_key": null, "status": "unresolved", "basis": null, "candidate_keys": [], "occasion": "meeting:118001", "source": "congress_gov"}
+  ],
   "expected": {
     "list_order": ["alternate", "excerpt", "hidden", "version-one", "version-two", "recovered", "substitute"],
     "list_rows": 7,
@@ -19,6 +29,12 @@
     "alternate_formats": ["pdf", "xml"],
     "version_lookup_rows": [3, 4],
     "recovery_kinds": ["requested_content_in_official_hearing", "recovered_document", "official_substitute"],
-    "meeting_title": "Transportation infrastructure hearing"
+    "meeting_title": "Transportation infrastructure hearing",
+    "witnesses": {
+      "live": {"key": "a1a1a1a1a1a1a1a1", "name": "Dr. Jane Smith"},
+      "redirect": {"key": "b1b1b1b1b1b1b1b1"},
+      "ambiguous": {"key": "b2b2b2b2b2b2b2b2", "candidates": ["a2a2a2a2a2a2a2a2", "a3a3a3a3a3a3a3a3"]},
+      "unresolved": {"key": "b3b3b3b3b3b3b3b3"}
+    }
   }
 }

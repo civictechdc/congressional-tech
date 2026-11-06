@@ -1,7 +1,7 @@
 /** Built-site check: /witness/<earlier key> through witness_key_map (ct-kb4w).
  * --release names a release with witness_key_map.parquet; --cases a JSON file
  * {live:{key,name},redirect:{key},ambiguous:{key,candidates},unresolved:{key}}
- * (default <release>/witness-map-expected.json); --screenshots a folder to write
+ * (default <release>/witness_map_expected.json); --screenshots a folder to write
  * one PNG per case. */
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
@@ -10,7 +10,7 @@ import {browserDependency,routeArchiveOrigin} from './archive-browser.mjs';
 import {startArchiveServer,directoryFiles} from './archive-server.mjs';
 import {argumentsMap} from './archive-targets.mjs';
 const args=argumentsMap(process.argv.slice(2));
-const cases=JSON.parse(await readFile(args.cases||join(args.release,'witness-map-expected.json')));
+const cases=JSON.parse(await readFile(args.cases||join(args.release,'witness_map_expected.json')));
 const server=await startArchiveServer({release:await directoryFiles(args.release),siteDist:resolve(args.dist||'dist')});
 const {chromium}=browserDependency('playwright');
 const browser=await chromium.launch({headless:true,...(args['browser-executable']?{executablePath:args['browser-executable']}:{})});

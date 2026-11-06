@@ -2,7 +2,6 @@
 import argparse
 import json
 from pathlib import Path
-import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,14 +26,8 @@ def main():
         subprocess.run(['npm', 'run', script, '--workspaces=false', '--',
             '--release', str(fixture / 'current'), *browser], cwd=ROOT / 'apps/site', check=True)
 
-    # The committed releases carry no witnesses; a copy gains witness_key_map cases (ct-kb4w).
-    from viewer_publication.archive_fixture import add_witness_key_map
-    witness_release = (args.work / 'witness-release').resolve()
-    shutil.rmtree(witness_release, ignore_errors=True)
-    shutil.copytree(fixture / 'current', witness_release)
-    add_witness_key_map(witness_release)
     subprocess.run(['npm', 'run', 'test:archive-witness-browser', '--workspaces=false', '--',
-        '--release', str(witness_release), *browser], cwd=ROOT / 'apps/site', check=True)
+        '--release', str(fixture / 'current'), *browser], cwd=ROOT / 'apps/site', check=True)
 
 
 if __name__ == '__main__':

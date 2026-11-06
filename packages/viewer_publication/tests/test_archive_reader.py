@@ -5,7 +5,7 @@ import subprocess
 import pytest
 
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_fixture import add_witness_key_map, build_fixture_release
+from viewer_publication.archive_fixture import build_fixture_release
 
 ROOT = Path(__file__).parents[3]
 
@@ -164,7 +164,6 @@ def test_reader_opens_earlier_witness_keys_through_the_key_map(tmp_path):
     release = tmp_path / 'release'
     build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
         scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
-    add_witness_key_map(release)
     result = subprocess.run(['node', '--test', str(ROOT / 'apps/site/scripts/archive-witness-map.test.mjs')],
         cwd=ROOT / 'apps/site', env=dict(os.environ, ARCHIVE_FIXTURE=str(release)),
         capture_output=True, text=True, timeout=90)

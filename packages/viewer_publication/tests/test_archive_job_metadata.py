@@ -7,7 +7,7 @@ from docspec_client.client import NativeDatasets
 
 
 def test_metadata_rows_do_not_change_release_bytes_or_weaken_guards(tmp_path):
-    from viewer_publication.archive_fixture import build_fixture_release
+    from viewer_publication.archive_fixture import build_fixture_release, fixture_auxiliary
     from viewer_publication.archive_format import _execute
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     fixture=Path(__file__).parents[3]/'model/fixtures/hand-release.json'
@@ -16,6 +16,8 @@ def test_metadata_rows_do_not_change_release_bytes_or_weaken_guards(tmp_path):
     prefix=job['steps'][:next(i for i,s in enumerate(job['steps']) if s['name']=='ordered')]
     scratch=tmp_path/'second';scratch.mkdir()
     result=_execute(job['inputs'],prefix,output=tmp_path/'repeated',scratch=scratch,engine=engine,
+        auxiliary=fixture_auxiliary(),
+        content_files={'witness_map_expected.json':json.loads(fixture.read_text())['expected']['witnesses']},
         origin=original['origin'],metadata_queries=[dict(name='input_receipts',sql="SELECT 'receipts/fixture.jsonl.gz' AS receipt_key")])
     assert result==original
     reports={q['name']:q['data'] for q in json.loads((scratch/'result.json').read_text())['queries']}

@@ -58,7 +58,8 @@
     "Declared archive-model production and exact public/private/source catalog dispositions; 15 focused cases passed and independent review approved bfebe773.",
     "Migrated comparison, publisher and local HTTP probes to exact logical-name/file-path inventories; native outputs can remain separate from controls. 131 Python, four probe-wrapper and nine HTTP/catalog-reader cases passed; independent review approved after correcting media types to use logical names.",
     "Removed footer-driven old meeting/witness input formats and optional document-reference SQL; current producer schemas, all callers and explicit microsecond UTC definitions independently reviewed. Two native behavior cases passed; scoped definition/request/job checks passed 58 cases and retained one known parser-pin refusal.",
-    "Constructed exact authored native rule bindings from the same SQL generator, using completed output namespaces; shared writer construction, immutable inputs and saved/reloaded metadata are checked. 68 focused cases passed; independent review closed construction findings. Maintained typed API/native namespace acceptance remains pending."
+    "Constructed exact authored native rule bindings from the same SQL generator, using completed output namespaces; shared writer construction, immutable inputs and saved/reloaded metadata are checked. 68 focused cases passed; independent review closed construction findings. Maintained typed API/native namespace acceptance remains pending.",
+    "Moved witness and earlier-key reader cases into the original native JobSpec with complete schemas and exact native result pins; removed post-native Parquet/manifest mutation and generic synthetic auxiliary defaults. 33 focused cases passed; committed browser artifacts await the replacement producer."
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -522,6 +523,24 @@
         "The native lifetime case still executes the incumbent publication checks; it does not qualify native outputs namespace support.",
         "No full lane, source admission, candidate acceptance or publication claim."
       ]
+    },
+    "nativeWitnessFixture": {
+      "passed": 33,
+      "failed": 0,
+      "fullLane": false,
+      "scope": "Four focused release, metadata-repeat, native request and CI-wrapper files; no actual reader/browser execution or retained DDK acceptance.",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-native-witness-fixture-03",
+      "peakRSSGiB": 0.31,
+      "executionSeconds": 7,
+      "browserArtifacts": "Pending regeneration with the replacement retained producer; current committed artifacts remain historical.",
+      "openIntegration": "Retain mandatory reader url_state; the replacement producer must supply the full current empty ten-field fixture table. Reader filename and explicit parity auxiliary caller findings repaired; final reader/browser execution pending.",
+      "expandedParityRun": {
+        "passed": 25,
+        "failed": 25,
+        "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-native-witness-fixture-04",
+        "reason": "After explicit auxiliary caller repair, the old F0 conversion fixture fails duplicate_document_key=1. No acceptance claimed for the legacy conversion harness.",
+        "scope": "Native hand fixture and metadata repeat checks pass; F0 parity fixture integration remains open."
+      }
     }
   },
   "commits": {

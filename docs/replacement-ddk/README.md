@@ -164,6 +164,17 @@ replacement evidence root.
 Earlier historical-reader tests remain evidence for the preparatory refactor.
 Their scope does not establish acceptance of the mandatory catalog format.
 
+Reader fixture construction now exports complete witness and earlier-key tables
+inside the original native job. Expected cases are ordinary release controls;
+there is no later Parquet writer, manifest rewrite or copied witness release.
+The job builder requires explicit auxiliary tables. Thirty-three focused
+native/request/wrapper cases passed. Independent review found that the reader
+still requires a capture scheduling table: replacement fixture generation must
+provide the complete current empty schema without inventing eligibility rows.
+The control filename and an implicit parity-fixture caller were also corrected.
+Committed browser fixtures still need regeneration through the replacement
+retained producer before reader and browser acceptance can complete.
+
 The current native client uses one exact-request retry path and preserves
 earlier uncertain completion evidence through later failures. It no longer
 changes caller choices after refusal. Thirty-six client cases and three real

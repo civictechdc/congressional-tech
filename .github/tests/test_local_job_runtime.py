@@ -134,9 +134,9 @@ def test_actual_browser_wrapper_runs_checked_children_and_stops_at_failure(tmp_p
     else:
         assert result.returncode==0 and len(commands)==4
         assert 'test:archive-heap-browser' in commands[2]
-        witness=tmp_path/'work/witness-release'
+        witness=ROOT/'model/fixtures/archive-contract/current'
         assert f'test:archive-witness-browser --workspaces=false -- --release {witness}' in commands[3]
-        assert {'witnesses.parquet','witness_key_map.parquet','witness-map-expected.json'}<={p.name for p in witness.iterdir()}
+        assert not (tmp_path/'work/witness-release').exists()
 
 
 def test_private_validation_runtime_keeps_main_trusted_source_boundary():

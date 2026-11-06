@@ -150,6 +150,7 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
 
 def _convert_f0_fixture_catalog(documents, filenames, captures, committees, *, catalog_id, output, scratch, engine, origin_kind='converted_catalog'):
     from viewer_publication.archive_format import _step, _normal, _execute, legacy_meeting_keys
+    from viewer_publication.archive_fixture import fixture_auxiliary
     output, scratch = Path(output), Path(scratch); scratch.mkdir(parents=True, exist_ok=False)
     inputs = [dict(name=n, kind='parquet', path=str(Path(p).resolve())) for n, p in [
         ('legacy_documents', documents), ('legacy_filenames', filenames), ('legacy_captures', captures), ('committee_source', committees)]]
@@ -175,7 +176,9 @@ def _convert_f0_fixture_catalog(documents, filenames, captures, committees, *, c
         _step('recovery_input', "SELECT cast(NULL AS VARCHAR) AS doc_key,cast(NULL AS VARCHAR) AS recovery_key,cast(NULL AS VARCHAR) AS original_url,cast(NULL AS VARCHAR) AS kind,arrow_cast(NULL,'FixedSizeBinary(32)') AS body,cast(NULL AS VARCHAR) AS suffix,cast(NULL AS BIGINT) AS bytes,cast(NULL AS DATE) AS imported_at,cast(NULL AS VARCHAR) AS recovered_url,cast(NULL AS VARCHAR) AS identity_note WHERE false"),
         _step('meeting_input', 'SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS chamber,cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date WHERE false'),
         _step('committee_input', 'SELECT system_code,name,lower(chamber) AS chamber FROM committee_source')]
-    return _execute(inputs, steps, output=output, scratch=scratch, engine=engine, origin=dict(kind=origin_kind, catalog_id=catalog_id, gaps=[]))
+    auxiliary = [item for item in fixture_auxiliary() if item[0] in {'meetings', 'committees'}]
+    return _execute(inputs, steps, output=output, scratch=scratch, engine=engine, auxiliary=auxiliary,
+        origin=dict(kind=origin_kind, catalog_id=catalog_id, gaps=[]))
 
 
 def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=False, bad_lookup=False, bad_sort=None, origin_kind='converted_catalog'):

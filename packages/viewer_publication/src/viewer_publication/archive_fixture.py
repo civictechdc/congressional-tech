@@ -6,12 +6,49 @@ from pathlib import Path
 from congress_api.retention.provenance import (list_of as _list,
     struct as _struct, json_input as _json_input)
 from viewer_publication.archive_format import (EMPTY_STRINGS, EMPTY_ALTERNATES,
-    _step, _binary, _normal, _execute)
+    _step, _binary, _normal, _execute, _empty_struct, TS, MEETING_DICTIONARY,
+    NULL_MEETING_DOCUMENT_REFERENCES)
 
 
 def _body(byte):
     return f"repeat(lpad(to_hex(cast({byte} AS BIGINT)),2,'0'),32)"
 
+
+def fixture_auxiliary():
+    """Author complete reader tables; capture scheduling has no fixture policy."""
+    sittings = _empty_struct(start=TS, end=TS, place='cast(NULL AS VARCHAR)', room='cast(NULL AS VARCHAR)',
+        building='cast(NULL AS VARCHAR)', address='cast(NULL AS VARCHAR)')
+    committees = _empty_struct(system_code='cast(NULL AS VARCHAR)', role='cast(NULL AS VARCHAR)')
+    transcripts = _empty_struct(source='cast(NULL AS VARCHAR)', package_id='cast(NULL AS VARCHAR)', list_row='cast(NULL AS INT)', formats=EMPTY_STRINGS,
+                                video_key='cast(NULL AS VARCHAR)', language='cast(NULL AS VARCHAR)', production='cast(NULL AS VARCHAR)')
+    videos = _empty_struct(name='cast(NULL AS VARCHAR)', url='cast(NULL AS VARCHAR)', video_key='cast(NULL AS VARCHAR)')
+    names = _empty_struct(name='cast(NULL AS VARCHAR)', start='cast(NULL AS DATE)', end='cast(NULL AS DATE)')
+    return [
+        ('meetings', f"""WITH keys AS (SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered),
+            meta AS (SELECT *,true AS has_detail FROM meeting_input UNION ALL SELECT event_id,cast(NULL AS VARCHAR) AS chamber,
+                cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date,false AS has_detail FROM keys WHERE event_id IS NOT NULL)
+            SELECT event_id,max(chamber) AS chamber,
+                CASE WHEN max(chamber) IS NOT NULL THEN 'source' WHEN bool_or(has_detail) THEN 'source_chamber_unknown'
+                     ELSE 'meeting_detail_missing' END AS chamber_basis,
+                max(title) AS title,max(meeting_date) AS meeting_date,
+                cast(NULL AS VARCHAR) AS meeting_type,cast(NULL AS SMALLINT) AS session,cast(NULL AS VARCHAR) AS status,
+                {sittings} AS sittings,{committees} AS committees,{EMPTY_STRINGS} AS subject_keys,
+                {transcripts} AS transcripts,{videos} AS videos,cast(NULL AS SMALLINT) AS congress,{TS} AS congress_gov_updated,
+                cast(NULL AS VARCHAR) AS house_xml_updated,cast(NULL AS VARCHAR) AS congress_gov_meeting_type,
+                cast(NULL AS VARCHAR) AS access,cast(NULL AS VARCHAR) AS access_basis,cast(NULL AS BOOLEAN) AS not_held,cast(NULL AS BIGINT) AS rescheduled_to,cast(NULL AS VARCHAR) AS rescheduled_basis,
+                {NULL_MEETING_DOCUMENT_REFERENCES} AS document_references FROM meta GROUP BY event_id""", ['event_id'],
+            MEETING_DICTIONARY),
+        ('committees', f"""SELECT system_code,name,chamber,cast(NULL AS VARCHAR) AS committee_type,
+            cast(NULL AS VARCHAR) AS parent_system_code,{names} AS names,cast(NULL AS VARCHAR) AS website,
+            cast(NULL AS BOOLEAN) AS is_current FROM committee_input""", ['system_code'], ['chamber', 'committee_type', 'parent_system_code']),
+        ('witnesses', f"""SELECT witness_key,occasion,source,{_binary('record_sha', 32)} AS record_sha,
+            source_locator,context_key,event_id,package_id,page_url,name,position,organization,
+            on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id,
+            superseded_by FROM hand_witnesses""",
+            ['occasion', 'panel_order', 'display_order', 'witness_key'],
+            ['occasion', 'source', 'witness_type', 'bioguide_id']),
+        ('witness_key_map', 'SELECT old_key,witness_key,status,basis,candidate_keys,occasion,source FROM hand_witness_key_map',
+            ['old_key'], ['occasion', 'source', 'status', 'basis'])]
 
 
 def build_fixture_release(fixture, *, output, scratch, engine):
@@ -29,7 +66,14 @@ def build_fixture_release(fixture, *, output, scratch, engine):
         version_key='Utf8', extra_link_body_bytes=_list('Int64'),
         alternates=_list(_struct(format='Utf8', body_byte='Int64', suffix='Utf8', size='Int64')),
         recovery=_struct(kind='Utf8', recovered_url='Utf8', identity_note='Utf8', imported_at='Utf8')),
-        _json_input(scratch, 'hand_meetings', data['meetings'], event_id='Int64', chamber='Utf8', title='Utf8', meeting_date='Utf8')]
+        _json_input(scratch, 'hand_meetings', data['meetings'], event_id='Int64', chamber='Utf8', title='Utf8', meeting_date='Utf8'),
+        _json_input(scratch, 'hand_witnesses', data['witnesses'], witness_key='Utf8', occasion='Utf8', source='Utf8',
+            record_sha='Utf8', source_locator='Utf8', context_key='Utf8', event_id='Int64', package_id='Utf8',
+            page_url='Utf8', name='Utf8', position='Utf8', organization='Utf8', on_behalf_of='Utf8', location='Utf8',
+            panel='Utf8', panel_order='Int16', display_order='Int16', witness_type='Utf8', testified='Boolean',
+            bioguide_id='Utf8', superseded_by='Utf8'),
+        _json_input(scratch, 'hand_witness_key_map', data['witness_key_map'], old_key='Utf8', witness_key='Utf8',
+            status='Utf8', basis='Utf8', candidate_keys=_list('Utf8'), occasion='Utf8', source='Utf8')]
     steps = [_step('hand_bodies', f"SELECT *,{_body('body_byte')} AS body_hex FROM hand"),
         _step('hand_alternates', 'SELECT name,unnest(alternates) AS alt FROM hand'),
         _step('alternate_groups', f"""SELECT name,array_agg(named_struct('format',alt['format'],
@@ -60,47 +104,6 @@ def build_fixture_release(fixture, *, output, scratch, engine):
         _step('committee_input', 'SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS chamber WHERE false'),
     ]
     return _execute(inputs, steps, output=output, scratch=scratch, engine=engine,
+        auxiliary=fixture_auxiliary(), content_files={'witness_map_expected.json': data['expected']['witnesses']},
         origin=dict(kind='hand_fixture', source_sha256=sha256(fixture.read_bytes()).hexdigest(),
                     gaps=['Synthetic reader fixture; capture scheduling is disabled']))
-
-
-def add_witness_key_map(release):
-    """Add witnesses.parquet and witness_key_map.parquet (ct-kb4w) to a fixture release in place.
-
-    One current witness, an earlier key mapped to it, an ambiguous key with two candidates and an
-    unresolved key; the cases are written to witness-map-expected.json for the site checks. The
-    tables are written here, not by the native writer: they are reader inputs, not model output.
-    """
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from congress_api.retention.provenance import file_pin
-    from viewer_publication.archive_format import release_identity
-    release = Path(release)
-    manifest = json.loads((release / 'manifest.json').read_text())
-    label = pa.dictionary(pa.int32(), pa.string())
-    current, twin_a, twin_b = 'a1' * 8, 'a2' * 8, 'a3' * 8
-    witnesses = pa.table(dict(witness_key=[current, twin_a, twin_b], name=['Dr. Jane Smith', 'Pat Lee', 'Pat Lee'],
-        occasion=['meeting:118001'] * 3, source=['congress_gov'] * 3,
-        organization=['National Transit Institute', 'Port Authority', 'Port Authority']))
-    key_map = pa.Table.from_pylist([
-        dict(old_key='b1' * 8, witness_key=current, status='unambiguous', basis='content', candidate_keys=[],
-             occasion='meeting:118001', source='congress_gov'),
-        dict(old_key='b2' * 8, witness_key=None, status='ambiguous', basis='content', candidate_keys=[twin_a, twin_b],
-             occasion='meeting:118001', source='congress_gov'),
-        dict(old_key='b3' * 8, witness_key=None, status='unresolved', basis=None, candidate_keys=[],
-             occasion='meeting:118001', source='congress_gov')],
-        schema=pa.schema([('old_key', pa.string()), ('witness_key', pa.string()), ('status', label), ('basis', label),
-            ('candidate_keys', pa.list_(pa.string())), ('occasion', label), ('source', label)]))
-    added = []
-    for name, table in [('witnesses.parquet', witnesses), ('witness_key_map.parquet', key_map)]:
-        pq.write_table(table, release / name)
-        pin = file_pin(release / name)
-        added.append(dict(name=name, sha256=pin['sha256'], size=pin['size'], rows=table.num_rows, md5='0' * 32,
-                          row_range=None, shard=None, producer='archive', coverage={}))
-    manifest['files'] = [f for f in manifest['files'] if f['name'] not in {a['name'] for a in added}] + added
-    manifest['release_id'] = release_identity(manifest['schema_version'], manifest['files'])
-    (release / 'manifest.json').write_text(json.dumps(manifest))
-    cases = dict(live=dict(key=current, name='Dr. Jane Smith'), redirect=dict(key='b1' * 8),
-                 ambiguous=dict(key='b2' * 8, candidates=[twin_a, twin_b]), unresolved=dict(key='b3' * 8))
-    (release / 'witness-map-expected.json').write_text(json.dumps(cases))
-    return cases

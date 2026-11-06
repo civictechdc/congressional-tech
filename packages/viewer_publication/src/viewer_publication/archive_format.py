@@ -314,7 +314,7 @@ SPICY_PRODUCER_FAMILIES = {
 }
 
 
-def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary=None, capture_scope=None,
+def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary, capture_scope=None,
                        extra_outputs=(), diagnostics=(), metadata_queries=(),
                        content_files=None, lookup_extra=None, entity_digests=None):
     """Construct the shared native JobSpec without opening inputs or executing it.
@@ -329,9 +329,7 @@ def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary=None
     output, scratch = Path(output), Path(scratch)
     steps = list(steps)
     outputs = _core(steps, output,lookup_extra=lookup_extra)
-    # Entity files and the capture fixture have their full declared schema,
-    # including when this documents-only input provides no rows for them.
-    aux_items = list(_auxiliary() if auxiliary is None else auxiliary)
+    aux_items = list(auxiliary)
     aux_names = {name for name, _, _, _ in aux_items}
     for name, sql, keys, dictionary in aux_items:
         steps.append(_step(name + '_export', sql, materialize=True))
@@ -415,7 +413,7 @@ def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary=None
     return spec, schema, diagnostics
 
 
-def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None):
+def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None):
     output.mkdir(parents=True, exist_ok=False)
     spec, schema, diagnostics = native_release_job(inputs, steps, output=output, scratch=scratch,
         origin=origin, auxiliary=auxiliary, extra_outputs=extra_outputs, diagnostics=diagnostics,
@@ -497,36 +495,3 @@ def finalize_native_release(result, schema, diagnostics, *, output, origin, capt
     controls['manifest.json'] = _content_data(manifest)
     _retain_controls(output, controls)
     return manifest
-
-
-def _auxiliary():
-    sittings = _empty_struct(start=TS, end=TS, place='cast(NULL AS VARCHAR)', room='cast(NULL AS VARCHAR)',
-        building='cast(NULL AS VARCHAR)', address='cast(NULL AS VARCHAR)')
-    committees = _empty_struct(system_code='cast(NULL AS VARCHAR)', role='cast(NULL AS VARCHAR)')
-    transcripts = _empty_struct(source='cast(NULL AS VARCHAR)', package_id='cast(NULL AS VARCHAR)', list_row='cast(NULL AS INT)', formats=EMPTY_STRINGS,
-                                video_key='cast(NULL AS VARCHAR)', language='cast(NULL AS VARCHAR)', production='cast(NULL AS VARCHAR)')
-    videos = _empty_struct(name='cast(NULL AS VARCHAR)', url='cast(NULL AS VARCHAR)', video_key='cast(NULL AS VARCHAR)')
-    names = _empty_struct(name='cast(NULL AS VARCHAR)', start='cast(NULL AS DATE)', end='cast(NULL AS DATE)')
-    return [
-        ('meetings', f"""WITH keys AS (SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered),
-            meta AS (SELECT *,true AS has_detail FROM meeting_input UNION ALL SELECT event_id,cast(NULL AS VARCHAR) AS chamber,
-                cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date,false AS has_detail FROM keys WHERE event_id IS NOT NULL)
-            SELECT event_id,max(chamber) AS chamber,
-                CASE WHEN max(chamber) IS NOT NULL THEN 'source' WHEN bool_or(has_detail) THEN 'source_chamber_unknown'
-                     ELSE 'meeting_detail_missing' END AS chamber_basis,
-                max(title) AS title,max(meeting_date) AS meeting_date,
-                cast(NULL AS VARCHAR) AS meeting_type,cast(NULL AS SMALLINT) AS session,cast(NULL AS VARCHAR) AS status,
-                {sittings} AS sittings,{committees} AS committees,{EMPTY_STRINGS} AS subject_keys,
-                {transcripts} AS transcripts,{videos} AS videos,cast(NULL AS SMALLINT) AS congress,{TS} AS congress_gov_updated,
-                cast(NULL AS VARCHAR) AS house_xml_updated,cast(NULL AS VARCHAR) AS congress_gov_meeting_type,
-                cast(NULL AS VARCHAR) AS access,cast(NULL AS VARCHAR) AS access_basis,cast(NULL AS BOOLEAN) AS not_held,cast(NULL AS BIGINT) AS rescheduled_to,cast(NULL AS VARCHAR) AS rescheduled_basis,
-                {NULL_MEETING_DOCUMENT_REFERENCES} AS document_references FROM meta GROUP BY event_id""", ['event_id'],
-            MEETING_DICTIONARY),
-        ('committees', f"""SELECT system_code,name,chamber,cast(NULL AS VARCHAR) AS committee_type,
-            cast(NULL AS VARCHAR) AS parent_system_code,{names} AS names,cast(NULL AS VARCHAR) AS website,
-            cast(NULL AS BOOLEAN) AS is_current FROM committee_input""", ['system_code'], ['chamber', 'committee_type', 'parent_system_code']),
-        ('url_state', f"""SELECT cast(NULL AS VARCHAR) AS requested_url,cast(0 AS INT) AS attempts,
-            {TS} AS last_attempt,cast(NULL AS SMALLINT) AS last_status,cast(NULL AS VARCHAR) AS last_outcome,
-            {TS} AS last_good_at,{TS} AS next_attempt_at WHERE false""", ['requested_url'], ['last_outcome']),
-    ]
-

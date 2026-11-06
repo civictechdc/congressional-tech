@@ -138,6 +138,20 @@ def test_hand_release_covers_the_reader_outcomes(engine, tmp_path):
     key = sha256(b'lookup:fixture.test/record.pdf').digest()[:8]
     assert [row['list_row'] for row in lookup if row['lookup_key'] == key] == expected['version_lookup_rows']
     assert set(manifest['facet_counts'][0]) == {'facet', 'value', 'count'}
+    assert json.loads((output/'witness_map_expected.json').read_text()) == expected['witnesses']
+    native = json.loads((tmp_path/'jobs/result.json').read_text())
+    assert {entry['name'] for entry in native['outputs']} == {
+        entry['name'] for entry in manifest['files'] if entry['name'].endswith('.parquet')}
+    assert not (output/'url_state.parquet').exists()
+    for name in ('witnesses.parquet', 'witness_key_map.parquet'):
+        retained = next(entry for entry in native['outputs'] if entry['name'] == name)
+        published = next(entry for entry in manifest['files'] if entry['name'] == name)
+        assert (retained['sha256'], retained['md5'], retained['rows']) == (
+            published['sha256'], published['md5'], 3)
+    witnesses = pq.read_table(output/'witnesses.parquet').to_pylist()
+    assert [row['name'] for row in witnesses] == ['Dr. Jane Smith', 'Pat Lee', 'Pat Lee']
+    assert all(row['record_sha'] == b'\x11'*32 and row['panel_order'] is None for row in witnesses)
+    assert {row['context_key'] for row in witnesses} == {'c'*64}
 
 
 def test_minmax_collision_witness_matches_distinct_with_nulls(engine, tmp_path):
