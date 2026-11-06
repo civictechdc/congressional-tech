@@ -1,0 +1,56 @@
+{
+  "purpose": "Frozen native-inferred physical types for authored reader inputs; not execution or source admission evidence",
+  "source": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-03/native.stdout.json",
+    "sha256": "9c2492aa654cf6a12be1cc704942470172b1db640e5e15951c9b6903f2270a82",
+    "job_sha256": "b67587dfc7bb3e18120b2378390ae3a6a87bdf8ce0b6585ff75487db16eba8b5",
+    "native": "experimental source06"
+  },
+  "schemas": {
+    "meetings": {
+      "path": "schemas/meetings.arrow",
+      "sha256": "6233529c99cf935d40d86145d264e2859d654c26dfa3aacfc77911647950124a",
+      "bytes": 3456
+    },
+    "witnesses": {
+      "path": "schemas/witnesses.arrow",
+      "sha256": "4928c23fda0f809f2d10db3c4ec122cb02cc6a89fe61550cab5b64ce8cc6e276",
+      "bytes": 1408
+    },
+    "recordings": {
+      "path": "schemas/recordings.arrow",
+      "sha256": "00d83ffc4bf39c6735c5f5be8f581a572bf9552727f88dda3004fe08093f3afa",
+      "bytes": 576
+    },
+    "committees": {
+      "path": "schemas/committees.arrow",
+      "sha256": "dc6c050a5ccb149f825bd7dd41ca919139621de4a2a1752ef9a091c8971fc200",
+      "bytes": 704
+    },
+    "members": {
+      "path": "schemas/members.arrow",
+      "sha256": "52ad3cb4178cf337499a9735aba4e66b3401caaec60e221c5815178987ffe05c",
+      "bytes": 960
+    },
+    "rosters": {
+      "path": "schemas/rosters.arrow",
+      "sha256": "0bfeb626f90680312352421c0d383f9e22f741cc12ca711c8a53c0ec8bbfc40b",
+      "bytes": 448
+    },
+    "bills": {
+      "path": "schemas/bills.arrow",
+      "sha256": "203345e4c061dca99c89a4f4fb67acb5c91b6011a16313604a20bf831496d2f1",
+      "bytes": 2368
+    },
+    "nominations": {
+      "path": "schemas/nominations.arrow",
+      "sha256": "65f8a87c178983bd0f7280875da2a03219edc74ecc7bef7be83fa1fc7cf834ee",
+      "bytes": 1344
+    },
+    "videos": {
+      "path": "schemas/videos.arrow",
+      "sha256": "5362692b676ef17e96b6c5c0fa55b74118234a07c5dbc73a160e967d3d83fdfe",
+      "bytes": 1536
+    }
+  }
+}

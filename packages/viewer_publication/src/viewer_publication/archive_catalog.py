@@ -11,6 +11,57 @@ ASSEMBLY = 'urn:ddk:catalog:assembly'
 PRODUCTION = 'archive-model'
 CHECK_GENERATOR = {'id': 'urn:congressional-tech:archive:native-publication-checks', 'version': '1.0.0'}
 
+# The writer and its rule profile share this one complete-row query owner.
+CORE_RELATIONS = {'list': 'ordered', 'detail': 'details', 'links': 'links', 'urls': 'url_keys',
+                  'sources': 'source_rows', 'recoveries': 'recovery_rows'}
+
+
+def release_output_sql(name):
+    return 'SELECT * FROM ' + CORE_RELATIONS.get(name, name + '_export')
+
+
+def capture_definitions(destination, *, root=Path(__file__).parents[4]):
+    """Keep one small, original definition set before any catalog assembly.
+
+    The retained job caller owns this directory beside its request and controls.
+    Retry reads it directly; it never captures today's definitions over an old job.
+    Native data and lifecycle records are not stored here.
+    """
+    from congress_shared.custody import write_atomic_bytes
+    from viewer_publication.archive_relationships import ArchiveRelationshipProfileV1
+
+    destination = Path(destination).resolve()
+    destination.mkdir(parents=True, exist_ok=False)
+    sources = Path(root)/'model/ddk'
+    contents = {path.relative_to(sources): path.read_bytes()
+                for path in sorted(sources.rglob('*')) if path.is_file() and path.suffix in {'.json', '.sql'}}
+    for profile in (ArchiveRelationshipProfileV1, ArchiveNativeRuleProfileV1):
+        source = Path(profile.source)
+        contents[Path('implementations')/source.name] = source.read_bytes()
+    for relative, data in contents.items():
+        path = destination/relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_atomic_bytes(path, data, fsync_dir=True)
+    return destination/'project.ddk.json'
+
+
+def captured_catalog_options(project):
+    """Select the installed interpretation only when its captured source matches."""
+    from viewer_publication.archive_relationships import ArchiveRelationshipProfileV1
+
+    directory = Path(project).resolve().parent
+    profiles = {}
+    for name, cls in (('relationship_profile', ArchiveRelationshipProfileV1),
+                      ('native_rule_profile', ArchiveNativeRuleProfileV1)):
+        source = Path(cls.source)
+        captured = directory/'implementations'/source.name
+        if source.read_bytes() != captured.read_bytes():
+            raise ValueError('Installed catalog interpretation differs from the captured source: ' + source.name)
+        instance = cls()
+        instance.source = captured
+        profiles[name] = instance
+    return dict(permitted_roots=[directory], **profiles)
+
 
 def _local_catalog(result):
     """Use the complete private view from the same public or local assembly."""
@@ -19,6 +70,38 @@ def _local_catalog(result):
             or catalog.get('audience') != 'local'):
         raise ValueError('Archive native checks require admitted local DDK declarations')
     return catalog
+
+
+def accepted_output_definitions(evidence, result):
+    """Join one accepted native candidate to its admitted catalog, without reads."""
+    from ddk.docspec_job_evidence import VerifiedJobEvidence
+
+    if not isinstance(evidence, VerifiedJobEvidence) or evidence.accepted is None:
+        raise ValueError('Release finalization requires verified native acceptance')
+    catalog = _local_catalog(result)
+    details = catalog['extensions'][ASSEMBLY]
+    matches = [item for item in details.get('managedExecutions', ())
+               if item['candidate'] == evidence.candidate]
+    if (len(matches) != 1 or matches[0]['definitionStatus'] != 'passed'
+            or matches[0]['acceptedQualification'] != evidence.accepted['identity']):
+        raise ValueError('Catalog does not qualify this exact accepted native candidate')
+    execution = matches[0]
+    definitions = details['datasetDefinitions']
+    outputs = {item['output']: definitions[item['dataset']] for item in execution['outputInterpretations']}
+    private = {item['name'] for item in execution['outOfCatalog']['outputs']}
+    if outputs.keys() & private or outputs.keys() | private != set(evidence.view_names['outputs']):
+        raise ValueError('Catalog does not account for the complete accepted output set')
+    return outputs
+
+
+def coverage_limits(definition):
+    """Read structured ODCS coverage warnings; prose is never parsed as data."""
+    values = [item['value'] for item in definition.get('customProperties', ())
+              if item['property'] == 'coverageLimits']
+    if (len(values) > 1 or (values and (not isinstance(values[0], (list, tuple))
+            or any(not isinstance(value, str) or not value for value in values[0])))):
+        raise ValueError('Dataset coverage limits require one array of nonempty strings')
+    return list(values[0]) if values else []
 
 
 def native_catalog_mapping(result, job, *, private_outputs):
@@ -70,8 +153,6 @@ def publication_checks(result, auxiliary, published):
 
 def _publication_checks(definitions, declared_identities, auxiliary, published):
     """One SQL generator for admission and captured-definition verification."""
-    from viewer_publication.archive_format import CORE_RELATIONS
-
     published = set(published)
     tables = [(alias, definitions[alias]) for alias in sorted(definitions)]
     undeclared = published - {table['physicalName'] for table in definitions.values()}
@@ -173,8 +254,6 @@ def _publication_checks(definitions, declared_identities, auxiliary, published):
 
 def _verified_native_rule_records(context, original_job):
     """Bind counters to complete exports and their actual writer projection."""
-    from viewer_publication.archive_format import CORE_RELATIONS, release_output_sql
-
     if context.production.get('alias') != PRODUCTION:
         raise ValueError('Archive native rules require the archive-model production')
 

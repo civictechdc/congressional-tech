@@ -99,5 +99,14 @@
     "schema_id": 0,
     "snapshot": 387616457107628486,
     "table_uuid": "01a1adb1-19bb-7421-901b-f03c541a3c01"
-  }
+  },
+  "native_scope": {
+    "workspace": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-native-initial-20261106",
+    "dataset": "congressional-archive",
+    "operation": "initial-20261106",
+    "policy_id": "archive-required-v1",
+    "expected_epoch": 0,
+    "expected_selection": null
+  },
+  "prerequisites": []
 }

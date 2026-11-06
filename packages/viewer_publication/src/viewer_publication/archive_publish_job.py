@@ -8,8 +8,7 @@ import re
 import subprocess
 import sys
 from urllib.parse import urlsplit
-from tempfile import TemporaryDirectory
-from uuid import UUID,uuid4
+from uuid import UUID
 
 from congress_api.lake.daily import DAILY_CAPTURE_RECORDS
 from congress_api.retention.body_store import validate_key
@@ -19,7 +18,7 @@ from viewer_publication.archive_model_job import (
     TABLES,OPTIONAL_TABLES,ENTITY_TABLES,EXPLORER_TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
 )
 from viewer_publication.receipt_pins import receipt_list
-from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance,require_comparison
+from congress_shared.custody import write_atomic_json
 
 ROOT=Path(__file__).resolve().parents[4]
 SITE=ROOT/'apps/site'
@@ -136,8 +135,7 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
     summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions','producers']}
     summary_path=work/'daily-summary.json'
     if retain:
-        from viewer_publication.archive_controller import _save_continuation
-        _save_continuation(summary_path,summary)
+        write_atomic_json(summary_path,summary,fsync_dir=True)
     else:
         with summary_path.open('x') as target:json.dump(summary,target,sort_keys=True)
     if production['status']!='completed':return dict(status=production['status'],daily=summary)
@@ -152,61 +150,26 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
     if retain:
         from congress_api.lake.receipt_inventory import retained_discovery,receipt_metadata_digest
         deferred=receipt_metadata_digest(retained_discovery(work/'receipt-discovery'),exclude=keys)
-        _save_continuation(summary_path,dict(summary,publication=dict(
-            records=records,provenance=provenance,deferred=deferred)))
+        write_atomic_json(summary_path,dict(summary,publication=dict(
+            records=records,provenance=provenance,deferred=deferred)),fsync_dir=True)
         handoff['daily_summary_sha256']=sha256(summary_path.read_bytes()).hexdigest()
     return dict(status='ready',model=model,receipt_keys=keys,daily=summary,provenance=provenance,
         verified_files=snapshot.verified(),**handoff)
 
 
-def _resume_daily_inputs(template,daily,*,publish_work):
-    """Rebind the completed daily inputs before consulting the current selection."""
-    from viewer_publication.archive_controller import _read_continuation
-    _,checkpoint=_read_continuation(publish_work,daily=True)
-    summary_path=Path(daily['work'])/'daily-summary.json'
-    if summary_path.is_symlink():raise ValueError('Retained daily summary must be a regular file')
-    raw=summary_path.read_bytes()
-    digest=sha256(raw).hexdigest()
-    if digest!=checkpoint['daily_summary_sha256']:
-        raise ValueError('Retained daily summary differs from the model continuation')
-    summary=json.loads(raw)
-    retained=summary.pop('publication',None) if isinstance(summary,dict) else None
-    if not isinstance(retained,dict) or set(retained)!={'records','provenance','deferred'}:
-        raise ValueError('Retained daily summary lacks complete publication inputs')
-    records=retained['records']
-    model,keys=completed_daily_inputs(template,dict(summary,provenance={
-        kind:[row for row in records if provenance_record_kind(row['key'])==kind]
-        for kind in ('recoveries','reviews','unreadable')}),records)
-    return dict(status='ready',model=model,receipt_keys=keys,daily=summary,
-        provenance=retained['provenance'],verified_files=None,daily_summary_sha256=digest,
-        deferred_receipt_digest=retained['deferred'])
 
 
-def _require_current_daily(daily,retained,*,engine,raw_store,work):
-    from congress_api.lake.receipt_inventory import R2ReceiptStore,discover_receipts,receipt_metadata_digest
-    from congress_api.lake.tables import resolve_tables
-    from viewer_publication.archive_controller import PublicationInputsChanged
-    heads=resolve_tables(engine=engine,work=work/'heads',catalog_root=daily['catalog_root'],tables=daily['tables'])
-    if heads!=retained['daily']['pins']:
-        raise PublicationInputsChanged('Daily catalog heads changed since the retained candidate')
-    adapter=raw_store.adapter
-    rows=discover_receipts(R2ReceiptStore(adapter.client,adapter.bucket),daily['receipt_families'],
-        existing=heads['captures'],engine=engine,work=work/'receipt-discovery')
-    if receipt_metadata_digest(rows)!=retained['deferred_receipt_digest']:
-        raise PublicationInputsChanged('Daily receipt selection changed since the retained candidate')
 
 
 def nightly_spec(spec,root):
     """Put the Mac's active candidate outside worktree cleanup using the same publisher."""
-    if not spec.get('_daily',{}).get('receipt_families') or spec.get('resume'):
+    if not spec.get('_daily',{}).get('receipt_families'):
         raise ValueError('Nightly work requires daily receipt-family discovery')
     root=Path(root).resolve()
     work=root/'archive-publish'
     model=dict(spec['_model'],output=str(root/'archive-release'),scratch=str(root/'archive-model'))
-    resume=(work/'completed-model.json').exists() or (
-        (work/'model-intent.json').exists() and (Path(model['output'])/'manifest.json').exists())
     return dict(spec,work=str(work),_model=model,_daily=dict(spec['_daily'],work=str(root/'archive-daily')),
-                _nightly=True,resume=resume)
+                _nightly=True)
 
 
 def _metadata_pin(value,base):
@@ -238,13 +201,11 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value['reason'],str) or not value['reason'].strip():
             raise ValueError('Blocked publication job requires exactly its reason')
         return value
-    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance','resume','release_causes','link_history','first_release','producers','automatic_causes'}:raise ValueError('Publication job has unknown fields')
+    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance','release_causes','link_history','first_release','producers','automatic_causes'}:raise ValueError('Publication job has unknown fields')
     if not FIELDS<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Publication job requires version 1 and all explicit inputs')
     base=path.parent
     result=dict(value)
-    if type(value.get('resume',False)) is not bool:raise ValueError('Publication resume must be boolean')
-    if value.get('resume') and 'daily' in value:raise ValueError('Daily publication resume requires the scheduled candidate directory')
     kind=value.get('model_kind','raw')
     if kind!='raw':raise ValueError('Unknown publication model_kind')
     result['model_kind']=kind
@@ -414,158 +375,16 @@ def require_end_to_end(runner=None):
         raise ValueError('Publication requires the end-to-end gate (DOCSPEC_JOB_CONFIG local-only)') from error
 
 
-def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None,end_to_end_runner=None):
-    """Refuse local problems, qualify a remote runtime, then connect the SDK."""
-    spec['_model_identity'].require(spec['model_spec']['path'])
-    acceptance=None
-    if 'comparison_acceptance' in spec:
-        selected=spec['comparison_acceptance']
-        acceptance=ComparisonAcceptance(selected['receipt'],expected_mapping_digest=selected['mapping_digest'],
-            capture_pin={k:v for k,v in spec['_model']['captures'].items() if k!='kind'})
-        require_comparison(acceptance,captures=spec['_model']['captures'])
-    targets,target_identity=_read_metadata(spec['targets'])
-    # The site owns profile, median and run validation. Execute its fixed local
-    # metadata command once, before constructing a runtime or SDK client.
-    target_identity.require(spec['targets']['path'])
-    try:
-        checked=subprocess.run(['npm','run','--silent','targets:archive','--','--check',spec['targets']['path'],
-            '--origin-kind','model','--display-only','false'],
-            cwd=SITE,check=True,capture_output=True,text=True,timeout=30)
-        if len(checked.stdout.encode())>METADATA_BYTES:raise ValueError('Target validator output exceeds the metadata allowance')
-        target_metadata=json.loads(checked.stdout)
-    except (subprocess.SubprocessError,ValueError) as error:
-        raise ValueError('Publication requires valid measured site targets (owner-approved or candidate-bound provisional-emulated) or a recorded owner deferral') from error
-    target_identity.require(spec['targets']['path'])
-    deferred=targets.get('status')=='deferred'
-    if (not isinstance(target_metadata,dict)
-            or set(target_metadata)!={'status','basis','measured_release_id'}|({'deferral'} if deferred else set())
-            or target_metadata['status']!=targets.get('status') or target_metadata['basis']!=targets.get('basis')):
-        raise ValueError('Shared targets validation differs from the pinned metadata')
-    if deferred:
-        deferral=target_metadata['deferral']
-        if (not isinstance(deferral,dict) or deferral.get('timing')!='unverified'
-                or any(deferral.get(name)!=targets.get(name) for name in ('decided_on','decided_by','reason','restores_gate'))):
-            raise ValueError('Shared targets validation differs from the pinned metadata')
-        # A deferred speed gate is recorded with the release, never skipped silently.
-        site_targets=dict(status='deferred',**deferral)
-        print(f"Site speed targets are deferred (owner decision {deferral['decided_on']}; restored by {deferral['restores_gate']}): "
-              'timing is unverified for this release.',file=sys.stderr)
-    else:
-        site_targets=dict(status=target_metadata['status'],basis=target_metadata['basis'],
-            measured_release_id=target_metadata['measured_release_id'],timing='verified')
-    measured_release_id=target_metadata['measured_release_id']
-    expected_release_id=spec['run'].get('expected_release_id')
-    if (expected_release_id is not None and measured_release_id is not None
-            and expected_release_id!=measured_release_id):
-        raise ValueError('Measured site targets differ from the approved release')
-    measured_release_id=expected_release_id or measured_release_id
-    for name in ['work']:
-        path=Path(spec[name])
-        if (path.exists() or path.is_symlink()) and not spec.get('resume',False):raise ValueError('Publication work must be fresh')
-    for name in ['output','scratch']:
-        path=Path(spec['_model'][name])
-        if (path.exists() or path.is_symlink()) and not spec.get('resume',False):raise ValueError('Model output and scratch must be fresh')
-    if '_daily' in spec:
-        spec['_daily_identity'].require(spec['daily']['path'])
-        path=Path(spec['_daily']['work'])
-        if not spec.get('resume') and any(p.exists() or p.is_symlink() for p in [path,path.with_name(path.name+'-provenance')]):
-            raise ValueError('Daily production work and provenance cache must be fresh')
-    if not Path(spec['site_dist']).is_dir():raise ValueError('Publication site_dist must already exist; build the site first')
-    from docspec_client.client import NativeDatasets
-    from congress_shared.storage import connect_r2
-    from viewer_publication.archive_controller import run_publish,_publication_directory
-    runtime_factory=runtime_factory or NativeDatasets.from_config
-    storage_factory=storage_factory or connect_r2
-    process_runner=process_runner or subprocess.run
-    engine_config=spec['_model']['engine_config']
-    if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
-        engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
-    settings,remote,endpoint,configuration_pins=publication_configuration(engine_config,bucket=spec['bucket'])
-    require_end_to_end(end_to_end_runner)
-    def require_configuration():
-        for path,identity in configuration_pins:identity.require(path)
-        require_comparison(acceptance)
-    parent=_publication_directory(Path(spec['work']).parent,fresh=False)
-    with TemporaryDirectory(prefix='.'+Path(spec['work']).name+'-startup-',dir=parent) as directory:
-        directory=Path(directory)
-        upload_remote=directory/'remote.json';upload_settings=directory/'runtime.json'
-        upload_remote.write_text(json.dumps(dict(remote,owned_prefix='s3://'+spec['bucket']+'/viewer-publications')))
-        upload_settings.write_text(json.dumps(dict(settings,remote=str(upload_remote),workspace=str(directory/'workspace'))))
-        with runtime_factory(engine_config) as model, runtime_factory(upload_settings) as uploads:
-            if (Path(model.remote).resolve()!=Path(settings['remote']) or Path(uploads.remote).resolve()!=upload_remote):
-                raise ValueError('Publication destination differs from the loaded runtime')
-            engine=PublicationRuntime(model,uploads)
-            engine.verify_runtime();require_configuration()
-            spec['_model_identity'].require(spec['model_spec']['path'])
-            target_identity.require(spec['targets']['path'])
-            client=storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1})
-            selected_model=spec['_model'];keys=spec['receipt_keys'];provenance=spec['provenance'];verified=None;daily=None
-            from congress_api.lake.producer_records import ProducerRecords
-            anchors={}
-            for name,pin in spec.get('producers',{}).items():
-                identity=_verify_metadata(pin);anchors[name]=Path(pin['path']).read_bytes();identity.require(pin['path'])
-            ledger=ProducerRecords(anchors,client=client,bucket=spec['bucket'])
-            if '_daily' in spec:
-                from congress_api.retention.body_store import BodyStore,R2Adapter
-                from congress_api.retention.r2 import configure_read_retries
-                spec['_daily_identity'].require(spec['daily']['path'])
-                # Body reads get their own client: a transient R2 server error on one of thousands of
-                # GETs retries, while this job's writes keep their single attempt.
-                reads=configure_read_retries(storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1}))
-                raw_store=BodyStore(R2Adapter(reads,spec['bucket']))
-                if spec.get('resume'):
-                    daily=_resume_daily_inputs(selected_model,spec['_daily'],publish_work=Path(spec['work']))
-                else:
-                    retention={'retain':True} if spec.get('_nightly') else {}
-                    daily=produce_daily_inputs(selected_model,spec['_daily'],engine=model,
-                        raw_store=raw_store,producer_records=ledger,**retention)
-                spec['_daily_identity'].require(spec['daily']['path'])
-                spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
-                if daily['status']!='ready':return daily
-                selected_model=daily['model'];keys=daily['receipt_keys'];provenance=daily['provenance'];verified=daily['verified_files']
-            # Gate 5: every pinned derived row names a current or compatible producer, before any build.
-            from viewer_publication.producer_proof import find_records,require_producers
-            proof_work=(parent/'producer-proof'/uuid4().hex if spec.get('_nightly') else directory/'producer-proof')
-            require_producers(selected_model,engine=model,work=proof_work,
-                records=find_records(selected_model,ledger,anchors),ledger=ledger)
-            def probe(name,context):
-                target_identity.require(spec['targets']['path']);require_configuration()
-                probe_spec=spec
-                if spec.get('resume',False):
-                    probe_work=Path(spec['work'])/('probe-'+uuid4().hex)
-                    probe_work.mkdir()
-                    probe_spec=dict(spec,work=str(probe_work))
-                release_files=Path(probe_spec['work'])/'contract-files.json'
-                if name=='contract':
-                    from viewer_publication.archive_format import _content_data,_retain_controls
-                    _retain_controls(release_files.parent,{release_files.name:_content_data(
-                        {key:str(path) for key,path in context['release'].items()})})
-                commands=probe_commands(probe_spec,release_files=release_files,
-                    release_id=context['release_id'],probe_selectors=context.get('probe_selectors'))
-                process_runner(commands[name],cwd=SITE,check=True,timeout=180)
-                receipt_path=Path(probe_spec['work'])/(name+'.json')
-                if receipt_path.stat().st_size>METADATA_BYTES:raise ValueError('Site probe receipt exceeds the metadata allowance')
-                receipt=json.loads(receipt_path.read_text())
-                target_identity.require(spec['targets']['path']);require_configuration()
-                return receipt
-            options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=dict(spec['run'],site_targets=site_targets),
-                public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
-                canary=lambda **context:probe('canary',context))
-            if spec.get('_nightly'):
-                options['daily_summary_sha256']=daily['daily_summary_sha256']
-                if spec.get('resume'):
-                    options['check_current_daily']=lambda:_require_current_daily(
-                        spec['_daily'],daily,engine=model,raw_store=raw_store,work=directory/'resume-daily')
-            causes=None
-            if 'release_causes' in spec:
-                from viewer_publication.release_gate import load_causes
-                causes=load_causes(spec['release_causes'])
-            result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
-                measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=spec.get('resume',False),
-                release_causes=causes,link_history=spec.get('link_history',[]),
-                first_release=spec.get('first_release',False),automatic_causes=spec.get('automatic_causes',False),**options)
-            spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
-            return dict(result,daily=daily['daily']) if daily is not None else result
+def execute(spec):
+    """Refuse activation until the native owner can bind its original authority.
+
+    Model preparation and exact-request recovery use archive_model_job. External
+    delivery retains archive_publish's conditional writer and asset recovery;
+    this entry cannot activate them without a native frozen publication intent.
+    """
+    raise ValueError('External publication is unavailable: the shared native runtime has no '
+                     'qualified frozen publication intent for the accepted result, exact release '
+                     'inventory, destination and expected publisher token')
 
 
 def main(argv=None):
@@ -576,7 +395,6 @@ def main(argv=None):
     args=parser.parse_args(argv)
     if args.nightly_work is not None and not args.execute:
         parser.error('--nightly-work requires --execute')
-    from viewer_publication.archive_controller import PublicationInputsChanged,_save_continuation
     try:
         spec=load_spec(args.spec)
         if spec.get('status')=='blocked':print(json.dumps(spec,sort_keys=True));return 2
@@ -585,11 +403,6 @@ def main(argv=None):
             model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
             targets=spec['targets'],site_dist=spec['site_dist'])
         if not args.execute and 'daily' in spec:result['daily']=spec['daily']
-    except PublicationInputsChanged as error:
-        if args.nightly_work is None or not spec.get('resume'):parser.error(str(error))
-        _save_continuation(args.nightly_work/'inputs-changed.json',dict(reason=str(error)))
-        print(str(error),file=sys.stderr)
-        return 2
     except (ValueError,OSError,subprocess.SubprocessError) as error:parser.error(str(error))
     daily=result.get('daily') if args.execute else None
     stopped=isinstance(daily,dict) and daily.get('status')!='completed'

@@ -4,6 +4,7 @@ from io import BytesIO
 from congress_shared.custody import write_atomic_bytes
 
 from viewer_publication.archive_model_lifetimes import retire_relations
+from viewer_publication.archive_catalog import CORE_RELATIONS, release_output_sql
 import json
 from pathlib import Path
 import re
@@ -12,6 +13,15 @@ import re
 ROOT = Path(__file__).parents[4]
 CATALOG_ARTIFACT = re.compile(r'catalog\.(?:ddk|report|lock)\.json|discovery\.dcat\.json'
                               r'|queries/[a-f0-9]{64}\.sql|lineage/[0-9]{4}\.openlineage\.json')
+
+
+class NativeReleaseNotReady(RuntimeError):
+    """A native observation that cannot yet produce a selected release."""
+
+    def __init__(self, phase, response):
+        self.response = response
+        super().__init__(f'Native release {phase} is not complete: '
+                         f'{response.get("error") or response.get("result", {}).get("status")}')
 
 
 def archive_asset_name(name):
@@ -155,17 +165,6 @@ def _settings(profile, order, *, columns=None, dictionary=(), delta=(), footer_l
         key_column=order[0] if profile == 'lookup' else None, created_by='docspec archive release v1', footer_limit=footer_limit)
 
 
-# The one map from core release file to the native relation that writes it.
-# Write-time checks (archive_schema.publication_checks) read the same relations.
-CORE_RELATIONS = {'list': 'ordered', 'detail': 'details', 'links': 'links', 'urls': 'url_keys',
-    'sources': 'source_rows', 'recoveries': 'recovery_rows'}
-
-
-def release_output_sql(name):
-    """The public writer selects every row; export settings select its fields."""
-    return 'SELECT * FROM ' + CORE_RELATIONS.get(name, name + '_export')
-
-
 def _core(steps, output,*,lookup_extra=None):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
     detail_inputs = ','.join('o.'+name for name in dict.fromkeys([*order,*LIST_COLUMNS,'list_row',
@@ -251,14 +250,11 @@ def _retain_controls(output, controls):
 def _catalog_artifacts(result):
     """Snapshot an admitted public DDK output set; never recheck definitions here.
 
-    A durable caller must retain this exact byte set beside schema, diagnostics,
-    extra_outputs, origin, capture_scope, content_files and entity_digests as
-    inputs to finalization. A resumed caller
+    A durable caller must retain this exact byte set beside origin, capture_scope,
+    content_files and entity_digests as inputs to finalization. A resumed caller
     supplies those retained values, rather than assembling current definitions.
     """
-    if result is None:
-        return {}
-    if result.report['decision'] != 'passed' or not result.artifacts:
+    if result is None or result.report['decision'] != 'passed' or not result.artifacts:
         raise ValueError('DDK catalog checking must pass before release finalization')
     if result.catalog is None or result.catalog['audience'] != 'public':
         raise ValueError('Archive finalization requires an admitted public DDK catalog')
@@ -278,11 +274,6 @@ def release_identity(schema_version,files):
     """Hash the one content-only ordered file list declared by DM8.3."""
     identity=[schema_version,[[item['name'],item['sha256'],item['size'],item['rows']] for item in files]]
     return sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode()).hexdigest()
-
-
-def _release_schema(available=None, entity_digests=None):
-    from viewer_publication.archive_schema import build_schema
-    return build_schema(available, entity_digests=entity_digests)
 
 
 NORMAL_DEFAULTS = dict(body_expected='true', title='cast(NULL AS VARCHAR)', document_kind=EMPTY_STRINGS,
@@ -314,15 +305,14 @@ SPICY_PRODUCER_FAMILIES = {
 }
 
 
-def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary, capture_scope=None,
+def native_release_job(inputs, steps, *, catalog_result, output, scratch, origin, auxiliary, capture_scope=None,
                        extra_outputs=(), diagnostics=(), metadata_queries=(),
                        content_files=None, lookup_extra=None, entity_digests=None):
     """Construct the shared native JobSpec without opening inputs or executing it.
 
-    Return the unchanged native job shape, its public schema and its blocking
-    diagnostic definitions. The existing executor uses this construction; a
-    retained executor can consume it with native lifecycle/selection in DocSpec.
-    Only small schema definitions are read. Caller relations remain reusable.
+    Return the native job and blocking diagnostic definitions. DDK owns dataset
+    declarations; DocSpec owns physical schemas, execution and acceptance.
+    Caller relations remain reusable.
     ``capture_scope`` is accepted at the shared model boundary; its JSON control
     file belongs to finalization and adds no separate native job operation.
     """
@@ -335,12 +325,9 @@ def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary, cap
         steps.append(_step(name + '_export', sql, materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql=release_output_sql(name),
             settings=_settings('whole', keys, dictionary=dictionary)))
-    schema = _release_schema([item['name'] for item in outputs], entity_digests)
-    if (content_files or {}).get('capture_profile.json',{}).get('version')==2:
-        fields=json.loads((ROOT/'model/registries/capture-eligibility-fields.json').read_text())
-        next(item for item in schema['files'] if item['name']=='url_state.parquet')['columns'].extend(fields)
-    from viewer_publication.archive_schema import publication_checks
-    diagnostics = [*diagnostics, *publication_checks(schema, aux_names, published=[item['name'] for item in outputs])]
+    from viewer_publication.archive_catalog import publication_checks
+    checks, _bindings = publication_checks(catalog_result, aux_names, published=[item['name'] for item in outputs])
+    diagnostics = [*diagnostics, *checks]
     outputs.extend(extra_outputs)
     facets = [f"SELECT '{name}' AS facet,cast({name} AS VARCHAR) AS value,count(*) AS count FROM ordered WHERE NOT hidden GROUP BY {name}" for name in ['format', 'congress', 'saved_kind']]
     facets += [f"SELECT '{name}' AS facet,value,count(*) AS count FROM (SELECT unnest({name}) AS value FROM ordered WHERE NOT hidden) GROUP BY value" for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys']]
@@ -410,48 +397,209 @@ def native_release_job(inputs, steps, *, output, scratch, origin, auxiliary, cap
         sum(CASE WHEN document_date_status='suspect' THEN 1 ELSE 0 END) AS suspect,
         sum(CASE WHEN document_date IS NULL THEN 1 ELSE 0 END) AS undated FROM ordered"""))
     spec = retire_relations(dict(scratch=str(scratch / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=queries))
-    return spec, schema, diagnostics
+    return spec, diagnostics
 
 
-def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None):
-    output.mkdir(parents=True, exist_ok=False)
-    spec, schema, diagnostics = native_release_job(inputs, steps, output=output, scratch=scratch,
-        origin=origin, auxiliary=auxiliary, extra_outputs=extra_outputs, diagnostics=diagnostics,
-        metadata_queries=metadata_queries, content_files=content_files, lookup_extra=lookup_extra,
-        entity_digests=entity_digests)
-    spec_path = scratch / 'job.json'
-    spec_path.write_text(json.dumps(spec, ensure_ascii=False, separators=(',', ':')))
-    from docspec_client.models import DocSpecFailure
-    try:
-        result = engine.run_job(spec_path)
-    except DocSpecFailure as error:
-        if error.completed is not None:
-            (scratch / 'result.json').write_text(error.stdout)
-        raise
-    write_atomic_bytes(scratch/'result.json',json.dumps(result,ensure_ascii=False,separators=(',',':')).encode(),fsync_dir=True)
-    return finalize_native_release(result, schema, diagnostics, output=output, origin=origin,
-        capture_scope=capture_scope, extra_outputs=extra_outputs, content_files=content_files,
-        entity_digests=entity_digests)
+def _request_artifact(directory, name, value):
+    """Write one immutable, small input with its ordinary artifact identity."""
+    data = _content_data(value)
+    _retain_controls(directory, {name: data})
+    return dict(path=str(directory/name), sha256=sha256(data).hexdigest())
 
 
-def finalize_native_release(result, schema, diagnostics, *, output, origin, capture_scope,
-                            extra_outputs, content_files, entity_digests, catalog_result=None):
-    """Finalize retained native outputs using only the exact prepared controls.
+def _controls_directory(path, native_roots=()):
+    """Resolve ownership boundaries before any control write or selection."""
+    path = Path(path).absolute()
+    if any(parent.is_symlink() for parent in (path, *path.parents)):
+        raise ValueError('Release controls cannot use a symlink path')
+    path = path.resolve()
+    for root in native_roots:
+        root = Path(root).resolve()
+        if path.is_relative_to(root) or root.is_relative_to(path):
+            raise ValueError('Release controls must be separate from retained native artifacts')
+    return path
 
-    The maintained execution owner prepares definitions and companions, runs the
-    candidate, binds its required quality evidence, then supplies the qualified
-    public catalog here. Retain schema, diagnostics, extra_outputs, origin, capture_scope, content_files
-    (including capture_profile), entity_digests and the artifact bytes with the
-    execution inputs. Resumption must not reload current definitions or controls.
-    This function owns no runtime controller, journal or qualification evaluator.
+
+def native_input_declarations(inputs, *, directory, native_schemas=None, file_pins=None):
+    """Bind local bytes and declared physical schemas without converting native inputs.
+
+    Existing file pins are reused by exact path; native admission checks those
+    bytes. Native table schemas are declarations, never snapshot custody proof.
     """
-    if 'error' in result:
-        raise ValueError('A failed native result cannot finalize a release')
+    from base64 import b64encode
+    from hashlib import file_digest
+    from os import fstat
+    import pyarrow.parquet as pq
+
+    native_schemas = native_schemas or {}
+    pins = dict(file_pins or {})
+    files, schemas = [], []
+    for index, item in enumerate(inputs):
+        name, kind = item['name'], item['kind']
+        if kind == 'native_table':
+            schema = native_schemas[name]
+            pin = _request_artifact(directory, f'input-schema-{index}.json', schema)
+            schemas.append(dict(name=name, schema_artifact=dict(pin, format='iceberg_schema_json')))
+            continue
+        if kind == 'parquet':
+            raw = pq.read_schema(item['path']).serialize().to_pybytes()
+            schemas.append(dict(name=name, schema_ipc_base64=b64encode(raw).decode()))
+            members = [dict(key=None, path=item['path'])]
+        elif kind == 'json_lines':
+            pin = _request_artifact(directory, f'input-schema-{index}.json', item['schema'])
+            schemas.append(dict(name=name, schema_artifact=dict(pin, format='arrow_serde_json')))
+            members = item['files']
+        else:
+            raise ValueError('Unsupported release input kind: ' + kind)
+        bound = []
+        for member in members:
+            path = Path(member['path']).resolve(strict=True)
+            key = str(path)
+            if key not in pins:
+                with path.open('rb') as stream:
+                    pins[key] = dict(size=fstat(stream.fileno()).st_size,
+                                     sha256=file_digest(stream, 'sha256').hexdigest())
+            bound.append(dict(key=member['key'], **{field: pins[key][field] for field in ('sha256', 'size')}))
+        files.append(dict(name=name, members=bound))
+    return files, schemas
+
+
+def prepare_native_release(job, diagnostics, *, adapter, project, catalog_result,
+                           request_dir, workspace, dataset, operation, policy_id,
+                           file_inputs, input_schemas, prerequisites, expected_epoch, expected_selection,
+                           controls_dir, private_outputs, origin, capture_scope,
+                           content_files, entity_digests):
+    """Capture a native request and publication inputs, without executing data.
+
+    The caller supplies exact file custody and native schema declarations.
+    DocSpec infers the complete job; its report schemas bind the blocking policy.
+    The returned artifact is the restart input. There is no application phase
+    state, phase key, selection pointer or retry loop.
+    """
+    from ddk.catalog_managed_jobs import managed_job_definition
+    from ddk.catalog_native_rules import native_rule_artifact
+    from viewer_publication.archive_catalog import captured_catalog_options, native_catalog_mapping
+    from viewer_publication.archive_model_profile import native_report_policy
+
+    if not isinstance(prerequisites, list):
+        raise ValueError('Native preparation requires an explicit prerequisite inventory')
+    directory = Path(request_dir).resolve(strict=True)
+    project = Path(project).resolve(strict=True)
+    workspace = Path(workspace).resolve(strict=True)
+    controls_dir = _controls_directory(controls_dir, (workspace,))
+    if not project.is_relative_to(directory):
+        raise ValueError('Captured release definitions must live beside their request')
+    options = captured_catalog_options(project)
+    mapping = native_catalog_mapping(catalog_result, job, private_outputs=private_outputs)
+    job_pin = _request_artifact(directory, 'job.json', job)
+    response = adapter.prepare_job(dict(job=job_pin, inputs=input_schemas))
+    if response['status'] != 'succeeded':
+        raise NativeReleaseNotReady('schema preparation', response)
+    job_bytes = Path(job_pin['path']).read_bytes()
+    rules = native_rule_artifact(catalog_result, job_bytes,
+        native_rule_profile=options['native_rule_profile'], **mapping)
+    rules_pin = _request_artifact(directory, 'native-rules.json', rules)
+    definition = managed_job_definition(catalog_result, native_rules=rules_pin,
+        native_rule_profile=options['native_rule_profile'], **mapping)
+    policy = native_report_policy(job_bytes, diagnostics, response['result'], policy_id=policy_id)
+    policy_pin = _request_artifact(directory, 'policy.json', policy)
+    request = dict(action='prepare', dataset=dataset, operation=operation, definition=definition,
+        job=job_pin, file_inputs=file_inputs, policy_id=policy_id, policy=policy_pin,
+        prerequisites=prerequisites,
+        expected_epoch=expected_epoch, expected_selection=expected_selection)
+    return _request_artifact(directory, 'release-request.json', dict(
+        native=request, workspace=str(workspace),
+        project=str(project), mapping=mapping, native_rules=rules_pin,
+        controls_dir=str(controls_dir), origin=origin,
+        capture_scope=capture_scope, content_files=content_files, entity_digests=entity_digests))
+
+
+def execute_native_release(prepared, *, adapter):
+    """Execute or resume the exact request through the maintained native owner.
+
+    Keep the first accepted receipt as the catalog's immutable metadata input.
+    Later native observations never replace that observation's timestamp or
+    identity. Selection follows successful DDK schema and rule qualification.
+    """
+    from ddk.catalog import assemble_catalog
+    from ddk.catalog_managed_jobs import managed_job_metadata
+    from ddk.docspec_job_evidence import verify_completed_job
+    from viewer_publication.archive_catalog import captured_catalog_options
+
+    path = Path(prepared['path']).resolve(strict=True)
+    raw = path.read_bytes()
+    if sha256(raw).hexdigest() != prepared['sha256']:
+        raise ValueError('Prepared release input differs from its original artifact identity')
+    saved = json.loads(raw)
+    request, workspace = saved['native'], saved['workspace']
+    if saved.get('origin', {}).get('kind') == 'model':
+        from viewer_publication.archive_model import require_model_prerequisites
+        require_model_prerequisites(request.get('prerequisites'))
+    _controls_directory(saved['controls_dir'], (workspace,))
+    project = Path(saved['project'])
+    options = captured_catalog_options(project)
+    options['permitted_roots'].append(path.parent)
+    # Requalification keeps the original rules beside the original request.
+    # Admit that one pinned file, without granting access to its whole directory.
+    options['permitted_roots'].append(Path(saved['native_rules']['path']))
+    response = adapter.managed_job(workspace, request)
+    if response['status'] != 'succeeded' or response['result']['status'] != 'completed':
+        raise NativeReleaseNotReady('preparation', response)
+    verify_completed_job(response['result'])
+    native = response['result']
+    action = dict(dataset=native['dataset'], operation=native['operation'],
+        request_digest=native['request_digest'], candidate=native['candidate'], policy_id=request['policy_id'])
+    accepted = adapter.managed_job(workspace, dict(action='accept', **action), prior=response)
+    if accepted['status'] != 'succeeded':
+        raise NativeReleaseNotReady('acceptance', accepted)
+    evidence = verify_completed_job(accepted['result'], require_accepted=True)
+    metadata_path = path.parent/'catalog-metadata.json'
+    if not metadata_path.exists():
+        # Copy only this bounded metadata record, preserving every original byte.
+        # Native payloads and their completion records remain with DocSpec.
+        receipt_path = path.parent/'native-accepted.json'
+        if not receipt_path.exists():
+            receipt_bytes = Path(accepted['evidence']['path']).read_bytes()
+            if sha256(receipt_bytes).hexdigest() != accepted['evidence']['sha256']:
+                raise ValueError('Accepted receipt changed before it could be retained')
+            _retain_controls(path.parent, {receipt_path.name: receipt_bytes})
+        receipt = dict(path=str(receipt_path), sha256=sha256(receipt_path.read_bytes()).hexdigest())
+        metadata = managed_job_metadata(receipt=receipt, native_rules=saved['native_rules'], **saved['mapping'])
+        _request_artifact(path.parent, metadata_path.name, metadata)
+    catalog = assemble_catalog(project, metadata=metadata_path, metadata_adapter='local',
+        disclosure_policy=project.parent/'public-disclosure.json', exports=('dcat',), **options)
+    # Finalization also joins exact membership and acceptance to this same result.
+    from viewer_publication.archive_catalog import accepted_output_definitions
+    accepted_output_definitions(evidence, catalog)
+    _catalog_artifacts(catalog)
+    release = finalize_native_release(evidence, catalog, **{key: saved[key] for key in (
+        'controls_dir', 'origin', 'capture_scope', 'content_files', 'entity_digests')})
+    selected = adapter.managed_job(workspace, dict(action='select',
+        accepted_qualification=evidence.accepted['identity'], **action), prior=accepted)
+    if selected['status'] != 'succeeded' or selected['result']['selection'] != 'selected':
+        raise NativeReleaseNotReady('selection', selected)
+    evidence = verify_completed_job(selected['result'], require_accepted=True)
+    accepted_output_definitions(evidence, catalog)
+    return release
+
+
+def finalize_native_release(evidence, catalog_result, *, controls_dir, origin, capture_scope,
+                            content_files, entity_digests):
+    """Finalize one accepted native candidate without reading or copying data.
+
+    DDK has already bound the captured definitions and native schema/counter
+    evidence. The native JobResult supplies reports and export identities;
+    its exact retained paths stay with the native owner. Only application
+    controls are written here. Return the manifest and its complete file map.
+    """
+    from viewer_publication.archive_catalog import accepted_output_definitions, coverage_limits
+
+    definitions = accepted_output_definitions(evidence, catalog_result)
     catalog_artifacts = _catalog_artifacts(catalog_result)
+    result = evidence.manifest['result']
     reports = {query['name']: query['data'] for query in result['queries']}
-    if any(reports['invariants'][0].values()) or any(any(row.values()) for query in diagnostics for row in reports[query['name']]):
-        raise ValueError('Release key invariant failed; native results retained in scratch')
-    schema_files = {item['name']: item for item in schema['files']}
+    native_paths = {entry['name']: Path(entry['path']) for entry in evidence.manifest['outputs']}
+    controls_dir = _controls_directory(controls_dir, (path.parent for path in native_paths.values()))
     coverage = {row['file']: {key: value for key, value in row.items() if key != 'file'} for row in reports['coverage']}
     document_dates = {key: int(value or 0) for key, value in reports['document_dates'][0].items()}
     for name in ('list.parquet', 'detail.parquet'):
@@ -459,10 +607,9 @@ def finalize_native_release(result, schema, diagnostics, *, output, origin, capt
             coverage[name]['document_dates'] = document_dates
     files = []
     for entry in result['outputs']:
-        if entry['name'] in {item['name'] for item in extra_outputs}:
+        if entry['name'] not in definitions:
             continue
-        meta = schema_files.get(entry['name'], {})
-        file_gaps = list(meta.get('gaps') or origin['gaps'])
+        file_gaps = coverage_limits(definitions[entry['name']]) or list(origin['gaps'])
         producer = 'spicy-regs' if (entity_digests is not None and entry['name'] in SPICY_PRODUCER_FAMILIES) else 'archive'
         extra_meta = {}
         if producer == 'spicy-regs':
@@ -471,27 +618,24 @@ def finalize_native_release(result, schema, diagnostics, *, output, origin, capt
                 for family in SPICY_PRODUCER_FAMILIES[entry['name']]
                 if family in entity_digests
             }
-        files.append(dict(entry, row_range=None, shard=None, producer=producer, **extra_meta,
+        exported = {key: value for key, value in entry.items() if key != 'footer_bytes'}
+        files.append(dict(exported, row_range=None, shard=None, producer=producer, **extra_meta,
             coverage=dict(coverage.get(entry['name'], dict(congress_start=None, congress_end=None, date_start=None, date_end=None)), gaps=file_gaps)))
-    for entry in files:
-        entry.pop('footer_bytes', None)
-    from viewer_publication.archive_schema import validate_parquet_fields
-    validate_parquet_fields(schema, [output / f['name'] for f in files])
-    controls = {'schema.json': _content_data(schema),
-                'capture_scope.json': _content_data(dict(version=1, entries=[]) if capture_scope is None else capture_scope)}
-    for name,value in (content_files or {}).items():
-        if name == 'manifest.json' or name in controls:
-            raise ValueError('Release control collides with a prepared control')
+    controls = {'capture_scope.json': _content_data(dict(version=1, entries=[]) if capture_scope is None else capture_scope)}
+    for name, value in (content_files or {}).items():
+        if name in {'manifest.json', 'schema.json'} or name in controls:
+            raise ValueError('Release control collides with a prepared control or uses retired schema metadata')
         controls[name] = _content_data(value)
     occupied = {item['name'] for item in files}
     if (occupied & (controls.keys() | catalog_artifacts.keys())
             or controls.keys() & catalog_artifacts.keys()):
         raise ValueError('DDK artifact collides with a release file')
-    for name, data in sorted(catalog_artifacts.items()):
-        controls[name] = data
+    controls.update(sorted(catalog_artifacts.items()))
     files.extend(_content_record(name, data) for name, data in controls.items())
-    release_id = release_identity(1,files)
-    manifest = dict(schema_version=1, files=files, facet_counts=reports['facets'], release_id=release_id, origin=origin)
+    manifest = dict(schema_version=1, files=files, facet_counts=reports['facets'],
+                    release_id=release_identity(1, files), origin=origin)
     controls['manifest.json'] = _content_data(manifest)
-    _retain_controls(output, controls)
-    return manifest
+    controls_dir.mkdir(parents=True, exist_ok=True)
+    _retain_controls(controls_dir, controls)
+    return manifest, {**{name: native_paths[name] for name in definitions},
+                      **{name: controls_dir/name for name in controls}}

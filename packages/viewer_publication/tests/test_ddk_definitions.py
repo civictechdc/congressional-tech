@@ -534,7 +534,7 @@ def edit_json(path, change):
 
 
 def frozen_metadata():
-    data = (ROOT / 'model/registries/release-schema.json').read_bytes()
+    data = (ROOT / 'model/fixtures/release-schema-baseline.json').read_bytes()
     assert sha256(data).hexdigest() == BASELINE['registry_sha256']
     return json.loads(data)
 

@@ -41,7 +41,9 @@
     "urn:congressional-tech:archive:match:decimal_string_to_integer",
     "urn:congressional-tech:archive:match:identifier",
     "urn:congressional-tech:archive:match:shared_list_value",
+    "urn:congressional-tech:archive:native-publication-checks",
     "urn:congressional-tech:archive:product",
+    "urn:congressional-tech:archive:production:model",
     "urn:congressional-tech:archive:project",
     "urn:congressional-tech:archive:recipe:bill_documents",
     "urn:congressional-tech:archive:recipe:bill_hearing_transcripts",
@@ -132,6 +134,7 @@
     "urn:congressional-tech:archive:relationship:witness_transcript_documents"
   ],
   "aliases": [
+    "archive-model",
     "archive-product",
     "bills",
     "channels",

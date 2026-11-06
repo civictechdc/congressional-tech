@@ -80,9 +80,11 @@ def select_slice(db, inputs, live, probes, work, readings=None):
 
 
 def measure(db, release, live, work):
-    db.execute(f"CREATE OR REPLACE VIEW nl AS SELECT row_number() OVER () - 1 AS list_row, * FROM read_parquet('{release}/list.parquet')")
-    db.execute(f"CREATE OR REPLACE VIEW nd AS SELECT row_number() OVER () - 1 AS list_row, * FROM read_parquet('{release}/detail.parquet')")
-    db.execute(f"CREATE OR REPLACE VIEW ns AS SELECT * FROM read_parquet('{release}/sources.parquet')")
+    db.from_parquet(str(release['list.parquet'])).create_view('nl_rows')
+    db.from_parquet(str(release['detail.parquet'])).create_view('nd_rows')
+    db.from_parquet(str(release['sources.parquet'])).create_view('ns')
+    db.execute('CREATE OR REPLACE VIEW nl AS SELECT row_number() OVER () - 1 AS list_row, * FROM nl_rows')
+    db.execute('CREATE OR REPLACE VIEW nd AS SELECT row_number() OVER () - 1 AS list_row, * FROM nd_rows')
     db.execute(f"""CREATE OR REPLACE TABLE pairs AS SELECT DISTINCT event_id, t.package_id
         FROM read_parquet('{live}/meetings.parquet'), unnest(transcripts) u(t) WHERE t.package_id IS NOT NULL""")
     words = ','.join(f"'{w}'" for w in LINK_WORDS)
@@ -107,13 +109,17 @@ def main(argv=None):
     import os
     from docspec_client.client import NativeDatasets
     from congress_api.lake import filenames
-    from viewer_publication.archive_model import build_release
+    from viewer_publication.archive_model import build_release, require_model_prerequisites
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for name in ('inputs', 'live', 'probes', 'work'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--readings', type=Path)
     parser.add_argument('--html-version')
+    parser.add_argument('--prerequisites', type=Path, required=True,
+                        help='Original native producer proof inventory for the exact selected slice')
     args = parser.parse_args(argv)
+    prerequisites=json.loads(args.prerequisites.read_text())
+    require_model_prerequisites(prerequisites)
     work = args.work.resolve()
     work.mkdir(parents=True, exist_ok=False)
     with duckdb.connect(config=dict(memory_limit='4GB', threads=4, temp_directory=str(work / 'duckdb'))) as db:
@@ -125,12 +131,15 @@ def main(argv=None):
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=work / 'names',
                                 decided_at='2026-11-02T00:00:00Z')
-        build_release(captures=captures, readings=slice_readings, filename_readings=names['readings'],
+        _manifest,files=build_release(captures=captures, readings=slice_readings, filename_readings=names['readings'],
                       parser_versions={p: versions[p] for p in ('sniff', 'html', 'xml', 'json')},
+                      native_scope=dict(workspace=str(work/'native-workspace'),dataset='archive-measurement',
+                          operation='slice',policy_id='archive-required-v1',expected_epoch=0,expected_selection=None),
+                      prerequisites=prerequisites,
                       catalog_version=names['catalog_version'], engine=engine, output=work / 'release', scratch=work / 'model')
     with duckdb.connect(config=dict(memory_limit='2GB', threads=4)) as db:
         result = dict(slice=counts, parser_versions=versions, catalog_version=names['catalog_version'],
-                      **measure(db, work / 'release', args.live, work))
+                      **measure(db, files, args.live, work))
     (work / 'measure.json').write_text(json.dumps(result, indent=1, default=str) + '\n')
     print(json.dumps(result, indent=1, default=str))
 

@@ -819,23 +819,6 @@
           }
         ],
         "meaning": "native publication key checks; published identifier"
-      },
-      {
-        "dataset": "detail",
-        "kind": "key",
-        "scope": "release",
-        "fields": [
-          {
-            "path": [
-              {
-                "field": "list_row"
-              }
-            ],
-            "virtual": true,
-            "physicalType": "int64"
-          }
-        ],
-        "meaning": "Declared unique physical row position within this exact release; this is not an observed uniqueness result.; release; a recovery-only document's key can move in a later release only as the data model section 8.2 states. list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases."
       }
     ],
     "relationships": [

@@ -125,9 +125,12 @@ def test_profile_hashes_current_definition_files_and_reuses_capture_profile():
     assert public['sql']['url_normalized']['sha256']==hashes['model/sql/url-normalized.sql']
     assert public['sql']['url_keys']['sha256']==hashes['model/sql/url-keys.sql']
     assert 'model/sql/profile-completeness.sql' in hashes
-    assert 'model/registries/release-schema.json' in hashes
+    assert 'model/ddk/archive.odcs.json' in hashes
+    assert 'model/ddk/project.ddk.json' in hashes
+    assert 'model/fixtures/release-schema-baseline.json' not in hashes
     assert 'packages/viewer_publication/src/viewer_publication/archive_format.py' in hashes
-    assert 'packages/viewer_publication/src/viewer_publication/archive_schema.py' in hashes
+    assert 'packages/viewer_publication/src/viewer_publication/archive_catalog.py' in hashes
+    assert 'packages/viewer_publication/src/viewer_publication/archive_relationships.py' in hashes
 
 
 def test_semantic_profile_pins_the_failure_producer_separately_from_leaf_parsers():

@@ -9,6 +9,29 @@ import duckdb
 ROOT = Path(__file__).parents[3]
 
 
+def test_captured_definitions_keep_original_bytes_and_refuse_changed_interpretation(tmp_path):
+    import shutil
+    from ddk.catalog import assemble_catalog
+    from viewer_publication.archive_catalog import capture_definitions, captured_catalog_options
+
+    source_root = tmp_path/'source'
+    shutil.copytree(ROOT/'model/ddk', source_root/'model/ddk')
+    project = capture_definitions(tmp_path/'captured', root=source_root)
+    (source_root/'model/ddk/archive.odcs.json').write_text('{}')
+    options = captured_catalog_options(project)
+    first = assemble_catalog(project, **options)
+    assert first.report['decision'] == 'passed', first.local_report
+    second = assemble_catalog(project, disclosure_policy=project.parent/'public-disclosure.json', **options)
+    assert second.report['decision'] == 'passed', second.local_report
+    assert first.local_catalog['datasets'] == second.local_catalog['datasets']
+    with pytest.raises(FileExistsError):
+        capture_definitions(project.parent)
+    source = project.parent/'implementations/archive_catalog.py'
+    source.write_bytes(source.read_bytes()+b'\n# changed interpretation\n')
+    with pytest.raises(ValueError, match='captured source'):
+        captured_catalog_options(project)
+
+
 @pytest.fixture(scope='module', params=['local', 'public'])
 def admitted_catalog(request, tmp_path_factory):
     from ddk.catalog import assemble_catalog
@@ -207,6 +230,43 @@ def test_profile_reproduces_original_rules_without_execution(captured_rule_job):
     assert _verified_native_rule_records(frozen_context, freeze(job)) == bindings
     reloaded = SimpleNamespace(**json.loads(json.dumps(vars(context), sort_keys=True)))
     assert _verified_native_rule_records(reloaded, json.loads(json.dumps(job, sort_keys=True))) == bindings
+
+
+@pytest.mark.parametrize('defect', [None, 'changed_binding', 'changed_job_bytes', 'changed_pin'])
+def test_maintained_native_rule_capture_binds_exact_saved_metadata(admitted_catalog, captured_rule_job, tmp_path, defect):
+    """Exercise the installed DDK metadata API; no native execution is claimed."""
+    from hashlib import sha256
+    from ddk.catalog_access import CatalogError
+    from ddk.catalog_managed_jobs import managed_job_definition
+    from ddk.catalog_native_rules import native_rule_artifact
+    from viewer_publication.archive_catalog import ArchiveNativeRuleProfileV1
+
+    context, job = captured_rule_job
+    mapping = dict(production=context.production['alias'], inputs=context.inputs, outputs=context.outputs,
+                   out_of_catalog=context.out_of_catalog)
+    profile = ArchiveNativeRuleProfileV1()
+    original = json.dumps(job, sort_keys=True, separators=(',', ':')).encode()
+    artifact = native_rule_artifact(admitted_catalog, original, native_rule_profile=profile, **mapping)
+    assert artifact['job']['sha256'] == sha256(original).hexdigest()
+    assert artifact['bindings'] and all('passed' not in item for item in artifact['bindings'])
+    if defect == 'changed_binding':
+        artifact['bindings'][0]['column'] = 'invented_zero_counter'
+    elif defect == 'changed_job_bytes':
+        artifact['job']['bytes_base64'] = 'e30='
+    raw = json.dumps(artifact, sort_keys=True, separators=(',', ':')).encode()
+    path = tmp_path/'native-rules.json'
+    path.write_bytes(raw)
+    pin = dict(path=str(path), sha256=sha256(raw).hexdigest())
+    if defect == 'changed_pin':
+        pin['sha256'] = '0'*64
+    if defect is not None:
+        with pytest.raises(CatalogError):
+            managed_job_definition(admitted_catalog, native_rules=pin, native_rule_profile=profile, **mapping)
+        return
+    identity = managed_job_definition(admitted_catalog, native_rules=pin, native_rule_profile=profile, **mapping)
+    assert identity != managed_job_definition(admitted_catalog, **mapping)
+    assert managed_job_definition(admitted_catalog, native_rules=json.loads(json.dumps(pin)),
+        native_rule_profile=ArchiveNativeRuleProfileV1(), **mapping) == identity
 
 
 @pytest.mark.parametrize('defect', ['producer_view', 'changed_counter', 'missing_output', 'wrong_projection',

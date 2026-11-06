@@ -1,4 +1,4 @@
-"""F0 uses the native job runner for release rows, joins and file layout."""
+"""Current DDK releases preserve authored rows, joins and native file identity."""
 from hashlib import md5, sha256
 import json
 import os
@@ -22,20 +22,20 @@ def engine():
     return NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
 
 
-def checked_manifest(root, manifest):
-    assert json.loads((root / 'manifest.json').read_text()) == manifest
-    from viewer_publication.archive_schema import build_schema
-    assert json.loads((root / 'schema.json').read_text()) == build_schema([f['name'] for f in manifest['files']])
+def checked_manifest(files, manifest):
+    assert json.loads(files['manifest.json'].read_text()) == manifest
+    assert 'schema.json' not in files
+    assert json.loads(files['catalog.report.json'].read_text())['decision'] == 'passed'
     for item in manifest['files']:
-        data = (root / item['name']).read_bytes()
+        data = files[item['name']].read_bytes()
         assert sha256(data).hexdigest() == item['sha256']
         assert md5(data).hexdigest() == item['md5']
         assert len(data) == item['size']
         if item['name'].endswith('.parquet'):
-            file = pq.ParquetFile(root / item['name'])
+            file = pq.ParquetFile(files[item['name']])
             assert file.metadata.num_rows == item['rows']
             assert file.metadata.created_by == 'docspec archive release v1'
-    assert manifest['origin']['kind'] in {'converted_catalog', 'hand_fixture'}
+    assert manifest['origin']['kind'] == 'hand_fixture'
 
 
 def test_shared_legacy_meeting_selector_keeps_url_variants(engine, tmp_path):
@@ -59,24 +59,19 @@ def test_shared_legacy_meeting_selector_keeps_url_variants(engine, tmp_path):
         ['123'], ['456'], ['789'], ['790'], ['791'], [], [], []]
 
 
-def test_recovery_without_an_import_record_keeps_an_unknown_date(engine, tmp_path):
-    from viewer_publication.archive_fixture import build_fixture_release
+def test_recovery_without_an_import_record_keeps_an_unknown_date(build_native_fixture, tmp_path):
     value=json.loads((ROOT/'model/fixtures/hand-release.json').read_text())
     for document in value['documents']:
         if document.get('recovery'):document['recovery']['imported_at']=None
     fixture=tmp_path/'unknown-recovery-date.json';fixture.write_text(json.dumps(value))
-    output=tmp_path/'release'
-    build_fixture_release(fixture,output=output,scratch=tmp_path/'jobs',engine=engine)
-    recovered=pq.read_table(output/'recoveries.parquet').to_pylist()
+    _manifest, files = build_native_fixture(fixture)
+    recovered=pq.read_table(files['recoveries.parquet']).to_pylist()
     assert len(recovered)==3 and all(row['imported_at'] is None for row in recovered)
-    registry=json.loads((output/'schema.json').read_text())
-    recovery=next(entry for entry in registry['files'] if entry['name']=='recoveries.parquet')
-    imported=next(column for column in recovery['columns'] if column['name']=='imported_at')
-    assert imported['type']=='date32' and imported['nullable'] is True
+    imported = pq.read_schema(files['recoveries.parquet']).field('imported_at')
+    assert imported.type == pa.date32() and imported.nullable
 
 
-def test_suspect_filename_dates_keep_their_reading_and_leave_coverage(engine, tmp_path):
-    from viewer_publication.archive_fixture import build_fixture_release
+def test_suspect_filename_dates_keep_their_reading_and_leave_coverage(build_native_fixture, tmp_path):
     value=json.loads((ROOT/'model/fixtures/hand-release.json').read_text())
     def document(name,date,captured,source,congress):
         return dict(name=name,filename=name+'.pdf',title=name,body_byte=100+len(value['documents']),format='pdf',
@@ -91,9 +86,8 @@ def test_suspect_filename_dates_keep_their_reading_and_leave_coverage(engine, tm
             ('meeting-outside-congress','2001-05-01','2026-01-10','meeting',119)]:
         value['documents'].append(document(*case))
     fixture=tmp_path/'dates.json';fixture.write_text(json.dumps(value))
-    output=tmp_path/'release'
-    manifest=build_fixture_release(fixture,output=output,scratch=tmp_path/'jobs',engine=engine)
-    detail={row['filename']:row for row in pq.read_table(output/'detail.parquet').to_pylist()}
+    manifest, files = build_native_fixture(fixture)
+    detail={row['filename']:row for row in pq.read_table(files['detail.parquet']).to_pylist()}
     assert {name:detail[name+'.pdf']['document_date_status'] for name in ['after-capture','outside-congress',
         'mistagged-congress','filename-in-congress','posted-before-hearing','content-after-capture','meeting-outside-congress']} == {
         'after-capture':'suspect','outside-congress':'suspect','mistagged-congress':'suspect',
@@ -109,46 +103,51 @@ def test_suspect_filename_dates_keep_their_reading_and_leave_coverage(engine, tm
     assert 'document_dates' not in next(item['coverage'] for item in manifest['files'] if item['name']=='links.parquet')
 
 
-def test_hand_release_covers_the_reader_outcomes(engine, tmp_path):
-    from viewer_publication.archive_fixture import build_fixture_release
+def test_hand_release_covers_the_reader_outcomes(build_native_fixture, tmp_path):
 
     fixture = ROOT / 'model/fixtures/hand-release.json'
     expected = json.loads(fixture.read_text())['expected']
-    output = tmp_path / 'release'
-    manifest = build_fixture_release(fixture, output=output, scratch=tmp_path / 'jobs', engine=engine)
-    checked_manifest(output, manifest)
-    rows = pq.read_table(output / 'list.parquet').to_pylist()
+    manifest, files = build_native_fixture(fixture)
+    checked_manifest(files, manifest)
+    rows = pq.read_table(files['list.parquet']).to_pylist()
     assert len(rows) == expected['list_rows']
     assert sum(not row['hidden'] for row in rows) == expected['visible_rows']
     assert [row['filename'] for row in rows] == ['Agenda.pdf', 'Hearing excerpt.pdf', 'Hidden.pdf',
         'Record.pdf', 'Record.pdf', 'Recovered.pdf', 'Substitute.pdf']
     assert 'document_id' not in rows[0]
-    details = pq.read_table(output / 'detail.parquet').to_pylist()
+    details = pq.read_table(files['detail.parquet']).to_pylist()
     assert [item['format'] for item in details[0]['alternates']] == ['xml']
     # detail is the keyed document table: list's values in list's order, under a unique key.
     assert {name: [item[name] for item in details] for name in LIST_COLUMNS} == {name: [row[name] for row in rows] for name in LIST_COLUMNS}
     assert len({item['link_key'] for item in details}) == len(details) and all(item['link_key'] for item in details)
     assert 'link_key' not in rows[0]
-    links = pq.read_table(output / 'links.parquet').to_pylist()
+    links = pq.read_table(files['links.parquet']).to_pylist()
     assert next(row['list_row'] for row in links if row['link_key'] == bytes([17]) * 8) == 0
     assert rows[2]['hidden'] and any(row['list_row'] == 2 for row in links)
-    assert sorted(row['kind'] for row in pq.read_table(output / 'recoveries.parquet').to_pylist()) == sorted(expected['recovery_kinds'])
-    assert pq.read_table(output / 'meetings.parquet').to_pylist()[0]['title'] == expected['meeting_title']
-    lookup = pq.read_table(output / 'urls.parquet').to_pylist()
+    assert sorted(row['kind'] for row in pq.read_table(files['recoveries.parquet']).to_pylist()) == sorted(expected['recovery_kinds'])
+    assert pq.read_table(files['meetings.parquet']).to_pylist()[0]['title'] == expected['meeting_title']
+    lookup = pq.read_table(files['urls.parquet']).to_pylist()
     key = sha256(b'lookup:fixture.test/record.pdf').digest()[:8]
     assert [row['list_row'] for row in lookup if row['lookup_key'] == key] == expected['version_lookup_rows']
     assert set(manifest['facet_counts'][0]) == {'facet', 'value', 'count'}
-    assert json.loads((output/'witness_map_expected.json').read_text()) == expected['witnesses']
-    native = json.loads((tmp_path/'jobs/result.json').read_text())
+    assert json.loads(files['witness_map_expected.json'].read_text()) == expected['witnesses']
+    metadata = json.loads((tmp_path/'fixture/request/catalog-metadata.json').read_text())
+    receipt = json.loads(Path(metadata['managedExecutions'][0]['receipt']['path']).read_text())
+    native = receipt['result']['result']
     assert {entry['name'] for entry in native['outputs']} == {
         entry['name'] for entry in manifest['files'] if entry['name'].endswith('.parquet')}
-    assert not (output/'url_state.parquet').exists()
+    state = pq.read_table(files['url_state.parquet'])
+    assert state.num_rows == 0 and len(state.column_names) == 10
+    assert {'capture_disposition', 'capture_reason', 'capture_decision_id'} <= set(state.column_names)
+    assert all(path.is_relative_to(tmp_path/'fixture/workspace') for name, path in files.items()
+               if name.endswith('.parquet'))
+    assert not list((tmp_path/'fixture/controls').glob('*.parquet'))
     for name in ('witnesses.parquet', 'witness_key_map.parquet'):
         retained = next(entry for entry in native['outputs'] if entry['name'] == name)
         published = next(entry for entry in manifest['files'] if entry['name'] == name)
         assert (retained['sha256'], retained['md5'], retained['rows']) == (
             published['sha256'], published['md5'], 3)
-    witnesses = pq.read_table(output/'witnesses.parquet').to_pylist()
+    witnesses = pq.read_table(files['witnesses.parquet']).to_pylist()
     assert [row['name'] for row in witnesses] == ['Dr. Jane Smith', 'Pat Lee', 'Pat Lee']
     assert all(row['record_sha'] == b'\x11'*32 and row['panel_order'] is None for row in witnesses)
     assert {row['context_key'] for row in witnesses} == {'c'*64}

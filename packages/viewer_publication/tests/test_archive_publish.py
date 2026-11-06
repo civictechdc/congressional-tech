@@ -78,19 +78,34 @@ def pin(path):
     body=path.read_bytes();return dict(path=str(path),sha256=sha256(body).hexdigest(),size=len(body))
 
 
-def candidate(root,*,payload=b'qualified export bytes',rows=1):
+def transport_native_evidence(directory, outputs):
+    """Double the verified native boundary for transport tests only.
+
+    Actual native completion and acceptance are exercised in
+    test_archive_job_metadata. These tests qualify the publisher's transfer,
+    pointer and inventory behavior, without claiming native data qualification.
+    """
+    from ddk.docspec_job_evidence import VerifiedJobEvidence
+    return VerifiedJobEvidence(candidate={},
+        manifest=dict(result=dict(outputs=deepcopy(outputs)),
+            outputs=[dict(name=row['name'],path=str(directory/row['name'])) for row in outputs]),
+        manifest_bytes=b'',manifest_reference={},view_set={},view_set_bytes=b'',
+        admitted_request={},policy={},accepted=dict(identity='transport-test-double'))
+
+
+def candidate(root,*,payload=b'qualified export bytes',rows=1,native_directory=None):
     """Authored transport fixture with real hashes, not a reader qualification."""
     output=root/'release';output.mkdir(parents=True)
-    (output/'list.parquet').write_bytes(payload)
+    native_directory=output if native_directory is None else native_directory
+    native_directory.mkdir(parents=True,exist_ok=True)
+    (native_directory/'list.parquet').write_bytes(payload)
     entry=dict(name='list.parquet',sha256=sha256(payload).hexdigest(),md5=md5(payload).hexdigest(),size=len(payload),rows=rows)
     release_id=release_identity(1,[entry])
     manifest=dict(schema_version=1,files=[entry],facet_counts=[],release_id=release_id,
         origin=dict(kind='model',gaps=[]))
     path=output/'manifest.json';path.write_bytes(encoded(manifest))
-    result=root/'result.json'
-    result.write_bytes(encoded(dict(outputs=[entry],queries=[dict(name=name,data=[dict(violation=0)])
-        for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
-    return dict(release=directory_files(output),manifest_pin=pin(path),result_pin=pin(result)),manifest
+    return dict(release={'manifest.json':path,'list.parquet':native_directory/'list.parquet'},manifest_pin=pin(path),
+                native_evidence=transport_native_evidence(native_directory,[entry])),manifest
 
 
 @pytest.mark.parametrize('name', ['queries/' + 'a' * 64 + '.sql', 'discovery.dcat.json',
@@ -183,18 +198,14 @@ def test_input_identity_excludes_run_and_snapshot_metadata():
 
 
 def test_publisher_uses_native_export_path_without_copying_to_controls(tmp_path):
-    artifacts, manifest = candidate(tmp_path)
-    source = artifacts['release']['list.parquet']
-    retained = tmp_path/'native'/'sealed-export.parquet'
-    retained.parent.mkdir()
-    source.rename(retained)
-    artifacts['release']['list.parquet'] = retained
+    artifacts, manifest = candidate(tmp_path,native_directory=tmp_path/'native')
+    retained = artifacts['release']['list.parquet']
     identity = retained.stat()
     result, store, native = launch(tmp_path, artifacts=artifacts)
     export = next(call for call in native.calls if call['destination'].endswith('/list.parquet'))
     assert export['source'] == str(retained)
     assert result['release_id'] == manifest['release_id']
-    assert not source.exists()
+    assert not (tmp_path/'release/list.parquet').exists()
     assert (retained.stat().st_ino, retained.stat().st_mtime_ns) == (identity.st_ino, identity.st_mtime_ns)
 
 
@@ -253,24 +264,25 @@ def test_same_content_new_input_records_identity_without_gates_or_flip(tmp_path)
 
 
 def test_failed_native_completeness_and_empty_list_refuse_before_upload(tmp_path):
+    from dataclasses import replace
     for name,empty in [('failed',False),('empty',True)]:
         work=tmp_path/name;artifacts,_=candidate(work,rows=0 if empty else 1)
         if not empty:
-            result=Path(artifacts['result_pin']['path']);value=json.loads(result.read_text());value['queries'][-1]['data']=[dict(missing_readings=1)]
-            result.write_bytes(encoded(value));artifacts['result_pin']=pin(result)
+            artifacts['native_evidence']=replace(artifacts['native_evidence'],accepted=None)
         store=Store();native=Native(store)
-        with pytest.raises(ValueError,match='empty|did not pass'):launch(work,store=store,native=native,artifacts=artifacts)
+        with pytest.raises(ValueError,match='empty|accepted native'):launch(work,store=store,native=native,artifacts=artifacts)
         assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
         assert json.loads(store.objects['viewer-publications/status.json'])['status']=='failed'
 
 
 def test_changed_native_result_and_mismatched_manifest_facts_refuse(tmp_path):
-    artifacts,_=candidate(tmp_path/'run');Path(artifacts['result_pin']['path']).write_bytes(b'changed')
+    artifacts,_=candidate(tmp_path/'run');artifacts['native_evidence']={}
     store=Store();native=Native(store)
-    with pytest.raises(ValueError,match='artifact changed'):launch(tmp_path/'run',store=store,native=native,artifacts=artifacts)
+    with pytest.raises(ValueError,match='verified accepted'):launch(tmp_path/'run',store=store,native=native,artifacts=artifacts)
     assert native.calls==[]
-    other,_=candidate(tmp_path/'other');result=Path(other['result_pin']['path']);value=json.loads(result.read_text());value['outputs'][0]['size']+=1
-    result.write_bytes(encoded(value));other['result_pin']=pin(result)
+    other,manifest=candidate(tmp_path/'other');path=Path(other['manifest_pin']['path'])
+    manifest['files'][0]['size']+=1
+    path.write_bytes(encoded(manifest));other['manifest_pin']=pin(path)
     with pytest.raises(ValueError,match='native export'):launch(tmp_path/'other',artifacts=other)
 
 
@@ -510,10 +522,9 @@ def real_release(root,documents,retired=None):
     """A real release through the publisher's own candidate checks."""
     from test_release_gate import release_dir
     manifest=release_dir(root/'release',documents,retired)
-    result=root/'result.json'
-    result.write_bytes(encoded(dict(outputs=[f for f in manifest['files'] if f['name'].endswith('.parquet')],
-        queries=[dict(name=name,data=[dict(violation=0)]) for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
-    return dict(release=directory_files(root/'release'),manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
+    return dict(release=directory_files(root/'release'),manifest_pin=pin(root/'release/manifest.json'),
+        native_evidence=transport_native_evidence(root/'release',
+            [f for f in manifest['files'] if f['name'].endswith('.parquet')])),manifest
 
 
 def live_store(root):
@@ -626,3 +637,13 @@ def test_a_declared_first_release_is_checked_against_the_live_pointer_and_the_re
     with pytest.raises(ValueError,match='releases already exist'):
         publish_candidate(work=tmp_path/'lost',pointer=None,expected_etag=None,**common)
     assert 'viewer-publications/manifest.json' not in store.objects
+
+
+def test_publisher_refuses_a_copy_in_place_of_the_accepted_native_path(tmp_path):
+    from viewer_publication.archive_publish import _candidate
+    artifacts,_=candidate(tmp_path)
+    source=artifacts['release']['list.parquet']
+    copy=tmp_path/'copied.parquet';copy.write_bytes(source.read_bytes())
+    artifacts['release']['list.parquet']=copy
+    with pytest.raises(ValueError,match='accepted native export path'):
+        _candidate(**artifacts,input_record={},receipt_keys=[])

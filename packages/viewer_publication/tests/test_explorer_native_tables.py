@@ -8,7 +8,6 @@ import pytest
 
 from congress_api.retention.provenance import json_input, parquet_output, run_job
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_schema import build_schema
 
 ROOT = Path(__file__).parents[3]
 UTC = "arrow_cast(NULL,'Timestamp(Microsecond, Some(\"UTC\"))')"
@@ -210,25 +209,23 @@ def test_a_package_whose_mods_names_another_meeting_settles_nothing_here(tables)
     assert state(tables, 1010, 'recording') == 'unknown'
 
 
-def test_old_release_omits_the_tables_and_says_so():
-    schema = build_schema(['list.parquet', 'detail.parquet', 'meetings.parquet'])
-    tables = {t['name']: t for t in schema['files']}
-    assert not tables['videos.parquet']['available']
-    recipe = next(r for r in schema['recipes'] if r['id'] == 'coverage_counts')
-    assert recipe['missing_tables'] == ['meeting_coverage'] and not recipe['available']
-
-
 def test_recipes_run_under_duckdb(tables):
-    schema = build_schema()
+    from ddk.catalog import assemble_catalog
+    from viewer_publication.archive_relationships import ArchiveRelationshipProfileV1
+
+    catalog = assemble_catalog(ROOT/'model/ddk/project.ddk.json', permitted_roots=[ROOT],
+                               relationship_profile=ArchiveRelationshipProfileV1())
+    assert catalog.report['decision'] == 'passed', catalog.local_report
     with duckdb.connect() as db:
         db.execute(f"CREATE VIEW recording_matches AS SELECT * FROM read_parquet('{tables / 'recording_matches.parquet'}')")
         db.execute(f"CREATE VIEW meeting_coverage AS SELECT * FROM read_parquet('{tables / 'meeting_coverage.parquet'}')")
         db.execute("CREATE TABLE videos(video_key VARCHAR,handle VARCHAR,title VARCHAR,published_at TIMESTAMP)")
         db.execute("INSERT INTO videos VALUES ('youtube:unmatched','@A','t',NULL),('youtube:pub','@A','p',NULL)")
-        recipes = {r['id']: r for r in schema['recipes']}
-        assert db.execute(recipes['channel_unmatched_videos']['sql'], ['@A']).fetchall()[0][0] == 'youtube:unmatched'
-        assert db.execute(recipes['meeting_recordings']['sql'], [LINKED]).fetchall()
-        assert dict(db.execute(recipes['coverage_counts']['sql'], ['witnesses']).fetchall())['empty'] == 1
+        recipes = {r['id'].rsplit(':', 1)[-1]: catalog.companions[r['sql']].decode()
+                   for r in catalog.local_catalog['recipes']}
+        assert db.execute(recipes['channel_unmatched_videos'], ['@A']).fetchall()[0][0] == 'youtube:unmatched'
+        assert db.execute(recipes['meeting_recordings'], [LINKED]).fetchall()
+        assert dict(db.execute(recipes['coverage_counts'], ['witnesses']).fetchall())['empty'] == 1
 
 
 def test_videos_channels_and_committee_records_from_lake_rows(tmp_path):

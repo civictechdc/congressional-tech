@@ -32,7 +32,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES,PROVENANCE_KINDS,produce_dai
 from congress_api.retention.body_store import BodyStore,LocalAdapter
 from congress_api.retention.provenance import file_pin,parquet_output,run_job
 from docspec_client.models import DocSpecFailure
-from viewer_publication.archive_controller import _save_continuation
+from congress_shared.custody import write_atomic_json
 from viewer_publication.archive_model_job import PROVENANCE,_local,_pin,_selector,execute as execute_model,validate_spec as validate_model
 from viewer_publication.archive_selective_records import EXPLORER_TABLES,RECORD_TABLES,SelectiveStop,Bodies,complete_d4,differential,stage_d4
 
@@ -169,7 +169,7 @@ class Run:
         self.work=Path(spec['work']);self.catalog=spec['catalog_root'];self.base=self.selective['base']
         self.decided_at=state['decided_at']
     def save(self):
-        _save_continuation(self.work/'state.json',self.state)
+        write_atomic_json(self.work/'state.json',self.state,fsync_dir=True)
     def counts(self):
         return json.loads(Path(self.selective['source_counts']['path']).read_text())
     def inventory(self):
@@ -221,7 +221,7 @@ def _open_state(spec,engine):
     if spec.get('resume'):raise ValueError('Selective resume found no state')
     (work/'attempts').mkdir(parents=True)
     state=dict(identity=identity,decided_at=spec.get('decided_at') or datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
-    _save_continuation(path,state)
+    write_atomic_json(path,state,fsync_dir=True)
     return state
 
 

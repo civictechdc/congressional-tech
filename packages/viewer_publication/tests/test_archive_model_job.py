@@ -45,6 +45,7 @@ def test_mutable_selectors_or_noncurrent_definitions_refuse_before_runtime(tmp_p
 def test_changed_local_pin_refuses_before_runtime_creation(tmp_path,capsys):
     from viewer_publication.archive_model_job import main
     value=spec(tmp_path)
+    value['prerequisites']=[dict(profile='unread-test-evidence')]
     for name in ['captures','readings','filename_readings']:
         path=Path(value[name]['path']);path.write_bytes(b'changed')
     with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
@@ -90,6 +91,7 @@ def test_model_cli_executes_real_raw_lake_fixture(tmp_path,capsys):
 def test_existing_output_refuses_before_input_or_runtime_access(tmp_path,capsys):
     from viewer_publication.archive_model_job import main
     value=spec(tmp_path);Path(value['output']).mkdir()
+    value['prerequisites']=[dict(profile='unread-test-evidence')]
     with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
     assert error.value.code==2 and 'must be fresh' in capsys.readouterr().err
     assert not Path(value['scratch']).exists()
@@ -147,7 +149,8 @@ def test_provenance_etag_matches_exact_local_bytes_in_retained_inputs(tmp_path):
     with model_arguments(value,provenance_etags={item['key']:etag,alias['key']:etag.strip(chr(34)).lower()}) as arguments:
         assert Path(arguments['review_files'][0]['path']).read_bytes()==Path(item['path']).read_bytes()
         assert arguments['review_files'][0]['path']==arguments['review_files'][1]['path']
-    assert not list(tmp_path.glob('.model-inputs-*'))
+    assert Path(arguments['review_files'][0]['path']).is_file()
+    assert Path(arguments['captures']['path']).is_file()
 
 
 @pytest.mark.parametrize('failure',['changed','opaque','multipart','missing','extra','alias_conflict'])
@@ -343,7 +346,7 @@ def test_the_production_model_job_writes_the_explorer_files(tmp_path):
         video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n')
     value['recording_decision_files'] = [dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions), **file_pin(decisions))]
     built = execute(validate_spec(value, base=tmp_path))
-    written = {path.name for path in Path(built['output']).glob('*.parquet')}
+    written = {name for name,path in built['files'].items() if name.endswith('.parquet') and Path(path).is_file()}
     assert {'meeting_coverage.parquet', 'videos.parquet', 'channels.parquet', 'recording_matches.parquet',
             'committee_records.parquet'} <= written
 
@@ -354,3 +357,82 @@ def test_explorer_inputs_come_together(tmp_path):
     value['video_records'] = dict(kind='parquet', path=str(tmp_path / 'video.parquet'), sha256='a' * 64, size=17)
     with pytest.raises(ValueError, match='Explorer tables require'):
         validate_spec(value, base=tmp_path)
+
+
+def test_missing_producer_prerequisites_refuse_before_runtime_or_input_access(tmp_path):
+    from viewer_publication.archive_model_job import execute
+    value=spec(tmp_path)
+    with pytest.raises(ValueError,match='original native producer prerequisites'):
+        execute(value)
+    assert not Path(value['scratch']).exists()
+    assert not (tmp_path/'model-inputs').exists()
+    assert not Path(value['native_scope']['workspace']).exists()
+
+
+def test_uncertain_native_admission_preserves_the_original_input_paths(tmp_path):
+    from viewer_publication.archive_format import NativeReleaseNotReady
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path)
+    with pytest.raises(NativeReleaseNotReady):
+        with model_arguments(value) as arguments:
+            paths={Path(arguments[name]['path']) for name in ('captures','readings','filename_readings')}
+            paths.update(Path(item['path']) for item in arguments['review_files'])
+            held={path:path.read_bytes() for path in paths}
+            raise NativeReleaseNotReady('preparation',dict(status='unknown'))
+    assert {path:path.read_bytes() for path in paths}==held
+    with pytest.raises(FileExistsError):
+        with model_arguments(value):
+            pytest.fail('A retry must consume the original prepared request')
+
+
+def test_unapproved_runtime_refuses_before_capturing_a_new_model_request(tmp_path):
+    from types import SimpleNamespace
+    from viewer_publication.archive_model import build_prepared_release
+    value=spec(tmp_path)
+    def changed_runtime():
+        raise ValueError('binary differs from its approved SHA-256')
+    with pytest.raises(ValueError,match='approved SHA-256'):
+        build_prepared_release(dict(scratch=tmp_path/'scratch'),
+            engine=SimpleNamespace(verify_runtime=changed_runtime,binary_sha256='a'*64,source_revision='b'*40,limits='unused'),
+            native_scope=value['native_scope'],
+            prerequisites=[dict(profile='unread-test-evidence')],output=tmp_path/'release')
+    assert not (tmp_path/'scratch').exists()
+    assert not (tmp_path/'native-workspace').exists()
+
+
+def test_prepared_resume_requires_its_original_digest_and_explicit_runtime(tmp_path,capsys):
+    from viewer_publication.archive_model_job import main
+    with pytest.raises(SystemExit) as error:
+        main(['--prepared-request',str(tmp_path/'request.json'),'--execute'])
+    assert error.value.code==2
+    assert 'requires its SHA-256 and explicit engine config' in capsys.readouterr().err
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize('missing',['binary_sha256','source_revision','limits'])
+def test_model_runtime_requires_all_execution_pins_before_verification(missing):
+    from types import SimpleNamespace
+    from viewer_publication.archive_model import require_model_runtime
+    values=dict(binary_sha256='a'*64,source_revision='b'*40,limits='unused')
+    values[missing]=None
+    def must_not_run():
+        pytest.fail('Missing runtime pins reached executable verification')
+    with pytest.raises(ValueError,match='binary, source revision and host limit pins'):
+        require_model_runtime(SimpleNamespace(**values,verify_runtime=must_not_run))
+
+
+@pytest.mark.parametrize('prerequisites',[None,[]])
+def test_original_model_request_cannot_resume_without_its_producer_requirements(tmp_path,prerequisites):
+    from hashlib import sha256
+    from types import SimpleNamespace
+    from viewer_publication.archive_format import execute_native_release
+    native=dict(action='prepare')
+    if prerequisites is not None:native['prerequisites']=prerequisites
+    raw=json.dumps(dict(native=native,workspace=str(tmp_path/'native'),origin=dict(kind='model'))).encode()
+    path=tmp_path/'request.json';path.write_bytes(raw)
+    def must_not_run(*args,**kwargs):
+        pytest.fail('A model request without producer obligations reached native submission')
+    with pytest.raises(ValueError,match='original native producer prerequisites'):
+        execute_native_release(dict(path=str(path),sha256=sha256(raw).hexdigest()),
+            adapter=SimpleNamespace(managed_job=must_not_run))
+    assert not (tmp_path/'native').exists()

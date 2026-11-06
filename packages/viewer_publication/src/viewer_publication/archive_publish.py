@@ -21,6 +21,7 @@ from viewer_publication.archive_gate import gate_and_flip,validate_receipt
 from viewer_publication.archive_format import archive_asset_name, release_identity
 from viewer_publication.client import require_publication_client
 from viewer_publication.archive_comparison_acceptance import require_comparison
+from viewer_publication.archive_model_job import provenance_record_kind, provenance_etag_md5
 from viewer_publication.release_gate import client_reader,fetch_release,require_release_gates
 from viewer_publication.receipt_pins import (PREFIX,receipt_list,read_receipt_list,
     write_input_receipts,kept_receipt_keys)
@@ -32,6 +33,53 @@ IMMUTABLE='public,max-age=31536000,immutable'
 # Control objects are small metadata, never release assets. Bound SDK readback.
 CONTROL_BYTES=32<<20
 DIGEST=re.compile('[0-9a-f]{64}')
+
+
+class PublicationInputsChanged(ValueError):
+    """A retained attempt belongs to different current inputs."""
+
+
+def _receipt_evidence(reports,expected):
+    rows=reports.get('input_receipts')
+    if (not isinstance(rows,list) or any(not isinstance(row,dict) or set(row)!={'receipt_key'} for row in rows)
+            or [row['receipt_key'] for row in rows]!=expected):
+        raise ValueError('Publication receipt identity differs from actual native model inputs')
+
+
+def _provenance_snapshot(client,bucket,expected):
+    """Confirm the complete immutable raw set with one metadata listing, no GETs."""
+    pinned={item['key']:item['etag'] for item in expected}
+    actual={};token=None
+    while True:
+        request=dict(Bucket=bucket,Prefix='provenance/')
+        if token is not None:request['ContinuationToken']=token
+        page=client.list_objects_v2(**request)
+        for item in page.get('Contents',[]):
+            key,etag=item['Key'],item['ETag']
+            if (not isinstance(key,str) or not key.startswith('provenance/') or key in actual
+                    or not isinstance(etag,str) or not etag.strip()):
+                raise ValueError('Invalid current provenance inventory')
+            actual[key]=etag
+        if not page.get('IsTruncated'):break
+        next_token=page.get('NextContinuationToken')
+        if not next_token or next_token==token:raise ValueError('Current provenance listing did not advance')
+        token=next_token
+    def same_etag(key):
+        if provenance_record_kind(key) is not None:
+            return provenance_etag_md5(actual[key])==provenance_etag_md5(pinned[key])
+        return actual[key]==pinned[key]
+    if set(actual)!=set(pinned) or any(not same_etag(key) for key in actual):
+        raise PublicationInputsChanged('Pinned provenance differs from the current immutable raw inventory')
+    return [dict(key=key,etag=actual[key]) for key in sorted(actual)]
+
+
+def _probe_evidence(reports):
+    rows=reports.get('probe_selectors')
+    if (not isinstance(rows,list) or len(rows)!=1 or set(rows[0])!={'saved_row','link_key'}
+            or type(rows[0]['saved_row']) is not int or rows[0]['saved_row']<0
+            or not isinstance(rows[0]['link_key'],str) or re.fullmatch('[a-f0-9]{16}',rows[0]['link_key']) is None):
+        raise ValueError('Native model supplied no visible saved-document probe selectors')
+    return rows[0]
 
 
 def _encoded(value):
@@ -333,7 +381,7 @@ def _read_pinned_json(pin):
     return json.loads(raw),raw
 
 
-def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
+def _candidate(release,manifest_pin,native_evidence,*,input_record,receipt_keys):
     """Check actual model metadata; C5 verifies each transferred asset in one read.
 
     Release identity remains the archive_format producer's identity. This stage
@@ -342,19 +390,16 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
     if Path(manifest_pin['path']).absolute()!=release['manifest.json']:
         raise ValueError('Pinned manifest differs from the candidate inventory')
     manifest,raw=_read_pinned_json(manifest_pin)
-    result,_=_read_pinned_json(result_pin)
-    if 'error' in result or not isinstance(result.get('outputs'),list) or not isinstance(result.get('queries'),list):
-        raise ValueError('Native model result is incomplete or failed')
+    from ddk.docspec_job_evidence import VerifiedJobEvidence
+    if not isinstance(native_evidence,VerifiedJobEvidence) or native_evidence.accepted is None:
+        raise ValueError('Publication requires verified accepted native job evidence')
+    result=native_evidence.manifest['result']
+    native_paths={item['name']:Path(item['path']) for item in native_evidence.manifest['outputs']}
     origin=manifest.get('origin')
     if not isinstance(origin,dict) or origin.get('kind')!='model' or origin.get('display_only') is True:
         raise ValueError('Candidate requires the current model origin')
     if isinstance(input_record.get('profile'),dict) and input_record['profile'].get('kind')=='seed_v5':
         raise ValueError('Seed manifest requires its pinned seed profile')
-    for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']:
-        checks=[entry for entry in result['queries'] if entry['name']==name]
-        if (len(checks)!=1 or len(checks[0]['data'])!=1 or not checks[0]['data'][0]
-                or any(type(value) is not int or value!=0 for value in checks[0]['data'][0].values())):
-            raise ValueError('Native model check did not pass: '+name)
     release_id=_sha(manifest['release_id'])
     if manifest.get('schema_version')!=1 or not isinstance(manifest.get('files'),list):
         raise ValueError('Invalid archive manifest')
@@ -374,6 +419,8 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
                 or source.is_symlink() or any(parent.is_symlink() for parent in source.parents)):
             raise ValueError('Missing or unsafe candidate asset')
         if name.endswith('.parquet'):
+            if source!=native_paths.get(name):
+                raise ValueError('Candidate inventory differs from the accepted native export path')
             exports=[entry for entry in result['outputs'] if entry['name']==name]
             if len(exports)!=1 or any(exports[0][key]!=item[key] for key in ['sha256','md5','size','rows']):
                 raise ValueError('Candidate differs from the native export result')
@@ -385,7 +432,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
     return manifest,raw,release_id,{}
 
 
-def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
+def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,native_evidence,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
                       base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None,
                       selected_pointer_reconciled=False):
@@ -416,7 +463,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
             profile=input_record['profile'],entity_digests=input_record['entity_digests'])
         if input_record.get('input_digest')!=digest:raise ValueError('Input record semantic identity differs')
-        manifest,raw,release_id,admission=_candidate(release,manifest_pin,result_pin,
+        manifest,raw,release_id,admission=_candidate(release,manifest_pin,native_evidence,
             input_record=input_record,receipt_keys=receipt_keys)
         if measured_release_id is not None:
             if _sha(measured_release_id)!=release_id:

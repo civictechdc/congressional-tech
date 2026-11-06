@@ -6,7 +6,7 @@ from pathlib import Path
 from congress_api.retention.provenance import (list_of as _list,
     struct as _struct, json_input as _json_input)
 from viewer_publication.archive_format import (EMPTY_STRINGS, EMPTY_ALTERNATES,
-    _step, _binary, _normal, _execute, _empty_struct, TS, MEETING_DICTIONARY,
+    _step, _binary, _normal, _empty_struct, TS, MEETING_DICTIONARY,
     NULL_MEETING_DOCUMENT_REFERENCES)
 
 
@@ -15,7 +15,7 @@ def _body(byte):
 
 
 def fixture_auxiliary():
-    """Author complete reader tables; capture scheduling has no fixture policy."""
+    """Author current reader tables; the fixture has no capture attempts."""
     sittings = _empty_struct(start=TS, end=TS, place='cast(NULL AS VARCHAR)', room='cast(NULL AS VARCHAR)',
         building='cast(NULL AS VARCHAR)', address='cast(NULL AS VARCHAR)')
     committees = _empty_struct(system_code='cast(NULL AS VARCHAR)', role='cast(NULL AS VARCHAR)')
@@ -48,14 +48,27 @@ def fixture_auxiliary():
             ['occasion', 'panel_order', 'display_order', 'witness_key'],
             ['occasion', 'source', 'witness_type', 'bioguide_id']),
         ('witness_key_map', 'SELECT old_key,witness_key,status,basis,candidate_keys,occasion,source FROM hand_witness_key_map',
-            ['old_key'], ['occasion', 'source', 'status', 'basis'])]
+            ['old_key'], ['occasion', 'source', 'status', 'basis']),
+        ('url_state', f"""SELECT cast(NULL AS VARCHAR) AS requested_url,cast(NULL AS INT) AS attempts,
+            {TS} AS last_attempt,cast(NULL AS SMALLINT) AS last_status,cast(NULL AS VARCHAR) AS last_outcome,
+            {TS} AS last_good_at,{TS} AS next_attempt_at,cast(NULL AS VARCHAR) AS capture_disposition,
+            cast(NULL AS VARCHAR) AS capture_reason,cast(NULL AS VARCHAR) AS capture_decision_id WHERE false""",
+            ['requested_url'], ['last_outcome'])]
 
 
-def build_fixture_release(fixture, *, output, scratch, engine):
-    """Build the hand-authored F0 acceptance release with the real native writer."""
+def prepare_fixture_release(fixture, *, output, scratch, adapter, workspace, operation,
+                            metadata_queries=(), entity_files=None):
+    """Prepare the authored reader fixture through the current DDK definitions."""
+    from ddk.catalog import assemble_catalog
+    from viewer_publication.archive_catalog import capture_definitions, captured_catalog_options
+    from viewer_publication.archive_format import native_release_job, prepare_native_release, native_input_declarations
+
     fixture, output, scratch = Path(fixture), Path(output), Path(scratch)
     scratch.mkdir(parents=True, exist_ok=False)
-    data = json.loads(fixture.read_text())
+    project = capture_definitions(scratch/'definitions')
+    catalog = assemble_catalog(project, **captured_catalog_options(project))
+    source_bytes = fixture.read_bytes()
+    data = json.loads(source_bytes)
     # These are authored input records, not a migration of retained source data.
     # The only added value is the application's stable endpoint ID formula.
     documents = [dict(row, version_key=sha256(json.dumps([row['source_url'].removeprefix('https://'), None],
@@ -64,6 +77,8 @@ def build_fixture_release(fixture, *, output, scratch, engine):
         format='Utf8', document_date='Utf8', document_date_source='Utf8', congress='Int64', first_captured='Utf8', hidden='Boolean', review_note='Utf8',
         review_decided_at='Utf8', source_url='Utf8', meeting_keys=_list('Utf8'), version_names=_list('Utf8'),
         version_key='Utf8', extra_link_body_bytes=_list('Int64'),
+        committee_keys=_list('Utf8'), chambers=_list('Utf8'), measure_keys=_list('Utf8'),
+        bioguide_ids=_list('Utf8'), witness_keys=_list('Utf8'),
         alternates=_list(_struct(format='Utf8', body_byte='Int64', suffix='Utf8', size='Int64')),
         recovery=_struct(kind='Utf8', recovered_url='Utf8', identity_note='Utf8', imported_at='Utf8')),
         _json_input(scratch, 'hand_meetings', data['meetings'], event_id='Int64', chamber='Utf8', title='Utf8', meeting_date='Utf8'),
@@ -83,7 +98,8 @@ def build_fixture_release(fixture, *, output, scratch, engine):
         _step('extra_groups', f'SELECT name,array_agg({_body("extra")} ORDER BY extra) AS bodies FROM hand_extra_bodies GROUP BY name'),
         _step('normalized', _normal('hand_bodies h LEFT JOIN alternate_groups a ON h.name=a.name LEFT JOIN extra_groups e ON h.name=e.name',
             doc_key='h.name', filename='h.filename', title='h.title', format='h.format', body_hex='h.body_hex', source_url='h.source_url',
-            congress='cast(h.congress AS SMALLINT)',
+            congress='cast(h.congress AS SMALLINT)', committee_keys='h.committee_keys', chambers='h.chambers',
+            measure_keys='h.measure_keys', bioguide_ids='h.bioguide_ids', witness_keys='h.witness_keys',
             document_date='try_cast(h.document_date AS DATE)', first_captured='try_cast(h.first_captured AS DATE)',
             date_kind="CASE WHEN h.first_captured IS NOT NULL THEN 'captured' WHEN h.recovery IS NOT NULL THEN 'import_day' ELSE 'unknown' END",
             saved_kind="CASE WHEN h.recovery IS NOT NULL THEN 'recovery' ELSE 'original' END", hidden='h.hidden',
@@ -103,7 +119,39 @@ def build_fixture_release(fixture, *, output, scratch, engine):
         _step('meeting_input', 'SELECT event_id,chamber,title,try_cast(meeting_date AS DATE) AS meeting_date FROM hand_meetings'),
         _step('committee_input', 'SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS chamber WHERE false'),
     ]
-    return _execute(inputs, steps, output=output, scratch=scratch, engine=engine,
-        auxiliary=fixture_auxiliary(), content_files={'witness_map_expected.json': data['expected']['witnesses']},
-        origin=dict(kind='hand_fixture', source_sha256=sha256(fixture.read_bytes()).hexdigest(),
-                    gaps=['Synthetic reader fixture; capture scheduling is disabled']))
+    origin = dict(kind='hand_fixture', source_sha256=sha256(source_bytes).hexdigest(),
+                  gaps=['Synthetic reader fixture; capture scheduling is disabled'])
+    auxiliary = fixture_auxiliary()
+    entities = entity_files or {}
+    if set(entities) - {'meetings', 'committees', 'witnesses', 'rosters', 'members',
+                        'bills', 'nominations', 'recordings', 'videos'}:
+        raise ValueError('Unknown authored reader fixture entity table')
+    definitions = catalog.local_catalog['extensions']['urn:ddk:catalog:assembly']['datasetDefinitions']
+    for name, path in entities.items():
+        inputs.append(dict(name='fixture_'+name, kind='parquet', path=str(Path(path).resolve(strict=True))))
+        alias, = [alias for alias, table in definitions.items() if table['name'] == name]
+        identity, = [item for item in catalog.local_catalog['identities']
+                     if item['dataset'] == alias and item['kind'] == 'key']
+        keys = [field['path'][0]['field'] for field in identity['fields']]
+        auxiliary = [item for item in auxiliary if item[0] != name]
+        auxiliary.append((name, 'SELECT * FROM fixture_'+name, keys, []))
+    job, diagnostics = native_release_job(inputs, steps, catalog_result=catalog,
+        output=output, scratch=scratch, auxiliary=auxiliary, origin=origin,
+        metadata_queries=metadata_queries)
+    file_inputs, schemas = native_input_declarations(inputs, directory=scratch)
+    return prepare_native_release(job, diagnostics, adapter=adapter, project=project,
+        catalog_result=catalog, request_dir=scratch, workspace=workspace, dataset='archive-fixture',
+        operation=operation, policy_id='archive-required-v1', file_inputs=file_inputs, input_schemas=schemas,
+        prerequisites=[],
+        expected_epoch=0, expected_selection=None, controls_dir=output, private_outputs=(), origin=origin,
+        capture_scope=None, content_files={'witness_map_expected.json': data['expected']['witnesses']},
+        entity_digests=None)
+
+
+def build_fixture_release(fixture, *, output, scratch, adapter, workspace, operation,
+                          metadata_queries=(), entity_files=None):
+    from viewer_publication.archive_format import execute_native_release
+
+    prepared = prepare_fixture_release(fixture, output=output, scratch=scratch, adapter=adapter,
+        workspace=workspace, operation=operation, metadata_queries=metadata_queries, entity_files=entity_files)
+    return execute_native_release(prepared, adapter=adapter)

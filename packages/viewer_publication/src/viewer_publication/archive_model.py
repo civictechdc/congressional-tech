@@ -980,12 +980,14 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
-                  engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
+                  engine,native_scope,prerequisites,output,scratch,recovery_files=(),review_files=(),verification_files=(),
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   prior_links=None,base_retired=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
+    require_model_prerequisites(prerequisites)
+    require_model_runtime(engine)
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
         recovery_files=recovery_files,review_files=review_files,verification_files=verification_files,
@@ -993,24 +995,79 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,prior_links=prior_links,base_retired=base_retired,root=root,registry=registry)
-    return build_prepared_release(prepared,engine=engine,output=output,root=root)
+    return build_prepared_release(prepared,engine=engine,native_scope=native_scope,
+        prerequisites=prerequisites,output=output,root=root)
 
 
-def build_prepared_release(prepared,*,engine,output,root=ROOT):
-    """Execute the one complete application graph with the incumbent native runner."""
-    from functools import partial
-    from viewer_publication.archive_format import _execute
-    return _prepared_release(prepared, output=output, root=root, finish=partial(_execute, engine=engine))
+def require_model_prerequisites(prerequisites):
+    """Model inputs require their original producer proofs, including file inputs.
+
+    The shared native owner validates the evidence profile and its complete input
+    binding. Missing evidence is never interpreted as an empty requirement set.
+    """
+    if not isinstance(prerequisites, list) or not prerequisites:
+        raise ValueError('Archive model requires original native producer prerequisites for its exact source inputs')
 
 
-def plan_prepared_release(prepared,*,output,root=ROOT):
-    """Return the complete native JobSpec, public schema and blocking checks.
+def require_model_runtime(engine):
+    """Use the maintained binary verifier with the same mandatory pins as a job."""
+    if engine.binary_sha256 is None or engine.source_revision is None or engine.limits is None:
+        raise ValueError('Archive model requires binary, source revision and host limit pins')
+    engine.verify_runtime()
+
+
+def build_prepared_release(prepared,*,engine,native_scope,prerequisites,output,root=ROOT):
+    """Retain, qualify and select the complete model; return its exact file inventory."""
+    from ddk.adapters.docspec import DocSpecAdapter
+    from ddk.catalog import assemble_catalog
+    from viewer_publication.archive_catalog import capture_definitions, captured_catalog_options
+    from viewer_publication.archive_format import (native_release_job, native_input_declarations,
+        prepare_native_release, execute_native_release)
+
+    fields = {'workspace', 'dataset', 'operation', 'policy_id', 'expected_epoch', 'expected_selection'}
+    if not isinstance(native_scope, dict) or set(native_scope) != fields:
+        raise ValueError('Model execution requires explicit native scope and selection authority')
+    require_model_prerequisites(prerequisites)
+    require_model_runtime(engine)
+    workspace = Path(native_scope['workspace']).resolve()
+    workspace.mkdir(parents=True, exist_ok=True)
+    directory = Path(prepared['scratch'])/'release-request'
+    directory.mkdir(parents=True, exist_ok=False)
+    project = capture_definitions(directory/'definitions', root=Path(root))
+    catalog = assemble_catalog(project, **captured_catalog_options(project))
+    adapter = DocSpecAdapter(engine.binary, engine.limits, timeout=engine.timeout,
+        source_commit=engine.source_revision, evidence_dir=directory/'observations')
+
+    def prepare(inputs, steps, **options):
+        job, diagnostics = native_release_job(inputs, steps, catalog_result=catalog, **options)
+        schemas = {item['name']: json.loads((Path(root)/'model/lake'/
+                   (item['name'].replace('_', '-')+'.schema.json')).read_text())
+                   for item in inputs if item['kind'] == 'native_table'}
+        pins = {str(Path(pin['path']).resolve()): pin for pin in prepared['profile']['snapshots'].values()
+                if pin['kind'] == 'parquet'}
+        file_inputs, input_schemas = native_input_declarations(inputs, directory=directory,
+            native_schemas=schemas, file_pins=pins)
+        return prepare_native_release(job, diagnostics, adapter=adapter, project=project,
+            catalog_result=catalog, request_dir=directory, **dict(native_scope, workspace=workspace),
+            file_inputs=file_inputs, input_schemas=input_schemas, controls_dir=output,
+            prerequisites=prerequisites,
+            private_outputs=[item['name'] for item in options['extra_outputs']],
+            **{key: options[key] for key in ('origin', 'capture_scope', 'content_files', 'entity_digests')})
+
+    request = _prepared_release(prepared, output=output, root=root, finish=prepare)
+    return execute_native_release(request, adapter=adapter)
+
+
+def plan_prepared_release(prepared,*,output,catalog_result,root=ROOT):
+    """Return the complete native JobSpec and its blocking checks.
 
     Preparation has already bound the inputs. Rendering reads definitions only;
     the caller supplies native execution, protection and lifecycle operations.
     """
+    from functools import partial
     from viewer_publication.archive_format import native_release_job
-    return _prepared_release(prepared, output=output, root=root, finish=native_release_job)
+    return _prepared_release(prepared, output=output, root=root,
+        finish=partial(native_release_job, catalog_result=catalog_result))
 
 
 def _prepared_release(prepared,*,output,root,finish):

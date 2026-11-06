@@ -6,7 +6,6 @@ from hashlib import md5
 import json
 import os
 from pathlib import Path
-from tempfile import TemporaryDirectory
 import re
 from urllib.parse import urlsplit
 from uuid import UUID
@@ -26,7 +25,7 @@ OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
-REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
+REQUIRED={'version','engine_config','native_scope','prerequisites',*TABLES,'parser_versions','catalog_version','output','scratch'}
 
 
 def provenance_record_kind(key):
@@ -92,6 +91,12 @@ def validate_spec(value,*,base):
     if not REQUIRED<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Model job requires version 1 and all explicit inputs')
     result=dict(value,**{name:_selector(value[name],base) for name in TABLES})
+    scope=value['native_scope']
+    if not isinstance(scope,dict) or set(scope)!={'workspace','dataset','operation','policy_id','expected_epoch','expected_selection'}:
+        raise ValueError('Model job requires explicit native scope and selection authority')
+    result['native_scope']=dict(scope,workspace=_local(scope['workspace'],base))
+    if not isinstance(value['prerequisites'],list):
+        raise ValueError('Model job requires an explicit original producer prerequisite inventory')
     if value.get('recovery_requirements') is not None:
         requirement=value['recovery_requirements']
         _pin(requirement,{'path','sha256','size','acceptance_policy'})
@@ -167,11 +172,13 @@ def _spicy_arguments(pin,hold):
 
 @contextmanager
 def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_existing_output=False):
-    """Hold verified local inputs until native consumption completes successfully.
+    """Retain verified local inputs for the original native request and its retries.
 
     The retained names prevent original-path replacement from selecting new bytes.
     Custody checks on exit reject in-place changes before the caller accepts output.
     One physical file has one verification and one retained name, including aliases.
+    These caller-owned links survive failures and uncertain admission. Retirement
+    follows native confirmation that the original request no longer needs them.
     """
     for name in ['output','scratch']:
         path=Path(spec[name])
@@ -189,90 +196,127 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
             etags[key]=provenance_etag_md5(etag)
     parent=Path(spec['scratch']).parent
     parent.mkdir(parents=True,exist_ok=True)
-    with TemporaryDirectory(prefix='.'+Path(spec['scratch']).name+'-inputs-',dir=parent) as directory:
-        retained={}
+    directory=parent/(Path(spec['scratch']).name+'-inputs')
+    if directory.is_symlink():
+        raise ValueError('Held model inputs cannot use a symlink directory')
+    directory.mkdir(exist_ok=False)
+    retained={}
 
-        def hold(value,expected_md5=None):
-            path=Path(value['path'])
-            identity=custody_identity(path)
-            physical=identity[:2]
-            expected=dict(sha256=value['sha256'],bytes=value['size'])
-            key='Pinned model input changed: '+str(path)
-            if physical in retained:
-                source,verified=retained[physical]
-                verified.require(verified.path)
-                if identity!=source.custody:
-                    raise ValueError('Verified catalog file custody changed: '+str(path))
-                check_identity(verified,expected,key)
-                if expected_md5 is not None and source.get('md5')!=expected_md5:
-                    raise ValueError('Local provenance bytes differ from the selected ETag')
-                return str(verified.path)
-            verified=verified_files.get(str(path))
-            if verified is not None:
-                if not isinstance(verified,VerifiedFile):raise ValueError('Expected process-local verified input custody')
-                verified.require(path)
-            else:
-                verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
+    def hold(value,expected_md5=None):
+        path=Path(value['path'])
+        identity=custody_identity(path)
+        physical=identity[:2]
+        expected=dict(sha256=value['sha256'],bytes=value['size'])
+        key='Pinned model input changed: '+str(path)
+        if physical in retained:
+            source,verified=retained[physical]
+            verified.require(verified.path)
+            if identity!=source.custody:
+                raise ValueError('Verified catalog file custody changed: '+str(path))
             check_identity(verified,expected,key)
-            if expected_md5 is not None and verified.get('md5')!=expected_md5:
+            if expected_md5 is not None and source.get('md5')!=expected_md5:
                 raise ValueError('Local provenance bytes differ from the selected ETag')
-            destination=Path(directory)/(str(len(retained))+'-'+path.name)
-            owned=retain_verified_file(path,destination,expected=verified,key=key)
-            retained[physical]=(verified,owned)
-            return str(owned.path)
+            return str(verified.path)
+        verified=verified_files.get(str(path))
+        if verified is not None:
+            if not isinstance(verified,VerifiedFile):raise ValueError('Expected process-local verified input custody')
+            verified.require(path)
+        else:
+            verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
+        check_identity(verified,expected,key)
+        if expected_md5 is not None and verified.get('md5')!=expected_md5:
+            raise ValueError('Local provenance bytes differ from the selected ETag')
+        destination=Path(directory)/(str(len(retained))+'-'+path.name)
+        owned=retain_verified_file(path,destination,expected=verified,key=key)
+        retained[physical]=(verified,owned)
+        return str(owned.path)
 
-        arguments={}
-        # Verify provenance first so any physical aliases share its one SHA/MD5 pass.
-        for name in PROVENANCE:
-            arguments[name]=[dict(key=value['key'],path=hold(value,None if etags is None else etags[value['key']]))
-                             for value in spec[name]]
-        for name in TABLES:
+    arguments={}
+    # Verify provenance first so any physical aliases share its one SHA/MD5 pass.
+    for name in PROVENANCE:
+        arguments[name]=[dict(key=value['key'],path=hold(value,None if etags is None else etags[value['key']]))
+                         for value in spec[name]]
+    for name in TABLES:
+        value=spec[name]
+        arguments[name]=(dict(kind='parquet',path=hold(value))
+                         if value['kind']=='parquet' else dict(value))
+    for name in OPTIONAL_TABLES:
+        if spec.get(name) is not None:
             value=spec[name]
             arguments[name]=(dict(kind='parquet',path=hold(value))
                              if value['kind']=='parquet' else dict(value))
-        for name in OPTIONAL_TABLES:
-            if spec.get(name) is not None:
-                value=spec[name]
-                arguments[name]=(dict(kind='parquet',path=hold(value))
-                                 if value['kind']=='parquet' else dict(value))
-        if spec.get('recovery_requirements') is not None:
-            value=spec['recovery_requirements']
-            arguments['recovery_requirements']=dict(value,path=hold(value))
-        if spec.get('spicy_regs') is not None:
-            arguments['spicy_regs']=_spicy_arguments(spec['spicy_regs'],hold)
-        for _source,verified in retained.values():verified.require(verified.path)
-        yield arguments
-        for _source,verified in retained.values():verified.require(verified.path)
+    if spec.get('recovery_requirements') is not None:
+        value=spec['recovery_requirements']
+        arguments['recovery_requirements']=dict(value,path=hold(value))
+    if spec.get('spicy_regs') is not None:
+        arguments['spicy_regs']=_spicy_arguments(spec['spicy_regs'],hold)
+    for _source,verified in retained.values():verified.require(verified.path)
+    yield arguments
+    for _source,verified in retained.values():verified.require(verified.path)
 
 
 def execute(spec):
     """Verify inputs, then invoke the one maintained model producer."""
     from docspec_client.client import NativeDatasets
-    from viewer_publication.archive_model import build_release
+    from viewer_publication.archive_model import build_release, require_model_prerequisites
+    require_model_prerequisites(spec['prerequisites'])
     engine_config=spec['engine_config']
     if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
         engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
     with model_arguments(spec) as arguments:
         with NativeDatasets.from_config(engine_config) as engine:
-            manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
-                catalog_version=spec['catalog_version'],engine=engine,
+            manifest,files=build_release(**arguments,parser_versions=spec['parser_versions'],
+                catalog_version=spec['catalog_version'],engine=engine,native_scope=spec['native_scope'],
+                prerequisites=spec['prerequisites'],
                 output=Path(spec['output']),scratch=Path(spec['scratch']))
     return dict(status='built',executed=True,release_id=manifest['release_id'],
-        output=spec['output'],scratch=spec['scratch'],rows={entry['name']:entry['rows'] for entry in manifest['files']})
+        output=spec['output'],scratch=spec['scratch'],files={name:str(path) for name,path in files.items()},
+        rows={entry['name']:entry['rows'] for entry in manifest['files']})
+
+
+def resume_prepared(prepared, *, engine_config):
+    """Consume the original request; never rebuild inputs or capture new definitions."""
+    from ddk.adapters.docspec import DocSpecAdapter
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_format import execute_native_release
+    from viewer_publication.archive_model import require_model_runtime
+
+    with NativeDatasets.from_config(engine_config) as engine:
+        require_model_runtime(engine)
+        adapter=DocSpecAdapter(engine.binary,engine.limits,timeout=engine.timeout,
+            source_commit=engine.source_revision,evidence_dir=Path(prepared['path']).parent/'observations')
+        manifest,files=execute_native_release(prepared,adapter=adapter)
+    return dict(status='built',executed=True,release_id=manifest['release_id'],
+        files={name:str(path) for name,path in files.items()},
+        rows={entry['name']:entry['rows'] for entry in manifest['files']})
 
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--spec',type=Path,required=True)
+    source=parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--spec',type=Path)
+    source.add_argument('--prepared-request',type=Path)
+    parser.add_argument('--request-sha256')
+    parser.add_argument('--engine-config',type=Path)
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
     args=parser.parse_args(argv)
     try:
-        spec=load_spec(args.spec)
-        if spec.get('status')=='blocked':
-            print(json.dumps(spec,sort_keys=True));return 2
-        result=(execute(spec) if args.execute else dict(status='planned',executed=False,
-            inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},output=spec['output'],scratch=spec['scratch'],
-            parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version']))
+        if args.prepared_request:
+            if not args.request_sha256 or not re.fullmatch('[a-f0-9]{64}',args.request_sha256) or not args.engine_config:
+                raise ValueError('An original prepared request requires its SHA-256 and explicit engine config')
+            prepared=dict(path=str(args.prepared_request.resolve()),sha256=args.request_sha256)
+            result=(resume_prepared(prepared,engine_config=args.engine_config) if args.execute else
+                    dict(status='planned',executed=False,prepared=prepared))
+        else:
+            if args.request_sha256 or args.engine_config:
+                raise ValueError('Request SHA-256 and engine config options belong to --prepared-request')
+            spec=load_spec(args.spec)
+            if spec.get('status')=='blocked':
+                print(json.dumps(spec,sort_keys=True));return 2
+            result=(execute(spec) if args.execute else dict(status='planned',executed=False,
+                inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},
+                output=spec['output'],scratch=spec['scratch'],native_scope=spec['native_scope'],
+                prerequisites=spec['prerequisites'],parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version']))
     except (ValueError,OSError) as error:parser.error(str(error))
     print(json.dumps(result,sort_keys=True));return 0
 

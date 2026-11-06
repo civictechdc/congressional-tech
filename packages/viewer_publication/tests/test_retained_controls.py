@@ -77,3 +77,49 @@ def test_invalid_control_bytes_refuse_before_any_file_is_written(tmp_path):
     with pytest.raises(ValueError, match='content must be bytes'):
         _retain_controls(tmp_path, {'new_control.json': b'new', 'bad.json': 'not encoded'})
     assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize('alias', ['parent', 'symlink'])
+def test_controls_cannot_enter_native_storage_through_a_path_alias(tmp_path, alias):
+    from viewer_publication.archive_format import _controls_directory
+
+    native = tmp_path/'native'
+    native.mkdir()
+    if alias == 'symlink':
+        (tmp_path/'alias').symlink_to(native, target_is_directory=True)
+        controls = tmp_path/'alias/controls'
+    else:
+        (tmp_path/'other').mkdir()
+        controls = tmp_path/'other/../native/controls'
+    with pytest.raises(ValueError, match='symlink|separate'):
+        _controls_directory(controls, (native,))
+    assert not list(native.iterdir())
+
+
+@pytest.mark.parametrize('native_status', ['pending', 'unknown', 'failed'])
+def test_successful_observation_of_unfinished_work_never_calls_accept(tmp_path, native_status):
+    from hashlib import sha256
+    import json
+    from types import SimpleNamespace
+    from viewer_publication.archive_format import execute_native_release, NativeReleaseNotReady
+    from viewer_publication.archive_catalog import capture_definitions
+
+    request = dict(action='prepare', dataset='archive', operation='one')
+    project = capture_definitions(tmp_path/'definitions')
+    path = tmp_path/'release-request.json'
+    raw = json.dumps(dict(native=request, workspace=str(tmp_path/'native'), project=str(project),
+                          native_rules=dict(path=str(tmp_path/'native-rules.json'),sha256='a'*64),
+                          controls_dir=str(tmp_path/'controls'))).encode()
+    path.write_bytes(raw)
+    response = dict(status='succeeded', result=dict(status=native_status),
+                    evidence={'path': 'original-retained-observation'})
+    calls = []
+    def observe(workspace, value):
+        calls.append((workspace, value))
+        return response
+    with pytest.raises(NativeReleaseNotReady) as failure:
+        execute_native_release(dict(path=str(path), sha256=sha256(raw).hexdigest()),
+                               adapter=SimpleNamespace(managed_job=observe))
+    assert failure.value.response is response
+    assert calls == [(str(tmp_path/'native'), request)]
+    assert not (tmp_path/'controls').exists()

@@ -53,6 +53,9 @@ def versions():
 def model_spec(tmp_path):
     parsers,catalog=versions()
     return dict(version=1,engine_config=str(tmp_path/'unopened-runtime.json'),
+        prerequisites=[],
+        native_scope=dict(workspace=str(tmp_path/'native-workspace'),dataset='archive-test',operation='model',
+                          policy_id='archive-required-v1',expected_epoch=0,expected_selection=None),
         **{name:dict(kind='parquet',path=str(tmp_path/(name+'.parquet')),sha256='a'*64,size=17)
            for name in ['captures','readings','filename_readings']},
         parser_versions=parsers,catalog_version=catalog,output=str(tmp_path/'release'),scratch=str(tmp_path/'model'))
@@ -234,6 +237,8 @@ def selective_spec(tmp_path,fixture,where,*,base=None,differential_rows=50,count
     (tmp_path/'contract').mkdir(exist_ok=True);(tmp_path/'targets.json').write_text('{}')
     unused=dict(kind='parquet',path='unused',sha256='a'*64,size=1)
     model=written('model-template.json',dict(version=1,engine_config='unused',parser_versions=parsers,catalog_version=catalog,output='unused',scratch='unused',
+        native_scope=dict(workspace=str(tmp_path/'native-workspace'),dataset='archive-test',operation='selective-model',
+                          policy_id='archive-required-v1',expected_epoch=0,expected_selection=None),prerequisites=[],
         captures=unused,readings=unused,filename_readings=unused))
     publish=written('publish-template.json',dict(version=1,model_spec=dict(path='x',sha256='a'*64,size=1),daily=dict(path='x',sha256='a'*64,size=1),bucket='derived-fixture',work='x',
         public_origin='https://archive.fixture.test',receipt_keys=[],provenance=[],run=dict(id='selective'),contract_next_release='contract',targets=dict(path='targets.json',**file_pin(tmp_path/'targets.json'))))

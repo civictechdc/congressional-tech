@@ -181,7 +181,15 @@
           }
         }
       ],
-      "description": "Coverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list.parquet bullet): a type without \"nullable\" there is required."
+      "description": "Coverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list.parquet bullet): a type without \"nullable\" there is required.",
+      "customProperties": [
+        {
+          "property": "coverageLimits",
+          "value": [
+            "Date bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage"
+          ]
+        }
+      ]
     },
     {
       "id": "detail",
@@ -710,7 +718,15 @@
           }
         }
       ],
-      "description": "Coverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list and detail bullets)."
+      "description": "Coverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list and detail bullets).",
+      "customProperties": [
+        {
+          "property": "coverageLimits",
+          "value": [
+            "Date bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage"
+          ]
+        }
+      ]
     },
     {
       "id": "links",
@@ -1553,7 +1569,15 @@
           "required": true
         }
       ],
-      "description": "Coverage limits:\nDerived from earlier bodies the lake still holds, not from earlier releases: a key published only from a body no longer held has no row\nNullability basis:\nwitness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w)."
+      "description": "Coverage limits:\nDerived from earlier bodies the lake still holds, not from earlier releases: a key published only from a body no longer held has no row\nNullability basis:\nwitness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w).",
+      "customProperties": [
+        {
+          "property": "coverageLimits",
+          "value": [
+            "Derived from earlier bodies the lake still holds, not from earlier releases: a key published only from a body no longer held has no row"
+          ]
+        }
+      ]
     },
     {
       "id": "recordings",
@@ -1878,7 +1902,15 @@
           "required": false
         }
       ],
-      "description": "Coverage limits:\nCommittee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "description": "Coverage limits:\nCommittee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "customProperties": [
+        {
+          "property": "coverageLimits",
+          "value": [
+            "Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats"
+          ]
+        }
+      ]
     },
     {
       "id": "bills",
@@ -2162,7 +2194,15 @@
           }
         }
       ],
-      "description": "Coverage limits:\nAmendments cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "description": "Coverage limits:\nAmendments cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "customProperties": [
+        {
+          "property": "coverageLimits",
+          "value": [
+            "Amendments cover the 119th Congress only until spicy-regs backfills"
+          ]
+        }
+      ]
     },
     {
       "id": "nominations",
@@ -2323,7 +2363,15 @@
           }
         }
       ],
-      "description": "Coverage limits:\nNominations cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss."
+      "description": "Coverage limits:\nNominations cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss.",
+      "customProperties": [
+        {
+          "property": "coverageLimits",
+          "value": [
+            "Nominations cover the 119th Congress only until spicy-regs backfills"
+          ]
+        }
+      ]
     },
     {
       "id": "url_state",
@@ -2769,7 +2817,15 @@
           }
         }
       ],
-      "description": "Coverage limits:\nScored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "description": "Coverage limits:\nScored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null.",
+      "customProperties": [
+        {
+          "property": "coverageLimits",
+          "value": [
+            "Scored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then"
+          ]
+        }
+      ]
     },
     {
       "id": "committee_records",
