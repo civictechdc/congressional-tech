@@ -49,7 +49,16 @@ def cue_rows(text, fmt):
                 raise ExplorerError('TTML cue requires explicit begin and end')
             def seconds(value):
                 return float(value[:-1]) if re.fullmatch(r'[0-9]+(?:[.][0-9]+)?s',value) else _seconds(value)
-            yield dict(start=start,end=end,start_seconds=seconds(start),end_seconds=seconds(end),text=''.join(p.itertext()))
+            def paragraph(node):
+                parts=[node.text or '']
+                for child in node:
+                    parts.append('\n' if child.tag.split('}')[-1]=='br' else paragraph(child))
+                    parts.append(child.tail or '')
+                return ''.join(parts)
+            start_seconds,end_seconds=seconds(start),seconds(end)
+            if end_seconds<start_seconds:
+                raise ExplorerError('Caption cue ends before it starts')
+            yield dict(start=start,end=end,start_seconds=start_seconds,end_seconds=end_seconds,text=paragraph(p))
         return
     if fmt not in ('vtt','srt'):
         raise ExplorerError(f'Unsupported caption format {fmt!r}')
@@ -119,7 +128,7 @@ def _playlist(text):
 async def read_caption_page(target, query, load_resources, *, data_dir=None,timeout=10.0):
     deadline=time.monotonic()+timeout
     segment,cue_offset,position,skip=_position(query,target)
-    result=dict(release_id=target['release_id'],event_id=query.event_id,source=target,
+    result=dict(release_id=target['release_id'],event_id=target['reference'].get('event_id'),source=target,
                 rows=[],offset=query.offset,has_more=False,missing_resources=[],state='available',
                 reader_version=CAPTION_READER_VERSION)
     spent=0
@@ -218,4 +227,6 @@ async def read_caption_page(target, query, load_resources, *, data_dir=None,time
     result['verification']='The root and returned cue bodies were SHA-256 verified. Unread segment bodies have not been checked by this call.'
     if result['missing_resources']:
         result['state']='partial' if result['rows'] else 'unavailable'
+    elif not result['rows'] and done and position==0 and not query.offset:
+        result.update(state='unavailable',coverage='unknown',reason='Retained source contains no readable caption cues')
     return result

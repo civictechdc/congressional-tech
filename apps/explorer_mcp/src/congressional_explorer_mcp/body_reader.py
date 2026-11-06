@@ -20,6 +20,7 @@ import regex
 from . import __version__
 from .models import DocumentQuery, ExplorerError, MAX_BYTES
 from .release import atomic_json, encoded
+from .citations import add_body_citations, text_citation
 
 MAX_BODY_BYTES = 64 << 20
 MAX_RAW_BYTES = MAX_BODY_BYTES
@@ -28,7 +29,7 @@ MAX_PAGE_MATCH_ITERATIONS = 10_000
 BODY_CACHE_VERSION = 2
 SNIPPET_CONTEXT_CHARS = 160
 
-TEXT_FORMATS = frozenset({'pdf', 'html', 'htm', 'xhtml', 'xml', 'text', 'txt', 'json', 'csv', 'md', 'vtt', 'm3u8'})
+TEXT_FORMATS = frozenset({'pdf', 'html', 'htm', 'xhtml', 'xml', 'text', 'txt', 'json', 'csv', 'md', 'vtt', 'srt', 'ttml', 'dfxp', 'm3u8'})
 UNSUPPORTED_FORMATS = frozenset({
     'mp4', 'mp2t', 'ts', 'm4a', 'mp3', 'wav', 'webm', 'mov', 'avi',
     'zip', 'tar', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
@@ -92,6 +93,8 @@ def _normalize_format(fmt: str | None, media_type: str | None, filename: str | N
             return 'html'
         if kind == 'txt':
             return 'text'
+        if kind == 'dfxp':
+            return 'ttml'
         return kind
     media = (media_type or '').split(';', 1)[0].strip().lower()
     if media == 'application/pdf':
@@ -104,7 +107,7 @@ def _normalize_format(fmt: str | None, media_type: str | None, filename: str | N
         return 'text'
     ext = Path(filename or '').suffix.lower().lstrip('.')
     if ext in TEXT_FORMATS:
-        return 'html' if ext in ('htm', 'xhtml') else ('text' if ext == 'txt' else ext)
+        return 'html' if ext in ('htm', 'xhtml') else ('text' if ext == 'txt' else ('ttml' if ext == 'dfxp' else ext))
     raise ExplorerError(f'Unsupported document format {fmt or media_type or ext or "unknown"!r} for text extraction')
 
 
@@ -511,6 +514,7 @@ def read_document_body(
                     snippet=snippet,
                     text=snippet,
                 )
+                entry['citation'] = text_citation(target,dict(kind='body_text',page=page_num,offset=m.start(),length=len(matched_text)),matched_text)
                 matches.append(entry)
                 used_chars += len(snippet)
             if iterations >= MAX_PAGE_MATCH_ITERATIONS:
@@ -557,12 +561,14 @@ def read_document_body(
         next_offset=next_offset,
         next_page=next_page,
     )
+    add_body_citations(result,target)
     while len(encoded(result)) > MAX_BYTES and len(window) > 256:
         window = window[: len(window) - 1024]
         result['text'] = window
         result['rows'][0]['text'] = window
         result['has_more'] = result['truncated'] = True
         result['next_offset'] = query.offset + len(window)
+        add_body_citations(result,target)
     return result
 
 

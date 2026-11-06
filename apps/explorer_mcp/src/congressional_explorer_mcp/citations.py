@@ -7,6 +7,11 @@ CITATION_VERSION = 1
 TEXT_READER_VERSION = 'archive-body-text-v2'
 
 
+def caption_source_id(video_key,body_hex,language=None,production=None):
+    """Shared identity for a selected caption root, including roots without a meeting."""
+    return sha256(f'captions:{video_key}:{body_hex.lower()}:{language or ""}:{production or ""}'.encode()).hexdigest()
+
+
 def text_citation(target, location, text, witness_key=None):
     """Cite exact returned text at a release/body-bound location, without name matching."""
     reference = target.get('reference') or dict(release_id=target['release_id'], link_key=target['link_key'])
