@@ -45,6 +45,19 @@ def run(command, *, timeout=15, own_group=False):
     return result
 
 
+def install_catalog():
+    """Use ordinary pip to retain the locked development wheel's archive hash."""
+    lock = tomllib.loads((ROOT/'uv.lock').read_text())
+    package, = [item for item in lock['package'] if item['name'] == 'data-design-kit']
+    wheel, = package['wheels']
+    algorithm, digest = wheel['hash'].split(':', 1)
+    path = (ROOT/package['source']['path']).resolve(strict=True)
+    requirement = f"data-design-kit[catalog] @ {path.as_uri()}#{algorithm}={digest}"
+    result = run([sys.executable, '-m', 'pip', '--python', str(ROOT/'.venv/bin/python'),
+                  'install', '--no-index', '--no-deps', '--force-reinstall', requirement], timeout=60)
+    print(result.stdout, end='')
+
+
 def baseline(config, *, fetch=False):
     """Setup may fetch the exact object; test preflight only verifies local data."""
     spec = config['baseline']
@@ -566,6 +579,7 @@ def main(argv=None):
     chk = sub.add_parser('check', help='Run doctor environment checks followed by test inventory')
     chk.add_argument('--lane', choices=config['lanes'])
     sub.add_parser('inventory')
+    sub.add_parser('install-catalog', help='Install the locked DDK wheel with its normal installer-recorded hash; run with a Python that has pip')
     local = sub.add_parser('write-local-runtime',
                            help='Write a local-only DOCSPEC_JOB_CONFIG for a binary matching the committed runtime pin')
     local.add_argument('--binary', type=Path,
@@ -601,6 +615,8 @@ def main(argv=None):
             doctor(config, args.lane)
         elif args.command == 'inventory':
             inventory(config)
+        elif args.command == 'install-catalog':
+            install_catalog()
         elif args.command == 'prune-worktree':
             prune_worktree(args.path, discard=args.discard, execute=args.execute)
             print(('Removed ' if args.execute else 'Nothing blocks removing ') + str(args.path))

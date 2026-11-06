@@ -666,7 +666,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "data-design-kit", extra = ["catalog"] },
     { name = "pyyaml" },
     { name = "readability-lxml" },
 ]
@@ -688,7 +687,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "data-design-kit", extras = ["catalog"], path = "vendor/ddk/data_design_kit-0.1.0.dev5-py3-none-any.whl" },
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "readability-lxml", specifier = ">=0.9" },
 ]
@@ -820,14 +818,14 @@ wheels = [
 
 [[package]]
 name = "data-design-kit"
-version = "0.1.0.dev5"
-source = { path = "vendor/ddk/data_design_kit-0.1.0.dev5-py3-none-any.whl" }
+version = "0.1.0.dev6"
+source = { path = "vendor/ddk/data_design_kit-0.1.0.dev6-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "referencing" },
 ]
 wheels = [
-    { filename = "data_design_kit-0.1.0.dev5-py3-none-any.whl", hash = "sha256:b5b64cf8e670b9fb9a1546d4f3bc5aead70e47124f2acfb51cec9028286007eb" },
+    { filename = "data_design_kit-0.1.0.dev6-py3-none-any.whl", hash = "sha256:41dbccda3367ea794f0040c165abd86f43d918ecee036cbce7307a0b98b18149" },
 ]
 
 [package.optional-dependencies]
@@ -837,11 +835,13 @@ catalog = [
 
 [package.metadata]
 requires-dist = [
+    { name = "blake3", marker = "extra == 'native-metadata'", specifier = "==1.0.11" },
     { name = "jsonschema", specifier = "==4.26.0" },
+    { name = "pyarrow", marker = "extra == 'native-metadata'", specifier = "==26.0.1" },
     { name = "rdflib", marker = "extra == 'catalog'", specifier = "==7.2.1" },
     { name = "referencing", specifier = "==0.37.0" },
 ]
-provides-extras = ["catalog"]
+provides-extras = ["catalog", "native-metadata"]
 
 [[package]]
 name = "dateparser"
@@ -3298,14 +3298,18 @@ name = "viewer-publication"
 version = "0.1.0"
 source = { editable = "packages/viewer_publication" }
 dependencies = [
+    { name = "blake3" },
     { name = "congress-api", extra = ["archive"] },
     { name = "congress-shared" },
+    { name = "data-design-kit", extra = ["catalog"] },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "blake3", specifier = "==1.0.11" },
     { name = "congress-api", extras = ["archive"], editable = "packages/congress_api" },
     { name = "congress-shared", editable = "packages/congress_shared" },
+    { name = "data-design-kit", extras = ["catalog"], path = "vendor/ddk/data_design_kit-0.1.0.dev6-py3-none-any.whl" },
 ]
 
 [[package]]

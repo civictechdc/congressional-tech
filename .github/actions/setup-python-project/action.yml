@@ -54,6 +54,7 @@ runs:
       shell: bash
       run: |
         uv sync --locked
+        python scripts/dev.py install-catalog
         echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
     - name: Prepare historical baseline and check prerequisites
       shell: bash
