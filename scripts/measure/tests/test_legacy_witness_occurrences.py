@@ -103,6 +103,32 @@ def test_all_input_records_survive_and_changed_frozen_inputs_refuse(tmp_path):
         load_legacy(tmp_path, pins)
 
 
+@pytest.mark.parametrize('raw,reason', [
+    ('<witness-list><panel sort-order="1"><witness remove-date="2026-01-01"><lastname>Removed</lastname></witness><witness><lastname>Active</lastname></witness></panel></witness-list>', 'removed_witness'),
+    ('<witness-list><panel sort-order="2"><witness><lastname>Second</lastname></witness></panel><panel sort-order="1"><witness><lastname>First</lastname></witness></panel></witness-list>', 'unproved_panel_order'),
+    ('<witness-list><panel sort-order="1" remove-date="2026-01-01"><witness/></panel><panel sort-order="2"><witness/></panel></witness-list>', 'removed_panel'),
+    ('<witness-list><panel sort-order="1"><witness id="source-id"/></panel></witness-list>', 'id_based_locator'),
+    ('<witness-list><panel sort-order="1"><witness witness-id="source-id"/></panel></witness-list>', 'id_based_locator'),
+])
+def test_unproved_raw_positions_never_attach_another_witness(tmp_path, raw, reason):
+    body = raw.encode()
+    body_sha = sha256(body).hexdigest()
+    path = tmp_path / 'bodies/sha256' / body_sha[:2] / (body_sha + '.gz')
+    path.parent.mkdir(parents=True)
+    path.write_bytes(gzip.compress(body))
+    reader = HouseEvidence(tmp_path)
+    row = dict(native(), record_sha=body_sha)
+    result = reader.occurrence(row)
+    assert result['state'] == 'read_unqualified_locator'
+    assert result['literal'] is None
+    assert reason in result['reasons']
+    assert reader.read(body_sha)['occurrences'] == {}
+    # An ID locator is also explicit uncertainty, never a fabricated position.
+    row['source_locator'] = 'house_xml:id[source-id]'
+    assert reader.occurrence(row)['literal'] is None
+    assert reader.bytes_read == len(body)
+
+
 @pytest.mark.parametrize('repeats', [1, 2])
 @pytest.mark.parametrize('wrong_raw_role', [False, True])
 def test_end_to_end_conserves_records_and_reports_missing_role_link(tmp_path, repeats, wrong_raw_role):
@@ -121,7 +147,7 @@ def test_end_to_end_conserves_records_and_reports_missing_role_link(tmp_path, re
         pins[filename] = sha256((data / filename).read_bytes()).hexdigest()
     frozen = tmp_path / 'frozen.json'
     frozen.write_text(json.dumps(dict(input_sha256=pins)))
-    raw = b'''<witness-list><panel><witness><position>Chairman</position><organization>Tribe</organization>
+    raw = b'''<witness-list><panel sort-order="1"><witness><position>Chairman</position><organization>Tribe</organization>
       <witness-documents><witness-document><type>WS</type><files>
         <file doc-url="https://house/statement.pdf" doc-type="PDF"/>
       </files></witness-document></witness-documents></witness></panel></witness-list>'''
