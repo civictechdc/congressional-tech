@@ -239,9 +239,31 @@ test('hearing captions keep separate saved bodies and label HLS as a download',(
       {sha256:second,suffix:'',language:'en',format:'m3u8',production:'archive'},
     ]}]},
   }));
+  assert(html.includes('data-recording-key="recording-a"'));
   for(const text of ['https://fixture.test/video',`https://raw.test/bodies/sha256/aa/${first}.gz`,
     `https://raw.test/bodies/sha256/bb/${second}`,'en · vtt · live','en · m3u8 · archive',
     'Download saved HLS playlist','Playback is unavailable here.','download=""'])assert(html.includes(text),text);
+});
+
+test('hearing transcript inventory preserves printed, committee and caption source labels',()=>{
+  const body='c'.repeat(64);
+  const html=renderToStaticMarkup(React.createElement(HearingDetail,{
+    rawBase:'https://raw.test/',onSelect:()=>{},
+    meeting:{event_id:100,videos:[{video_key:'senate:source-control',tracks:[
+      {sha256:body,suffix:'.gz',language:'en',format:'m3u8',production:'live'},
+    ]}],transcripts:[
+      {source:'printed_hearing',package_id:'CHRG-118hhrg12345',list_row:0,formats:['pdf']},
+      {source:'committee_transcript',title:'Committee verbatim record',list_row:1,formats:['pdf']},
+      {source:'captions',video_key:'senate:source-control',formats:['m3u8'],language:'en',production:'live'},
+    ]},
+  }));
+  for(const text of ['Transcripts and captions','Printed hearing','Committee transcript',
+    'CHRG-118hhrg12345','Committee verbatim record','senate:source-control',
+    'Captions or subtitles · en · m3u8 · live',`https://raw.test/bodies/sha256/cc/${body}.gz`,
+    'Download saved HLS playlist'])assert(html.includes(text),text);
+  assert(!html.includes('<h3>Official Transcripts</h3>'));
+  assert.equal((html.match(/class="explorer-text-button"/g)||[]).length,2,
+    'Both genuine document sources keep their existing document actions.');
 });
 
 test('nomination committee actions retain publisher precision and stay separate from floor votes',()=>{

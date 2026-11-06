@@ -10,6 +10,7 @@ import {
 } from './archive-metadata.ts';
 import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
 import {savedCopy} from '../reader/archive.ts';
+import {transcriptSourceLabel} from '../reader/archive-entities.ts';
 
 function savedCaptionUrl(track: any, rawBase?: string) {
   if (rawBase && track?.sha256) {
@@ -200,7 +201,7 @@ export function HearingDetail({
             seenTracks.add(k);
             return true;
           });
-          return <li key={rec.video_key||rec.video_id||i}>
+          return <li key={rec.video_key||rec.video_id||i} data-recording-key={rec.video_key||undefined}>
             {rec.url?<PublicLink url={rec.url}>{label}</PublicLink>:<strong>{label}</strong>}
             {rec.source&&<span className="archive-source-meta"> ({rec.source}{duration?`, ${duration}`:''})</span>}
             {!rec.source&&duration&&<span className="archive-source-meta"> ({duration})</span>}
@@ -238,10 +239,13 @@ export function HearingDetail({
     </details>)}
 
     {transcripts.length>0&&<div className="archive-entity-section">
-      <h3>Official Transcripts</h3>
+      <h3>Transcripts and captions</h3>
       <ul className="archive-entity-list">
         {transcripts.map((tr:any,i:number)=>{
-          const label=tr.title||tr.jacket_number||`Transcript ${i+1}`;
+          const sourceLabel=transcriptSourceLabel(tr);
+          const label=tr.title||tr.jacket_number||tr.package_id||(tr.source==='captions'?tr.video_key:null)||`${sourceLabel} ${i+1}`;
+          const sourceContext=[sourceLabel,...(tr.source==='captions'
+            ?[tr.language,...(Array.isArray(tr.formats)?tr.formats:[]),tr.production]:[])].filter(Boolean).join(' · ');
           const hasRow=tr.list_row!=null&&Number.isSafeInteger(Number(tr.list_row));
           return <li key={tr.jacket_number||i}>
             {hasRow&&onSelect
@@ -249,6 +253,7 @@ export function HearingDetail({
               :tr.url?<PublicLink url={tr.url}>{label}</PublicLink>
                 :tr.package_id?<PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(tr.package_id)}`}>{label}</PublicLink>:<span>{label}</span>}
             {tr.jacket_number&&tr.title&&<span className="archive-source-meta"> (Jacket {tr.jacket_number})</span>}
+            <span className="archive-source-meta"> · {sourceContext}</span>
           </li>;
         })}
       </ul>
