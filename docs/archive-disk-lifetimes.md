@@ -56,8 +56,11 @@ The JSON reports the required roots even when the budget is missing. Execution
 keeps `*-disk-admission.json` beside the watchdog reports. Setup records its cache,
 browser, temporary, checkout and pinned SpicyRegs input roots before installation.
 Publication also covers startup work, model output/scratch, daily work, configured
-runtime workspaces and the shared text index when enabled. Requalify the budget
-when the revision, workload bounds, runtime, layout or cache conditions change.
+runtime workspaces and the shared text index when enabled. Include `python_temp`
+as well: native-host logs and producer-version extraction use
+Python's selected temporary directory, which can differ from `RUNNER_TEMP`.
+Group both roots together only when they are on the same filesystem. Requalify
+the budget when the revision, workload bounds, runtime, layout or cache conditions change.
 Do not convert a sampled shared-volume drawdown into an isolated allocation claim.
 
 After a publish/backfill process group exits, the Mac wrapper retains its nightly
