@@ -1,0 +1,56 @@
+{
+  "source_generation": "f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42",
+  "source_pin": {
+    "family": "bill-family",
+    "key": "bill_actions.parquet",
+    "path": "generations/bill-family/f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42/bill_actions.parquet",
+    "rows": 932877,
+    "sha256": "ded5f49598848192c847dd6e2b4ba0bd57b26209c0606a4d3d27f6dea32d78a9",
+    "size": 11506349
+  },
+  "selection": {
+    "bill_id": "119-s-1055",
+    "action_date": "2026-10-05"
+  },
+  "rows": [
+    {
+      "bill_id": "119-s-1055",
+      "action_index": 0,
+      "action_date": "2026-10-05",
+      "action_time": "16:50:14",
+      "action_text": "Held at the desk.",
+      "action_code": "H15000",
+      "action_type": "Floor",
+      "source_system_name": "House floor actions",
+      "recorded_vote_count": 0,
+      "is_latest_action": true,
+      "stage": "other_chamber"
+    },
+    {
+      "bill_id": "119-s-1055",
+      "action_index": 1,
+      "action_date": "2026-10-05",
+      "action_time": "16:31:57",
+      "action_text": "Received in the House.",
+      "action_code": "H14000",
+      "action_type": "Floor",
+      "source_system_name": "House floor actions",
+      "recorded_vote_count": 0,
+      "is_latest_action": false,
+      "stage": "other_chamber"
+    },
+    {
+      "bill_id": "119-s-1055",
+      "action_index": 2,
+      "action_date": "2026-10-05",
+      "action_time": null,
+      "action_text": "Message on Senate action sent to the House.",
+      "action_code": null,
+      "action_type": "Floor",
+      "source_system_name": "Senate",
+      "recorded_vote_count": 0,
+      "is_latest_action": false,
+      "stage": "introduced"
+    }
+  ]
+}
