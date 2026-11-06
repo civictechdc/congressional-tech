@@ -92,11 +92,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
             return await caption_read(target,query)
         if query.cursor:
             raise ExplorerError('Document transcripts use page and character offset, not a caption cursor')
-        from .body_reader import read_document_body
         document=DocumentQuery(**target['document_reference'],section='text',offset=query.offset,page=query.page,max_chars=query.max_chars,limit=query.limit)
         # A document reference, rather than the event, remains the owner of body identity.
-        body_target=await call('document_body_target',document.model_dump())
-        result=await anyio.to_thread.run_sync(partial(read_document_body,body_target,document,data_dir=data_dir,timeout=timeout),abandon_on_cancel=True)
+        result=await read_document(document)
         result.update(event_id=query.event_id,source=target,state='available')
         return bounded(result)
 
