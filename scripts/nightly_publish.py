@@ -29,14 +29,17 @@ import json
 import os
 import plistlib
 import re
+import runpy
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 LABEL = 'ai.spicygov.archive-nightly'
 EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
+DISK = runpy.run_path(str(Path(__file__).with_name('archive_disk.py')))
 
 
 def run_owned(command, **options):
@@ -50,6 +53,8 @@ def run_owned(command, **options):
         return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
     finally:
         owner.stop_owned(process)
+        if owner._group_is_live(process.pid):
+            raise RuntimeError('Nightly process group is still live; retain its spill')
 
 
 def git(*args, cwd, capture=True, pass_fds=()):
@@ -110,6 +115,7 @@ def publish_env(main, worktree):
         DOCSPEC_RUNTIME_CONFIG=str(remote_runtime / 'runtime.json'),
         DOCSPEC_JOB_CONFIG=str(worktree / '.cache/local-runtime/runtime.json'),
         CONGRESS_TEXT_INDEX_WORK=str(main / '.cache/archive-release/text-index/work'),
+        ARCHIVE_DISK_BUDGETS=os.environ.get('ARCHIVE_DISK_BUDGETS', str(main / '.cache/archive-release/disk-budgets.json')),
     )
     return env
 
@@ -167,6 +173,47 @@ def archive_candidate(candidate, evidence):
     shutil.rmtree(retired)
 
 
+def clean_native_spill(main, *, execute=False):
+    """The same nightly lock excludes live writers during dry run and retirement."""
+    nightly = main / '.cache/archive-release/nightly'
+    if not nightly.exists():
+        return dict(status='dry-run', paths=[])
+    with (nightly / 'lock').open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ValueError('Native spill cleanup refused: another nightly process holds the lock') from None
+        return DISK['retire_spill'](nightly / 'candidate', execute=execute)
+
+
+def record_native_spill(candidate, report):
+    try:
+        result = DISK['retire_spill'](candidate, execute=True)
+    except (OSError, ValueError) as error:
+        result = dict(status='retained', reason=str(error))
+    report.write_text(json.dumps(result, indent=2) + '\n')
+
+
+def setup_roots(worktree, evidence, env):
+    def tool_path(command):
+        return Path(subprocess.run(command, env=env, capture_output=True, text=True, check=True,
+                                   timeout=15, cwd=worktree).stdout.strip())
+    browsers = env.get('PLAYWRIGHT_BROWSERS_PATH')
+    if browsers == '0':
+        browser_root = worktree / 'apps/site/node_modules/playwright-core/.local-browsers'
+    else:
+        cache = Path.home() / ('Library/Caches' if sys.platform == 'darwin' else '.cache')
+        browser_root = Path(browsers) if browsers else cache / 'ms-playwright'
+    roots = dict(checkout=worktree, evidence=evidence, home=Path.home(), browsers=browser_root,
+                 temp=Path(env.get('TMPDIR') or tempfile.gettempdir()),
+                 uv_cache=tool_path(['uv', 'cache', 'dir']), npm_cache=tool_path(['npm', 'config', 'get', 'cache']))
+    model_path = worktree / 'model/jobs/publish-model.json'
+    model = DISK['metadata'](model_path)
+    if model.get('spicy_regs'):
+        roots['spicy_regs'] = (model_path.parent / model['spicy_regs']['path']).parent
+    return roots
+
+
 def run(worktree, prepare_only, *, lock_fd=None):
     main = main_checkout(worktree)
     nightly = main / '.cache/archive-release/nightly'
@@ -187,7 +234,29 @@ def run(worktree, prepare_only, *, lock_fd=None):
         def run_step(name, command, *, step_env=env):
             step(name, command, cwd=worktree, env=step_env, log=log, pass_fds=pass_fds)
 
+        def admit_job(name, operation, *, mode=None):
+            binding = DISK['metadata'](worktree / '.github/archive-jobs.json')[operation]
+            admission = DISK['job_admission'](worktree, operation, worktree / binding['spec'],
+                temp=evidence, nightly_work=candidate if operation == 'publish' else None,
+                env=env, commit=head, mode=mode)
+            (evidence / (name + '-disk-admission.json')).write_text(json.dumps(admission, indent=2) + '\n')
+            print(json.dumps(dict(disk_admission=admission)), file=log, flush=True)
+            if admission['status'] != 'admitted':
+                raise StepFailed(name + ' disk admission', 2)
+
         try:
+            roots = {}
+            try:
+                roots = setup_roots(worktree, evidence, env)
+                admission = DISK['admit'](env.get('ARCHIVE_DISK_BUDGETS', main / '.cache/archive-release/disk-budgets.json'),
+                    'setup', roots, commit=head)
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                admission = dict(status='refused', operation='setup', reason=str(error),
+                                 roots={name: str(path) for name, path in roots.items()})
+            (evidence / 'setup-disk-admission.json').write_text(json.dumps(admission, indent=2) + '\n')
+            print(json.dumps(dict(disk_admission=admission)), file=log, flush=True)
+            if admission['status'] != 'admitted':
+                raise StepFailed('setup disk admission', 2)
             run_step('uv sync', ['uv', 'sync', '--frozen'])
             run_step('MCP index runtime', ['uv','sync','--frozen','--python','3.12.13','--project','apps/explorer_mcp'])
             run_step('npm ci', ['npm', '--prefix', 'apps/site', 'ci'])
@@ -217,36 +286,60 @@ def run(worktree, prepare_only, *, lock_fd=None):
                         reason = None
                         summary['resumed'] = True
                     if reason:
+                        admit_job('fresh-candidate', 'publish', mode='publish-fresh')
                         summary['fresh_reason'] = reason
                         archive_candidate(candidate, evidence / 'previous-candidate')
                 def publish_step(name, *, initial=False):
                     resuming = recoverable(candidate)
+                    admit_job(name.replace(' ', '-'), 'publish')
                     if not candidate.exists():
                         candidate.mkdir()
                         (candidate / 'commit').write_text(head + '\n')
                     step_env = env if initial else dict(env, RUNNER_TEMP=str(evidence / name.replace(' ', '-')))
+                    quiescent = False
                     try:
                         run_step(name, publish, step_env=step_env)
+                        quiescent = True
                     except StepFailed:
+                        quiescent = True
                         if initial and changed.is_file():
                             return
                         if resuming or daily_status(candidate) != 'backfill_required':
                             raise
+                    finally:
+                        # step() has waited for the entire owned process group. Its
+                        # inherited lock remains held through this retirement.
+                        if lock_fd is not None and quiescent:
+                            record_native_spill(candidate, evidence / (name.replace(' ', '-') + '-native-spill.json'))
 
                 publish_step('publish', initial=True)
                 if changed.is_file():
+                    admit_job('changed-candidate', 'publish', mode='publish-fresh')
                     summary['fresh_reason'] = json.loads(changed.read_text())['reason']
                     archive_candidate(candidate, evidence / 'superseded-candidate')
                     publish_step('publish with current inputs')
                 if daily_status(candidate) == 'backfill_required':
+                    admit_job('before-backfill', 'backfill')
                     summary['daily_status_before_backfill'] = 'backfill_required'
                     archive_candidate(candidate, evidence / 'candidate-before-backfill')
-                    keep_small_json(backfill, evidence / 'backfill-before-cleanup')
-                    run_step('clean backfill output', ['git', 'clean', '-fdXq', '--', 'output/archive-backfill'])
+                    if backfill.exists() or backfill.is_symlink():
+                        if backfill.is_symlink():
+                            raise ValueError('Expected the original nightly backfill work directory')
+                        # No backfill resume is declared by this job. Preserve all
+                        # prior work in durable custody instead of git-cleaning it.
+                        backfill.rename(evidence / 'previous-backfill')
+                        summary['retained_previous_backfill'] = str(evidence / 'previous-backfill')
+                    quiescent = False
                     try:
                         run_step('backfill', [python, '-I', '.github/scripts/run-archive-job.py', 'backfill', *lock_args])
+                        quiescent = True
+                    except StepFailed:
+                        quiescent = True
+                        raise
                     finally:
                         keep_small_json(backfill, evidence / 'backfill')
+                        if lock_fd is not None and quiescent:
+                            record_native_spill(backfill, evidence / 'backfill-native-spill.json')
                     publish_step('publish after backfill')
                     if daily_status(candidate) == 'backfill_required':
                         raise StepFailed('publish after backfill', 2)
@@ -255,6 +348,9 @@ def run(worktree, prepare_only, *, lock_fd=None):
             summary.update(status='prepared' if prepare_only else 'ok', exit=0)
         except StepFailed as failure:
             summary.update(status='failed', step=failure.name, exit=failure.code)
+        except (OSError, ValueError, RuntimeError) as failure:
+            summary.update(status='failed', step='wrapper', exit=2, reason=str(failure))
+            print(str(failure), file=log, flush=True)
         finally:
             if not prepare_only and candidate.exists():
                 summary['retained_candidate'] = str(candidate)

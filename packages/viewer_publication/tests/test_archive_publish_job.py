@@ -671,6 +671,8 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
 def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome,monkeypatch):
     """Run the scheduled wrapper and actual bound CLI with local external-service substitutes."""
     import importlib.util
+    import fcntl
+    import subprocess
     import sys
     from types import SimpleNamespace
     from viewer_publication import archive_controller,archive_publish_job
@@ -684,9 +686,26 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     root=Path(__file__).resolve().parents[3]
     nightly=load_script('nightly_publish',root/'scripts/nightly_publish.py')
     runner=load_script('run_archive_job',root/'.github/scripts/run-archive-job.py')
+    head=subprocess.run(['git','rev-parse','HEAD'],cwd=root,check=True,capture_output=True,text=True).stdout.strip()
+    budgets=tmp_path/'disk-budgets.json'
+    monkeypatch.setenv('ARCHIVE_DISK_BUDGETS',str(budgets))
+    monkeypatch.setenv('RUNNER_TEMP',str(tmp_path/'runner-temp'))
+    _,roots=nightly.DISK['job_roots']('publish',root/'model/jobs/publish.json',temp=tmp_path,
+        nightly_work=tmp_path/'candidate')
+    def allowance(names):
+        return dict(revision=head,measurement='bounded test fixture; no production qualification',workload='fixture',
+            filesystems=[dict(roots=list(names),peak_additional_bytes=1,headroom_bytes=15*2**30)])
+    budgets.write_text(json.dumps(dict(version=1,operations={'setup':allowance(['fixture']),
+        'publish-fresh':allowance(roots),'publish-resume':allowance(roots)})))
     monkeypatch.setattr(nightly,'main_checkout',lambda _:tmp_path)
-    monkeypatch.setattr(nightly,'git',lambda *args,**_: 'f'*40 if args[0]=='rev-parse' else '')
-    monkeypatch.setattr(nightly,'publish_env',lambda *args:{})
+    monkeypatch.setattr(nightly,'git',lambda *args,**_: head if args[0]=='rev-parse' else '')
+    monkeypatch.setattr(nightly,'publish_env',lambda *args:dict(os.environ))
+    monkeypatch.setattr(nightly,'setup_roots',lambda *args:dict(fixture=tmp_path))
+    def run_once():
+        directory=tmp_path/'.cache/archive-release/nightly';directory.mkdir(parents=True,exist_ok=True)
+        with (directory/'lock').open('a') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            return nightly.run(root,False,lock_fd=lock.fileno())
     execute=archive_publish_job.execute
     publication_results=[]
     def execute_bound(spec):
@@ -710,6 +729,8 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
             # A structurally valid native result above the old wrapper's evidence-copy limit.
             raw=json.loads(result.read_text())
             result.write_text(json.dumps(dict(raw,padding='x'*7_300_000)))
+            native=prepared['scratch']/'native';native.mkdir(exist_ok=True)
+            (native/'interrupted-export.arrow').write_bytes(b'disposable native spill')
             raise OSError('injected interruption after completed export')
         return manifest
     monkeypatch.setattr(archive_controller,'build_prepared_release',interrupt_after_export)
@@ -750,10 +771,11 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     if outcome in {'nightly-refused','nightly-corrupt-etag','nightly-pointer-moved'}:
         select_fixture_release('selected',['A'])
     selected=store.objects.get(pointer)
-    assert nightly.run(root,False)==2 and store.objects.get(pointer)==selected
+    assert run_once()==2 and store.objects.get(pointer)==selected
     assert not (active/'archive-publish/completed-model.json').exists()
     intent=json.loads((active/'archive-publish/model-intent.json').read_text())
     result=Path(intent['stage']['scratch'])/'result.json'
+    assert not (result.parent/'native').exists()
     assert result.stat().st_size>nightly.EVIDENCE_MAX_BYTES
     pinned=file_pin(result)
     raw_reads=[event for event in store.events if event[0]=='raw-get']
@@ -770,7 +792,7 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
         elif outcome=='nightly-corrupt-status':
             summary.write_text(json.dumps(dict(daily,status='backfill_required')))
         elif outcome=='nightly-corrupt-etag':
-            assert nightly.run(root,False)==2  # The comparison refuses and leaves a completed checkpoint.
+            assert run_once()==2  # The comparison refuses and leaves a completed checkpoint.
             checkpoint=active/'archive-publish/completed-model.json'
             saved=json.loads(checkpoint.read_text())
             checkpoint.write_text(json.dumps(dict(saved,pointer_etag='"different"')))
@@ -780,7 +802,7 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
             (active/'archive-publish/model-intent.json').write_text(json.dumps(intent))
             if field=='input_digest':
                 receipts['receipts/documents/2026-10-29/added.jsonl.gz']=next(iter(receipts.values()))
-        assert nightly.run(root,False)==2
+        assert run_once()==2
         assert len(productions)==len(builds)==1 and file_pin(result)==pinned
         assert store.objects.get(pointer)==selected
         assert not (active/'inputs-changed.json').exists()
@@ -789,7 +811,7 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
         return
 
     if outcome=='nightly-refused':
-        assert nightly.run(root,False)==2
+        assert run_once()==2
         assert len(builds)==1 and file_pin(result)==pinned
         assert store.objects[pointer]==selected and ('put',pointer) not in store.events
         [gate]=active.glob('archive-publish/candidate-*/release-gate.json')
@@ -800,7 +822,7 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
         select_fixture_release('external',['A','B'],json.loads(selected)['release_id'])
         store.etag='external-etag'
         moved=store.objects[pointer]
-        assert nightly.run(root,False)==2  # The fresh candidate still needs reviewed causes.
+        assert run_once()==2  # The fresh candidate still needs reviewed causes.
         assert len(productions)==len(builds)==2 and store.objects[pointer]==moved
         [stale]=evidence.glob('*/superseded-candidate/inputs-changed.json')
         assert 'Selected release changed' in stale.read_text()
@@ -808,19 +830,19 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
 
     if outcome=='nightly-changed':
         receipts['receipts/documents/2026-10-29/added.jsonl.gz']=next(iter(receipts.values()))
-        assert nightly.run(root,False)==0 and pointer in store.objects
+        assert run_once()==0 and pointer in store.objects
         assert len(builds)==2 and not active.exists()
         [stale]=evidence.glob('*/superseded-candidate/inputs-changed.json')
         assert 'receipt selection changed' in stale.read_text()
         assert file_pin(stale.parent/'archive-model/result.json')==pinned
         return
 
-    assert nightly.run(root,False)==9
+    assert run_once()==9
     assert file_pin(result)==pinned and pointer in store.objects
     selected=store.objects[pointer]
     if outcome=='nightly-reconcile-new':
         receipts['receipts/documents/2026-10-29/added.jsonl.gz']=next(iter(receipts.values()))
-    assert nightly.run(root,False)==0
+    assert run_once()==0
     assert publication_results[-1]['live_release_basis']=='selected_pointer_reconciled'
     assert publication_results[-1]['status']=='release_unchanged'
     durable=json.loads(store.objects['viewer-publications/status.json'])
@@ -838,7 +860,7 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
         # The next normal invocation still processes the newly available work.
         value=json.loads(spec_path.read_text())
         spec_path.write_text(json.dumps(dict(value,first_release=False)))
-        assert nightly.run(root,False)==2  # This fixture has no reviewed cause record.
+        assert run_once()==2  # This fixture has no reviewed cause record.
         assert len(productions)==len(builds)==2
         assert store.objects[pointer]==selected and store.events.count(('put',pointer))==1
         pending=json.loads((active/'archive-daily/daily-summary.json').read_text())
