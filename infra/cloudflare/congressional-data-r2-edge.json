@@ -10,9 +10,19 @@
       {
         "id": "public-viewer-read-cors",
         "allowed": {
-          "origins": ["*"],
-          "methods": ["GET", "HEAD", "OPTIONS"],
-          "headers": ["Range", "If-None-Match", "If-Modified-Since"]
+          "origins": [
+            "*"
+          ],
+          "methods": [
+            "GET",
+            "HEAD",
+            "OPTIONS"
+          ],
+          "headers": [
+            "Range",
+            "If-None-Match",
+            "If-Modified-Since"
+          ]
         },
         "expose_headers": [
           "Accept-Ranges",
@@ -164,6 +174,30 @@
             "enabled": true
           }
         ]
+      }
+    }
+  ],
+  "configuration_rules": [
+    {
+      "id": "public-r2-content-addressed-body-integrity",
+      "phase": "http_config_settings",
+      "kind": "zone",
+      "deployment": "single-rule-append-or-owned-patch",
+      "rule": {
+        "ref": "public-r2-content-addressed-body-no-email-obfuscation",
+        "description": "Preserve exact archived body bytes on the public R2 custom domain",
+        "expression": "(http.host eq \"congressional-data.spicygov.ai\") and starts_with(http.request.uri.path, \"/bodies/sha256/\")",
+        "action": "set_config",
+        "action_parameters": {
+          "email_obfuscation": false
+        },
+        "enabled": true
+      },
+      "integrity_probe": {
+        "path": "/bodies/sha256/88/88d514434ffa99d196d9d9daf02dfa296d32983edea86ae43cae77af5d2dc5f0",
+        "decoded_sha256": "88d514434ffa99d196d9d9daf02dfa296d32983edea86ae43cae77af5d2dc5f0",
+        "decoded_bytes": 19492,
+        "max_bytes": 65536
       }
     }
   ]

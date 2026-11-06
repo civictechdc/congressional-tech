@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "data": {
+    "success": true,
+    "errors": [],
+    "messages": [],
+    "result": {
+      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "name": "Zone configuration settings",
+      "kind": "zone",
+      "phase": "http_config_settings",
+      "version": "7",
+      "rules": [
+        {
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "ref": "main_site_optimization",
+          "description": "Existing main-site optimization owned elsewhere",
+          "expression": "http.host eq \"www.spicygov.ai\"",
+          "action": "set_config",
+          "action_parameters": {"rocket_loader": true, "email_obfuscation": true},
+          "enabled": true,
+          "version": "2",
+          "last_updated": "2026-10-01T00:00:00Z"
+        },
+        {
+          "id": "cccccccccccccccccccccccccccccccc",
+          "ref": "health_endpoint",
+          "description": "Existing health endpoint setting owned elsewhere",
+          "expression": "starts_with(http.request.uri.path, \"/health/\")",
+          "action": "set_config",
+          "action_parameters": {"bic": false},
+          "enabled": true,
+          "version": "1",
+          "last_updated": "2026-10-02T00:00:00Z"
+        }
+      ]
+    }
+  }
+}

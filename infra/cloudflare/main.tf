@@ -72,3 +72,16 @@ resource "cloudflare_ruleset" "public_r2_response_headers" {
     }
   }
 }
+
+# The v4 provider's cloudflare_ruleset resource owns a whole phase. Do not claim
+# http_config_settings here: other zone rules may already belong to other owners.
+# Export the one owned rule for the append/PATCH-only deployment plan and readback.
+output "public_r2_body_integrity_rule" {
+  description = "Single owned configuration rule; append last or patch its verified ID, preserving unrelated zone rules"
+  value = {
+    zone_id = var.cloudflare_zone_id
+    phase   = local.edge_config.configuration_rules[0].phase
+    kind    = local.edge_config.configuration_rules[0].kind
+    rule    = local.edge_config.configuration_rules[0].rule
+  }
+}
