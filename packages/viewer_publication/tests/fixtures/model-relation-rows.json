@@ -228,6 +228,7 @@
   "source_url_keys": 1258442,
   "source_url_normalized": 1258442,
   "spicy_amendments": 7119,
+  "spicy_bill_actions": 932877,
   "spicy_bill_committee_activities": 341157,
   "spicy_bill_committees": 286771,
   "spicy_bill_vote_references": 19766,
@@ -236,6 +237,7 @@
   "spicy_committees": 817,
   "spicy_congress_bills": 422024,
   "spicy_member_terms": 45535,
+  "spicy_member_votes": 10561417,
   "spicy_members": 12770,
   "spicy_nominations": 2287,
   "spicy_roll_call_votes": 30702,
@@ -280,5 +282,17 @@
   "witnesses_export": 172948,
   "youtube_api_bodies": 295,
   "youtube_cache_bodies": 52
- }
+ },
+ "supplemental_inputs": [
+  {
+   "source": ".cache/archive-release/mcp-research-20261106/legislation/upstream/spicy-regs.json",
+   "sha256": "4adb1f42785bdd14409f8f45f10e2380556d9406fe13d4299305863a02d93a68",
+   "size": 5770,
+   "rows": {
+    "spicy_bill_actions": 932877,
+    "spicy_member_votes": 10561417
+   },
+   "meaning": "Additional legislative leaf counts from the exact qualified source manifest; original measured relation rows remain unchanged."
+  }
+ ]
 }

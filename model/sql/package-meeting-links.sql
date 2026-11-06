@@ -9,7 +9,8 @@ WITH vetted AS (
  FROM meeting_transcript_links l
  JOIN print_meeting_agreement a ON a.package_id=l.package_id AND a.event_id=l.event_id
 )
-SELECT v.package_id,v.event_id,
- coalesce(cardinality(f.held_dates)=1 AND count(*) OVER (PARTITION BY v.package_id)=1,false) AS witness_eligible
+SELECT v.package_id,unnest(array_agg(v.event_id)) AS event_id,
+ coalesce(count(*)=1 AND bool_or(cardinality(f.held_dates)=1),false) AS witness_eligible
 FROM vetted v
 LEFT JOIN package_mods_facts f ON f.package_id=v.package_id
+GROUP BY v.package_id

@@ -14,9 +14,9 @@ from congress_api.adapters.common import reported_time
 from congress_api.parsers.html_metadata import reading_row
 from congress_api.retention.provenance import json_input, list_of, run_job, struct
 from docspec_client.client import NativeDatasets
+from viewer_publication.archive_model import PAGE_METADATA_STEPS
 
 ROOT = Path(__file__).parents[3]
-CHAIN = ['html-metadata-readings', 'page-metadata-values', 'page-dates', 'page-descriptions', 'document-page-metadata']
 
 
 def page(*, title='Hearing page', head='', body='<p>Body</p>'):
@@ -62,7 +62,7 @@ def run(tmp_path, documents, bodies, *, queries, extra_contexts=()):
                    base_href='Utf8', text_bytes='Int64', text_head='Utf8', fields=list_of(struct(field='Utf8', value='Utf8')))]
     steps = [dict(name='selected_readings', sql="""SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,
                  * EXCLUDE(body_hex,text_bytes),cast(text_bytes AS INT) AS text_bytes FROM readings_json""")]
-    steps += [dict(name=name.replace('-', '_'), sql=(ROOT / 'model/sql' / (name + '.sql')).read_text(), materialize=True) for name in CHAIN]
+    steps += [dict(name=name.replace('-', '_'), sql=(ROOT / 'model/sql' / (name + '.sql')).read_text(), materialize=True) for name in PAGE_METADATA_STEPS]
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         return run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
 
@@ -223,7 +223,7 @@ def _release(tmp_path, *, with_metadata, extra_pages=(), unreadable=()):
     import gzip
     import pyarrow.parquet as pq
     from congress_api.lake import filenames, readings
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from congress_api.retention.provenance import parquet_output
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])

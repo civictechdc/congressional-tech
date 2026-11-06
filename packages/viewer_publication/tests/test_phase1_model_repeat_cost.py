@@ -46,7 +46,7 @@ REPEAT_COST_TRACKED = {
     'retired_links_export': 31_775_718,         # the links view: ordered x29, prior_links x21 (M16)
     'profile_completeness': 23_295_486,         # query; readings through the current selected_readings (M28)
     'model_url_keys': 18_289_579,               # url_normalized x11 through mappings (M17)
-    'relationship_invariants': 23_450_829,      # query; existing keys plus caption_resources x5 (largest-input row estimate)
+    'relationship_invariants': 32_996_170,      # includes exact legislative leaf rows; pre-repair plan has the same score
     'source_url_keys': 13_842_862,              # source_url_normalized x11 through mappings (M17)
     'pinned_readings': 14_177_632,              # current compatible reading selection (M28)
     'link_inputs': 14_177_632,                  # current compatible reading selection (M28)
@@ -54,8 +54,11 @@ REPEAT_COST_TRACKED = {
 }
 # Reconciled against df3a9c91 and the caption-resource candidate with native zero-row
 # plans in mcp-research-20261106/hearings/repeat-cost-baseline/comparison.json.
-# Only caption_resources adds work here; the other changed scores already differ at
-# df3a9c91. These are estimated row-scan scores, never measured time or RSS.
+# Only caption_resources added work in that reconciliation. The later legislative
+# leaf counts and meetings regex baseline are bound by before/after tiny job replays
+# in parallel-sessions/ct-m104/repeat-audit-{before-v2,after-v1}/report.json.
+# Both plans have identical tracked costs and no new offender. These are estimated
+# row-scan scores, never measured time or RSS.
 # Readers whose plan runs the same regex join more than once, with that join's runs: a nested-loop
 # regex join costs CPU per rule and row, which the row score cannot see (audit M15). Tracked under
 # ct-6v77 likewise.
@@ -67,7 +70,7 @@ REGEX_REPEAT_TRACKED = {
     'source_annotation_publisher': 2,     # kinds (M40)
     'source_annotation_pages': 2,         # link_word_texts (M40)
     'recordings_entity': 6,               # raw_meeting_videos (M40)
-    'meetings_export': 2,                 # transcript_sources (M40)
+    'meetings_export': 3,                 # current transcript/status plan; identical before the window repair
 }
 
 # New offenders the lint must catch, and one it must let through.
