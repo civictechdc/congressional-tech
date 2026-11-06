@@ -4,6 +4,13 @@ import {readFile,stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {resolve,sep,extname} from 'node:path';
 import {createHash} from 'node:crypto';
+async function verifiedAsset(path,size,digest){
+  const info=await stat(path),hash=createHash('sha256');
+  if(info.size!==size)throw new Error('Fixture asset size failed verification.');
+  for await(const chunk of createReadStream(path))hash.update(chunk);
+  if(hash.digest('hex')!==digest)throw new Error('Fixture asset bytes failed verification.');
+  return {path,size,digest};
+}
 export async function startArchiveServer({release,siteDist,bodies={},nextRelease,port=0}){
   const releases=new Map();
   for(const folder of [release,nextRelease].filter(Boolean)){
@@ -13,8 +20,8 @@ export async function startArchiveServer({release,siteDist,bodies={},nextRelease
     const assets=new Map();
     for(const file of manifest.files){
       if(!/^[a-z_0-9.-]+$/.test(file.name))throw new Error('Invalid fixture asset name.');
-      const path=resolve(folder,file.name),bytes=await readFile(path);
-      if(bytes.byteLength!==file.size||createHash('sha256').update(bytes).digest('hex')!==file.sha256)throw new Error('Fixture asset bytes failed verification.');assets.set(file.name,{path,size:file.size,digest:file.sha256});
+      const path=resolve(folder,file.name);
+      assets.set(file.name,await verifiedAsset(path,file.size,file.sha256));
     }
     const path=resolve(folder,'manifest.json'),bytes=await readFile(path);assets.set('manifest.json',{path,size:bytes.length,digest:createHash('sha256').update(bytes).digest('hex')});
     releases.set(manifest.release_id,{manifest,assets});
@@ -24,8 +31,9 @@ export async function startArchiveServer({release,siteDist,bodies={},nextRelease
     const path=typeof value==='string'?value:value.path;
     const match=/^bodies\/sha256\/([a-f0-9]{2})\/([a-f0-9]{64})([.]gz|[.]pdf)?$/.exec(key);
     if(!match||match[1]!==match[2].slice(0,2))throw new Error('Invalid approved fixture body key.');
-    const bytes=await readFile(path);const expected=typeof value==='string'?match[2]:value.stored_sha256;if(!/^[a-f0-9]{64}$/.test(expected)||typeof value==='object'&&bytes.length!==value.stored_bytes||createHash('sha256').update(bytes).digest('hex')!==expected)throw new Error('Approved body hash does not match its physical key.');
-    bodyAssets.set(key,{path:resolve(path),size:bytes.length,digest:expected});
+    const expected=typeof value==='string'?match[2]:value.stored_sha256;
+    if(!/^[a-f0-9]{64}$/.test(expected))throw new Error('Approved body hash does not match its physical key.');
+    bodyAssets.set(key,await verifiedAsset(resolve(path),typeof value==='string'?(await stat(path)).size:value.stored_bytes,expected));
   }
   const state={releaseId:releases.keys().next().value,missingFile:null,flipOnMissing:null,pointerReads:0,pointerBody:null,delayDetailMs:0,requests:[]};
   const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.woff2':'font/woff2'};

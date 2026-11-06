@@ -49,7 +49,7 @@ connection. See the [OpenAI packaging guide](https://developers.openai.com/plugi
 
 For desktop clients on macOS or Linux, the server is available as a Claude Desktop extension and a plugin compatible
 with Claude Code/Cowork and ChatGPT/Codex desktop. The first tool call downloads
-the public metadata snapshot. Tool discovery does not download data; later sessions
+the public snapshot and its text index when published. Tool discovery does not download data; later sessions
 reuse the selected release. Document bodies are fetched separately when requested.
 
 ### Claude Desktop chat
@@ -136,7 +136,9 @@ congress-explorer-mcp check
 
 If the command is not on your shell's PATH, run `uv tool update-shell` and open
 a new terminal. `check` should report `"status": "ok"` and the declared package tools. It launches
-the installed server, connects over MCP and reads one document row. Python 3.12
+the installed server and exercises discovery, document and batch reads, compact entities,
+legislative detail, hearing discovery, named queries and SQL diagnostics through MCP.
+Its report labels coverage unavailable on older snapshots. Python 3.12
 is managed by uv. Windows is not supported yet.
 
 Print configuration for your client:
@@ -166,8 +168,10 @@ running. Ask: “Use Congress Explorer to find documents related to H.R. 1 in th
 Run `prepare` again and restart the client connection to refresh data. Software
 updates are separate: install the desired PyPI version with `uv tool install
 --upgrade --python 3.12 congressional-explorer-mcp==VERSION` and restart the client.
-Update the plugin or extension to adopt its new pinned version. Preparation currently downloads about 65 MiB (October 30, 2026 snapshot);
-the Python runtime and dependencies require additional disk space.
+Update the plugin or extension to adopt its new pinned version. Preparation downloads
+every asset named by the selected release, including its searchable text index.
+Check the immutable release manifest for current download bytes; the Python runtime,
+dependencies, extracted-text cache and query scratch require additional disk space.
 
 Queries run locally, but your AI client may send prompts and tool results to its
 model provider. Coverage varies by source and Congress. This is a bounded published
@@ -183,8 +187,10 @@ uv run --locked --project apps/explorer_mcp congress-explorer-mcp prepare
 uv run --locked --project apps/explorer_mcp congress-explorer-mcp serve
 ```
 
-`prepare` defaults to the public archive pointer and stores metadata under
-`~/.cache/congress-explorer-mcp`. Plain `serve` uses stdio and makes no network requests.
+`prepare` defaults to the public archive pointer and stores release assets under
+`~/.cache/congress-explorer-mcp`. Plain `serve` uses stdio and keeps its selected
+release. Reading an original document body can fetch its verified archived bytes;
+corpus text search reads the prepared index locally.
 Plugins, the desktop extension and the registry launch add `serve --prepare-if-missing`: it starts MCP immediately
 and prepares data on the first tool call only when no selection exists. A selected
 snapshot is never refreshed or replaced automatically, including if it is damaged.
@@ -244,11 +250,20 @@ producer's environment.
 | `search_documents` | Title/filename search and exact Congress, kind, format, committee, meeting, bill/nomination, member or witness filters. |
 | `get_document` | A document's summary, paged source links, paged recoveries, or verified extracted body text and snippet search (`section: "text"`). |
 | `get_documents` | Up to ten document requests in input order with independent errors and paging; shares the single-document verification path and an aggregate response/work budget. |
+| `search_text` | Search retained document, testimony and caption passages; filter by committee, date, speaker, witness, source kind or document type. Returns snippets, coverage and release-bound citations. |
 | `search_entities` | Search the eight phase 2 entity tables with text and exact scalar filters. |
 | `get_entity` | One entity by its published key, with full detail, scalar summary or selected fields; also pages its directly associated documents. |
 | `query_sql` | One read-only DuckDB `SELECT`, including `WITH` and FROM-first SQL, with optional `?` parameters. All published tables are available. |
+| `get_transcript` | Discover a hearing's official, committee and caption sources, then read bounded pages or timestamped cues by source reference. |
+| `get_hearing_bundle` | A hearing dossier with current witnesses, testimony, transcript sources, captions, recording associations and coverage. |
+| `resolve_citation` | Reopen an exact retained passage at its PDF/text page or caption cue, preserving release, body and reading identity. |
+| `get_bill_actions`, `get_roll_calls`, `get_member_ballots` | Chronological actions, recorded votes and individual ballots with distinct provenance and coverage. |
+| `get_activity` | Dated legislative events with supported chamber, committee and subject filters; date bounds are inclusive `since`, exclusive `until`. |
+| `run_research_query` | Recent bills, pending nominations, committee hearings and legislation by subject through published recipes. |
 
-`get_overview` and `get_dataset_status` take no arguments. `get_dataset_info` takes selectors directly. Other tools take a `query` object. For example:
+`get_overview` and `get_dataset_status` take no arguments. `get_dataset_info`,
+`get_transcript` and `get_hearing_bundle` take selectors directly; `resolve_citation`
+takes a returned `citation`. Other tools take a `query` object. For example:
 
 ```json
 {"query":{"measure_key":"119-hr-1","limit":10}}
@@ -259,6 +274,12 @@ Pass those fields to `get_document`, adding `section: "sources"` or
 `section: "recoveries"` when needed. Page cursors belong to the same release,
 filters and page size. A running server stays on its selected release; run
 `prepare` and restart it to adopt a newer one.
+
+For release qualification, pass `check --probe-plan plan.json --require-research`.
+The plan names a retained `event_id`, a release-bound `document_reference`, and a
+`search_text` phrase. The check requires real caption, page and search citation
+round trips. Use the same plan with `cloudflare/smoke.py`, `check_distribution.py`
+and `check_desktop.py` to compare the shipped paths against one release.
 
 `search_documents` keeps archive order by default. Set `sort: "recent"` or
 `"oldest"` for chronological lookup. Where the release publishes

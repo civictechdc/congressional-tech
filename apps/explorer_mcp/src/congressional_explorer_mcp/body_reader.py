@@ -25,6 +25,7 @@ from .citations import add_body_citations, text_citation
 MAX_BODY_BYTES = 64 << 20
 MAX_RAW_BYTES = MAX_BODY_BYTES
 MAX_CACHE_ENTRIES = 256
+MAX_CACHE_BYTES = 128 << 20
 MAX_PAGE_MATCH_ITERATIONS = 10_000
 BODY_CACHE_VERSION = 2
 SNIPPET_CONTEXT_CHARS = 160
@@ -338,32 +339,40 @@ def _write_cached_pages(
     pages: list[str],
     *,
     max_entries: int = MAX_CACHE_ENTRIES,
+    max_cache_bytes: int = MAX_CACHE_BYTES,
 ) -> None:
     cache_dir = cache_path.parent
     cache_dir.mkdir(parents=True, exist_ok=True)
-    atomic_json(
-        cache_path,
-        dict(
+    value = dict(
             version=BODY_CACHE_VERSION,
             saved_body=body_hex,
             format=fmt,
             page_count=len(pages),
             pages=pages,
-        ),
-    )
+        )
+    # A count limit alone permits 256 x 64 MiB of disposable text. Keep one
+    # byte quota as well, and avoid caching entries the reader cannot reopen.
+    if len(encoded(value)) > min(MAX_BODY_BYTES, max_cache_bytes):
+        return
+    atomic_json(cache_path, value)
     try:
         entries = []
         for p in cache_dir.glob('*.json'):
             if not p.is_symlink():
                 try:
-                    entries.append((p.stat().st_mtime, p))
+                    info = p.stat()
+                    entries.append((info.st_mtime_ns, p, info.st_size))
                 except OSError:
                     pass
-        if len(entries) > max_entries:
-            entries.sort(key=lambda item: item[0])
-            for _, old_path in entries[: len(entries) - max_entries]:
+        total = sum(size for _, _, size in entries)
+        entries.sort(key=lambda item: (item[0], str(item[1])))
+        remaining = len(entries)
+        for _, old_path, size in entries:
+            if remaining > max_entries or total > max_cache_bytes:
                 try:
                     old_path.unlink(missing_ok=True)
+                    total -= size
+                    remaining -= 1
                 except OSError:
                     pass
     except OSError:

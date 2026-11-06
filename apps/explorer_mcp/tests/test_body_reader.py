@@ -467,6 +467,22 @@ def test_get_document_text_respects_max_bytes_and_timeout(tmp_path):
         asyncio.run(run_timeout())
 
 
+def test_body_cache_evicts_by_bytes_and_skips_unreadable_entries(tmp_path):
+    from congressional_explorer_mcp.body_reader import _write_cached_pages, _read_cached_pages
+    bodies = tmp_path / 'bodies'
+    for index in range(3):
+        key = f'{index:064x}'
+        _write_cached_pages(bodies / f'{key}.json', key, 'text', ['x' * 100], max_cache_bytes=600)
+    retained = list(bodies.glob('*.json'))
+    assert sum(path.stat().st_size for path in retained) <= 600
+    assert len(retained) < 3
+    newest = bodies / f'{2:064x}.json'
+    assert _read_cached_pages(newest, f'{2:064x}') == ['x' * 100]
+    before = set(bodies.glob('*.json'))
+    _write_cached_pages(bodies / 'oversized.json', 'f' * 64, 'text', ['x' * 1000], max_cache_bytes=600)
+    assert set(bodies.glob('*.json')) == before
+
+
 def test_redos_zero_length_regex_pdftotext_timeout_and_cache_bounds(tmp_path):
     import subprocess
     from congressional_explorer_mcp import body_reader

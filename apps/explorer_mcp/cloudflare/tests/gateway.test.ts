@@ -69,6 +69,17 @@ test("preserves MCP errors and streams responses", async () => {
   assert.equal(await response.text(), 'data: {"error":"invalid request"}\n\n');
 });
 
+test("readiness reaches the selected container and preserves a starting response", async () => {
+  const response = await handleRequest(new Request("https://congress.example/ready"), env,
+    async request => {
+      assert.equal(new URL(request.url).pathname, "/ready");
+      return Response.json({ status: "unavailable" }, { status: 503 });
+    });
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+  assert.equal((await handleRequest(new Request("https://congress.example/ready", { method: "POST" }), env, mustNotForward)).status, 405);
+});
+
 test("a failed container produces a retryable error without exposing its exception", async () => {
   const response = await handleRequest(new Request(endpoint, { method: "POST", body: "{}" }), env,
     async () => { throw new Error("internal container details"); });

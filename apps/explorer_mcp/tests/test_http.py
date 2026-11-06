@@ -61,6 +61,10 @@ def test_http_tools_and_stateless_clients_match_local(tmp_path, phase2, lazy):
     with http_server(root, phase2, lazy) as url:
         if lazy:
             assert not (root / 'selection.json').exists()
+        else:
+            ready = httpx.get(url.removesuffix('/mcp') + '/ready')
+            assert ready.status_code == 200
+            assert ready.json() == dict(status='ready', version=__version__, release_id=selected['release_id'])
         # A stateless transport must not issue a process-specific session ID.
         response = httpx.post(url, headers={'Accept': 'application/json, text/event-stream'},
             json={'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {
