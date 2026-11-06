@@ -1,6 +1,6 @@
 ---
 id: ct-irxg
-status: open
+status: in_progress
 deps: [ct-4kuo, ct-j78x]
 links: [ct-oh9y]
 created: 2026-11-05T23:51:57Z

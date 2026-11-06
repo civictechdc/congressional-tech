@@ -1,6 +1,6 @@
 ---
 id: ct-nozw
-status: open
+status: in_progress
 deps: []
 links: [ct-hnpc, ct-9xfg, ct-m94a, ct-6r1i]
 created: 2026-11-05T23:51:58Z

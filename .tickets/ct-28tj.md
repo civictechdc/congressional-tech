@@ -1,6 +1,6 @@
 ---
 id: ct-28tj
-status: open
+status: in_progress
 deps: [ct-4kuo]
 links: [ct-m704, ct-krdp, ct-082q]
 created: 2026-11-05T23:51:58Z

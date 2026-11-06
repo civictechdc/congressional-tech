@@ -1,6 +1,6 @@
 ---
 id: ct-4kuo
-status: open
+status: in_progress
 deps: [ct-9s7b]
 links: []
 created: 2026-11-05T23:51:57Z

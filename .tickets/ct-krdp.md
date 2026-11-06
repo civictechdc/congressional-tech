@@ -1,6 +1,6 @@
 ---
 id: ct-krdp
-status: open
+status: in_progress
 deps: []
 links: [ct-m704, ct-28tj]
 created: 2026-11-05T23:51:58Z

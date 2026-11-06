@@ -1,6 +1,6 @@
 ---
 id: ct-hnpc
-status: open
+status: in_progress
 deps: [ct-6r1i]
 links: [ct-9xfg, ct-nozw]
 created: 2026-11-05T23:51:57Z
