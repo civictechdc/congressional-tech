@@ -105,6 +105,7 @@ purpose = "Reserved for deliberate research reproduction in an isolated environm
 [lanes.storage-loopback]
 roots = [
     "packages/congress_api/tests/test_r2_body_files_native.py",
+    "packages/viewer_publication/tests/test_archive_multipart.py",
 ]
 marker = "loopback"
 offline = false
