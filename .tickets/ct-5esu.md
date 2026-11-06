@@ -1,6 +1,6 @@
 ---
 id: ct-5esu
-status: open
+status: in_progress
 deps: []
 links: [ct-v51p, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:13Z
@@ -44,3 +44,19 @@ Qualify host-specific download repairs, query stripping, whitespace changes and 
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: preserve the exact-key result set, use aliases only after an exact miss, and add a two-edition collision control. No document identity merges.
+
+**2026-11-06T17:14:21Z**
+
+Implemented narrow serialization fallback on isolated branch codex/ct-5esu-url-aliases, based on 742dbe70b42f0618e95816cd7cf0e6ba2f9939b0. Existing lookup: keys and exact result sets remain authoritative. Only after an exact miss, lookup-alias:serialization-v1: handles literal U+0020 -> %20 and percent-triplet case. All editions remain separate; capture normalization, parsers, bodies and public links are unchanged. A combined hash-input collision check supplements the original exact collision check.
+
+Bounded retained-source candidate: 580,383 source occurrences inspected, 19,550 eligible source occurrences yield 19,500 distinct alias pairs. All 611,729 baseline exact pairs are retained; zero alias/exact or full hash-input collisions. Actual reader checked 6,559 retained variant cases plus 6,383 original exact cases, twice per index. All 1,005 failing percent cases and 21 literal-space cases now find the expected row; every other retained variant has a disposition. The three Wayback bare/timestamped edition controls remain distinct. These are source-occurrence/variant counts, not document gains.
+
+Index-only candidate grows from 5,593,084 to 5,762,346 bytes (+169,262; 3.03%); native index build 0.34 s. Same candidate reader on old/new indexes used 277/281 cold range requests and 6,673,136/6,752,409 range bytes; warm passes made no new requests. One sequential timing sample under concurrent host load is recorded without a speed claim. Bounded qualification peak: 1.22 GiB RSS. Scope includes retained public-source aliases; recovery/good-fetch-only aliases await integrated candidate qualification.
+
+Validation: 31 tests pass across test_lookup_aliases.py, test_archive_release.py and test_archive_schema.py (partial 3/501 files, not a full lane), plus 32 Node reader/canary tool tests. New controls exercise native bytes through the actual reader and local canary, all 256 percent octets, exact filtering, two editions, meaningful-byte negative controls, and a planted alias/exact collision that refuses publication. The broader reader regression also exposed the pre-existing 17-versus-23 detail-column fixture assertion at archive-reader.test.mjs:40; it remains for the reader owner. Doctor's declared reading-evidence warnings remain recorded; no byte-hashed parser changed.
+
+Ticket remains in progress. Remaining acceptance: reconcile the focused archive_format.py/archive.ts edits with active DDK ownership, generate the final selected lookup index including recovery/good-fetch inputs, then qualify representative deployed site and MCP access to that same selected index. No merge, push, publication, deployment, pointer or scheduler changes occurred. Durable status, candidate pins, per-case dispositions, measurements and final HANDOFF.md are under .cache/archive-release/implementation/reviewed-non-news-20261106/ct-5esu/ in the main checkout.
+
+**2026-11-06T17:20:49Z**
+
+Final refinement: collision validation reuses the existing exact-key check, groups only canonical alias strings, and rejects any alias/exact key intersection. Independent consultation confirmed the zero-collision guarantee, including collisions on the same document row. The refined native index is byte-identical to the qualified candidate (ac6ec9efb947e23e209404b9fc1d88e83db430ae1518b16c81c066f111d2ae80), so retained reader receipts remain valid. The focused three-file run passes 32 tests; strengthened planted tests isolate alias-only versus namespace collisions and verify that only the intended diagnostic fires. This avoids grouping the full exact URL text a second time. Full-lane, integrated recovery/good-fetch alias and deployed acceptance remain outstanding.

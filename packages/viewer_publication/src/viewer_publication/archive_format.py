@@ -3,6 +3,7 @@ from hashlib import md5, sha256
 from congress_shared.custody import write_atomic_bytes
 
 from viewer_publication.archive_model_lifetimes import retire_relations
+from viewer_publication.lookup_aliases import ALIAS_PATTERN, ALIAS_PREFIX, serialization_alias_sql
 import json
 from pathlib import Path
 
@@ -132,7 +133,11 @@ def _lookup_steps(source):
             regexp_replace(array_element(regexp_match(remainder,'^([^?]*)'),1),'/$',''),
             coalesce(array_element(regexp_match(remainder,'([?].*)$'),1),'')) AS lookup_url FROM lookup_paths"""),
         _step('lookup_keys_full', f"SELECT {_hash_key('lookup_url', 'lookup:')} AS lookup_key,list_row,lookup_url FROM lookup_values", materialize=True),
-        _step('url_keys', 'SELECT DISTINCT lookup_key,list_row FROM lookup_keys_full'),
+        _step('lookup_alias_values', f"""SELECT list_row,{serialization_alias_sql('lookup_url')} AS alias_url
+            FROM lookup_keys_full WHERE regexp_like(lookup_url,'{ALIAS_PATTERN}')"""),
+        _step('lookup_alias_keys_full', f"SELECT {_hash_key('alias_url', ALIAS_PREFIX)} AS lookup_key,list_row,alias_url FROM lookup_alias_values", materialize=True),
+        _step('url_keys', '''SELECT lookup_key,list_row FROM lookup_keys_full
+            UNION SELECT lookup_key,list_row FROM lookup_alias_keys_full'''),
     ]
 
 
@@ -265,7 +270,10 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
             (SELECT count(*) FROM ordered WHERE body_expected AND (body_hex IS NULL OR length(body_hex)<>64)) AS missing_saved_bodies,
             (SELECT count(*) FROM ordered WHERE body_hex IS NOT NULL AND (bytes IS NULL OR bytes<0)) AS missing_saved_sizes,
             (SELECT count(*) FROM (SELECT link_key FROM all_links GROUP BY link_key HAVING min(origin)<>max(origin))) AS link_collisions,
-            (SELECT count(*) FROM (SELECT lookup_key FROM lookup_keys_full GROUP BY lookup_key HAVING min(lookup_url)<>max(lookup_url))) AS lookup_collisions""")]
+            (SELECT count(*) FROM (SELECT lookup_key FROM lookup_keys_full GROUP BY lookup_key HAVING min(lookup_url)<>max(lookup_url))) AS lookup_collisions,
+            (SELECT count(*) FROM (SELECT lookup_key FROM lookup_alias_keys_full GROUP BY lookup_key HAVING min(alias_url)<>max(alias_url))) AS lookup_alias_collisions,
+            (SELECT count(*) FROM (SELECT DISTINCT lookup_key FROM lookup_alias_keys_full) a
+                JOIN lookup_keys_full e ON a.lookup_key=e.lookup_key) AS lookup_namespace_collisions""")]
     queries.extend(diagnostics)
     queries.extend(metadata_queries)
     step_names = {s['name'] for s in steps}

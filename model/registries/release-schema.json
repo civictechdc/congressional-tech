@@ -535,7 +535,7 @@
         {
           "name": "lookup_key",
           "type": "fixed[8]",
-          "meaning": "Fixed normalized address lookup key",
+          "meaning": "Exact address or serialization fallback lookup key in separate hash namespaces",
           "nullable": false
         },
         {
@@ -558,7 +558,7 @@
         "kind": "primary_key"
       },
       "notes": {
-        "lookup_key": "First 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. This is not capture-profile url_key."
+        "lookup_key": "Exact: first 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. Only after an exact miss, use lookup-alias:serialization-v1: plus that spelling with U+0020 serialized as %20 and valid percent triplets uppercased. Keep every matching edition. Both namespaces refuse different full hash inputs sharing eight bytes. This is not capture-profile url_key."
       },
       "nullability": "Both columns are required by data model \u00a78.1."
     },
