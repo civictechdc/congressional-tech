@@ -168,6 +168,10 @@
     "archive-product": {
       "kind": "product",
       "path": "archive.odps.json"
+    },
+    "archive-model": {
+      "kind": "component",
+      "path": "archive-model.ddk.json"
     }
   },
   "requiredChecks": [

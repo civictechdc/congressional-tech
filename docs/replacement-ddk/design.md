@@ -121,13 +121,14 @@ flowchart TB
     subgraph native["DocSpec — durable operation and data authority"]
         admit["Admit operation identity, scope and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
+        input_admission["Admit exact schemas, interpretation and producer evidence"]
         compute["4. Prepare and execute one complete JobSpec"]
         candidate["Retain candidate, required reports and useful checkpoints"]
         accept["5. Accept complete candidate-bound evidence"]
         select["Select the exact native result under current authority"]
         intent["Accept a frozen publication intent"]
         lifetime["Protect live obligations; retire disposable work after its last consumer"]
-        retain --> compute --> candidate
+        retain --> input_admission --> compute --> candidate
         accept --> select
     end
 
@@ -177,6 +178,15 @@ computation and accepted evidence; domain adapters retain their source semantics
 An existing materialized relation is not automatically a durable checkpoint.
 Preserve the complete job's dependency and last-consumer information when choosing
 which expensive completions survive a restart and when disposable bulk can retire.
+
+Input admission checks the retained snapshot and its selected interpretation,
+including original producer evidence, before model computation. Current extractor
+readiness is a separate decision for new rows. A changed application lockfile is
+full provenance; it neither proves a semantic change in retained rows nor proves
+the current extractor equivalent. Freeze and qualify the exact selected reading
+view, active refusals and pending work before retiring the old mutable version
+resolver. Preserve original row stamps. Native phase dependencies bind this
+admitted selection and the SQL, settings and upstream results actually used.
 
 Congress uses a concrete native SQL evidence profile for its existing complete
 invariant inventory. The selected verifier binds every required check instance to

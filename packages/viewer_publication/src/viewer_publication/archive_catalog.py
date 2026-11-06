@@ -6,6 +6,7 @@ Exact native schema and field-ID qualification belongs to the shared runtime.
 """
 
 ASSEMBLY = 'urn:ddk:catalog:assembly'
+PRODUCTION = 'archive-model'
 
 
 def _local_catalog(result):
@@ -15,6 +16,38 @@ def _local_catalog(result):
             or catalog.get('audience') != 'local'):
         raise ValueError('Archive native checks require admitted local DDK declarations')
     return catalog
+
+
+def native_catalog_mapping(result, job, *, private_outputs):
+    """Name every native member's place in the public dataset catalog.
+
+    Original source views and private materializations remain in the complete
+    native candidate. This catalog describes public release datasets only; an
+    explicit disposition preserves that distinction in its retained evidence.
+    DDK verifies receipt membership and acceptance when assembling the catalog.
+    """
+    catalog = _local_catalog(result)
+    definitions = catalog['extensions'][ASSEMBLY]['datasetDefinitions']
+    by_file = {}
+    for alias, table in definitions.items():
+        name = table['physicalName']
+        if name in by_file:
+            raise ValueError('Archive output has multiple dataset declarations: ' + name)
+        by_file[name] = alias
+    private = set(private_outputs)
+    names = [item['name'] for item in job['outputs']]
+    if len(set(names)) != len(names) or private - set(names):
+        raise ValueError('Private output scope differs from the native job')
+    public = set(names) - private
+    if not public or public - by_file.keys():
+        raise ValueError('Every public native output needs one admitted dataset declaration')
+    return dict(production=PRODUCTION, inputs={},
+                outputs={name: by_file[name] for name in names if name in public},
+                out_of_catalog=dict(
+                    inputs=[dict(name=item['name'], reason='Source view retained in the complete native candidate; outside the public release dataset catalog.')
+                            for item in job['inputs']],
+                    outputs=[dict(name=name, reason='Private model materialization retained in the complete native candidate; not a public release asset.')
+                             for name in names if name in private]))
 
 
 def publication_checks(result, auxiliary, published):

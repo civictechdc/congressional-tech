@@ -1,0 +1,84 @@
+{
+  "specVersion": "0.1",
+  "kind": "component",
+  "id": "urn:congressional-tech:archive:production:model",
+  "version": "1.0.0",
+  "role": "transform",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "inputs": {},
+  "outputs": {
+    "list": {
+      "dataset": "list"
+    },
+    "detail": {
+      "dataset": "detail"
+    },
+    "links": {
+      "dataset": "links"
+    },
+    "retired-links": {
+      "dataset": "retired-links"
+    },
+    "urls": {
+      "dataset": "urls"
+    },
+    "sources": {
+      "dataset": "sources"
+    },
+    "recoveries": {
+      "dataset": "recoveries"
+    },
+    "meetings": {
+      "dataset": "meetings"
+    },
+    "witnesses": {
+      "dataset": "witnesses"
+    },
+    "witness-key-map": {
+      "dataset": "witness-key-map"
+    },
+    "recordings": {
+      "dataset": "recordings"
+    },
+    "committees": {
+      "dataset": "committees"
+    },
+    "members": {
+      "dataset": "members"
+    },
+    "rosters": {
+      "dataset": "rosters"
+    },
+    "bills": {
+      "dataset": "bills"
+    },
+    "nominations": {
+      "dataset": "nominations"
+    },
+    "url-state": {
+      "dataset": "url-state"
+    },
+    "url-variants": {
+      "dataset": "url-variants"
+    },
+    "videos": {
+      "dataset": "videos"
+    },
+    "channels": {
+      "dataset": "channels"
+    },
+    "recording-matches": {
+      "dataset": "recording-matches"
+    },
+    "committee-records": {
+      "dataset": "committee-records"
+    },
+    "meeting-coverage": {
+      "dataset": "meeting-coverage"
+    }
+  }
+}

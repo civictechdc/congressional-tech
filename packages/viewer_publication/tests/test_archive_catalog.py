@@ -96,3 +96,33 @@ def test_unknown_required_semantics_do_not_create_native_check_definitions():
     assert result.report['decision'] != 'passed'
     with pytest.raises(ValueError, match='require admitted local DDK declarations'):
         publication_checks(result, set(), ['list.parquet'])
+
+
+def test_native_mapping_accounts_for_public_private_and_source_members(admitted_catalog):
+    from viewer_publication.archive_catalog import native_catalog_mapping
+
+    job = dict(inputs=[dict(name='captures'), dict(name='parameters')],
+               outputs=[dict(name='list.parquet'), dict(name='document_rows.parquet'), dict(name='detail.parquet')])
+    mapping = native_catalog_mapping(admitted_catalog, job, private_outputs=['document_rows.parquet'])
+    assert mapping['production'] == 'archive-model'
+    assert mapping['inputs'] == {}
+    assert mapping['outputs'] == {'list.parquet': 'list', 'detail.parquet': 'detail'}
+    assert [item['name'] for item in mapping['out_of_catalog']['inputs']] == ['captures', 'parameters']
+    assert [item['name'] for item in mapping['out_of_catalog']['outputs']] == ['document_rows.parquet']
+    assert all(item['reason'] for members in mapping['out_of_catalog'].values() for item in members)
+    production, = [item for item in admitted_catalog.local_catalog['productions'] if item['alias'] == 'archive-model']
+    assert set(mapping['outputs'].values()) <= set(production['outputs'])
+
+
+@pytest.mark.parametrize('outputs, private', [
+    (['list.parquet', 'unknown.parquet'], []),
+    (['list.parquet'], ['absent.parquet']),
+    (['list.parquet', 'list.parquet'], []),
+    (['list.parquet'], ['list.parquet']),
+])
+def test_unaccounted_native_output_scope_refuses(admitted_catalog, outputs, private):
+    from viewer_publication.archive_catalog import native_catalog_mapping
+
+    with pytest.raises(ValueError, match='output'):
+        native_catalog_mapping(admitted_catalog, dict(inputs=[], outputs=[dict(name=name) for name in outputs]),
+                               private_outputs=private)
