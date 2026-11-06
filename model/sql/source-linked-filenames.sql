@@ -5,14 +5,7 @@ WITH requested AS (
 )
 SELECT q.source_id,q.requested_filename,q.requested_url,
  {{FILENAME_DATE}} AS filename_date,f.congress,f.valid,
- -- Foreign Relations used opaque download IDs that parse as dates, including
- -- the descriptive Turkey-hearing alias whose PDF cover states October 22, 2019.
- -- Keep literal readings and require other evidence to date these documents.
- (coalesce(f.valid,false) OR NOT (
-  regexp_like(q.requested_url,'(?i)^https?://(?:www[.])?foreign[.]senate[.]gov/download/')
-  AND (regexp_like(q.requested_filename,'(?i)^transcript-[0-9]{8}$')
-   OR q.requested_filename='10-22-19-assessing-the-impact-of-turkeys-offensive-in-northeast-syria-10221902')
- )) AS date_eligible,
+ {{FILENAME_DATE_ELIGIBLE}} AS date_eligible,
  -- Iceberg carries element field ids (document_kind is 19); the aggregated choices relation
  -- does not. Normalize the three public list fields so both sides concatenate as one type.
  arrow_cast(f.document_kind,'List(Utf8)') AS document_kind,
