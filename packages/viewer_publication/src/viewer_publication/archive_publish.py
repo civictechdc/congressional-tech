@@ -1,4 +1,4 @@
-"""Native archive transport below the one maintained model publication path.
+"""Archive transport below the one maintained model publication path.
 
 Model pinning, completeness, profile preparation and early-skip ordering belong
 to the caller. This module accepts pinned actual model artifacts, never a passed
@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 
 from congress_api.retention.derived_files import copy_checked
 from congress_shared.custody import custody_identity,write_atomic_bytes
+from . import archive_multipart
 from congress_shared.storage import single_put_md5
 from viewer_publication.archive_gate import gate_and_flip,validate_receipt
 from viewer_publication.archive_format import release_identity
@@ -125,7 +126,7 @@ def input_digest(*,receipt_keys,provenance,profile,entity_digests):
 
 
 class NativeArchiveStore:
-    """Adapt receipt metadata and release assets to native create-only uploads.
+    """Adapt receipt metadata and release assets to qualified create-only uploads.
 
     Metadata GET/LIST remains in the injected SDK. The same get/keys interface
     supports receipt_pins.kept_receipt_keys in the separate maintenance job.
@@ -174,28 +175,40 @@ class NativeArchiveStore:
         _sha(facts['sha256'])
         if (not isinstance(facts['md5'],str) or re.fullmatch('[a-f0-9]{32}',facts['md5']) is None
                 or type(facts['size']) is not int or facts['size']<0):
-            raise ValueError('Native upload requires exact file facts')
-        if self.asset_journal is not None:
-            return self._resumable_upload(key,source,facts,content_type=content_type,bind_source=_bind_source)
+            raise ValueError('Publication upload requires exact file facts')
+        if self.asset_journal is not None or facts['size']>=archive_multipart.THRESHOLD:
+            return self._resumable_upload(key,source,facts,content_type=content_type,
+                bind_source=_bind_source or facts['size']>=archive_multipart.THRESHOLD)
         return self._transfer_file(key,source,facts,content_type=content_type)
 
-    def _remote_asset_identity(self,key,facts):
+    def _remote_asset_identity(self,key,facts,transport=None):
         if not callable(getattr(self.client,'head_object',None)):
             raise ValueError('Publication continuation requires metadata-only asset HEAD')
         metadata=self.client.head_object(Bucket=self.bucket,Key=key)
-        if (metadata.get('ContentLength')!=facts['size'] or single_put_md5(metadata.get('ETag'))!=facts['md5']):
+        if transport is not None and transport['kind']=='multipart':
+            archive_multipart.require_plan(transport,facts['size'])
+            observed=metadata.get('ETag')
+            if isinstance(observed,str) and observed.startswith('"') and observed.endswith('"'):
+                observed=observed[1:-1]
+            matches=observed==transport['etag']
+        else:
+            matches=single_put_md5(metadata.get('ETag'))==facts['md5']
+        if metadata.get('ContentLength')!=facts['size'] or not matches:
             raise ValueError('Remote publication asset identity changed: '+key)
 
     def _resumable_upload(self,key,source,facts,*,content_type,bind_source):
         # Retained local stage files have one owner. Persist their exact inode
-        # custody after native transfer; a restart checks custody before opening
+        # custody through transfer; a restart checks custody before opening
         # any payload, then verifies the immutable object's HEAD identity.
-        path=self.asset_journal;path.parent.mkdir(parents=True,exist_ok=True)
+        path=self.asset_journal or self.work/'multipart-assets.json';path.parent.mkdir(parents=True,exist_ok=True)
         expected={name:facts[name] for name in ('sha256','md5','size')}
         expected['content_type']=content_type
         local=dict(path=str(source.resolve()),custody=list(custody_identity(source))) if bind_source else None
         if local is not None and local['custody'][2]!=facts['size']:
             raise ValueError('Local publication asset size changed: '+key)
+        def require_local():
+            if bind_source and local['custody']!=list(custody_identity(source)):
+                raise ValueError('Local publication asset changed during transfer: '+key)
         with path.with_suffix(path.suffix+'.lock').open('a') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX)
             if path.is_symlink():raise ValueError('Unsafe publication asset journal')
@@ -204,32 +217,86 @@ class NativeArchiveStore:
                 if path.stat().st_size>CONTROL_BYTES:raise ValueError('Publication asset journal is oversized')
                 try:state=json.loads(path.read_text())
                 except ValueError as error:raise ValueError('Corrupt publication asset journal') from error
-                if (not isinstance(state,dict) or set(state)!={'version','bucket','assets'} or state['version']!=1
+                if (not isinstance(state,dict) or set(state)!={'version','bucket','assets'} or state['version'] not in (1,2)
                         or state['bucket']!=self.bucket or not isinstance(state['assets'],dict)):
                     raise ValueError('Publication asset journal identity changed')
             def save():write_atomic_bytes(path,_encoded(state),fsync_dir=True)
+            def upgrade():
+                if state['version']==1:
+                    for entry in state['assets'].values():
+                        if not isinstance(entry,dict) or set(entry)!={'facts','source','phase'}:
+                            raise ValueError('Corrupt publication asset journal entry')
+                        entry.update(transport=dict(kind='single_put'),upload=None)
+                    state['version']=2
             saved=state['assets'].get(key)
             if saved is not None:
-                if (not isinstance(saved,dict) or set(saved)!={'facts','source','phase'}
+                fields={'facts','source','phase'}|({'transport','upload'} if state['version']==2 else set())
+                if (not isinstance(saved,dict) or set(saved)!=fields
                         or saved['facts']!=expected or saved['source']!=local
                         or saved['phase'] not in ('started','acknowledged')):
                     raise ValueError('Local publication asset identity changed: '+key)
-                try:self._remote_asset_identity(key,facts)
-                except Exception as error:
-                    if _status_code(error)!=404 or saved['phase']=='acknowledged':raise
-                    # The previous outcome was unknown and HEAD proves no object
-                    # exists. Only this unfinished transfer can be attempted again.
+                transport=saved.get('transport',dict(kind='single_put'))
+                attempt=saved.get('upload')
+                if transport==dict(kind='single_put'):
+                    if attempt is not None:raise ValueError('Invalid single-PUT publication journal')
                 else:
+                    archive_multipart.require_plan(transport,facts['size'])
+                    if attempt is not None and (not isinstance(attempt,dict) or set(attempt)!={'id','stage'}
+                            or not isinstance(attempt['id'],str) or not 1<=len(attempt['id'])<=4096
+                            or attempt['stage'] not in {'uploading','completing','completed','aborted','closed'}):
+                        raise ValueError('Invalid publication multipart attempt')
+                try:self._remote_asset_identity(key,facts,transport)
+                except Exception as error:
+                    if (_status_code(error)!=404 or saved['phase']=='acknowledged'
+                            or attempt is not None and attempt['stage'] in {'completed','closed'}):raise
+                    # The previous outcome was unknown and HEAD proves no object
+                    # is visible yet. A later completion still must be create-only.
+                    if attempt is not None:
+                        archive_multipart.abort_attempt(self.client,self.bucket,key,attempt)
+                        saved['upload']=dict(attempt,stage='aborted');save()
+                else:
+                    require_local()
+                    if attempt is not None and attempt['stage'] not in {'completed','aborted','closed'}:
+                        # HEAD can match an earlier competing upload while our
+                        # failed attempt still owns unfinished parts. Close only
+                        # that retained upload ID; abort never deletes the object.
+                        archive_multipart.abort_attempt(self.client,self.bucket,key,attempt)
+                        saved['upload']=dict(attempt,stage='closed');save()
                     if saved['phase']!='acknowledged':
                         saved['phase']='acknowledged';save()
                     return 'already_exists'
             else:
                 saved=dict(facts=expected,source=local,phase='started')
+                if state['version']==2:saved.update(transport=dict(kind='single_put'),upload=None)
                 state['assets'][key]=saved;save()
-            outcome=self._transfer_file(key,source,facts,content_type=content_type)
-            if bind_source and local['custody']!=list(custody_identity(source)):
-                raise ValueError('Local publication asset changed during transfer: '+key)
-            self._remote_asset_identity(key,facts)
+            if facts['size']>=archive_multipart.THRESHOLD:
+                require_publication_client(self.client)
+                if any(not callable(getattr(self.client,name,None)) for name in
+                        ('create_multipart_upload','upload_part','complete_multipart_upload','abort_multipart_upload')):
+                    raise ValueError('Large publication assets require the conditional multipart SDK')
+                if saved.get('transport',{}).get('kind')!='multipart':
+                    transport=archive_multipart.plan_file(source,facts,custody=tuple(local['custody']))
+                    upgrade();saved.update(transport=transport,upload=None);save()
+                    # A new journal can encounter a matching object from an
+                    # earlier publisher. Verify its planned transport identity
+                    # before sending another full asset; creation stays conditional.
+                    try:self._remote_asset_identity(key,facts,transport)
+                    except Exception as error:
+                        if _status_code(error)!=404:raise
+                    else:
+                        require_local()
+                        saved['phase']='acknowledged';save()
+                        return 'already_exists'
+                def record(attempt):
+                    saved['upload']=attempt;save()
+                require_comparison(self.comparison_acceptance)
+                outcome=archive_multipart.transfer(self.client,bucket=self.bucket,key=key,source=source,
+                    facts=facts,plan=saved['transport'],content_type=content_type,cache_control=IMMUTABLE,record=record,
+                    custody=tuple(local['custody']))
+            else:
+                outcome=self._transfer_file(key,source,facts,content_type=content_type)
+            require_local()
+            self._remote_asset_identity(key,facts,saved.get('transport'))
             saved['phase']='acknowledged';save()
             return outcome
 
@@ -340,7 +407,7 @@ def _read_pinned_json(pin):
 
 
 def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
-    """Check actual model metadata; C5 verifies each transferred asset in one read.
+    """Check actual model metadata; transfer adapters verify known asset identities.
 
     Release identity remains the archive_format producer's identity. This stage
     rechecks its pinned bytes and native export facts, not a second model formula.
