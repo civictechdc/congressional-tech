@@ -114,6 +114,11 @@ export function SubjectDetail({
       </p>}
     </header>
 
+    {isNom&&!Array.isArray(subject.nominees)&&<div className="archive-entity-section">
+      <h3>Nominees</h3>
+      <p>Individual nominee details are unavailable in this release.</p>
+    </div>}
+
     {nominees.length>0&&<div className="archive-entity-section">
       <h3>Nominees ({nominees.length})</h3>
       <ul className="archive-entity-list">

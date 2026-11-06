@@ -186,7 +186,7 @@ export function HearingDetail({
       <h3>Video Recordings</h3>
       <ul className="archive-entity-list">
         {recordings.map((rec:any,i:number)=>{
-          const duration=formatDuration(rec.duration_s);
+          const duration=formatDuration(rec.duration_seconds);
           const label=rec.title||rec.source||rec.video_key||`Recording ${i+1}`;
           const rawTracks:any[]=Array.isArray(rec.tracks)?rec.tracks:Array.isArray(rec.transcripts)?rec.transcripts:[];
           const seenTracks=new Set<string>();

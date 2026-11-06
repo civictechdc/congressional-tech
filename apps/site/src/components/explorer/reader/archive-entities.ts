@@ -176,7 +176,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const tracks = (Array.isArray(r.tracks) ? r.tracks : Array.isArray(r.transcripts) ? r.transcripts : []).map((t: any) => ({
       ...t, sha256: t?.sha256 ?? (t?.body instanceof Uint8Array ? hex(t.body) : typeof t?.body === 'string' ? t.body : null),
     }));
-    return { ...r, congress: r.congress != null ? Number(r.congress) : null, duration_s: r.duration_s != null ? Number(r.duration_s) : null, event_ids: eventIds, meeting_keys: meetingKeys, tracks, transcripts: Array.isArray(r.transcripts) ? r.transcripts : tracks };
+    return { ...r, congress: r.congress != null ? Number(r.congress) : null, event_ids: eventIds, meeting_keys: meetingKeys, tracks, transcripts: Array.isArray(r.transcripts) ? r.transcripts : tracks };
   };
 
   const normalizeCommittee = (c: any) => {
@@ -284,7 +284,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       ...n, kind: 'nomination' as const, subject_key: subjectKey, nomination_id: String(n.nomination_id ?? subjectKey),
       congress: n.congress != null ? Number(n.congress) : (parsedCong ? Number(parsedCong) : null),
       received_date: date(n.received_date ?? n.received), received: date(n.received ?? n.received_date),
-      latest_action_date: date(n.latest_action_date), nominees: Array.isArray(n.nominees) ? n.nominees : [], committees: Array.isArray(n.committees) ? n.committees : [],
+      latest_action_date: date(n.latest_action_date), nominees: null, committees: Array.isArray(n.committees) ? n.committees : [],
       committee_activities: Object.hasOwn(n, 'committee_activities') ? n.committee_activities ?? null : undefined,
       transcripts, votes, floor_votes: Array.isArray(n.floor_votes) ? n.floor_votes : votes,
       meeting_keys: Array.isArray(n.meeting_keys) ? n.meeting_keys.map(String) : [], list_rows: listRows,
@@ -331,10 +331,20 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     return { rows, byEventId, byDocRow, byCommitteeKey, bySubjectKey };
   });
 
+  const videosIndex = () => memoized('videos', async () => new Map<string, any>(
+    (await entity('videos')).map(v => [v.video_key, {
+      ...v, duration_seconds: v.duration_seconds == null ? null : Number(v.duration_seconds),
+    }]),
+  ));
+
   const recordingsIndex = () => memoized('recordings', async () => {
     const rows = (await entity('recordings')).map(normalizeRecording), byEventId = new Map<string, any[]>();
     for (const r of rows) for (const ev of r.meeting_keys) pushMap(byEventId, String(ev), r);
     return { rows, byEventId };
+  });
+
+  const withVideoDuration = (recording: any, videos: Map<string, any> | null) => ({
+    ...recording, duration_seconds: videos?.get(recording.video_key)?.duration_seconds ?? null,
   });
 
   const recordingMatchesIndex = () => memoized('recording_matches', async () => {
@@ -526,7 +536,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const chamberFilter = hasChamber ? String(chamberOrEventId ?? '').trim().toLowerCase() : null;
     const eventKey = String(hasChamber ? maybeEventId : chamberOrEventId).trim();
     if (!eventKey) return null;
-    const [mIdx, recordings, committees, witnesses, bills, nominations, coverage, matches] = await Promise.all([
+    const [mIdx, recordings, committees, witnesses, bills, nominations, coverage, matches, videos] = await Promise.all([
       awaitShared(meetingsIndex(), actualSignal),
       optional('recordings', recordingsIndex, actualSignal),
       optional('committees', committeesIndex, actualSignal),
@@ -535,6 +545,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       optional('nominations', nominationsIndex, actualSignal),
       optional('meeting_coverage', () => ctx.meetingCoverage!(eventKey), actualSignal),
       optional('recording_matches', recordingMatchesIndex, actualSignal),
+      optional('videos', videosIndex, actualSignal),
     ]);
     const { data: recIdx } = recordings, { data: commIdx } = committees, { data: wIdx } = witnesses;
     const { data: bIdx } = bills, { data: nIdx } = nominations;
@@ -550,14 +561,14 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       subject_keys: docRows.length ? value('measure_keys', docRows[0]) ?? [] : [],
       list_rows: docRows,
     });
-    const recRows = recIdx?.byEventId.get(eventKey) ?? [];
+    const recRows = (recIdx?.byEventId.get(eventKey) ?? []).map(r => withVideoDuration(r, videos.data));
     const seenVideoKeys = new Set<string>();
     const dedupedVideos: any[] = [];
     for (const v of baseMeeting.videos) {
       const vk = String(v.video_key || v.url || v.video_id || v.title || v.name || '');
       if (vk && seenVideoKeys.has(vk)) continue;
       if (vk) seenVideoKeys.add(vk);
-      dedupedVideos.push({ ...v });
+      dedupedVideos.push(withVideoDuration(v, videos.data));
     }
     const sameRecording = (a: any, b: any) => a.video_key && b.video_key
       ? a.video_key === b.video_key
@@ -623,7 +634,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       ...baseMeeting, subject_keys: allSubjectKeys, subjects, committees: enrichedCommittees,
       recordings: recRows, videos: allVideos, witnesses: mergedWitnesses, documents: baseMeeting.list_rows.map(row),
       relation_states: { recordings: recordings.state, committees: committees.state, witnesses: witnesses.state,
-        bills: bills.state, nominations: nominations.state, coverage: coverage.state },
+        bills: bills.state, nominations: nominations.state, coverage: coverage.state, videos: videos.state },
       recording_observations: matches.data?.byEventId.get(eventKey) ?? [],
       recording_associations_state: matches.state,
       coverage: Object.fromEntries((coverage.data ?? []).map(item => [item.aspect, item.state])),
@@ -830,7 +841,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       congress: congMatch ? Number(congMatch[1]) : (docRows.length ? value('congress', docRows[0]) : null),
       title: null, status: null, committees: [...new Set(docRows.flatMap(r => value('committee_keys', r) ?? []))],
       cbo_estimates: [], votes: [], floor_votes: [], amendments: [], amendment_count: 0,
-      related_bills: [], nominees: [], meeting_keys: hearings.map((m: any) => String(m.event_id)), hearings,
+      related_bills: [], nominees: null, meeting_keys: hearings.map((m: any) => String(m.event_id)), hearings,
       list_rows: docRows, documents: docRows.map(row),
     };
   }
@@ -846,7 +857,11 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     switch (kind) {
       case 'meetings': items = (await meetingsIndex()).rows; break;
       case 'witnesses': items = (await witnessesIndex()).currentRows; break;
-      case 'recordings': items = (await recordingsIndex()).rows; break;
+      case 'recordings': {
+        const [recordings, videos] = await Promise.all([recordingsIndex(), optional('videos', videosIndex, signal)]);
+        items = recordings.rows.map(r => withVideoDuration(r, videos.data));
+        break;
+      }
       case 'committees': items = (await committeesIndex()).rows; break;
       case 'members': items = (await membersIndex()).rows; break;
       case 'rosters': items = (await rostersIndex()).rows; break;

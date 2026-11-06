@@ -245,6 +245,8 @@ test('nomination committee actions retain publisher precision and stay separate 
     floor_votes:[{vote_id:'119-s-1-225',date:'2026-08-07',result:'Confirmed'}],
   }}));
   assert(html.includes('2026-07-22T14:47:05Z'));
+  assert(html.includes('Individual nominee details are unavailable in this release.'));
+  assert(!html.includes('Nominees (0)'));
   assert(html.indexOf('Committee activities') < html.indexOf('Floor Votes'));
 });
 
@@ -261,7 +263,7 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
       sittings:[{datetime:'2024-05-01T10:00:00Z',building:'Rayburn',room:'2167'}],
       committees:[{committee_key:'hspw00',system_code:'hspw00',name:'House Committee on Transportation and Infrastructure'}],
       subjects:[{subject_key:'118-hr-1234',short_title:'Surface Transportation Modernization Act'},{subject_key:'118-pn-730-2',citation:'PN730-2',title:'Jane Doe nomination'}],
-      videos:[{video_key:'youtube:yt118001',source:'youtube',url:'https://www.youtube.com/watch?v=yt118001',title:'Hearing Livestream',duration_s:5420,tracks:[{label:'English captions',url:'https://fixture.test/captions.vtt'}]}],
+      videos:[{video_key:'youtube:yt118001',source:'youtube',url:'https://www.youtube.com/watch?v=yt118001',title:'Hearing Livestream',duration_seconds:5420,tracks:[{label:'English captions',url:'https://fixture.test/captions.vtt'}]}],
       transcripts:[{source:'printed_hearing',jacket_number:'55-123',title:'Official Hearing Transcript',list_row:0}],
       witnesses:[{witness_key:'smith_jane',name:'Dr. Jane Smith',organization:'National Transit Institute',position:'Director',panel:1,documents:[row]}],
     },

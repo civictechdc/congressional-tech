@@ -270,6 +270,7 @@ test('a nomination keeps its own data when optional hearings fail',async()=>{
   });
   const found=await reader.getSubject(nomination.citation);
   assert.equal(found?.nomination_id,nomination.nomination_id);
+  assert.equal(found?.nominees,null,'A missing structured nominee field does not establish an empty list');
   assert.deepEqual(found?.committee_activities,[]);
   assert.deepEqual(reads,['nominations','meetings']);
   assert.equal((await reader.getSubject(unreadable.nomination_id))?.committee_activities,null);
@@ -303,6 +304,52 @@ test('recording observations use only explicit meeting links, including package 
   assert.equal(meeting?.recording_associations_state,'ready');
   assert.deepEqual(meeting?.recording_observations.map(item=>[item.match_id,item.meeting_link.scope]),[['context','package_context'],['direct','event']]);
   assert.ok(!Object.hasOwn(meeting,'original_package_observations'));
+});
+
+for(const scenario of ['ready','missing','unavailable','changed'] as const)test(`recording duration uses the selected release's video data: ${scenario}`,async()=>{
+  const {createArchiveEntities}=await import('./archive-entities.ts');
+  const tables:Record<string,any[]>={
+    meetings:[{event_id:100,videos:[{video_key:'recording-a',url:'https://fixture.test/video'}]}],
+    recordings:[{video_key:'recording-a',event_ids:[100],tracks:[]},
+      {video_key:'zero',event_ids:[100],tracks:[]},{video_key:'unknown',event_ids:[100],tracks:[]}],
+    videos:[{video_key:'unrelated',duration_seconds:9999n},{video_key:'recording-a',duration_seconds:5420n},
+      {video_key:'zero',duration_seconds:0n},{video_key:'unknown',duration_seconds:null}],
+  };
+  const reads:string[]=[];
+  let offline=scenario==='unavailable';
+  const reader=createArchiveEntities({count:0,
+    files:new Map(Object.keys(tables).filter(name=>scenario!=='missing'||name!=='videos').map(name=>[name+'.parquet',{}])),
+    columns:new Map(),value:()=>null,row:()=>null,
+    entity:async name=>{
+      reads.push(name);
+      if(name==='videos'&&offline)throw Error('offline');
+      if(name==='videos'&&scenario==='changed')throw new ArchiveReleaseChangedError();
+      return tables[name];
+    },resolve:async()=>null,entry:async()=>null,versions:async()=>[],entityHasColumn:async()=>true,
+  });
+  if(scenario==='changed'){
+    await assert.rejects(reader.getMeeting(100),ArchiveReleaseChangedError);
+    return;
+  }
+  const meeting=await reader.getMeeting(100);
+  assert.equal(meeting.relation_states.videos,scenario);
+  assert.equal(meeting.recordings[0].duration_seconds,scenario==='ready'?5420:null);
+  assert.equal(meeting.recordings[1].duration_seconds,scenario==='ready'?0:null);
+  assert.equal(meeting.recordings[2].duration_seconds,null);
+  assert.equal(meeting.videos.find(v=>v.url==='https://fixture.test/video').duration_seconds,scenario==='ready'?5420:null);
+  if(scenario==='ready'){
+    assert.equal((await reader.listEntities('recordings')).rows[0].duration_seconds,5420);
+    assert.equal(reads.filter(name=>name==='videos').length,1,'Shared video data loads once per release');
+  }else if(scenario==='missing')assert(!reads.includes('videos'),'An unlisted video file must not be opened');
+  else{
+    offline=false;
+    const recovered=await reader.getMeeting(100);
+    assert.equal(recovered.relation_states.videos,'ready');
+    assert.deepEqual(recovered.recordings.map(r=>r.duration_seconds),[5420,0,null]);
+    assert.deepEqual((await reader.listEntities('recordings')).rows.map(r=>r.duration_seconds),[5420,0,null]);
+    assert.equal(reads.filter(name=>name==='recordings').length,1,'A video retry reuses the recordings');
+    assert.equal(reads.filter(name=>name==='videos').length,2,'A failed read is retried once');
+  }
 });
 
 for(const [scenario,present,hasColumn,rows,state] of [
