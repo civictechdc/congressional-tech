@@ -431,6 +431,33 @@ def test_activation_resume_does_not_append_duplicate_rows(tmp_path, writer, monk
     assert activate(spec)['pins'] == first['pins']
 
 
+def test_activation_completion_requires_final_proof_and_preserves_prior_success(tmp_path, writer, monkeypatch):
+    from congress_api.lake import daily
+    from viewer_publication import archive_house_xml_activation as activation
+    spec, _ = activation_fixture(tmp_path, writer, monkeypatch)
+    proof = activation.snapshot_reasons
+    monkeypatch.setattr(activation, 'snapshot_reasons', lambda *a, **kw: ['planted chain-proof refusal'])
+    completion = Path(spec['work']) / 'activation-complete.json'
+    with pytest.raises(ValueError, match='producer chain refused'):
+        activate(spec)
+    state = json.loads((Path(spec['work']) / 'activation.json').read_text())
+    assert state['status'] == 'appended' and state['result']['status'] == 'appended'
+    assert 'producer_chain_verified' not in state['result'] and not completion.exists()
+    for module in (daily.meeting_records, daily.appearance_records, daily.committee_records):
+        monkeypatch.setattr(module, 'append', lambda *a, **kw: pytest.fail('reappended after a reporting refusal'))
+    monkeypatch.setattr(activation, 'snapshot_reasons', proof)
+    spec['house_xml_activation']['resume'] = True
+    result = activate(spec)
+    assert result['status'] == 'activated' and result['producer_chain_verified'] is True
+    assert json.loads(completion.read_text()) == result
+    assert result['anchors'] == spec['house_xml_activation']['anchors']
+    retained = pin(completion)
+    monkeypatch.setattr(activation, 'snapshot_reasons', lambda *a, **kw: ['later failed recheck'])
+    with pytest.raises(ValueError, match='producer chain refused'):
+        activate(spec)
+    assert pin(completion) == retained
+
+
 def test_activation_lost_append_response_keeps_head_and_resumes_other_tables(tmp_path, writer, monkeypatch):
     from congress_api.lake import daily
     spec, _ = activation_fixture(tmp_path, writer, monkeypatch)

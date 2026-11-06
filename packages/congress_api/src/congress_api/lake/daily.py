@@ -1063,8 +1063,8 @@ def activate_house_xml_records(prepared,*,engine,raw_store,producer_records,cata
     for name,record in records.items():
         path=work/(name+'.head.json');path.write_bytes(encode(record))
         producer_files[name]=dict(path=str(path),**file_pin(path))
-    state['status']='completed'
-    state['result']=dict(status='activated',pins=pins,producers=producer_files,producer_records=state['head_records'],
+    state['status']='appended'
+    state['result']=dict(status='appended',pins=pins,producers=producer_files,producer_records=state['head_records'],
         cohort=prepared['cohort'],unchanged_selectors=prepared['unchanged_selectors'],
         unchanged_inventory=prepared['unchanged_inventory'],unreadable_files=prepared['frozen_unreadable'],
         new_unreadable_files=[],receipts_unchanged=True)

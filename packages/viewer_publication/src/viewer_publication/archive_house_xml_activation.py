@@ -193,5 +193,6 @@ def execute_activation(spec, *, runtime_factory=None, storage_factory=None, lock
         reasons = snapshot_reasons(model, head_records, ledger=records)
         if reasons:
             raise ValueError('House XML activation final producer chain refused: ' + '; '.join(reasons))
-        result['anchors'] = job['anchors']
+        result.update(status='activated', producer_chain_verified=True, anchors=job['anchors'])
+        durable_json(Path(spec['work']) / 'activation-complete.json', result)
         return result
