@@ -50,7 +50,8 @@
     "All eight nonarchive workflow-definition cases passed against qualified dev4; execution adoption remains unqualified",
     "Historical frozen-prefix handoff records 51 inputs, 251 steps, 40 exports, 23 reports and 222 blocking check names without opening data; later actual preparation records one selected_readings difference and nomination preprocessing",
     "Removed model inference of refresh_live from requirements missing refresh_policy; six real native checks passed, and independent review confirmed current writer and policy semantics",
-    "Actual low-level source preparation captured 51 inputs with exact schema artifacts, 251 steps, 40 outputs and 23 reports; independent review confirmed scope/custody and corrected unique-byte accounting; native preparation and entrypoint admission remain absent"
+    "Actual low-level source preparation captured 51 inputs with exact schema artifacts, 251 steps, 40 outputs and 23 reports; independent review confirmed scope/custody and corrected unique-byte accounting; native preparation and entrypoint admission remain absent",
+    "Experimental schema-only native source05 inferred the complete actual job: exact 51/251/40/23 membership, 287 decodable IPC schemas, 250 declared native field/element identities and 222 required report column declarations; no source admission or data execution"
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -350,6 +351,45 @@
       "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/parser-lock-drift-02",
       "record": "fingerprints.json",
       "scope": "Same maintained version functions with baseline versus current lock bytes; no parser payload execution or retained-table acceptance."
+    },
+    "schemaOnlyNativeProbe": {
+      "status": "schema_only_diagnostic_inferred_membership_verified",
+      "runtimeSHA256": "bb73e8d8f42c88f5d9ef21f43c34233802bcf8253f171972482858a2df407c61",
+      "runtimeQualification": "experimental source05 only; no application pin update",
+      "counts": {
+        "inputs": 51,
+        "steps": 251,
+        "outputs": 40,
+        "queries": 23
+      },
+      "schemaCount": 287,
+      "nativeInputFieldElementIDs": 250,
+      "nativeInputComparison": "Field/element IDs, paths, nesting, order and nullability match source declarations; all eight declared schema IDs equal original job schema_id. Complete runtime type mapping and contradictory-ID refusal are not qualified here.",
+      "providerInputs": 29,
+      "requiredReportFamilies": 7,
+      "requiredReportColumns": 222,
+      "publicOutputs": 23,
+      "privateOutputs": 17,
+      "publicColumnOrder": "Name sets match. Nominations native position6 committee_activities and7 committees differ from descriptive property order; native mapping must retain actual positions, per DDK-DATA-005.",
+      "nativeWallSeconds": 1.2458166250144131,
+      "watchdogSeconds": 1.9,
+      "peakRSSGiB": 0.112,
+      "peakPhysicalGiB": 0.046,
+      "dataPayloadPathsDenied": 43,
+      "network": "denied",
+      "dataOutputWrites": "denied",
+      "inputAdmission": "not_run",
+      "execution": "not_run",
+      "protection": "not_run",
+      "candidateQualification": "not_run",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-02",
+      "result": "native.stdout.json",
+      "summary": "summary.json",
+      "schemaInspection": "schema-inspection.json",
+      "boundaryAnalysis": "boundary-analysis.json",
+      "firstAttempt": "native-schema-probe-01 stopped in the macOS loader under a broad file-read allowlist; retained unchanged. Parent separately authorized the corrected exact-raw-path denial retry.",
+      "review": "Independent read-only native-boundary review matched all supplied hashes, decoded all 287 IPC schemas, verified exact named membership and 250 field/element identities, confirmed all 43 payload denials and unchanged originals, and found no material overclaim or integration defect. No additional native execution or payload read.",
+      "remainingNativeGuard": "Parent identified source05 lacks contradictory Iceberg artifact schema-id rejection; source06 repair and final qualification are separate."
     }
   },
   "commits": {
@@ -359,10 +399,11 @@
       "261b8f56",
       "1758b519",
       "e75f8b9e",
-      "a8abadff"
+      "a8abadff",
+      "6e48e204"
     ],
     "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
-    "checkpoint": "This checkpoint records actual source preparation and its admission limits; the shared whole-job producer and full acceptance remain pending."
+    "checkpoint": "This checkpoint records experimental schema-only preparation of the actual native request; full producer replacement and candidate acceptance remain pending."
   },
   "sharedDependencies": [
     "Exact original native table-pin protection and nested field/element-ID/schema mappings",
@@ -412,6 +453,26 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/parser-lock-drift-02/fingerprints.json",
       "sha256": "3058b1eea82e75b79ccddd156650910555dfca76c070a4990d4bc56dd5255c70",
       "size": 3719
+    },
+    "nativeSchemaResult": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-02/native.stdout.json",
+      "sha256": "930a585e309a9e4cb21b0eda7fa28d1272a96ba4ef9760b623c1f572fc8f8c54",
+      "size": 437853
+    },
+    "nativeSchemaInspection": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-02/schema-inspection.json",
+      "sha256": "fbd8d9cd317af3595c233b2d9ca2e87c16ec3926ac65a85c7f832ee08d50ac31",
+      "size": 118573
+    },
+    "nativeSchemaSummary": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-02/summary.json",
+      "sha256": "00d15110d2d1a1bb25f43ab8cc6692ec53d6506b5251072bc7e79f3cfcf17678",
+      "size": 46184
+    },
+    "nativeSchemaBoundaryAnalysis": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-02/boundary-analysis.json",
+      "sha256": "4b6950c99dc0737e00c46affe9eb43cda728d73026a7dec5827c9153a8ed4a6d",
+      "size": 3109
     }
   },
   "constraints": {

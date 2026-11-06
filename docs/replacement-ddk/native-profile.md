@@ -306,10 +306,52 @@ restamped. The low-level capture preserves the original declarations and records
 the entrypoint refusal explicitly.
 
 `prepare-spec.draft.json` supplies the 51 declarations to the parent native
-owner's in-progress `urn:docspec:job:schema-only:1` interface. Its sidecar is
-`not_run`. Remote pin observation/protection, native schema preparation, authentic
-capture-v2 policy, production predecessor binding, execution and qualification
-remain separate pending obligations.
+owner's `urn:docspec:job:schema-only:1` interface. The original handoff and its
+`not_run` sidecar remain unchanged. Later experimental execution is recorded
+separately below. Remote pin observation/protection, authentic capture-v2 policy,
+production predecessor binding, data execution and qualification remain separate
+pending obligations.
+
+## Bounded native schema preparation
+
+`<main checkout>/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-02/`
+retains one successful schema-only diagnostic against experimental native
+`source05`, binary SHA-256
+`bb73e8d8f42c88f5d9ef21f43c34233802bcf8253f171972482858a2df407c61`.
+The parent authorized this exact diagnostic after a separately retained first
+attempt stopped in the macOS dynamic loader. The corrected policy allows system
+loader reads while denying the 43 exact local input payload paths, all network
+access and writes outside the diagnostic evidence directory.
+
+The unchanged 482,204-byte native job returned `status: inferred`,
+`input_admission: not_run` and `execution: not_run`. Its exact ordered membership
+matches all 51 input, 251 step, 40 export and 23 report names. PyArrow 25.0.1 decodes
+every one of the 287 content-addressed IPC schemas and verifies their SHA-256
+values. All 29 JSON Lines providers include `__source_key`, `__source_line` and
+`__raw_line`. All 250 field/element IDs, paths, nesting, order and nullability
+match the eight original Iceberg declarations; this comparison does not establish
+that a remote table actually has the declared schema or independently qualify
+every native type mapping.
+
+All seven blocking report schemas contain their exact 222 declared integer
+columns and bind the original SQL digests. No report rows or values were read or
+computed. All 23 public output column-name sets match the captured descriptive
+metadata. `nominations.parquet` places `committee_activities` before `committees`,
+whereas the descriptive metadata lists them in the reverse order; neither field
+is missing. Native output order remains authoritative. The 17 private exports
+remain included in the complete result.
+
+Native wall time was 1.246 seconds. The watchdog recorded 1.9 seconds total,
+0.112 GiB peak process-tree RSS and 0.046 GiB peak physical memory, with no admission
+wait. Limits were one compute thread, 512 MiB native memory, 64 MiB scratch,
+64 MiB metadata, a 265-second child deadline, a 2 GiB observed RSS stop and a
+15 GiB free-disk floor. Baseline/end capacity, the watchdog and sampler identities,
+the exact sandbox policy, unchanged application pins and unchanged declaration
+hashes are retained. The raw result is `native.stdout.json`; `summary.json` and
+`schema-inspection.json` record the separate inspection. No native output file
+was created. This diagnostic does not change the application runtime pin, resolve
+its producer-version refusal, or qualify execution, protection, recovery,
+selection or a data candidate.
 
 ## Decisions the native parent must return
 

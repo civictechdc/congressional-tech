@@ -77,8 +77,25 @@ production policy and predecessor selection also remain unbound.
 
 The earlier frozen-prefix inventory remains historical evidence. The real
 preparer includes one additional `readings` compatibility branch in
-`selected_readings`; export and report definitions match. Native preparation,
-remote pin protection and candidate qualification remain pending.
+`selected_readings`; export and report definitions match.
+
+A separately authorized diagnostic with the parent’s frozen experimental
+`source05` binary prepared the entire captured job without executing it. All
+51 inputs, 251 steps, 40 exports and 23 reports match by exact native name; all
+287 returned Arrow IPC schemas decode. The eight declared native schemas retain
+250 field/element IDs, paths, nesting, order and nullability. Every JSON Lines
+input retains the three provider source fields. The seven required report
+schemas contain the exact 222 declared integer columns. Public column-name sets
+match; `nominations.parquet` has one descriptive-metadata column-order difference,
+with no missing or added field. Native output order remains authoritative.
+
+This successful probe took 1.246 seconds, with 0.112 GiB observed peak process-tree
+RSS. It denied reads of all 43 captured local payload paths, network access and
+writes outside its evidence directory. The initial probe’s added read allowlist
+stopped the macOS loader; that failure remains separately retained. The corrected
+probe does not qualify the experimental runtime or establish observed source
+schemas, input protection, actual report values or a valid data candidate. The
+application runtime pin and its entrypoint refusal remain unchanged.
 
 Model requirements now require an explicit `refresh_policy`. The former default
 for an omitted field has been removed; the maintained campaign writer already
