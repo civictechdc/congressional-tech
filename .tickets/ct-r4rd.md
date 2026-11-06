@@ -1,6 +1,6 @@
 ---
 id: ct-r4rd
-status: open
+status: in_progress
 deps: []
 links: [ct-asdg, ct-n61r, ct-zhta, ct-cjwx, ct-mt0h, ct-db3w]
 created: 2026-10-31T07:22:48Z
@@ -60,3 +60,11 @@ Source evidence and full original criteria remain in: .tickets/ct-r4rd.md:17; .t
 The pinned SpicyRegs comparator `519ffb308fd798d5d3c42c4d73a72b3248318a26` compares equivalent Congress.gov fields and exact sitting starts against `e145d24c389e` and `37a6ebd4`. Five focused comparator tests passed. Independent reviewer `/root/coverage_acceptance` reproduced 6,091 matches and the same 52 residual IDs. The 30 building and 17 room differences are one-sided populated archive values at matching starts. Two formatting or placeholder cases remain separate. The held `119583` detail is staged, and `338794` has different source update and sitting start values. The retained House summer/winter proof and parser pins are linked in the acceptance and input records. [Pinned comparison](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/spicyregs-meetings-comparison-final.json) · [Independent acceptance](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/independent-acceptance.md) · [Parser and input pins](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/source-coverage-freeze-inputs.json)
 
 The Congressional-tech source and acceptance worktrees were archived and pruned after local integration through `eb7bd6a7` and `e6dd3be3`. The separate comparator branch awaits upstream integration under ss-ikn9. Verify `119583` and the remaining residuals against the qualified published archive generation. [Integration handoff](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/HANDOFF.md)
+
+**2026-11-06T17:02:58Z**
+
+Completed the bounded equivalent-field comparison on the ticket-selected SpicyRegs `37a6` generation using accepted upstream comparator `519ffb30`. Reproduced e145: 6,091 matches and 52 residuals. Compared retained private `720c`: 6,096 matches, zero Congress/type differences, five update differences, 30 building and 17 room differences. All 47 location values match held House XML by body digest, event, source update and corresponding Eastern-to-UTC sitting. Raw `119583`, SpicyRegs and `720c` agree on Congress 119, Hearing, update `2026-10-15T10:41:10Z` and start `2026-10-23T14:00:00Z`; a wrong-Congress plant was rejected. Event `338794` retains a 30-minute source-version start difference; its location is not compared. Two formatting cases and three unmatched source IDs remain separate.
+
+[Event-level report](../docs/measurements/meeting-field-parity-20261106.md) and exact retained comparison: `.cache/archive-release/implementation/reviewed-non-news-20261106/ct-r4rd/selected-comparison.json`. Six focused existing time/location tests passed as a partial lane. Retained raw summer/winter and qualified parser transition/replay evidence were reused. Private `720c` predates newer model work and is not a live release. The older candidate comparison used a different SpicyRegs generation, so its 11 update differences are not the selected `37a6` result.
+
+Keep open for upstream `ss-ikn9` integration of comparator commit `519ffb308fd798d5d3c42c4d73a72b3248318a26` and comparison/readback against the actual final selected release. The five newer source versions remain explicit refresh dispositions. No producer code, detail-read observations, document keys, shared catalog, release pointer, deployment or scheduler changed.
