@@ -490,7 +490,12 @@ def build(selection, work, output=None, *, expected_definition=None, limit=None,
                 reason = None
                 size = target.get('saved_bytes')
                 child_memory=large_memory_mb if target['format']=='pdf' and (type(size) is not int or size>64<<20) else memory_mb
-                if (work / 'work.sqlite').stat().st_size > db_budget or shutil.disk_usage(work).free < min_free_bytes + prior_bytes + (256 << 20):
+                # Freeze links the closed inode; only copy mode needs another full
+                # DB here. Both modes reserve one bounded source spool and text/SQL
+                # mutation headroom. The outer watchdog enforces the live disk floor.
+                mutation_reserve=(2<<30 if target['format']=='pdf' else 64<<20)+(1<<30)
+                required_free=min_free_bytes+mutation_reserve+(prior_bytes if snapshot_mode=='copy' else 0)
+                if (work / 'work.sqlite').stat().st_size > db_budget or shutil.disk_usage(work).free < required_free:
                     raise ExplorerError('Text index work disk budget reached; durable completed bodies remain reusable')
                 completed = work / (row['body_key'] + '.pages.gz')
                 if completed.is_symlink():

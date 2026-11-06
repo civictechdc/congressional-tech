@@ -517,3 +517,17 @@ def test_retained_caption_page_preserves_cues_cursor_and_zero_raw_reads(tmp_path
             assert reader.resolve_index_citation({'citation':citation,'source':context_target})['state']=='resolved'
             assert not TextIndex(selected).search(TextSearch(text='retained',source_kind='caption',date_from='2300-01-01'))['rows']
         assert len(requests)==count
+
+
+def test_freeze_admits_bounded_mutation_without_reserving_a_database_copy(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    import congressional_explorer_mcp.index_builder as builder
+    routes={}
+    with local_archive_server(routes) as (origin,requests):
+        root,selected,_=source_fixture(tmp_path,origin,routes)
+        # A protected floor plus one PDF spool and bounded text/SQL work fits;
+        # there is deliberately no additional full-DB copy reservation.
+        monkeypatch.setattr(builder.shutil,'disk_usage',lambda path:SimpleNamespace(free=(15<<30)+(3<<30)+1))
+        assert build(selected,tmp_path/'freeze',root/'search_index.sqlite',snapshot_mode='freeze')['state']=='complete'
+        with pytest.raises(ExplorerError,match='disk budget'):
+            build(selected,tmp_path/'copy',snapshot_mode='copy')
