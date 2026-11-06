@@ -234,6 +234,11 @@ def verify_and_decode_body(raw_bytes: bytes, saved_body_hex: str, saved_suffix: 
 
 
 def _extract_pdf_pages(payload: bytes, *, deadline: float | None = None, backend_info=None) -> list[str]:
+    from .pdf_decoder import extract_pdf_pages
+    return extract_pdf_pages(payload, deadline=deadline, backend_info=backend_info)
+
+
+def _decode_pdf_pages(payload: bytes, *, deadline: float | None = None, backend_info=None) -> list[str]:
     _check_deadline(deadline)
     header_pos = payload.find(b'%PDF-', 0, 1024)
     if header_pos < 0:

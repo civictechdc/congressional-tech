@@ -12,11 +12,10 @@ import time
 from urllib.parse import urljoin
 import xml.etree.ElementTree as ET
 
-import anyio
-
 from .body_reader import _load_or_extract_pages, _check_deadline
 from .citations import text_citation
 from .models import ExplorerError, MAX_BYTES
+from .pdf_decoder import run_body_read
 from .release import encoded
 
 MAX_CAPTION_BYTES = 32 << 20
@@ -135,8 +134,8 @@ async def read_caption_page(target, query, load_resources, *, data_dir=None,time
     async def read(resource):
         nonlocal spent
         _check_deadline(deadline)
-        pages,_,_,_ = await anyio.to_thread.run_sync(partial(_load_or_extract_pages,resource,
-            data_dir=data_dir,timeout=max(.05,deadline-time.monotonic()),max_bytes=MAX_CAPTION_BYTES-spent,deadline=deadline),abandon_on_cancel=True)
+        pages,_,_,_ = await run_body_read(partial(_load_or_extract_pages,resource,
+            data_dir=data_dir,timeout=max(.05,deadline-time.monotonic()),max_bytes=MAX_CAPTION_BYTES-spent,deadline=deadline))
         text='\n\n'.join(pages)
         spent+=len(text.encode())
         if spent>MAX_CAPTION_BYTES:
