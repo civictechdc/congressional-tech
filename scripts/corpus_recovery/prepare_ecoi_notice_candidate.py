@@ -96,7 +96,7 @@ def prepare(catalog_path, *, catalog_url, target_url, candidate_url,
         acceptance_status='review_required',
         reason='candidate_capture_receipt_missing',
         import_status='not_performed',
-        attribution_limit='The importer currently hardcodes official_document_identifier; this ID belongs to ecoi.net.',
+        attribution_limit='Use source_catalog_document_identifier: this ID belongs to the ecoi.net catalog, not the original publisher.',
         identity_sources=specs, extracted_facts=facts)
     with (output / 'identity-review.json').open('x') as stream:
         json.dump(result, stream, indent=2, ensure_ascii=False)

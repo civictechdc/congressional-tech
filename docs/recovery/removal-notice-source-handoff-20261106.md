@@ -62,11 +62,10 @@ review rather than inventing identifier equality.
 1. Preserve the cohort's original descriptor/request bindings. Select the actual
    version-2 requirements, state/profile and explicit eligibility through the
    maintained path; this evidence package does not select those inputs.
-2. Correct the import attribution before importing this catalog-based match.
-   `campaign.py` currently hardcodes `official_document_identifier`; ecoi's ID
-   does not support that attribution. Keep the source-native catalog basis
-   explicit and reconcile its registry/model handling with the shared-file
-   integrator. `ct-nh41` continues to own authored public explanations.
+2. Set `match_basis` to `source_catalog_document_identifier` in the import
+   request. The importer preserves this catalog attribution in the receipt and
+   decision; ecoi's ID does not identify the original publisher's record.
+   `ct-nh41` continues to own authored public explanations.
 3. Obtain one complete timestamped receipt for the exact mirror URL using the
    maintained capture path. Cap its body at 361,014 bytes. Reuse the retained
    qualification only if the body remains exactly 361,013 bytes with the pinned
