@@ -1,7 +1,10 @@
-"""Characterize the existing native request without native execution or row reads.
+"""Characterize request assembly from a frozen input prefix without execution.
 
 The retained preparation inventory predates the builder extraction. It records
 the incumbent SQL, shared steps, outputs and checks, not replacement acceptance.
+The fixture supplies that historical prefix; it does not invoke current
+prepare_model_inputs. The later whole-job-binding-04 diagnostic capture records
+the real current prefix, including its readings-bundle compatibility selection.
 """
 from copy import deepcopy
 import json

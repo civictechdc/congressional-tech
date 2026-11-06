@@ -57,13 +57,28 @@ continuity, pointer races and uncertain acknowledgment recovery. These checks
 qualify the catalog consumer boundary; they do not qualify the full native
 candidate. No full root Python lane has run.
 
-The retained whole-job handoff renders the current request without opening its
-inputs: 51 inputs, 251 steps, 40 exports and 23 reports. Its seven blocking report
-families declare 222 checks for the checked-in capture profile version 1. The
-policy-bound version 2 target adds three checks: two required-field checks and
-`invalid_recovery_requirements`. Authentic production policy and predecessor
-selection remain unbound. This handoff is preparation for the parent-owned
-whole-job API, not an executable or qualified candidate.
+The latest whole-job handoff captures the actual preparer: 51 inputs, 251 steps,
+40 exports and 23 reports. It supplies 29 native Arrow JSON declarations, 14
+Parquet footer schemas as standard Arrow IPC, and eight original Iceberg schema
+declarations. The preparer converts 2,287 retained nomination rows before native
+submission; this preprocessing is recorded separately from schema-only work.
+Its seven blocking report families declare 222 checks for the checked-in capture
+profile version 1. The policy-bound version 2 target adds three checks: two
+required-field checks and `invalid_recovery_requirements`.
+
+This diagnostic preparation is unadmitted. The actual entrypoint refuses because
+its parser/catalog fingerprints include the complete `uv.lock`, whose DDK
+dependency changes alter those fingerprints. Restoring only the baseline lock
+for fingerprint calculation reproduces all eight declared pins. Parser source
+and retained table pins remain unchanged; no runtime equivalence or executable
+admission follows from that observation. The shared replacement must resolve
+this dependency boundary without restamping retained results. Authentic
+production policy and predecessor selection also remain unbound.
+
+The earlier frozen-prefix inventory remains historical evidence. The real
+preparer includes one additional `readings` compatibility branch in
+`selected_readings`; export and report definitions match. Native preparation,
+remote pin protection and candidate qualification remain pending.
 
 Model requirements now require an explicit `refresh_policy`. The former default
 for an omitted field has been removed; the maintained campaign writer already

@@ -264,6 +264,53 @@ The actual retained-native acceptance route is now concrete up to the shared nat
 
 Before accepting a successor tuple, run the maintained native regression entry points under the required watchdog and a root-admitted resource budget: `test_archive_model_job.py::test_model_cli_executes_real_raw_lake_fixture`, `test_archive_job_metadata.py::test_metadata_rows_do_not_change_release_bytes_or_weaken_guards` and `test_phase1_model_lifetimes.py::test_actual_raw_lake_model_releases_every_relation_after_its_last_reader`. Those generated-row regressions protect request execution, release bytes, checks and lifetimes; authentic retained-native acceptance is a separate obligation. None was run for this extraction. Parent-owned operation/view/evidence extensions remain unqualified, and the incumbent controllers remain the comparison path.
 
+## Actual source preparation and declaration handoff
+
+`<main checkout>/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-04/`
+retains a later diagnostic capture through the actual `prepare_model_inputs` and
+`plan_prepared_release` functions. Use `handoff-corrected.json` and
+`schema-artifacts-v2.json`; their earlier reports remain preserved. This is
+explicitly unadmitted source preparation, not a native job or release.
+
+The request has 29 JSON Lines inputs, 14 Parquet inputs and eight original native
+table pins. All 51 declarations have artifacts: unchanged native Arrow JSON for
+JSON Lines, standard Arrow IPC from local Parquet footers, and the original
+Iceberg schema JSON for source-declared native tables. No application type
+mapper was added. The parent native preparation API must preserve the JSON
+Lines provider's source-tracking fields and distinguish declared input schema
+identity from the effective relation schema.
+
+The current preparer reads and converts 2,287 retained nomination rows from
+`committees_json` to `committee_activities` before native submission. That
+preprocessing is recorded; it is not a zero-row schema operation. Fourteen
+retained files totaling 49,618,383 unique bytes were verified in place. This is
+not total bytes read: the custody owner rehashes them during its checks. The
+separately active main descriptor was refused after its bytes changed. The
+capture uses this checkout's exact pinned descriptor with explicit, hash-checked
+relocations to the retained generation files. It never substitutes latest.
+
+The actual request still has 251 steps, 40 outputs and 23 reports. All export and
+report definitions match the earlier frozen-prefix inventory. One step differs:
+the actual `selected_readings` includes the bundle-level `readings` compatibility
+branch omitted from the earlier prefix fixture. The characterization tests
+exercise the supplied frozen prefix and assembly, not current input preparation.
+`step-differences.json` records the exact difference.
+
+The application entrypoint refused the checked-in model before input reads.
+Seven parser versions and the filename catalog version hash all of `uv.lock`;
+the DDK dependency changes therefore change those fingerprints. The bounded
+`parser-lock-drift-02/fingerprints.json` experiment reproduced every original pin
+with the baseline lock and unchanged producer code. This diagnoses the identity
+mechanism, not parser equivalence or table acceptance. No retained pin or row was
+restamped. The low-level capture preserves the original declarations and records
+the entrypoint refusal explicitly.
+
+`prepare-spec.draft.json` supplies the 51 declarations to the parent native
+owner's in-progress `urn:docspec:job:schema-only:1` interface. Its sidecar is
+`not_run`. Remote pin observation/protection, native schema preparation, authentic
+capture-v2 policy, production predecessor binding, execution and qualification
+remain separate pending obligations.
+
 ## Decisions the native parent must return
 
 The JSON assigns these exact unresolved target semantics:

@@ -48,8 +48,9 @@
     "Committee current-format cleanup committed as 1758b519; 34 Python, 23 browser and generated-type checks passed",
     "Greenfield current-field cleanup passed 41 browser unit/presentation cases, two final unknown-label cases, and five focused root cases; independent reader review closed all findings",
     "All eight nonarchive workflow-definition cases passed against qualified dev4; execution adoption remains unqualified",
-    "Whole-job preparation handoff preserves the current 51-input, 251-step, 40-export, 23-report request and 222 blocking check names without opening input data; version 2 target adds three checks",
-    "Removed model inference of refresh_live from requirements missing refresh_policy; six real native checks passed, and independent review confirmed current writer and policy semantics"
+    "Historical frozen-prefix handoff records 51 inputs, 251 steps, 40 exports, 23 reports and 222 blocking check names without opening data; later actual preparation records one selected_readings difference and nomination preprocessing",
+    "Removed model inference of refresh_live from requirements missing refresh_policy; six real native checks passed, and independent review confirmed current writer and policy semantics",
+    "Actual low-level source preparation captured 51 inputs with exact schema artifacts, 251 steps, 40 outputs and 23 reports; independent review confirmed scope/custody and corrected unique-byte accounting; native preparation and entrypoint admission remain absent"
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -57,7 +58,8 @@
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
     "Retire duplicate archive_schema validator/registry using direct admitted definitions for native checks; shared native schema mapping remains required before execution acceptance",
-    "Standardize new publication on policy-bound capture_profile v2 and 257 physical fields; retain the original 254-field baseline and add three explicit current fields without inventing v1 eligibility"
+    "Standardize new publication on policy-bound capture_profile v2 and 257 physical fields; retain the original 254-field baseline and add three explicit current fields without inventing v1 eligibility",
+    "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings"
   ],
   "tests": {
     "replacementAcceptance": "not_run",
@@ -312,6 +314,42 @@
       "watchdog": "watchdog.json",
       "peakRSSGiB": 0.496,
       "review": "Independent native-boundary review found no code blocker and confirmed the maintained requirements writer emits the field. Documentation now distinguishes campaign authoring defaults from required model fields."
+    },
+    "sourcePreparation": {
+      "status": "unadmitted_source_preparation_complete",
+      "counts": {
+        "jsonLinesInputs": 29,
+        "parquetInputs": 14,
+        "nativeTableInputs": 8,
+        "steps": 251,
+        "outputs": 40,
+        "reports": 23
+      },
+      "preprocessedNominationRows": 2287,
+      "uniqueVerifiedInputFiles": 14,
+      "uniqueVerifiedInputBytes": 49618383,
+      "inputReadMetric": "Unique byte size only; custody checks rehash these files and no total I/O was measured.",
+      "nativeExecution": "not_run",
+      "nativePreparation": "not_run",
+      "remoteInputAdmission": "not_run",
+      "entrypointAdmission": "refused: original parser/catalog pins differ under changed whole-workspace lock fingerprint",
+      "definitionComparison": "Export and report definitions match frozen inventory; actual selected_readings also includes the bundle-level readings compatibility branch.",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-04",
+      "handoff": "handoff-corrected.json",
+      "schemaArtifacts": "schema-artifacts-v2.json",
+      "watchdog": "watchdog.json",
+      "peakRSSGiB": 0.189,
+      "review": "Independent native-boundary source review confirmed original pins, complete counts, explicit relocations/preprocessing and no admission claim. Unique input-byte metric corrected without overwriting original evidence."
+    },
+    "wholeLockFingerprintDiagnosis": {
+      "status": "mechanism_verified_not_runtime_equivalence",
+      "affectedFingerprints": 8,
+      "baselinePinsReproduced": 8,
+      "sourceOwnersChanged": false,
+      "retainedRowsRestamped": false,
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/parser-lock-drift-02",
+      "record": "fingerprints.json",
+      "scope": "Same maintained version functions with baseline versus current lock bytes; no parser payload execution or retained-table acceptance."
     }
   },
   "commits": {
@@ -320,10 +358,11 @@
       "f054f0a5",
       "261b8f56",
       "1758b519",
-      "e75f8b9e"
+      "e75f8b9e",
+      "a8abadff"
     ],
     "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
-    "checkpoint": "This containing checkpoint records the standard catalog and consumer migration; the shared whole-job producer and full acceptance remain pending."
+    "checkpoint": "This checkpoint records actual source preparation and its admission limits; the shared whole-job producer and full acceptance remain pending."
   },
   "sharedDependencies": [
     "Exact original native table-pin protection and nested field/element-ID/schema mappings",
@@ -346,13 +385,33 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-01/handoff.json",
       "sha256": "f0351407f9490c28bb1ae0fa0c64f2eb51f03f4741f5914abc733aeb6eab5796",
       "size": 71146,
-      "scope": "Unbound preparation only: exact current capture-v1 request, source-owned policy schemas and 222 required check columns. Inputs were not opened; no production recovery policy or predecessor was selected."
+      "scope": "Historical frozen-prefix preparation only: capture-v1 request assembly, source-owned policy schemas and 222 required check columns. Inputs were not opened. Later actual preparation records one selected_readings difference and nomination preprocessing. No production recovery policy or predecessor was selected."
     },
     "captureVersion2RuleDelta": {
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-01/capture-v2-rule-delta.json",
       "sha256": "94403c117010dc968b4d3b9b2554bdb862c7174ce4f7100937d73e7e88319cf0",
       "size": 3605,
       "scope": "Three additional required checks if the remaining graph is unchanged: invalid_recovery_requirements and two required capture-field null checks. Expected total 225; not accepted production policy."
+    },
+    "currentSourcePreparation": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-04/handoff-corrected.json",
+      "sha256": "119d704fbefdcdbffeb9b6be6c8254ac0b49700194d06bcc7cddc271ca46b01a",
+      "size": 10882
+    },
+    "currentInputSchemas": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-04/schema-artifacts-v2.json",
+      "sha256": "a3548f45ba2b0a6bdd9bc46e84c3b39e3b2ddf902b0eefacfd018ef953757805",
+      "size": 26329
+    },
+    "nativePreparationDraft": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/whole-job-binding-04/prepare-spec.draft.json",
+      "sha256": "7cafa02889f32269167c3b17162a7a6371d13085497793443252c7c1fc86dc26",
+      "size": 32512
+    },
+    "wholeLockFingerprintDiagnosis": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/parser-lock-drift-02/fingerprints.json",
+      "sha256": "3058b1eea82e75b79ccddd156650910555dfca76c070a4990d4bc56dd5255c70",
+      "size": 3719
     }
   },
   "constraints": {
@@ -364,7 +423,8 @@
     "sharedDDKRuntimeOwner": "parent",
     "resourceNote": "Bounded local checks ran under the shared watchdog with measured peaks. Parent owns the successor build lane; complete replacement-native acceptance remains pending.",
     "boundedLocalChecksAdmitted": true,
-    "replacementNativeAcceptanceAdmitted": false
+    "replacementNativeAcceptanceAdmitted": false,
+    "currentProducerEntrypoint": "Refuses checked-in original parser/catalog pins under the modified uv.lock; no pin replacement, equivalence exception or admission bypass adopted in production."
   },
   "delivery": {
     "fullReplacementComplete": false,
