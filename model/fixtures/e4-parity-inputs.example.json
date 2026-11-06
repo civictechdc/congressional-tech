@@ -30,8 +30,6 @@
   },
   "candidate": {
     "kind": "model",
-    "release": "release",
-    "manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "source_members": {
       "path": "source_members.parquet",
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -56,6 +54,20 @@
       "path": "producer/profile.json",
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
       "size": 0
+    },
+    "manifest": {
+      "path": "<captured-controls>/manifest.json",
+      "sha256": "<manifest-sha256>",
+      "size": "<manifest-bytes>"
+    },
+    "files": {
+      "manifest.json": "<captured-controls>/manifest.json",
+      "list.parquet": "<accepted-native-exports>/list.parquet",
+      "detail.parquet": "<accepted-native-exports>/detail.parquet",
+      "links.parquet": "<accepted-native-exports>/links.parquet",
+      "urls.parquet": "<accepted-native-exports>/urls.parquet",
+      "sources.parquet": "<accepted-native-exports>/sources.parquet",
+      "recoveries.parquet": "<accepted-native-exports>/recoveries.parquet"
     }
   },
   "cause_relations": {

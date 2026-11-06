@@ -148,162 +148,6 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
         parity.load_descriptor(path)
 
 
-def _convert_f0_fixture_catalog(documents, filenames, captures, committees, *, catalog_id, output, scratch, engine, origin_kind='converted_catalog'):
-    from viewer_publication.archive_format import _step, _normal, _execute, legacy_meeting_keys
-    from viewer_publication.archive_fixture import fixture_auxiliary
-    output, scratch = Path(output), Path(scratch); scratch.mkdir(parents=True, exist_ok=False)
-    inputs = [dict(name=n, kind='parquet', path=str(Path(p).resolve())) for n, p in [
-        ('legacy_documents', documents), ('legacy_filenames', filenames), ('legacy_captures', captures), ('committee_source', committees)]]
-    raw_date = 'array_element(d.date_token,1)'
-    date = f"CASE WHEN cardinality(d.date_token)=1 THEN try_cast(CASE WHEN regexp_like({raw_date},'^[0-9]{{8}}$') THEN concat(substr({raw_date},1,4),'-',substr({raw_date},5,2),'-',substr({raw_date},7,2)) ELSE {raw_date} END AS DATE) ELSE NULL END"
-    steps = [_step('body_metadata', 'SELECT body_key,max(bytes) AS bytes,max(media_type) AS media_type FROM legacy_captures WHERE body_key IS NOT NULL GROUP BY body_key', materialize=True, release_after=['legacy_captures']),
-        _step('document_bodies', 'SELECT document_id,unnest(body_keys) AS body_key FROM legacy_documents'),
-        _step('body_groups', "SELECT document_id,array_agg(array_element(regexp_match(body_key,'([0-9a-f]{64})'),1) ORDER BY body_key) AS bodies FROM document_bodies GROUP BY document_id", materialize=True),
-        _step('document_codes', 'SELECT document_id,unnest(committee_code) AS code FROM legacy_documents'),
-        _step('committee_aliases', "SELECT system_code,chamber,upper(system_code) AS code FROM committee_source UNION SELECT system_code,chamber,upper(substr(system_code,3)) AS code FROM committee_source UNION SELECT system_code,chamber,upper(substr(system_code,3,2)) AS code FROM committee_source WHERE lower(chamber)='house' AND right(system_code,2)='00'"),
-        _step('committee_groups', 'SELECT d.document_id,array_agg(DISTINCT c.system_code ORDER BY c.system_code) AS committee_keys,array_agg(DISTINCT lower(c.chamber) ORDER BY lower(c.chamber)) AS chambers FROM document_codes d JOIN committee_aliases c ON upper(d.code)=c.code GROUP BY d.document_id', materialize=True),
-        _step('normalized', _normal('legacy_documents d LEFT JOIN body_metadata b ON d.body_key=b.body_key LEFT JOIN committee_groups c ON d.document_id=c.document_id LEFT JOIN body_groups g ON d.document_id=g.document_id',
-            body_expected='d.body_key IS NOT NULL', doc_key='d.document_id', filename='d.filename', title='array_element(d.source_link_label,1)', source_url='d.source_url',
-            body_hex="array_element(regexp_match(d.body_key,'([0-9a-f]{64})'),1)", format="lower(coalesce(array_element(d.format,1),'other'))",
-            document_kind='d.document_kind', document_family='d.document_family', committee_keys='c.committee_keys', chambers='c.chambers',
-            congress='CASE WHEN cardinality(d.congress)=1 THEN try_cast(array_element(d.congress,1) AS SMALLINT) ELSE NULL END',
-            document_date=date, document_date_source=f"CASE WHEN {date} IS NULL THEN NULL ELSE 'filename' END",
-            suffix="CASE WHEN regexp_like(d.body_key,'[.]pdf$') THEN '.pdf' WHEN regexp_like(d.body_key,'[.]gz$') THEN '.gz' ELSE '' END",
-            media_type="coalesce(b.media_type,CASE WHEN array_element(d.format,1)='pdf' THEN 'application/pdf' ELSE 'application/octet-stream' END)",
-            bytes='b.bytes', meeting_keys=legacy_meeting_keys('d.source_url'), link_bodies='g.bodies'), materialize=True),
-        _step('source_candidates', 'SELECT f.document_id AS doc_key,f.source_id AS source_key,f.source_url AS url,cast(NULL AS VARCHAR) AS member_path,coalesce(f.body_key=d.body_key,false) AS is_saved,cast(NULL AS DATE) AS first_seen,array_element(f.source_page_url,1) AS listed_on,array_element(f.source_link_label,1) AS link_text,cast(NULL AS VARCHAR) AS doc_type,cast(NULL AS DATE) AS posted FROM legacy_filenames f JOIN (SELECT document_id,body_key FROM legacy_documents) d ON f.document_id=d.document_id WHERE f.source_url IS NOT NULL'),
-        _step('source_input', 'SELECT doc_key,min(source_key) AS source_key,url,member_path,bool_or(is_saved) AS is_saved,min(first_seen) AS first_seen,min(listed_on) AS listed_on,min(link_text) AS link_text,min(doc_type) AS doc_type,min(posted) AS posted FROM source_candidates GROUP BY doc_key,url,member_path', materialize=True),
-        _step('recovery_input', "SELECT cast(NULL AS VARCHAR) AS doc_key,cast(NULL AS VARCHAR) AS recovery_key,cast(NULL AS VARCHAR) AS original_url,cast(NULL AS VARCHAR) AS kind,arrow_cast(NULL,'FixedSizeBinary(32)') AS body,cast(NULL AS VARCHAR) AS suffix,cast(NULL AS BIGINT) AS bytes,cast(NULL AS DATE) AS imported_at,cast(NULL AS VARCHAR) AS recovered_url,cast(NULL AS VARCHAR) AS identity_note WHERE false"),
-        _step('meeting_input', 'SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS chamber,cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date WHERE false'),
-        _step('committee_input', 'SELECT system_code,name,lower(chamber) AS chamber FROM committee_source')]
-    auxiliary = [item for item in fixture_auxiliary() if item[0] in {'meetings', 'committees'}]
-    return _execute(inputs, steps, output=output, scratch=scratch, engine=engine, auxiliary=auxiliary,
-        origin=dict(kind=origin_kind, catalog_id=catalog_id, gaps=[]))
-
-
-def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=False, bad_lookup=False, bad_sort=None, origin_kind='converted_catalog'):
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from congress_api.retention.provenance import file_pin
-    data=FIXTURE['f0_catalog']
-    arrays=['body_keys','filenames','source_urls','body_format','format','media_type','http_status','capture_outcome',
-        'response_usable','response_body_complete','filename_origins','source_paths','document_kind','document_family',
-        'committee_code','congress','date_token','date_token_candidates','state_retrieved_at','source_link_label',
-        'source_page_url','source_meeting_id','source_capture_url','measure_references','member_bioguide_id',
-        'hearing_package_id','recovered_filename','recovered_source_url']
-    schema=pa.schema([(name,pa.string()) for name in ['document_id','source_id','body_key','filename','source_url']]
-        +[(name,pa.list_(pa.string())) for name in arrays])
-    for name,rows in [('documents',data['documents']),('filenames',data['files'])]:
-        pq.write_table(pa.Table.from_pylist(rows,schema=schema),tmp_path/(name+'.parquet'))
-    pq.write_table(pa.table(dict(body_key=[r['body_key'] for r in data['files']],bytes=[100]*4,media_type=['text/html','text/html','application/pdf','application/xml'])),tmp_path/'captures.parquet')
-    pq.write_table(pa.table(dict(system_code=['hsag00'],name=['Agriculture'],chamber=['house'])),tmp_path/'committees.parquet')
-    manifest=_convert_f0_fixture_catalog(tmp_path/'documents.parquet',tmp_path/'filenames.parquet',tmp_path/'captures.parquet',tmp_path/'committees.parquet',
-        catalog_id=parity.ORACLE_GENERATION,output=tmp_path/'release',scratch=tmp_path/'converter',engine=engine(),origin_kind=origin_kind)
-    release=tmp_path/'release';producer=tmp_path/'converter'
-    if bad_filename or bad_metadata or bad_ranges or bad_lookup or bad_sort:
-        # This is an authored bad native job, not a patch to production code.
-        from hashlib import sha256
-        job=json.loads((producer/'job.json').read_text())
-        normalized=next(s for s in job['steps'] if s['name']=='normalized')
-        before='d.filename AS "filename"'
-        assert before in normalized['sql']
-        if bad_filename:
-            normalized['sql']=normalized['sql'].replace(before,
-                "CASE WHEN d.filename='Beta.html' THEN 'Wrong.html' ELSE d.filename END AS \"filename\"",1)
-        if bad_metadata:
-            assert 'b.bytes AS \"bytes\"' in normalized['sql']
-            normalized['sql']=normalized['sql'].replace('b.bytes AS \"bytes\"','b.bytes+1 AS \"bytes\"').replace('coalesce(b.media_type,',"coalesce('application/x-corrupt',")
-        if bad_ranges:
-            details=next(step for step in job['steps'] if step['name']=='details')
-            details['sql']=details['sql'].replace('coalesce(s.src_len,cast(0 AS INT)) AS src_len','coalesce(s.src_len,cast(0 AS INT))+1 AS src_len')
-        if bad_lookup:
-            lookup=next(step for step in job['steps'] if step['name']=='url_keys')
-            lookup['sql']+=' WHERE false'
-        if bad_sort:
-            output=next(o for o in job['outputs'] if o['name']==bad_sort)
-            output['settings']['order_by'][0]['direction']='desc'
-        release=tmp_path/'bad-release';release.mkdir()
-        producer=tmp_path/'bad-producer';producer.mkdir()
-        job['scratch']=str(producer/'native')
-        for output in job['outputs']:
-            output['path']=str(release/output['name'])
-        (producer/'job.json').write_text(json.dumps(job))
-        result=engine().run_job(producer/'job.json')
-        (producer/'result.json').write_text(json.dumps(result))
-        for item in manifest['files']:
-            if item['name'].endswith('.parquet'):
-                actual=next(r for r in result['outputs'] if r['name']==item['name'])
-                for name in ['sha256','md5','size','rows']:
-                    item[name]=actual[name]
-            else:
-                (release/item['name']).write_bytes((tmp_path/'release'/item['name']).read_bytes())
-        identity=[manifest['schema_version'],[[f['name'],f['sha256'],f['size'],f['rows']] for f in manifest['files']]]
-        manifest['release_id']=sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
-        (release/'manifest.json').write_text(json.dumps(manifest))
-    selector=dict(version=1,catalog_id=parity.ORACLE_CATALOG,generation=parity.ORACLE_GENERATION,files={})
-    for name,key in [('documents','documents.parquet'),('filenames','document-filenames.parquet')]:
-        pin=file_pin(tmp_path/(name+'.parquet'))
-        selector['files'][name]=dict(key='catalog-generations/'+parity.ORACLE_GENERATION+'/'+key,sha256=pin['sha256'],bytes=pin['size'],rows=len(data[name if name=='documents' else 'files']))
-        (tmp_path/(name+'-receipt.json')).write_text(json.dumps(dict(key=selector['files'][name]['key'],identity=dict(sha256=pin['sha256'],bytes=pin['size']))))
-    (tmp_path/'selector.json').write_text(json.dumps(selector))
-    example=json.loads((ROOT/'model/fixtures/e4-parity-inputs.example.json').read_text())
-    def pin(name):
-        path=tmp_path/name
-        return dict(path=str(path),**file_pin(path))
-    example['oracle']=dict(selector=pin('selector.json'),documents=pin('documents.parquet'),filenames=pin('filenames.parquet'),
-        documents_receipt=pin('documents-receipt.json'),filenames_receipt=pin('filenames-receipt.json'))
-    example['candidate']=dict(kind='f0',release=str(release),manifest_sha256=file_pin(release/'manifest.json')['sha256'],
-        build_job=dict(path=str(producer/'job.json'),**file_pin(producer/'job.json')),
-        build_result=dict(path=str(producer/'result.json'),**file_pin(producer/'result.json')))
-    (tmp_path/'decisions.md').write_text('# Fixture owner decisions\n')
-    (tmp_path/'b7-manifest.json').write_text(json.dumps(dict(files=[],artifacts=[])))
-    example['provenance']=dict(owner_decisions=pin('decisions.md'),b7_manifest=pin('b7-manifest.json'))
-    example['cause_relations']={}
-    path=tmp_path/'f0-template.json';path.write_text(json.dumps(example))
-    return path
-
-
-@pytest.mark.parametrize('origin_kind', ['model', 'hand_fixture'])
-def test_shared_saved_body_refuses_every_origin_but_a_converted_catalog(tmp_path, origin_kind):
-    # Only the legacy catalog lacks the same-body edge; any other producer
-    # sharing a saved body between documents has a duplicate document key.
-    with pytest.raises(ValueError, match='Release key invariant failed'):
-        f0_fixture(tmp_path, origin_kind=origin_kind)
-    result = json.loads((tmp_path/'converter/result.json').read_text())
-    invariants = next(q['data'][0] for q in result['queries'] if q['name'] == 'relationship_invariants')
-    assert invariants['duplicate_document_key'] == 1
-
-
-def test_actual_f0_candidate_has_only_converter_gaps(tmp_path):
-    template=f0_fixture(tmp_path)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
-    for field in ['unexplained','unclassified','invalid_ids']:
-        assert result['counts'][field]==FIXTURE['f0_catalog']['expected'][field]
-    assert set(FIXTURE['f0_catalog']['expected']['required_causes'])<={row['cause'] for row in result['causes'] if row['differences']}
-    assert result['candidate_kind']=='f0'
-    assert result['model_qualified'] is False
-    assert result['decision_ready'] is True
-
-
-def test_f0_conversion_proofs_do_not_excuse_a_corrupt_visible_filename(tmp_path):
-    template=f0_fixture(tmp_path,bad_filename=True)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
-    assert result['counts']['unexplained']==2
-    assert result['counts']['invalid_ids']==0
-    assert result['decision_ready'] is False
-
-
-def test_public_bytes_cannot_change_after_the_pinned_producer_result(tmp_path):
-    template=f0_fixture(tmp_path)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    path=tmp_path/'release/list.parquet'
-    path.write_bytes(path.read_bytes()+b'tampered')
-    with pytest.raises(ValueError,match='size differs|digest differs'):
-        parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
-
-
 def test_model_witnesses_use_native_receipt_keys_and_match_only_source_evidence(tmp_path):
     """Caption loss, HTML addition and header names use actual capture facts."""
     data=[*FIXTURE['integration']['members'],FIXTURE['witness_twin']]
@@ -344,35 +188,6 @@ def test_model_witnesses_use_native_receipt_keys_and_match_only_source_evidence(
     assert any(r['fingerprint']=='9'*64 and r['other_fingerprint']=='9'*64 for r in reports['witnesses'])
 
 
-def test_corrupt_native_download_metadata_is_not_invisible(tmp_path):
-    template=f0_fixture(tmp_path,bad_metadata=True)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
-    assert result['counts']['unexplained']==FIXTURE['f0_catalog']['expected']['bad_metadata_unexplained']
-    assert result['decision_ready'] is False
-
-
-def test_native_private_mapping_permutation_is_not_public_row_evidence(tmp_path):
-    from congress_api.retention.provenance import file_pin
-    template=f0_fixture(tmp_path)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    value=json.loads(descriptor.read_text());candidate=value['candidate']
-    job=json.loads(Path(candidate['layout_job']['path']).read_text())
-    rows=next(o for o in job['outputs'] if o['name']=='document_rows')
-    members=next(o for o in job['outputs'] if o['name']=='source_members')
-    rows['sql']=rows['sql'].replace('SELECT list_row,','SELECT cast((list_row+1)%3 AS INT) AS list_row,',1)
-    members['sql']=members['sql'].replace('o.list_row,','cast((o.list_row+1)%3 AS INT) AS list_row,',1)
-    work=tmp_path/'permuted';work.mkdir();job['scratch']=str(work/'native')
-    for output in job['outputs']:output['path']=str(work/(output['name']+'.parquet'))
-    (work/'job.json').write_text(json.dumps(job));result=engine().run_job(work/'job.json')
-    (work/'result.json').write_text(json.dumps(result))
-    for key,name in [('layout_job','job.json'),('layout_result','result.json'),('source_members','source_members.parquet'),('document_rows','document_rows.parquet')]:
-        path=work/name;candidate[key]=dict(path=str(path),**file_pin(path))
-    descriptor.write_text(json.dumps(value))
-    with pytest.raises(ValueError,match='projection|lineage'):
-        parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
-
-
 def test_recovery_causes_bind_each_visible_value_to_retained_evidence(tmp_path):
     rows=[]
     for case in FIXTURE['recovery_values']:
@@ -383,21 +198,6 @@ def test_recovery_causes_bind_each_visible_value_to_retained_evidence(tmp_path):
     inputs=[json_input(tmp_path,'observed_differences',rows,**{k:'Utf8' for k in rows[0]})]
     result=run_job(tmp_path,engine(),inputs=inputs,steps=parity.cause_steps(),outputs=[],queries=[dict(name='causes',sql='SELECT difference_id,cause FROM known_causes ORDER BY difference_id')])
     assert result['causes']==[dict(difference_id=field+':correct',cause='b7_owner_recoveries') for field in ['recovery.imported_at','recovery.kind']]
-
-
-def test_bad_native_attachment_ranges_refuse_before_parity(tmp_path):
-    template=f0_fixture(tmp_path,bad_ranges=True)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    with pytest.raises(ValueError,match='range|attachment'):
-        parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
-
-
-def test_missing_native_url_resolution_rows_are_unexplained(tmp_path):
-    template=f0_fixture(tmp_path,bad_lookup=True)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
-    assert result['counts']['unexplained']==4
-    assert result['decision_ready'] is False
 
 
 def test_native_b7_witness_uses_superseding_kind_and_earliest_fetch_date(tmp_path):
@@ -424,55 +224,6 @@ def test_native_b7_witness_uses_superseding_kind_and_earliest_fetch_date(tmp_pat
     assert reports['b7']==[dict(kind=json.dumps([expected['kind']]),imported_at=json.dumps([expected['imported_at']]))]
 
 
-
-def test_model_body_sets_exclude_nonreal_members_but_keep_their_source_evidence(tmp_path):
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from congress_api.retention.provenance import file_pin
-    template=f0_fixture(tmp_path)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    loaded=parity.load_descriptor(descriptor)
-    # This checks the projection only. The F0 manifest still cannot qualify as
-    # a model release through load_descriptor/compare_descriptor.
-    loaded['descriptor']['candidate']['kind']='model'
-    files=FIXTURE['f0_catalog']['files']
-    sources=[dict(receipt_key='receipts/test.jsonl',receipt_line=i,capture_index=0,source_id=row['source_id']) for i,row in enumerate(files)]
-    roles=[dict(receipt_key='receipts/test.jsonl',receipt_line=i,capture_index=0,is_real_file=i!=0) for i in range(len(files))]
-    for name,rows in [('capture_sources',sources),('record_roles',roles)]:
-        path=tmp_path/(name+'.parquet');pq.write_table(pa.Table.from_pylist(rows),path)
-        loaded['paths'][name]=str(path)
-        loaded['descriptor']['cause_relations'][name]=dict(path=str(path),**file_pin(path))
-    directory=tmp_path/'normalized';directory.mkdir()
-    inputs,steps=parity.normalization(loaded,directory=directory)
-    result=run_job(directory,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='counts',sql='SELECT (SELECT count(*) FROM new_bodies) AS bodies,(SELECT count(*) FROM new_anchors) AS anchors')])
-    assert result['counts']==[dict(bodies=FIXTURE['f0_catalog']['expected']['model_real_bodies'],anchors=4)]
-
-
-@pytest.mark.parametrize('table',['list.parquet','detail.parquet','sources.parquet','recoveries.parquet'])
-def test_native_descending_public_writer_cannot_authenticate_ascending_private_rows(tmp_path,table):
-    template=f0_fixture(tmp_path,bad_sort=table)
-    with pytest.raises(ValueError,match='sort|order'):
-        parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-
-
-def test_null_recovery_values_remain_observable_before_cause_classification(tmp_path):
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    template=f0_fixture(tmp_path)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    loaded=parity.load_descriptor(descriptor)
-    schema=pq.read_schema(loaded['paths']['release_recoveries'])
-    row=dict(list_row=0,ordinal=0,kind=None,body=bytes.fromhex('d'*64),suffix='.gz',bytes=100,imported_at=None,recovered_url='https://www.govinfo.gov/hearing.htm',identity_note=None)
-    path=tmp_path/'null-recoveries.parquet';pq.write_table(pa.Table.from_pylist([row],schema=schema),path)
-    # Exercise value projection of this deliberately bad public row; the full
-    # descriptor path independently checks native production and range custody.
-    loaded['paths']['release_recoveries']=str(path)
-    directory=tmp_path/'normalized';directory.mkdir()
-    inputs,steps=parity.normalization(loaded,directory=directory)
-    reports=run_job(directory,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='values',sql="SELECT field,value FROM new_fields WHERE field IN ('recovery.kind','recovery.imported_at') ORDER BY field")])
-    assert reports['values']==[dict(field=field,value=value) for field,value in sorted(FIXTURE['f0_catalog']['expected']['null_recovery_values'].items())]
-
-
 def test_raw_link_type_is_not_a_registry_mapped_publisher_kind():
     pk={'receipt_key','receipt_line','capture_index'}
     available={'capture_sources':pk|{'source_id','body_sha','filename','source_url','import_date','document_kind'},
@@ -487,10 +238,8 @@ def test_raw_link_type_is_not_a_registry_mapped_publisher_kind():
 def test_slice_oracle_keeps_full_components_and_reports_missing_evidence(tmp_path,case):
     import pyarrow as pa
     import pyarrow.parquet as pq
-    template=f0_fixture(tmp_path)
-    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    loaded=parity.load_descriptor(descriptor)
-    files=FIXTURE['f0_catalog']['files']
+    loaded=oracle_fixture(tmp_path)
+    files=FIXTURE['oracle_catalog']['files']
     rows=[dict(body_sha=files[i]['body_key'].split('/')[-1][:-3],source_url=files[i]['source_url']) for i in case['source_indexes']]
     source=tmp_path/'capture-sources.parquet';pq.write_table(pa.Table.from_pylist(rows),source)
     recoveries=tmp_path/'current-recoveries.parquet';pq.write_table(pa.table(dict(original_url=pa.array([],type=pa.string()),body_sha256=pa.array([],type=pa.string()))),recoveries)
@@ -552,39 +301,268 @@ def test_publisher_witness_uses_canonical_kind_and_the_saved_source(tmp_path,eff
     assert reports['causes']==wanted
 
 
-@pytest.mark.parametrize('case',FIXTURE['producer_profile_cases'],ids=lambda case:case['case'])
-def test_model_profile_is_pinned_and_the_same_producer_has_zero_completeness_errors(tmp_path,case):
+
+
+def oracle_fixture(tmp_path):
+    """Original comparison records only; never converted into a current candidate."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    data=FIXTURE['oracle_catalog']
+    columns=set().union(*parity.oracle_columns(),*(row.keys() for row in data['documents']+data['files']))
+    arrays=sorted(columns-
+                  {'document_id','source_id','body_key','filename','source_url'})
+    schema=pa.schema([(name,pa.string()) for name in ['document_id','source_id','body_key','filename','source_url']]
+        +[(name,pa.list_(pa.string())) for name in arrays])
+    paths={}
+    for name,rows in [('documents',data['documents']),('filenames',data['files'])]:
+        path=tmp_path/(name+'.parquet');pq.write_table(pa.Table.from_pylist(rows,schema=schema),path)
+        paths['oracle_'+name]=str(path)
+    return dict(paths=paths,selector=dict(files=dict(documents=dict(rows=len(data['documents'])))))
+
+
+def producer_metadata(tmp_path):
+    """Authored metadata for the metadata guard, with no data-qualification claim."""
     from congress_api.retention.provenance import file_pin
-    template=f0_fixture(tmp_path)
-    value=json.loads(template.read_text());candidate=value['candidate'];candidate['kind']='model'
-    manifest=json.loads((Path(candidate['release'])/'manifest.json').read_text())
-    profile=tmp_path/'profile.json';profile.write_text(json.dumps({'owner_admission':'E2'}))
-    candidate['producer_profile']=dict(path=str(profile),**file_pin(profile))
-    job_path=Path(candidate['build_job']['path']);result_path=Path(candidate['build_result']['path'])
-    job=json.loads(job_path.read_text());result=json.loads(result_path.read_text())
-    job['queries'].append(dict(name='profile_completeness',sql='SELECT 0 AS missing_pages'))
-    check=dict(name='profile_completeness',data=[dict(missing_pages=0)])
-    result['queries'].append(check)
-    name=case['case']
+    from viewer_publication.archive_format import LIST_COLUMNS,DETAIL_COLUMNS
+    order=lambda fields:[dict(field=name,direction='asc',nulls='nulls_last') for name in fields]
+    outputs=[dict(name=name+'.parquet',sql='SELECT * FROM '+relation,
+                  settings=dict(order_by=order(fields))) for name,relation,fields in [
+        ('list','ordered',['filename','document_date','first_captured','doc_key']),
+        ('detail','details',['filename','document_date','first_captured','doc_key']),
+        ('sources','source_rows',['list_row','ordinal']),('recoveries','recovery_rows',['list_row','ordinal'])]]
+    outputs += [dict(name='document_rows.parquet',sql='SELECT list_row,doc_key AS document_id,'+
+        ','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=dict(order_by=order(['list_row']))),
+        dict(name='source_members.parquet',sql='SELECT * FROM members',settings=dict(order_by=order(['document_id','source_id'])))]
+    facts=[dict(name=item['name'],sha256='a'*64,size=0,rows=0) for item in outputs]
+    job=dict(outputs=outputs,steps=[dict(name='ordered',sql='SELECT row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS list_row FROM rows')],
+             queries=[dict(name='profile_completeness',sql='SELECT 0 AS missing_pages')])
+    result=dict(outputs=facts,queries=[dict(name='profile_completeness',data=[dict(missing_pages=0)])])
+    def write(name,value):
+        path=tmp_path/name;path.write_text(json.dumps(value));return dict(path=str(path),**file_pin(path))
+    candidate=dict(build_job=write('job.json',job),build_result=write('result.json',result),
+                   producer_profile=write('profile.json',dict(owner='metadata-guard-fixture')))
+    for name in ('document_rows','source_members'):
+        candidate[name]=dict(path=str(tmp_path/(name+'.parquet')),sha256='a'*64,size=0)
+    manifest=dict(files=facts[:4])
+    return candidate,manifest,job,result,write
+
+
+@pytest.mark.parametrize('case',FIXTURE['producer_profile_cases'],ids=lambda case:case['case'])
+def test_model_profile_and_required_completeness_evidence(tmp_path,case):
+    candidate,manifest,job,result,write=producer_metadata(tmp_path)
+    check=result['queries'][0];name=case['case']
     if name=='missing-pin':candidate.pop('producer_profile')
-    if name=='changed-profile':profile.write_text('{}')
+    if name=='changed-profile':Path(candidate['producer_profile']['path']).write_text('{}')
     if name=='missing-check':result['queries'].remove(check)
     if name=='empty-check':check['data']=[]
     if name=='positive-count':check['data'][0]['missing_pages']=1
     if name=='null-count':check['data'][0]['missing_pages']=None
     if name=='boolean-count':check['data'][0]['missing_pages']=False
-    job_path.write_text(json.dumps(job));result_path.write_text(json.dumps(result))
-    for key,path in [('build_job',job_path),('build_result',result_path)]:candidate[key]=dict(path=str(path),**file_pin(path))
-    if case['accepted']:parity.producer_inputs(template.parent,candidate,manifest)
+    candidate['build_result']=write('result.json',result)
+    if case['accepted']:parity.producer_inputs(tmp_path,candidate,manifest)
     else:
         with pytest.raises(ValueError,match='profile|completeness|pin|digest'):
-            parity.producer_inputs(template.parent,candidate,manifest)
+            parity.producer_inputs(tmp_path,candidate,manifest)
 
 
-def test_cause_metadata_cannot_replace_the_pinned_oracle_or_public_candidate(tmp_path):
-    template=parity.prepare_f0(f0_fixture(tmp_path),engine=engine(),work=tmp_path/'prepare')
-    value=json.loads(template.read_text())
-    value['cause_relations']={'oracle_documents':dict(value['oracle']['filenames'],required_columns=[])}
-    template.write_text(json.dumps(value))
-    with pytest.raises(ValueError,match='replace|reserved'):
-        parity.load_descriptor(template)
+@pytest.mark.parametrize('table',['list.parquet','detail.parquet','sources.parquet','recoveries.parquet'])
+def test_descending_writer_cannot_authenticate_ascending_row_positions(tmp_path,table):
+    candidate,manifest,job,result,write=producer_metadata(tmp_path)
+    next(item for item in job['outputs'] if item['name']==table)['settings']['order_by'][0]['direction']='desc'
+    candidate['build_job']=write('job.json',job)
+    with pytest.raises(ValueError,match='sort|order'):
+        parity.producer_inputs(tmp_path,candidate,manifest)
+
+
+def test_private_mapping_permutation_refuses_before_any_payload_read(tmp_path):
+    candidate,manifest,job,result,write=producer_metadata(tmp_path)
+    row=next(item for item in job['outputs'] if item['name']=='document_rows.parquet')
+    row['sql']=row['sql'].replace('SELECT list_row,','SELECT (list_row+1)%3 AS list_row,')
+    candidate['build_job']=write('job.json',job)
+    loaded=dict(base=tmp_path,descriptor=dict(candidate=candidate),manifest=manifest,
+        paths={key:candidate[key]['path'] for key in ('source_members','document_rows')})
+    with pytest.raises(ValueError,match='projection lineage'):
+        parity.validate_layout(loaded,engine=None,work=tmp_path/'not-created')
+    assert not (tmp_path/'not-created').exists()
+
+
+@pytest.mark.parametrize('defect',['length','start','ordinal','orphan'])
+def test_native_attachment_range_accounting_detects_planted_errors(tmp_path,defect):
+    row=dict(list_row=0,src_start=0,src_len=1,rec_start=0,rec_len=0)
+    source=dict(list_row=0,ordinal=0)
+    if defect=='length':row['src_len']=2
+    if defect=='start':row['src_start']=1
+    if defect=='ordinal':source['ordinal']=1
+    if defect=='orphan':source['list_row']=1
+    inputs=[json_input(tmp_path,'document_rows',[row],**{key:'Int64' for key in row}),
+        json_input(tmp_path,'release_sources',[source],list_row='Int64',ordinal='Int64'),
+        json_input(tmp_path,'release_recoveries',[],list_row='Int64',ordinal='Int64')]
+    steps,checks=parity.attachment_layout_checks()
+    report=run_job(tmp_path,engine(),inputs=inputs,steps=steps,outputs=[],
+        queries=[dict(name='check_'+str(i),sql=sql) for i,sql in enumerate(checks)])
+    assert sum(value[0]['errors'] for value in report.values())>0
+
+
+def visible_comparison_inputs(tmp_path, *, defect=None):
+    """One unchanged identity with independently authored old/new visible values."""
+    member=FIXTURE['integration']['members'][0]
+    identity=FIXTURE['integration']['documents'][0]['document_id']
+    inputs=[]
+    for side,doc in [('old','old'),('new','0')]:
+        inputs += [json_input(tmp_path,side+'_documents',[dict(doc=doc)],doc='Utf8'),
+            json_input(tmp_path,side+'_anchors',[dict(doc=doc,anchor=member['body_key'],identity_anchor=member['source_id'])],
+                       doc='Utf8',anchor='Utf8',identity_anchor='Utf8')]
+    inputs += [json_input(tmp_path,'identity_sources',[
+        dict(side=side,doc=doc,**member) for side,doc in [('old','old'),('new','0')]],
+        side='Utf8',doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8'),
+        json_input(tmp_path,'identity_documents',[
+            dict(side=side,doc=doc,document_id=identity,body_keys=[member['body_key']],source_ids=[member['source_id']])
+            for side,doc in [('old','old'),('new','0')]],
+            side='Utf8',doc='Utf8',document_id='Utf8',body_keys=list_of('Utf8'),source_ids=list_of('Utf8')),
+        json_input(tmp_path,'witnesses',[],old_doc='Utf8',new_doc='Utf8',subject='Utf8',fact='Utf8',evidence_ref='Utf8'),
+        json_input(tmp_path,'difference_records',[],difference_id='Utf8',classification='Utf8',rule_ref='Utf8',note='Utf8',raw_signal='Utf8')]
+    old=dict(document_id='old',filename=member['filename'],source_link_label=[],body_key=member['body_key'],
+        first_captured=None,state_retrieved_at=[],date_token=[],saved_bytes=100,saved_media_type='application/pdf')
+    new=dict(doc='0',filename=member['filename'],title=None,saved_body_hex=member['body_key'].split('/')[-1][:-3],
+        first_captured=None,date_kind='unknown',document_date=None,document_date_source=None,
+        saved_kind='original',hidden=False,saved_suffix='.gz',saved_bytes=100,saved_media_type='application/pdf',
+        in_archive_since=None,removed_on=None,review_note=None,review_decided_at=None)
+    if defect is not None:new[defect]={'filename':'wrong.pdf','saved_bytes':101,'saved_media_type':'text/plain'}[defect]
+    old_types={key:'Utf8' for key in old}
+    old_types.update({key:list_of('Utf8') for key in ('source_link_label','state_retrieved_at','date_token')})
+    old_types['saved_bytes']='Int64'
+    new_types={key:'Utf8' for key in new};new_types.update(hidden='Boolean',saved_bytes='Int64')
+    inputs += [json_input(tmp_path,'old_wide',[old],**old_types),
+        json_input(tmp_path,'new_wide_input',[new],**new_types)]
+    return inputs,[dict(name='new_wide',sql="SELECT *,decode(saved_body_hex,'hex') AS saved_body FROM new_wide_input")]
+
+
+@pytest.mark.parametrize('defect',[None,'filename','saved_bytes','saved_media_type'])
+def test_production_scalar_comparison_detects_visible_regressions(tmp_path,defect):
+    inputs,steps=visible_comparison_inputs(tmp_path,defect=defect)
+    inputs += [json_input(tmp_path,name,[],doc='Utf8',field='Utf8',subject='Utf8',value='Utf8')
+        for name in ('old_fields','new_fields')]
+    result=parity.compare_relations(inputs,engine=engine(),work=tmp_path/'comparison',
+        prelude=steps,use_scalar_deltas=True,metadata=True)
+    expected=0 if defect is None else 2
+    assert result['counts']['differences']==result['counts']['unclassified']==expected
+    assert result['counts']['invalid_ids']==0
+    assert result['decision_ready']==(defect is None)
+    assert {row['field'] for row in result['clusters']}==({defect} if defect else set())
+
+
+@pytest.mark.parametrize('defect',[None,'missing','wrong'])
+def test_production_url_field_extraction_detects_lookup_regressions(tmp_path,defect):
+    from hashlib import sha256
+    inputs,steps=visible_comparison_inputs(tmp_path)
+    url='https://fixture.test/document.pdf'
+    # DM8.2 drops the scheme and prefixes the normalized address with lookup:.
+    # This explicit expected spelling does not call the producer's lookup helper.
+    expected=sha256(b'lookup:fixture.test/document.pdf').digest()[:8].hex()
+    urls=[] if defect=='missing' else [dict(list_row=0,lookup_hex='0'*16 if defect=='wrong' else expected)]
+    inputs += [json_input(tmp_path,'old_file_rows',[dict(document_id='old',source_url=url)],
+                          document_id='Utf8',source_url='Utf8'),
+        json_input(tmp_path,'url_input',urls,list_row='Int32',lookup_hex='Utf8')]
+    steps.append(dict(name='release_urls',sql="SELECT list_row,decode(lookup_hex,'hex') AS lookup_key FROM url_input"))
+    normalizer=tmp_path/'normalizer';normalizer.mkdir()
+    _unused,normal=parity.normalization(dict(paths={},descriptor={}),directory=normalizer,use_scalar_deltas=True)
+    steps.extend(step for step in normal if step['name'].startswith(('old_lookup_','old_url_')))
+    for name in ('old_fields','new_fields'):
+        sql=next(step['sql'] for step in normal if step['name']==name)
+        # Execute the production normalizer's final URL branch, without the
+        # unrelated full-release fields needed by its other UNION branches.
+        branch=sql.rsplit(' UNION ALL ',1)[1].removesuffix(') WHERE value IS NOT NULL')
+        assert "'url_lookup' AS field" in branch
+        steps.append(dict(name=name,sql=branch))
+    result=parity.compare_relations(inputs,engine=engine(),work=tmp_path/'comparison',
+        prelude=steps,use_scalar_deltas=True,metadata=True)
+    count={None:0,'missing':1,'wrong':2}[defect]
+    assert result['counts']['differences']==result['counts']['unclassified']==count
+    assert result['counts']['invalid_ids']==0
+    assert result['decision_ready']==(defect is None)
+    assert {row['field'] for row in result['clusters']}==({'url_lookup'} if defect else set())
+
+
+def test_only_current_model_candidates_are_admitted(tmp_path):
+    with pytest.raises(ValueError,match='current model kind'):
+        parity.release_inputs(tmp_path,dict(kind='f0',release='retired-converter'))
+
+
+def test_model_body_sets_exclude_nonreal_members_without_losing_source_evidence(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    source=FIXTURE['integration']['members'][0]
+    members=[dict(list_row=i,source_id=str(i)*64,body_key=source['body_key'],source_url=source['source_url']) for i in (1,2)]
+    captured=[dict(receipt_key='receipt',receipt_line=i,capture_index=0,source_id=row['source_id']) for i,row in enumerate(members)]
+    roles=[dict(receipt_key='receipt',receipt_line=i,capture_index=0,is_real_file=i==1) for i in range(2)]
+    paths={}
+    for name,rows in [('source_members',members),('capture_sources',captured),('record_roles',roles)]:
+        path=tmp_path/(name+'.parquet');pq.write_table(pa.Table.from_pylist(rows),path);paths[name]=str(path)
+    inputs,steps=parity.normalization(dict(paths=paths,descriptor=dict(cause_relations=dict(capture_sources={},record_roles={}))),directory=tmp_path)
+    selected=[step for step in steps if step['name'] in {'model_real_sources','new_bodies','new_anchors'}]
+    report=run_job(tmp_path,engine(),inputs=inputs,steps=selected,outputs=[],queries=[dict(name='counts',
+        sql='SELECT (SELECT count(*) FROM new_bodies) AS bodies,(SELECT count(*) FROM new_anchors) AS anchors')])
+    assert report['counts']==[dict(bodies=1,anchors=2)]
+
+
+def test_null_recovery_values_remain_observable_before_classification(tmp_path):
+    inputs,steps=parity.normalization(dict(paths={},descriptor={}),directory=tmp_path)
+    # Select the exact generated recovery branches, without rebuilding a whole
+    # release just to check how explicit nulls cross this comparison boundary.
+    sql=next(step['sql'] for step in steps if step['name']=='new_fields')
+    branches=[part for part in sql.split(' UNION ALL ') if any("'recovery."+name+"'" in part for name in ('kind','imported_at'))]
+    assert len(branches)==2
+    inputs.append(json_input(tmp_path,'null_recovery',[dict(list_row=0,body='d'*64,kind=None,imported_at=None)],
+        list_row='Int32',body='Utf8',kind='Utf8',imported_at='Utf8'))
+    report=run_job(tmp_path,engine(),inputs=inputs,steps=[dict(name='release_recoveries',
+        sql="SELECT list_row,decode(body,'hex') AS body,kind,imported_at FROM null_recovery")],outputs=[],queries=[dict(name='facts',
+        sql='SELECT field,value FROM ('+' UNION ALL '.join(branches)+') ORDER BY field')])
+    assert report['facts']==[dict(field='recovery.imported_at',value='[null]'),dict(field='recovery.kind',value='[null]')]
+
+
+def inventory_fixture(tmp_path):
+    """Physical inventory checks only; these rows claim no model qualification."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from hashlib import md5,sha256
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_format import release_identity
+    native=tmp_path/'native';native.mkdir();controls=tmp_path/'controls';controls.mkdir()
+    files={};entries=[]
+    for name in ('list','detail','links','urls','sources','recoveries'):
+        key=name+'.parquet';path=native/key;pq.write_table(pa.table({'fixture':[1]}),path)
+        files[key]=str(path);entries.append(dict(name=key,rows=1,md5=md5(path.read_bytes()).hexdigest(),**file_pin(path)))
+    manifest=dict(schema_version=1,origin=dict(kind='model'),files=entries,release_id=release_identity(1,entries))
+    path=controls/'manifest.json';path.write_text(json.dumps(manifest));files['manifest.json']=str(path)
+    return dict(kind='model',files=files,manifest=dict(path=str(path),**file_pin(path))),manifest
+
+
+def test_parity_inventory_uses_retained_paths_and_detects_changed_public_bytes(tmp_path):
+    candidate,manifest=inventory_fixture(tmp_path)
+    paths,loaded=parity.release_inputs(tmp_path,candidate)
+    assert loaded==manifest and paths['release_list']==candidate['files']['list.parquet']
+    path=Path(paths['release_list']);path.write_bytes(path.read_bytes()+b'tampered')
+    with pytest.raises(ValueError,match='size differs|digest differs'):
+        parity.release_inputs(tmp_path,candidate)
+
+
+def test_cause_metadata_cannot_replace_an_original_or_public_relation(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    original=oracle_fixture(tmp_path);candidate,_=inventory_fixture(tmp_path)
+    def pin(path):return dict(path=str(path),**file_pin(path))
+    oracle={};selector=dict(catalog_id=parity.ORACLE_CATALOG,generation=parity.ORACLE_GENERATION,files={})
+    for name in ('documents','filenames'):
+        path=Path(original['paths']['oracle_'+name]);oracle[name]=pin(path)
+        selector['files'][name]=dict(key='original/'+path.name,sha256=oracle[name]['sha256'],bytes=oracle[name]['size'],rows=pq.ParquetFile(path).metadata.num_rows)
+        receipt=tmp_path/(name+'-receipt.json');receipt.write_text(json.dumps(dict(key='original/'+path.name,identity=dict(sha256=oracle[name]['sha256']))))
+        oracle[name+'_receipt']=pin(receipt)
+    path=tmp_path/'selector.json';path.write_text(json.dumps(selector));oracle['selector']=pin(path)
+    members=tmp_path/'members.parquet'
+    pq.write_table(pa.Table.from_pylist([],schema=pa.schema([(key,pa.int32() if key=='list_row' else pa.string()) for key in sorted(parity.MEMBER_COLUMNS)])),members)
+    candidate.update(source_members=pin(members),document_rows=pin(members))
+    value=dict(version=1,oracle=oracle,candidate=candidate,cause_relations=dict(oracle_documents=oracle['filenames']))
+    descriptor=tmp_path/'descriptor.json';descriptor.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='replace a reserved input'):
+        parity.load_descriptor(descriptor)
