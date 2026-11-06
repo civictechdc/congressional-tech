@@ -99,3 +99,19 @@ def test_actual_raw_lake_model_releases_every_relation_after_its_last_reader(tmp
     assert steps[last['document_page_contexts']]['name'] == 'document_page_context_ranked'
     assert steps[last['document_page_metadata_entries']]['name'] == 'document_page_metadata'
     assert steps[last['document_page_metadata_sizes']]['name'] == 'document_page_metadata'
+
+
+def test_retained_meeting_observations_live_until_the_history_export():
+    from pathlib import Path
+    from viewer_publication.archive_model import meeting_steps
+    from viewer_publication.archive_model_lifetimes import retire_relations, sql_dependencies
+    root = Path(__file__).parents[3]
+    steps = meeting_steps() + [dict(name='meetings_export',
+        sql=(root/'model/sql/entity-meetings.sql').read_text(), materialize=True)]
+    names = {step['name'] for step in steps}
+    external = set().union(*(sql_dependencies(step['sql']) for step in steps)) - names
+    planned = retire_relations(dict(inputs=[dict(name=name) for name in sorted(external)],
+        steps=steps, outputs=[dict(name='meetings', sql='SELECT * FROM meetings_export')], queries=[]))
+    releasers = [step['name'] for step in planned['steps']
+        if 'meeting_records_observed' in step.get('release_after', [])]
+    assert releasers == ['meetings_export']

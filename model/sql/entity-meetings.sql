@@ -163,7 +163,7 @@ WITH keys AS (
 ), status_observations AS (
  SELECT event_id,array_agg(named_struct('source',source,'status',status,'meeting_date',meeting_date,
   'record_sha',record_sha_hex,'observed_at',retrieved_at) ORDER BY source,retrieved_at,record_sha_hex) AS publisher_status_observations
- FROM meeting_records_ranked WHERE status IS NOT NULL
+ FROM meeting_records_observed WHERE status IS NOT NULL
  GROUP BY event_id
 ), outcome_evidence AS (
  SELECT event_id,'held' AS outcome,'printed_hearing' AS basis,package_id AS source_reference,
@@ -174,8 +174,9 @@ WITH keys AS (
   'The meeting lists a retained transcript named for its meeting date.',2
  FROM transcript_ranked WHERE source='committee_transcript'
  UNION ALL
- SELECT event_id,'held','curated_source_review',cast(event_id AS VARCHAR) AS source_reference,evidence,0
- FROM meeting_status_conflicts
+ SELECT m.event_id,'held','curated_source_review',cast(m.event_id AS VARCHAR) AS source_reference,sc.evidence,0
+ FROM meeting_status_conflicts sc
+ JOIN meetings_resolved m ON m.event_id=sc.event_id AND m.meeting_date=try_cast(sc.held_date AS DATE)
 ), cancellation_evidence AS (
  SELECT event_id,meeting_date,record_sha_hex,source,
   row_number() OVER(PARTITION BY event_id,meeting_date ORDER BY priority,source,record_sha_hex) AS rn

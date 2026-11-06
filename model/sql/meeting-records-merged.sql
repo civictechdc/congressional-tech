@@ -44,5 +44,6 @@ WITH event_keys AS (
  LEFT JOIN meeting_records_current h ON k.event_id=h.event_id AND h.source='house_xml'
  LEFT JOIN meeting_records_current c ON k.event_id=c.event_id AND c.source='congress_gov'
  LEFT JOIN meeting_status_conflicts sc ON k.event_id=sc.event_id
+  AND try_cast(sc.held_date AS DATE)=coalesce(h.meeting_date,c.meeting_date)
 )
 SELECT * FROM merged
