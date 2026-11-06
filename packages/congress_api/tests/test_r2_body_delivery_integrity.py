@@ -153,3 +153,18 @@ def test_existing_probe_evidence_is_preserved_before_any_network_read(tmp_path,m
     with pytest.raises(ValueError,match='Preserve existing integrity evidence'):
         command.main(['verify-body','--out',str(output)])
     assert output.read_bytes()==b'prior failed observation'
+
+
+def test_corrupt_deflate_is_retained_as_failed_cli_evidence(tmp_path,monkeypatch):
+    import viewer_publication.apply_r2_edge_rules as command
+    original_verify=command.verify_body_delivery
+    wire=bytes.fromhex('1f8b0800000000000203ffffffffff0000000000000000')
+    def corrupt(request,timeout):
+        return Response(wire,request.full_url,{'Content-Encoding':'gzip'})
+    monkeypatch.setattr(command,'verify_body_delivery',lambda **kwargs:original_verify(
+        config=probe_config(b'original archived HTML'),repeats=1,http_open=corrupt))
+    output=tmp_path/'corrupt-delivery.json'
+    assert command.main(['verify-body','--out',str(output)])==1
+    result=json.loads(output.read_text())
+    assert result['status']=='failed' and len(result['checks'])==2
+    assert all(not check['passed'] and 'invalid block type' in check['reason'] for check in result['checks'])

@@ -18,6 +18,7 @@ import sys
 from typing import Any
 import urllib.error
 import urllib.request
+import zlib
 
 from congress_api.retention.r2_edge_rules import (
     DEFAULT_EDGE_CONFIG_PATH,
@@ -211,7 +212,7 @@ def verify_body_delivery(*,config=None,repeats=2,timeout=15,http_open=None):
             check.update(decoded_bytes=len(decoded),decoded_sha256=digest,
                 passed=len(decoded)==probe['decoded_bytes'] and digest==probe['decoded_sha256'])
             if not check['passed']:check['reason']='Delivered bytes differ from the original archived identity'
-        except (OSError,ValueError,EOFError,urllib.error.HTTPError) as error:
+        except (OSError,ValueError,EOFError,urllib.error.HTTPError,zlib.error) as error:
             check.update(passed=False,reason=str(error)[:500])
         checks.append(check)
     return dict(status='verified' if all(check['passed'] for check in checks) else 'failed',
