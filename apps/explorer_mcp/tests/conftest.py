@@ -81,6 +81,9 @@ def phase2(tmp_path_factory):
             'meeting:1' AS occasion,'senate_page' AS source""")
         write('recordings', """SELECT 'youtube:abc' AS video_key,[118001::BIGINT, 335321::BIGINT] AS event_ids,
             [struct_pack(body:=unhex(repeat('55',32)),suffix:='.gz',format:='vtt',language:='en',production:='automatic')] AS tracks""")
+        write('caption_resources', """SELECT NULL::VARCHAR AS video_key,NULL::BLOB AS track_body,NULL::BIGINT AS ordinal,
+            NULL::VARCHAR AS source_url,NULL::VARCHAR AS declared_uri,NULL::BLOB AS body,NULL::VARCHAR AS suffix,
+            NULL::VARCHAR AS format,NULL::VARCHAR AS parser_version,NULL::VARCHAR AS status WHERE false""")
         write('committees', """SELECT 'hsif00' AS system_code,'Energy and Commerce' AS name,'house' AS chamber,
             'standing' AS committee_type,NULL::VARCHAR AS parent_system_code,
             [struct_pack(name:='Interstate Commerce',start:=DATE '1947-01-03',"end":=DATE '1974-12-31')] AS names,

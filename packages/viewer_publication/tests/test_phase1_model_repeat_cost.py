@@ -39,19 +39,23 @@ MEASURED = json.loads((Path(__file__).parent/'fixtures/model-relation-rows.json'
 # that is not listed may not cross the line.
 REPEAT_COST_TRACKED = {
     'entity_profile_completeness': 49_033_171,  # query; captures x10, readings x9 (M17, M28)
-    'model_invariants': 48_115_027,             # query; the merged 7-way join x5 (M13)
+    'model_invariants': 48_118_770,             # query; the merged 7-way join x5 (M13)
     'merged_recovery_fields': 43_005_605,       # query; the merged 7-way join x5 (M13)
     'bills_export': 33_468_701,                 # spicy_congress_bills x30, ordered x27 (M17)
     'component_meeting_links': 32_189_482,      # effective_filenames x4, source_annotations x6 (M17)
     'retired_links_export': 31_775_718,         # the links view: ordered x29, prior_links x21 (M16)
-    'profile_completeness': 20_462_128,         # query; readings x13 through selected_readings (M28)
+    'profile_completeness': 23_295_486,         # query; readings through the current selected_readings (M28)
     'model_url_keys': 18_289_579,               # url_normalized x11 through mappings (M17)
-    'relationship_invariants': 16_459_317,      # query; details x19, ordered x18 (M16); witness_key_map x7 (ct-kb4w)
+    'relationship_invariants': 23_450_829,      # query; existing keys plus caption_resources x5 (largest-input row estimate)
     'source_url_keys': 13_842_862,              # source_url_normalized x11 through mappings (M17)
-    'pinned_readings': 11_344_274,              # readings x9 through selected_readings (M28)
-    'link_inputs': 11_344_274,                  # readings x9 through selected_readings (M28)
+    'pinned_readings': 14_177_632,              # current compatible reading selection (M28)
+    'link_inputs': 14_177_632,                  # current compatible reading selection (M28)
     'publisher_links': 11_093_345,              # resolved_links x2, model_url_keys x4 (M17)
 }
+# Reconciled against df3a9c91 and the caption-resource candidate with native zero-row
+# plans in mcp-research-20261106/hearings/repeat-cost-baseline/comparison.json.
+# Only caption_resources adds work here; the other changed scores already differ at
+# df3a9c91. These are estimated row-scan scores, never measured time or RSS.
 # Readers whose plan runs the same regex join more than once, with that join's runs: a nested-loop
 # regex join costs CPU per rule and row, which the row score cannot see (audit M15). Tracked under
 # ct-6v77 likewise.

@@ -57,7 +57,7 @@ WITH keys AS (
 ), caption_tracks AS (
  SELECT DISTINCT video_key,unnest(event_ids) AS event_id,format,language,production FROM recording_tracks
  -- The empty body's digest is no caption file (338611's YouTube track is 0 bytes).
- WHERE format IN ('vtt','srt','ttml') AND body IS NOT NULL AND event_ids IS NOT NULL
+ WHERE format IN ('vtt','srt','ttml','m3u8') AND body IS NOT NULL AND event_ids IS NOT NULL
   AND body<>arrow_cast(decode('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855','hex'),'FixedSizeBinary(32)')
 ), transcript_rows AS (
  SELECT DISTINCT l.event_id,d.package_id,cast(d.list_row AS INT) AS list_row,d.format
@@ -109,7 +109,7 @@ WITH keys AS (
  FROM caption_tracks c
  LEFT JOIN (SELECT DISTINCT video_key,production FROM recording_tracks WHERE format='m3u8') p
   ON p.video_key=c.video_key AND p.production IS NOT DISTINCT FROM c.production
- WHERE p.video_key IS NULL
+ WHERE c.format='m3u8' OR p.video_key IS NULL
 ), transcript_ranked AS (
  SELECT *,row_number() OVER (
   PARTITION BY event_id

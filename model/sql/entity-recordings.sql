@@ -26,7 +26,7 @@ WITH unnested_meeting_videos AS (
  LEFT JOIN video_key_aliases a ON pvl.extracted_key=a.alias_key
  WHERE pvl.extracted_key IS NOT NULL
 ), tracks_agg AS (
- SELECT * FROM recording_tracks
+ SELECT video_key,tracks FROM recording_tracks
 ), all_keys AS (
  SELECT DISTINCT video_key FROM meeting_video_events WHERE video_key IS NOT NULL
  UNION

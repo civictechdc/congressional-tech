@@ -19,7 +19,7 @@ WITH unnested_meeting_videos AS (
 ), resolved_tracks AS (
  SELECT coalesce(a.canonical_key,tc.extracted_key) AS video_key,
   arrow_cast(tc.sha256,'FixedSizeBinary(32)') AS body,
-  tc.suffix,tc.format,tc.language,tc.production,
+  tc.suffix,tc.format,tc.language,tc.production,tc.fetch_url,
   tc.retrieved_at,tc.receipt_key,tc.receipt_line,tc.capture_index
  FROM caption_playlist_bodies p RIGHT JOIN recording_track_candidates tc ON p.record_sha=tc.sha256
  LEFT JOIN video_key_aliases a ON tc.extracted_key=a.alias_key
@@ -46,7 +46,9 @@ WITH unnested_meeting_videos AS (
 ), tracks_agg AS (
  SELECT video_key,array_agg(named_struct(
   'body',body,'suffix',suffix,'format',format,'language',language,'production',production
- ) ORDER BY track_seq ASC) AS tracks
+ ) ORDER BY track_seq ASC) AS tracks,
+ array_agg(named_struct('body',body,'source_url',fetch_url,'suffix',suffix,'format',format)
+  ORDER BY track_seq ASC) AS resources
  FROM ordered_tracks GROUP BY video_key
 )
 SELECT * FROM tracks_agg

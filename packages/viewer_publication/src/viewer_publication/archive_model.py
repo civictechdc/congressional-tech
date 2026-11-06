@@ -1211,11 +1211,14 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         ]
         # A step, not only an export: meetings read it to list caption tracks among their transcripts.
         steps += [dict(name='recording_tracks',sql=(Path(root)/'model/sql/recording-tracks.sql').read_text(),materialize=True),
+            dict(name='caption_resource_requests',sql=(Path(root)/'model/sql/caption-resource-requests.sql').read_text(),materialize=True),
+            dict(name='caption_resources',sql=(Path(root)/'model/sql/caption-resources.sql').read_text(),materialize=True),
             dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True)]
         auxiliary += [
             ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id']),
             ('witness_key_map','SELECT old_key,witness_key,status,basis,candidate_keys,occasion,source FROM witness_key_map',['old_key'],['occasion','source','status','basis']),
             ('recordings','SELECT * FROM recordings_entity',['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
+            ('caption_resources','SELECT * FROM caption_resources',['video_key','track_body','ordinal'],['suffix','format','status']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
             ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),

@@ -160,7 +160,8 @@ transcripts    := per meeting, every transcript the archive holds, each labelled
                   committee_transcript: a listed document linked to the meeting whose filename is
                     H{HRG|MKP|MTG}-{congress}-{committee}-Transcript-{yyyymmdd}[-{part}].pdf
                     with {yyyymmdd} the meeting's date (the committee's own transcript)
-                  captions: a complete caption or subtitle track (vtt, srt, ttml) with a body, of a
+                  captions: a retained complete caption body (vtt, srt, ttml) or subtitle media
+                    playlist (m3u8) with a body, of a
                     recording linked to the meeting; a vtt beside a playlist of the same
                     production is a stream segment, never a track (ct-9s7b)
                   Transcript coverage is present when any source is held, and its reason names
@@ -245,6 +246,7 @@ file's column meanings are in the release's `schema.json`, from the release-sche
 |---|---|---|---|---|
 | `witnesses.parquet` | `witness_key` string (v2 source-occurrence identity), `occasion` dict, `source` dict, `record_sha` fsb(32), `source_locator`, `context_key` strings, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable, `superseded_by` string nullable (the `witness_key` of the same person stated on the same meeting by a higher-ranked source, [[DATA-MODEL]] §7.11; null on the row to show) | `(occasion, panel_order, display_order, witness_key)` | Whole | Re-measure after occurrence preservation; historical few-MB estimate is not an acceptance bound |
 | `recordings.parquet` | `video_key` string, `event_ids` List<int64>, `tracks` List<Struct<body fsb(32), suffix dict, format dict, language dict nullable, production dict nullable>> | `video_key` | Whole | *est.*, measured with S2 |
+| `caption_resources.parquet` | `video_key` string, `track_body` fsb(32), `ordinal` int64, `source_url` string, `declared_uri` string nullable, `body` fsb(32) nullable, `suffix`, `format` dict nullable, `parser_version` string nullable, `status` dict | `(video_key, track_body, ordinal)` | Whole | Selected roots and declared children only; missing children remain rows |
 | `committees.parquet` | `system_code` string, `name` string, `chamber` dict, `committee_type` dict nullable, `parent_system_code` dict nullable, `names` List<Struct<name string, start date32, end date32>>, `website` string nullable, `is_current` bool nullable | `system_code` | Whole | Under 1 MB |
 | `members.parquet` | `bioguide_id` string, `name` string, `terms` List<Struct<chamber dict, state dict, district int16, party dict, start date32, end date32>>, latest first, `cross_ids` Struct<lis, opensecrets, govtrack, icpsr, wikidata string; fec List<string>> | `bioguide_id` | Whole | *est.* about 2 MB |
 | `rosters.parquet` | `congress` int16, `system_code` dict, `bioguide_id` dict, `title` dict nullable, `rank` int16 nullable, `party` dict nullable | `(congress, system_code, rank, bioguide_id)` | Whole | Under 1 MB |

@@ -267,7 +267,7 @@ Identity: `event_id` (primary_key; published identifier).
 | `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | no | Scheduled times and locations, as Congress.gov states them when it has a sitting |
 | `committees` | `list<struct<system_code dict,role dict>>` | no | Host committee codes and roles |
 | `subject_keys` | `list<dict>` | no | Bill, nomination and treaty subjects |
-| `transcripts` | `list<struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>>` | no | Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a complete caption or subtitle track of the meeting's recording, never a stream segment; formats, video_key, language, production) |
+| `transcripts` | `list<struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>>` | no | Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a retained complete caption body or subtitle media playlist of the meeting's recording, never a stream segment; formats, video_key, language, production) |
 | `videos` | `list<struct<name string,url string,video_key string>>` | no | Recorded meeting links |
 | `congress` | `int16` | yes | Congress the publisher record states; null when no record states it, never inferred from documents |
 | `congress_gov_updated` | `timestamp` | yes | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
@@ -381,7 +381,37 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 
 Outgoing: `recording_meetings`, `recording_tracks`.
 
-Incoming: `meeting_recordings`.
+Incoming: `meeting_recordings`, `caption_resource_recording`.
+
+## `caption_resources` — Archived caption roots and ordered playlist resources
+
+One selected caption root or declared child, including a missing child.
+
+Identity: `video_key, track_body, ordinal` (primary_key; published identifier).
+
+Coverage: Only selected retained caption roots and their direct subtitle media-playlist segments; unsupported HLS features remain explicit at read time..
+
+Coverage: Retained does not mean the body was verified by this reader, nor does a live playlist snapshot establish a complete hearing..
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `video_key` | `string` | no | Recording whose selected caption track owns this resource |
+| `track_body` | `fixed[32]` | no | Selected caption track root body digest |
+| `ordinal` | `int64` | no | Zero for the root; one-based playlist declaration order for each segment |
+| `source_url` | `string` | no | Original root fetch address or child URI resolved in that root context; never an archive fetch target |
+| `declared_uri` | `string` | yes | Literal child URI in the retained playlist; null for a root |
+| `body` | `fixed[32]` | yes | Retained resource body digest; null when the declared resource is missing |
+| `suffix` | `dict` | yes | Content-addressed archive storage suffix |
+| `format` | `dict` | yes | Retained resource format |
+| `parser_version` | `string` | yes | Pinned playlist reading that declared the ordered child resources; null for direct caption files |
+| `status` | `dict` | no | retained or missing; missing declarations remain rows |
+
+Nullability: Root identity and source URL are required. Missing children have null body/suffix/format. Declared URI is null only for roots; direct caption files have no playlist parser version. A required column is refused at write time.
+
+
+Outgoing: `caption_resource_recording`.
+
+Incoming: none.
 
 ## `committees` — Current and historical committees
 
@@ -1135,6 +1165,12 @@ many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. 
 `retired_links.successor_key` → `links.link_key`. A retired key redirects to the document its successor key resolves to.
 
 many-to-one; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
+
+### `caption_resource_recording`
+
+`caption_resources.video_key` → `recordings.video_key`. The recording that owns the selected root and its ordered archived children.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
 
 ## Pinned upstream relations
 
