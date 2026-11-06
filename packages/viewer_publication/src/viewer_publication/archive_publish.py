@@ -268,7 +268,11 @@ class NativeArchiveStore:
             else:
                 saved=dict(facts=expected,source=local,phase='started')
                 if state['version']==2:saved.update(transport=dict(kind='single_put'),upload=None)
-                state['assets'][key]=saved;save()
+                # A large asset becomes resumable only after its full hash
+                # prepass qualifies a multipart plan. Never persist declared
+                # facts as a legacy single-PUT placeholder on prepass failure.
+                if facts['size']<archive_multipart.THRESHOLD:
+                    state['assets'][key]=saved;save()
             if facts['size']>=archive_multipart.THRESHOLD:
                 require_publication_client(self.client)
                 if any(not callable(getattr(self.client,name,None)) for name in
@@ -276,7 +280,8 @@ class NativeArchiveStore:
                     raise ValueError('Large publication assets require the conditional multipart SDK')
                 if saved.get('transport',{}).get('kind')!='multipart':
                     transport=archive_multipart.plan_file(source,facts,custody=tuple(local['custody']))
-                    upgrade();saved.update(transport=transport,upload=None);save()
+                    upgrade();saved.update(transport=transport,upload=None)
+                    state['assets'][key]=saved;save()
                     # A new journal can encounter a matching object from an
                     # earlier publisher. Verify its planned transport identity
                     # before sending another full asset; creation stays conditional.

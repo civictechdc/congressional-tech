@@ -173,6 +173,24 @@ def test_local_facts_refuse_before_remote_write(tmp_path,asset,wrong):
         assert not remote.events
 
 
+@pytest.mark.parametrize('version',[None,1,2])
+def test_failed_sha_prepass_cannot_become_a_head_acknowledgement_on_retry(tmp_path,asset,version):
+    path,identity=asset
+    wrong=dict(identity,sha256='0'*64)  # Correct size/MD5 must not hide this planted SHA defect.
+    journal_path=tmp_path/'assets.json'
+    if version is not None:
+        journal_path.write_text(json.dumps(dict(version=version,bucket=BUCKET,assets={})))
+    initial=journal_path.read_bytes() if journal_path.exists() else None
+    with protocol() as (remote,client):
+        # This single-PUT HEAD would satisfy the old placeholder's MD5 check.
+        remote.objects[KEY]=dict(size=identity['size'],etag='"'+identity['md5']+'"')
+        for attempt in range(3):
+            with pytest.raises(ValueError,match='multipart bytes differ from expected identity'):
+                upload(store(tmp_path,client,'attempt-'+str(attempt)),(path,wrong))
+            assert not remote.events  # Full SHA qualification must precede even a HEAD.
+            assert (journal_path.read_bytes() if journal_path.exists() else None)==initial
+
+
 @pytest.mark.parametrize('mode',['part-error','part-etag','malformed-etag','source-replace','source-append'])
 def test_part_or_custody_failure_aborts_only_owned_attempt(tmp_path,asset,mode):
     with protocol() as (remote,client):
