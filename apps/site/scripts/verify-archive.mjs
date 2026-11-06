@@ -6,6 +6,7 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
+import {verifyUrlLookups} from './verify-url-lookups.mjs';
 import {argumentsMap,checkTargetRelease,readTargets} from './archive-targets.mjs';
 const hex=value=>typeof value==='string'?value:Buffer.from(value).toString('hex');
 const EXPLORER_ORIGIN='https://civictechdc.github.io';
@@ -15,7 +16,7 @@ function safeUrl(value,local){
   if(url.protocol!=='https:'&&!(local&&url.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(url.hostname)))throw new Error('Archive verification requires HTTPS (or explicit loopback local mode).');
   return url;
 }
-export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fetcher=fetch,targets,targetsStatus,savedRow,deadlineMs=59000,heapBytes=256*1024*1024,checkSaved=true}){
+export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fetcher=fetch,targets,targetsStatus,savedRow,lookupCases=[],deadlineMs=59000,heapBytes=256*1024*1024,checkSaved=true}){
   if(!checkSaved&&!local)throw new Error('The production canary must open a saved copy.');
   const pointer=safeUrl(pointerUrl,local);if(rawBase)safeUrl(rawBase,local);
   if(!Number.isFinite(deadlineMs)||deadlineMs<=0||deadlineMs>=60000)throw new Error('The canary deadline must be below one minute.');
@@ -60,6 +61,15 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
       if(source&&!sourceEntry.sources.some(item=>item.ordinal===source.ordinal))throw new Error('Archive source range is not attached to its document.');
     }
     operations.sources=sourceEntry?.sources.length??0;
+    if(sourceEntry?.sources.length){
+      const source=sourceEntry.sources[0];
+      const matches=await timed('sourceLookup',()=>reader.lookup(source.url));
+      if(!matches.some(row=>row.list_row===source.list_row))throw new Error('Archive source lookup did not find its document.');
+    }
+    if(lookupCases.length){
+      await timed('urlLookups',()=>verifyUrlLookups(reader,lookupCases));
+      operations.lookupCases=lookupCases.length;
+    }
     const recoveryCount=reader.manifest.files.find(file=>file.name==='recoveries.parquet').rows;
     const [probe]=await timed('recoveryRange',()=>reader.recoveryRange(0,Math.min(1,recoveryCount),controller.signal));
     let recovery;
@@ -90,6 +100,6 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const args=argumentsMap(process.argv.slice(2));
-  const result=await verifyArchive({pointerUrl:args.pointer,releaseId:args.release,rawBase:args.raw,local:args.local==='true',targets:await readTargets(args.targets),targetsStatus:args.targets?JSON.parse(await readFile(args.targets)).status:undefined,savedRow:args['saved-row'],heapBytes:args['heap-bytes']?Number(args['heap-bytes']):undefined,checkSaved:args['check-saved']!=='false'});
+  const result=await verifyArchive({pointerUrl:args.pointer,releaseId:args.release,rawBase:args.raw,local:args.local==='true',targets:await readTargets(args.targets),targetsStatus:args.targets?JSON.parse(await readFile(args.targets)).status:undefined,savedRow:args['saved-row'],lookupCases:args['lookup-cases']?JSON.parse(await readFile(args['lookup-cases'])):[],heapBytes:args['heap-bytes']?Number(args['heap-bytes']):undefined,checkSaved:args['check-saved']!=='false'});
   if(args.output)await writeFile(args.output,JSON.stringify(result,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(result));
 }

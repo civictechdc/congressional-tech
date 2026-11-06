@@ -184,12 +184,12 @@ Identity: `lookup_key, list_row` (primary_key; release).
 
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
-| `lookup_key` | `fixed[8]` | no | Fixed normalized address lookup key |
+| `lookup_key` | `fixed[8]` | no | Exact address or serialization fallback lookup key in separate hash namespaces |
 | `list_row` | `int32` | no | Zero-based row in list.parquet |
 
 Nullability: Both columns are required by data model §8.1. A required column is refused at write time.
 
-- `lookup_key`: First 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. This is not capture-profile url_key.
+- `lookup_key`: Exact: first 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. Only after an exact miss, use lookup-alias:serialization-v1: plus that spelling with U+0020 serialized as %20 and valid percent triplets uppercased. Keep every matching edition. Both namespaces refuse different full hash inputs sharing eight bytes. This is not capture-profile url_key.
 
 Outgoing: `urls_document`.
 

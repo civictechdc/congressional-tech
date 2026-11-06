@@ -36,6 +36,10 @@ export function lookupUrl(value: string): string {
   return host + match[3].replace(/\/$/, '') + (match[4] ?? '');
 }
 
+export function lookupAlias(value: string): string {
+  return lookupUrl(value).replace(/ /g, '%20').replace(/%[0-9a-fA-F]{2}/g, triplet=>triplet.toUpperCase());
+}
+
 /** Keep decoded list columns, never a retained catalog of row objects. */
 function column(values: any[], isArray: boolean) {
   if (isArray || values.some(value => typeof value === 'string')) {
@@ -398,8 +402,15 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     },
     resolve,
     async lookup(url: string){
-      const binary=new Uint8Array(await crypto.subtle.digest('SHA-256',utf8.encode('lookup:'+lookupUrl(url)))).slice(0,8);
-      const rows=await read('urls.parquet',undefined,undefined,{lookup_key:{$eq:binary}});
+      const spelling=lookupUrl(url);
+      const keyed=async(value: string)=>{
+        const binary=new Uint8Array(await crypto.subtle.digest('SHA-256',utf8.encode(value))).slice(0,8);
+        return read('urls.parquet',undefined,undefined,{lookup_key:{$eq:binary}});
+      };
+      let rows=await keyed('lookup:'+spelling);
+      // An exact hit owns its complete result set, including when filters later hide it.
+      if(!rows.length && /[ ]|%[0-9a-fA-F]{2}/.test(spelling))
+        rows=await keyed('lookup-alias:serialization-v1:'+lookupAlias(url));
       return rows.map(item=>checkedRow(item.list_row));
     },
     async lookupRows(url: string,rawQuery: any={},signal?: AbortSignal){
