@@ -89,6 +89,12 @@
   },
   {
     "category": null,
+    "match_basis": "source_catalog_document_identifier",
+    "kind": "recovered_document",
+    "import_category": "recovered_document"
+  },
+  {
+    "category": null,
     "match_basis": "explicit_retained_download_wrapper",
     "kind": "explicit_retained_download_wrapper"
   }

@@ -135,6 +135,36 @@ def _member(campaign,target,candidate,engine,work):
         raise ValueError('Candidate is not an unambiguous pinned campaign member')
 
 
+def _acknowledged_import(root,campaign,binding,request,match_basis):
+    """Replay a completed acknowledgement without reauthoring immutable decisions."""
+    path=root/'result.json'
+    if not path.exists():return None
+    with path.open('rb') as stream:result=json.loads(bounded_control_read(stream))
+    if result.get('status') not in {'accepted','rejected','review_required'}:
+        raise ValueError('Unknown retained import result status')
+    if result.get('status')!='accepted':return None
+    record=result.get('decision',{})
+    validate_provenance('recoveries',record)
+    operation=sha256(canonical_json_bytes(binding)).hexdigest()
+    if (record['id']!=operation or record.get('recovery_record_version')!=2
+            or record.get('acceptance_status')!='accepted' or record.get('acceptance_policy')!=VERSION
+            or record.get('target_requirement')!=campaign.requirement
+            or record.get('match_basis')!=match_basis
+            or record.get('body_sha256')!=request['body']['sha256']
+            or record.get('evidence_sha256')!=result.get('evidence_sha256')
+            or not all(isinstance(result.get(k),str) and result[k] for k in ('receipt_key','provenance_key'))):
+        raise ValueError('Acknowledged import differs from its original operation bindings')
+    evidence,_=read_pin(dict(path=str((root/'identity-evidence.json').resolve()),
+                             sha256=result['evidence_sha256']),root)
+    if (evidence.get('version')!=VERSION or evidence.get('requirement')!=campaign.requirement
+            or evidence['target']['url']!=record['original_url'] or evidence['candidate']['url']!=record['recovered_url']
+            or evidence['body_sha256']!=record['body_sha256']
+            or evidence['qualification_sha256']!=record['qualification_sha256']):
+        raise ValueError('Acknowledged import differs from its retained identity evidence')
+    campaign.require_custody()
+    return result
+
+
 def import_candidate(descriptor, request_path, *, output, engine, writer, store,
                      qualification_config=QualificationConfig()):
     """Qualify actual bytes, compare pinned source records, then use common writers.
@@ -148,6 +178,9 @@ def import_candidate(descriptor, request_path, *, output, engine, writer, store,
     request_path=Path(request_path)
     pin=file_pin(request_path)
     request,_=read_pin(dict(path=str(request_path.resolve()),sha256=pin['sha256']),request_path.parent)
+    match_basis=request.get('match_basis','official_document_identifier')
+    if not isinstance(match_basis,str) or match_basis not in {'official_document_identifier','source_catalog_document_identifier'}:
+        raise ValueError('Unsupported campaign match basis')
     root=Path(output);root.mkdir(parents=True,exist_ok=True)
     binding=dict(descriptor_sha256=campaign.descriptor_sha256,request_sha256=pin['sha256'],policy=VERSION)
     with (root/'operation.lock').open('a') as lock:
@@ -156,6 +189,8 @@ def import_candidate(descriptor, request_path, *, output, engine, writer, store,
         if saved.exists() and json.loads(saved.read_text())!=binding:
             raise ValueError('Recovery operation inputs changed; use a new operation')
         if not saved.exists():_write(saved,binding)
+        acknowledged=_acknowledged_import(root,campaign,binding,request,match_basis)
+        if acknowledged is not None:return acknowledged
         target=identity_source(request['target'],request_path.parent)
         candidate=identity_source(request['candidate'],request_path.parent)
         _member(campaign,target['url'],candidate['url'],engine,root/'membership')
@@ -184,7 +219,7 @@ def import_candidate(descriptor, request_path, *, output, engine, writer, store,
         source=dict(original_url=target['url'],recovered_url=candidate['url'],body_path=str(body.path),
             body_sha256=body.sha256,retrieved_at=decision['evidence']['retrieved_at'],
             media_type=qualification['media_type'],category=request['relationship'],
-            match_basis='official_document_identifier',imported_at=request['decided_at'],
+            match_basis=match_basis,imported_at=request['decided_at'],
             evidence_sha256=decision['evidence_sha256'])
         receipt_key,_=import_retained(writer,source,operation_id=operation,freeze_dir=root/'receipts',verified_body=body)
         record=dict(id=operation,original_url=target['url'],recovered_url=candidate['url'],

@@ -779,6 +779,48 @@ def test_campaign_queue_uses_exact_membership_and_feedback(tmp_path):
     assert {row['requested_url'] for row in pq.read_table(result['queue']).to_pylist()} == {targets[0],targets[2]}
 
 
+@pytest.mark.parametrize('case,message', [
+    ('version-1', 'version 2 profile'),
+    ('missing-eligibility', 'explicit eligibility fields'),
+    ('mismatched-requirements', 'does not pin the profile recovery requirements'),
+])
+def test_campaign_inputs_refuse_before_native_queue_or_capture(tmp_path, case, message):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    from congress_shared.campaign import load_campaign
+    target_url = 'https://fixture.test/target'
+    root = release(tmp_path, [dict(requested_url=target_url, attempts=0)])
+    targets, candidates, requirements = [tmp_path / name for name in ('targets.parquet', 'candidates.parquet', 'requirements.parquet')]
+    pq.write_table(pa.table({'target_url':[target_url]}), targets)
+    pq.write_table(pa.table({'target_url':[target_url], 'candidate_url':[target_url + '?copy=1']}), candidates)
+    pq.write_table(pa.table({'original_url':[target_url], 'target_requirement':['requested_content'],
+                            'acceptance_policy':['recovery-identity-v1']}), requirements)
+    def pin(path):
+        return dict(path=str(path), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+    descriptor = tmp_path / 'campaign.json'
+    descriptor.write_text(json.dumps(dict(version=1, campaign_id='refusal-controls', requirement='requested_content',
+        tables=dict(targets=pin(targets), candidates=pin(candidates), requirements=pin(requirements)),
+        target_table='targets', candidate_table='candidates')))
+    if case != 'version-1':
+        profile = json.loads((root / 'capture_profile.json').read_text())
+        profile.update(version=2, recovery_policy=dict(acceptance_policy='recovery-identity-v1',
+            requirements_sha256='f' * 64 if case == 'mismatched-requirements' else pin(requirements)['sha256']))
+        (root / 'capture_profile.json').write_text(json.dumps(profile))
+    if case == 'mismatched-requirements':
+        table = pq.read_table(root / 'url_state.parquet')
+        for name, value in [('capture_disposition','eligible'), ('capture_reason','pending'), ('capture_decision_id',None)]:
+            table = table.append_column(name, pa.array([value], type=pa.string()))
+        pq.write_table(table, root / 'url_state.parquet')
+    write_manifest(root)
+    class NoNativeWork:
+        source_revision = engine().source_revision
+        def run_job(self, *args, **kwargs):
+            raise AssertionError('Invalid campaign reached native planning')
+    with pytest.raises(ValueError, match=message):
+        plan_queue(load(root, tmp_path / 'selected'), engine=NoNativeWork(), work=tmp_path / 'queue',
+                   as_of=ASOF, request_budget=1, campaign=load_campaign(descriptor))
+    assert not list((tmp_path / 'queue').rglob('job.json'))
+
+
 def test_pattern_family_does_not_call_dns_resolver(tmp_path):
     from congress_api.acquisition.capture_scheduler import CapturePolicy
     scope_file = tmp_path / 'capture_scope.json'

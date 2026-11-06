@@ -252,6 +252,19 @@
     "bytes": 6574579
   },
   {
+    "id": "basis:source_catalog_document_identifier",
+    "category": null,
+    "match_basis": "source_catalog_document_identifier",
+    "expected_kind": "recovered_document",
+    "expected_import_category": "recovered_document",
+    "receipt_key": "receipts/fixtures/source-catalog-identifier.jsonl",
+    "receipt_line": 1,
+    "capture_index": 0,
+    "mode": "retained_import",
+    "body_hex": null,
+    "bytes": 1
+  },
+  {
     "id": "unknown",
     "category": "not_registered",
     "match_basis": "user_accepted_url_variant",

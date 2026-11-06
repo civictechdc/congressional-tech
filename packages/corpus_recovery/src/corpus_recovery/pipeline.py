@@ -269,7 +269,12 @@ def write_campaign_descriptor(
     }
     out = Path(descriptor_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    write_atomic_bytes(out, canonical_json_bytes(descriptor) + b'\n')
+    raw = canonical_json_bytes(descriptor) + b'\n'
+    if out.exists():
+        if out.read_bytes() != raw:
+            raise ValueError('Campaign descriptor already pins different inputs; use a new descriptor path')
+    else:
+        write_atomic_bytes(out, raw)
     return out
 
 
@@ -422,8 +427,14 @@ def run_recovery_campaign(
     state_requirements: str | Path | None = None,
     qualification_config: QualificationConfig | None = None,
 ) -> dict[str, Any]:
-    """Run end-to-end target inventory, candidate discovery, planning, and candidate import."""
+    """Prepare one execution and import candidates; returned counts describe its initial plan.
+
+    Resume with ``resume_recovery_campaign`` so changed state or discovery cannot
+    overwrite the descriptor already bound to an import operation.
+    """
     root = Path(work_dir)
+    if (root / 'campaign.json').exists():
+        raise ValueError('Campaign already prepared; use resume_recovery_campaign with its original descriptor')
     inputs_dir = root / 'inputs'
     inputs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -467,8 +478,31 @@ def run_recovery_campaign(
     return {
         'descriptor': descriptor_path, 'targets': inventory_rows, 'candidates': candidate_rows,
         'discovery_diagnostics': diagnostics,
-        'plan': initial_plan, 'counts': initial_counts, 'imports': imports,
+        'plan': initial_plan, 'counts': initial_counts, 'counts_phase': 'initial',
+        'initial_plan': initial_plan, 'initial_counts': initial_counts, 'imports': imports,
     }
+
+
+def resume_recovery_campaign(
+    descriptor: str | Path, *, engine: Any,
+    import_requests: Iterable[str | Path | Mapping[str, Any]] = (),
+    writer: Any | None = None, store: Any | None = None,
+    qualification_config: QualificationConfig | None = None,
+) -> dict[str, Any]:
+    """Resume frozen inputs without inventory, discovery, or a changed import binding."""
+    descriptor = Path(descriptor)
+    root = descriptor.parent
+    initial_plan = plan(descriptor, output=root / 'plan', engine=engine)
+    counts = json.loads((root / 'plan/counts.json').read_text())
+    requests = list(import_requests)
+    if requests and (writer is None or store is None):
+        raise ValueError('Importing candidates requires both writer and store')
+    imports = import_accepted_candidates(
+        descriptor, requests, output_dir=root / 'operations', engine=engine,
+        writer=writer, store=store, qualification_config=qualification_config,
+    ) if requests else []
+    return dict(descriptor=descriptor, plan=initial_plan, counts=counts,
+                counts_phase='initial', initial_plan=initial_plan, initial_counts=counts, imports=imports)
 
 
 __all__ = [
@@ -479,6 +513,7 @@ __all__ = [
     'qualify_candidate_body',
     'reconcile_and_import_retained',
     'run_recovery_campaign',
+    'resume_recovery_campaign',
     'write_campaign_descriptor',
     'write_candidates_parquet',
 ]

@@ -1338,6 +1338,34 @@ class _StopCampaign(Exception):
     pass
 
 
+def test_existing_execution_refuses_before_inventory_or_discovery(tmp_path: Path, monkeypatch):
+    descriptor = tmp_path / 'campaign.json'
+    descriptor.write_text('original execution bytes')
+    def unexpected(*args, **kwargs):
+        raise AssertionError('Existing campaign attempted new acquisition planning')
+    monkeypatch.setattr(pipeline_module, 'build_target_inventory', unexpected)
+    monkeypatch.setattr(pipeline_module, 'discover_target_candidates', unexpected)
+    with pytest.raises(ValueError, match='resume_recovery_campaign'):
+        run_recovery_campaign(tmp_path, campaign_id='changed', targets=[], engine=None)
+    assert descriptor.read_text() == 'original execution bytes'
+
+
+def test_descriptor_writer_preserves_original_pins_and_bytes(tmp_path: Path):
+    targets = tmp_path / 'targets.parquet'
+    candidates = tmp_path / 'candidates.parquet'
+    targets.write_bytes(b'first membership')
+    candidates.write_bytes(b'first candidates')
+    descriptor = tmp_path / 'campaign.json'
+    kwargs = dict(campaign_id='frozen', targets_parquet=targets, candidates_parquet=candidates)
+    pipeline_module.write_campaign_descriptor(descriptor, **kwargs)
+    original, stamp = descriptor.read_bytes(), descriptor.stat().st_mtime_ns
+    pipeline_module.write_campaign_descriptor(descriptor, **kwargs)
+    assert descriptor.read_bytes() == original and descriptor.stat().st_mtime_ns == stamp
+    with pytest.raises(ValueError, match='new descriptor path'):
+        pipeline_module.write_campaign_descriptor(descriptor, requirement='requested_content', **kwargs)
+    assert descriptor.read_bytes() == original
+
+
 def test_run_recovery_campaign_forwards_inventory_inputs(tmp_path: Path, monkeypatch):
     """R2-F10: history, store, membership, and refresh inputs reach build_target_inventory."""
     seen = {}

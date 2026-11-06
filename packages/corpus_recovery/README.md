@@ -98,6 +98,10 @@ import and provenance writers. The request contains:
   Supply a source-capture `receipt` pin, or explicit `reviewed_by` and `reviewed_at`
   for retained metadata. A filename or an unreferenced assertion is insufficient.
 - `relationship`, `decided_by`, `decided_at`, and optional `supersedes`.
+- Optional `match_basis`: `official_document_identifier` (the legacy default),
+  or `source_catalog_document_identifier` when a source catalog issues the
+  identifier. The request pins the choice; it does not change identity admission.
+  Keep the actual catalog and reviewer in the pinned identity-source evidence.
 
 An updated revision with changed version/date/title requires `current_official_counterpart`
 and a `relationship_field` extracted from the candidate's pinned source record.
@@ -107,11 +111,54 @@ bridge remains unresolved. Body readability alone never establishes identity.
 
 The operation freezes input identity and uses stable receipt/provenance keys.
 Rerun the same request and output to continue. Changed inputs require a new
-operation. Qualification and identity evidence remain with the operation.
+operation. A validated accepted acknowledgement replays its original decision
+and keys without reopening body/source files, repeating qualification or
+reauthoring provenance. Later explanation-authoring changes therefore cannot
+rewrite the acknowledged operation. Corrupt acknowledgement/evidence refuses.
+Qualification and identity evidence remain with the operation.
 Version-2 provenance is a trusted producer attestation; the native model verifies
 its typed inputs and retained-body match, while this producer proves the referenced
 qualification and identity evidence. Generic provenance writers remain trusted
 administrative entry points.
+
+### Resume and report one execution
+
+`pipeline.run_recovery_campaign` prepares a new execution. Its `counts` and
+`initial_counts` describe the **initial** plan, including when imports follow.
+It refuses an existing `campaign.json` before inventory or discovery can replace
+the inputs. Use `pipeline.resume_recovery_campaign(original_descriptor, ...)`
+with the original request files to continue. It reuses the initial plan and the
+same digest-named import operations; it performs no discovery or acquisition.
+
+After the model owner selects updated state, write a **separate** final descriptor
+with the same campaign ID, requirement, target and candidate pins. Only its
+`state`, `state_profile` and `state_requirements` pins may change. The maintained
+model must produce the version-2 profile and explicit eligibility fields. A
+descriptor prepared for initial planning alone does not authorize campaign capture.
+
+```sh
+python -m corpus_recovery.progress --campaign original/campaign.json \
+  --operation original/operations/import-REQUEST_DIGEST \
+  --final-campaign final/campaign.json --output final/report \
+  --runtime runtime.json --release-comparison release-comparison.json
+```
+
+Omit `--final-campaign` and `--release-comparison` for an initial/import-only
+report. Supply every operation directory being assessed, including interrupted
+ones; omitted operations remain unassessed. Each result must bind the original
+descriptor and request digests. The native join writes `target-progress.parquet`
+and `progress.json`, keeping the original ledger, final ledger, operation IDs,
+candidate addresses, body hashes, receipt keys and provenance keys separate.
+Interrupted operations without target evidence stay explicitly unmapped.
+
+The existing release comparison must name both releases and include the original
+descriptor through `--record-digest original/campaign.json`. Its release-wide
+result does not establish a cohort attachment or a semantic-document gain.
+Those counts remain null until the release owner verifies selected input
+membership and exact target/body attachment through the reader and MCP. Keep
+accepted targets, distinct bodies, target/body relationships, imports,
+occurrences and document rows in their own units. Use a new report directory for
+each later state observation; never import using the final report's descriptor.
 
 ## Bounded archive and search discovery
 
