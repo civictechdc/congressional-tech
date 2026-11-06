@@ -32,3 +32,9 @@ Bounded source/recipe preparation complete. Source-proven nomination coverage wo
 Keep in_progress; closure_ready=false. ct-m104 must provide the qualified shared native selection, then the four-recipe comparisons must pass against its actual rows. Reuse ct-6r1i conservation and ct-hnpc activity proof; ct-m104 owns exact final installed/hosted readback. Source integration and the old HTML-baseline blocker are resolved. No final native acceptance or live delivery is claimed.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at b4741504. The source and corrected acceptance harness have independent approval. Review found and repaired a paging variable that overwrote the call function, checks that ignored extra occurrences, and failed retry after lock contention. Controls now cover paging, nulls, multiplicity/order and same-process lock recovery.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Actual shared-native four-recipe comparisons, ct-6r1i conservation, ct-hnpc activity checks and final installed/hosted readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-nozw/REVIEW.md).

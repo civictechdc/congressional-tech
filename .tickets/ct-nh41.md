@@ -71,3 +71,9 @@ Local producer/correction work is complete at 59d0d0631a0cb19adfcf963fdb2bbaedc4
 Keep open: original root 01a1aa05-d4d2-7ca0-b541-a8a52e6c794f owns source integration/shared campaign reconciliation; ct-m104 01a1b1b0-7f7b-7b50-8b00-6f5a05eed772 owns final release gates and selected MCP/site checks for notes, nulls and preserved attachment/fields. Historical raw corrections are optional writer decisions. ct-rie2's actual campaign capture/import is separate; this note repair needs no acquisition or parser replay. No independent producer/correction work remains.
 
 Independent review: REQUEST CHANGES; current owner state: changes requested. These findings remain open until repaired and rechecked. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-nh41/REVIEW-59d0d063.md).
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 02b84997. Authored relationship explanations or null remain intact. The review found that the site removed authored text beginning with an old boilerplate prefix; cleanup now removes only boilerplate forms. Both regressions failed before repair, then all 37 focused site checks passed. Eight optional metadata corrections remain staged and unapplied.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Shared campaign reconciliation and final selected MCP/site checks of notes, nulls and preserved attachments/fields. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-nh41/REVIEW.md).

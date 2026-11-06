@@ -34,3 +34,9 @@ Remaining: the sole root/ct-m104 release must integrate the independently qualif
 Fresh independent static review of 924e3ef2: REQUEST CHANGES, high confidence. It found discarded publisher observation history and an undated curated held override. Both require scoped producer repairs and focused regression controls; the owner is preparing an isolated commit and same-reviewer delta check. Keep in_progress.
 
 Independent review: REQUEST CHANGES; current owner state: completed changes requested. These findings remain open until repaired and rechecked. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-oh9y/REVIEW.md).
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 2c120996. Publisher observation history now comes from a materialized relation before current-record pruning. Curated held/not-held decisions require the documented date; current-field precedence is unchanged. All 118 targeted checks passed, and three native microfixtures passed normal MCP and site readers. No actual shared-release pass is claimed.
+
+This reviewed follow-up is not yet included in local main. Reconciled follow-up c2be1c10 still needs affected checks and the same reviewer's approval. Remaining: Final five-control source comparison, three negative plants, same-release normal consumers and selected public MCP/Pages readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-oh9y/REPAIR-REVIEW-2c120996.md).

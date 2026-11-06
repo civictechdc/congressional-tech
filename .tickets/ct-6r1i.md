@@ -30,3 +30,9 @@ Keep in progress; closure is not ready. ct-082q now reports zero pending and sou
 An independent GPT-6.1 Sol/xhigh review is now running in `/root/ct_6r1i_independent_review` with no inherited conversation and all four requested skills. Verdict is pending; this new review obligation is not complete. The previous bounded validation and candidate-preparation work remains complete; actual native/selected-release gates remain open.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at b20b3316. The review confirmed that the missing details are repaired at publication. It also found two acceptance-helper defects: cached proof lacked current reader/selection/environment binding, and fixed log names prevented retry after lock refusal. Both are repaired; seven isolated controls passed.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: The full two-way row/value/provenance/multiplicity comparison, authentic bill/vote/ballot checks and installed/hosted agreement on the final shared native release. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-6r1i/REVIEW.md).

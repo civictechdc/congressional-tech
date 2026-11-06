@@ -30,3 +30,9 @@ Keep in_progress; closure_ready=false. ct-m104 must supply the frozen native rel
 Requested follow-up: an independent GPT-6.1 Sol/xhigh reviewer (/root/ct_hnpc_independent_review) is now reviewing the exact main source and cached acceptance scripts with greybeard, etl-workflow, evolutionary-refactoring and semi-formal-code-review. No verdict has been returned yet.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 82c7f333. Nomination activity coverage no longer treats received-date bounds as bounds on later actions. Receipt-date research and raw event values are preserved. The ordinary-MCP regression failed before repair; all 10 focused legislative checks passed afterward.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Final native output, ct-6r1i conservation, actual week/filter/empty/coverage/order/paging checks and installed/hosted readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-hnpc/REVIEW.md).

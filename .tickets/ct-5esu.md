@@ -68,3 +68,9 @@ Local implementation is complete in 8f8ea78602fff18c0bc73c5c7a3165a640b163c3: ex
 Remaining: original root 01a1aa05-d4d2-7ca0-b541-a8a52e6c794f owns the consolidated source/main rollup; ct-m104 (01a1b1b0-7f7b-7b50-8b00-6f5a05eed772) owns the final selected index, including recovery/good-fetch aliases, and deployed site/MCP acceptance against that same index. Keep in_progress until those release criteria pass; local completion is not live delivery. The reviewed source commit is unchanged.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 8f8ea786. Exact URL matches remain authoritative; the fallback preserves every admitted edition. The retained candidate resolves 1,005 percent-case and 21 literal-space misses while preserving 611,729 exact index pairs. Review found no blocking defect in the lookup repair.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Final selected index, explicit alias and negative controls, and deployed site/MCP acceptance against that same index. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-5esu/REVIEW.md).

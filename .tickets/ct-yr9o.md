@@ -59,3 +59,9 @@ Implemented and locally qualified malformed House XML handling at 5b0463d2, with
 Remain open: original root owns admission/assignment of the exact-selected-input census, registered transition caller and bounded producer/recovery imports; ct-m104 owns the resulting final native/model and selected-release/publication checks. No retained transition, shared import or live delivery is claimed.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 5b0463d2. The reviewed House XML repair preserves valid-empty results, missing-byte pending work and settled-failure retries. The admitted metadata-only census completed on 11,795 current candidate pairs and exposed 4,027 previously selected pairs excluded by current discovery. The corrected proposal preserves all 15,822 selected pairs. Existing exact-URL captures, XML results and strict-parse evidence for both refetches reduce inspection to 583 pairs; no new imports are required merely for their availability. Discovery cannot authorize deletion.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Reviewed isolated transition caller and preservation controls, separately admitted parsing/import phases, then final native/model and selected public acceptance. The original capture/import truncation mechanism remains unresolved. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-yr9o/REVIEW.md).

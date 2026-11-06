@@ -66,3 +66,9 @@ Prepared the one-target USAID/ecoi recovery cohort and committed catalog attribu
 Root owns source integration and final review; ct-m104/the designated shared writer owns actual version-2 inputs, supported capture admission, timestamped receipt/import, final release and reader/MCP verification. No real cohort capture/import/publication occurred here; retain in_progress.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 4e11106f. Recovery retries and progress reports now bind the complete original decision, request and frozen receipt/provenance identities. Duplicate fields are rejected, while retries remain body-free. All 50 focused checks passed and the repaired source received independent approval.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Actual version-2 cohort execution, supported capture admission, timestamped receipt/import, final publication and reader/MCP attachment checks. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-rie2/REVIEW.md).

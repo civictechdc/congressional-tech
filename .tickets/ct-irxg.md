@@ -28,3 +28,9 @@ Add a research-friendly tool over the published `hearing_dossier` recipe from [c
 Keep `in_progress`: ct-m104 must provide the actual shared native/selected release. Remaining acceptance is authentic mixed/sparse dossier parity and event 334136's exact Altman source/package context, ct-4kuo source acceptance (dependent on ct-9s7b), and same-release site presentation. Local controls are not selected-release or live delivery.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at ceb60ec4. The bounded hearing bundle includes meetings, committees, current witnesses, testimony, labelled transcripts/captions, recordings, coverage and continuations. The independent review found no source defect; the retained installed native-fixture control passed all nine sections and paging. The old metadata backlog is settled.
+
+This reviewed follow-up is not yet included in local main. Remaining: Authentic mixed/sparse dossier parity, event 334136 source/package context, transcript source acceptance and same-release site presentation. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-irxg/REVIEW.md).

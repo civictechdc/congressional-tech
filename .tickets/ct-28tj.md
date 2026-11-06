@@ -32,3 +32,9 @@ Keep in_progress. HTML baseline/daily adoption is now locally qualified; the old
 A fresh independent four-skill review is running under agent /root/ct_28tj_blind_review. Implementation preparation is complete; review findings and any required corrections remain pending. Keep closure_ready=false.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 51909188. Caption citations now validate witness membership and optional attribution through the same checks in generation and both resolver paths. A normal MCP stdio control reproduced the unsupported-occurrence bug; 25 focused checks passed after repair.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Final combined-source qualification, fresh software artifacts, actual shared native citation/witness round trips and selected public readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-28tj/REVIEW.md).

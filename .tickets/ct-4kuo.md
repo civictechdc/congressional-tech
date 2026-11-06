@@ -30,3 +30,9 @@ Keep in_progress; closure_ready is false. ct-m104 owns final source qualificatio
 User-requested independent review is running as /root/ct4kuo_blind_review (GPT-6.1 Sol/xhigh) using greybeard, etl-workflow, evolutionary-refactoring and semi-formal-code-review. Review is static/read-only; verdict and any scoped fixes remain pending.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at b20b3316. The review found that the acceptance probe could silently skip committee transcript reads when no automatic candidate fit its 2 MiB cap. The probe now requires successful official, committee and caption reads and records unverified kinds. Six focused decision controls passed; these are probe checks, not actual-release consumer evidence.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Authentic source reads, continuation and exact cue/page reopening on the final native release, followed by selected site/MCP readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-4kuo/REVIEW.md).

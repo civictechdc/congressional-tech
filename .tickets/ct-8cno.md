@@ -88,3 +88,9 @@ Local adapter work is complete at commit 98dc94facac008ece400b21a116354c9b6d39da
 Keep open. The latest public index still has no historical roster output. Upstream ss-ehci owns the accepted dated generation and coherent snapshot selection; original root 01a1aa05-d4d2-7ca0-b541-a8a52e6c794f owns source/main integration; ct-m104 owns final native qualification, publication and installed historical reader checks. All independent local work is finished; no historical release or live availability is claimed.
 
 Independent review: REQUEST CHANGES; current owner state: changes requested. These findings remain open until repaired and rechecked.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at cf0abc74. Historical roster party now comes only from supplied assignment evidence; missing party remains null. The review rejected the earlier term-level party inference, and the repair removes that unnecessary join/aggregation. All 31 focused checks passed; the 2,973 pinned current rows remain unchanged.
+
+This reviewed follow-up is not yet included in local main. Remaining: Upstream ss-ehci dated historical observations and coherent selection, followed by final native publication and historical reader checks. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-8cno/REVIEW.md).

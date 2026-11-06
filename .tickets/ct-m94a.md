@@ -101,3 +101,9 @@ Remaining: daily planning qualification is complete/source-freeze-ready at d2ec0
 Current review follow-up: a direct-URL alias eligibility recurrence is under focused investigation. The original blind review continues unchanged. No affected production row is claimed; closure remains not ready.
 
 Independent review is in progress. No final review approval or completed release acceptance is claimed.
+
+**2026-11-06T19:20:02Z**
+
+Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 764235b3. Shown and linked URL readings now share one eligibility rule, so direct alias URLs cannot reintroduce unsupported dates. Literal readings, supplier provenance and each disagreement are preserved. Eight alias cases and one reference-association case passed; the retained eight-original control rebuilt to identical public bytes.
+
+The reviewed source reference is included in local main 1a5ae01c. Remaining: Actual final native date counts/bounds and candidate plus selected-live MCP/site checks after the shared input transition. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-m94a/REVIEW.md).
