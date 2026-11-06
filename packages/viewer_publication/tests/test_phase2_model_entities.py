@@ -759,7 +759,10 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert files_by_name['bills.parquet']['generations'] == {'bill-family': '3' * 64, 'roll-call-votes': '5' * 64, 'amendments': '6' * 64}
     assert files_by_name['bills.parquet']['coverage']['gaps'] == ['Amendments cover the 119th Congress only until spicy-regs backfills']
     assert files_by_name['nominations.parquet']['generations'] == {'nominations': '4' * 64, 'roll-call-votes': '5' * 64}
-    assert files_by_name['nominations.parquet']['coverage']['gaps'] == ['Nominations cover the 119th Congress only until spicy-regs backfills']
+    assert files_by_name['nominations.parquet']['coverage']['gaps'] == [
+        'Nominations cover the 119th Congress only until spicy-regs backfills',
+        'Local nomination profiles include only nominations referenced by published archive documents or meetings; '
+        'other retained upstream nominations are outside this collection']
     assert files_by_name['meetings.parquet']['producer'] == 'archive'
     assert files_by_name['meetings.parquet']['coverage']['congress_start'] == 118
     assert files_by_name['meetings.parquet']['coverage']['congress_end'] == 118
