@@ -116,9 +116,6 @@ def meetings(tmp_path_factory):
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     steps = [
         dict(name='meetings_resolved', sql="SELECT *,CASE WHEN false THEN make_array(named_struct('url',cast(NULL AS VARCHAR))) END AS document_references FROM ("+' UNION ALL '.join(MEETINGS)+")", materialize=True),
-        dict(name='meeting_records_ranked', sql=f"SELECT event_id,'congress_gov' AS source,status,meeting_date,repeat('ab',32) AS record_sha_hex,{UTC} AS retrieved_at FROM meetings_resolved", materialize=True),
-        dict(name='meeting_records_current', sql="SELECT r.*,m.title,cast(100 AS INT) AS priority FROM meeting_records_ranked r JOIN meetings_resolved m USING(event_id)", materialize=True),
-        dict(name='meeting_status_conflicts', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS publisher_status,cast(NULL AS VARCHAR) AS evidence WHERE false", materialize=True),
         dict(name='ordered', sql=ORDERED, materialize=True),
         dict(name='recordings_entity', sql=RECORDINGS, materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
@@ -132,6 +129,9 @@ def meetings(tmp_path_factory):
         dict(name='package_meeting_links', sql="SELECT 'CHRG-own' AS package_id,cast(19 AS BIGINT) AS event_id", materialize=True),
         dict(name='package_mods_facts', sql="SELECT 'CHRG-own' AS package_id", materialize=True),
         dict(name='spicy_nominations', sql="SELECT cast(NULL AS INT) AS congress,cast(NULL AS VARCHAR) AS number,cast(NULL AS VARCHAR) AS part_number,cast(NULL AS VARCHAR) AS hearings_json WHERE false", materialize=True),
+        dict(name='meeting_records_ranked', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source,cast(NULL AS VARCHAR) AS status,cast(NULL AS DATE) AS meeting_date,cast(NULL AS VARCHAR) AS record_sha_hex,arrow_cast(NULL,'Timestamp(Microsecond, Some(\"UTC\"))') AS retrieved_at WHERE false", materialize=True),
+        dict(name='meeting_records_current', sql="SELECT *,cast(NULL AS INT) AS priority,cast(NULL AS VARCHAR) AS title FROM meeting_records_ranked", materialize=True),
+        dict(name='meeting_status_conflicts', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS evidence WHERE false", materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     run_job(work, engine, inputs=[], steps=steps,

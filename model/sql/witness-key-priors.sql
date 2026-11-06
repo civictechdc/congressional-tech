@@ -21,9 +21,9 @@ WITH historical_meeting_occasions AS (
   coalesce(o.package_id,'') AS package_key,
   unnest(r.appearances) AS a,
   unnest(range(0,cast(array_length(r.appearances) AS BIGINT))) AS ordinal
- FROM appearance_observations o
+ FROM historical_meeting_occasions h
+ RIGHT JOIN appearance_observations o ON o.source='mods' AND o.package_id=h.package_id
  JOIN selected_appearance_records r ON r.record_sha_hex=o.record_sha_hex AND r.source=o.source
- LEFT JOIN historical_meeting_occasions h ON o.source='mods' AND o.package_id=h.package_id
  WHERE o.effective_state='present' AND coalesce(array_length(r.appearances),0)>0
 ), extracted AS (
  SELECT
