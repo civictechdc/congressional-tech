@@ -3,6 +3,7 @@ import asyncio
 from functools import partial
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -58,8 +59,9 @@ pypdf.PdfReader = broken
     setup += "\nsys.argv = ['pdf_decoder', sys.argv[1]]\nrunpy.run_module('congressional_explorer_mcp.pdf_decoder', run_name='__main__')\n"
 
     def launch(command, **kwargs):
-        if command[1:3] == ['-m', 'congressional_explorer_mcp.pdf_decoder']:
-            command = [sys.executable, '-c', setup, command[3]]
+        if command[1:4] == ['-I', '-c', pdf_decoder._OWNER]:
+            # Instrument the parser leaf; retain the real production leader.
+            command = command[:6] + [sys.executable, '-c', setup, command[5]]
             process = original(command, **kwargs)
             processes.append(process)
             return process
@@ -246,3 +248,154 @@ def test_actual_consumers_cancel_decoder_and_preserve_cache(monkeypatch, tmp_pat
                 cached = await client.call_tool('get_document', dict(query=query))
                 assert cached.data == result.data and len(requests) == request_count
         asyncio.run(run())
+
+
+@pytest.mark.parametrize('stage', ['constructor', 'poppler'])
+def test_offline_pdf_magic_stays_in_owned_worker_group(tmp_path, stage):
+    from hashlib import sha256
+    from congressional_explorer_mcp.index_builder import _run_child, IndexJobRefusal
+    from congressional_explorer_mcp.text_index import extraction_definition
+
+    marker = tmp_path / 'parser.json'
+    outer = tmp_path / 'worker.json'
+    payload = make_pdf_bytes(['PDF bytes supplied as a caption'])
+    digest = sha256(payload).hexdigest()
+    path = f'/bodies/sha256/{digest[:2]}/{digest}'
+    with local_archive_server({path: payload}) as (origin, requests):
+        target = dict(unit_kind='caption', format='vtt', filename='captions.vtt',
+                      saved_body=digest, saved_suffix='', saved_media_type='text/vtt',
+                      saved_url=origin + path, archive_origin=origin,
+                      extraction_definition=extraction_definition()['sha256'])
+        target_path = tmp_path / 'target.json'
+        target_path.write_text(json.dumps(target))
+        setup = f'''
+import json, os, signal, time
+from pathlib import Path
+from congressional_explorer_mcp.index_builder import extract_one
+import pypdf
+Path({str(outer)!r}).write_text(json.dumps(dict(pid=os.getpid(), pgid=os.getpgrp())))
+def stall(*args, **kwargs):
+    Path({str(marker)!r}).write_text(json.dumps(dict(pid=os.getpid(), pgid=os.getpgrp())))
+    while True: time.sleep(.01)
+'''
+        if stage == 'constructor':
+            setup += '\npypdf.PdfReader = stall\n'
+        else:
+            tool = tmp_path / 'pdftotext'
+            tool.write_text(f'#!{sys.executable}\nimport json, os, time\nfrom pathlib import Path\n'
+                            f'Path({str(marker)!r}).write_text(json.dumps(dict(pid=os.getpid(), pgid=os.getpgrp())))\n'
+                            'while True: time.sleep(.01)\n')
+            tool.chmod(0o700)
+            setup += f'''
+from congressional_explorer_mcp.large_body_reader import large_pdf_definition
+# Bind actual tool identity before replacing only the failing fallback call.
+large_pdf_definition()
+import shutil
+shutil.which = lambda name: {str(tool)!r}
+def broken(*args, **kwargs):
+    raise ValueError('Force offline Poppler fallback')
+pypdf.PdfReader = broken
+'''
+        setup += f'\nextract_one({str(target_path)!r}, {str(tmp_path / "output.gz")!r}, timeout=20, memory_mb=768)\n'
+        with pytest.raises(IndexJobRefusal, match='deadline'):
+            _run_child([sys.executable, '-c', setup], timeout=4, memory_mb=768)
+        assert requests == [path]
+        worker = json.loads(outer.read_text())
+        parser = json.loads(marker.read_text())
+        assert parser['pgid'] == worker['pid'] == worker['pgid']
+        assert stage != 'constructor' or parser['pid'] == worker['pid']
+        try:
+            os.kill(parser['pid'], 0)
+        except ProcessLookupError:
+            pass
+        else:
+            status = subprocess.run(['ps', '-o', 'stat=', '-p', str(parser['pid'])],
+                                    capture_output=True, text=True).stdout.strip()
+            assert not status or status.startswith('Z'), (parser, status)
+
+
+@pytest.mark.parametrize('stage', ['constructor', 'poppler'])
+def test_pdf_family_stops_after_owner_sigkill(tmp_path, stage):
+    marker, leaf_marker = tmp_path / 'stalled.json', tmp_path / 'leaf.json'
+    payload = make_pdf_bytes(['Owner-death lifetime check'])
+    leaf = f'''
+import ctypes, json, os, runpy, signal, sys
+import pypdf
+from pathlib import Path
+Path({str(leaf_marker)!r}).write_text(json.dumps(dict(pid=os.getpid(), pgid=os.getpgrp())))
+def stall(*args, **kwargs):
+    Path({str(marker)!r}).write_text(json.dumps(dict(pid=os.getpid(), pgid=os.getpgrp())))
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    # PyDLL deliberately retains the GIL. A thread in this parser could not
+    # monitor its dead owner; the independent production leader must stop it.
+    ctypes.PyDLL(None).pause()
+'''
+    if stage == 'constructor':
+        leaf += '\npypdf.PdfReader = stall\n'
+    else:
+        tool = tmp_path / 'pdftotext'
+        tool.write_text(f'#!{sys.executable}\nimport ctypes, json, os, signal\nfrom pathlib import Path\n'
+                        f'Path({str(marker)!r}).write_text(json.dumps(dict(pid=os.getpid(), pgid=os.getpgrp())))\n'
+                        'signal.signal(signal.SIGTERM, signal.SIG_IGN)\nctypes.PyDLL(None).pause()\n')
+        tool.chmod(0o700)
+        leaf += f'''
+import shutil
+shutil.which = lambda name: {str(tool)!r}
+def broken(*args, **kwargs):
+    raise ValueError('Force owner-death Poppler fallback')
+pypdf.PdfReader = broken
+'''
+    leaf += "\nsys.argv = ['pdf_decoder', sys.argv[1]]\nrunpy.run_module('congressional_explorer_mcp.pdf_decoder', run_name='__main__')\n"
+    owner_code = f'''
+import subprocess, sys, time
+from congressional_explorer_mcp import body_reader, pdf_decoder
+original = subprocess.Popen
+def launch(command, **kwargs):
+    if command[1:4] == ['-I', '-c', pdf_decoder._OWNER]:
+        command = command[:6] + [sys.executable, '-c', {leaf!r}, command[5]]
+    return original(command, **kwargs)
+subprocess.Popen = launch
+body_reader._extract_pdf_pages({payload!r}, deadline=time.monotonic() + 30)
+'''
+    owner = subprocess.Popen([sys.executable, '-c', owner_code], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
+    group = None
+    try:
+        deadline = time.monotonic() + 5
+        while not marker.exists() and owner.poll() is None and time.monotonic() < deadline:
+            time.sleep(.01)
+        assert marker.exists() and leaf_marker.exists(), 'The actual parser/fallback must enter its stall'
+        stalled = json.loads(marker.read_text())
+        parser = json.loads(leaf_marker.read_text())
+        group = stalled['pgid']
+        assert group == parser['pgid'] and group not in (owner.pid, parser['pid'])
+        killed_at = time.monotonic()
+        # Kill only the owner. The production leader must stop its own family.
+        owner.kill()
+        owner.wait(timeout=2)
+        while True:
+            status = subprocess.run(['ps', '-axo', 'pid=,pgid=,stat='],
+                                    capture_output=True, text=True, check=True).stdout
+            live = [row for row in map(str.split, status.splitlines())
+                    if int(row[1]) == group and not row[2].startswith('Z')]
+            if not live:
+                break
+            assert time.monotonic() - killed_at < 3, live
+            time.sleep(.02)
+    finally:
+        if owner.poll() is None:
+            owner.kill()
+        owner.wait(timeout=2)
+        if group is not None:
+            try:
+                os.killpg(group, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
+def test_pdf_owner_startup_refuses_absent_parent(tmp_path):
+    marker = tmp_path / 'unexpected-parser'
+    command = [sys.executable, '-I', '-c', pdf_decoder._OWNER, '-1', str(time.monotonic() + 5),
+               sys.executable, '-c', f'from pathlib import Path; Path({str(marker)!r}).touch()']
+    result = subprocess.run(command, start_new_session=True, timeout=2)
+    assert result.returncode == 1 and not marker.exists()
