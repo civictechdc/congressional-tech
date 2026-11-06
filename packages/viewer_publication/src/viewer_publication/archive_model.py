@@ -709,7 +709,12 @@ def entity_track_checks():
 
 
 # Declared page metadata per html document (ct-93zs); readings selected inside a candidate join.
-PAGE_METADATA_STEPS=['html-metadata-readings','page-metadata-values','page-dates','page-descriptions','document-page-metadata']
+PAGE_METADATA_STEPS=[
+    'html-metadata-readings','page-metadata-documents','page-metadata-values','page-dates','page-descriptions',
+    'document-page-contexts','document-page-context-counts','document-page-context-ranked',
+    'page-metadata-field-counts','document-page-metadata-entries','document-page-metadata-sizes',
+    'document-page-metadata',
+]
 
 
 def _sql_steps(names,*,root=ROOT):
