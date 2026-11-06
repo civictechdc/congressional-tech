@@ -74,3 +74,11 @@ Implementation review: the original segment exclusion, supported production labe
 **2026-11-06T16:47:14Z**
 
 2026-11-06 parallel acceptance preparation at 742dbe70: six caption model/reader/site owner files match reviewed cffa18e0 byte for byte. Reused 4,361-row backfill and e145 938-of-1,553 baseline. Independently verified original Congress.gov body 54304cc58afa48fe52ba3dcac8b74b07cd38165d984c6eb2427a718396ad196b (1,498 decoded bytes), which explicitly names event 338785 and the Senate player govtaff093026. Original playlist 13270a5f6da616206d72500af5e1f8462dda0e82c8b3a365a38c0360f8ee81e1 has 728 literal VTT declarations and ENDLIST; that proves the saved declaration, not child retention/readable completeness. Prepared exact two-way SQL/probe/removed-event plant runner at .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-9s7b/reconcile_native.py. No candidate acceptance yet: ct-m104 is waiting for ct-082q to settle 144,161 pending metadata pairs. ct-4kuo owns the shared named-event installed stdio reads; this ticket owns site readback and consumes that exact MCP evidence. Keep in_progress. No native/index run, publisher recapture, source change, deployment or closure occurred. Full evidence/status: .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-9s7b.{json,md}.
+
+**2026-11-06T18:43:09Z**
+
+2026-11-06 owner update: local commit 9bda544161f4157a51016fd46455340dc9b052bf now distinguishes printed hearings, committee transcripts and captions in the hearing view, preserving document actions and subtitle playlist links. It passed 36 focused site tests with zero failures/skips. The new metadata and browser check wrappers passed retained-fixture/controlled-page checks; these are partial local evidence, not actual candidate or live acceptance. Original event 338785 recording/playlist evidence and the completed 4,361-row backfill remain retained. Independent implementation is complete; the requested blind four-skill review is running.
+
+The old HTML backlog is settled. Root/ct-m104 still own source integration, final native production and selection. Actual two-way caption reconciliation and same-release installed MCP/site readback remain required; keep in_progress and do not close.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

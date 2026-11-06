@@ -1,6 +1,6 @@
 ---
 id: ct-r4rd
-status: open
+status: in_progress
 deps: []
 links: [ct-asdg, ct-n61r, ct-zhta, ct-cjwx, ct-mt0h, ct-db3w]
 created: 2026-10-31T07:22:48Z
@@ -60,3 +60,11 @@ Source evidence and full original criteria remain in: .tickets/ct-r4rd.md:17; .t
 The pinned SpicyRegs comparator `519ffb308fd798d5d3c42c4d73a72b3248318a26` compares equivalent Congress.gov fields and exact sitting starts against `e145d24c389e` and `37a6ebd4`. Five focused comparator tests passed. Independent reviewer `/root/coverage_acceptance` reproduced 6,091 matches and the same 52 residual IDs. The 30 building and 17 room differences are one-sided populated archive values at matching starts. Two formatting or placeholder cases remain separate. The held `119583` detail is staged, and `338794` has different source update and sitting start values. The retained House summer/winter proof and parser pins are linked in the acceptance and input records. [Pinned comparison](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/spicyregs-meetings-comparison-final.json) · [Independent acceptance](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/independent-acceptance.md) · [Parser and input pins](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/source-coverage/source-coverage-freeze-inputs.json)
 
 The Congressional-tech source and acceptance worktrees were archived and pruned after local integration through `eb7bd6a7` and `e6dd3be3`. The separate comparator branch awaits upstream integration under ss-ikn9. Verify `119583` and the remaining residuals against the qualified published archive generation. [Integration handoff](../.cache/archive-release/implementation/production-mvp-round2-20261105T200638Z/acceptance/source-coverage/HANDOFF.md)
+
+**2026-11-06T18:43:09Z**
+
+All independent comparison work is complete locally in commits `9af30d11` and `7f5b0d81`. Against the selected SpicyRegs `37a6` generation, private candidate `720c` agrees on Congress and equivalent type for all 6,096 matched meetings, including raw-confirmed meeting 119583. All 30 building and 17 room differences are supported House fills at matching sitting starts; five newer-source update differences remain explicit. Six focused tests passed as a partial lane, and independent review confirmed the raw values, summer/winter times and wrong-Congress control. The exact inputs, event dispositions and portable upstream patch are retained under `.cache/archive-release/implementation/reviewed-non-news-20261106/ct-r4rd/` with the report `docs/measurements/meeting-field-parity-20261106.md`. This is private-candidate evidence, not final selected-release or live-reader acceptance.
+
+Remaining: original root owns integrating the two CT commits; upstream `ss-ikn9` owns comparator `519ffb30`; `ct-m104` owns the sole final build, deployment, selection and release-bound comparison/readback. Keep the ticket in progress until those acceptance steps pass, using qualified replacement parser evidence where the final source changes.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-r4rd/REVIEW.md).

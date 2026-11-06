@@ -1,6 +1,6 @@
 ---
 id: ct-yci9
-status: open
+status: in_progress
 deps: []
 links: [ct-flg9, ct-j9o7, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:12Z
@@ -41,3 +41,11 @@ Do not apply the recovery helper wholesale to ordinary originals: first-page ref
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: withhold unsupported package and direct-measure claims through final normalization, including recovered-copy fills. Distinguish direct identity from supported meeting context. Existing positive-only package evidence does not settle this case.
+
+**2026-11-06T18:43:10Z**
+
+Completed the isolated correction for exact PDF f984b8439d21b0ef: direct bill identity is explicitly 118-H.R.4755, package edition stays unresolved, and recovered-copy fills cannot restore the rejected 4775 package. Source URLs, filename claims, saved bytes, body/link keys and supported meeting context are preserved. Reviewed commit f7988b5401937960e0ce59ad84b42f609ca43ca8 remains unchanged. All 17 focused tests passed (partial lane), including six native fixture invariant suites, independent planted-association checks and pinned cause validation. The completion audit reverified all 10 file hashes and retained the small qualification inputs durably for worktree pruning. Evidence: .cache/archive-release/implementation/reviewed-non-news-20261106/ct-yci9/{HANDOFF.md,RESULTS.json,COMPLETION-AUDIT.json,release-causes-durable.json}. A fresh independent GPT-6.1 Sol/xhigh reviewer loaded all four requested skills and returned APPROVE with high confidence for this exact commit after tracing causes, selection/fallback, retry checks, retained outputs and rollup consumers; it found no material scoped defect. Review: /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-yci9/REVIEW.md.
+
+Keep in_progress. Root 01a1aa05 owns the consolidated source rollup and combined plan/lifetime reconciliation; ct-m104 (01a1b1b0-7f7b-7b50-8b00-6f5a05eed772) owns final native production qualification, selected release/deployment and matching MCP detail, bill-document lookup and actual site search. Any residual 4775 meeting context still needs its source basis attributed before removal or closure. Local completion is not live delivery; no further independent source work or competing build is needed.
+
+Independent review: APPROVE for the scoped work; remaining ticket acceptance is unchanged. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-yci9/REVIEW.md).

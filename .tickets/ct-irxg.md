@@ -18,3 +18,13 @@ Add a research-friendly tool over the published `hearing_dossier` recipe from [c
 - Use the transcript references from [ct-4kuo](ct-4kuo.md), the existing current-witness rule from [ct-9479](ct-9479.md), and the shared recording associations. Preserve event versus package scope and distinguish official transcripts, committee transcripts, captions, and prepared testimony.
 - Return coverage states for the requested sections and preserve source references. Exercise a hearing with several material kinds, a hearing with sparse evidence, and the package-scoped recording for event `334136` against the selected release.
 
+
+## Notes
+
+**2026-11-06T18:43:10Z**
+
+2026-11-06 owner audit: Implemented `get_hearing_bundle` with bounded meeting, committee, current-witness, testimony, labelled transcript/caption, recording and coverage sections plus continuations. At integration source `924e3ef2`, all 90 scoped files match reviewed `cffa18e0`; all 20 installed 0.6.2 modules match. The retained installed stdio native-fixture control passed all nine sections and paging (0.34 GiB peak). This is bounded fixture/consumer proof; no new full lane or authentic selected-release pass is claimed. All independent work is complete with no active job. The old metadata backlog blocker is resolved: 192,959 selected bodies, zero pending; canonical repair `1498c06c` and owner configuration `d2ec0211` are locally qualified. [Current evidence and runnable handoff](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-irxg.md).
+
+Keep `in_progress`: ct-m104 must provide the actual shared native/selected release. Remaining acceptance is authentic mixed/sparse dossier parity and event 334136's exact Altman source/package context, ct-4kuo source acceptance (dependent on ct-9s7b), and same-release site presentation. Local controls are not selected-release or live delivery.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

@@ -1,6 +1,6 @@
 ---
 id: ct-5esu
-status: open
+status: in_progress
 deps: []
 links: [ct-v51p, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:13Z
@@ -44,3 +44,11 @@ Qualify host-specific download repairs, query stripping, whitespace changes and 
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: preserve the exact-key result set, use aliases only after an exact miss, and add a two-edition collision control. No document identity merges.
+
+**2026-11-06T18:43:10Z**
+
+Local implementation is complete in 8f8ea78602fff18c0bc73c5c7a3165a640b163c3: exact lookup results remain authoritative, and serialization fallback preserves every admitted edition. The retained candidate resolves all 1,005 percent-case and 21 literal-space misses while preserving 611,729 exact index pairs; index size increases 3.03%. Validation passed 32 focused Python tests, 32 Node tests and 16 additional representative SQL checks bound to stable document links/body hashes. The latter are local SQL checks, not live MCP acceptance. Evidence and release-owner inputs are under .cache/archive-release/implementation/reviewed-non-news-20261106/ct-5esu/. The earlier 17-versus-23 reader-fixture issue now has a qualified ct-m104 repair (fixture-reader-02: four reader tests passed), so it is no longer an unresolved independent task.
+
+Remaining: original root 01a1aa05-d4d2-7ca0-b541-a8a52e6c794f owns the consolidated source/main rollup; ct-m104 (01a1b1b0-7f7b-7b50-8b00-6f5a05eed772) owns the final selected index, including recovery/good-fetch aliases, and deployed site/MCP acceptance against that same index. Keep in_progress until those release criteria pass; local completion is not live delivery. The reviewed source commit is unchanged.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

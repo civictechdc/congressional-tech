@@ -66,3 +66,11 @@ Reopened 2026-11-03 (post-release acceptance test): witness churn is categorized
 **2026-11-05T20:18:07Z**
 
 Integrated the narrow same-list precedence repair at 2b130952. The exact event 100520 House XML supports two active W. Ron Allen roles with distinct biographies and statements; both existing keys remain active. Seventy-four focused native tests passed. Root independently checked all four source links and rejected planted wrong-suppression and wrong-role results. The full legacy occurrence audit and same-selected-release site/MCP checks remain open. Full build/publication waits all waves.
+
+**2026-11-06T18:43:09Z**
+
+The local ledger at 9b79f6bf preserves all 36,301 frozen witness records and original facts with dispositions/owners; 13 focused checks passed (partial lane). Ticket-only ad54f567 credits the separately merged historical-key repair c5d8fe9b. Follow-up checks confirm all 7,939 detailed House name-component correspondences and nineteen raw oath literals. Accepted Allen evidence proves four source URLs resolve to three bodies with correct role sets.
+
+Correction: event 100876 is an actionable source-admission defect, not merely a choice between authentic historical rosters. The selected one-witness body exactly matches a test fixture and entered through manual-source-review normalized/model files in two retained receipt lines; the independent original has seven witnesses. Root owns the bounded eligibility/input repair, preserving raw history and normal list replacement; do not union rosters or infer testimony. Exact receipts/capture rows and correction: ct-x78c/SOURCE-ADMISSION-HANDOFF.md and closure-audit/historical-appearance-decision.md. The four-skill independent review is running at /root/four_skill_ct_x78c_review. Keep open for that repair, remaining occurrence/oath/link dispositions, and ct-m104’s final native/site/MCP acceptance. No reviewed source or selected release changed here.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

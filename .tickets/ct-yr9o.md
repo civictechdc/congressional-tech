@@ -33,3 +33,11 @@ Defer this to a later intentional House record transition that explicitly suppor
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: keep malformed-XML handling for a source-scoped transition that accepts unreadable decisions. The completed-only document-reference backfill does not qualify this change.
+
+**2026-11-06T18:43:10Z**
+
+Implemented and locally qualified malformed House XML handling at 5b0463d2, with safe shared normalization, preserved empty/missing-byte behavior and durable same-version retry suppression; 53 focused production-offline cases passed (partial lane). Follow-up fdb62438 records two successful exact-URL refetches: both complete XML bodies and receipts are retained locally, with the old fragments preserved. The scoped transition proposal now binds the settled eight-selector/24,341-receipt inputs and producer history, defines reuse and failure/pending conservation, and names 585 ambiguous anchor pairs plus resource limits; its read-only measurement peaked at 0.51 GiB RSS. Evidence: reviewed-non-news-20261106/ct-yr9o/transition-plan/PLAN.md. Independent four-skill review is running against the unchanged source commit.
+
+Remain open: original root owns admission/assignment of the exact-selected-input census, registered transition caller and bounded producer/recovery imports; ct-m104 owns the resulting final native/model and selected-release/publication checks. No retained transition, shared import or live delivery is claimed.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

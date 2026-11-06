@@ -18,3 +18,15 @@ Researchers can read a known document through `get_document(section='text')`. Ad
 - Return page or text windows for official and committee transcripts and timestamped cues for complete caption tracks. Return paging information and enough source detail to reopen the same text. Resolve retained files and supported playlists on the server.
 - Keep body verification, archive access limits, and bounded responses. Report partial or unavailable material explicitly. Exercise a transcript-only hearing, a caption-only hearing, multiple sources, and an incomplete track through the MCP tool.
 
+
+## Notes
+
+**2026-11-06T18:43:10Z**
+
+2026-11-06 owner update: Local get_transcript discovers and selects official, committee and caption sources, returns verified bounded text or timestamped cues with paging, reopens exact citations, and keeps partial/unavailable material explicit. At 798db35e, all 86 app files match reviewed cffa18e0; the installed-asset audit verifies 20 modules, all 70 dependencies and Poppler 26.06.0. Source-bound evidence reuses the retained full MCP app lane (191 passed, zero skips) and focused/native-fixture checks for transcript-only, caption-only, multiple-kind and incomplete-track cases, paging, timing and citations. No new full lane or authentic final-release consumer run is claimed. Independent preparation is complete; the source-read probe and runnable command are in [the owner handoff](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-4kuo.md).
+
+Keep in_progress; closure_ready is false. ct-m104 owns final source qualification, the sole native build and prepared/selected release. ct-9s7b owns its site-label repair, native inventory reconciliation and selected-release site checks. This owner's authentic event 338785 installed-source reads, continuation and exact citation reopening remain not run until native_ready. The old 144,161-pair HTML backlog is resolved; the shared final candidate/selection and live acceptance remain absent. Indexing stays deferred.
+
+User-requested independent review is running as /root/ct4kuo_blind_review (GPT-6.1 Sol/xhigh) using greybeard, etl-workflow, evolutionary-refactoring and semi-formal-code-review. Review is static/read-only; verdict and any scoped fixes remain pending.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

@@ -1,6 +1,6 @@
 ---
 id: ct-rie2
-status: open
+status: in_progress
 deps: []
 links: [ct-umtm, ct-4jms, ct-nh41, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:13Z
@@ -44,3 +44,11 @@ Ordinary scheduled capture and explicit campaign execution are independent accep
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: deliver one useful bounded cohort through the archive and MCP. Share ct-umtm execution where suitable; keep original import bindings on retry and produce final counts from a separate read-only plan.
+
+**2026-11-06T18:43:10Z**
+
+Prepared the one-target USAID/ecoi recovery cohort and committed catalog attribution, separate initial/final progress reporting and body-free retry in a04ee550/edff4588. Repair 4e11106f now binds every acknowledged decision field and receipt/provenance key to original request/evidence and frozen receipt metadata; both consumers reject duplicate fields. All 50 focused checks passed (partial lane); exact code/log pins are in ct-rie2/f1-repair/checks.json. Independent four-skill review is running against this exact commit.
+
+Root owns source integration and final review; ct-m104/the designated shared writer owns actual version-2 inputs, supported capture admission, timestamped receipt/import, final release and reader/MCP verification. No real cohort capture/import/publication occurred here; retain in_progress.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

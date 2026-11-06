@@ -51,3 +51,11 @@ Use the existing Senate version work and coordinate any shared helper edit with 
 **2026-11-05T20:18:06Z**
 
 Integrated the JEC continuation repair, source-specific committee matching and shared-helper version tracking. All 9,818 Senate records replayed successfully; independent comparison found exactly the named JEC list changing from five rows to four, with Scott Lincicome's role and testimony URL preserved. Intelligence discovery is fixed, but its exact detail request returned 403; the exact Environment source fixture remains unavailable. These gaps and final selected-release acceptance keep the ticket open.
+
+**2026-11-06T18:43:09Z**
+
+Local EPW qualification is complete at commit 3253bab83ef5f98d5190714e7cedb135e5c41e28: Svinicki’s source-listed PDF follows her alone, and ungrouped All Testimony stays unassigned. Four new regression cases and 50 focused checks passed (partial lane). The local MCP reader passed on private candidate 720c495b for EPW and JEC, including Scott’s complete role/PDF and genuine historical key; three wrong-result plants were rejected. Independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED this exact commit, confirming the existing JEC repairs address the parsing/matching causes. Evidence is in reviewed-non-news-20261106/ct-kthe/HANDOFF.md and merge-prune-20261106T180951Z/reviews/ct-kthe/REVIEW.md. These results establish local/private-candidate behavior, not live delivery.
+
+Keep open: ct-kthe needs accessible Intelligence detail and the original Environment-host positive fixture; the exact 403 remains preserved. The four-parser equality report applies to 3253bab8, not the newer House-changing rollup; the reviewed Senate code remains unchanged, supporting reuse of its 9,818-record replay. The original root included 3253bab8 through rollup merge 09296f06 and owns the remaining main merge. ct-m104 owns final build/deployment and same-release site/installed-MCP acceptance. No further source change was required by review.
+
+Independent review: APPROVE for the scoped work; remaining ticket acceptance is unchanged. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-kthe/REVIEW.md).

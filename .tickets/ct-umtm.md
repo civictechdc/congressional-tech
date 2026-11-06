@@ -57,3 +57,11 @@ The [MVP root-cause plan](../docs/plans/production-mvp-root-causes-20261105.md) 
 **2026-11-05T20:18:07Z**
 
 Integrated full encoded-request length limits and selective retry of server-rejected Web Harvest batches. The 429 current removal notices do not overlap the unfinished historical NARA batches. Two mirror PDFs passed all-page qualification but still lack complete timestamped capture evidence and final identity admission; they remain candidates, with no invented successors for the old HTML keys. Broad recovery remains open. Full build/publication waits all waves.
+
+**2026-11-06T18:43:09Z**
+
+Local source-evidence preparation is complete in 81eb31ca1029b23ae5f37dbefda2286092ac67ea: one USAID requested-content cohort is supported by ecoi catalog record 2074278; all 429 removal notices and twelve audited Wayback pairs have explicit dispositions, with zero exact target/body-prefix overlap. Eight focused tests passed (partial lane). A fresh independent GPT-6.1 Sol xhigh reviewer loaded all four requested skills and APPROVED this exact bounded source/evidence slice after checking actual source, callers/consumers, tests and retained originals; no ct-umtm patch was requested. Review: .cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-umtm/REVIEW.md. No candidate acquisition, import or publication is established.
+
+Remaining: the root rollup writer must integrate ct-rie2's existing catalog-attribution repair with ct-nh41 explanation handling before import; the observed reviewed rollup still had the old basis. ct-rie2 owns its active acknowledgement-validation repair and coordinated version-2 capture/import preparation; ct-m104 owns final shared build/publication and reader/MCP acceptance. Duke identity and twelve Wayback custody records remain review-required pending original evidence. Keep ct-umtm open: approval of local evidence preparation is not delivered recovery or full ticket acceptance.
+
+Independent review: APPROVE for the scoped work; remaining ticket acceptance is unchanged. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-umtm/REVIEW.md).

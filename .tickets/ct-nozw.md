@@ -24,3 +24,11 @@ Build on the current scalar filters and published relationship recipes. Make rec
 **2026-11-06T16:54:35Z**
 
 Bounded source/recipe preparation complete. Source-proven nomination coverage wording gap repaired on isolated branch codex/ct-nozw-recipe-coverage-20261106 at b4741504: metadata now states that local nomination profiles are referenced by archive documents or meetings, and pending means a known nonterminal latest action in the snapshot. Three focused production-offline checks passed (partial, 2 of 500 lane files); measured peak 0.50 GiB RSS. Exact commit, patch, source identities, authentic source-only status counts and prepared normal MCP row comparator are retained under .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-nozw/. ct-m104 must integrate before source freeze. Actual shared native recipe acceptance remains pending ct-082q baseline settlement and ct-m104 native_ready selection; final same-release installed/hosted readback stays with ct-m104. Ticket remains in progress; no indexing or release deployment claimed.
+
+**2026-11-06T18:43:10Z**
+
+2026-11-06 owner update: independent work is complete. The maintained MCP recipes cover recent bills, pending nominations, committee hearings and subject legislation. Source correction b4741504 is already integrated into main via cce7733f (verified at main798db35e). It clarifies the referenced nomination-profile coverage and the snapshot meaning of pending. Three focused production-offline checks passed (partial, not a full lane), peaking at0.50GiB RSS. Exact evidence and the runnable normal-MCP comparator are retained under parallel-sessions/ct-nozw/.
+
+Keep in_progress; closure_ready=false. ct-m104 must provide the qualified shared native selection, then the four-recipe comparisons must pass against its actual rows. Reuse ct-6r1i conservation and ct-hnpc activity proof; ct-m104 owns exact final installed/hosted readback. Source integration and the old HTML-baseline blocker are resolved. No final native acceptance or live delivery is claimed.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.

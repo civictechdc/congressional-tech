@@ -35,3 +35,13 @@ Derive a small event-keyed observation from retained evidence: the exact Congres
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: require event-specific successful detail evidence, preserve unknown coverage and source update time, and extend the SpicyRegs comparison to the actual attempt journal.
+
+**2026-11-06T18:43:10Z**
+
+Reviewed local implementation at 02526166 adds event-specific Congress.gov detail-read observations to meeting exports: qualified success, recorded failure, listing-only within selected evidence, and unknown. Each success binds the exact event route, receipt and response; retrieval time stays separate from publisher update time, and later failures preserve earlier success. All 38 selected checks passed across the relevant focused runs (partial lanes). An independently checked retained receipt/response for event 117688 confirms the binding; eight reused observations contain six successes and two 404 failures. Evidence and consumer fields: .cache/archive-release/implementation/reviewed-non-news-20261106/ct-tbrj/HANDOFF.md and COMPARATOR-HANDOFF.json. The reviewed commit is unchanged and the worktree is clean; no independent feature work remains. The pending House-only transition preserves the qualified Congress.gov proof versions.
+
+Keep open: the original root owns consolidated source integration; ct-r4rd/ss-ikn9 owns comparison against the actual pinned detail-attempt journal; ct-m104 owns final native qualification, deployment and selected-release readback. Local preparation does not establish delivered or live behavior.
+
+A new independent four-skill review found that HTTP 304 unchanged responses were incorrectly called failures. Follow-up 89851988 fixes the classification and clarifies unknown evidence; the regression failed before the change and all six focused observation/public-export checks passed afterward. The same independent reviewer is checking the final delta. Original 02526166 remains preserved. The source integrator must include the separate follow-up before final freeze; no ticket closure or live-delivery claim is made.
+
+Independent review is in progress. No final review approval or completed release acceptance is claimed.
