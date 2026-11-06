@@ -99,9 +99,9 @@ SHA = "arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)')"
 RECORDINGS = (f"SELECT 'youtube:abc' AS video_key,arrow_cast(make_array(cast(24 AS BIGINT)),'List(Int64)') AS event_ids,"
               f"make_array({TRACK.format(body=SHA, format='vtt', production='asr')},"
               f"{TRACK.format(body="arrow_cast(decode('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855','hex'),'FixedSizeBinary(32)')", format='vtt', production='caption')}) AS tracks "
-              # A Senate stream: its vtt is one segment of the caption playlist (ct-9s7b), and one vtt holds no body.
+              # Selected tracks exclude declared segments upstream; a null body is still not held.
               f"UNION ALL SELECT 'senate:x',arrow_cast(make_array(cast(25 AS BIGINT)),'List(Int64)'),"
-              f"make_array({TRACK.format(body=SHA, format='vtt', production='caption')},{TRACK.format(body=SHA, format='m3u8', production='caption')},"
+              f"make_array({TRACK.format(body=SHA, format='m3u8', production='caption')},"
               f"{TRACK.format(body="arrow_cast(NULL,'FixedSizeBinary(32)')", format='vtt', production='live')})")
 ORDERED = ("SELECT arrow_cast(make_array('23'),'List(Utf8)') AS meeting_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS measure_keys,'HHRG-118-VR09-Transcript-20231108.pdf' AS filename,'pdf' AS format,cast(3 AS INT) AS list_row "
            "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HMKP-118-VR09-Transcript-20231108.pdf','pdf',cast(6 AS INT) "
@@ -159,7 +159,7 @@ def test_a_meeting_with_only_captions_lists_the_track(meetings):
     assert meetings[24][3] == ['captions:youtube:abc/asr']
 
 
-def test_a_recording_with_a_subtitle_playlist_lists_it_and_excludes_its_segment(meetings):
+def test_a_recording_with_a_subtitle_playlist_lists_it_and_excludes_unretained_tracks(meetings):
     assert meetings[25][3] == ['captions:senate:x/caption']
 
 

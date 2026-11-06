@@ -59,6 +59,7 @@ def _stage_raw_fixture(tmp_path, engine, capture_specs):
                 stored_suffix=suffix,
                 stored_bytes=len(stored),
                 stored_md5=hashlib.md5(stored).hexdigest(),
+                context_url=spec.get('context_url'),
             )],
         ))
     receipt = raw / 'receipts/documents/2026-10-27/slice.jsonl.gz'
@@ -149,6 +150,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     m3u8_bytes = b'#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:12.0,\ntext_1_00001.vtt\n#EXT-X-ENDLIST\n'
     master_bytes = b'#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,URI="text_1.m3u8"\n'
     caption_segment = b'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:183000\n\n00:00:01.000 --> 00:00:02.000\nSegment cue\n'
+    complete_english = b'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nIndependent complete English captions\n'
+    complete_spanish = b'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nPista completa independiente en espanol\n'
+    placeholder_caption = b'WEBVTT\n\n'
     unkeyed_playlist = (b'#EXTM3U\n#EXTINF:12.0,\n'
         b'https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/unkeyed-child.vtt\n')
     segment_bytes = b'G@\x00\x10' + bytes(184)
@@ -249,6 +253,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             data=caption_segment, format='vtt', media_type='text/vtt', family='senate/captions',
             retrieved_at='2023-05-22T12:00:00Z',
         ),
+        # Complete direct tracks are independent of the same recording's English/live playlist.
+        dict(url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/captions/en/complete.vtt',
+            data=complete_english,format='vtt',media_type='text/vtt',family='senate/captions',retrieved_at='2023-05-23T12:00:00Z'),
+        dict(url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/captions/es/complete.vtt',
+            data=complete_spanish,format='vtt',media_type='text/vtt',family='senate/captions',retrieved_at='2023-05-23T12:00:00Z'),
+        # The producer's placeholder rule is based on this body's 101 distinct capture contexts.
+        *[dict(url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/placeholder.vtt',
+            context_url=f'https://fixture.test/caption-context/{i}',data=placeholder_caption,format='vtt',
+            media_type='text/vtt',family='senate/captions',retrieved_at='2023-05-24T12:00:00Z') for i in range(101)],
         dict(
             url='https://www.senate.gov/captions/unkeyed.m3u8',
             data=unkeyed_playlist, format='m3u8', media_type='application/vnd.apple.mpegurl',
@@ -812,6 +825,8 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert [(t['source'], t['package_id'], t['video_key'], t['production']) for t in m['transcripts']] == [
         ('printed_hearing', 'CHRG-118hhrg55555', None, None),
         ('captions', None, 'senate:ag051023', 'live'),
+        ('captions', None, 'senate:ag051023', 'live'),
+        ('captions', None, 'senate:ag051023', 'live'),
         ('captions', None, 'youtube:dQw4w9WgXcQ', 'asr'),
         ('captions', None, 'youtube:dQw4w9WgXcQ', 'caption'),
     ]
@@ -864,11 +879,19 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert set(tracks) == {('vtt', 'en', 'asr'), ('vtt', 'en', 'caption')}
     assert tracks[('vtt', 'en', 'caption')]['body'] == hashlib.sha256(vtt_new).digest()
     assert tracks[('vtt', 'en', 'asr')]['body'] == hashlib.sha256(vtt_asr).digest()
-    track, = recordings['senate:ag051023']['tracks']
-    assert (track['format'], track['language'], track['production']) == ('m3u8', 'en', 'live')
+    senate_tracks = {(t['format'],t['language'],t['production']):t for t in recordings['senate:ag051023']['tracks']}
+    assert set(senate_tracks) == {('m3u8','en','live'),('vtt','en','live'),('vtt','es','live')}
+    track=senate_tracks[('m3u8','en','live')]
     assert track['body'] == hashlib.sha256(m3u8_bytes).digest()
+    assert senate_tracks[('vtt','en','live')]['body'] == hashlib.sha256(complete_english).digest()
+    assert senate_tracks[('vtt','es','live')]['body'] == hashlib.sha256(complete_spanish).digest()
+    assert not {hashlib.sha256(caption_segment).digest(),hashlib.sha256(placeholder_caption).digest()} & {t['body'] for t in senate_tracks.values()}
+    native_caption_inventory = {(t['video_key'],t['formats'][0],t['language'],t['production']) for t in m['transcripts'] if t['source']=='captions'}
+    published_caption_roots = {(r['video_key'],t['format'],t['language'],t['production']) for r in recordings.values() if 115538 in r['event_ids'] for t in r['tracks']}
+    assert native_caption_inventory-published_caption_roots == set()
+    assert published_caption_roots-native_caption_inventory == set()
     resources = pq.read_table(release_dir / 'caption_resources.parquet').to_pylist()
-    senate = [r for r in resources if r['video_key'] == 'senate:ag051023']
+    senate = [r for r in resources if r['video_key'] == 'senate:ag051023' and r['track_body']==track['body']]
     assert [(r['ordinal'],r['status']) for r in senate] == [(0,'retained'),(1,'retained')]
     assert senate[0]['body'] == track['body']
     assert senate[1]['body'] == hashlib.sha256(caption_segment).digest()

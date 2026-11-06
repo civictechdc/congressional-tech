@@ -162,8 +162,9 @@ transcripts    := per meeting, every transcript the archive holds, each labelled
                     with {yyyymmdd} the meeting's date (the committee's own transcript)
                   captions: a retained complete caption body (vtt, srt, ttml) or subtitle media
                     playlist (m3u8) with a body, of a
-                    recording linked to the meeting; a vtt beside a playlist of the same
-                    production is a stream segment, never a track (ct-9s7b)
+                    recording linked to the meeting. The track producer excludes declared
+                    segments and placeholders. Complete direct tracks remain alongside playlists,
+                    including tracks with the same language and production (ct-9s7b).
                   Transcript coverage is present when any source is held, and its reason names
                   the sources; unresolved and unknown keep their meanings
 occasion       := 'meeting:{event_id}' for a House witness list or Congress.gov record;

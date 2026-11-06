@@ -148,7 +148,7 @@ async def read_caption_page(target, query, load_resources, *, data_dir=None,time
     except ExplorerError as error:
         result.update(state='unavailable',coverage='unknown',reason=str(error))
         return result
-    result['coverage']='complete_snapshot' if is_final else 'partial_live_snapshot'
+    result['coverage']=('complete_snapshot' if is_final else 'partial_live_snapshot') if playlist is not None else 'retained_file'
     if playlist is not None:
         info=await load_resources(0,1)
         if not info['available'] or not info['rows']:
