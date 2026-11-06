@@ -191,6 +191,10 @@ class LegislativeReader:
         query = ActivityQuery.model_validate(query).window()
         required = ['bill_actions','roll_call_votes','nominations','meetings']
         coverage = self.research_coverage(required, query.since, query.until)
+        if 'nominations' in self.schemas:
+            # Published nomination bounds cover received dates, not later actions.
+            coverage['interval_coverage']['nominations'] = 'event_date_bounds_unavailable'
+            coverage['limits'].append('Nomination date bounds describe received dates only; latest and committee actions can fall outside them. Activity date bounds are unavailable from this metadata.')
         if query.committee and 'committees' not in self.schemas:
             return dict(release_id=self.release_id,rows=[],has_more=False,coverage=self.research_coverage(['committees'],query.since,query.until))
         if query.topic and 'subjects' not in self.schemas.get('bills', {}):

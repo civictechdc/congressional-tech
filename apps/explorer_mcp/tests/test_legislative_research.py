@@ -39,6 +39,62 @@ def test_activity_retains_events_and_resolves_supported_associations(reader):
     assert reader.get_activity(dict(since='2099-01-01',until='2099-01-02'))['rows'] == []
 
 
+def test_activity_nomination_actions_are_not_bounded_by_received_dates(tmp_path,phase2):
+    import asyncio
+    import json
+    import sys
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from fastmcp import Client
+    from fastmcp.client.transports import StdioTransport
+
+    root=tmp_path/'release';shutil.copytree(phase2.parent,root)
+    table=pq.read_table(root/'nominations.parquet')
+    activities=pa.list_(pa.struct([
+        ('system_code',pa.string()),
+        ('activities',pa.list_(pa.struct([('date',pa.string()),('name',pa.string())]))),
+    ]))
+    literal='2025-02-01T15:30:00Z'
+    supplied=[dict(system_code='hsif00',activities=[
+        dict(date=literal,name='Hearings By'),dict(date=literal,name='Hearings By')])]
+    table=table.append_column('committee_activities',pa.array([supplied,None],type=activities))
+    pq.write_table(table,root/'nominations.parquet')
+    source=manifest(root)
+    metadata=json.loads(source.read_text())
+    next(item for item in metadata['files'] if item['name']=='nominations.parquet')['coverage'].update(
+        date_start='2025-01-03',date_end='2025-01-03')
+    source.write_text(json.dumps(metadata))
+    data=tmp_path/'selected';prepare(data,source)
+
+    async def run():
+        transport=StdioTransport(sys.executable,['-m','congressional_explorer_mcp.cli','serve','--data-dir',str(data)],keep_alive=False)
+        async with Client(transport) as client:
+            query=dict(since='2025-02-01',until='2025-02-02',committee='hsif00',limit=1)
+            rows=[]
+            while True:
+                result=(await client.call_tool('get_activity',{'query':query})).data
+                coverage=result['coverage']
+                assert coverage['interval_coverage']['nominations']=='event_date_bounds_unavailable'
+                assert coverage['tables']['nominations'][0]['date_end']=='2025-01-03'
+                rows.extend(row for row in result['rows'] if row['reference']['table']=='nominations')
+                if not result['has_more']:break
+                query=dict(query,cursor=result['next_cursor'])
+            latest=[row for row in rows if row['event_type']=='nomination_latest_action']
+            committee=[row for row in rows if row['event_type']=='nomination_committee_activity']
+            assert len(latest)==len(committee)==2
+            assert [row['event_date'] for row in latest]==['2025-02-01']*2
+            assert [row['source_date'] for row in committee]==[literal]*2
+            assert [row['event_key'] for row in committee]==['119-pn-730-2:1:1','119-pn-730-2:1:2']
+            assert all(row['date_precision']=='day' and row['source_time'] is None for row in rows)
+            empty=(await client.call_tool('get_activity',{'query':dict(since='2099-01-01',until='2099-01-02')})).data
+            assert empty['rows']==[] and empty['coverage']['status']=='available'
+            assert empty['coverage']['interval_coverage']['nominations']=='event_date_bounds_unavailable'
+            received=(await client.call_tool('run_research_query',{'query':dict(name='pending_nominations',since='2025-02-01',until='2025-02-02')})).data
+            assert received['rows']==[] and received['date_field']=='received'
+            assert received['coverage']['interval_coverage']['nominations']=='outside_retained_dates'
+    asyncio.run(run())
+
+
 def test_named_queries_use_published_rows_and_recipes(reader):
     bills = reader.run_research_query(dict(name='recent_bills',since='2025-01-01',until='2025-01-04'))
     assert [r['bill_id'] for r in bills['rows']] == ['119-hr-1']
