@@ -117,11 +117,12 @@ export function ArchiveEntityRows({
           {contextParts.length > 0 && <span className="archive-row-context">{contextParts.join(' · ')}</span>}
           <button type="button" className="archive-document" onClick={() => onInspectHearing(ev)}>
             <strong>{item.title || `Hearing ${ev}`}</strong>
-            {item.status && <span className="archive-document-subtitle">Status: {item.status}</span>}
+            {item.status && <span className="archive-document-subtitle">Publisher status: {item.publisher_status??item.status}</span>}
           </button>
         </div>
         <span className="archive-row-format">{ev}</span>
         <div className="archive-row-dates">
+          <span>Outcome: {item.outcome??'evidence unavailable in this release'}</span>
           {item.meeting_date ? <span>Hearing date: {day(item.meeting_date)}</span> : <span>Date not recorded</span>}
           <span>{integer(docCount)} {docCount === 1 ? 'document' : 'documents'}{witnessCount > 0 ? ` · ${integer(witnessCount)} ${witnessCount === 1 ? 'witness' : 'witnesses'}` : ''}</span>
         </div>

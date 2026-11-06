@@ -231,6 +231,9 @@ SPICY_PRODUCER_FAMILIES = {
     'rosters.parquet': ('committee-rosters',),
     'bills.parquet': ('bill-family', 'roll-call-votes', 'amendments'),
     'nominations.parquet': ('nominations', 'roll-call-votes'),
+    'bill_actions.parquet': ('bill-family',),
+    'roll_call_votes.parquet': ('roll-call-votes',),
+    'member_votes.parquet': ('roll-call-votes',),
 }
 
 
@@ -315,6 +318,15 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         coverage_parts.append("SELECT 'bills.parquet' AS file,min(try_cast(split_part(bill_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(bill_id,'-',1) AS SMALLINT)) AS congress_end,min(introduced) AS date_start,max(introduced) AS date_end FROM bills_export")
     if 'nominations' in aux_names:
         coverage_parts.append("SELECT 'nominations.parquet' AS file,min(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_end,min(received) AS date_start,max(received) AS date_end FROM nominations_export")
+    for table,identity,date_field in [('bill_actions','bill_id','action_date'),('roll_call_votes',None,'vote_day'),('member_votes',None,None)]:
+        if table in aux_names:
+            congress = f"try_cast(split_part({identity},'-',1) AS SMALLINT)" if identity else 'try_cast(congress AS SMALLINT)'
+            day = f'try_cast({date_field} AS DATE)' if date_field else 'cast(NULL AS DATE)'
+            coverage_parts.append(f"SELECT '{table}.parquet' AS file,min({congress}) AS congress_start,max({congress}) AS congress_end,min({day}) AS date_start,max({day}) AS date_end FROM {table}_export")
+    if 'bills' in aux_names:
+        queries.append(dict(name='bill_source_updates',sql="SELECT max(try_cast(source_updated_at AS TIMESTAMP WITH TIME ZONE)) AS source_updated_at FROM bills_export"))
+    if 'nominations' in aux_names:
+        queries.append(dict(name='nomination_source_updates',sql="SELECT max(try_cast(source_updated_at AS TIMESTAMP WITH TIME ZONE)) AS source_updated_at FROM nominations_export"))
     queries.append(dict(name='coverage', sql=' UNION ALL '.join(coverage_parts)))
     queries.append(dict(name='document_dates', sql="""SELECT
         sum(CASE WHEN document_date_status='accepted' THEN 1 ELSE 0 END) AS accepted,
@@ -336,6 +348,10 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         raise ValueError('Release key invariant failed; native results retained in scratch')
     schema_files = {item['name']: item for item in schema['files']}
     coverage = {row['file']: {key: value for key, value in row.items() if key != 'file'} for row in reports['coverage']}
+    if 'bill_source_updates' in reports and 'bills.parquet' in coverage:
+        coverage['bills.parquet'].update(source_updated_at=reports['bill_source_updates'][0]['source_updated_at'],source_update_basis='congress_bills.update_date')
+    if 'nomination_source_updates' in reports and 'nominations.parquet' in coverage:
+        coverage['nominations.parquet'].update(source_updated_at=reports['nomination_source_updates'][0]['source_updated_at'],source_update_basis='nominations.update_date')
     document_dates = {key: int(value or 0) for key, value in reports['document_dates'][0].items()}
     for name in ('list.parquet', 'detail.parquet'):
         if name in coverage:

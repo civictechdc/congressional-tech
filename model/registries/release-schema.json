@@ -764,7 +764,7 @@
         {
           "name": "status",
           "type": "dict",
-          "meaning": "Current meeting status",
+          "meaning": "Selected publisher-reported meeting status; this does not itself prove a sitting",
           "nullable": true
         },
         {
@@ -856,6 +856,42 @@
           "type": "list<struct<collection string, ordinal int32, url string, role string, format string, description string, name string>>",
           "nullable": true,
           "meaning": "Congress.gov document links in source collection order. Null means the metadata is unavailable or unstated. An empty list means a supplied collection contained no links."
+        },
+        {
+          "name": "publisher_status",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Selected publisher-reported status, independent of the outcome"
+        },
+        {
+          "name": "publisher_status_observations",
+          "type": "list<struct<source string,status string,meeting_date date32,record_sha string,observed_at timestamp>>",
+          "nullable": true,
+          "meaning": "All retained publisher status observations, including conflicting statuses and dates; record_sha identifies raw evidence"
+        },
+        {
+          "name": "outcome",
+          "type": "string",
+          "nullable": true,
+          "meaning": "held, canceled or unknown on this event date; older releases omit outcome evidence"
+        },
+        {
+          "name": "outcome_basis",
+          "type": "string",
+          "nullable": true,
+          "meaning": "printed_hearing, committee_transcript, curated_source_review, publisher_cancellation or no_outcome_evidence"
+        },
+        {
+          "name": "outcome_source_reference",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Print package ID, transcript list_row, or event ID with source observations/review"
+        },
+        {
+          "name": "outcome_reason",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Evidence supporting outcome, or why the date-specific outcome remains unknown"
         }
       ],
       "gaps": [],
@@ -880,7 +916,8 @@
         "document_references[].ordinal": "Zero-based occurrence within its source collection. Different references to the same URL keep their own values.",
         "document_references[].url": "Publisher link. Use the existing document address lookup to find saved copies.",
         "document_references[].role": "Publisher documentType. Null when omitted.",
-        "document_references[].format": "Publisher format, independent of the format of the saved body. Null when omitted."
+        "document_references[].format": "Publisher format, independent of the format of the saved body. Null when omitted.",
+        "publisher_status_observations[]": "Retained source statuses include their own meeting date and raw record identity; a changed date must not transfer a cancellation to another sitting."
       },
       "nullability": "Nullability transcribes data model \u00a78.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references."
     },
@@ -1410,6 +1447,24 @@
           "type": "list<struct<system_code dict,activity dict,date date32>>",
           "meaning": "Committee referral, markup, and report activities",
           "nullable": false
+        },
+        {
+          "name": "subjects",
+          "type": "list<string>",
+          "nullable": true,
+          "meaning": "Published Congress.gov legislative subject labels; null means unavailable and empty means no labels supplied"
+        },
+        {
+          "name": "source_updated_at",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal Congress.gov update_date; a publisher update, not an action date"
+        },
+        {
+          "name": "source_update_including_text",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal Congress.gov update_date_including_text"
         }
       ],
       "gaps": [
@@ -1431,7 +1486,8 @@
         "cbo_estimates[]": "Embedded publication IDs, dates and descriptions, not full CBO estimate text.",
         "floor_votes[]": "One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.",
         "amendments[]": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.",
-        "committee_activities[]": "Embedded committee events; several activities can refer to the same committee."
+        "committee_activities[]": "Embedded committee events; several activities can refer to the same committee.",
+        "subjects[]": "Published legislative subject labels, independent of policy_area; no title-keyword inference."
       },
       "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
@@ -1497,6 +1553,12 @@
           "type": "list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>",
           "meaning": "Senate roll-call votes on the nomination",
           "nullable": false
+        },
+        {
+          "name": "source_updated_at",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal Congress.gov update_date; a publisher update, not the latest action date"
         }
       ],
       "gaps": [
@@ -2056,6 +2118,443 @@
         "state": "confirmed_absent only from an undisputed curated negative verdict with event scope; package context alone does not establish absence and zero rows never prove absence. partial means excerpts only; claimed means only a video\u2019s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public."
       },
       "nullability": "The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known."
+    },
+    {
+      "name": "bill_actions.parquet",
+      "columns": [
+        {
+          "name": "bill_id",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Literal selected upstream bill_actions.bill_id"
+        },
+        {
+          "name": "action_index",
+          "type": "int64",
+          "nullable": false,
+          "meaning": "Literal selected upstream bill_actions.action_index"
+        },
+        {
+          "name": "action_date",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.action_date"
+        },
+        {
+          "name": "action_time",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.action_time"
+        },
+        {
+          "name": "action_text",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.action_text"
+        },
+        {
+          "name": "action_code",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.action_code"
+        },
+        {
+          "name": "action_type",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.action_type"
+        },
+        {
+          "name": "source_system_name",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.source_system_name"
+        },
+        {
+          "name": "recorded_vote_count",
+          "type": "int64",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.recorded_vote_count"
+        },
+        {
+          "name": "is_latest_action",
+          "type": "bool",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.is_latest_action"
+        },
+        {
+          "name": "stage",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream bill_actions.stage"
+        },
+        {
+          "name": "source_generation",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Exact selected SpicyRegs family generation digest"
+        },
+        {
+          "name": "source_reference",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Selected upstream Parquet path; identify a source row using this table primary key"
+        }
+      ],
+      "purpose": "Recorded bill actions and derived stages",
+      "row_meaning": "One retained upstream row; no filter to local bill profiles",
+      "identity": {
+        "kind": "primary_key",
+        "fields": [
+          "bill_id",
+          "action_index"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks"
+      },
+      "notes": {},
+      "nullability": "Only source primary keys and release provenance are required; missing source values stay null.",
+      "gaps": [
+        "All rows of the selected upstream generation; publisher collection completeness is not established.",
+        "Action dates and member vote dates preserve source spelling and precision; voice votes are actions, never individual ballots."
+      ]
+    },
+    {
+      "name": "roll_call_votes.parquet",
+      "columns": [
+        {
+          "name": "vote_id",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Literal selected upstream roll_call_votes.vote_id"
+        },
+        {
+          "name": "congress",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.congress"
+        },
+        {
+          "name": "chamber",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.chamber"
+        },
+        {
+          "name": "session",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.session"
+        },
+        {
+          "name": "roll_number",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.roll_number"
+        },
+        {
+          "name": "vote_date",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.vote_date"
+        },
+        {
+          "name": "question",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.question"
+        },
+        {
+          "name": "result",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.result"
+        },
+        {
+          "name": "yea",
+          "type": "int64",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.yea"
+        },
+        {
+          "name": "nay",
+          "type": "int64",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.nay"
+        },
+        {
+          "name": "present",
+          "type": "int64",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.present"
+        },
+        {
+          "name": "not_voting",
+          "type": "int64",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.not_voting"
+        },
+        {
+          "name": "tallies",
+          "type": "list<struct<choice string,count int64>>",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.tallies"
+        },
+        {
+          "name": "member_vote_count",
+          "type": "int64",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.member_vote_count"
+        },
+        {
+          "name": "bill_id",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.bill_id"
+        },
+        {
+          "name": "tally_kind",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.tally_kind"
+        },
+        {
+          "name": "documents",
+          "type": "list<struct<congress int64,name string,number string,short_title string,title string,type string>>",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.documents"
+        },
+        {
+          "name": "amendments",
+          "type": "list<struct<number string,purpose string,to_amendment_number string,to_amendment_to_amendment_number string,to_document_number string,to_document_short_title string>>",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.amendments"
+        },
+        {
+          "name": "vote_day",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.vote_day"
+        },
+        {
+          "name": "legis_num",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.legis_num"
+        },
+        {
+          "name": "clerk_body_element",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.clerk_body_element"
+        },
+        {
+          "name": "vote_desc",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.vote_desc"
+        },
+        {
+          "name": "vote_question_text",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.vote_question_text"
+        },
+        {
+          "name": "vote_title",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.vote_title"
+        },
+        {
+          "name": "majority_requirement",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.majority_requirement"
+        },
+        {
+          "name": "modify_date",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.modify_date"
+        },
+        {
+          "name": "tie_breaker_by_whom",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.tie_breaker_by_whom"
+        },
+        {
+          "name": "tie_breaker_vote",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.tie_breaker_vote"
+        },
+        {
+          "name": "party_totals",
+          "type": "list<struct<party string,yea-total int64,nay-total int64,present-total int64,not-voting-total int64>>",
+          "nullable": true,
+          "meaning": "Literal selected upstream roll_call_votes.party_totals"
+        },
+        {
+          "name": "source_generation",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Exact selected SpicyRegs family generation digest"
+        },
+        {
+          "name": "source_reference",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Selected upstream Parquet path; identify a source row using this table primary key"
+        },
+        {
+          "name": "bill_references",
+          "type": "list<struct<bill_id string,action_index int64,congress string,chamber string,session string,roll_number string,date string,full_action_name string,source_generation string,source_reference string>>",
+          "nullable": true,
+          "meaning": "All pinned bill-action references matching this roll call by congress/chamber/session/roll number; null means no matching source reference. Raw bill_id remains separate."
+        }
+      ],
+      "purpose": "Full roll calls, including votes outside local bill profiles",
+      "row_meaning": "One retained upstream row; no filter to local bill profiles",
+      "identity": {
+        "kind": "primary_key",
+        "fields": [
+          "vote_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks"
+      },
+      "notes": {
+        "tallies[]": "Literal nested upstream values; source order and missing fields are preserved.",
+        "documents[]": "Literal nested upstream values; source order and missing fields are preserved.",
+        "amendments[]": "Literal nested upstream values; source order and missing fields are preserved.",
+        "party_totals[]": "Literal nested upstream values; source order and missing fields are preserved.",
+        "bill_references[]": "Source associations retain their action_index, literal date and bill-family generation/path. The vote itself belongs to roll-call-votes. A referenced bill may be absent from local bill profiles."
+      },
+      "nullability": "Only source primary keys and release provenance are required; missing source values stay null.",
+      "gaps": [
+        "All rows of the selected upstream generation; publisher collection completeness is not established.",
+        "member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots."
+      ]
+    },
+    {
+      "name": "member_votes.parquet",
+      "columns": [
+        {
+          "name": "vote_id",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Literal selected upstream member_votes.vote_id"
+        },
+        {
+          "name": "congress",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.congress"
+        },
+        {
+          "name": "chamber",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.chamber"
+        },
+        {
+          "name": "session",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.session"
+        },
+        {
+          "name": "roll_number",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.roll_number"
+        },
+        {
+          "name": "member_key",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Literal selected upstream member_votes.member_key"
+        },
+        {
+          "name": "bioguide_id",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.bioguide_id"
+        },
+        {
+          "name": "lis_id",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.lis_id"
+        },
+        {
+          "name": "member_name",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.member_name"
+        },
+        {
+          "name": "party",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.party"
+        },
+        {
+          "name": "state",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.state"
+        },
+        {
+          "name": "position",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.position"
+        },
+        {
+          "name": "position_normalized",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.position_normalized"
+        },
+        {
+          "name": "vote_date",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal selected upstream member_votes.vote_date"
+        },
+        {
+          "name": "source_generation",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Exact selected SpicyRegs family generation digest"
+        },
+        {
+          "name": "source_reference",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Selected upstream Parquet path; identify a source row using this table primary key"
+        }
+      ],
+      "purpose": "Individual recorded member ballots",
+      "row_meaning": "One retained upstream row; no filter to local bill profiles",
+      "identity": {
+        "kind": "primary_key",
+        "fields": [
+          "vote_id",
+          "member_key"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks"
+      },
+      "notes": {},
+      "nullability": "Only source primary keys and release provenance are required; missing source values stay null.",
+      "gaps": [
+        "All rows of the selected upstream generation; publisher collection completeness is not established.",
+        "member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots."
+      ]
     }
   ],
   "relationships_version": 1,
@@ -3449,6 +3948,90 @@
       "resolution": "required",
       "match": "equal",
       "scope": "selected release"
+    },
+    {
+      "id": "bill_action_bill",
+      "source": {
+        "table": "bill_actions",
+        "fields": [
+          "bill_id"
+        ]
+      },
+      "target": {
+        "table": "bills",
+        "fields": [
+          "bill_id"
+        ]
+      },
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "meaning": "Exact published source key; missing profile rows remain unresolved.",
+      "scope": "All selected detail rows, including subjects outside local profiles"
+    },
+    {
+      "id": "roll_call_bill",
+      "source": {
+        "table": "roll_call_votes",
+        "fields": [
+          "bill_id"
+        ]
+      },
+      "target": {
+        "table": "bills",
+        "fields": [
+          "bill_id"
+        ]
+      },
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "meaning": "Exact published source key; missing profile rows remain unresolved.",
+      "scope": "All selected detail rows, including subjects outside local profiles"
+    },
+    {
+      "id": "ballot_roll_call",
+      "source": {
+        "table": "member_votes",
+        "fields": [
+          "vote_id"
+        ]
+      },
+      "target": {
+        "table": "roll_call_votes",
+        "fields": [
+          "vote_id"
+        ]
+      },
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "meaning": "Exact published source key; missing profile rows remain unresolved.",
+      "scope": "All selected detail rows, including subjects outside local profiles"
+    },
+    {
+      "id": "ballot_member",
+      "source": {
+        "table": "member_votes",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "target": {
+        "table": "members",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "meaning": "Exact published source key; missing profile rows remain unresolved.",
+      "scope": "All selected detail rows, including subjects outside local profiles"
     }
   ],
   "recipes": [
@@ -3847,6 +4430,126 @@
       "notes": [
         "unknown and not_stated are not absence."
       ]
+    },
+    {
+      "id": "research_recent_bills",
+      "title": "Recent bills",
+      "dialect": "duckdb",
+      "requires": [
+        "bills"
+      ],
+      "relationships": [],
+      "parameters": [
+        {
+          "name": "since_null",
+          "example": "2026-10-01"
+        },
+        {
+          "name": "since",
+          "example": "2026-10-01"
+        },
+        {
+          "name": "until_null",
+          "example": "2026-11-01"
+        },
+        {
+          "name": "until",
+          "example": "2026-11-01"
+        }
+      ],
+      "sql": "SELECT * FROM bills WHERE (? IS NULL OR introduced>=CAST(? AS DATE)) AND (? IS NULL OR introduced<CAST(? AS DATE))",
+      "result_row": "One published bills row",
+      "notes": [
+        "Used by run_research_query with additional exact association filters and release-bound paging.",
+        "since inclusive, until exclusive; null bounds are open. Missing values remain unknown."
+      ]
+    },
+    {
+      "id": "research_pending_nominations",
+      "title": "Pending nominations",
+      "dialect": "duckdb",
+      "requires": [
+        "nominations"
+      ],
+      "relationships": [],
+      "parameters": [
+        {
+          "name": "since_null",
+          "example": "2026-10-01"
+        },
+        {
+          "name": "since",
+          "example": "2026-10-01"
+        },
+        {
+          "name": "until_null",
+          "example": "2026-11-01"
+        },
+        {
+          "name": "until",
+          "example": "2026-11-01"
+        }
+      ],
+      "sql": "SELECT * FROM nominations WHERE (? IS NULL OR received>=CAST(? AS DATE)) AND (? IS NULL OR received<CAST(? AS DATE)) AND latest_action_text IS NOT NULL AND NOT regexp_matches(lower(latest_action_text),'^confirmed|withdrawal of nomination|withdrawn|^returned to the president|^rejected by the senate')",
+      "result_row": "One published nominations row",
+      "notes": [
+        "Used by run_research_query with additional exact association filters and release-bound paging.",
+        "since inclusive, until exclusive; null bounds are open. Missing values remain unknown."
+      ]
+    },
+    {
+      "id": "research_hearings_by_committee",
+      "title": "Hearings by committee",
+      "dialect": "duckdb",
+      "requires": [
+        "meetings"
+      ],
+      "relationships": [],
+      "parameters": [
+        {
+          "name": "since_null",
+          "example": "2026-10-01"
+        },
+        {
+          "name": "since",
+          "example": "2026-10-01"
+        },
+        {
+          "name": "until_null",
+          "example": "2026-11-01"
+        },
+        {
+          "name": "until",
+          "example": "2026-11-01"
+        }
+      ],
+      "sql": "SELECT * FROM meetings WHERE (? IS NULL OR meeting_date>=CAST(? AS DATE)) AND (? IS NULL OR meeting_date<CAST(? AS DATE)) AND (lower(coalesce(meeting_type,'')) LIKE '%hearing%' OR upper(meeting_type)='HHRG')",
+      "result_row": "One published meetings row",
+      "notes": [
+        "Used by run_research_query with additional exact association filters and release-bound paging.",
+        "since inclusive, until exclusive; null bounds are open. Missing values remain unknown."
+      ]
+    },
+    {
+      "id": "research_legislation_by_subject",
+      "title": "Legislation by subject",
+      "dialect": "duckdb",
+      "requires": [
+        "bills"
+      ],
+      "relationships": [],
+      "parameters": [
+        {
+          "name": "subject",
+          "example": "Public transit"
+        }
+      ],
+      "sql": "SELECT * FROM bills WHERE list_contains(subjects,?)",
+      "result_row": "One published bills row",
+      "notes": [
+        "Used by run_research_query with additional exact association filters and release-bound paging.",
+        "since inclusive, until exclusive; null bounds are open. Missing values remain unknown."
+      ]
     }
   ],
   "upstream_relations": [
@@ -3864,7 +4567,7 @@
         }
       ],
       "row_meaning": "One recorded action on a bill",
-      "limits": "bills carries only the latest action: a summary is not a history."
+      "limits": "This release publishes all selected upstream rows in bill_actions.parquet when that local table is available; generation metadata alone does not establish local availability."
     },
     {
       "id": "bill_cosponsors",
@@ -3893,7 +4596,7 @@
       "table": "member_votes",
       "key_columns": [
         "vote_id",
-        "bioguide_id"
+        "member_key"
       ],
       "joins": [
         {
@@ -3910,7 +4613,7 @@
         }
       ],
       "row_meaning": "One member ballot",
-      "limits": "Local floor_votes hold totals, not ballots."
+      "limits": "This release publishes all selected upstream rows in member_votes.parquet when that local table is available; generation metadata alone does not establish local availability."
     },
     {
       "id": "roll_call_votes",
@@ -3930,7 +4633,7 @@
         }
       ],
       "row_meaning": "One roll-call vote",
-      "limits": "Includes votes not tied to a local bill or nomination."
+      "limits": "This release publishes all selected upstream rows in roll_call_votes.parquet when that local table is available; generation metadata alone does not establish local availability."
     },
     {
       "id": "amendments",

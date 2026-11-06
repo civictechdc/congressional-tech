@@ -263,7 +263,7 @@ Identity: `event_id` (primary_key; published identifier).
 | `meeting_date` | `date32` | yes | Meeting date |
 | `meeting_type` | `dict` | yes | Publisher meeting category |
 | `session` | `int16` | yes | Congress session number |
-| `status` | `dict` | yes | Current meeting status |
+| `status` | `dict` | yes | Selected publisher-reported meeting status; this does not itself prove a sitting |
 | `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | no | Scheduled times and locations, as Congress.gov states them when it has a sitting |
 | `committees` | `list<struct<system_code dict,role dict>>` | no | Host committee codes and roles |
 | `subject_keys` | `list<dict>` | no | Bill, nomination and treaty subjects |
@@ -279,6 +279,12 @@ Identity: `event_id` (primary_key; published identifier).
 | `rescheduled_to` | `int64` | yes | Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording, transcript file or witnesses of its own and either the publisher states Rescheduled or only the later twin has a recording; a hearing never moves to a markup; derived |
 | `rescheduled_basis` | `dict` | yes | publisher_status or recording_on_later_twin |
 | `document_references` | `list<struct<collection string, ordinal int32, url string, role string, format string, description string, name string>>` | yes | Congress.gov document links in source collection order. Null means the metadata is unavailable or unstated. An empty list means a supplied collection contained no links. |
+| `publisher_status` | `string` | yes | Selected publisher-reported status, independent of the outcome |
+| `publisher_status_observations` | `list<struct<source string,status string,meeting_date date32,record_sha string,observed_at timestamp>>` | yes | All retained publisher status observations, including conflicting statuses and dates; record_sha identifies raw evidence |
+| `outcome` | `string` | yes | held, canceled or unknown on this event date; older releases omit outcome evidence |
+| `outcome_basis` | `string` | yes | printed_hearing, committee_transcript, curated_source_review, publisher_cancellation or no_outcome_evidence |
+| `outcome_source_reference` | `string` | yes | Print package ID, transcript list_row, or event ID with source observations/review |
+| `outcome_reason` | `string` | yes | Evidence supporting outcome, or why the date-specific outcome remains unknown |
 
 Nullability: Nullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references. A required column is refused at write time.
 
@@ -293,6 +299,7 @@ Nullability: Nullability transcribes data model §8.1 (meetings.parquet row); ac
 - `document_references[].url`: Publisher link. Use the existing document address lookup to find saved copies.
 - `document_references[].role`: Publisher documentType. Null when omitted.
 - `document_references[].format`: Publisher format, independent of the format of the saved body. Null when omitted.
+- `publisher_status_observations[]`: Retained source statuses include their own meeting date and raw record identity; a changed date must not transfer a cancellation to another sitting.
 
 Outgoing: `meeting_bills`, `meeting_nominations`, `meeting_committees`, `meeting_transcript_documents`, `meeting_recordings`, `meeting_transcript_packages`, `meeting_video_address`, `meeting_treaties`.
 
@@ -428,7 +435,7 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 
 Outgoing: `member_lis`, `member_opensecrets`, `member_govtrack`, `member_icpsr`, `member_wikidata`, `member_fec`.
 
-Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`, `committee_record_sponsor`.
+Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`, `committee_record_sponsor`, `ballot_member`.
 
 ## `rosters` — Committee and subcommittee seats across published Congresses
 
@@ -482,6 +489,9 @@ Coverage: Amendments cover the 119th Congress only until spicy-regs backfills.
 | `floor_votes` | `list<struct<vote_id string,basis dict,chamber dict,date date32,question string,result string,yea int16,nay int16>>` | no | Roll-call votes tied by vote record or bill action |
 | `amendments` | `list<struct<amendment_id string,purpose string,sponsor_bioguide_id dict,latest_action_date date32,latest_action_text string>>` | no | Direct and chained amendments to the bill |
 | `committee_activities` | `list<struct<system_code dict,activity dict,date date32>>` | no | Committee referral, markup, and report activities |
+| `subjects` | `list<string>` | yes | Published Congress.gov legislative subject labels; null means unavailable and empty means no labels supplied |
+| `source_updated_at` | `string` | yes | Literal Congress.gov update_date; a publisher update, not an action date |
+| `source_update_including_text` | `string` | yes | Literal Congress.gov update_date_including_text |
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
@@ -491,10 +501,11 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 - `floor_votes[]`: One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.
 - `amendments[]`: Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.
 - `committee_activities[]`: Embedded committee events; several activities can refer to the same committee.
+- `subjects[]`: Published legislative subject labels, independent of policy_area; no title-keyword inference.
 
 Outgoing: `bill_sponsor`, `amendment_sponsor`, `bill_activity_committee`, `bills_committees`, `bills_votes`, `bill_cbo_publications`, `bill_amendments`.
 
-Incoming: `document_bills`, `meeting_bills`.
+Incoming: `document_bills`, `meeting_bills`, `bill_action_bill`, `roll_call_bill`.
 
 ## `nominations` — Referenced nominations and embedded legislative facts
 
@@ -516,6 +527,7 @@ Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
 | `committee_activities` | `list<struct<system_code string, activities list<struct<name string, date string>>>>` | yes | Committee groups and activity names and dates as supplied, in source order. Null means unavailable or unstated. An empty list means the source supplied no entries. |
 | `transcripts` | `list<string>` | no | Printed hearing package IDs from nomination hearing references |
 | `floor_votes` | `list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>` | no | Senate roll-call votes on the nomination |
+| `source_updated_at` | `string` | yes | Literal Congress.gov update_date; a publisher update, not the latest action date |
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss. A required column is refused at write time.
 
@@ -711,6 +723,132 @@ Nullability: The documents are silent; entity-meeting-coverage.sql always sets b
 - `state`: confirmed_absent only from an undisputed curated negative verdict with event scope; package context alone does not establish absence and zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public.
 
 Outgoing: `coverage_meeting`.
+
+Incoming: none.
+
+## `bill_actions` — Recorded bill actions and derived stages
+
+One retained upstream row; no filter to local bill profiles.
+
+Identity: `bill_id, action_index` (primary_key; published identifier).
+
+Coverage: All rows of the selected upstream generation; publisher collection completeness is not established..
+
+Coverage: Action dates and member vote dates preserve source spelling and precision; voice votes are actions, never individual ballots..
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `bill_id` | `string` | no | Literal selected upstream bill_actions.bill_id |
+| `action_index` | `int64` | no | Literal selected upstream bill_actions.action_index |
+| `action_date` | `string` | yes | Literal selected upstream bill_actions.action_date |
+| `action_time` | `string` | yes | Literal selected upstream bill_actions.action_time |
+| `action_text` | `string` | yes | Literal selected upstream bill_actions.action_text |
+| `action_code` | `string` | yes | Literal selected upstream bill_actions.action_code |
+| `action_type` | `string` | yes | Literal selected upstream bill_actions.action_type |
+| `source_system_name` | `string` | yes | Literal selected upstream bill_actions.source_system_name |
+| `recorded_vote_count` | `int64` | yes | Literal selected upstream bill_actions.recorded_vote_count |
+| `is_latest_action` | `bool` | yes | Literal selected upstream bill_actions.is_latest_action |
+| `stage` | `string` | yes | Literal selected upstream bill_actions.stage |
+| `source_generation` | `string` | no | Exact selected SpicyRegs family generation digest |
+| `source_reference` | `string` | no | Selected upstream Parquet path; identify a source row using this table primary key |
+
+Nullability: Only source primary keys and release provenance are required; missing source values stay null. A required column is refused at write time.
+
+
+Outgoing: `bill_action_bill`.
+
+Incoming: none.
+
+## `roll_call_votes` — Full roll calls, including votes outside local bill profiles
+
+One retained upstream row; no filter to local bill profiles.
+
+Identity: `vote_id` (primary_key; published identifier).
+
+Coverage: All rows of the selected upstream generation; publisher collection completeness is not established..
+
+Coverage: member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots..
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `vote_id` | `string` | no | Literal selected upstream roll_call_votes.vote_id |
+| `congress` | `string` | yes | Literal selected upstream roll_call_votes.congress |
+| `chamber` | `string` | yes | Literal selected upstream roll_call_votes.chamber |
+| `session` | `string` | yes | Literal selected upstream roll_call_votes.session |
+| `roll_number` | `string` | yes | Literal selected upstream roll_call_votes.roll_number |
+| `vote_date` | `string` | yes | Literal selected upstream roll_call_votes.vote_date |
+| `question` | `string` | yes | Literal selected upstream roll_call_votes.question |
+| `result` | `string` | yes | Literal selected upstream roll_call_votes.result |
+| `yea` | `int64` | yes | Literal selected upstream roll_call_votes.yea |
+| `nay` | `int64` | yes | Literal selected upstream roll_call_votes.nay |
+| `present` | `int64` | yes | Literal selected upstream roll_call_votes.present |
+| `not_voting` | `int64` | yes | Literal selected upstream roll_call_votes.not_voting |
+| `tallies` | `list<struct<choice string,count int64>>` | yes | Literal selected upstream roll_call_votes.tallies |
+| `member_vote_count` | `int64` | yes | Literal selected upstream roll_call_votes.member_vote_count |
+| `bill_id` | `string` | yes | Literal selected upstream roll_call_votes.bill_id |
+| `tally_kind` | `string` | yes | Literal selected upstream roll_call_votes.tally_kind |
+| `documents` | `list<struct<congress int64,name string,number string,short_title string,title string,type string>>` | yes | Literal selected upstream roll_call_votes.documents |
+| `amendments` | `list<struct<number string,purpose string,to_amendment_number string,to_amendment_to_amendment_number string,to_document_number string,to_document_short_title string>>` | yes | Literal selected upstream roll_call_votes.amendments |
+| `vote_day` | `string` | yes | Literal selected upstream roll_call_votes.vote_day |
+| `legis_num` | `string` | yes | Literal selected upstream roll_call_votes.legis_num |
+| `clerk_body_element` | `string` | yes | Literal selected upstream roll_call_votes.clerk_body_element |
+| `vote_desc` | `string` | yes | Literal selected upstream roll_call_votes.vote_desc |
+| `vote_question_text` | `string` | yes | Literal selected upstream roll_call_votes.vote_question_text |
+| `vote_title` | `string` | yes | Literal selected upstream roll_call_votes.vote_title |
+| `majority_requirement` | `string` | yes | Literal selected upstream roll_call_votes.majority_requirement |
+| `modify_date` | `string` | yes | Literal selected upstream roll_call_votes.modify_date |
+| `tie_breaker_by_whom` | `string` | yes | Literal selected upstream roll_call_votes.tie_breaker_by_whom |
+| `tie_breaker_vote` | `string` | yes | Literal selected upstream roll_call_votes.tie_breaker_vote |
+| `party_totals` | `list<struct<party string,yea-total int64,nay-total int64,present-total int64,not-voting-total int64>>` | yes | Literal selected upstream roll_call_votes.party_totals |
+| `source_generation` | `string` | no | Exact selected SpicyRegs family generation digest |
+| `source_reference` | `string` | no | Selected upstream Parquet path; identify a source row using this table primary key |
+| `bill_references` | `list<struct<bill_id string,action_index int64,congress string,chamber string,session string,roll_number string,date string,full_action_name string,source_generation string,source_reference string>>` | yes | All pinned bill-action references matching this roll call by congress/chamber/session/roll number; null means no matching source reference. Raw bill_id remains separate. |
+
+Nullability: Only source primary keys and release provenance are required; missing source values stay null. A required column is refused at write time.
+
+- `tallies[]`: Literal nested upstream values; source order and missing fields are preserved.
+- `documents[]`: Literal nested upstream values; source order and missing fields are preserved.
+- `amendments[]`: Literal nested upstream values; source order and missing fields are preserved.
+- `party_totals[]`: Literal nested upstream values; source order and missing fields are preserved.
+- `bill_references[]`: Source associations retain their action_index, literal date and bill-family generation/path. The vote itself belongs to roll-call-votes. A referenced bill may be absent from local bill profiles.
+
+Outgoing: `roll_call_bill`.
+
+Incoming: `ballot_roll_call`.
+
+## `member_votes` — Individual recorded member ballots
+
+One retained upstream row; no filter to local bill profiles.
+
+Identity: `vote_id, member_key` (primary_key; published identifier).
+
+Coverage: All rows of the selected upstream generation; publisher collection completeness is not established..
+
+Coverage: member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots..
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `vote_id` | `string` | no | Literal selected upstream member_votes.vote_id |
+| `congress` | `string` | yes | Literal selected upstream member_votes.congress |
+| `chamber` | `string` | yes | Literal selected upstream member_votes.chamber |
+| `session` | `string` | yes | Literal selected upstream member_votes.session |
+| `roll_number` | `string` | yes | Literal selected upstream member_votes.roll_number |
+| `member_key` | `string` | no | Literal selected upstream member_votes.member_key |
+| `bioguide_id` | `string` | yes | Literal selected upstream member_votes.bioguide_id |
+| `lis_id` | `string` | yes | Literal selected upstream member_votes.lis_id |
+| `member_name` | `string` | yes | Literal selected upstream member_votes.member_name |
+| `party` | `string` | yes | Literal selected upstream member_votes.party |
+| `state` | `string` | yes | Literal selected upstream member_votes.state |
+| `position` | `string` | yes | Literal selected upstream member_votes.position |
+| `position_normalized` | `string` | yes | Literal selected upstream member_votes.position_normalized |
+| `vote_date` | `string` | yes | Literal selected upstream member_votes.vote_date |
+| `source_generation` | `string` | no | Exact selected SpicyRegs family generation digest |
+| `source_reference` | `string` | no | Selected upstream Parquet path; identify a source row using this table primary key |
+
+Nullability: Only source primary keys and release provenance are required; missing source values stay null. A required column is refused at write time.
+
+
+Outgoing: `ballot_roll_call`, `ballot_member`.
 
 Incoming: none.
 
@@ -1136,16 +1274,40 @@ many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. 
 
 many-to-one; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
 
+### `bill_action_bill`
+
+`bill_actions.bill_id` → `bills.bill_id`. Exact published source key; missing profile rows remain unresolved.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: All selected detail rows, including subjects outside local profiles.
+
+### `roll_call_bill`
+
+`roll_call_votes.bill_id` → `bills.bill_id`. Exact published source key; missing profile rows remain unresolved.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: All selected detail rows, including subjects outside local profiles.
+
+### `ballot_roll_call`
+
+`member_votes.vote_id` → `roll_call_votes.vote_id`. Exact published source key; missing profile rows remain unresolved.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: All selected detail rows, including subjects outside local profiles.
+
+### `ballot_member`
+
+`member_votes.bioguide_id` → `members.bioguide_id`. Exact published source key; missing profile rows remain unresolved.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: All selected detail rows, including subjects outside local profiles.
+
 ## Pinned upstream relations
 
 Held upstream and never mirrored here. A release names a relation’s generation and path only when it states that family’s digest.
 
 | Relation | Family and table | Keys | Local joins | Row | Limits |
 | --- | --- | --- | --- | --- | --- |
-| `bill_actions` | `bill-family/bill_actions` | `bill_id` | `bills.bill_id` | One recorded action on a bill | bills carries only the latest action: a summary is not a history. |
+| `bill_actions` | `bill-family/bill_actions` | `bill_id` | `bills.bill_id` | One recorded action on a bill | This release publishes all selected upstream rows in bill_actions.parquet when that local table is available; generation metadata alone does not establish local availability. |
 | `bill_cosponsors` | `bill-family/bill_cosponsors` | `bill_id, bioguide_id` | `bills.bill_id`, `members.bioguide_id` | One cosponsorship | bills does not carry cosponsors. |
-| `member_votes` | `roll-call-votes/member_votes` | `vote_id, bioguide_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id`, `members.bioguide_id` | One member ballot | Local floor_votes hold totals, not ballots. |
-| `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | Includes votes not tied to a local bill or nomination. |
+| `member_votes` | `roll-call-votes/member_votes` | `vote_id, member_key` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id`, `members.bioguide_id` | One member ballot | This release publishes all selected upstream rows in member_votes.parquet when that local table is available; generation metadata alone does not establish local availability. |
+| `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | This release publishes all selected upstream rows in roll_call_votes.parquet when that local table is available; generation metadata alone does not establish local availability. |
 | `amendments` | `amendments/amendments` | `amendment_id` | `bills.amendments[].amendment_id` | One floor amendment | Coverage is limited by upstream; committee_records holds different, committee-stage documents. |
 | `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | Coverage is limited by upstream; local nominations cover what that generation holds. |
 | `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Schema supports 113th–119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound. |
@@ -1444,3 +1606,67 @@ SELECT state,count(*) AS meetings FROM meeting_coverage WHERE aspect=? GROUP BY 
 ```
 
 unknown and not_stated are not absence.
+
+### `research_recent_bills` — Recent bills
+
+Requires: `bills`.
+
+Result: One published bills row.
+
+Parameters, in order: `since_null` (example `2026-10-01`), `since` (example `2026-10-01`), `until_null` (example `2026-11-01`), `until` (example `2026-11-01`).
+
+```sql
+SELECT * FROM bills WHERE (? IS NULL OR introduced>=CAST(? AS DATE)) AND (? IS NULL OR introduced<CAST(? AS DATE))
+```
+
+Used by run_research_query with additional exact association filters and release-bound paging.
+
+since inclusive, until exclusive; null bounds are open. Missing values remain unknown.
+
+### `research_pending_nominations` — Pending nominations
+
+Requires: `nominations`.
+
+Result: One published nominations row.
+
+Parameters, in order: `since_null` (example `2026-10-01`), `since` (example `2026-10-01`), `until_null` (example `2026-11-01`), `until` (example `2026-11-01`).
+
+```sql
+SELECT * FROM nominations WHERE (? IS NULL OR received>=CAST(? AS DATE)) AND (? IS NULL OR received<CAST(? AS DATE)) AND latest_action_text IS NOT NULL AND NOT regexp_matches(lower(latest_action_text),'^confirmed|withdrawal of nomination|withdrawn|^returned to the president|^rejected by the senate')
+```
+
+Used by run_research_query with additional exact association filters and release-bound paging.
+
+since inclusive, until exclusive; null bounds are open. Missing values remain unknown.
+
+### `research_hearings_by_committee` — Hearings by committee
+
+Requires: `meetings`.
+
+Result: One published meetings row.
+
+Parameters, in order: `since_null` (example `2026-10-01`), `since` (example `2026-10-01`), `until_null` (example `2026-11-01`), `until` (example `2026-11-01`).
+
+```sql
+SELECT * FROM meetings WHERE (? IS NULL OR meeting_date>=CAST(? AS DATE)) AND (? IS NULL OR meeting_date<CAST(? AS DATE)) AND (lower(coalesce(meeting_type,'')) LIKE '%hearing%' OR upper(meeting_type)='HHRG')
+```
+
+Used by run_research_query with additional exact association filters and release-bound paging.
+
+since inclusive, until exclusive; null bounds are open. Missing values remain unknown.
+
+### `research_legislation_by_subject` — Legislation by subject
+
+Requires: `bills`.
+
+Result: One published bills row.
+
+Parameters, in order: `subject` (example `Public transit`).
+
+```sql
+SELECT * FROM bills WHERE list_contains(subjects,?)
+```
+
+Used by run_research_query with additional exact association filters and release-bound paging.
+
+since inclusive, until exclusive; null bounds are open. Missing values remain unknown.

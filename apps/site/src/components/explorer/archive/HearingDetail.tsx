@@ -96,8 +96,10 @@ export function HearingDetail({
     congressLabel(meeting.congress),
     formatChamber(meeting.chamber),
     formatMeetingType(meeting.meeting_type),
-    meeting.status?`Status: ${meeting.status}`:null,
+    (meeting.publisher_status??meeting.status)?`Publisher status: ${meeting.publisher_status??meeting.status}`:null,
+    `Outcome: ${meeting.outcome??'evidence unavailable in this release'}`,
   ].filter(Boolean);
+  const publisherStatuses:any[]=meeting.publisher_status_observations??[];
   const relation=meeting.relation_states??{};
   const coverage=meeting.coverage??{};
   const witnessCount=witnesses.filter(w=>!['statement_for_record','member_statement'].includes(w.witness_type)).length;
@@ -113,6 +115,9 @@ export function HearingDetail({
           {onClose&&<button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel||'Close hearing details'}</button>}
         </div>
       </div>
+      {meeting.outcome_reason&&<p className="archive-entity-meta">{meeting.outcome_reason}</p>}
+      {meeting.outcome_basis&&<p className="archive-entity-meta">Outcome evidence: {meeting.outcome_basis.replaceAll('_',' ')}{meeting.outcome_source_reference?` · ${meeting.outcome_source_reference}`:''}</p>}
+      {publisherStatuses.length>0&&<details><summary>Publisher status observations ({publisherStatuses.length})</summary><ul>{publisherStatuses.map((obs:any,i:number)=><li key={i}>{obs.source}: {obs.status} · {day(obs.meeting_date)}{obs.record_sha?` · source ${obs.record_sha}`:''}</li>)}</ul></details>}
       <h2>{meeting.title||`Hearing ${eventId}`}</h2>
       <p className="archive-entity-meta">
         {meeting.meeting_date&&<span><strong>Date:</strong> {day(meeting.meeting_date)}</span>}

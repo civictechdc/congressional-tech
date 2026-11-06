@@ -488,3 +488,14 @@ test('Phase-2 entity browse tabs, navigation parser, and inspector document-filt
   assert(dedupRecoveryHtml.includes('First seen 2024-01-02'));
   assert(dedupRecoveryHtml.includes('(Report.pdf)'));
 });
+
+test('meeting outcomes stay separate from publisher notices and older evidence',()=>{
+  const renderMeeting=meeting=>renderToStaticMarkup(React.createElement(HearingDetail,{meeting:{event_id:1,title:'Dated hearing',meeting_date:'2025-02-01',status:'Scheduled',...meeting},onSelect:()=>{}}));
+  const scheduled=renderMeeting({outcome:'unknown',outcome_reason:'Only a schedule is available.'});
+  assert(scheduled.includes('Publisher status: Scheduled'));
+  assert(scheduled.includes('Outcome: unknown'));
+  const held=renderMeeting({status:'Canceled',publisher_status:'Canceled',outcome:'held',outcome_basis:'printed_hearing',outcome_source_reference:'CHRG-119hhrg1',publisher_status_observations:[{source:'congress_gov',status:'Canceled',meeting_date:'2025-02-01'},{source:'house_xml',status:'Scheduled',meeting_date:'2025-02-08'}]});
+  for(const value of ['Publisher status: Canceled','Outcome: held','CHRG-119hhrg1','congress_gov: Canceled','house_xml: Scheduled'])assert(held.includes(value),value);
+  assert(renderMeeting({outcome:'canceled'}).includes('Outcome: canceled'));
+  assert(renderMeeting({}).includes('Outcome: evidence unavailable in this release'));
+});

@@ -24,7 +24,7 @@ def spicy_file(directory,**tables):
     from congress_api.retention.provenance import file_pin
     from viewer_publication.archive_model import SPICY_SCHEMAS
     def arrow(kind):
-        if isinstance(kind,str):return dict(Utf8=pa.string(),Int32=pa.int32(),Boolean=pa.bool_())[kind]
+        if isinstance(kind,str):return dict(Utf8=pa.string(),Int32=pa.int32(),Int64=pa.int64(),Boolean=pa.bool_())[kind]
         if 'List' in kind:return pa.list_(arrow(kind['List']['data_type']))
         return pa.struct([(item['name'],arrow(item['data_type'])) for item in kind['Struct']])
     stated=spicy_input(**tables);pinned={}

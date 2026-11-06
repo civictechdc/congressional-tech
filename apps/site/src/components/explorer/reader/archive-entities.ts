@@ -126,7 +126,9 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       return { ...s, start, end, place };
     }).filter((s: any) => Boolean(s.start || s.place || s.datetime || s.date || s.start_time || s.status));
     return {
-      ...m, event_id: eventKey, congress: derivedCong, session: m.session != null ? Number(m.session) : null,
+      ...m, publisher_status: m.publisher_status ?? m.status ?? null, outcome: m.outcome ?? null,
+      outcome_evidence_available: Object.hasOwn(m, 'outcome'),
+      event_id: eventKey, congress: derivedCong, session: m.session != null ? Number(m.session) : null,
       meeting_key: eventKey, meeting_date: mDate, committees: committeeObjs, committee_keys: committeeKeys, subject_keys: subjectKeys,
       transcript_sources: transcriptSourceLabels(m.transcripts),
       sittings,

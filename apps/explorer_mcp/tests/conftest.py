@@ -52,7 +52,7 @@ def phase2(tmp_path_factory):
         rows[4].update(version_keys=[])
     replace_rows(root, 'list', link)
     def meeting(rows):
-        rows[0].update(committees=[dict(system_code='hsif00', role='host')], subject_keys=['119-hr-1', '119-pn-730-2'],
+        rows[0].update(meeting_type='HHRG', committees=[dict(system_code='hsif00', role='host')], subject_keys=['119-hr-1', '119-pn-730-2'],
             transcripts=[dict(package_id='CHRG-118hhrg1', list_row=0)],
             videos=[dict(name='Hearing video', url='https://video.example/1', video_key='youtube:abc')])
         m2 = deepcopy(rows[0])
@@ -93,6 +93,7 @@ def phase2(tmp_path_factory):
             UNION ALL SELECT 119::SMALLINT AS congress,'hsif00' AS system_code,'A000001' AS bioguide_id,
             'Member' AS title,3::SMALLINT AS rank,'I' AS party""")
         write('bills', """SELECT '119-hr-1' AS bill_id,'Transit Funding Act' AS title,'One Big Beautiful Bill Act' AS short_title,
+            ['Public transit','Transportation safety'] AS subjects,NULL::VARCHAR AS source_updated_at,NULL::VARCHAR AS source_update_including_text,
             'A000001' AS sponsor_bioguide_id,DATE '2025-01-03' AS introduced,DATE '2025-02-01' AS latest_action_date,
             'Reported' AS latest_action_text,'reported' AS stage,'Transportation' AS policy_area,
             '119-1' AS public_law_number,42::INTEGER AS cosponsor_count,
@@ -121,6 +122,22 @@ def phase2(tmp_path_factory):
         write('committee_records', """SELECT 'rec-1' AS record_key,118001::BIGINT AS event_id,'amendment' AS kind,'H.R. 1' AS bill,
             'Substitute amendment agreed by voice vote' AS source_description,0::INTEGER AS ordinal""")
         write('url_variants', """SELECT 'https://fixture.test/a' AS canonical_url,'http://fixture.test/a' AS variant_url""")
+        write('bill_actions', """SELECT '119-hr-1' AS bill_id,i::BIGINT AS action_index,'2025-02-01' AS action_date,
+            '14:30:00' AS action_time,'Agreed by voice vote' AS action_text,'H1' AS action_code,'Floor' AS action_type,
+            'House floor actions' AS source_system_name,0::BIGINT AS recorded_vote_count,false AS is_latest_action,
+            'passed_house' AS stage,repeat('3',64) AS source_generation,'generations/bill-family/source/bill_actions.parquet' AS source_reference
+            FROM range(0,3) t(i)""")
+        write('roll_call_votes', """SELECT vote_id,bill_id,'119' AS congress,'house' AS chamber,'1' AS session,
+            '1' AS roll_number,'2025-02-01' AS vote_day,'February 1, 2025 14:30' AS vote_date,
+            'On passage' AS question,'Passed' AS result,220::BIGINT AS yea,210::BIGINT AS nay,
+            CASE WHEN bill_id IS NULL THEN [struct_pack(bill_id:='119-hr-linked',action_index:=7::BIGINT)] END AS bill_references,
+            repeat('5',64) AS source_generation,'generations/roll-call-votes/source/roll_call_votes.parquet' AS source_reference
+            FROM (VALUES ('119-h-1','119-hr-1'),('119-h-outside',NULL)) v(vote_id,bill_id)""")
+        write('member_votes', """SELECT '119-h-1' AS vote_id,'119' AS congress,'house' AS chamber,'1' AS session,'1' AS roll_number,
+            member_key,bioguide_id,'Example' AS member_name,'Yea' AS position,'yea' AS position_normalized,
+            'February 1, 2025 14:30' AS vote_date,repeat('5',64) AS source_generation,
+            'generations/roll-call-votes/source/member_votes.parquet' AS source_reference
+            FROM (VALUES ('bioguide:A000001','A000001'),('lis:S001',NULL)) v(member_key,bioguide_id)""")
         write('future_data', "SELECT 'new published column' AS future_field,42.123456789012345678::DECIMAL(38,18) AS amount")
     # Read only the producer-owned JSON. The MCP runtime has no producer dependency.
     (root / 'schema.json').write_bytes((REPO / 'model/registries/release-schema.json').read_bytes())
