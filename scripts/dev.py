@@ -501,6 +501,12 @@ def clean_proof_work(work, *, dry_run):
             shutil.rmtree(target)
 
 
+def clean_nightly_spill(*, dry_run):
+    import runpy
+    nightly = runpy.run_path(str(ROOT / 'scripts/nightly_publish.py'))
+    print(json.dumps(nightly['clean_native_spill'](nightly['main_checkout'](ROOT), execute=not dry_run), indent=2))
+
+
 def clean(*, dry_run=True):
     """Scan and reclaim stale build directories, egg-info, and bytecode caches."""
     targets = []
@@ -585,6 +591,8 @@ def main(argv=None):
     clean_p.add_argument('--dry-run', action='store_true', default=True, help='Simulate cleanup without deleting (default)')
     clean_p.add_argument('--proof-work', type=Path,
                          help='Inspect only disposable attestation scratch in this compatibility proof work directory')
+    clean_p.add_argument('--nightly-spill', action='store_true',
+                         help='Inspect only declared native spill in the locked nightly candidate')
     tests = sub.add_parser('test')
     tests.add_argument('lane', choices=config['lanes'], nargs='?', default='production-offline')
     tests.add_argument('--path', action='append', default=[], help='Restrict to a path or node within this lane (repeatable)')
@@ -613,7 +621,11 @@ def main(argv=None):
             inventory(config)
         elif args.command == 'clean':
             is_dry_run = not getattr(args, 'execute', False)
-            if args.proof_work is None:
+            if args.proof_work is not None and args.nightly_spill:
+                raise ValueError('Choose one scoped cleanup target')
+            if args.nightly_spill:
+                clean_nightly_spill(dry_run=is_dry_run)
+            elif args.proof_work is None:
                 clean(dry_run=is_dry_run)
             else:
                 clean_proof_work(args.proof_work, dry_run=is_dry_run)

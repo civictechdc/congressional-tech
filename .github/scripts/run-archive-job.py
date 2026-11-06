@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -58,7 +59,10 @@ def main():
     parser.add_argument('--github-output', type=Path, help='Export owner-planned publisher work during binding admission')
     parser.add_argument('--nightly-work', type=Path, help='Retain the scheduled Mac candidate here')
     parser.add_argument('--nightly-lock-fd', type=int, help=argparse.SUPPRESS)
+    parser.add_argument('--check-disk', action='store_true', help='Report disk admission without launching the owner')
     args = parser.parse_args()
+    if args.check_disk and args.check_binding:
+        parser.error('--check-disk and --check-binding are separate checks')
     if args.nightly_work is not None and (args.operation != 'publish' or args.check_binding):
         parser.error('--nightly-work requires a publish execution')
     if args.github_output is not None and (not args.check_binding or args.operation != 'publish'):
@@ -82,6 +86,17 @@ def main():
     if args.nightly_work is not None:
         command.extend(['--nightly-work', str(args.nightly_work.resolve())])
     temp = os.environ.get('RUNNER_TEMP') or tempfile.gettempdir()
+    disk = runpy.run_path(str(ROOT / 'scripts/archive_disk.py'))
+    admission = disk['job_admission'](ROOT, args.operation, spec, temp=temp, nightly_work=args.nightly_work)
+    print(json.dumps(dict(disk_admission=admission), sort_keys=True), flush=True)
+    if not args.check_disk:
+        report = Path(temp) / f'{args.operation}-disk-admission.json'
+        report.parent.mkdir(parents=True, exist_ok=True)
+        report.write_text(json.dumps(admission, indent=2) + '\n')
+    if admission['status'] != 'admitted':
+        return 2
+    if args.check_disk:
+        return 0
     pass_fds = () if args.nightly_lock_fd is None else (args.nightly_lock_fd,)
     watched = watched_command(command, binding, args.operation, temp, lock_fd=args.nightly_lock_fd)
     return subprocess.run(watched, cwd=ROOT, pass_fds=pass_fds).returncode
