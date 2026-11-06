@@ -136,6 +136,57 @@ The historical `--old-lock` attestation reconstructs a byte-derived version.
 Run it from the pre-declaration source revision that owns that proof. The
 committed compatibility entries retain their evidence and selection behavior.
 
+## Scoped daily HTML metadata
+
+The checked-in nightly job keeps HTML metadata derivation disabled. Enabling
+`derived_parsers: ["html_metadata"]` also requires an explicit
+`derived_scopes.html_metadata` object with four fields:
+
+- `captures`: the exact immutable native captures pin of a qualified baseline.
+- `versions`: all reading pins from `compatible_versions.current_pins()` at
+  qualification, including the derived and combined versions.
+- `max_stored_bytes`: a positive limit for the pending derived work's stored
+  body bytes, separate from the existing `max_work_items` count limit.
+- `batch_size`: the positive number of derived items per maintained parser batch.
+
+Before selecting a baseline, prove every applicable HTML pair in that captures
+snapshot has a selected reading or an active qualified unreadable decision.
+Keep that proof and its captures, readings and decision bindings with the job's
+qualification evidence. An empty captures snapshot is a valid starting point
+for a new catalog. A baseline excludes its bodies; it is not an assertion that
+older unfinished work has been completed. Use the explicit scoped producer to
+settle that work before adopting the baseline.
+
+Each opted-in daily attempt considers body hashes admitted after the same
+baseline, plus current captured bodies named by superseded HTML metadata
+refusals. The maintained selection reopens a superseded pair only when no
+selected reading or replacement active refusal settles it. Completed and
+replacement-active pairs stay settled. It scopes captures and readings before the maintained
+missing-pair selection. Native reading rows and unreadable decisions settle the
+pairs already attempted; missing reads remain eligible even after their receipts
+were committed. A fresh attempt therefore recovers interrupted work without a
+second local journal, and an unchanged rerun does not reopen settled bodies.
+Changing any reading version requires a newly qualified baseline.
+
+The count gate runs before raw custody lookups. The stored-byte gate runs after
+any required exact-key custody HEADs and before derived body reads. Unknown
+stored sizes and either exceeded budget return `derived_budget_required`; this
+does not invoke the scheduler's generic archive backfill. Resolve the scoped
+work or qualify a suitable budget before retrying. Leaf classification retains
+its own existing admission and can precede this derived gate.
+
+Qualification must measure the current-versus-baseline narrow SHA scan, parser
+work, bytes, elapsed time, memory and scratch space on the intended daily scope
+before changing scheduled configuration. The baseline can be advanced only after
+its complete eligible scope is settled. This opt-in does not enable a
+whole-archive HTML pass or alter extraction versions.
+
+The general and selective backfill entrypoints reject derived opt-ins during
+load, plan and execution, before runtime or storage work. A private rebuilt
+captures table cannot inherit the identity and qualification of a daily
+baseline. Use the explicit scoped HTML producer, or the qualified daily scope,
+for derived work. Backfill without a derived opt-in retains its existing behavior.
+
 ## Lock migration and preserved research
 
 The root lock replaces `packages/congress_api/uv.lock` and

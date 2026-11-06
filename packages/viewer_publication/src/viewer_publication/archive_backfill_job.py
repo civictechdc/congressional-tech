@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES,DAILY_CAPTURE_RECORDS
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers','derived_scopes'}
 FILENAME_PRIOR_VERSION = '6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1'
 FILENAME_ACT_CITATION_VERSION = 'c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09'
 
@@ -46,10 +46,18 @@ def _tables(value):
     return refs
 
 
+def require_no_derived(spec):
+    """A private backfill catalog cannot inherit a qualified daily captures baseline."""
+    from congress_api.lake.daily import derived_parsers
+    if derived_parsers(spec) or spec.get('derived_scopes',{})!={}:
+        raise ValueError('Backfill derived passes are unsupported; use the qualified scoped HTML producer or daily scope')
+
+
 def load_spec(path):
     """Validate the committed backfill job specification without opening runtime or storage."""
     path=Path(path).resolve();value=json.loads(path.read_text(encoding='utf-8'))
     if not isinstance(value,dict):raise ValueError('Backfill job spec must be an object')
+    require_no_derived(value)
     if value.get('status')=='blocked':
         if set(value)!={'status','reason'} or not isinstance(value.get('reason'),str) or not value['reason'].strip():
             raise ValueError('Blocked backfill job requires exactly its reason')
@@ -153,6 +161,7 @@ def _dumps(value):
 
 
 def plan(spec):
+    require_no_derived(spec)
     if spec.get('status')=='blocked':return dict(spec)
     if 'record_only' in spec:
         return dict(status='planned',executed=False,work=spec['work'],**spec['record_only'])
@@ -300,6 +309,7 @@ def _filename_transition(spec, runtime_factory):
 
 def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
     """Run bounded lake backfill batches against the configured remote runtime and raw store."""
+    require_no_derived(spec)
     if spec.get('status')=='blocked':return dict(spec)
     if 'record_only' in spec:
         from viewer_publication.archive_record_backfill import execute_record_only
@@ -351,7 +361,6 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
             provenance=provenance,
             # A pinned inventory only if the spec names one; otherwise bodies come from raw_store.
             **{k:spec[k] for k in ('body_inventory','local_root') if spec.get(k) is not None},
-            **({'derived_parsers':spec['derived_parsers']} if spec.get('derived_parsers') else {}),
         )
         records=None
         if 'producers' in spec:

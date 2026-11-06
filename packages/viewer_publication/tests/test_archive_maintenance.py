@@ -345,6 +345,27 @@ def test_a_daily_backfill_of_the_r2_lake_refuses_without_producer_anchors(tmp_pa
     assert 'producers' not in archive_backfill_job.load_spec(spec)
 
 
+@pytest.mark.parametrize('entry',['load','plan','execute','selective','daily'])
+@pytest.mark.parametrize('with_scope',[False,True])
+def test_backfill_derived_opt_in_refuses_at_entry_before_effects(tmp_path,entry,with_scope):
+    from congress_api.lake.compatible_versions import current_pins
+    from viewer_publication import archive_backfill_job,archive_selective
+    value=dict(derived_parsers=['html_metadata'],work=str(tmp_path/'must-not-exist'))
+    if with_scope:
+        value['derived_scopes']={'html_metadata':dict(captures=dict(metadata_location='/qualified.metadata.json',
+            table_uuid='a'*32,snapshot=7,schema_id=0),versions=current_pins(),max_stored_bytes=1024,batch_size=1)}
+    def forbidden(*args,**kwargs):raise AssertionError('Runtime/storage/producer opened before derived mode refusal')
+    with pytest.raises(ValueError,match='Backfill derived passes are unsupported'):
+        if entry=='load':
+            path=tmp_path/'unsupported.json';path.write_text(json.dumps(value))
+            archive_backfill_job.load_spec(path)
+        elif entry=='plan':archive_backfill_job.plan(value)
+        elif entry=='execute':archive_backfill_job.execute(value,runtime_factory=forbidden,storage_factory=forbidden,producer=forbidden)
+        elif entry=='selective':archive_selective.execute_selective(value,runtime_factory=forbidden)
+        else:archive_selective._daily(SimpleNamespace(spec=value,state={},raw_store=forbidden))
+    assert not (tmp_path/'must-not-exist').exists()
+
+
 def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill_reads_through_raw_store(tmp_path):
     from pathlib import Path
     from viewer_publication import archive_backfill_job,archive_maintenance

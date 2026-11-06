@@ -266,3 +266,129 @@ def test_scoped_html_metadata_uses_pinned_r2_listing_for_older_captures(tmp_path
     [batch] = produced['readings']['batches']
     [row] = pq.read_table(batch['readings']).to_pylist()
     assert (row['parser'], row['status'], row['body_sha']) == ('html_metadata', 'completed', sha256(data).digest())
+
+
+def test_daily_html_delta_recovers_after_receipt_commit_and_respects_both_budgets(tmp_path,clean_tree,monkeypatch):
+    payloads=[f'<html><head><title>Daily page {n}</title></head><body>Evidence {n}</body></html>'.encode()
+        for n in range(5)]
+    value,engine,store=native_fixture(tmp_path,5,payloads=payloads,url_suffix='.html')
+    records=ProducerRecords(root=tmp_path/'ledger')
+    first=daily.produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1]),
+        engine=engine,raw_store=store,producer_records=records)
+    old=sha256(payloads[0]).hexdigest()
+    scope_file=tmp_path/'qualified-old-html.parquet'
+    pq.write_table(pa.table({'body_sha':[old]}),scope_file)
+    authority=dict(engine=engine,catalog_root=value['catalog_root'])
+    table_specs={name:value['tables'][name] for name in ('captures','readings')}
+    scoped=daily.produce_html_metadata(**authority,raw_store=store,producer_records=records,
+        tables_spec=table_specs,expected_heads={name:first['pins'][name] for name in table_specs},
+        scope=dict(path=str(scope_file),**file_pin(scope_file)),
+        unreadable_snapshot=unreadable_inventory(store,work=tmp_path/'old-unreadable'),
+        batch_size=1,decided_at=value['decided_at'],work=tmp_path/'old-html')
+    assert scoped['status']=='completed' and scoped['readings']['work_items']==1
+    # Commit every new receipt and leaf reading first. Receipt discovery must not be
+    # the source of truth for the later derived retry.
+    leaves=daily.produce_daily(dict(value,work=str(tmp_path/'new-leaves')),
+        engine=engine,raw_store=store,producer_records=records)
+    assert leaves['status']=='completed'
+    new=sorted(sha256(data).hexdigest() for data in payloads[1:])
+    decision=tmp_path/'settled-html-refusal.jsonl'
+    decision.write_text(json.dumps(dict(id='d'*64,body_sha256=new[-1],parser='html_metadata',
+        parser_version=readings.current_version('html_metadata'),reason='timeout',decided_by='readings',
+        decided_at=value['decided_at'],supersedes=None))+'\n')
+    imported=import_unreadable(store,decision,decided_at=value['decided_at'])
+    policy=dict(captures=first['pins']['captures'],versions=compatible_versions.current_pins(),
+        max_stored_bytes=1<<20,batch_size=1)
+    enabled=dict(value,derived_parsers=['html_metadata'],derived_scopes={'html_metadata':policy})
+    def invoke(name,**changes):
+        return daily.produce_daily(dict(enabled,work=str(tmp_path/name),**changes),
+            engine=engine,raw_store=store,producer_records=records)
+    def forbidden(*args,**kwargs):raise AssertionError('Body opened before derived budget admission')
+    with monkeypatch.context() as patch:
+        patch.setattr(readings,'_execute_plan',forbidden)
+        count_refusal=invoke('count-refusal',max_work_items=1)
+        byte_refusal=invoke('byte-refusal',derived_scopes={'html_metadata':dict(policy,max_stored_bytes=1)})
+    assert count_refusal['status']==byte_refusal['status']=='derived_budget_required'
+    assert count_refusal['producerreports']['html_metadata']['work_items']==3
+    assert byte_refusal['producerreports']['html_metadata']['budget']['stored_bytes']>1
+    after_refusals=tables.resolve_tables(**authority,work=tmp_path/'after-budget-heads',tables=value['tables'])
+    assert after_refusals==leaves['pins']
+    bodies={row['body_sha'].hex():row for row in pq.read_table(value['body_inventory']).to_pylist()}
+    missing_path=store.adapter.root/bodies[new[-2]]['relative_path']
+    retained=missing_path.read_bytes();missing_path.unlink()
+    real_append=readings.append
+    def stop_after_first(staged,**kwargs):
+        assert staged['parser']=='html_metadata'
+        real_append(staged,**kwargs)
+        raise KeyboardInterrupt('interrupt after a derived native append')
+    with monkeypatch.context() as patch:
+        patch.setattr(readings,'append',stop_after_first)
+        with pytest.raises(KeyboardInterrupt,match='derived native append'):
+            invoke('interrupted')
+    stopped=tables.resolve_tables(**authority,work=tmp_path/'stopped-daily-heads',tables=value['tables'])
+    assert stopped['captures']==leaves['pins']['captures']
+    assert stopped['readings']!=leaves['pins']['readings']
+    assert records.find('readings',stopped['readings']) is not None
+    partial=invoke('resumed-with-missing-body')
+    assert partial['status']=='pending' and partial['new_receipt_keys']==[]
+    derived=partial['producerreports']['html_metadata']
+    assert derived['work_items']==2 and derived['pending_reads']==1
+    assert derived['scope']['bodies_since_baseline']==4
+    missing_path.write_bytes(retained)
+    complete=invoke('resumed-complete')
+    assert complete['status']=='completed' and complete['new_receipt_keys']==[]
+    assert complete['producerreports']['html_metadata']['work_items']==1
+    assert any(row['key']==imported['key'] for row in complete['provenance']['unreadable'])
+    unchanged=invoke('unchanged')
+    assert unchanged['status']=='completed' and unchanged['producerreports']['html_metadata']['work_items']==0
+    assert unchanged['producerreports']['html_metadata']['read_bytes']==0 and unchanged['producers']=={}
+    result=run_job(tmp_path/'daily-html-rows',engine,
+        inputs=[tables.table_input('readings',unchanged['pins']['readings'])],steps=[],outputs=[],queries=[
+        dict(name='rows',sql="SELECT encode(body_sha,'hex') AS sha,status FROM readings WHERE parser='html_metadata' ORDER BY sha"),
+        dict(name='duplicates',sql='SELECT count(*) AS n FROM (SELECT body_sha,parser,parser_version FROM readings GROUP BY body_sha,parser,parser_version HAVING count(*)>1)')])
+    assert result==dict(rows=[dict(sha=key,status='completed') for key in sorted([old,*new[:-1]])],duplicates=[dict(n=0)])
+
+
+def test_daily_html_reconsiders_superseded_baseline_refusals(tmp_path,clean_tree):
+    payloads=[f'<html><head><title>Baseline refusal {n}</title></head><body>Body {n}</body></html>'.encode()
+        for n in range(2)]
+    value,engine,store=native_fixture(tmp_path,2,payloads=payloads,url_suffix='.html')
+    records=ProducerRecords(root=tmp_path/'ledger')
+    base=daily.produce_daily(value,engine=engine,raw_store=store,producer_records=records)
+    keys=[sha256(data).hexdigest() for data in payloads]
+    version=readings.current_version('html_metadata')
+    def save(name,rows):
+        path=tmp_path/(name+'.jsonl')
+        path.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        return import_unreadable(store,path,decided_at=value['decided_at'])
+    def decision(identifier,body,parser='html_metadata',supersedes=None):
+        return dict(id=identifier*64,body_sha256=body,parser=parser,
+            parser_version=readings.current_version(parser),reason='timeout',decided_by='readings',
+            decided_at=value['decided_at'],supersedes=supersedes)
+    original=save('baseline-refusals',[decision('a',keys[0]),decision('b',keys[1])])
+    policy=dict(captures=base['pins']['captures'],versions=compatible_versions.current_pins(),
+        max_stored_bytes=1<<20,batch_size=1)
+    enabled=dict(value,derived_parsers=['html_metadata'],derived_scopes={'html_metadata':policy})
+    def invoke(name):
+        return daily.produce_daily(dict(enabled,work=str(tmp_path/name)),
+            engine=engine,raw_store=store,producer_records=records)
+    settled=invoke('baseline-settled')
+    assert settled['status']=='completed' and settled['producerreports']['html_metadata']['work_items']==0
+    # A correction supersedes the metadata refusal without replacing it with a
+    # current metadata refusal. The maintained selection must reopen that pair.
+    correction=save('corrections',[decision('c',keys[0],parser='html',supersedes='a'*64),
+        decision('d',keys[1],supersedes='b'*64)])
+    reopened=invoke('baseline-reopened')
+    assert reopened['status']=='completed' and reopened['new_receipt_keys']==[]
+    derived=reopened['producerreports']['html_metadata']
+    assert derived['work_items']==1 and derived['read_bytes']>0
+    assert derived['scope']['bodies_since_baseline']==0
+    assert derived['scope']['reconsidered_baseline_bodies']==2
+    assert {row['key'] for row in reopened['provenance']['unreadable']}=={original['key'],correction['key']}
+    unchanged=invoke('completed-and-replacement-active')
+    assert unchanged['status']=='completed' and unchanged['producerreports']['html_metadata']['work_items']==0
+    assert unchanged['producerreports']['html_metadata']['read_bytes']==0 and unchanged['producers']=={}
+    rows=run_job(tmp_path/'reopened-reading',engine,
+        inputs=[tables.table_input('readings',unchanged['pins']['readings'])],steps=[],outputs=[],queries=[
+        dict(name='rows',sql="SELECT encode(body_sha,'hex') AS sha,parser_version,status FROM readings WHERE parser='html_metadata'")])['rows']
+    assert rows==[dict(sha=keys[0],parser_version=version,status='completed')]

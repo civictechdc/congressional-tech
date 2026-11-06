@@ -18,7 +18,7 @@ from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStor
 from congress_api.retention.writer_identity import writer_identity
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
-from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory,parquet_output,run_job
+from congress_api.retention.provenance import field,file_pin,instant,json_input,local_unreadable_inventory,parquet_output,run_job
 from congress_api.retention.provenance_inventory import UnreadableInventory,unreadable_inventory
 from congress_shared.custody import custody_identity,VerifiedFile
 
@@ -64,11 +64,12 @@ def _qualify_path(path):
 def _validate(spec,engine,raw_store):
     required={'work','decided_at','catalog_root','tables','receipt_inventory','max_work_items','provenance'}
     # Without a pinned body inventory, bodies are read from the raw store itself (_body_source).
-    optional={'validated_counter','source_qualifications','vocabularies','body_inventory','local_root','receipt_families','derived_parsers'}
+    optional={'validated_counter','source_qualifications','vocabularies','body_inventory','local_root','receipt_families','derived_parsers','derived_scopes'}
     if not isinstance(spec,dict) or not required<=spec.keys() or spec.keys()-(required|optional):
         raise ValueError('Daily producer requires explicit receipt, body, table and provenance inputs')
     readings._positive(spec['max_work_items'],'max_work_items')
     derived_parsers(spec)
+    derived_scopes(spec)
     instant(spec['decided_at'])
     if any(not isinstance(spec[k],(str,Path)) or not str(spec[k])
            for k in ('work','body_inventory','local_root') if k=='work' or spec.get(k) is not None):
@@ -210,6 +211,31 @@ def derived_parsers(spec):
             or len(set(value))!=len(value)):
         raise ValueError('derived_parsers must list distinct derived readings parsers: '+', '.join(readings.READ_AS))
     return value
+
+
+def derived_scopes(spec):
+    """An explicit qualified baseline and byte budget for each requested derived pass.
+
+    The baseline captures head must already have every applicable derived pair settled.
+    Current native readings and unreadable decisions, rather than a local work journal,
+    retain unfinished pairs admitted after it. A version move needs a newly qualified
+    baseline; it must not silently turn a daily pass into a historical replay.
+    """
+    from congress_api.lake.compatible_versions import current_pins
+    requested=derived_parsers(spec)
+    scopes=spec.get('derived_scopes',{})
+    if not isinstance(scopes,dict) or set(scopes)!=set(requested):
+        raise ValueError('Derived daily parsers require matching explicit derived_scopes')
+    for name,scope in scopes.items():
+        if (not isinstance(scope,dict) or set(scope)!={'captures','versions','max_stored_bytes','batch_size'}
+                or not isinstance(scope['captures'],dict)):
+            raise ValueError('Derived scopes require a qualified captures baseline, versions and budgets')
+        tables.table_input('derived_baseline',scope['captures'])
+        if scope['versions']!=current_pins():
+            raise ValueError('Derived scope reading versions changed; qualify a new baseline')
+        readings._positive(scope['max_stored_bytes'],'max_stored_bytes')
+        readings._positive(scope['batch_size'],'batch_size')
+    return scopes
 
 
 def _check_entity_versions(table_name,actual,mod):
@@ -429,10 +455,10 @@ def _copy_html_input(pin, target):
     return target
 
 
-def _scope_html_inputs(scope, heads, *, engine, work):
+def _scope_html_inputs(scope, heads, *, engine, work, allow_empty=False):
     keys = pq.read_table(scope, columns=['body_sha']).column('body_sha')
-    if (not pa.types.is_string(keys.type) or not len(keys) or keys.null_count
-            or not pc.all(pc.match_substring_regex(keys, '^[0-9a-f]{64}$')).as_py()
+    if (not pa.types.is_string(keys.type) or (not len(keys) and not allow_empty) or keys.null_count
+            or (len(keys) and not pc.all(pc.match_substring_regex(keys, '^[0-9a-f]{64}$')).as_py())
             or pc.count_distinct(keys).as_py() != len(keys)):
         raise ValueError('HTML metadata scope requires distinct lowercase hexadecimal body_sha values')
     inputs = [tables.table_input('scope_keys', scope),
@@ -455,6 +481,90 @@ def _scope_html_inputs(scope, heads, *, engine, work):
     if checks['coverage'][0]['bodies'] != len(keys):
         raise ValueError('HTML metadata scope contains bodies missing from the pinned captures')
     return len(keys)
+
+
+def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work):
+    """Read only missing pairs for bodies admitted after a qualified immutable baseline.
+
+    A fresh attempt uses the same baseline, so committed receipts cannot hide an
+    interrupted derived pass. The maintained scoped producer selection settles accepted
+    older readings and active unreadable decisions before either budget is evaluated.
+    """
+    scope=derived_scopes(spec)['html_metadata']
+    baseline=scope['captures']
+    if baseline['table_uuid']!=heads['captures']['table_uuid']:
+        raise ValueError('Derived baseline must name the current captures table')
+    work=Path(work)
+    scope_work=work/'delta'
+    scope_work.mkdir(parents=True,exist_ok=False)
+    inputs=[tables.table_input('captures',heads['captures']),tables.table_input('baseline',baseline)]
+    schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',supersedes='Utf8')
+    files=unreadable_snapshot.files()
+    inputs.append(dict(name='unreadable',kind='json_lines',files=files,
+        schema=dict(fields=[field(k,v) for k,v in schema.items()],metadata={})) if files
+        else json_input(scope_work,'unreadable',[],**schema))
+    observed=run_job(scope_work,engine,inputs=inputs,steps=[
+        dict(name='reconsidered_shas',materialize=True,sql='''
+            SELECT decode(u.body_sha256,'hex') AS body_sha FROM unreadable u
+            WHERE u.parser='html_metadata' AND u.body_sha256 IS NOT NULL
+                AND EXISTS (SELECT 1 FROM unreadable newer WHERE newer.supersedes=u.id)'''),
+        dict(name='candidate_shas',materialize=True,
+        sql='''SELECT DISTINCT c.sha256 AS body_sha FROM captures c
+            WHERE c.sha256 IS NOT NULL AND NOT EXISTS
+                (SELECT 1 FROM baseline b WHERE b.sha256=c.sha256)
+            UNION SELECT c.sha256 AS body_sha FROM reconsidered_shas r JOIN captures c
+                ON r.body_sha=c.sha256''')],outputs=[
+        parquet_output(scope_work,'body-scope',
+            "SELECT lower(encode(body_sha,'hex')) AS body_sha FROM candidate_shas",['body_sha'])],queries=[
+        dict(name='reconsidered_baseline',sql='''SELECT count(DISTINCT r.body_sha) AS n
+            FROM reconsidered_shas r JOIN captures c ON r.body_sha=c.sha256
+            WHERE EXISTS (SELECT 1 FROM baseline b WHERE b.sha256=r.body_sha)''')])
+    scoped=work/'scope'
+    count=_scope_html_inputs(scope_work/'body-scope.parquet',heads,engine=engine,work=scoped,allow_empty=True)
+    source=_body_source(spec,raw_store,work/'readings')
+    if _listed_reads(spec,raw_store):source['captured_copies']=True
+    reconsidered=observed['reconsidered_baseline'][0]['n']
+    details=dict(scope=dict(baseline=baseline,versions=scope['versions'],
+        bodies_since_baseline=count-reconsidered,reconsidered_baseline_bodies=reconsidered))
+    try:
+        planned=readings.run(engine=engine,work=work/'admission',mode='daily',execute=False,
+            max_work_items=spec['max_work_items'],existing=scoped/'readings.parquet',
+            captures=scoped/'captures.parquet',unreadable_files=unreadable_snapshot.files(),
+            decided_at=spec['decided_at'],parser='html_metadata',**source)
+    except readings.BackfillRequired as error:
+        return dict(error.as_dict(),status='derived_budget_required',batches=[],**details)
+    listing=None
+    if _listed_reads(spec,raw_store):
+        custody=_listed_custody(spec,engine,raw_store,
+            dict(captures=scoped/'captures.parquet',readings=scoped/'readings.parquet'),
+            planned,None,unreadable_snapshot,work/'custody',parser='html_metadata')
+        planned=custody['planned'];listing=custody['listing']
+        if planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']:
+            raise readings.RawCustodyRequired(planned)
+    stored_bytes=0;missing_sizes=0
+    for batch in pq.ParquetFile(planned['work_list']).iter_batches(columns=['stored_bytes']):
+        for size in batch.column('stored_bytes').to_pylist():
+            if size is None:missing_sizes+=1
+            else:stored_bytes+=size
+    budget=dict(work_items=planned['work_items'],max_work_items=spec['max_work_items'],
+        stored_bytes=stored_bytes,missing_sizes=missing_sizes,max_stored_bytes=scope['max_stored_bytes'])
+    details['budget']=budget
+    if missing_sizes or stored_bytes>scope['max_stored_bytes']:
+        # The generic nightly backfill fallback cannot repair this scoped byte budget.
+        return dict(status='derived_budget_required',parser='html_metadata',
+            parser_version=readings.current_version('html_metadata'),batches=[],**details)
+    current=tables.resolve_tables(engine=engine,catalog_root=spec['catalog_root'],work=work/'admitted-heads',
+        tables={name:spec['tables'][name] for name in ('captures','readings')})
+    if current!={name:heads[name] for name in current}:
+        raise ValueError('Derived captures or readings head changed during admission')
+    source=_body_source(spec,raw_store,work/'readings',listing)
+    if _listed_reads(spec,raw_store):source['captured_copies']=listing is None
+    result=readings.run(engine=engine,work=work/'readings',mode='backfill',execute=True,
+        batch_size=scope['batch_size'],table=spec['tables']['readings'],catalog_root=spec['catalog_root'],
+        read_current=lambda **_:scoped/'readings.parquet',captures=scoped/'captures.parquet',
+        parser='html_metadata',decided_at=spec['decided_at'],unreadable_store=raw_store,
+        unreadable_snapshot=unreadable_snapshot,**source)
+    return dict(result,**details)
 
 
 def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, work, decided_at,
@@ -650,33 +760,26 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
         heads.update(tables.resolve_tables(**authority,work=work/'captures-head',
             tables={'captures':spec['tables']['captures']}))
     passes={}
-    # The combined pass, then each derived pass over the same inputs: a derived parser reads
-    # bodies the combined pass classified, so it plans after that append.
+    # Classify new bodies first; derived passes then select their explicit admission delta.
     for name in [None,*derived_parsers(spec)]:
         step=name or 'readings'
         try:
-            if name is not None and _listed_reads(spec,raw_store):
-                # The leaf listing only covers bodies that needed a leaf reading. An
-                # older HTML body can still need metadata, so scope its own custody check.
+            if name is not None:
                 derived_heads=dict(heads)
                 derived_heads.update(tables.resolve_tables(**authority,work=work/(name+'-head'),
                     tables={'readings':spec['tables']['readings']}))
-                pending=_pending_backlog(spec,engine,raw_store,derived_heads,unreadable_snapshot,
-                    work/(name+'-backlog'),parser=name)
-                custody=_listed_custody(spec,engine,raw_store,derived_heads,pending,None,unreadable_snapshot,
-                    work/(name+'-custody'),parser=name)
-                listing=custody['listing']
-                planned=custody['planned']
-                if planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']:
-                    report.update(status='raw_custody_required')
-                    report['producerreports'][step]=dict(planned['raw_custody'],status='missing_raw_custody',
-                        work_list=str(planned['work_list']))
+                passes[step]=_daily_html_metadata(spec,derived_heads,engine=engine,raw_store=raw_store,
+                    unreadable_snapshot=unreadable_snapshot,work=work/(name+'-scoped'))
+                if passes[step]['status']=='derived_budget_required':
+                    report.update(status='derived_budget_required')
+                    report['producerreports'][step]=passes[step]
                     return report
-            passes[step]=readings.run(engine=engine,work=work/step,mode='daily',execute=True,
-                max_work_items=spec['max_work_items'],table=spec['tables']['readings'],parser=name,
-                catalog_root=spec['catalog_root'],unreadable_store=raw_store,
-                captures=heads['captures'],**_body_source(spec,raw_store,work/step,listing),
-                decided_at=spec['decided_at'],unreadable_snapshot=unreadable_snapshot)
+            else:
+                passes[step]=readings.run(engine=engine,work=work/step,mode='daily',execute=True,
+                    max_work_items=spec['max_work_items'],table=spec['tables']['readings'],parser=name,
+                    catalog_root=spec['catalog_root'],unreadable_store=raw_store,
+                    captures=heads['captures'],**_body_source(spec,raw_store,work/step,listing),
+                    decided_at=spec['decided_at'],unreadable_snapshot=unreadable_snapshot)
         except readings.BackfillRequired as error:
             report.update(status='backfill_required');report['producerreports'][step]=error.as_dict()
             return report
