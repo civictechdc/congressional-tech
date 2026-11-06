@@ -234,3 +234,14 @@ def test_null_in_declared_list_column_refuses_before_manifest(tmp_path):
     assert not (output / 'manifest.json').exists()
     reports = {q['name']: q['data'] for q in json.loads((tmp_path / 'model/result.json').read_text())['queries']}
     assert reports['relationship_invariants'][0]['null_list_filename'] == 1
+
+
+def test_key_uniqueness_reuses_only_matching_native_export_order():
+    schema=build_schema()
+    fields={'member_votes':['vote_id','member_key']}
+    checked=publication_checks(schema,{'member_votes'},keyed_documents=False,ordered_keys=fields)[0]['sql']
+    assert 'cast(0 AS BIGINT) AS invalid_member_votes_key' in checked
+    assert 'member_votes_export GROUP BY' not in checked
+    assert 'member_votes_export WHERE "vote_id" IS NULL' in checked
+    fallback=publication_checks(schema,{'member_votes'},keyed_documents=False,ordered_keys={'member_votes':['vote_id','member_key','position']})[0]['sql']
+    assert 'member_votes_export GROUP BY "vote_id","member_key"' in fallback

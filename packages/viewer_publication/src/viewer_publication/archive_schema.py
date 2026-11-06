@@ -216,12 +216,18 @@ def validate_parquet_fields(schema, paths):
                 raise ValueError(f'Published key/reference type differs: {name}.{field}: {actual.get(field)} != {expected[field]}')
 
 
-def publication_checks(schema, auxiliary, published=None, *, keyed_documents=True):
+def publication_checks(schema, auxiliary, published=None, *, keyed_documents=True, ordered_keys=None):
     """Check required columns, new entity keys and nested references in the native job.
 
     Core row positions, source/recovery ordinals, distinct lookup pairs and link
     keys already have one construction/validation owner in archive_format._core.
     Existing materialized export relations are reused, not exported files.
+
+    The pinned native export sorts its order_by keys and rejects equal adjacent
+    keys within and across batches before completing the file. When that exact
+    order is the declared primary key, reuse this existing uniqueness owner;
+    required-column checks still reject null keys. Other identities retain the
+    grouped check. Only the actual output specifications may supply ordered_keys.
 
     A unique detail ``link_key`` follows from the model's same-body edge (data
     model 7.5). A converted legacy catalog has no such edge: its documents can
@@ -256,6 +262,11 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
         name = table['name'].removesuffix('.parquet')
         if name not in auxiliary or name == 'url_state':
             continue  # url_state already has its own native uniqueness diagnostic.
+        if (ordered_keys or {}).get(name) == table['identity']['fields']:
+            # Every export must have succeeded before a manifest can be written.
+            # Re-grouping ten million ballots would repeat the native writer's guarantee.
+            checks.append(f'cast(0 AS BIGINT) AS invalid_{name}_key')
+            continue
         fields = ','.join('"' + field + '"' for field in table['identity']['fields'])
         nulls = ' OR '.join('"' + field + '" IS NULL' for field in table['identity']['fields'])
         checks.append(f'(SELECT count(*) FROM (SELECT {fields} FROM {name}_export GROUP BY {fields} HAVING count(*)>1 OR {nulls})) AS invalid_{name}_key')

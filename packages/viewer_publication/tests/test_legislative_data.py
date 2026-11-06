@@ -56,3 +56,14 @@ def test_published_outcomes_use_evidence_on_the_selected_meeting_date(tmp_path):
     assert meetings[110924]['outcome']=='held' and meetings[110924]['publisher_status']=='Postponed'
     assert meetings[204]['outcome']=='unknown'  # An old-date cancellation cannot cancel the new-date House record.
     assert {(o['status'],str(o['meeting_date'])) for o in meetings[204]['publisher_status_observations']}=={('Canceled','2025-02-01'),('Scheduled','2025-02-08')}
+
+
+def test_native_ordering_refuses_duplicate_ballots_before_publication(tmp_path):
+    import pytest
+    from docspec_client.models import DocSpecFailure
+    # The tie crosses the native writer's fixed batch boundary.
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    sql="SELECT 'vote-1' AS vote_id,lpad(cast(value AS VARCHAR),8,'0') AS member_key FROM generate_series(1,8192) UNION ALL SELECT 'vote-1','00008192'"
+    with pytest.raises(DocSpecFailure,match='export ordering keys are not unique'):
+        run_job(tmp_path/'job',engine,inputs=[],steps=[],outputs=[parquet_output(tmp_path,'member_votes',sql,['vote_id','member_key'])],queries=[])
+    assert not (tmp_path/'member_votes.parquet').exists()
