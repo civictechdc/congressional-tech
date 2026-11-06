@@ -25,6 +25,7 @@ REGISTRIES={
     'recovery_kinds':dict(category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8'),
     'capture_scope':dict(family='Utf8',patterns=list_of('Utf8'),exclusions=list_of('Utf8')),
     'meeting_sources':dict(id='Utf8',kind='Utf8',source='Utf8',priority='Int64'),
+    'appearance_observation_exclusions':dict(source='Utf8',receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',run_id='Utf8',reason='Utf8',evidence='Utf8'),
     'meeting_status_conflicts':dict(event_id='Int64',publisher_status='Utf8',evidence='Utf8'),
     'bill_package_evidence':dict(id='Utf8',package_id='Utf8',pdf_sha='Utf8',source_urls=list_of('Utf8'),
         package_disposition='Utf8',rejected_package_ids=list_of('Utf8'),excluded_measure_keys=list_of('Utf8'),
@@ -873,6 +874,7 @@ def appearance_steps(*,root=ROOT):
         dict(name='appearance_url_normalized',sql=app_normalize,materialize=True),
         dict(name='appearance_url_keys',sql=app_keys,materialize=True),
         dict(name='senate_page_meeting_links',sql=(Path(root)/'model/sql/senate-page-meeting-links.sql').read_text(),materialize=True),
+        dict(name='appearance_capture_contexts',sql=(Path(root)/'model/sql/appearance-capture-contexts.sql').read_text(),materialize=True),
         dict(name='appearance_observations',sql=(Path(root)/'model/sql/appearance-observations.sql').read_text(),materialize=True),
         dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(
         ['witness-precedence','witness-key-current','witness-key-priors','witness-key-map'],root=root)
