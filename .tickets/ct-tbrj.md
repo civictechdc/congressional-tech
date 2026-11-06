@@ -35,3 +35,13 @@ Derive a small event-keyed observation from retained evidence: the exact Congres
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: require event-specific successful detail evidence, preserve unknown coverage and source update time, and extend the SpicyRegs comparison to the actual attempt journal.
+
+**2026-11-06T17:28:19Z**
+
+Local implementation adds meetings.congress_gov_detail_observation, qualified by the exact Congress/chamber/event request and final route, one bound successful receipt/body, selected meeting identity and the existing version-bound detail-only appearance reader. No parser or runtime pin changes. Earlier success survives later failure; selected-scope listing-only, failure and unknown stay distinct; missing times remain null and congress_gov_updated remains the publisher clock.
+
+38 focused checks passed across the selected reruns (11 feature/export checks plus 27 schema/lifetime checks; partial lanes only). Real retained117688 receipt/body and bounded record-table pins were independently checked: retrieval2026-11-05T20:16:58.486180Z versus publisher update2025-01-02T05:57:18Z. Eight reused retained observations are six successes and two404failures, not corpus coverage. Independent GPT-6.1 Sol/xhigh consultant found no material logic blocker.
+
+Implementation branch codex/ct-tbrj-detail-observations-20261106; durable results and concrete comparator handoff: .cache/archive-release/implementation/reviewed-non-news-20261106/ct-tbrj/. Public fields and evidence meaning: docs/meeting-detail-observations.md and model/registries/release-schema.json.
+
+Ticket remains open: ct-r4rd/ss-ikn9 must pin and read actual committee_meetings_detail_reads evidence and compare observations against integrated final inputs. DDK/release owners must reconcile the small archive_model.py/archive_format.py edits and qualify final delivery. No main merge, push, full-corpus replay, new acquisition, shared import, deployment or publication occurred.
