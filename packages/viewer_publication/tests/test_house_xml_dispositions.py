@@ -581,6 +581,7 @@ original=activation._activation_command
 def command(spec,invocation,fd):
     args=original(spec,invocation,fd)
     assert '--hold-fd' in args and '--activation-lock-fd' in args
+    assert args[args.index('--interval')+1]=='0.2'
     args[args.index('--expect-gb')+1]='0.05'
     args[args.index('--start-available-gb')+1]='0'
     args[args.index('--min-disk-gb')+1]='0'

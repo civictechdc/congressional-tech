@@ -144,7 +144,7 @@ def _activation_lock(catalog_root):
 
 def _activation_command(spec, invocation, fd):
     return [sys.executable, str(ROOT / 'scripts/archive_watchdog.py'), '--rss-gb', '2', '--expect-gb', '2',
-        '--start-available-gb', '6', '--min-disk-gb', '15', '--hold-fd', str(fd),
+        '--start-available-gb', '6', '--min-disk-gb', '15', '--interval', '0.2', '--hold-fd', str(fd),
         '--report', str(invocation / 'watchdog.json'), '--', sys.executable, '-m',
         'viewer_publication.archive_backfill_job', '--spec', str(invocation / 'spec.json'),
         '--execute', '--activation-lock-fd', str(fd)]
