@@ -1,6 +1,6 @@
 ---
 id: ct-rie2
-status: open
+status: in_progress
 deps: []
 links: [ct-umtm, ct-4jms, ct-nh41, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:13Z
@@ -44,3 +44,17 @@ Ordinary scheduled capture and explicit campaign execution are independent accep
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: deliver one useful bounded cohort through the archive and MCP. Share ct-umtm execution where suitable; keep original import bindings on retry and produce final counts from a separate read-only plan.
+
+**2026-11-06T17:57:29Z**
+
+Isolated implementation committed as a04ee550afc55a58b9c280619c5f7c48e738a544 on codex/ct-rie2-recovery-report-20261106. Descriptor preparation now refuses changed existing inputs, explicit resume preserves original execution/request bindings without rediscovery, and validated accepted acknowledgements replay the original decision/receipt/provenance without body/source reopening or requalification. Counts are labeled initial. New read-only progress reporting joins the existing initial/final ledgers and import operations, accepts ct-nh41 note-policy bindings, and links the maintained base/candidate comparison without claiming publication or semantic gains.
+
+Added request-bound source_catalog_document_identifier plus registry/fixture support; the legacy default remains unchanged. This supplies truthful ecoi attribution without rewriting old requests or touching ct-nh41 explanation authoring. Independent GPT-6.1 Sol xhigh advice confirmed the narrow compatibility path.
+
+Reused ct-umtm 81eb31ca's one-target USAID/ecoi 2074278 requested_content/historical_only cohort, plus ct-nh41 59d0d063's supported explanation fragment. Original prepared descriptor digest c37d52811127cb2ffb93c593e40c70b2211d2c365029fe0089c78b97f6b131fe; no actual version-2 execution descriptor/state/profile is selected yet. Read-only native plan/report: 1 retained_candidate_pending target, 0 acknowledged imports. Shared body/qualification/source evidence stays in place. The pending request intentionally has no receipt/decision and is not importable.
+
+Verification on the code commit: own uv sync --frozen, pinned local runtime and Poppler 26.06.0; 105 passed, production-offline partial 7 of 500 lane files, exit 0; 0.56 GiB peak RSS under watchdog. Includes ordinary v1 scheduling, v1/missing-eligibility/mismatched-requirements campaign refusals, maintained v2 model/refresh controls, legacy/catalog retries, interrupted/rejected reporting, false-ack refusal and registry precedence. No full lane or production acceptance claimed.
+
+Precise remaining shared actions: integrate ct-umtm/ct-nh41 and this patch; select actual v2 inputs and freeze the actual execution descriptor; qualify a supported exact-candidate capture route (current scheduler positive scope matches neither USAID target nor ecoi mirror, and this patch does not widen it); obtain one complete timestamped receipt capped at 361014 body bytes; import once through the single writer with original bindings; select receipt/provenance, compare the releases and verify exact target/body attachment through reader and MCP. Keep retired homepage keys 5c1767950ecb2bdc and 0bf90c57369641ee with null successors. Unknown semantic equivalence stays unknown. Ticket remains in progress.
+
+Durable status, bounded inputs, read-only helpers, scope check, tests and HANDOFF.md: .cache/archive-release/implementation/reviewed-non-news-20261106/ct-rie2/. No candidate acquisition, shared raw/catalog import, full-corpus model/replay, publication, pointer flip, scheduler change, merge, push, deployment or cleanup occurred.
