@@ -26,7 +26,9 @@ REGISTRIES={
     'capture_scope':dict(family='Utf8',patterns=list_of('Utf8'),exclusions=list_of('Utf8')),
     'meeting_sources':dict(id='Utf8',kind='Utf8',source='Utf8',priority='Int64'),
     'meeting_status_conflicts':dict(event_id='Int64',publisher_status='Utf8',evidence='Utf8'),
-    'bill_package_evidence':dict(package_id='Utf8',pdf_sha='Utf8',source_url='Utf8',evidence='Utf8'),
+    'bill_package_evidence':dict(id='Utf8',package_id='Utf8',pdf_sha='Utf8',source_urls=list_of('Utf8'),
+        package_disposition='Utf8',rejected_package_ids=list_of('Utf8'),excluded_measure_keys=list_of('Utf8'),
+        supported_measure_keys=list_of('Utf8'),evidence='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
 }
 
@@ -465,8 +467,27 @@ def registry_inputs(directory,*,root=ROOT):
             value=value.get('entries')
         if not isinstance(value,list) or any(not isinstance(row,dict) for row in value):
             raise ValueError('Registry must contain records: '+name)
+        if name=='bill_package_evidence':
+            _validate_bill_evidence(value)
         inputs.append(json_input(directory,name,value,**fields))
     return inputs
+
+
+def _validate_bill_evidence(rows):
+    """Refuse ambiguous reviewed decisions before native policy selection."""
+    ids=set();bodies=set()
+    for row in rows:
+        disposition=row.get('package_disposition')
+        if (not row.get('id') or row['id'] in ids or row.get('pdf_sha') in bodies
+                or re.fullmatch('[0-9a-f]{64}',row.get('pdf_sha','')) is None
+                or not row.get('evidence') or not row.get('source_urls')
+                or disposition not in ('support','withhold')
+                or (disposition=='support') != bool(row.get('package_id'))
+                or any(not isinstance(row.get(field),list) or any(not isinstance(v,str) or not v for v in row[field])
+                       for field in ('source_urls','rejected_package_ids','excluded_measure_keys','supported_measure_keys'))
+                or set(row['excluded_measure_keys']) & set(row['supported_measure_keys'])):
+            raise ValueError('Invalid or duplicate reviewed bill evidence: '+str(row.get('id')))
+        ids.add(row['id']);bodies.add(row['pdf_sha'])
 
 
 def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False,recovered_copies=False):
@@ -584,6 +605,7 @@ GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
 MERGED_RECOVERY_SQL="""WITH merged AS (
  SELECT m.source_id,dm.source_url,nullif(dm.filename,'') AS filename,a.title,a.congress,a.filename_date,a.package_id,
   a.document_kind,a.document_family,a.committee_keys,a.chambers,a.meeting_keys,a.measure_keys,a.bioguide_ids,a.facts,
+  bd.id AS bill_decision_id,bd.rejected_package_ids,bd.excluded_measure_keys,
   o.list_row,o.filename AS o_filename,o.title AS o_title,o.congress AS o_congress,o.document_date AS o_date,o.package_id AS o_package,
   o.document_kind AS o_kind,o.document_family AS o_family,o.committee_keys AS o_committees,o.chambers AS o_chambers,
   o.meeting_keys AS o_meetings,o.measure_keys AS o_measures,o.bioguide_ids AS o_bioguides,o.facts AS o_facts,
@@ -594,6 +616,7 @@ MERGED_RECOVERY_SQL="""WITH merged AS (
  JOIN source_annotations a ON a.source_id=m.source_id
  JOIN document_identities d ON d.component=dm.component JOIN ordered o ON o.doc_key=d.document_id
  JOIN saved_files s ON s.component=dm.component AND s.saved_rank=1 JOIN source_annotations sa ON sa.source_id=s.source_id
+ LEFT JOIN document_bill_decisions bd ON bd.component=dm.component
 ), addressed AS (
  SELECT DISTINCT g.source_id FROM merged g JOIN source_rows r ON r.list_row=g.list_row AND r.url=g.source_url
 ), keyed AS (
@@ -614,14 +637,17 @@ SELECT g.*,a.source_id IS NULL AS lost_address,k.source_id IS NULL AS lost_link,
  g.title IS NOT NULL AND g.o_title IS NULL AS lost_title,
  g.congress IS NOT NULL AND g.o_congress IS NULL AS lost_congress,
  g.filename_date IS NOT NULL AND g.o_date IS NULL AS lost_date,
- g.package_id IS NOT NULL AND g.o_package IS NULL AS lost_package,
+ g.package_id IS NOT NULL AND g.o_package IS NULL
+  AND NOT coalesce(array_has(g.rejected_package_ids,g.package_id),false) AS lost_package,
  coalesce(array_length(g.document_kind),0)>0 AND coalesce(array_length(g.o_kind),0)=0 AS lost_kind,
  coalesce(array_length(g.document_family),0)>0 AND coalesce(array_length(g.o_family),0)=0 AS lost_family,
  coalesce(array_length(g.facts),0)>0 AND coalesce(array_length(g.o_facts),0)=0 AS lost_facts,
  coalesce(array_length(g.committee_keys),0)>0 AND NOT coalesce(array_has_all(g.o_committees,g.committee_keys),false) AS lost_committees,
  coalesce(array_length(g.chambers),0)>0 AND NOT coalesce(array_has_all(g.o_chambers,g.chambers),false) AS lost_chambers,
  coalesce(array_length(g.meeting_keys),0)>0 AND NOT coalesce(array_has_all(g.o_meetings,g.meeting_keys),false) AS lost_meetings,
- coalesce(array_length(g.measure_keys),0)>0 AND NOT coalesce(array_has_all(g.o_measures,g.measure_keys),false) AS lost_measures,
+ coalesce(array_length(g.measure_keys),0)>0 AND NOT coalesce(array_has_all(
+  array_concat(g.o_measures,coalesce(g.excluded_measure_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))),
+  g.measure_keys),false) AS lost_measures,
  coalesce(array_length(g.bioguide_ids),0)>0 AND NOT coalesce(array_has_all(g.o_bioguides,g.bioguide_ids),false) AS lost_bioguides
 FROM recovered r RIGHT JOIN (looked_up u RIGHT JOIN (keyed k RIGHT JOIN (addressed a RIGHT JOIN merged g
  ON a.source_id=g.source_id) ON k.source_id=g.source_id) ON u.source_id=g.source_id) ON r.source_id=g.source_id"""
@@ -1080,7 +1106,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += [dict(name='filename_conflicts',sql=FILENAME_CONFLICTS_SQL,materialize=True)]
     steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
-        'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
+        'document-version-keys','document-versions','document-bill-decisions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
         'document-rendition-titles','recovered-copy-fills','document-filename-facts'],root=root)
     steps += package_link_steps(root=root)
     steps += appearance_steps(root=root)+witness_key_steps(root=root)+[
@@ -1268,6 +1294,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'source_filename_readings':['source_id'],
         'source_annotation_publisher':['source_id'],
         'source_annotations':['source_id'],
+        'document_bill_decisions':['component','id'],
         'rendition_members':['group_kind','group_id','source_id','body_sha'],
         'edition_bodies':['body_sha'],
         'fingerprint_candidates':['body_sha'],
@@ -1368,6 +1395,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM body_review_key_conflicts) AS body_key_collisions,
             (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
             (SELECT count(*) FROM review_value_diagnostics) AS invalid_review_values,
+            (SELECT count(*) FROM document_bill_decisions bd
+                JOIN document_identities d ON bd.component=d.component JOIN ordered o ON d.document_id=o.doc_key
+                WHERE o.package_id IS NOT NULL OR coalesce(array_has_any(o.measure_keys,bd.excluded_measure_keys),false)
+                    OR NOT coalesce(array_has_all(o.measure_keys,bd.supported_measure_keys),false)) AS invalid_bill_identity_decisions,
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
             (SELECT count(*) FROM ({GENERIC_TITLES_SQL}) generic) AS generic_titles,
             (SELECT count(*) FROM ({BLANK_FILENAMES_SQL}) r WHERE r.reason IS NULL) AS unexplained_blank_filenames,

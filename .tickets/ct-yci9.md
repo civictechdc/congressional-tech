@@ -1,6 +1,6 @@
 ---
 id: ct-yci9
-status: open
+status: in_progress
 deps: []
 links: [ct-flg9, ct-j9o7, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:12Z
@@ -41,3 +41,15 @@ Do not apply the recovery helper wholesale to ordinary originals: first-page ref
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: withhold unsupported package and direct-measure claims through final normalization, including recovered-copy fills. Distinguish direct identity from supported meeting context. Existing positive-only package evidence does not settle this case.
+
+**2026-11-06T17:28:32Z**
+
+Implemented and locally qualified in task-owned branch codex/ct-yci9-bill-adjudication-20261106 (integration commit recorded in durable HANDOFF.md). Extended the maintained bill-package PDF evidence input with explicit dispositions and the exact f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee body plus both observed source locators. Package selection and final recovered-copy fallback withhold identity; direct measures remove only 118-hr-4775 and explicitly support 118-hr-4755. No edition is inferred. Source filenames/readings/annotations, source membership, bytes, body/link keys, availability and legitimate meeting-context claims remain intact.
+
+A shared small materialized decision relation owns this behavior; model evidence records its id and rationale. Final model invariants enforce its package/direct-measure dispositions. Recovery preservation checks exempt only the named rejected package/measure claims and still detect unrelated lost claims.
+
+Focused production-offline check passed: 17 tests across test_bill_identity_decisions.py, test_phase1_document_metadata.py and test_recovered_copy_merge.py (partial selection, not a full lane). Exact retained PDF ran through the unmodified native model/export and all six invariant suites. An injected wrong recovered-copy fill produced the same corrected release identity. Source preservation, positive PDF evidence, authoritative package precedence/explicit edition hold, disagreeing filenames, same-bill editions, distinct bytes/source/Congress/rendition/draft/reference bindings, unrelated direct measures and narrow recovery loss checks passed. Pinned cause evidence passed load_causes and require_release_gates. An independent GPT-6.1 Sol xhigh reviewer executed the PDF-cover check and confirmed separate old-package/old-measure, invented-edition and wrong-Congress plants are detected.
+
+Evidence: /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/reviewed-non-news-20261106/ct-yci9/ (focused-final.log, watchdog-final.json, pytest-final, STATUS.md and HANDOFF.md). Final watchdog peak 0.52 GiB RSS; no corpus scan or parser-version change. Doctor's workspace-only sniff/readings drift had matching fixed samples; this patch changes document selection only and accepts those retained reading versions unchanged within this scope.
+
+Ticket remains in_progress: coordinator integration, selected release publication, final MCP document detail/bill-entity lookup and actual site search acceptance are not performed by this session. Retained e145 meeting 115732 includes 4775 among seven subjects; its raw source basis is not established by that derived row alone. Preserve independently supported meeting context and attribute any residual visibility before closure. No main merge, push, shared candidate/catalog/runtime modification, acquisition, scheduler or deployment occurred.

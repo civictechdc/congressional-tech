@@ -66,15 +66,22 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
              body_sha='59282bb7d29d214e2f562a6f38ca0b1f901d07a51806bfe01ea88991f7b4e2e1'),
         dict(component='different-bytes', source_id='different-2899', saved_rank=1, format='pdf',
              body_sha='f' + reviewed_sha[1:]),
+        # The edition hold is explicit: a later package address needs a fresh
+        # reviewed edition decision, while ordinary positive evidence retains
+        # the existing authority precedence above.
+        dict(component='withheld-authoritative', source_id='withheld-pdf', saved_rank=1, format='pdf',
+             body_sha='f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee',
+             source_url='https://www.congress.gov/118/meeting/house/115732/documents/BILLS-118HR4775ih.pdf'),
     ]
     inputs=registry_inputs(tmp_path/'registries')+[
         json_input(tmp_path,'saved_inputs',saved,component='Utf8',source_id='Utf8',saved_rank='Int64',
-                   first_fetched='Utf8',format='Utf8',body_sha='Utf8'),
+                   first_fetched='Utf8',format='Utf8',body_sha='Utf8',source_url='Utf8'),
         json_input(tmp_path,'source_annotation_addresses',[
             dict(source_id='saved',package_id='PUBLISHER-PACKAGE',publisher=True),
             dict(source_id='second',package_id='BILLS-119hr3ih',publisher=False),
             dict(source_id='third',package_id='BILLS-119hr2ih',publisher=False),
-            dict(source_id='authoritative-pdf',package_id='BILLS-116s2899is',publisher=False)],
+            dict(source_id='authoritative-pdf',package_id='BILLS-116s2899is',publisher=False),
+            dict(source_id='withheld-pdf',package_id='BILLS-118hr4755ih',publisher=False)],
             source_id='Utf8',package_id='Utf8',publisher='Boolean'),
         json_input(tmp_path,'source_annotations',[dict(source_id='saved',package_id='BILLS-119hr1ih'),
             dict(source_id='fourth',package_id='BILLS-119hr4ih'),dict(source_id='only-filename',package_id='FILENAME-ONLY'),
@@ -87,6 +94,7 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
             source_id='Utf8',package_id='Utf8')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=[dict(name='saved_files',sql='SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM saved_inputs'),
+               dict(name='document_bill_decisions',sql=(ROOT/'model/sql/document-bill-decisions.sql').read_text(),materialize=True),
                dict(name='document_packages',sql=(ROOT/'model/sql/document-packages.sql').read_text(),materialize=True)],outputs=[],queries=[dict(name='packages',sql='SELECT * FROM document_packages ORDER BY component')])
     assert result['packages']==[
         dict(component='authoritative',package_id='BILLS-116s2899is',bill_package_conflict=False),
@@ -100,6 +108,7 @@ def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_pa
         dict(component='none',package_id=None,bill_package_conflict=False),
         dict(component='pre-introduction',package_id=None,bill_package_conflict=False),
         dict(component='reviewed',package_id='BILLS-116hr2899ih',bill_package_conflict=False),
+        dict(component='withheld-authoritative',package_id=None,bill_package_conflict=False),
     ]
 
 
