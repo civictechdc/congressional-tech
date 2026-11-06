@@ -100,6 +100,50 @@ def test_native_reconciliation_preserves_both_sides_and_missing_imports(tmp_path
     assert missing[0]['retrieved_at']=='2019-01-01T00:00:00Z'
 
 
+def test_reconciliation_authors_only_pinned_explanations_or_null(tmp_path):
+    from congress_api.retention.provenance import file_pin
+    from corpus_recovery.identity_notes import POLICY
+
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    value=json.loads(accepted.read_text())
+    note='The official hearing contains the requested statement, together with other testimony.'
+    value['recoveries'][0]['identity_note']=note
+    value['recoveries'][1]['identity_note']=None
+    # A legacy accepted input can contain the generated sentence under its old pin.
+    value['recoveries'].append(dict(value['recoveries'][1],original_url='https://docs.house.gov/c',
+        identity_note='Reconciled from pinned accepted mappings '+'7'*64+'; receipt categories preserved'))
+    value['recoveries'].append(dict(value['recoveries'][1],original_url='https://docs.house.gov/d'))
+    del value['recoveries'][-1]['identity_note']
+    accepted.write_text(json.dumps(value))
+    before=accepted.read_bytes()
+    pin=file_pin(accepted)['sha256']
+    result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reviewed-mappings')
+    records=[json.loads(line) for line in (tmp_path/'staged'/result['provenance']).read_text().splitlines()]
+    by_url={row['original_url']:row for row in records}
+    assert accepted.read_bytes()==before
+    assert result['identity_note_policy']==POLICY
+    assert len(records)==4
+    for mapping in value['recoveries']:
+        row=by_url[mapping['original_url']]
+        body=mapping['body_key'][17:81]
+        assert row['identity_note']==(note if mapping['original_url'].endswith('/a') else None)
+        assert row['kind']==('requested_content_in_official_hearing' if mapping['original_url'].endswith('/a') else 'recovered_document')
+        assert row['body_sha256']==body and row['recovered_url']==mapping['recovered_url']
+        assert row['evidence_sha256']==pin and row['match_basis']==mapping['recovery_basis']
+        # New authoring must never reuse an immutable legacy decision ID.
+        old_id=sha256(f"accepted:{pin}:{mapping['original_url']}:{body}".encode()).hexdigest()
+        assert row['id']!=old_id
+    # The same mapping accepted at another time is a distinct immutable decision.
+    again=reconcile(accepted,captures,registry,output=tmp_path/'later-stage',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        decided_at='2026-11-06T12:00:00Z',decided_by='reviewed-mappings')
+    later=[json.loads(line) for line in (tmp_path/'later-stage'/again['provenance']).read_text().splitlines()]
+    assert {row['id'] for row in records}.isdisjoint({row['id'] for row in later})
+    assert {(row['original_url'],row['identity_note'],row['kind']) for row in records}=={
+        (row['original_url'],row['identity_note'],row['kind']) for row in later}
+
+
 @pytest.mark.parametrize('category', ['unknown-category','ambiguous-category'])
 def test_unknown_or_ambiguous_categories_refuse_staging(tmp_path,category):
     accepted,captures,registry=reconciliation_inputs(tmp_path)

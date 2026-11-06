@@ -19,6 +19,7 @@ from congress_api.retention.provenance import (
 from congress_api.retention.receipt_privacy import basename
 from congress_api.retention.body_store import validate_record
 from congress_api.retention.recovery_facts import project_legacy
+from corpus_recovery.identity_notes import POLICY as IDENTITY_NOTE_POLICY, authored_note
 
 
 def import_retained(writer,source,*,operation_id=None,freeze_dir=None,verified_body=None):
@@ -108,6 +109,7 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
     mappings=value['recoveries']
     if not isinstance(mappings,list) or not mappings:raise ValueError('Accepted recovery mappings are required')
     validate_record(mappings)
+    mappings=[dict(row,identity_note=authored_note(row.get('identity_note'))) for row in mappings]
     for row in mappings:
         for name in ('original_url','recovered_url'):
             parts=urlsplit(row[name])
@@ -124,7 +126,7 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
     output=Path(output);output.mkdir(parents=True,exist_ok=False)
     jobs=output/'jobs';jobs.mkdir()
     inputs=[json_input(jobs,'accepted_input',mappings,original_url='Utf8',recovered_url='Utf8',
-        body_key='Utf8',kind='Utf8',recovery_basis='Utf8',recovery_status='Utf8'),capture,
+        body_key='Utf8',kind='Utf8',recovery_basis='Utf8',recovery_status='Utf8',identity_note='Utf8'),capture,
         json_input(jobs,'kind_registry',kinds,category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8')]
     steps=[dict(name='captures',sql=projection),
         dict(name='accepted',sql='''SELECT *,substr(body_key,18,64) AS body_hex FROM accepted_input'''),
@@ -156,12 +158,14 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
                 AND regexp_like(c.retrieved_at,'(Z|[+-][0-9]{2}:[0-9]{2})$')''')]
     q=lambda text:text.replace("'","''")
     pin=file_pin(accepted)['sha256']
-    decision_sql=f'''SELECT encode(sha256('accepted:{pin}:' || original_url || ':' || body_hex),'hex') AS id,
+    decision_sql=f'''SELECT encode(sha256(json_array('accepted','{IDENTITY_NOTE_POLICY}',
+        original_url,recovered_url,recovered_filename,body_sha256,kind,match_basis,evidence_sha256,
+        identity_note,decided_by,decided_at,supersedes)),'hex') AS id,* FROM (SELECT
         original_url,recovered_url,recovered_filename,body_hex AS body_sha256,
         display_kind AS kind,recovery_basis AS match_basis,'{pin}' AS evidence_sha256,
-        'Reconciled from pinned accepted mappings {pin}; receipt categories preserved' AS identity_note,
+        identity_note,
         '{q(decided_by)}' AS decided_by,'{q(decided_at)}' AS decided_at,cast(NULL AS VARCHAR) AS supersedes
-        FROM decisions'''
+        FROM decisions)'''
     missing_sql=f'''SELECT d.original_url,d.recovered_url,d.body_hex AS body_sha256,d.body_key,
         i.category,d.display_kind,d.recovery_basis AS match_basis,s.retrieved_at,s.bytes,s.media_type,
         s.source_receipt_key,s.source_receipt_line,s.source_capture_index,d.recovered_filename,
@@ -217,7 +221,7 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
     key,count=stage_records(output,'recoveries',parquet_records(output/'recovery-decisions.parquet'),decided_at=decided_at)
     return finish_stage(output,kind='recoveries',provenance=key,records=count,
         inputs=dict(accepted=file_pin(accepted),captures=file_pin(captures),registry=file_pin(registry)),
-        extra=dict(counts=reports['counts'][0],import_counts=reports['import_counts'][0],
+        extra=dict(identity_note_policy=IDENTITY_NOTE_POLICY,counts=reports['counts'][0],import_counts=reports['import_counts'][0],
             missing_imports='missing-imports.parquet',ready_imports='ready-imports.parquet',receipt_only='receipt-only.parquet',
             artifacts=[dict(path=Path(item['path']).name,**file_pin(item['path'])) for item in outputs]))
 

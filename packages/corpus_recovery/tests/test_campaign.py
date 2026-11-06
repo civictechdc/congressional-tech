@@ -97,6 +97,7 @@ def test_supported_literal_alias_import_and_fresh_process_repeat(tmp_path):
     assert result['status']=='accepted' and result['decision']['recovery_record_version']==2
     assert file_pin(tmp_path/'operation/identity-evidence.json')['sha256']==result['evidence_sha256']
     assert result['decision']['original_url']==TARGET and result['decision']['recovered_url']==CANDIDATE
+    assert result['decision']['identity_note'] is None
     identity=tmp_path/'writer.json';identity.write_text(json.dumps(IDENTITY))
     command=[sys.executable,'-m','corpus_recovery.campaign','import','--campaign',str(descriptor),'--request',str(request),
         '--runtime',os.environ['DOCSPEC_JOB_CONFIG'],'--output',str(tmp_path/'operation'),'--local-store',str(tmp_path/'raw'),
@@ -106,6 +107,33 @@ def test_supported_literal_alias_import_and_fresh_process_repeat(tmp_path):
     assert json.loads(again.stdout)==result
     assert len(list((tmp_path/'raw/receipts').rglob('*.gz')))==2
     assert len(list((tmp_path/'raw/provenance').rglob('*.jsonl')))==1
+
+
+def test_campaign_preserves_explicit_evidence_supported_explanation(tmp_path):
+    descriptor=inputs(tmp_path);request,writer,store=candidate_request(tmp_path)
+    value=json.loads(request.read_text())
+    value['identity_note']='Committee records identify both URLs as the same meeting statement D-7, version ih.'
+    request.write_text(json.dumps(value))
+    result=import_candidate(descriptor,request,output=tmp_path/'operation',engine=engine(),writer=writer,store=store)
+    assert result['decision']['identity_note']==value['identity_note']
+    assert result['decision']['kind']==value['relationship']
+    assert file_pin(tmp_path/'operation/identity-evidence.json')['sha256']==result['evidence_sha256']
+
+
+def test_legacy_operation_cannot_rewrite_its_immutable_decision(tmp_path):
+    from corpus_recovery.acceptance import VERSION
+    from congress_shared.campaign import load_campaign
+
+    descriptor=inputs(tmp_path);request,writer,store=candidate_request(tmp_path)
+    operation=tmp_path/'operation';operation.mkdir()
+    binding=dict(descriptor_sha256=load_campaign(descriptor).descriptor_sha256,
+                 request_sha256=file_pin(request)['sha256'],policy=VERSION)
+    path=operation/'binding.json';path.write_text(json.dumps(binding))
+    before=path.read_bytes()
+    with pytest.raises(ValueError,match='inputs changed'):
+        import_candidate(descriptor,request,output=operation,engine=engine(),writer=writer,store=store)
+    assert path.read_bytes()==before
+    assert not (tmp_path/'raw/provenance').exists()
 
 
 def test_counterpart_cannot_satisfy_historical_requirement(tmp_path):
