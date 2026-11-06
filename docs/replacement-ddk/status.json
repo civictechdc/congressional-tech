@@ -53,7 +53,8 @@
     "Removed model inference of refresh_live from requirements missing refresh_policy; six real native checks passed, and independent review confirmed current writer and policy semantics",
     "Actual low-level source preparation captured 51 inputs with exact schema artifacts, 251 steps, 40 outputs and 23 reports; independent review confirmed scope/custody and corrected unique-byte accounting; native preparation and entrypoint admission remain absent",
     "Experimental schema-only native source05 inferred the complete actual job: exact 51/251/40/23 membership, 287 decodable IPC schemas, 250 declared native field/element identities and 222 required report column declarations; no source admission or data execution",
-    "Adopted qualified dev5 catalog/API slice; complete private native check definitions and audience-filtered public artifacts share one captured assembly; independent review approved 31 root cases,138 MCP passes/3 producer-fixture skips and7 HTTP/browser cases"
+    "Adopted qualified dev5 catalog/API slice; complete private native check definitions and audience-filtered public artifacts share one captured assembly; independent review approved 31 root cases,138 MCP passes/3 producer-fixture skips and7 HTTP/browser cases",
+    "Implemented exact native report-policy construction and updated the complete ownership diagram after independent red/green review; native caller integration remains open."
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -465,6 +466,15 @@
       "summary": "summary.json",
       "review": "Independent read-only delta review matched both supplied hashes, all 287 unchanged schema bytes and original membership, all 8 positive native schema IDs/43 Arrow-only null IDs, unchanged pins and limits. No material delta finding; no extra execution or payload read.",
       "scope": "One parent-authorized replay with unchanged inputs, declarations, SQL, limits and payload/network/write denials. Returned actual schema IDs verified; negative contradictory-ID tests belong to native owner."
+    },
+    "nativeReportPolicy": {
+      "status": "passed",
+      "cases": 37,
+      "lane": "production-offline",
+      "scope": "partial: 2 of 502 files; not a full lane",
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-native-report-inventory-02/",
+      "peakRSSGiB": 0.25,
+      "independentReview": "approved construction boundary; native execution and acceptance not exercised"
     }
   },
   "commits": {
@@ -569,6 +579,12 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-schema-probe-03/summary.json",
       "sha256": "e796b6ce9828a40d0da70aca0e532cae7a49cbf247a7c12ebeed6b15557beb39",
       "size": 46823
+    },
+    "nativeCounterPolicy": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-report-policy-01/native-counter-policy.json",
+      "sha256": "84fd004956d7e24f7a904ad7f274334cb828e259a373b5f1009ccd7e2b513e57",
+      "size": 31037,
+      "status": "authored policy from unadmitted frozen capture-v1 preparation; 222 counters, 51 inputs, 251 steps, 40 exports, 23 reports"
     }
   },
   "constraints": {

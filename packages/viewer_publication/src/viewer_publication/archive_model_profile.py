@@ -1,4 +1,6 @@
 """Pinned model definitions and native admission diagnostics for phase one."""
+import base64
+from hashlib import sha256
 import json
 from pathlib import Path
 import re
@@ -22,6 +24,64 @@ APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
 ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}
 EXPLORER_SOURCES={'video_records':('youtube_cache','youtube_api'),'committee_records':('house_xml',)}
 SELECTED_SOURCES={**ENTITY_SOURCES,**EXPLORER_SOURCES,'playlist_records':('hls',)}
+
+
+def native_report_policy(job_bytes, diagnostics, prepared, *, policy_id):
+    """Bind authored blocking rules to the exact native schema preparation.
+
+    Produce DocSpec's native-sql-zero-counters v1 policy without opening input
+    payloads or evaluating report values. Native preparation owns the schema,
+    including SELECT * reports; native retained completion owns acceptance.
+    Metadata queries remain in complete membership but outside the blocking set.
+    """
+    import pyarrow as pa
+
+    if not isinstance(policy_id, str) or not policy_id.strip():
+        raise ValueError('Native report policy requires an explicit identity')
+    digest = sha256(job_bytes).hexdigest()
+    if (prepared.get('profile') != 'urn:docspec:job:schema-only:1'
+            or prepared.get('status') != 'inferred'
+            or prepared.get('job', {}).get('sha256') != digest
+            or prepared.get('job_size') != len(job_bytes)):
+        raise ValueError('Native preparation does not identify the exact captured JobSpec')
+    job = json.loads(job_bytes)
+    views = {}
+    for source, target in (('inputs', 'inputs'), ('steps', 'steps'),
+                           ('outputs', 'outputs'), ('queries', 'reports')):
+        names = [item['name'] for item in job.get(source, ())]
+        if (any(not isinstance(name, str) or not name for name in names)
+                or len(set(names)) != len(names)
+                or [item['name'] for item in prepared.get(source, ())] != names):
+            raise ValueError(f'Native preparation differs from complete ordered {source} membership')
+        views[target] = names
+    queries = job.get('queries', ())
+    by_name = {query['name']: query for query in queries}
+    if 'invariants' not in by_name:
+        raise ValueError('Native job lacks its required invariants report')
+    required = [by_name['invariants'], *diagnostics]
+    names = [query['name'] for query in required]
+    if len(set(names)) != len(names):
+        raise ValueError('Blocking native report names must be unique')
+    if any(by_name.get(query['name']) != query for query in required):
+        raise ValueError('Blocking report differs from the original native job query')
+    schemas = {item['name']: item['schema_sha256'] for item in prepared['queries']}
+    reports = []
+    for query in required:
+        schema_digest = schemas[query['name']]
+        encoded = prepared['schemas'][schema_digest]
+        raw = base64.b64decode(encoded, validate=True)
+        if sha256(raw).hexdigest() != schema_digest:
+            raise ValueError('Native report schema differs from its captured digest')
+        schema = pa.ipc.read_schema(pa.BufferReader(raw))
+        if (not schema.names or len(set(schema.names)) != len(schema.names)
+                or any(not field.name or not pa.types.is_integer(field.type) for field in schema)):
+            raise ValueError('Blocking native reports require unique integer counter columns')
+        reports.append(dict(name=query['name'], sql_sha256=sha256(query['sql'].encode('utf-8')).hexdigest(),
+                            schema_ipc_base64=encoded))
+    return dict(id=policy_id, profile='urn:docspec:quality:native-sql-zero-counters:1',
+                evaluator=dict(id='urn:docspec:evaluator:native-job-reports', version='1'),
+                semantics=dict(id='urn:docspec:semantics:complete-integer-zero-row', revision='1'),
+                job_sha256=digest, view_names=views, required_reports=reports)
 
 
 def current_parser_versions(keys=()):

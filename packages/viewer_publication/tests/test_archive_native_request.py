@@ -115,3 +115,13 @@ def test_incumbent_executor_submits_the_same_single_request(tmp_path, incumbent_
     assert json.loads((prepared['scratch'] / 'job.json').read_text()) == expected
     assert not (prepared['scratch'] / 'result.json').exists()
     assert not (output / 'manifest.json').exists()
+
+
+def test_blocking_inventory_tracks_the_actual_explorer_scope(tmp_path, incumbent_request):
+    from viewer_publication.archive_model import plan_prepared_release
+
+    _inventory, prepared = incumbent_request
+    prepared['explorer_inputs'] = False
+    job, _schema, diagnostics = plan_prepared_release(prepared, output=tmp_path / 'release')
+    assert 'explorer_invariants' not in {report['name'] for report in diagnostics}
+    assert 'explorer_invariants' not in {report['name'] for report in job['queries']}

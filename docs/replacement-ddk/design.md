@@ -96,6 +96,113 @@ operations. It must not invoke the incumbent controller wholesale and relabel th
 receipt as DDK execution. Existing controllers remain a comparison oracle until
 the complete replacement path passes; two production writers are not introduced.
 
+## Ownership and complete lifecycle
+
+This is the greenfield production path. Boxes assign responsibility; they do not
+assert that every connection is implemented. The implementation and qualification
+state remains in [status](status.json). DDK has no independent execution journal
+or mutable selection. Every reader uses the same current catalog format.
+
+```mermaid
+flowchart TB
+    sources["External sources and retained originals"]
+
+    subgraph definitions["DDK — definitions and bindings"]
+        define["1. Define products, datasets, components and required rules"]
+        check["2. Check definitions and bind the exact request"]
+        define --> check
+    end
+
+    subgraph domain["Application — source and domain meaning"]
+        acquire["3. Acquire and interpret through domain adapters"]
+        logic["Parsers, correction rules and transformation SQL"]
+    end
+
+    subgraph native["DocSpec — durable operation and data authority"]
+        admit["Admit operation identity, scope and budgets before effects"]
+        retain["Seal originals, receipts and exact input versions"]
+        compute["4. Prepare and execute one complete JobSpec"]
+        candidate["Retain candidate, required reports and useful checkpoints"]
+        accept["5. Accept complete candidate-bound evidence"]
+        select["Select the exact native result under current authority"]
+        intent["Accept a frozen publication intent"]
+        lifetime["Protect live obligations; retire disposable work after its last consumer"]
+        retain --> compute --> candidate
+        accept --> select
+    end
+
+    subgraph quality["Selected evidence verifier — exact supported semantics"]
+        verify["Verify native SQL reports or supported external evaluator results"]
+    end
+
+    subgraph catalog["DDK — generated metadata"]
+        assemble["6. Assemble accepted versions, evidence and definitions"]
+        artifacts["Freeze matching catalog, report, lock and companion bytes"]
+        discovery["Later discovery and lineage views"]
+        assemble --> artifacts
+    end
+
+    subgraph publication["Application publisher — external release authority"]
+        publish["7. Deliver immutable assets and activate with the expected token"]
+        observation["Record the original attempt's observed outcome separately"]
+        publish --> observation
+    end
+
+    subgraph readers["Consumers — one exact release"]
+        consume["8. Resolve catalog and data together: API, MCP and site"]
+    end
+
+    check --> admit
+    admit --> acquire
+    sources --> acquire
+    acquire --> retain
+    logic -.-> compute
+    define -.-> verify
+    candidate --> verify --> accept
+    select --> assemble
+    define -.-> assemble
+    artifacts --> intent --> publish
+    candidate -->|"Exact outputs"| publish
+    publish --> consume
+    observation -.-> discovery
+    artifacts -.-> discovery
+    candidate -.-> lifetime
+    observation -.-> lifetime
+    consume -.->|"Reader protection and release"| lifetime
+```
+
+Acquisition admission precedes every new external attempt. A caller timeout does
+not create another operation. The same native owner retains completed effects,
+computation and accepted evidence; domain adapters retain their source semantics.
+An existing materialized relation is not automatically a durable checkpoint.
+Preserve the complete job's dependency and last-consumer information when choosing
+which expensive completions survive a restart and when disposable bulk can retire.
+
+Congress uses a concrete native SQL evidence profile for its existing complete
+invariant inventory. The selected verifier binds every required check instance to
+all input and candidate views it used, exact SQL, trusted engine identity, completed
+execution and observed outcomes. Supported Data Contract CLI rules use their own
+qualified verifier. They do not require copying native data merely to repeat checks
+already performed by the native job. Independent raw-data checks retain their
+different evidence boundary. Catalog assembly consumes native accepted records;
+it does not repeat the native acceptance decision.
+
+The publication intent fixes the original attempt, accepted native result,
+qualification, immutable release inventory and expected publisher token. Once the
+native owner accepts that intent, later native selection changes do not silently
+revoke it. External activation still requires the original publisher token: an
+older attempt cannot replace a newer published release. A retry reconciles the
+same intent and records uncertainty when retained evidence cannot settle the
+historical outcome. This protocol adds no second publication controller.
+
+The embedded catalog describes the candidate and facts already observed when its
+bytes were frozen. The publisher never writes its eventual outcome back into
+those bytes: catalog files participate in the release identity. Publication
+observations refer to the frozen release and may feed a later discovery catalog
+or lineage export. Finalization requires matching candidate, output and catalog
+membership before activation; there is no absent-catalog or legacy-schema branch
+in the completed replacement.
+
 ## Simplification is part of acceptance
 
 The user clarified that the replacement must standardize and streamline the

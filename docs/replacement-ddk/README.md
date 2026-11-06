@@ -16,7 +16,7 @@ No full replacement, external publication or production cutover is complete.
 | Artifact | Purpose |
 | --- | --- |
 | [Status](status.json) | Current implementation, tests, dependencies and retained evidence |
-| [Design](design.md) / [operation seams](operation-seams.md) | Owners, exact native requests, checking and per-product activation |
+| [Design and boundary diagram](design.md#ownership-and-complete-lifecycle) / [operation seams](operation-seams.md) | Owners, exact native requests, checking and per-product activation |
 | [Acquisition lifecycle](acquisition-lifecycle.md) / [capabilities](acquisition-capabilities.json) | Source behavior and retained baseline evidence |
 | [Model and consumers](model-consumers.md) / [capabilities](consumer-capabilities.json) | Physical identities, domain fields and consumer journeys |
 | [Acceptance plan](acceptance-plan.md) | Current greenfield requirements; baseline compatibility observations are not obligations |
@@ -121,6 +121,18 @@ emits the field. Six native recovery-policy checks passed, covering valid
 eligibility and missing, null or invalid policy refusal. The source change after
 the preparation handoff is recorded in `checks-recovery-policy-current-01/`;
 final admission must capture the current source.
+
+The native report-policy builder implements the frozen whole-job interface. It
+binds the exact captured job and SQL, complete ordered input/step/output/report
+membership, and native-inferred Arrow schemas. It keeps nonblocking metadata
+reports in membership and uses the actual conditional diagnostics as the blocking
+set. Native retained completion remains the sole owner of report evaluation and
+acceptance. Thirty-seven focused cases passed; independent review approved this
+construction boundary. The retained capture-v1 job produces a 222-counter policy
+without reopening data payloads. The builder is not yet wired to the production
+caller, and the retained schema preparation remains unadmitted. Evidence is in
+`native-report-policy-01/` and `checks-native-report-inventory-02/` under the durable
+replacement evidence root.
 
 Earlier historical-reader tests remain evidence for the preparatory refactor.
 Their scope does not establish acceptance of the mandatory catalog format.
