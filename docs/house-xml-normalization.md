@@ -48,6 +48,29 @@ The focused production-offline selection exercises repair, syntax failure,
 durable import, a fresh-engine rerun, empty/wrong-root/blank controls and missing
 bytes. It is a partial selection, not a full-lane qualification.
 
+## Exact-URL recovery, November 6, 2026
+
+At the user's request, both exact source URLs were refetched into an isolated
+local raw evidence set. Both returned HTTP 200 and complete XML accepted by
+ElementTree and the maintained XML reader, without normalization:
+
+| Original body prefix | Original bytes | Refetched body prefix | Refetched bytes |
+| --- | --- | --- | --- |
+| `4cad751b9ec4` | 3,289 | `aa7fc97adeb1` | 225,788 |
+| `9da6a0c457ee` | 3,411 | `0d9fd999da81` | 96,044 |
+
+Each original fragment is an exact prefix of its refetched body. This points
+to earlier capture or import truncation; the source of that truncation is not
+yet established. A byte-order marker or lexical repair cannot restore the
+missing suffix. Refetching complete source bytes recovered both documents.
+
+The standard fetcher, host pacing, receipt writer and local create-only body
+store retained both responses under the evidence directory's
+`refetch/ct-yr9o-refetch-20261106T180233454667Z/`. `qualification.json` binds
+the new body keys, receipts and hashes. Original raw objects remain unchanged.
+The recovery owner still needs to import these local inputs through the
+maintained path and reconcile affected selections before a release uses them.
+
 ## Integration still required
 
 The release owner must freeze the selected House candidates and active decisions,
@@ -60,4 +83,5 @@ base evidence; existing sniff/bundle drift is unchanged by this fix.
 
 The completed-only document-reference backfill refuses new unreadable decisions
 and requires unchanged values. Its earlier proof does not qualify this change.
-No corpus replay, source acquisition, shared import or publication ran here.
+The two exact-URL refetches above are the only new acquisition in this work.
+No corpus replay, shared import or publication ran here.
