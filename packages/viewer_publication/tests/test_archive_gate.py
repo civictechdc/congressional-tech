@@ -1,5 +1,6 @@
 """F1: gates and optimistic pointer commit share the local/CI execution path."""
 import json
+from datetime import datetime, timezone
 import subprocess
 from pathlib import Path
 
@@ -61,7 +62,8 @@ def test_success_first_publish_and_lost_race():
         store = Pointer({'release_id': previous} if previous else None)
         gate_and_flip(store, bucket='fake', release_id='b' * 64, previous_release_id=previous,
                       expected_etag=store.etag, canary=passed, contract=passed)
-        assert store.value == {'release_id': 'b' * 64, 'previous_release_id': previous}
+        assert {key: store.value[key] for key in ('release_id', 'previous_release_id')} == {'release_id': 'b' * 64, 'previous_release_id': previous}
+        assert datetime.fromisoformat(store.value['published_at']) <= datetime.now(timezone.utc)
         assert store.puts[0]['CacheControl'] == 'no-store'
         assert store.puts[0].get('IfMatch') == ('original' if previous else None)
         assert store.puts[0].get('IfNoneMatch') == (None if previous else '*')
@@ -154,7 +156,8 @@ def test_first_engine_release_replaces_the_actual_legacy_pointer_with_its_observ
     store=Pointer(legacy);store.etag=response['ETag']
     gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id=None,
         expected_etag=response['ETag'],contract=passed,canary=passed)
-    assert store.value==dict(release_id='b'*64,previous_release_id=None)
+    assert {key:store.value[key] for key in ('release_id','previous_release_id')}==dict(release_id='b'*64,previous_release_id=None)
+    assert datetime.fromisoformat(store.value['published_at']).tzinfo is not None
     assert store.puts[0]['IfMatch']==response['ETag']
     assert 'IfNoneMatch' not in store.puts[0]
 

@@ -8,9 +8,13 @@ import subprocess
 import tempfile
 import tomllib
 import zipfile
+import runpy
 
 APP = Path(__file__).resolve().parents[1]
 REPO = APP.parents[1]
+# This check deliberately starts without an installed app or its dependencies.
+# The package entry file declares only version and tool names, so stdlib can read it.
+TOOL_NAMES = runpy.run_path(APP / 'src/congressional_explorer_mcp/__init__.py')['TOOL_NAMES']
 
 
 def main():
@@ -40,7 +44,7 @@ def main():
         assert Path(config['command']).is_absolute()
         assert config == tomllib.loads(run('config', '--client', 'codex', '--data-dir', str(data)))['mcp_servers']['congress']
         result = json.loads(run('check', '--data-dir', str(data)))
-        assert result['status'] == 'ok' and result['sample_rows'] == 1 and len(result['tools']) == 6
+        assert result['status'] == 'ok' and result['sample_rows'] == 1 and set(result['tools']) == TOOL_NAMES
         assert result['version'] == registry['version'] == registry['packages'][0]['version']
         alias_version = subprocess.check_output([str(root / 'bin/congressional-explorer-mcp'), '--version'], text=True)
         assert registry['version'] in alias_version

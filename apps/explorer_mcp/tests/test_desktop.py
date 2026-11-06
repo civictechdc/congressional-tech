@@ -7,6 +7,7 @@ from threading import Event
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 import pytest
+from congressional_explorer_mcp import TOOL_NAMES
 
 from congressional_explorer_mcp.server import create_server
 
@@ -17,7 +18,7 @@ def test_desktop_entry_prepares_on_first_call_and_reuses_snapshot(tmp_path, phas
         transport = StdioTransport(sys.executable, [str(Path(__file__).parents[1] / 'desktop.py'),
             '--data-dir', str(data), '--publication', str(publication)], keep_alive=False)
         async with Client(transport) as client:
-            assert len(await client.list_tools()) == 6
+            assert {tool.name for tool in await client.list_tools()} == TOOL_NAMES
             assert (data / 'selection.json').exists() != first
             info = (await client.call_tool('get_dataset_info')).data
             rows = (await client.call_tool('query_sql', {'query': {'sql': 'SELECT filename FROM documents LIMIT 1'}})).data
@@ -40,7 +41,7 @@ def test_first_setup_failure_can_retry_and_concurrent_calls_prepare_once(tmp_pat
     monkeypatch.setattr(server, 'prepare', flaky)
     async def run():
         async with Client(create_server(data_dir=tmp_path, publication=phase2)) as client:
-            assert len(await client.list_tools()) == 6 and not attempts
+            assert {tool.name for tool in await client.list_tools()} == TOOL_NAMES and not attempts
             with pytest.raises(Exception, match='Temporary download failure'):
                 await client.call_tool('get_dataset_info')
             results = await asyncio.gather(*(client.call_tool('get_dataset_info') for _ in range(3)))

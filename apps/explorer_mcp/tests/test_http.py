@@ -81,10 +81,13 @@ def test_http_tools_and_stateless_clients_match_local(tmp_path, phase2, lazy):
                 if lazy:
                     assert not (root / 'selection.json').exists()
                 for name, arguments in [
+                    ('get_overview', {}),
+                    ('get_dataset_status', {}),
                     ('get_dataset_info', {}),
                     ('search_documents', {'query': {'measure_key': '119-hr-1'}}),
                     ('search_entities', {'query': {'table': 'witnesses', 'text': 'Alex'}}),
                     ('get_entity', {'query': {'table': 'bills', 'id': '119-hr-1'}}),
+                    ('get_entity', {'query': {'table': 'bills', 'id': '119-hr-1', 'mode': 'summary'}}),
                     ('query_sql', {'query': {'sql': 'SELECT count(*) AS n FROM documents'}}),
                 ]:
                     assert (await remote.call_tool(name, arguments)).data == (await local.call_tool(name, arguments)).data
@@ -93,6 +96,13 @@ def test_http_tools_and_stateless_clients_match_local(tmp_path, phase2, lazy):
                 assert (await remote.call_tool('get_document', arguments)).data == (await local.call_tool('get_document', arguments)).data
                 error = await remote.call_tool('query_sql', {'query': {'sql': 'DROP VIEW documents'}}, raise_on_error=False)
                 assert error.is_error and 'read-only SELECT' in error.content[0].text
+                for query, expected in [({'sql': 'SELECT FROM'}, 'Parser Error'),
+                    ({'sql': 'SELECT imaginary_column FROM bills'}, 'imaginary_column'),
+                    ({'sql': 'SELECT * FROM imaginary_table'}, 'imaginary_table'),
+                    ({'sql': 'SELECT ? AS n'}, 'parameters: 1'),
+                    ({'sql': 'SELECT ?::INTEGER AS n', 'parameters': ['bad']}, 'Conversion Error')]:
+                    error = await remote.call_tool('query_sql', {'query': query}, raise_on_error=False)
+                    assert error.is_error and expected in error.content[0].text
                 async with Client(url) as second:
                     results = await asyncio.gather(*[
                         client.call_tool('query_sql', {'query': {'sql': f'SELECT {n} AS n'}})

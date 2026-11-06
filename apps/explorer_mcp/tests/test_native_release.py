@@ -8,6 +8,7 @@ from fastmcp.client.transports import StdioTransport
 import pytest
 
 from congressional_explorer_mcp.models import MAX_BYTES
+from congressional_explorer_mcp import TOOL_NAMES
 from congressional_explorer_mcp.release import encoded, prepare
 
 
@@ -32,10 +33,21 @@ def test_native_producer_release_through_stdio(tmp_path, request):
             async def sql(text, parameters=()):
                 return (await call('query_sql', {'sql':text,'parameters':list(parameters)}))['rows']
             tools = await client.list_tools()
-            assert {t.name for t in tools}=={'get_dataset_info','search_documents','get_document','search_entities','get_entity','query_sql'}
+            assert {t.name for t in tools} == TOOL_NAMES
             info = await call('get_dataset_info')
             assert info['release_id']==selected['release_id']
             assert len(encoded(info)) < MAX_BYTES
+            overview = (await client.call_tool('get_overview')).data
+            status = (await client.call_tool('get_dataset_status')).data
+            assert overview['release_id'] == status['release_id'] == selected['release_id']
+            assert len(encoded(overview)) < len(encoded(info))
+            assert 'relationships' not in await call('get_dataset_info', {'table': 'bills'})
+            chronological = await call('search_documents', {'sort': 'recent', 'limit': 100})
+            assert all(row['document_date_status'] == 'accepted' for row in chronological['rows'])
+            if chronological['rows']:
+                reference = chronological['rows'][0]['reference']
+                batch = await call('get_documents', {'items': [reference]})
+                assert batch['items'][0]['result'] == await call('get_document', reference)
             assert 'bill_hearing_transcripts' in {r['id'] for r in info['recipes']}
             assert {'meetings','witnesses','recordings','committees','members','rosters','bills','nominations'} <= info['tables'].keys()
             # ct-x78c: a House list with no meeting-id reaches its meeting through its own document links.

@@ -1,5 +1,6 @@
 """Run the reader gates before committing the one conditional public pointer."""
 import re
+from datetime import datetime, timezone
 
 from viewer_publication.client import publish_manifest_pointer
 from viewer_publication.archive_comparison_acceptance import require_comparison
@@ -40,7 +41,10 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
         validate_receipt(check(), release_id=release_id, name=name,manifest_origin=manifest_origin)
         require_comparison(comparison_acceptance)
     require_comparison(comparison_acceptance)
-    pointer={'release_id': release_id, 'previous_release_id': previous_release_id}
+    # This is the selection boundary, after candidate checks and immutable uploads.
+    # A model-build timestamp would describe preparation, not publication.
+    pointer={'release_id': release_id, 'previous_release_id': previous_release_id,
+             'published_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')}
     try:
         transfer=publish_manifest_pointer(client, bucket=bucket, pointer=pointer, expected_etag=expected_etag)
         if not isinstance(transfer.etag,str) or not transfer.etag.strip():

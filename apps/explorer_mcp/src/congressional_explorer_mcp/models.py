@@ -62,6 +62,9 @@ class DocumentSearch(Page):
     witness_key: str | None = Field(default=None, min_length=1, max_length=256)
     bioguide_id: str | None = Field(default=None, min_length=1, max_length=32)
     include_hidden: StrictBool = False
+    sort: Literal['archive', 'recent', 'oldest'] = 'archive'
+    include_suspect: StrictBool = False
+    include_undated: StrictBool = False
 
     @field_validator('congress', mode='before')
     @classmethod
@@ -78,10 +81,10 @@ class DocumentSearch(Page):
     def _keys(cls, value, info):
         return None if value is None else exact_scalar(value, 'VARCHAR', info.field_name)
 
-    @field_validator('include_hidden', mode='before')
+    @field_validator('include_hidden', 'include_suspect', 'include_undated', mode='before')
     @classmethod
-    def _include_hidden(cls, value):
-        return exact_scalar(value, 'BOOLEAN', 'include_hidden')
+    def _include_hidden(cls, value, info):
+        return exact_scalar(value, 'BOOLEAN', info.field_name)
 
 
 class DocumentQuery(Page):
@@ -124,6 +127,12 @@ class EntityQuery(Page):
     table: str
     id: StrictStr | StrictInt
     section: Literal['record', 'documents'] = 'record'
+    mode: Literal['detail', 'summary'] = 'detail'
+    fields: list[StrictStr] | None = Field(default=None, min_length=1, max_length=128)
+
+
+class DocumentBatch(Query):
+    items: list[DocumentQuery] = Field(min_length=1, max_length=10)
 
 
 class SqlQuery(Query):

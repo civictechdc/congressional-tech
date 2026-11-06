@@ -137,7 +137,9 @@ def test_receipts_then_input_contract_upload_canary_and_single_flip(tmp_path):
         store.events.append(('canary',release));return dict(status='passed',releaseId=release,targets='owner-approved')
     result,store,native=launch(tmp_path/'run',store=store,contract=contract,canary=canary)
     release=result['release_id'];assert result['status']=='published' and store.pointer_gets==1
-    assert json.loads(store.objects['viewer-publications/manifest.json'])==dict(release_id=release,previous_release_id=None)
+    published=json.loads(store.objects['viewer-publications/manifest.json'])
+    assert {key:published[key] for key in ('release_id','previous_release_id')}==dict(release_id=release,previous_release_id=None)
+    assert published['published_at'].endswith('Z')
     keys=[key for action,key in store.events if action=='native']
     assert '/inputs/receipts/' in keys[0] and keys[1].endswith('/inputs/'+result['input_digest']+'.json')
     assert keys[-1].endswith('/manifest.json')
