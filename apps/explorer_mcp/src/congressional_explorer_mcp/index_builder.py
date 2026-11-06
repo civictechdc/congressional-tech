@@ -188,7 +188,9 @@ def extract_one(target_path, output, *, timeout, memory_mb):
             pages=((value['page'],value['text']) for value in (json.loads(line) for line in pages_stream))
         else:
             backend={}
-            texts,_,_,_=_load_or_extract_pages(target,data_dir=None,timeout=timeout,max_bytes=MAX_BODY_BYTES,deadline=deadline,backend_info=backend)
+            from .pdf_decoder import owned_pdf_process
+            with owned_pdf_process():
+                texts,_,_,_=_load_or_extract_pages(target,data_dir=None,timeout=timeout,max_bytes=MAX_BODY_BYTES,deadline=deadline,backend_info=backend)
             extra=dict(backend=backend,reading_definition=reading,page_count=len(texts),textless_pages=sum(not text for text in texts))
             if kind=='playlist':
                 uris,final=_playlist('\n\n'.join(texts))

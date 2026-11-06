@@ -3,6 +3,7 @@
 Only decoding runs in the child. Verified-body fetches, cache publication and
 response slicing keep their existing owners and never run in a killed process.
 """
+from contextlib import contextmanager
 from contextvars import ContextVar
 import json
 import os
@@ -17,6 +18,47 @@ import anyio
 from .models import ExplorerError
 
 _CANCELLED = ContextVar('body_read_cancelled', default=None)
+_PROCESS_OWNED = ContextVar('pdf_process_owned', default=False)
+
+# Keep this small, independent of the parser's interpreter/GIL. This adapts
+# scripts/measure/process_rss.py's owned-group leader without its measurement
+# machinery: the installed wheel must not import repository-only scripts.
+_OWNER = '''import os, signal, subprocess, sys, time
+parent, deadline = int(sys.argv[1]), float(sys.argv[2])
+group = os.getpgrp()
+stopping = False
+def requested(*args):
+    global stopping
+    stopping = True
+signal.signal(signal.SIGTERM, requested)
+if os.getppid() != parent or time.monotonic() >= deadline:
+    raise SystemExit(1)
+process = subprocess.Popen(sys.argv[3:])
+while True:
+    if stopping or os.getppid() != parent or time.monotonic() >= deadline:
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        os.killpg(group, signal.SIGTERM)
+        try:
+            process.wait(timeout=.2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+        os.killpg(group, signal.SIGKILL)
+    code = process.poll()
+    if code is not None:
+        raise SystemExit(code)
+    time.sleep(.02)
+'''
+
+
+@contextmanager
+def owned_pdf_process():
+    """Reuse an extraction worker whose caller already owns its hard limits."""
+    token = _PROCESS_OWNED.set(True)
+    try:
+        yield
+    finally:
+        _PROCESS_OWNED.reset(token)
 
 
 async def run_body_read(function):
@@ -66,10 +108,16 @@ def extract_pdf_pages(payload, *, deadline=None, backend_info=None):
         raise ExplorerError('PDF body exceeds size limit')
     if payload.find(b'%PDF-', 0, 1024) < 0:
         raise ExplorerError('Invalid or corrupt PDF body')
+    if _PROCESS_OWNED.get():
+        # Offline extraction already has a process-family RSS/deadline owner.
+        # A new session would leave that owner's accounting and kill group.
+        from .body_reader import _decode_pdf_pages
+        return _decode_pdf_pages(payload, deadline=deadline, backend_info=backend_info)
     # The application supports macOS and Linux. A new session owns both the
-    # Python decoder and any Poppler fallback it starts.
+    # independent owner monitor, decoder and any Poppler fallback it starts.
     with subprocess.Popen(
-        [sys.executable, '-m', __name__, str(deadline)],
+        [sys.executable, '-I', '-c', _OWNER, str(os.getpid()), str(deadline),
+         sys.executable, '-m', __name__, str(deadline)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         start_new_session=True,
     ) as process:
@@ -103,7 +151,8 @@ def extract_pdf_pages(payload, *, deadline=None, backend_info=None):
             except ProcessLookupError:
                 pass
             try:
-                process.wait(timeout=.2)
+                # The leader gives the decoder .2 seconds, then reaps it.
+                process.wait(timeout=.4)
             except subprocess.TimeoutExpired:
                 pass
             try:
