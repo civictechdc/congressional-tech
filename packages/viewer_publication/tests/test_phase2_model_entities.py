@@ -811,6 +811,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     # The print first, then the recording's two complete caption tracks (ct-1i4q).
     assert [(t['source'], t['package_id'], t['video_key'], t['production']) for t in m['transcripts']] == [
         ('printed_hearing', 'CHRG-118hhrg55555', None, None),
+        ('captions', None, 'senate:ag051023', 'live'),
         ('captions', None, 'youtube:dQw4w9WgXcQ', 'asr'),
         ('captions', None, 'youtube:dQw4w9WgXcQ', 'caption'),
     ]
@@ -866,6 +867,14 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     track, = recordings['senate:ag051023']['tracks']
     assert (track['format'], track['language'], track['production']) == ('m3u8', 'en', 'live')
     assert track['body'] == hashlib.sha256(m3u8_bytes).digest()
+    resources = pq.read_table(release_dir / 'caption_resources.parquet').to_pylist()
+    senate = [r for r in resources if r['video_key'] == 'senate:ag051023']
+    assert [(r['ordinal'],r['status']) for r in senate] == [(0,'retained'),(1,'retained')]
+    assert senate[0]['body'] == track['body']
+    assert senate[1]['body'] == hashlib.sha256(caption_segment).digest()
+    assert senate[1]['declared_uri'] == 'text_1_00001.vtt'
+    assert senate[1]['source_url'].endswith('/ag051023/text_1_00001.vtt')
+    assert senate[1]['parser_version'] == playlist_records.current_versions()['hls']
 
     # 4. Verify committees.parquet (including Eastern date conversion)
     committees = pq.read_table(release_dir / 'committees.parquet').to_pylist()

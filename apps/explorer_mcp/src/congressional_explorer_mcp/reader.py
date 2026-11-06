@@ -9,6 +9,7 @@ import duckdb
 from .models import (MAX_BYTES, ExplorerError, exact_scalar,
                      DocumentSearch, DocumentQuery, EntitySearch, EntityQuery, SqlQuery)
 from .release import encoded, quote, literal
+from .hearing_reader import HearingReader
 
 # Published display columns that text search reads, wherever a table has them.
 TEXT_FIELDS = ('name', 'title', 'short_title', 'public_law_number', 'description', 'organization', 'position', 'video_key',
@@ -51,7 +52,7 @@ def published_entities(schema):
 from .legislative_reader import LegislativeReader
 
 
-class Reader(LegislativeReader):
+class Reader(HearingReader, LegislativeReader):
     def __init__(self, selection, *, scratch=None):
         self.selection = selection
         self.release_id = selection['release_id']
@@ -358,7 +359,7 @@ class Reader(LegislativeReader):
         position, redirected_from = self._resolve_document(query)
         row = self.rows(
             'SELECT list_row,filename,title,format,saved_kind,saved_media_type,saved_bytes,'
-            'lower(hex(link_key)) AS link_key,lower(hex(saved_body)) AS saved_body,saved_suffix '
+            'lower(hex(link_key)) AS link_key,lower(hex(saved_body)) AS saved_body,saved_suffix,witness_keys '
             'FROM documents WHERE list_row=?',
             [position],
             limit=1,
@@ -375,6 +376,7 @@ class Reader(LegislativeReader):
             saved_kind=row['saved_kind'],
             saved_media_type=row['saved_media_type'],
             saved_bytes=row['saved_bytes'],
+            witness_keys=row['witness_keys'],
             saved_body=body.lower() if body else None,
             saved_suffix=suffix,
             saved_url=self.file_url(body, suffix),
@@ -443,12 +445,15 @@ class Reader(LegislativeReader):
         row = self.rows('''SELECT lower(hex(link_key)) AS link_key,lower(hex(saved_body)) AS saved_body,
             saved_suffix,main_content.selector AS selector,main_content.reader_version AS reader_version,
             main_content.text_sha256 AS text_sha256,length(selected_text) AS total_chars,
-            substr(selected_text,?,?) AS text
+            substr(selected_text,?,?) AS text,witness_keys
             FROM documents WHERE list_row=?''', [query.offset + 1, limit, position], limit=1)['rows'][0]
         if row['text'] is None:
             raise ExplorerError('Selected text is unavailable for this document. Use section=text for the saved body.')
         next_offset = query.offset + len(row['text'])
-        return dict(row, release_id=self.release_id, offset=query.offset,
+        from .citations import text_citation
+        citation=text_citation(dict(row,release_id=self.release_id),dict(kind='selected_text',offset=query.offset,length=len(row['text']),
+            selector=row['selector'],selected_text_sha256=row['text_sha256']),row['text'])
+        return dict(row, citation=citation, release_id=self.release_id, offset=query.offset,
                     next_offset=next_offset if next_offset < row['total_chars'] else None,
                     saved_url=self.file_url(row['saved_body'], row['saved_suffix']))
 

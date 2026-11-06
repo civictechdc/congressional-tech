@@ -788,7 +788,7 @@
         {
           "name": "transcripts",
           "type": "list<struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>>",
-          "meaning": "Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a complete caption or subtitle track of the meeting's recording, never a stream segment; formats, video_key, language, production)",
+          "meaning": "Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a retained complete caption body or subtitle media playlist of the meeting's recording, never a stream segment; formats, video_key, language, production)",
           "nullable": false
         },
         {
@@ -1169,6 +1169,88 @@
         "tracks[]": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows."
       },
       "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+    },
+    {
+      "name": "caption_resources.parquet",
+      "columns": [
+        {
+          "name": "video_key",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Recording whose selected caption track owns this resource"
+        },
+        {
+          "name": "track_body",
+          "type": "fixed[32]",
+          "nullable": false,
+          "meaning": "Selected caption track root body digest"
+        },
+        {
+          "name": "ordinal",
+          "type": "int64",
+          "nullable": false,
+          "meaning": "Zero for the root; one-based playlist declaration order for each segment"
+        },
+        {
+          "name": "source_url",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Original root fetch address or child URI resolved in that root context; never an archive fetch target"
+        },
+        {
+          "name": "declared_uri",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Literal child URI in the retained playlist; null for a root"
+        },
+        {
+          "name": "body",
+          "type": "fixed[32]",
+          "nullable": true,
+          "meaning": "Retained resource body digest; null when the declared resource is missing"
+        },
+        {
+          "name": "suffix",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "Content-addressed archive storage suffix"
+        },
+        {
+          "name": "format",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "Retained resource format"
+        },
+        {
+          "name": "parser_version",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Pinned playlist reading that declared the ordered child resources; null for direct caption files"
+        },
+        {
+          "name": "status",
+          "type": "dict",
+          "nullable": false,
+          "meaning": "retained or missing; missing declarations remain rows"
+        }
+      ],
+      "gaps": [
+        "Only selected retained caption roots and their direct subtitle media-playlist segments; unsupported HLS features remain explicit at read time.",
+        "Retained does not mean the body was verified by this reader, nor does a live playlist snapshot establish a complete hearing."
+      ],
+      "purpose": "Archived caption roots and ordered playlist resources",
+      "row_meaning": "One selected caption root or declared child, including a missing child",
+      "identity": {
+        "fields": [
+          "video_key",
+          "track_body",
+          "ordinal"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "nullability": "Root identity and source URL are required. Missing children have null body/suffix/format. Declared URI is null only for roots; direct caption files have no playlist parser version."
     },
     {
       "name": "committees.parquet",
@@ -4032,6 +4114,27 @@
       "match": "equal",
       "meaning": "Exact published source key; missing profile rows remain unresolved.",
       "scope": "All selected detail rows, including subjects outside local profiles"
+    },
+    {
+      "id": "caption_resource_recording",
+      "source": {
+        "table": "caption_resources",
+        "fields": [
+          "video_key"
+        ]
+      },
+      "target": {
+        "table": "recordings",
+        "fields": [
+          "video_key"
+        ]
+      },
+      "meaning": "The recording that owns the selected root and its ordered archived children.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
     }
   ],
   "recipes": [

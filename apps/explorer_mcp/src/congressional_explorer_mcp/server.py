@@ -7,6 +7,7 @@ import anyio
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
+from pydantic import StrictInt, StrictStr
 
 from . import __version__
 from .models import (DocumentSearch, DocumentQuery, DocumentBatch, EntitySearch, EntityQuery,
@@ -14,6 +15,7 @@ from .models import (DocumentSearch, DocumentQuery, DocumentBatch, EntitySearch,
                      ActivityQuery, ResearchQuery)
 from .worker import Worker
 from .release import PUBLICATION, encoded, load_selection, prepare
+from .hearing_models import HearingBundleQuery, TranscriptQuery
 
 
 def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION):
@@ -36,7 +38,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         'Use query_sql for arbitrary joins, nested lists and aggregations across all release tables. '
         'Document references and page cursors belong to one release. Saved file URLs are for you to fetch and read. '
         'Missing tables mean unavailable, not zero records. Witnesses identify appearances, not deduplicated people. '
-        "This server searches metadata and reads verified archived document bodies via get_document(section='text')."))
+        "This server searches metadata and reads verified archived document bodies via get_document(section='text'). "
+        'Use get_hearing_bundle for a hearing dossier; get_transcript discovers release-bound official, committee and caption sources. '
+        'Pass a returned citation to resolve_citation to reopen its original passage.'))
 
     async def call(method, query):
         try:
@@ -53,6 +57,93 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     annotations = dict(readOnlyHint=True, destructiveHint=False, idempotentHint=True,
         openWorldHint=selection is None)
+
+    def bounded(result):
+        if len(encoded(result))>MAX_BYTES:
+            raise ExplorerError('Response exceeds 128 KiB; request fewer cues or a smaller max_chars window')
+        return result
+
+    async def caption_read(target,query):
+        from .caption_reader import read_caption_page
+        async def resources(ordinal,limit):
+            return await call('caption_resource_page',dict(source=target,ordinal=ordinal,limit=limit))
+        return bounded(await read_caption_page(target,query,resources,data_dir=data_dir,timeout=timeout))
+
+    async def transcript_read(query):
+        inventory=await call('transcript_inventory',query.model_dump())
+        if query.source_id is None:
+            return inventory
+        target=inventory['target']
+        if target['kind']=='captions':
+            return await caption_read(target,query)
+        if query.cursor:
+            raise ExplorerError('Document transcripts use page and character offset, not a caption cursor')
+        from .body_reader import read_document_body
+        document=DocumentQuery(**target['document_reference'],section='text',offset=query.offset,page=query.page,max_chars=query.max_chars,limit=query.limit)
+        # A document reference, rather than the event, remains the owner of body identity.
+        body_target=await call('document_body_target',document.model_dump())
+        result=await anyio.to_thread.run_sync(partial(read_document_body,body_target,document,data_dir=data_dir,timeout=timeout),abandon_on_cancel=True)
+        result.update(event_id=query.event_id,source=target,state='available')
+        return bounded(result)
+
+    @mcp.tool(annotations=annotations)
+    async def get_transcript(event_id: StrictStr | StrictInt, kind: str | None = None, source_id: str | None = None,
+                             offset: StrictInt = 0,limit: StrictInt = 25,page: StrictInt | None = None,max_chars: StrictInt = 8000,
+                             cursor: str | None = None,release_id: str | None = None) -> dict:
+        """Discover and read official transcripts, committee transcripts, or timestamped captions by meeting.
+
+        Without source_id, returns a source inventory; offset/limit page that inventory. Choose a returned
+        source_id and release_id to read its exact source. Document sources use page and character offset/max_chars;
+        captions use cue offset/limit and next_cursor for efficient continuation across retained playlist segments.
+        Caption timestamps retain their source timebase. Package context stays labelled and does not establish
+        event-specific coverage. Missing resources and unsupported playlists are explicit; only archived bytes are fetched.
+        """
+        try:
+            query=TranscriptQuery(event_id=event_id,kind=kind,source_id=source_id,offset=offset,limit=limit,page=page,
+                                  max_chars=max_chars,cursor=cursor,release_id=release_id)
+            with anyio.fail_after(timeout):
+                return await transcript_read(query)
+        except TimeoutError as error:
+            raise ToolError('Transcript read timed out') from error
+        except (ExplorerError,OSError,ValueError,KeyError,TypeError) as error:
+            raise ToolError(str(error)) from error
+
+    @mcp.tool(annotations=annotations)
+    async def get_hearing_bundle(event_id: StrictStr | StrictInt,include: list[str] | None = None,limit: StrictInt = 10,
+                                 offsets: dict[str,StrictInt] | None = None,release_id: str | None = None) -> dict:
+        """Return a bounded hearing dossier using published meeting, witness and recording associations.
+
+        Includes meeting, committees, current witnesses, prepared_testimony, official_transcripts,
+        committee_transcripts, captions, recordings and coverage. Narrow include to those section names;
+        each section's next request continues it using offsets. Transcript rows carry get_transcript references.
+        Original recording observations and event versus package_context scope remain intact.
+        Empty sections mean unknown; unavailable tables remain distinct from zero observations.
+        """
+        value=dict(event_id=event_id,limit=limit,offsets=offsets or {},release_id=release_id)
+        if include is not None:
+            value['include']=include
+        query=HearingBundleQuery.model_validate(value)
+        return await call('get_hearing_bundle',query.model_dump())
+
+    @mcp.tool(annotations=annotations)
+    async def resolve_citation(citation: dict) -> dict:
+        """Reopen an exact PDF/text passage, publisher-selected witness statement, or caption cue.
+
+        Pass the citation returned by a text or cue read. Citations bind to one release, saved body,
+        reading version and exact location; this tool reports unavailable or different_source instead of
+        silently following a changed release or body. Witness attribution requires an exact published
+        occurrence association; ambiguous names never establish ownership.
+        """
+        from .passage_reader import resolve_passage
+        try:
+            with anyio.fail_after(timeout):
+                if len(encoded(citation))>16384:
+                    raise ExplorerError('Citation exceeds the supported reference size')
+                return bounded(await resolve_passage(citation,call,caption_read,data_dir=data_dir,timeout=timeout))
+        except TimeoutError as error:
+            raise ToolError('Citation read timed out') from error
+        except (ExplorerError,OSError,ValueError,KeyError,TypeError) as error:
+            raise ToolError(str(error)) from error
 
     @mcp.tool(annotations=annotations)
     async def get_overview() -> dict:

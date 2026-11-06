@@ -159,8 +159,8 @@ def test_a_meeting_with_only_captions_lists_the_track(meetings):
     assert meetings[24][3] == ['captions:youtube:abc/asr']
 
 
-def test_a_recording_with_only_segments_or_empty_tracks_gives_no_transcript(meetings):
-    assert meetings[25][3] == []
+def test_a_recording_with_a_subtitle_playlist_lists_it_and_excludes_its_segment(meetings):
+    assert meetings[25][3] == ['captions:senate:x/caption']
 
 
 def test_rescheduled_with_its_own_recording_sat(meetings):
