@@ -563,7 +563,11 @@ def test_authored_odcs_preserves_all_frozen_physical_fields_and_table_meaning():
         columns = table['columns'] + (CURRENT_CAPTURE_FIELDS if name == 'url_state' else [])
         for column in columns:
             field = properties[column['name']]
-            assert field['physicalType'] == column['type']
+            # The original SQL explicitly casts every instant to microsecond UTC:
+            # meeting-records-ranked/resolved and entity-videos. The old registry
+            # abbreviated some of those types; authored ODCS retains their units.
+            expected_type = re.sub(r'\btimestamp\b(?!<)', 'timestamp<microsecond,UTC>', column['type'])
+            assert field['physicalType'] == expected_type
             meaning = column.get('meaning', '')
             if (name, column['name']) == ('recording_matches', 'meeting_links'):
                 assert meaning == 'Supported meeting links ordered by event ID. Empty means no supported link. Absent on older releases.'

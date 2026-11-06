@@ -20,6 +20,15 @@ four probe-wrapper cases and nine HTTP/catalog-reader cases. Independent review
 approved the change after correcting HTTP media types to follow logical asset
 names. No native exports were copied to create a common release directory.
 
+Current record inputs now use their declared producer shapes directly. Removed
+footer reads no longer infer old hash encodings or fill missing meeting/witness
+columns. Two native cases passed for collection states, capture context, exact
+version selection and completeness refusal. The scoped definition/request/job
+run passed 58 cases and retained one known checked-in parser-pin refusal; it is
+not a passing lane. All six previously abbreviated timestamps and their enclosing
+sitting types now state microseconds in UTC, matching unchanged original SQL.
+Independent review approved these changes.
+
 | Artifact | Purpose |
 | --- | --- |
 | [Status](status.json) | Current implementation, tests, dependencies and retained evidence |

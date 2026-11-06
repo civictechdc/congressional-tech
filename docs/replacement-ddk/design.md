@@ -109,8 +109,9 @@ flowchart TB
 
     subgraph definitions["DDK — definitions and bindings"]
         define["1. Define products, datasets, components and required rules"]
+        frozen["Capture the exact small definition and profile files once"]
         check["2. Check definitions and bind the exact request"]
-        define --> check
+        define --> frozen --> check
     end
 
     subgraph domain["Application — source and domain meaning"]
@@ -138,10 +139,12 @@ flowchart TB
 
     subgraph catalog["DDK — generated metadata"]
         schema_binding["Bind observed native schemas to captured dataset definitions"]
+        rule_binding["Match required field/key rules to qualified native counters"]
         assemble["6. Assemble accepted versions, evidence and definitions"]
         artifacts["Freeze matching catalog, report, lock and companion bytes"]
         discovery["Later discovery and lineage views"]
-        schema_binding --> assemble --> artifacts
+        schema_binding --> assemble
+        rule_binding --> assemble --> artifacts
     end
 
     subgraph publication["Application publisher — external release authority"]
@@ -160,11 +163,13 @@ flowchart TB
     sources --> acquire
     acquire --> retain
     logic -.-> compute
-    define -.-> verify
+    frozen -.-> verify
     candidate --> verify --> accept
     select --> schema_binding
-    define -.-> schema_binding
+    frozen -.-> schema_binding
     candidate -->|"Exact output identities and schemas"| schema_binding
+    frozen -.-> rule_binding
+    accept -->|"Original SQL, complete output coverage and accepted results"| rule_binding
     artifacts --> files
     candidate -->|"Retained paths; no export copy"| files
     files --> intent --> publish
@@ -207,6 +212,15 @@ native counter policy alone does not prove that binding. DDK must retain the
 captured production and dataset definitions with the native schema evidence;
 unmapped columns, mismatched types or changed definitions cannot silently acquire
 qualified status during a later catalog refresh.
+
+Capture the small project, dataset, component and profile definitions before the
+first assembly, then use the same captured set for the final assembly. The native
+request retains their definition identity. Required row values and key uniqueness
+also need exact bindings to accepted native report columns and the complete writer
+relation. A nullable Arrow field does not establish whether rows contain nulls;
+the qualified full-output null counter answers that question. Coverage metadata
+does not itself prove a rule passed. Unsupported nested or value rules remain
+unknown, and checking a different definition set cannot repair the candidate.
 
 The publication intent fixes the original attempt, accepted native result,
 qualification, immutable release inventory and expected publisher token. Once the

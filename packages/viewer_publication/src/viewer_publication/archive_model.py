@@ -6,7 +6,7 @@ from pathlib import Path
 
 from congress_api.lake.receipt_metadata import document_status_sql,empty_body_sql
 from congress_api.retention.provenance import json_input,list_of,struct
-from viewer_publication.archive_format import NULL_MEETING_DOCUMENT_REFERENCES, SPICY_PRODUCER_FAMILIES
+from viewer_publication.archive_format import SPICY_PRODUCER_FAMILIES
 
 ROOT=Path(__file__).parents[4]
 REGISTRIES={
@@ -750,19 +750,10 @@ def selected_record_step(table,record_input,*,root=ROOT):
     return dict(name='selected_'+table,sql=sql,materialize=True)
 
 
-def meeting_steps(*,root=ROOT,has_document_references=True):
+def meeting_steps(*,root=ROOT):
     """Select once, merge once, then resolve: CTEs are inlined per reader, so these must be steps."""
     steps=_sql_steps(['meeting-records-ranked','meeting-records-current','meeting-records-merged'],root=root)
-    if not has_document_references:
-        steps[0]['sql']=steps[0]['sql'].replace("m['document_references'] AS document_references",
-            NULL_MEETING_DOCUMENT_REFERENCES + " AS document_references")
     return steps+[dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
-
-
-def meeting_records_have_document_references(path):
-    import pyarrow.parquet as pq
-    schema=pq.read_schema(path)
-    return schema.field('meetings').type.value_type.get_field_index('document_references') >= 0
 
 
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
@@ -928,47 +919,19 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                              requirements_sha256=recovery_requirements['sha256'])
         inputs.append(dict(name='recovery_requirements_input',kind='parquet',path=recovery_requirements['path']))
         prelude.append(dict(name='recovery_requirements',sql='SELECT original_url,target_requirement,acceptance_policy,refresh_policy FROM recovery_requirements_input',materialize=True))
-    def _record_table_sql(table_name,value,payload_col):
-        parquet_path=value.get('path') if isinstance(value,dict) and value.get('kind')=='parquet' else (value if isinstance(value,(str,Path)) else None)
-        sha_expr="lower(encode(record_sha,'hex'))"
-        status_expr='status'
-        error_expr='error_type'
+    def _record_table_sql(table_name,payload_col):
         extra_select=''
         if table_name=='appearance_records':
             extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,'
-        if parquet_path is not None and Path(parquet_path).is_file():
-            import pyarrow as pa
-            import pyarrow.parquet as pq
-            schema=pq.read_schema(parquet_path)
-            if 'record_sha' in schema.names and not (pa.types.is_binary(schema.field('record_sha').type) or pa.types.is_fixed_size_binary(schema.field('record_sha').type)):
-                sha_expr='lower(record_sha)'
-            if 'status' not in schema.names:
-                status_expr="'completed'"
-            if 'error_type' not in schema.names:
-                error_expr='cast(NULL AS VARCHAR)'
-            if table_name=='appearance_records':
-                ev_expr='event_id' if 'event_id' in schema.names else 'cast(NULL AS BIGINT) AS event_id'
-                pkg_expr='package_id' if 'package_id' in schema.names else 'cast(NULL AS VARCHAR) AS package_id'
-                base_expr='declared_base' if 'declared_base' in schema.names else 'cast(NULL AS VARCHAR) AS declared_base'
-                cs_expr='collection_state' if 'collection_state' in schema.names else 'cast(NULL AS VARCHAR) AS collection_state'
-                ctx_expr='context_url' if 'context_url' in schema.names else 'cast(NULL AS VARCHAR) AS context_url'
-                # MODS print facts; an older lake file without them states none.
-                held_expr='held_dates' if 'held_dates' in schema.names else "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS held_dates"
-                title_expr='title' if 'title' in schema.names else 'cast(NULL AS VARCHAR) AS title'
-                created_expr='created' if 'created' in schema.names else 'cast(NULL AS VARCHAR) AS created'
-                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},{created_expr},'
-        return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
-    meeting_records_path=meeting_records.get('path') if isinstance(meeting_records,dict) else meeting_records
-    has_document_references=(not isinstance(meeting_records_path,(str,Path)) or
-        not Path(meeting_records_path).is_file() or meeting_records_have_document_references(meeting_records_path))
+        return f"SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,parser_version,status AS status,error_type AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
     if meeting_records is None or isinstance(meeting_records,(list,tuple)):
         inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or (),parser_versions.get('meeting_records')),**MEETING_RECORD_FIELDS))
     else:
-        prelude += [dict(name='meeting_records_input',sql=_record_table_sql('meeting_records',meeting_records,'meetings'),materialize=True)]
+        prelude += [dict(name='meeting_records_input',sql=_record_table_sql('meeting_records','meetings'),materialize=True)]
     if appearance_records is None or isinstance(appearance_records,(list,tuple)):
         inputs.append(json_input(scratch,'appearance_records_input',_normalize_appearance_rows(appearance_records or (),parser_versions.get('appearance_records')),**APPEARANCE_RECORD_FIELDS))
     else:
-        prelude += [dict(name='appearance_records_input',sql=_record_table_sql('appearance_records',appearance_records,'appearances'),materialize=True)]
+        prelude += [dict(name='appearance_records_input',sql=_record_table_sql('appearance_records','appearances'),materialize=True)]
     spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs,include_entities)
     inputs += spicy_inputs
     def _provenance_input(name,files,fields):
@@ -1013,8 +976,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
         parser_versions=dict(parser_versions),catalog_version=catalog_version,
-        include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs,
-        has_document_references=has_document_references)
+        include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
@@ -1062,7 +1024,7 @@ def _prepared_release(prepared,*,output,root,finish):
     steps=list(prepared['steps'])+link_steps(root=root)
     steps += _sql_steps(['archive-member-addresses'],root=root)
     # Meetings read only prelude inputs; the documents they list feed URL keys and annotations.
-    steps += meeting_steps(root=root,has_document_references=prepared.get('has_document_references',True))+_sql_steps(['meeting-document-urls'],root=root)
+    steps += meeting_steps(root=root)+_sql_steps(['meeting-document-urls'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
     steps += url_normalized_steps(root=root)
     steps += [dict(name='model_url_keys',sql=(Path(root)/'model/sql/url-keys.sql').read_text(),materialize=True)]

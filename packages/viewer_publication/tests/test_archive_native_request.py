@@ -33,7 +33,7 @@ def incumbent_request(tmp_path):
                     evidence=tmp_path / 'scratch/evidence', capture_profile=dict(version=1),
                     parser_versions=inventory['source_request']['parser_versions'],
                     catalog_version=inventory['source_request']['catalog_version'],
-                    include_entities=True, explorer_inputs=True, has_document_references=True,
+                    include_entities=True, explorer_inputs=True,
                     entity_digests=inventory['spicy_regs']['generations'])
     return inventory, prepared
 

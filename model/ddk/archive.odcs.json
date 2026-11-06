@@ -1052,22 +1052,22 @@
         {
           "name": "sittings",
           "logicalType": "array",
-          "physicalType": "list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>",
+          "physicalType": "list<struct<start timestamp<microsecond,UTC>,end timestamp<microsecond,UTC>,place string,room string,building string,address string>>",
           "description": "Scheduled times and locations, as Congress.gov states them when it has a sitting",
           "required": true,
           "items": {
             "logicalType": "object",
-            "physicalType": "struct<start timestamp,end timestamp,place string,room string,building string,address string>",
+            "physicalType": "struct<start timestamp<microsecond,UTC>,end timestamp<microsecond,UTC>,place string,room string,building string,address string>",
             "properties": [
               {
                 "name": "start",
                 "logicalType": "timestamp",
-                "physicalType": "timestamp"
+                "physicalType": "timestamp<microsecond,UTC>"
               },
               {
                 "name": "end",
                 "logicalType": "timestamp",
-                "physicalType": "timestamp"
+                "physicalType": "timestamp<microsecond,UTC>"
               },
               {
                 "name": "place",
@@ -1221,7 +1221,7 @@
         {
           "name": "congress_gov_updated",
           "logicalType": "timestamp",
-          "physicalType": "timestamp",
+          "physicalType": "timestamp<microsecond,UTC>",
           "description": "Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time",
           "required": false
         },
@@ -2484,14 +2484,14 @@
         {
           "name": "published_at",
           "logicalType": "timestamp",
-          "physicalType": "timestamp",
+          "physicalType": "timestamp<microsecond,UTC>",
           "description": "YouTube's publication time for the upload",
           "required": false
         },
         {
           "name": "video_published_at",
           "logicalType": "timestamp",
-          "physicalType": "timestamp",
+          "physicalType": "timestamp<microsecond,UTC>",
           "description": "YouTube's video publication time",
           "required": false
         },
@@ -2519,7 +2519,7 @@
         {
           "name": "details_checked_at",
           "logicalType": "timestamp",
-          "physicalType": "timestamp",
+          "physicalType": "timestamp<microsecond,UTC>",
           "description": "When details were last checked",
           "required": false
         },

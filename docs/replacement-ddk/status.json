@@ -56,7 +56,8 @@
     "Adopted qualified dev5 catalog/API slice; complete private native check definitions and audience-filtered public artifacts share one captured assembly; independent review approved 31 root cases,138 MCP passes/3 producer-fixture skips and7 HTTP/browser cases",
     "Implemented exact native report-policy construction and updated the complete ownership diagram after independent red/green review; native caller integration remains open.",
     "Declared archive-model production and exact public/private/source catalog dispositions; 15 focused cases passed and independent review approved bfebe773.",
-    "Migrated comparison, publisher and local HTTP probes to exact logical-name/file-path inventories; native outputs can remain separate from controls. 131 Python, four probe-wrapper and nine HTTP/catalog-reader cases passed; independent review approved after correcting media types to use logical names."
+    "Migrated comparison, publisher and local HTTP probes to exact logical-name/file-path inventories; native outputs can remain separate from controls. 131 Python, four probe-wrapper and nine HTTP/catalog-reader cases passed; independent review approved after correcting media types to use logical names.",
+    "Removed footer-driven old meeting/witness input formats and optional document-reference SQL; current producer schemas, all callers and explicit microsecond UTC definitions independently reviewed. Two native behavior cases passed; scoped definition/request/job checks passed 58 cases and retained one known parser-pin refusal."
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -490,6 +491,21 @@
       ],
       "peakRSSGiB": 0.31,
       "wholeExportsCopied": false
+    },
+    "currentRecordShape": {
+      "definitionRequestAndJob": {
+        "passed": 58,
+        "failed": 1,
+        "failure": "test_checked_in_job_specs_load: retained parser pins differ from current whole-lock fingerprints; existing admission guard retained.",
+        "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-current-record-shape-01"
+      },
+      "nativeBehavior": {
+        "passed": 2,
+        "scope": "Current context-free producer shapes, collection states, capture context, version selection and completeness refusal; incumbent pinned native runtime.",
+        "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-current-record-native-01"
+      },
+      "fullLane": false,
+      "review": "Independent read-only red team approved source and caller changes."
     }
   },
   "commits": {
@@ -602,10 +618,10 @@
       "status": "authored policy from unadmitted frozen capture-v1 preparation; 222 counters, 51 inputs, 251 steps, 40 exports, 23 reports"
     },
     "producerStaticProofRequirements": {
-      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-proof-definition-01/producer-static-proof-requirements.json",
-      "sha256": "4e0fd5ca45b48333bf25c96c27ac300d34de4d8818b65ffdf748d21c1410c6cc",
-      "size": 14116,
-      "status": "source requirements only; native static-proof implementation and admission pending; existing Gate5 retained"
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-proof-definition-02/producer-static-proof-requirements.json",
+      "sha256": "3e04cf57346d8428de31daacb925603d772e277088e2cdfbca1af62c78f2f053",
+      "size": 16553,
+      "status": "Independently reviewed requirements only; no native admission. Supersedes immutable definition-01."
     }
   },
   "constraints": {
