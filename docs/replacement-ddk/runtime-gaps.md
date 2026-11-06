@@ -1,6 +1,7 @@
 # Shared DDK and DocSpec capabilities required
 
-Status: preparation findings, November 6, 2026. Parent owns shared implementations.
+Status: preparation findings and first compilation result, November 6, 2026.
+Parent owns shared implementations.
 Nothing here authorizes this worktree to change those repositories. The inventory
 distinguishes demonstrated profile restrictions from work that is merely unproved.
 Source references name the inspected current DDK dev2/DocSpec b1270b2e tuple.
@@ -18,6 +19,20 @@ Source references name the inspected current DDK dev2/DocSpec b1270b2e tuple.
 | G09 | Accept the complete candidate-bound native invariant evidence separately from application publication checks. DocSpec `src/engine/managed_build.rs:315-328` pins one Data Contract CLI evaluator and one `duckdb-direct-view` profile; lines 590-699 consume its single-source evidence. Congress has six standard cross-table invariant families plus required `explorer_invariants` for the full Explorer closure. Gate 5 producer proofs run before model build; the other application publication checks keep their current timing. | Parent DocSpec qualification owner; DDK evidence composition. Bind native diagnostic results to all exact input/output pins, rule SQL digests, evaluator/engine tuple and complete conditional required-check inventory. Wrong/missing/duplicate/unknown results must refuse native selection. The application publisher separately binds its reader/link/cause checks and prior admission evidence to the same complete release and reconciles conditional activation. | Demonstrated accepted-evaluator restriction; broader evidence composition unqualified |
 | G10 | Retain existing exact native table pins without export/reimport. DDK `adapters/docspec.py:343-353` refuses `native_table`/`iceberg`/raw `version`; Congress uses metadata location, table UUID, snapshot and schema ID. DocSpec `src/job/spec.rs:22-51` already has both input families. | Parent native view/protection profile plus DDK adapter. Admit/protect the original table snapshot and expose its exact schema/field mapping; never fabricate a local VersionRef or substitute latest. Concrete bindings and step census belong in `native-profile.md`/`.json`. | Profile/protection bridge missing; engine reader existence is not the missing capability |
 | G11 | Define how acquisition phase state and external effects enter the native durable owner. Current capture journal seals downloads/frozen receipts and preserves uncertain calls; the inspected native operation enum has no acquisition request (`src/model/operations.rs:330-339`). | Parent DocSpec lifecycle profile plus application acquisition adapter. Specify stable request and admitted budgets before effects, durable sealed completion, same-ID reconciliation, and adoption of historical journal facts without two active state machines. Preserve current capture as an oracle until this route qualifies. | Target protocol required; no proof that current managed Build can execute capture |
+| G12 | Admit schema-valid external relationship targets during project dependency collection. The real dev2 compiler raises `KeyError: 'dataset'` at `ddk/core.py:52`: `_catalog_dependencies` indexes `item['target']['dataset']` even when the target has `external`. | Parent DDK owner. Preserve each external endpoint and its unresolved checking evidence while collecting dependencies only from local dataset endpoints. Qualify a released package with both local and external targets, then run this application's existing positive byte-parity and required-unknown checks. | Executed deterministic compile failure; first focused test fails before parity assertions |
+
+G12 currently blocks independent definition work before any native job. Call
+`ddk.catalog.build_catalog("model/ddk/project.ddk.json")` in this checkout's
+interpreter with the frozen dev2 wheel to reach the faulty shared loader. The
+original experiment's schema CLI and the repository's focused
+`production-offline` test entry point reached that exception after a passing
+`doctor`; the latter result is partial, exit 1. The experiment's default
+integration was withdrawn under the simplification review. The log and
+JUnit capture remain retained under
+`/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-01/`.
+For example, `bills_votes` points from the local `bills.floor_votes[].vote_id`
+field to a declared external vote identifier. Removing such relationships or
+inventing local target tables would change the retained consumer meaning.
 
 These gaps do not require rebuilding DDK's existing release qualification. Reuse
 the captured results while their identity/custody applies; qualify the new

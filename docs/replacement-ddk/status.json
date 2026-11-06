@@ -2,7 +2,7 @@
   "version": 1,
   "date": "2026-11-06",
   "objective": "Full end-to-end DDK replacement for the congressional-tech workspace",
-  "phase": "preparation-approved-definition-implementation-blocked",
+  "phase": "preparation-approved-catalog-redesign-shared-dependency-blocked",
   "worktree": "/Users/mikewolfd/.codex/worktrees/9c45/congressional-tech",
   "branch": "codex/ddk-congress-replacement-20261106",
   "baselineCommit": "a06eb64bf3caa4a44e12a89bdd08939323de3092",
@@ -25,16 +25,23 @@
     "Corrected preparation independently approved after F1-F4 fixes",
     "Revised native/qualification/acquisition/activation design independently approved for local application work",
     "Exact metadata-only native request inventory: eight pins,250 field/element IDs,51 inputs,251 live steps,678 dependency edges,40 output specs,23 SQL reports",
-    "Released DDK wheel digest verified and installed in worktree .venv through frozen uv dependency"
+    "Released DDK wheel digest verified and installed in worktree .venv through frozen uv dependency",
+    "Preparation checkpoint committed as 706de09e",
+    "Focused test preflight passed with retained Poppler 26.06.0 and the unchanged congressional native runtime pin",
+    "All 191 native-profile source-definition hashes and sizes independently matched the baseline Git objects",
+    "Withdrew provisional default integration: archive_schema.py, archive_model_profile.py and viewer-publication package dependencies match baseline",
+    "Moved the unchanged frozen DDK wheel to workspace development dependencies; uv lock and worktree-local uv sync --frozen succeeded",
+    "Recorded the clarified simplification criteria; stopped extending the reverse-conversion bridge",
+    "Independent architecture reassessment requires redesign of the reverse bridge; retain semantic evidence and replace a real consumer with concrete code retirement"
   ],
   "active": [
-    "Checkpoint completed preparation separately from unfinished implementation",
-    "Resolve application mapping issues and parent-owned DDK external-target loader defect",
-    "Run independent implementation review and appropriate focused tests after runnable compile"
+    "Replace the frozen reverse-conversion experiment with a standard-catalog consumer increment that retires superseded current-path code",
+    "Await parent-owned external-target loader repair and separately qualified shared native capabilities",
+    "Run focused semantic/consumer and lifecycle acceptance once the supported path is runnable"
   ],
   "tests": {
     "replacementAcceptance": "not_run",
-    "pythonLanes": "not_run",
+    "pythonLanes": "no full lane run; focused partial run failed",
     "browser": "not_run",
     "native": "not_run",
     "preparationChecks": "JSON shape and source-locator checks only",
@@ -42,12 +49,27 @@
       "command": ".venv/bin/python -m viewer_publication.archive_schema --check",
       "exit": 1,
       "result": "KeyError dataset in released DDK core._catalog_dependencies for schema-valid external relationship target; no metadata acceptance"
-    }
+    },
+    "focusedDefinitionTests": {
+      "command": ".venv/bin/python scripts/dev.py test production-offline --path packages/viewer_publication/tests/test_ddk_definitions.py -- -x -q",
+      "environment": "PATH prepended with /Users/mikewolfd/.local/poppler-26.06.0/bin; DOCSPEC_JOB_CONFIG names this worktree's generated local-only runtime",
+      "doctor": "passed",
+      "exit": 1,
+      "scope": "partial: 1 of 495 lane files; not a lane result",
+      "result": "First positive compilation test fails at released DDK core.py:52 external-target KeyError; no parity assertion reached",
+      "evidenceDirectory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-01",
+      "log": "initial.log",
+      "junit": "initial.junit.xml",
+      "scopeNote": "Historical run of the provisional integration before its default wiring/CLI/hash additions were withdrawn; remaining experiment tests have not passed"
+    },
+    "sourceWithdrawal": "git diff --exit-code confirms both incumbent runtime source files and viewer-publication pyproject match baseline; syntax inspection and git diff --check passed; not runtime acceptance"
   },
   "commits": {
-    "taskCommits": [],
-    "uncommitted": "Completed preparation staged; DDK definition implementation and dependency wiring remain unstaged/unverified",
-    "constraint": "Default sandbox still denied shared Git metadata after human reported full access; no denied Git operation bypassed"
+    "taskCommits": [
+      "706de09e"
+    ],
+    "uncommitted": "Frozen provisional definitions/compiler/development dependency experiment; final review and redesign checkpoint recorded separately; no implementation acceptance",
+    "constraint": "Git checkpoint used approved elevated access after the default sandbox denied shared Git metadata; no denied operation bypassed"
   },
   "sharedDependencies": [
     "Immediate DDK core._catalog_dependencies external target bug: src/ddk/core.py:52 indexes target.dataset unconditionally; preserve schema-valid external endpoints and unresolved evidence without crashing",
@@ -64,7 +86,7 @@
     "qualifiedDistribution": "/Users/mikewolfd/Work/artifacts/ddk-stack-20261105/distribution/qualified-03"
   },
   "constraints": {
-    "lastLocalDiskFreeGiB": 8.7,
+    "lastLocalDiskFreeGiB": 8.5,
     "latestParentDiskFreeGiB": 7.7,
     "heavyJobsAdmitted": false,
     "sharedWritesDefaultSandbox": "denied",
@@ -75,19 +97,28 @@
   },
   "delivery": {
     "fullReplacementComplete": false,
-    "independentCodeReview": "not_run",
+    "independentCodeReview": "Three original application findings addressed in source; execution blocked. The provisional bridge is under architecture redesign and is not accepted integration.",
     "supersededInfrastructureRetired": false,
-    "remainingScope": "Every capability requires independent executable proof; wider source/consumer census and authentic retained-data acceptance remain incomplete"
+    "remainingScope": "Every capability requires independent executable proof; wider source/consumer census and authentic retained-data acceptance remain incomplete",
+    "architectureReview": "RECONSIDER provisional bridge as end-state; default integration withdrawn; logical native boundaries remain useful"
   },
   "definitionImplementation": {
-    "state": "incomplete; actual compiler failed",
+    "state": "Frozen, opt-in migration experiment only; default production wiring and broad DDK-specific model hashes withdrawn",
     "owner": "application definitions and consumer adapter; shared DDK fix parent-owned",
     "remaining": [
-      "external-target DDK loader defect",
-      "row_position uniqueness mapping",
-      "recipe documented relationships versus actual input requirements",
-      "focused tests and independent review"
+      "standard-catalog consumer path that removes reverse conversion and duplicate checking",
+      "separate computation, qualification and metadata dependencies",
+      "parent-owned external-target loader fix and qualified package",
+      "independent consumer and full replacement acceptance"
     ],
     "wheelSHA256": "b705e81c15636522c4e0e41f202ee3717d264800cdf0984c91f76ab925b4cd0e"
+  },
+  "simplification": {
+    "requirement": "Standardize and streamline the whole catalog-to-validation stack; reduce custom machinery rather than accumulate compatibility patches",
+    "decision": "Freeze the reverse-conversion experiment; retain its evidence; withdraw default runtime wiring and DDK-specific blanket model hashes",
+    "nextIncrement": "Move a real consumer to the standard catalog and remove the superseded current-path code in the same increment",
+    "historicalCompatibility": "Preserve immutable releases and version-specific readers; incidental new JSON formatting is not a parity requirement",
+    "performance": "No speed or resource improvement measured; qualify fresh/rerun/delta/metadata-only/rule-only behavior under resource controls",
+    "design": "docs/replacement-ddk/design.md#simplification-is-part-of-acceptance"
   }
 }

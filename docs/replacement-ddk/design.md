@@ -1,6 +1,7 @@
 # DDK replacement: proposed design and delivery boundary
 
-Status: reviewed preparation under correction, November 6, 2026. This is a full
+Status: reviewed preparation; first implementation under simplification review,
+November 6, 2026. This is a full
 replacement plan, not an implemented stack or an accepted migration. The release prerequisite is the
 parent-owned `implementationReady` value in
 `/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/release-status.json`.
@@ -87,6 +88,55 @@ The final application command composes declared components and supported native
 operations. It must not invoke the incumbent controller wholesale and relabel the
 receipt as DDK execution. Existing controllers remain a comparison oracle until
 the complete replacement path passes; two production writers are not introduced.
+
+## Simplification is part of acceptance
+
+The user clarified that the replacement must standardize and streamline the
+whole catalog-to-validation stack. A successful migration reduces custom
+machinery and maintenance work while preserving required behavior. Moving old
+metadata into standard formats and adding another converter is insufficient.
+
+The first uncommitted definition bridge exposed useful transcription and reader
+compatibility facts, but it also added legacy object-member ordering annotations,
+duplicate composite type descriptions, a reverse conversion to the old registry,
+and another definition-validation pass. It expanded broad model hashes to include
+description and recipe changes. That draft is a migration experiment, not the
+accepted architecture; stop extending it as a permanent runtime path.
+
+The next implementation increment must connect one real consumer to the standard
+DDK catalog and required checking evidence, and remove the superseded current-path
+code in the same increment. Its acceptance must show these concrete improvements:
+
+- Physical types and native field/element IDs have one maintained owner. DDK
+  references and checks the exact native mapping instead of keeping a second
+  composite type language synchronized by application code.
+- Standard DDK fields carry meaning, identities, relationships, recipes and
+  product scope. Application extensions hold domain facts that the standard
+  cannot express, with each missing reusable feature assigned to the
+  shared DDK owner. Serialization maps and duplicated short-name translations
+  leave the authored end-state.
+- Current discovery and checking use one admitted catalog and one set of
+  required results. Remove the reverse registry converter and duplicated
+  definition validator from that path. Preserve independent raw-data checks;
+  their different reading is deliberate evidence, not duplicated authority.
+- Computation, qualification and publication metadata keep separate dependency
+  identities. Description-only changes regenerate metadata; rule-only changes
+  requalify the existing candidate; data changes recompute affected native work.
+  Retain full provenance without making every provenance byte a compute trigger.
+- Historical readers remain a small, version-specific compatibility boundary.
+  Preserve old immutable releases and their bytes. New releases preserve meaning,
+  ordered data, field IDs, multiplicity and consumer behavior; they need not
+  reproduce incidental JSON object-member ordering or generated prose formatting.
+- Each migrated path names the old code and independently maintained definitions
+  it retires. Acceptance is incomplete while both current implementations remain
+  active or while the new route merely calls the old controller wholesale.
+
+Claims of faster or more resource-efficient execution require measurements on
+the same retained inputs and equivalent results. Compare a fresh run, unchanged
+rerun, bounded data delta, metadata-only edit and qualification-only change.
+Record work reread/recomputed, elapsed time, peak memory and retained bytes under
+the repository resource controls. No speed improvement is established by the
+current metadata experiment or static source review.
 
 ## Meaning that cannot be simplified away
 

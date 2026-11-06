@@ -19,7 +19,7 @@
         "consumer-capabilities.json",
         "DDK archive definition implementation"
       ],
-      "state": "54 capability rows corrected; definition implementation awaiting compile repairs"
+      "state": "Experiment frozen; default runtime wiring and added blanket hashes withdrawn; useful migration evidence retained"
     },
     {
       "agent": "greybeard_audit",
@@ -33,7 +33,7 @@
       "owns": [
         "reviews/architecture-review.md"
       ],
-      "state": "revised logical boundaries approved; shared implementation unqualified"
+      "state": "Reassessment complete: RECONSIDER bridge end-state; concrete retain/redesign/remove decisions recorded"
     },
     {
       "agent": "acceptance_review",
@@ -68,7 +68,7 @@
       "owns": [
         "reviews/definition-code-review.md"
       ],
-      "state": "independent static review in progress"
+      "state": "Original three findings addressed in source; executable acceptance blocked by shared DDK loader; experiment not adopted"
     }
   ],
   "independence": "Reviewers received objective, constraints and artifact/source paths without other reviewers' conclusions. Implementation authors cannot close their own independent acceptance obligations.",
