@@ -163,6 +163,30 @@ WITH keys AS (
  FROM transcript_ranked tr
  JOIN nomination_hearing_packages np ON np.package_id=tr.package_id
  WHERE tr.package_id IS NOT NULL AND np.package_id IS NOT NULL
+), status_observations AS (
+ SELECT event_id,array_agg(named_struct('source',source,'status',status,'meeting_date',meeting_date,
+  'record_sha',record_sha_hex,'observed_at',retrieved_at) ORDER BY source,retrieved_at,record_sha_hex) AS publisher_status_observations
+ FROM meeting_records_ranked WHERE status IS NOT NULL
+ GROUP BY event_id
+), outcome_evidence AS (
+ SELECT event_id,'held' AS outcome,'printed_hearing' AS basis,package_id AS source_reference,
+  'A published hearing print identifies this event on its meeting date.' AS reason,1 AS priority
+ FROM package_meeting_links
+ UNION ALL
+ SELECT event_id,'held','committee_transcript',cast(list_row AS VARCHAR),
+  'The meeting lists a retained transcript named for its meeting date.',2
+ FROM transcript_ranked WHERE source='committee_transcript'
+ UNION ALL
+ SELECT event_id,'held','curated_source_review',cast(event_id AS VARCHAR) AS source_reference,evidence,0
+ FROM meeting_status_conflicts
+), cancellation_evidence AS (
+ SELECT event_id,meeting_date,record_sha_hex,source,
+  row_number() OVER(PARTITION BY event_id,meeting_date ORDER BY priority,source,record_sha_hex) AS rn
+ FROM meeting_records_current
+ WHERE lower(coalesce(status,'')) IN ('canceled','cancelled')
+    OR regexp_like(coalesce(title,''),'(?i)^\s*(canceled|cancelled|cancellation)\b')
+), ranked_outcomes AS (
+ SELECT *,row_number() OVER(PARTITION BY event_id ORDER BY priority,source_reference) AS rn FROM outcome_evidence
 ), subject_keys_by_event AS (
  SELECT event_id,array_agg(subject_key ORDER BY subject_key) AS subject_keys
  FROM (
@@ -184,6 +208,22 @@ SELECT k.event_id,
  m.meeting_type,
  m.session,
  m.status,
+ m.status AS publisher_status,
+ coalesce(so.publisher_status_observations,array_slice(make_array(named_struct(
+  'source',cast(NULL AS VARCHAR),'status',cast(NULL AS VARCHAR),'meeting_date',cast(NULL AS DATE),
+  'record_sha',cast(NULL AS VARCHAR),'observed_at',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'))),1,0)) AS publisher_status_observations,
+ CASE WHEN oe.event_id IS NOT NULL THEN oe.outcome
+      WHEN ce.event_id IS NOT NULL THEN 'canceled'
+      ELSE 'unknown' END AS outcome,
+ CASE WHEN oe.event_id IS NOT NULL THEN oe.basis
+      WHEN ce.event_id IS NOT NULL THEN 'publisher_cancellation'
+      ELSE 'no_outcome_evidence' END AS outcome_basis,
+ CASE WHEN oe.event_id IS NOT NULL THEN oe.source_reference
+      WHEN ce.event_id IS NOT NULL THEN ce.record_sha_hex
+      END AS outcome_source_reference,
+ CASE WHEN oe.event_id IS NOT NULL THEN oe.reason
+      WHEN ce.event_id IS NOT NULL THEN ce.source||' explicitly canceled this dated event.'
+      ELSE 'A schedule, witness list or recording link alone does not establish that the meeting took place.' END AS outcome_reason,
  coalesce(m.sittings,array_slice(make_array(named_struct(
   'start',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
   'end',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
@@ -213,4 +253,7 @@ LEFT JOIN subject_keys_by_event sk ON k.event_id=sk.event_id
 LEFT JOIN transcripts_agg t ON k.event_id=t.event_id
 LEFT JOIN rescheduled r ON k.event_id=r.event_id
 LEFT JOIN printed pr ON k.event_id=pr.event_id
+LEFT JOIN status_observations so ON so.event_id=k.event_id
+LEFT JOIN ranked_outcomes oe ON oe.event_id=k.event_id AND oe.rn=1
+LEFT JOIN cancellation_evidence ce ON ce.event_id=k.event_id AND ce.meeting_date=m.meeting_date AND ce.rn=1
 WHERE k.event_id IS NOT NULL

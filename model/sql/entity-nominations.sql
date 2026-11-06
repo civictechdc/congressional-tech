@@ -8,7 +8,7 @@ WITH referenced_nominations AS (
   CASE WHEN part_number IS NOT NULL AND try_cast(part_number AS INT) IS NOT NULL AND try_cast(part_number AS INT)<>0
        THEN '-'||regexp_replace(trim(part_number),'^0+','') ELSE '' END AS nomination_id,
   congress,number,part_number,description,organization,received_date,
-  latest_action_date,latest_action_text,committee_activities,hearings_json
+  latest_action_date,latest_action_text,update_date,committee_activities,hearings_json
  FROM spicy_nominations WHERE congress IS NOT NULL AND number IS NOT NULL
 ), matched_nominations AS (
  SELECT k.* FROM keyed_nominations k
@@ -81,7 +81,7 @@ SELECT m.nomination_id,
  m.description,m.organization,
  coalesce(try_cast(m.received_date AS DATE),cast(arrow_cast(try_cast(m.received_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS received,
  coalesce(try_cast(m.latest_action_date AS DATE),cast(arrow_cast(try_cast(m.latest_action_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS latest_action_date,
- m.latest_action_text,m.committee_activities,
+ m.latest_action_text,m.update_date AS source_updated_at,m.committee_activities,
  coalesce(c.committees,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS committees,
  coalesce(t.transcripts,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS transcripts,
  coalesce(v.floor_votes,array_slice(make_array(named_struct(

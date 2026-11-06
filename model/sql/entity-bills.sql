@@ -232,7 +232,7 @@ WITH direct_referenced_bills AS (
  FROM activities_sorted GROUP BY bill_id
 ), base_bills AS (
  SELECT lower(trim(bill_id)) AS norm_bill_id,
-  title,short_title,
+  title,short_title,subjects,update_date,update_date_including_text,
   nullif(trim(sponsor_bioguide_id),'') AS sponsor_bioguide_id,
   coalesce(try_cast(introduced_date AS DATE),cast(arrow_cast(try_cast(introduced_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS introduced,
   coalesce(try_cast(latest_action_date AS DATE),cast(arrow_cast(try_cast(latest_action_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS latest_action_date,
@@ -244,7 +244,7 @@ WITH direct_referenced_bills AS (
  FROM spicy_congress_bills WHERE bill_id IS NOT NULL
 )
 SELECT b.norm_bill_id AS bill_id,
- b.title,b.short_title,
+ b.title,b.short_title,b.subjects,b.update_date AS source_updated_at,b.update_date_including_text AS source_update_including_text,
  b.sponsor_bioguide_id,
  b.introduced,
  b.latest_action_date,

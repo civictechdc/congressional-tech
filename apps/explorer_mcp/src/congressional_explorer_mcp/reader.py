@@ -12,7 +12,7 @@ from .release import encoded, quote, literal
 
 # Published display columns that text search reads, wherever a table has them.
 TEXT_FIELDS = ('name', 'title', 'short_title', 'public_law_number', 'description', 'organization', 'position', 'video_key',
-               'source_description', 'committee_label', 'handle', 'note')
+               'source_description', 'committee_label', 'handle', 'note', 'action_text', 'question', 'member_name')
 
 DOCUMENT_SUMMARY_COLUMNS = (
     'l.list_row,l.filename,l.title,l.congress,l.format,l.document_date,d.document_date_source,'
@@ -48,7 +48,10 @@ def published_entities(schema):
     return keys, links
 
 
-class Reader:
+from .legislative_reader import LegislativeReader
+
+
+class Reader(LegislativeReader):
     def __init__(self, selection, *, scratch=None):
         self.selection = selection
         self.release_id = selection['release_id']
@@ -164,9 +167,9 @@ class Reader:
         if relationship is not None and upstream and relationship not in {r['id'] for r in relationships}:
             value = next((value for value in upstream if value['id'] == relationship), None)
             if value is not None:
-                # Held upstream (SpicyRegs) at the stated generation; this server reads none of its rows.
+                # An upstream pin and a selected local table are separate availability facts.
                 local = sorted({join['table'] for join in value['joins']} - self.selection['tables'].keys())
-                return dict(release_id=self.release_id, upstream=True, **value, missing_tables=local)
+                return dict(release_id=self.release_id, upstream=True, **value, local_available=value['table'] in self.schemas, missing_tables=local)
         for selector, values, describe in ((relationship, relationships, relation_info), (recipe, recipes, recipe_info)):
             if selector is not None:
                 if version != 1:
@@ -214,7 +217,7 @@ class Reader:
                    'SQL preserves published types. BLOB values use DuckDB JSON escaping; hex(binary_column) gives portable identifiers.',
                    'References and cursors bind to this release. File URLs are returned for you to fetch and read.',
                    'Pass a relationship or recipe ID for join meaning or example SQL; examples are never run by discovery.',
-                   'upstream_relations are SpicyRegs tables pinned by generation and path when available; this server does not read them.'],
+                   'upstream_relations name SpicyRegs source tables. Only relations listed in local tables are readable; a generation pin alone is not local availability.'],
             limits=dict(page_rows=100, sql_rows=200, response_bytes=MAX_BYTES, duckdb_memory='512MB', spill='512MB'))
 
     def rows(self, sql, args=(), *, limit=100):
@@ -468,7 +471,7 @@ class Reader:
             conditions.append(f'{quote(name)}=?'); args.append(value)
         order = ','.join(map(quote, key))
         result = self.page(query, f'SELECT {self.entity_columns(query.table)} FROM {quote(query.table)} WHERE ' + (' AND '.join(conditions) or 'true'), args, order=order)
-        return self.entity_rows(result)
+        return self.entity_rows(result, query.table)
 
     def entity_key(self, table):
         """The table's published identity: absent tables are not published, never empty."""
@@ -486,8 +489,14 @@ class Reader:
                 if table == 'recordings' and name == 'tracks' else quote(name) for name in fields)
         return '*'
 
-    def entity_rows(self, result):
+    def entity_rows(self, result, table=None):
         for row in result['rows']:
+            if table == 'meetings':
+                row.setdefault('publisher_status', row.get('status'))
+                row.setdefault('outcome', None)
+                row['outcome_evidence_available'] = 'outcome' in self.schemas['meetings']
+                if not row['outcome_evidence_available']:
+                    row['outcome_reason'] = 'This release does not publish outcome evidence.'
             for track in row.get('tracks') or []:
                 track['saved_url'] = self.file_url(track['body'], track['suffix'])
         return result
@@ -534,4 +543,4 @@ class Reader:
         if selected is not None:
             result['omitted_fields'] = [name for name in self.schemas[query.table] if name not in selected]
             result['detail_access'] = 'Use mode=detail, fields=[...], or query_sql to slice large nested lists.'
-        return self.entity_rows(result)
+        return self.entity_rows(result, query.table)

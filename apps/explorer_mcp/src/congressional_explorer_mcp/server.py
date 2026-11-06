@@ -9,7 +9,9 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from . import __version__
-from .models import DocumentSearch, DocumentQuery, DocumentBatch, EntitySearch, EntityQuery, SqlQuery, ExplorerError, MAX_BYTES
+from .models import (DocumentSearch, DocumentQuery, DocumentBatch, EntitySearch, EntityQuery,
+                     SqlQuery, ExplorerError, MAX_BYTES, BillActions, RollCalls, MemberBallots,
+                     ActivityQuery, ResearchQuery)
 from .worker import Worker
 from .release import PUBLICATION, encoded, load_selection, prepare
 
@@ -72,7 +74,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
         Pass one selector: table for columns, identity and incoming/outgoing IDs;
         relationship for keys and join meaning (also a pinned upstream relation's ID); recipe for parameterized DuckDB SQL.
-        upstream_relations name SpicyRegs detail tables (actions, cosponsors, ballots, ...) by generation; they are not in this release.
+        upstream_relations name SpicyRegs detail tables (actions, cosponsors, ballots, ...) by generation; tables available locally are listed separately; an upstream pin alone does not make rows queryable.
         Also accepts table=schema, capture_scope, or capture_profile for published controls.
         Recipe example parameters illustrate parameter format; substitute keys discovered via search_entities or search_documents.
         Examples are guidance, never executed by this tool. Older releases may lack relationship metadata.
@@ -222,5 +224,59 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         Reads are limited to selected metadata files; network access, writes, extension loading and configuration changes are disabled.
         """
         return await call('query_sql', query.model_dump())
+
+    @mcp.tool(annotations=annotations)
+    async def get_bill_actions(query: BillActions) -> dict:
+        """Page every recorded bill action in chronological source order, by bill or date window.
+
+        since is inclusive and until exclusive (YYYY-MM-DD). Same-day source entries remain distinct by
+        bill_id/action_index. stage is an upstream derived status; voice actions remain actions, not ballots.
+        Chamber follows source_system_name where explicit; source_generation/reference identify pinned rows.
+        Missing detail tables return unavailable coverage, never a fabricated empty history.
+        """
+        return await call('get_bill_actions', query.model_dump())
+
+    @mcp.tool(annotations=annotations)
+    async def get_roll_calls(query: RollCalls) -> dict:
+        """Page full roll-call rows by vote_id, bill_id, chamber or inclusive/exclusive date window.
+
+        Reads the entire selected roll-call input, including votes outside local bill/nomination profiles.
+        Totals and individual ballots remain separate. bill_references retains source bill-action associations even outside local bill profiles.
+        vote_day owns calendar filtering; vote_date preserves the publisher literal and its precision.
+        """
+        return await call('get_roll_calls', query.model_dump())
+
+    @mcp.tool(annotations=annotations)
+    async def get_member_ballots(query: MemberBallots) -> dict:
+        """Page individual ballots by vote_id, member_key or bioguide_id, with optional dated vote window.
+
+        member_key preserves upstream member identity even where bioguide_id is unavailable.
+        position and position_normalized stay distinct. Date filters join the roll call's vote_day;
+        literal ballot vote_date is retained. Ballots are not vote totals or voice-vote actions.
+        """
+        return await call('get_member_ballots', query.model_dump())
+
+    @mcp.tool(annotations=annotations)
+    async def get_activity(query: ActivityQuery) -> dict:
+        """Read dated legislative events: bill actions, roll calls, nomination received/latest action, meeting schedules.
+
+        since is inclusive, until exclusive; omitted until means onward. Dates have day precision and remain
+        distinct by source occurrence key. Committee resolves one published code/name and matches its exact
+        associations. Topic resolves a published bill subject, including meetings explicitly linked to those bills.
+        Coverage reports missing sources; schedules do not establish that a meeting occurred.
+        """
+        return await call('get_activity', query.model_dump())
+
+    @mcp.tool(annotations=annotations)
+    async def run_research_query(query: ResearchQuery) -> dict:
+        """Run recent_bills, pending_nominations, hearings_by_committee or legislation_by_subject.
+
+        Dates filter introduced, received or meeting_date, since inclusive/until exclusive; order is newest
+        date then canonical ID. committee is one exact published code or unambiguous name; subject is one
+        published subject label. Ambiguous input returns candidates. Pending means no terminal action recorded
+        in a known latest action in this snapshot; missing latest actions remain unknown. Source references,
+        missing fields and unavailable collection coverage are explicit. Continue with the returned cursor.
+        """
+        return await call('run_research_query', query.model_dump())
 
     return mcp

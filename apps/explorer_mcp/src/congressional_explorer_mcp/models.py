@@ -144,3 +144,49 @@ class SqlQuery(Query):
     @classmethod
     def _limit(cls, value):
         return exact_scalar(value, 'INTEGER', 'limit')
+
+
+class DatedPage(Page):
+    since: str | None = None
+    until: str | None = None
+    chamber: Literal['house', 'senate', 'joint'] | None = None
+
+    @field_validator('since', 'until')
+    @classmethod
+    def _iso_date(cls, value):
+        from datetime import date
+        if value is not None and (not re.fullmatch(r'\d{4}-\d{2}-\d{2}', value) or date.fromisoformat(value).isoformat() != value):
+            raise ValueError('Use an ISO calendar date: YYYY-MM-DD')
+        return value
+
+    def window(self):
+        if self.since and self.until and self.since >= self.until:
+            raise ExplorerError('until must be later than since; since is inclusive and until is exclusive')
+        return self
+
+
+class BillActions(DatedPage):
+    bill_id: str | None = Field(default=None, max_length=64)
+
+
+class RollCalls(DatedPage):
+    bill_id: str | None = Field(default=None, max_length=64)
+    vote_id: str | None = Field(default=None, max_length=128)
+
+
+class MemberBallots(DatedPage):
+    vote_id: str | None = Field(default=None, max_length=128)
+    member_key: str | None = Field(default=None, max_length=128)
+    bioguide_id: str | None = Field(default=None, max_length=32)
+
+
+class ActivityQuery(DatedPage):
+    since: str
+    committee: str | None = Field(default=None, max_length=256)
+    topic: str | None = Field(default=None, max_length=256)
+
+
+class ResearchQuery(DatedPage):
+    name: Literal['recent_bills', 'pending_nominations', 'hearings_by_committee', 'legislation_by_subject']
+    committee: str | None = Field(default=None, max_length=256)
+    subject: str | None = Field(default=None, max_length=256)

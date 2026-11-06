@@ -17,6 +17,14 @@
       "sha256": "00d56d0b694f66bafd10df8c88999d8fbc9dffca62507ee2e7c2a4f2409c1a09",
       "size": 143880
     },
+    "spicy_bill_actions": {
+      "family": "bill-family",
+      "key": "bill_actions.parquet",
+      "path": "generations/bill-family/f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42/bill_actions.parquet",
+      "rows": 932877,
+      "sha256": "ded5f49598848192c847dd6e2b4ba0bd57b26209c0606a4d3d27f6dea32d78a9",
+      "size": 11506349
+    },
     "spicy_bill_committee_activities": {
       "family": "bill-family",
       "key": "bill_committee_activities.parquet",
@@ -80,6 +88,14 @@
       "rows": 45535,
       "sha256": "dc8fd9f024f60a29f61bbb01ebddc28418d8f6c1d680fe09eca4d283a9887fb6",
       "size": 234901
+    },
+    "spicy_member_votes": {
+      "family": "roll-call-votes",
+      "key": "member_votes.parquet",
+      "path": "generations/roll-call-votes/e7cdd80d9eecbf13ce172ce076c9a5df77fd418c97fb80d13393ce6ab595ace0/member_votes.parquet",
+      "rows": 10561417,
+      "sha256": "3fff1c6ae0a3502b6030a72e3971dc7f16f3f8f0629a9fc783b275b6aab637de",
+      "size": 31643875
     },
     "spicy_members": {
       "family": "members",

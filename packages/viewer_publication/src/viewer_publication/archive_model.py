@@ -145,7 +145,7 @@ SPICY_SCHEMAS={
         bill_id='Utf8',title='Utf8',short_title='Utf8',
         sponsor_bioguide_id='Utf8',introduced_date='Utf8',
         latest_action_date='Utf8',latest_action_text='Utf8',
-        stage='Utf8',policy_area='Utf8',
+        stage='Utf8',policy_area='Utf8',subjects=list_of('Utf8'),update_date='Utf8',update_date_including_text='Utf8',
         public_law_number='Utf8',cosponsor_count='Int32',
         related_bills=list_of(struct(
             bill_type='Utf8',congress='Utf8',latest_action_date='Utf8',
@@ -181,12 +181,21 @@ SPICY_SCHEMAS={
     'spicy_nominations':dict(
         congress='Int32',number='Int32',part_number='Utf8',
         description='Utf8',organization='Utf8',received_date='Utf8',
-        latest_action_date='Utf8',latest_action_text='Utf8',
+        latest_action_date='Utf8',latest_action_text='Utf8',update_date='Utf8',
         hearings_json='Utf8',
         committee_activities=list_of(struct(system_code='Utf8',activities=list_of(struct(name='Utf8',date='Utf8')))),
     ),
 }
 
+
+from viewer_publication.legislative_data import ACTION_SCHEMA, BALLOT_SCHEMA, VOTE_EXTRA, detail_exports
+SPICY_SCHEMAS['spicy_bill_vote_references'].update(congress='Utf8',session='Utf8',roll_number='Utf8',action_index='Int64',date='Utf8',full_action_name='Utf8')
+SPICY_SCHEMAS['spicy_bill_actions']=ACTION_SCHEMA
+SPICY_SCHEMAS['spicy_member_votes']=BALLOT_SCHEMA
+SPICY_SCHEMAS['spicy_roll_call_votes'].update(VOTE_EXTRA)
+SPICY_SCHEMAS['spicy_roll_call_votes'].update(congress='Utf8',session='Utf8',roll_number='Utf8',yea='Int64',nay='Int64')
+# Preserve the full source document reference, including its names and titles.
+SPICY_SCHEMAS['spicy_roll_call_votes']['documents']=list_of(struct(congress='Int64',name='Utf8',number='Utf8',short_title='Utf8',title='Utf8',type='Utf8'))
 
 CHANNEL_DIRECTORY=Path('packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv')
 
@@ -428,6 +437,9 @@ def _prepare_spicy_inputs(scratch,spicy_regs,include_entities):
             for r in value:
                 row={k:(r.get(k) if r.get(k) is not None or not (isinstance(kind,dict) and 'List' in kind) else [])
                      for k,kind in schema.items()}
+                if name in ('spicy_roll_call_votes','spicy_bill_vote_references'):
+                    for field in ('congress','session','roll_number'):
+                        if row[field] is not None: row[field]=str(row[field])
                 if name=='spicy_congress_bills':
                     row['related_bills']=[_normalize_related_bill_row(rb) for rb in (row.get('related_bills') or ()) if isinstance(rb,dict)]
                 rows.append(row)
@@ -1222,6 +1234,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
             ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
         ]
+        auxiliary += list(detail_exports(prepared['entity_digests'],SPICY_SCHEMAS))
     explorer_diagnostics=[]
     if prepared.get('explorer_inputs'):
         steps += _sql_steps(['youtube-cache-bodies','youtube-api-bodies'],root=root)
