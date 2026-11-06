@@ -63,10 +63,15 @@ const TRANSCRIPT_SOURCE_LABELS: Record<string, string> = {
   captions: 'Captions or subtitles',
 };
 
+export function transcriptSourceLabel(transcript: any): string {
+  const source = String(transcript?.source ?? 'printed_hearing');
+  return TRANSCRIPT_SOURCE_LABELS[source] ?? source;
+}
+
 /** The labelled sources of a meeting's transcripts (ct-1i4q), in the order the release lists them. */
 export function transcriptSourceLabels(transcripts: unknown): string[] {
   if (!Array.isArray(transcripts)) return [];
-  const labels = transcripts.map((t: any) => TRANSCRIPT_SOURCE_LABELS[String(t?.source ?? 'printed_hearing')] ?? String(t?.source));
+  const labels = transcripts.map(transcriptSourceLabel);
   return [...new Set(labels)];
 }
 
