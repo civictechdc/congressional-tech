@@ -370,14 +370,15 @@ def _rebuilt_diff(run,keys,pin):
 
 def _daily(run):
     """Step 6: the three-table producer form, which leaves D4 to the records module."""
+    from viewer_publication.archive_backfill_job import require_no_derived
+    require_no_derived(run.spec)
     if 'daily' in run.state:return
     # No body inventory: readings reads each capture's recorded copy from the private raw store,
     # whose bodies link to the mirror (an empty inventory made all D2 work pending).
     raw_store,provenance=run.raw_store()
     production=produce_daily(dict(work=str(run.attempt/'daily'),decided_at=run.decided_at,catalog_root=run.catalog,
         tables={name:run.spec['tables'][name] for name in ('captures','readings','filename_readings')},receipt_inventory=[],
-        max_work_items=run.spec['batch_size']*run.spec['max_batches'],provenance=provenance,
-        **({'derived_parsers':run.spec['derived_parsers']} if run.spec.get('derived_parsers') else {})),
+        max_work_items=run.spec['batch_size']*run.spec['max_batches'],provenance=provenance),
         engine=run.engine,raw_store=raw_store)
     if production['status']!='completed':raise SelectiveStop('Daily producers stopped at '+production['status'])
     run.state['daily']=dict(captures=production['pins']['captures'],unreadable=[dict(key=r['key'],path=r['path']) for r in production['provenance']['unreadable']],
@@ -524,6 +525,8 @@ def _outputs(run,started):
 
 
 def execute_selective(spec,*,runtime_factory=None):
+    from viewer_publication.archive_backfill_job import require_no_derived
+    require_no_derived(spec)
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
     if not spec.get('engine_config'):raise ValueError('Selective backfill requires an explicit batch engine_config')

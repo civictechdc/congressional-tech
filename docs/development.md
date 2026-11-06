@@ -158,7 +158,10 @@ older unfinished work has been completed. Use the explicit scoped producer to
 settle that work before adopting the baseline.
 
 Each opted-in daily attempt considers body hashes admitted after the same
-baseline. It scopes captures and readings to those hashes before the maintained
+baseline, plus current captured bodies named by superseded HTML metadata
+refusals. The maintained selection reopens a superseded pair only when no
+selected reading or replacement active refusal settles it. Completed and
+replacement-active pairs stay settled. It scopes captures and readings before the maintained
 missing-pair selection. Native reading rows and unreadable decisions settle the
 pairs already attempted; missing reads remain eligible even after their receipts
 were committed. A fresh attempt therefore recovers interrupted work without a
@@ -177,6 +180,12 @@ work, bytes, elapsed time, memory and scratch space on the intended daily scope
 before changing scheduled configuration. The baseline can be advanced only after
 its complete eligible scope is settled. This opt-in does not enable a
 whole-archive HTML pass or alter extraction versions.
+
+The general and selective backfill entrypoints reject derived opt-ins during
+load, plan and execution, before runtime or storage work. A private rebuilt
+captures table cannot inherit the identity and qualification of a daily
+baseline. Use the explicit scoped HTML producer, or the qualified daily scope,
+for derived work. Backfill without a derived opt-in retains its existing behavior.
 
 ## Lock migration and preserved research
 

@@ -347,3 +347,48 @@ def test_daily_html_delta_recovers_after_receipt_commit_and_respects_both_budget
         dict(name='rows',sql="SELECT encode(body_sha,'hex') AS sha,status FROM readings WHERE parser='html_metadata' ORDER BY sha"),
         dict(name='duplicates',sql='SELECT count(*) AS n FROM (SELECT body_sha,parser,parser_version FROM readings GROUP BY body_sha,parser,parser_version HAVING count(*)>1)')])
     assert result==dict(rows=[dict(sha=key,status='completed') for key in sorted([old,*new[:-1]])],duplicates=[dict(n=0)])
+
+
+def test_daily_html_reconsiders_superseded_baseline_refusals(tmp_path,clean_tree):
+    payloads=[f'<html><head><title>Baseline refusal {n}</title></head><body>Body {n}</body></html>'.encode()
+        for n in range(2)]
+    value,engine,store=native_fixture(tmp_path,2,payloads=payloads,url_suffix='.html')
+    records=ProducerRecords(root=tmp_path/'ledger')
+    base=daily.produce_daily(value,engine=engine,raw_store=store,producer_records=records)
+    keys=[sha256(data).hexdigest() for data in payloads]
+    version=readings.current_version('html_metadata')
+    def save(name,rows):
+        path=tmp_path/(name+'.jsonl')
+        path.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        return import_unreadable(store,path,decided_at=value['decided_at'])
+    def decision(identifier,body,parser='html_metadata',supersedes=None):
+        return dict(id=identifier*64,body_sha256=body,parser=parser,
+            parser_version=readings.current_version(parser),reason='timeout',decided_by='readings',
+            decided_at=value['decided_at'],supersedes=supersedes)
+    original=save('baseline-refusals',[decision('a',keys[0]),decision('b',keys[1])])
+    policy=dict(captures=base['pins']['captures'],versions=compatible_versions.current_pins(),
+        max_stored_bytes=1<<20,batch_size=1)
+    enabled=dict(value,derived_parsers=['html_metadata'],derived_scopes={'html_metadata':policy})
+    def invoke(name):
+        return daily.produce_daily(dict(enabled,work=str(tmp_path/name)),
+            engine=engine,raw_store=store,producer_records=records)
+    settled=invoke('baseline-settled')
+    assert settled['status']=='completed' and settled['producerreports']['html_metadata']['work_items']==0
+    # A correction supersedes the metadata refusal without replacing it with a
+    # current metadata refusal. The maintained selection must reopen that pair.
+    correction=save('corrections',[decision('c',keys[0],parser='html',supersedes='a'*64),
+        decision('d',keys[1],supersedes='b'*64)])
+    reopened=invoke('baseline-reopened')
+    assert reopened['status']=='completed' and reopened['new_receipt_keys']==[]
+    derived=reopened['producerreports']['html_metadata']
+    assert derived['work_items']==1 and derived['read_bytes']>0
+    assert derived['scope']['bodies_since_baseline']==0
+    assert derived['scope']['reconsidered_baseline_bodies']==2
+    assert {row['key'] for row in reopened['provenance']['unreadable']}=={original['key'],correction['key']}
+    unchanged=invoke('completed-and-replacement-active')
+    assert unchanged['status']=='completed' and unchanged['producerreports']['html_metadata']['work_items']==0
+    assert unchanged['producerreports']['html_metadata']['read_bytes']==0 and unchanged['producers']=={}
+    rows=run_job(tmp_path/'reopened-reading',engine,
+        inputs=[tables.table_input('readings',unchanged['pins']['readings'])],steps=[],outputs=[],queries=[
+        dict(name='rows',sql="SELECT encode(body_sha,'hex') AS sha,parser_version,status FROM readings WHERE parser='html_metadata'")])['rows']
+    assert rows==[dict(sha=keys[0],parser_version=version,status='completed')]

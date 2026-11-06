@@ -18,7 +18,7 @@ from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStor
 from congress_api.retention.writer_identity import writer_identity
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
-from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory,parquet_output,run_job
+from congress_api.retention.provenance import field,file_pin,instant,json_input,local_unreadable_inventory,parquet_output,run_job
 from congress_api.retention.provenance_inventory import UnreadableInventory,unreadable_inventory
 from congress_shared.custody import custody_identity,VerifiedFile
 
@@ -496,18 +496,35 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
         raise ValueError('Derived baseline must name the current captures table')
     work=Path(work)
     scope_work=work/'delta'
-    run_job(scope_work,engine,inputs=[tables.table_input('captures',heads['captures']),
-        tables.table_input('baseline',baseline)],steps=[dict(name='candidate_shas',materialize=True,
+    inputs=[tables.table_input('captures',heads['captures']),tables.table_input('baseline',baseline)]
+    schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',supersedes='Utf8')
+    files=unreadable_snapshot.files()
+    inputs.append(dict(name='unreadable',kind='json_lines',files=files,
+        schema=dict(fields=[field(k,v) for k,v in schema.items()],metadata={})) if files
+        else json_input(scope_work,'unreadable',[],**schema))
+    observed=run_job(scope_work,engine,inputs=inputs,steps=[
+        dict(name='reconsidered_shas',materialize=True,sql='''
+            SELECT decode(u.body_sha256,'hex') AS body_sha FROM unreadable u
+            WHERE u.parser='html_metadata' AND u.body_sha256 IS NOT NULL
+                AND EXISTS (SELECT 1 FROM unreadable newer WHERE newer.supersedes=u.id)'''),
+        dict(name='candidate_shas',materialize=True,
         sql='''SELECT DISTINCT c.sha256 AS body_sha FROM captures c
             WHERE c.sha256 IS NOT NULL AND NOT EXISTS
-                (SELECT 1 FROM baseline b WHERE b.sha256=c.sha256)''')],outputs=[
+                (SELECT 1 FROM baseline b WHERE b.sha256=c.sha256)
+            UNION SELECT c.sha256 AS body_sha FROM reconsidered_shas r JOIN captures c
+                ON r.body_sha=c.sha256''')],outputs=[
         parquet_output(scope_work,'body-scope',
-            "SELECT lower(encode(body_sha,'hex')) AS body_sha FROM candidate_shas",['body_sha'])])
+            "SELECT lower(encode(body_sha,'hex')) AS body_sha FROM candidate_shas",['body_sha'])],queries=[
+        dict(name='reconsidered_baseline',sql='''SELECT count(DISTINCT r.body_sha) AS n
+            FROM reconsidered_shas r JOIN captures c ON r.body_sha=c.sha256
+            WHERE EXISTS (SELECT 1 FROM baseline b WHERE b.sha256=r.body_sha)''')])
     scoped=work/'scope'
     count=_scope_html_inputs(scope_work/'body-scope.parquet',heads,engine=engine,work=scoped,allow_empty=True)
     source=_body_source(spec,raw_store,work/'readings')
     if _listed_reads(spec,raw_store):source['captured_copies']=True
-    details=dict(scope=dict(baseline=baseline,versions=scope['versions'],bodies_since_baseline=count))
+    reconsidered=observed['reconsidered_baseline'][0]['n']
+    details=dict(scope=dict(baseline=baseline,versions=scope['versions'],
+        bodies_since_baseline=count-reconsidered,reconsidered_baseline_bodies=reconsidered))
     try:
         planned=readings.run(engine=engine,work=work/'admission',mode='daily',execute=False,
             max_work_items=spec['max_work_items'],existing=scoped/'readings.parquet',
