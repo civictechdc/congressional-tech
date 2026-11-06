@@ -18,3 +18,9 @@ Build on the current scalar filters and published relationship recipes. Make rec
 - Reuse the maintained recipe and query paths. Return canonical IDs, source references, and explicit missingness for each result set. Use published subject associations and status evidence.
 - Compare each named query with its underlying release rows. Exercise ambiguous committee or subject input, an empty result, and a collection with unavailable coverage.
 
+
+## Notes
+
+**2026-11-06T16:54:35Z**
+
+Bounded source/recipe preparation complete. Source-proven nomination coverage wording gap repaired on isolated branch codex/ct-nozw-recipe-coverage-20261106 at b4741504: metadata now states that local nomination profiles are referenced by archive documents or meetings, and pending means a known nonterminal latest action in the snapshot. Three focused production-offline checks passed (partial, 2 of 500 lane files); measured peak 0.50 GiB RSS. Exact commit, patch, source identities, authentic source-only status counts and prepared normal MCP row comparator are retained under .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-nozw/. ct-m104 must integrate before source freeze. Actual shared native recipe acceptance remains pending ct-082q baseline settlement and ct-m104 native_ready selection; final same-release installed/hosted readback stays with ct-m104. Ticket remains in progress; no indexing or release deployment claimed.

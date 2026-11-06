@@ -233,3 +233,21 @@ def test_opaque_download_dates_do_not_set_observed_bounds(tmp_path):
     coverage = next(item['coverage'] for item in release['files'] if item['name'] == 'detail.parquet')
     assert coverage['document_dates'] == {'accepted': 3, 'suspect': 1, 'undated': 3}
     assert (coverage['date_start'], coverage['date_end']) == ('1901-03-02', '2021-03-17')
+
+
+def test_descriptive_foreign_download_alias_does_not_date_the_document(tmp_path):
+    # The retained PDF cover says October 22, 2019; the terminal 10221902 is an
+    # opaque download ID, not a second statement that the hearing occurred in 1902.
+    foreign = 'https://www.foreign.senate.gov/'
+    requested = foreign + 'download/10-22-19-assessing-the-impact-of-turkeys-offensive-in-northeast-syria-10221902'
+    name = "10 22 19 Asssessing the Impact of Turkey's Offensive in Northeast Syria.pdf"
+    shown = foreign + 'imo/media/doc/' + quote(name)
+    (row,), _, _, (annotation,) = _release(tmp_path, capture_cases=[
+        (requested, shown, b'%PDF-1.7\nTurkey hearing\n%%EOF\n')])
+    assert (row['document_date'], row['document_date_source'], row['document_date_status']) == (None, None, None)
+    assert annotation['date_token'] == '10 22 19'
+    assert annotation['shown_filename_date'] is None
+    assert annotation['filename_date'] == date(1902, 10, 22)
+    assert annotation['filename_date_url'] == requested
+    assert annotation['filename_date_valid'] is False
+    assert annotation['filename_date_eligible'] is False
