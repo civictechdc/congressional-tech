@@ -68,6 +68,9 @@ def load_spec(path):
     if 'house_xml_disposition' in value:
         from viewer_publication.archive_house_xml_dispositions import load_dispositions
         return load_dispositions(value, base=path.parent)
+    if 'house_xml_activation' in value:
+        from viewer_publication.archive_house_xml_activation import load_activation
+        return load_activation(value, base=path.parent)
     if 'house_xml_version_transition' in value:
         from viewer_publication.archive_house_xml_transition import load_transition
         return load_transition(value, base=path.parent)
@@ -170,6 +173,8 @@ def plan(spec):
         return dict(status='planned',executed=False,work=spec['work'],**spec['record_only'])
     if 'house_xml_disposition' in spec:
         return dict(status='planned', executed=False, work=spec['work'], **spec['house_xml_disposition'])
+    if 'house_xml_activation' in spec:
+        return dict(status='planned', executed=False, work=spec['work'], **spec['house_xml_activation'])
     if 'house_xml_version_transition' in spec:
         return dict(status='planned', executed=False, work=spec['work'],
                     model_spec=spec['house_xml_version_transition'])
@@ -312,7 +317,7 @@ def _filename_transition(spec, runtime_factory):
     return dict(report, producer=dict(path=str(producer_path), **file_pin(producer_path)))
 
 
-def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
+def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activation_lock_fd=None):
     """Run bounded lake backfill batches against the configured remote runtime and raw store."""
     require_no_derived(spec)
     if spec.get('status')=='blocked':return dict(spec)
@@ -322,6 +327,9 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
     if 'house_xml_disposition' in spec:
         from viewer_publication.archive_house_xml_dispositions import execute_dispositions
         return execute_dispositions(spec, runtime_factory=runtime_factory)
+    if 'house_xml_activation' in spec:
+        from viewer_publication.archive_house_xml_activation import execute_activation
+        return execute_activation(spec, runtime_factory=runtime_factory, storage_factory=storage_factory, lock_fd=activation_lock_fd)
     if 'house_xml_version_transition' in spec:
         from viewer_publication.archive_house_xml_transition import execute_transition
         return execute_transition(spec, runtime_factory=runtime_factory)
@@ -395,6 +403,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--spec',type=Path,required=True)
+    parser.add_argument('--activation-lock-fd',type=int,help=argparse.SUPPRESS)
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument('--plan',action='store_true')
     mode.add_argument('--execute',action='store_true')
@@ -404,7 +413,9 @@ def main(argv=None):
         if spec.get('status')=='blocked':
             print(_dumps(spec))
             return 2
-        result=execute(spec) if args.execute else plan(spec)
+        if args.activation_lock_fd is not None and ('house_xml_activation' not in spec or not args.execute):
+            parser.error('activation-lock-fd requires an explicit House XML activation execution')
+        result=execute(spec,activation_lock_fd=args.activation_lock_fd) if args.execute else plan(spec)
     except (ValueError,OSError) as error:
         parser.error(str(error))
     print(_dumps(result))

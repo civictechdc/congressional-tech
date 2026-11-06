@@ -426,7 +426,7 @@ def _producer_bases(records,heads):
     return dict(writer=writer,bases=bases),None
 
 
-def _record_moved(records,chain,initial,final,*,decided_at):
+def _record_moved(records,chain,initial,final,*,decided_at,transition_inputs=None):
     """One record per table whose head moved during this run, written before returning."""
     if writer_identity(ROOT,DAILY_JOB)['commit']!=chain['writer']['commit']:
         raise ValueError('Application commit changed during daily production')
@@ -436,6 +436,8 @@ def _record_moved(records,chain,initial,final,*,decided_at):
         record=dict(version=1,input=name,selector=dict(kind='native_table',**pin),job=DAILY_JOB,
             commit=chain['writer']['commit'],lockfile_digest=chain['writer']['lockfile_digest'],decided_at=decided_at,
             base=dict(selector=dict(kind='native_table',**initial[name]),record=chain['bases'][name]))
+        if transition_inputs is not None:
+            record['house_xml_transition']=transition_inputs[name]
         written[name]=records.write(record)
     return written
 
@@ -897,3 +899,174 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
     report['receipt_keys']=_complete_receipt_keys(final['captures'],engine=engine,work=work/'receipt-identity')
     report['status']='completed'
     return report
+
+
+def _house_activation_file(pin):
+    path=Path(pin['path'])
+    if file_pin(path)!={key:pin[key] for key in ('sha256','size')}:
+        raise ValueError('House XML activation input changed: '+str(path))
+    return path
+
+
+def _house_activation_rows(name,head,stage,*,engine,work,complete):
+    """Compare every new-pin field before the append helper may skip existing keys."""
+    incoming=pq.read_table(_house_activation_file(stage['records'])).to_pylist()
+    key=lambda row:(row['record_sha'],row['source'],row['parser_version'])
+    expected={key(row):row for row in incoming}
+    if len(expected)!=len(incoming):raise ValueError('Duplicate House XML incoming keys')
+    version=stage['version']
+    run_job(work,engine,inputs=[tables.table_input('head',head)],steps=[],
+        outputs=[parquet_output(work,'rows',
+            f"SELECT * FROM head WHERE source='house_xml' AND parser_version='{version}' LIMIT {len(incoming)+1}",
+            list(tables.TABLE_SPECS[name]['primary_key']))])
+    actual=pq.read_table(work/'rows.parquet').to_pylist()
+    found={key(row):row for row in actual}
+    if (len(found)!=len(actual) or found.keys()-expected.keys()
+            or any(row!=expected[k] for k,row in found.items())
+            or complete and found.keys()!=expected.keys()):
+        raise ValueError('House XML existing new-version rows conflict with the staged values: '+name)
+    return len(found)==len(expected)
+
+
+def _house_activation_step(records,before,after):
+    if (before['table_uuid']!=after['table_uuid'] or before['schema_id']!=after['schema_id']
+            or before['snapshot']==after['snapshot']):
+        raise ValueError('House XML activation advanced an unexpected table or schema')
+    lineage=records.lineage(after['metadata_location'])
+    if lineage.get(after['snapshot'])!=(before['snapshot'],'append'):
+        raise ValueError('House XML activation cannot explain the advanced head as its one append')
+
+
+def activate_house_xml_records(prepared,*,engine,raw_store,producer_records,catalog_root,targets,work,
+                              decided_at,resume,max_output_bytes,min_disk_bytes):
+    """Append the qualified zero-refusal House cohort as a real daily-chain owner.
+
+    The registered caller holds the archive writer lock. This callable performs
+    the appends and records their actual heads, including after a lost response.
+    It never reads source bodies, parses XML or imports provenance/receipts.
+    """
+    from shutil import disk_usage
+    from congress_api.retention.provenance import durable_json
+    from congress_api.lake.producer_records import encode
+
+    modules=dict(meeting_records=meeting_records,appearance_records=appearance_records,committee_records=committee_records)
+    if prepared['tables'].keys()!=modules.keys() or targets.keys()!=modules.keys() or len(prepared['frozen_unreadable'])!=31:
+        raise ValueError('House XML activation requires exactly the qualified three-table cohort')
+    authority=dict(engine=engine,catalog_root=catalog_root)
+    tables.validate_catalog_authority(engine,catalog_root)
+    writer=writer_identity(ROOT,DAILY_JOB)
+    identity=dict(prepared=prepared,targets=targets,catalog_root=catalog_root,writer=writer,decided_at=decided_at,
+                  max_output_bytes=max_output_bytes,min_disk_bytes=min_disk_bytes)
+    work=Path(work);state_path=work/'activation.json'
+    if work.exists():
+        if not resume or not state_path.is_file():raise ValueError('House XML activation needs fresh work or an explicit resume')
+        state=json.loads(state_path.read_text())
+        if state['identity']!=identity:raise ValueError('House XML activation resume identity changed')
+    else:
+        work.mkdir(parents=True)
+        state=dict(identity=identity,heads={name:item['base'] for name,item in prepared['tables'].items()},
+            head_records={name:{k:item['base_record'][k] for k in ('sha256','size')} for name,item in prepared['tables'].items()},
+            intent=[],completed=[],append_results={},status='running')
+
+    def save():
+        if disk_usage(work).free<min_disk_bytes:raise ValueError('House XML activation reached its disk floor')
+        if sum(path.stat().st_size for path in work.rglob('*') if path.is_file())>max_output_bytes:
+            raise ValueError('House XML activation exceeded its output byte limit')
+        durable_json(state_path,state)
+
+    save()
+    attempt=work/('attempt-'+str(len(list(work.glob('attempt-*')))+1));attempt.mkdir()
+    heads=tables.resolve_tables(**authority,work=attempt/'heads',tables=targets)
+    expected=dict(state['heads'])
+    for name,stage in prepared['tables'].items():
+        if modules[name].current_versions()['house_xml']!=stage['version']:
+            raise ValueError('House XML activation parser versions changed')
+        found=producer_records.find(name,expected[name])
+        if found is None or any(found[1][k]!=state['head_records'][name][k] for k in ('sha256','size')):
+            raise ValueError('House XML activation predecessor record differs from its exact pin')
+        if heads[name]!=expected[name]:
+            if name not in state['intent']:raise ValueError('House XML activation base head drifted before shared writes')
+            _house_activation_step(producer_records,expected[name],heads[name])
+        _house_activation_rows(name,heads[name],stage,engine=engine,work=attempt/('preflight-'+name),
+                               complete=heads[name]!=expected[name] or name in state['completed'])
+
+    # Requalify only the small current refusal inventory. This accepted cohort has
+    # no new decisions: any baseline drift stops before table or ledger writes.
+    inventory=UnreadableInventory(raw_store,work=attempt/'unreadable-inventory')
+    frozen={item['key']:item for item in prepared['frozen_unreadable']}
+    current={item['key']:item for item in inventory.rows()}
+    if (current.keys()!=frozen.keys() or any(current[key][field]!=frozen[key][field]
+            for key in frozen for field in ('sha256','size'))):
+        raise ValueError('House XML activation refusal baseline changed')
+    details={name:dict(cohort=prepared['cohort'],records=stage['records'],delta_producer=stage['producer'],
+                       disposition_ledger=stage['ledger'],new_unreadable_files=[])
+             for name,stage in prepared['tables'].items()}
+
+    def record_progress(initial,final,chain):
+        written=_record_moved(producer_records,chain,initial,final,decided_at=decided_at,transition_inputs=details)
+        for name,head in final.items():
+            if head==initial[name]:continue
+            found=producer_records.find(name,head)
+            if found is None:raise ValueError('House XML activation head was not durably recorded')
+            state['heads'][name]=head;state['head_records'][name]=found[1]
+            if name not in state['completed']:state['completed'].append(name)
+        state['producer_records']=dict(state.get('producer_records',{}),**written)
+        state['intent']=[]
+        save()
+
+    # A killed launcher may leave the append committed but its response unsaved.
+    # The durable intent, exact values and one-append ancestry explain that head;
+    # reconcile it before issuing another append, never adopt arbitrary drift.
+    if heads!=expected:
+        chain,refusal=_producer_bases(producer_records,expected)
+        if chain is None:raise ValueError('House XML recovery predecessor proof unavailable: '+str(refusal))
+        record_progress(expected,heads,chain)
+    chain,refusal=_producer_bases(producer_records,heads)
+    if chain is None:raise ValueError('House XML activation producer proof unavailable: '+str(refusal))
+    initial=dict(heads)
+    state['status']='running';save()
+    try:
+        for name,module in modules.items():
+            if name in state['completed']:continue
+            stage=prepared['tables'][name]
+            # No pending flag is cleared here: the qualified input is explicitly
+            # the observed cohort with zero new refusals and unchanged provenance.
+            state['intent']=[name];save()
+            result=module.append(dict(records=_house_activation_file(stage['records']),
+                parser_version=module.current_versions(),unreadable_pending=False),
+                **authority,work=attempt/('append-'+name),table=targets[name])
+            state['append_results'][name]=result;save()
+            actual=tables.resolve_tables(**authority,work=attempt/('head-'+name),tables={name:targets[name]})[name]
+            returned={key:result[key] for key in ('metadata_location','table_uuid','snapshot','schema_id')}
+            if actual!=returned:raise ValueError('House XML append result no longer names the actual head')
+            _house_activation_rows(name,actual,stage,engine=engine,work=attempt/('reconcile-'+name),complete=True)
+            heads[name]=actual
+            # Bind each completed table before the next table can fail.
+            _house_activation_step(producer_records,initial[name],actual)
+            record_progress(initial,heads,chain)
+            initial=dict(heads)
+            chain,refusal=_producer_bases(producer_records,heads)
+            if chain is None:raise ValueError('House XML activation new head lacks its producer: '+str(refusal))
+    finally:
+        final=tables.resolve_tables(**authority,work=attempt/'final-heads',tables=targets)
+        for name,head in final.items():
+            if head==initial[name]:continue
+            if name not in state['intent']:raise ValueError('House XML activation observed an unexplained advanced head')
+            _house_activation_step(producer_records,initial[name],head)
+            _house_activation_rows(name,head,prepared['tables'][name],engine=engine,
+                                   work=attempt/('recover-'+name),complete=True)
+        record_progress(initial,final,chain)
+
+    pins={name:dict(kind='native_table',**head) for name,head in state['heads'].items()}
+    records={name:producer_records.find(name,head)[0] for name,head in state['heads'].items()}
+    producer_files={}
+    for name,record in records.items():
+        path=work/(name+'.head.json');path.write_bytes(encode(record))
+        producer_files[name]=dict(path=str(path),**file_pin(path))
+    state['status']='completed'
+    state['result']=dict(status='activated',pins=pins,producers=producer_files,producer_records=state['head_records'],
+        cohort=prepared['cohort'],unchanged_selectors=prepared['unchanged_selectors'],
+        unchanged_inventory=prepared['unchanged_inventory'],unreadable_files=prepared['frozen_unreadable'],
+        new_unreadable_files=[],receipts_unchanged=True)
+    save()
+    return state['result']
