@@ -136,7 +136,8 @@ async function checkPublisherPage(datedKey, markedKey) {
     assert.match(citation, /^[a-f0-9]{64}$/);
     const before = bytesRead();
     await page.getByRole('button', {name: 'Read selected text'}).click();
-    const text = panel.getByText(/^Chairman Miller, Ranking Member Michaud and Committee Members:/);
+    const markedPrefix = args['html-marked-prefix'] || 'Chairman Miller, Ranking Member Michaud and Committee Members:';
+    const text = panel.getByText(new RegExp('^' + markedPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     await text.waitFor();
     assert.equal(createHash('sha256').update(await text.textContent()).digest('hex'), citation);
     const selectedTextRangeBytes = bytesRead() - before;
