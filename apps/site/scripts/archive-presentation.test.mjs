@@ -60,6 +60,25 @@ test('list rows distinguish editions and import dates without inventing captures
   assert(!datedOnly.includes('Captured 2024-01-02'),'List row omits redundant capture date when document date is present');
 });
 
+test('recovery detail preserves authored continuations and withholds only legacy boilerplate',()=>{
+  const legacy='Reconciled from pinned accepted mappings '+'7'.repeat(64);
+  const sentinel=legacy+'; receipt categories preserved';
+  const recovery={kind:'recovered_document',body:new Uint8Array(32).fill(19),suffix:'.gz',bytes:20};
+  for(const note of [null,legacy,sentinel]){
+    const html=render({document:row,detail,sources:[],recoveries:[{...recovery,identity_note:note}]});
+    assert(html.includes('Recovered document'));
+    assert(!html.includes('Reconciled from pinned accepted mappings'));
+    assert(!html.includes('<p>null</p>'));
+  }
+  for(const note of ['The hearing contains the requested statement.',
+    sentinel+'; reviewed against the committee index',
+    legacy+'; the committee index identifies the statement.']){
+    const html=render({document:row,detail,sources:[],recoveries:[{...recovery,identity_note:note}]});
+    assert(html.includes(`<p>${note}</p>`),note);
+    assert(html.includes('Recovered document'));
+  }
+});
+
 test('blank and generic scrape titles fall back to clean congressional context and true file formats',()=>{
   const zipEntry={
     document:{...row,list_row:9,filename:'CHRG-109hhrg32242.zip',title:'ZIP',format:'json',congress:109,committee_keys:['hsju00'],document_kind:['published-hearing'],measure_keys:['109-hr-475']},

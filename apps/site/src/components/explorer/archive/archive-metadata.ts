@@ -1207,7 +1207,8 @@ export function formatBytes(value: any): string | null {
 export function cleanIdentityNote(note: any): string | null {
   const text = String(note ?? '').trim();
   if (!text) return null;
-  if (/^Reconciled from pinned accepted mappings\s+[0-9a-f]{16,}/i.test(text)) return null;
+  // Legacy cleanup applies to boilerplate alone; authored continuations remain visible.
+  if (/^Reconciled from pinned accepted mappings\s+[0-9a-f]{16,}(?:; receipt categories preserved)?$/i.test(text)) return null;
   return text;
 }
 
