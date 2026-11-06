@@ -144,6 +144,27 @@ def test_pages_checks_out_only_its_own_application_revision():
     assert workflow['jobs']['deploy']['needs'] == 'build'
 
 
+def test_weekly_youtube_report_reaches_pages_after_collection():
+    pages = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
+    collection = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
+    # The collector pushes its report with GITHUB_TOKEN, which does not create
+    # a push-triggered Pages run. Collection completion owns this transition.
+    assert pages['on']['workflow_run'] == {
+        'workflows': [collection['name']], 'types': ['completed'], 'branches': ['main'],
+    }
+    # Deploy only our main application revision. A later GPO failure must not
+    # strand a YouTube report that the earlier job successfully committed.
+    assert pages['jobs']['build']['if'] == (
+        "github.event_name != 'workflow_run' || "
+        "(github.event.workflow_run.head_branch == 'main' && "
+        "github.event.workflow_run.head_repository.full_name == github.repository)"
+    )
+    report_steps = collection['jobs']['youtube']['steps']
+    committed = next(step['run'] for step in report_steps
+                     if 'commit-and-push.sh' in step.get('run', ''))
+    assert 'apps/site/public/data/youtube/youtube_event_id_report.csv' in committed
+
+
 def test_no_workflow_stages_or_builds_the_retired_explorer_publication():
     for directory in ('workflows', 'scripts'):
         for path in sorted((ROOT / '.github' / directory).iterdir()):

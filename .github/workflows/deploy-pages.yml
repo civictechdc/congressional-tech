@@ -18,6 +18,11 @@ on:
       - ".github/actions/setup-publication-browser/**"
       - ".github/workflows/deploy-pages.yml"
       - "packages/congress_shared/**"
+  # The collector's GITHUB_TOKEN push does not trigger another push workflow.
+  workflow_run:
+    workflows: ["Update committee data"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
@@ -31,6 +36,12 @@ concurrency:
 
 jobs:
   build:
+    # A completed YouTube report can be committed before a later collection
+    # job fails. Build the current main revision, without importing run artifacts.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5

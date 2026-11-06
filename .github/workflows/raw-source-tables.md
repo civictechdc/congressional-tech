@@ -58,6 +58,14 @@ reader and browser checks, and deploys the static site. It does not check out
 `pipeline-data` or stage a second Explorer publication. The shared archive
 publisher selects the immutable release that the site and MCP read.
 
+Pages also runs after `Update committee data` completes on this repository's
+`main` branch. The collector commits the YouTube report with `GITHUB_TOKEN`, whose
+push does not start another push workflow. This direct completion trigger keeps
+report updates deployable after removing the old publisher. It builds the
+workflow's current main revision and does not read collection-run artifacts.
+A later collection-job failure does not block deployment of an already committed
+report; the Pages reader/build/browser checks still gate the upload.
+
 The old Committee Explorer writer and its collection-attempt helper are removed.
 The weekly `update-data.yml` collector still maintains the independent YouTube
 coverage CSV and retained source state. Keep `pipeline-data`, old publications,
