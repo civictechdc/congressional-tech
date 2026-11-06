@@ -2,7 +2,7 @@
 id: ct-9s7b
 status: open
 deps: []
-links: [ct-o2pr, ct-1i4q, ct-t915, ct-gi01, ct-sulv]
+links: [ct-o2pr, ct-1i4q, ct-t915, ct-gi01, ct-sulv, ct-m104, ct-j78x]
 created: 2026-11-02T13:54:36Z
 type: bug
 priority: 2
@@ -32,6 +32,8 @@ After the all-wave hold, the release coordinator owns final input reconciliation
 - In the candidate, a listed segment or placeholder cannot appear as a track. An independently supported subtitle playlist or complete caption body remains. Use the existing native segment and unread-playlist checks on the selected input.
 - Each fetched body has one supported `(format, language, production)` per recording. An independently planted complete playlist with conflicting labels fails even when no segment is present. Preserve distinct legitimate tracks and the evidence behind each selected production.
 - Prove both behaviors on the same candidate and record representative tracks and the selected release through the existing checks.
+- Recheck event `338785` on the named baseline and combined candidate. Trace the recording, track or playlist, and source evidence, then compare caption coverage with the meeting's transcript inventory. Every verified complete caption or subtitle track is discoverable by meeting with its type, source, and usable retrieval reference. Preserve labelled official and committee transcripts. Segment-only and placeholder controls stay ineligible.
+- Reproduce the reported 938-of-1,553 discrepancy or record why the selected release differs. Reconcile both directions across the candidate and account separately for genuine complete tracks, unavailable evidence, and differences in coverage scope. Verify the named event through the installed MCP and site on the selected release.
 
 ## Coordination and evidence
 

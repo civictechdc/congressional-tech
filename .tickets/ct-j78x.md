@@ -2,7 +2,7 @@
 id: ct-j78x
 status: closed
 deps: []
-links: [ct-9479, ct-adoh]
+links: [ct-9479, ct-adoh, ct-9s7b]
 created: 2026-11-04T15:05:50Z
 type: bug
 priority: 2

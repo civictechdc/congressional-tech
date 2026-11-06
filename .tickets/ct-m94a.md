@@ -2,7 +2,7 @@
 id: ct-m94a
 status: open
 deps: []
-links: [ct-wx65, ct-gi01, ct-m104]
+links: [ct-wx65, ct-gi01, ct-m104, ct-9xfg, ct-nozw]
 created: 2026-10-31T00:05:23Z
 type: task
 priority: 2
@@ -33,6 +33,8 @@ After the all-wave hold, the release coordinator owns the combined candidate's i
 - Account for unresolved candidates once. Independently confirm accepted bounds and accepted, suspect and undated counts. Label the bounds as observed dates, explain where coverage evidence is unavailable and preserve the separate meanings of retrieval and capture times.
 - Use the existing native fixture and publication aggregation. Verify date status, source, counts and bounds through actual MCP standard I/O and the site where exposed. Record local candidate and selected live readback separately.
 - If another exact filename/URL/parser pair proves stale, record the affected predicate, resource budget, input and code pins and authoritative table handoff before replaying that subset. Reuse applicable readings and leave the confirmed alias fix at the model boundary.
+- Use the published `document_date_status` for recent-document lookup in MCP. Default chronological results to accepted dates and offer an explicit way to include suspect or undated rows. Preserve their literal dates, source, and qualification in the result. On a release without date status, describe that limitation and preserve access to literal dates.
+- Exercise the default and explicit inclusion paths through MCP. The literal `2303-05-04` control stays visible on explicit inclusion and cannot lead the default newest results. Preserve exact document lookup, the genuine 1901 control, and arbitrary read-only SQL.
 
 ## Coordination and evidence
 
