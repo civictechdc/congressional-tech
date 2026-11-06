@@ -106,7 +106,9 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   if(![0,1].includes(manifest.schema_version))throw new Error('Unsupported archive schema version.');
   const files=new Map<string,any>();
   for(const item of manifest.files){
-    if(!/^(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(parquet|json)$/.test(item.name)||files.has(item.name)||!Number.isSafeInteger(item.size)||item.size<0||!Number.isSafeInteger(item.rows)||item.rows<0||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('Invalid archive file descriptor.');
+    // The server's text index shares release identity, but is never loaded by
+    // the browser. Permit only its exact asset name, not arbitrary SQLite files.
+    if(!/^(?:(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(?:parquet|json)|search_index\.sqlite)$/.test(item.name)||files.has(item.name)||!Number.isSafeInteger(item.size)||item.size<0||!Number.isSafeInteger(item.rows)||item.rows<0||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('Invalid archive file descriptor.');
     if(item.shard!=null){
       const range=item.row_range;
       if(!['detail','sources'].includes(item.shard)||!new RegExp('^'+item.shard+'-[0-9]{5}[.]parquet$').test(item.name)||!Array.isArray(range)||range.length!==2||!range.every(Number.isSafeInteger)||range[0]<0||range[1]<=range[0]||range[1]-range[0]!==item.rows)throw new Error('Invalid archive shard range.');

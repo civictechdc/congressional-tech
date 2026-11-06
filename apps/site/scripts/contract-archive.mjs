@@ -277,5 +277,10 @@ try{
   }
   if(args.hand==='true')assert(fixtureBodyReads.some(read=>read.status===404),'Hand saved-copy checks must exercise the local missing-body store');
   }
+  if(server.manifest.files.some(file=>file.name==='search_index.sqlite')){
+    const indexRequests=server.state.requests.filter(request=>request.path.endsWith('/search_index.sqlite'));
+    assert.deepEqual(indexRequests,[],'The browser must leave the server-only text index on the archive.');
+    results.push({operation:'server-only-text-index',status:'passed',releaseId:server.manifest.release_id,indexRequests:indexRequests.length});
+  }
   const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?.status??targetsStatus??'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
 }finally{await browser.close();await server.close();}
