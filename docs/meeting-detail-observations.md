@@ -17,12 +17,16 @@ digest and reader versions. All fields come from the same bound observation.
 `latest_attempt` records the selected detail attempt's evidence, qualification
 state, raw outcome and HTTP status. A later failed attempt does not erase an
 earlier success. `listing` retains the listing evidence when available.
+An HTTP 304 `unchanged` response supplies no new detail body. Its detail proof
+stays unknown, while its raw outcome remains visible and any earlier qualified
+successful read remains available.
 
 Each selection uses the latest dated observation and then receipt location to
 break ties. An undated observation remains undated. `has_undated_attempt` warns
 that the selected dated attempt cannot be called chronologically latest across
-all observations. With no qualified evidence, the object states `unknown` and
-its evidence objects are null.
+all observations. With no matching evidence, the object states `unknown` and
+its evidence objects are null. An unknown qualification can still retain a
+recorded attempt and its receipt in `latest_attempt`.
 
 The successful receipt must name an exact Congress.gov API detail route, return
 to that same route, and bind a completed successful response to a selected

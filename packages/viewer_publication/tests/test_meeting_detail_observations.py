@@ -73,6 +73,12 @@ def observations(tmp_path_factory):
     capture(14,response(14,chamber='NoChamber'),url=BASE.replace('/house','/nochamber')+'/14')
     # A legacy saved record supplies no fetch receipt or observation clock.
     response(13)
+    # Conditional revalidation supplies no new detail body and is not a failed read.
+    capture(15,outcome='unchanged',status=304)
+    capture(16,response(16))
+    capture(16,outcome='unchanged',status=304,when='2026-11-03T12:00:00Z')
+    capture(None,response(17,listing=True),url=BASE)
+    capture(17,outcome='unchanged',status=304)
 
     schema=pa.schema([('receipt_key',pa.string()),('receipt_line',pa.int32()),('capture_index',pa.int32()),
         ('sha256',pa.binary(32)),('retrieved_at',pa.timestamp('us',tz='UTC')),('mode',pa.string()),
@@ -126,6 +132,22 @@ def test_chronological_order_and_joint_identity(observations):
     assert rows[11]['has_undated_attempt']
     assert rows[11]['successful_read']['retrieved_at'].isoformat()=='2026-11-01T12:00:00+00:00'
     assert rows[12]['chamber']=='joint' and rows[12]['state']=='successful'
+
+
+def test_not_modified_preserves_unknown_proof_and_prior_success(observations):
+    rows,_=observations
+    for event in (15,17):
+        assert rows[event]['state']=='unknown',event
+        assert rows[event]['successful_read'] is None
+    assert rows[17]['listing'] is not None
+    assert rows[16]['state']=='successful'
+    assert rows[16]['successful_read']['retrieved_at'].isoformat()=='2026-11-01T12:00:00+00:00'
+    for event in (15,16,17):
+        attempt=rows[event]['latest_attempt']
+        assert attempt['state']=='unknown',event
+        assert attempt['outcome']=='unchanged' and attempt['http_status']==304
+        assert attempt['evidence']['source_url']==f'{BASE}/{event}?format=json'
+        assert attempt['evidence']['receipt_key'] is not None
 
 
 def test_detail_observation_reaches_public_meeting_and_legacy_stays_unknown(tmp_path):

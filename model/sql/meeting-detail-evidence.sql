@@ -20,8 +20,9 @@ WITH expanded AS (
    WHEN c.complete AND c.outcome IN ('stored','unchanged') AND c.http_status BETWEEN 200 AND 299
     AND c.http_status<>202 AND c.route=c.final_route AND m.event_id IS NOT NULL
     AND c.event_id=a.event_id THEN 'successful'
+   -- A normal 304 revalidates earlier bytes; it supplies neither new detail proof nor a failure.
    WHEN c.event_id IS NOT NULL AND (c.outcome IN ('failed','request_failed','retry_later','size_limit')
-    OR c.http_status NOT BETWEEN 200 AND 299 OR c.complete=false) THEN 'failed'
+    OR (c.http_status NOT BETWEEN 200 AND 299 AND c.http_status<>304) OR c.complete=false) THEN 'failed'
    WHEN c.event_id IS NULL AND c.complete AND c.outcome IN ('stored','unchanged')
     AND c.http_status BETWEEN 200 AND 299 AND c.http_status<>202 AND c.route=c.final_route
     AND a.parser_version IS NOT NULL AND a.event_id IS NULL AND a.collection_state='absent'
