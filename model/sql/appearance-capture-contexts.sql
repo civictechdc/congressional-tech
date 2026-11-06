@@ -40,14 +40,18 @@ WITH candidate_appearance_shas AS (
    ELSE 'house_xml'
   END AS source,
   encode(c.sha256,'hex') AS record_sha_hex
- FROM captures c
- JOIN candidate_appearance_shas cas ON c.sha256=cas.sha256
+ FROM candidate_appearance_shas cas
+ JOIN captures c ON c.sha256=cas.sha256
 )
 SELECT c.record_sha_hex,c.source,c.mode,c.complete,c.outcome,c.http_status,
  coalesce(c.url,c.requested_url,c.context_url) AS source_url,c.member_path,c.retrieved_at,
  c.original_path,c.receipt_key,c.receipt_line,c.capture_index,c.run_id,
- e.reason AS exclusion_reason
-FROM classified c
-LEFT JOIN appearance_observation_exclusions e
+ e.reason AS exclusion_reason,
+ coalesce(c.mode='fetch' AND c.outcome IN ('stored','unchanged') AND (
+  (c.complete AND c.http_status BETWEEN 200 AND 299)
+  OR (c.fidelity='retained-file' AND nullif(trim(c.original_path),'') IS NOT NULL)
+ ),false) AS source_qualified
+FROM appearance_observation_exclusions e
+RIGHT JOIN classified c
  ON c.source=e.source AND c.receipt_key=e.receipt_key AND c.receipt_line=e.receipt_line
  AND c.capture_index=e.capture_index AND c.run_id=e.run_id

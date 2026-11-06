@@ -219,7 +219,7 @@ CAPTURES = ("SELECT cast(NULL AS VARCHAR) AS mode,cast(NULL AS BOOLEAN) AS compl
             "cast(NULL AS VARCHAR) AS member_path,cast(NULL AS VARCHAR) AS sniffed_format,cast(NULL AS VARCHAR) AS media_type,"
             "cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS original_path,"
             "cast(NULL AS VARCHAR) AS receipt_key,cast(NULL AS BIGINT) AS receipt_line,"
-            "cast(NULL AS BIGINT) AS capture_index,cast(NULL AS VARCHAR) AS run_id WHERE false")
+            "cast(NULL AS BIGINT) AS capture_index,cast(NULL AS VARCHAR) AS run_id,cast(NULL AS VARCHAR) AS fidelity WHERE false")
 
 
 def witness(name, links=(), kind=None):
@@ -258,7 +258,7 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
         json_input(tmp_path, 'capture_inputs', list(capture_rows), mode='Utf8',complete='Boolean',outcome='Utf8',
                    http_status='Int32',sha_hex='Utf8',family='Utf8',url='Utf8',requested_url='Utf8',context_url='Utf8',
                    member_path='Utf8',sniffed_format='Utf8',media_type='Utf8',retrieved_at='Utf8',original_path='Utf8',
-                   receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',run_id='Utf8'),
+                   receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',run_id='Utf8',fidelity='Utf8'),
         json_input(tmp_path, 'appearance_records_input', records, record_sha_hex='Utf8', parser_version='Utf8', status='Utf8',
                    error_type='Utf8', source='Utf8', event_id='Int64', package_id='Utf8', declared_base='Utf8',
                    collection_state='Utf8', context_url='Utf8', appearances=list_of(struct(**APPEARANCE)), created='Utf8'),
@@ -291,15 +291,17 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
                  f"arrow_cast(decode('{sha}','hex'),'FixedSizeBinary(32)') AS sha256,'house/witness-xml' AS family,cast(NULL AS VARCHAR) AS url,"
                  f"cast(NULL AS VARCHAR) AS requested_url,cast(NULL AS VARCHAR) AS context_url,cast(NULL AS VARCHAR) AS member_path,"
                  f"cast(NULL AS VARCHAR) AS sniffed_format,cast(NULL AS VARCHAR) AS media_type,cast(NULL AS VARCHAR) AS retrieved_at,"
-                 f"'{path}' AS original_path,cast(NULL AS VARCHAR),cast(NULL AS BIGINT),cast(NULL AS BIGINT),cast(NULL AS VARCHAR)" for sha, path in paths) + ''.join(
+                 f"'{path}' AS original_path,cast(NULL AS VARCHAR) AS receipt_key,cast(NULL AS BIGINT) AS receipt_line,"
+                 "cast(NULL AS BIGINT) AS capture_index,cast(NULL AS VARCHAR) AS run_id,cast(NULL AS VARCHAR) AS fidelity" for sha, path in paths) + ''.join(
                  f" UNION ALL SELECT 'fetch' AS mode,true AS complete,'stored' AS outcome,cast(200 AS INT) AS http_status,"
                  f"{sha} AS sha256,'govinfo/mods' AS family,{text(url)} AS url,{text(url)} AS requested_url,"
                  f"cast(NULL AS VARCHAR) AS context_url,{text(member_path)} AS member_path,'xml' AS sniffed_format,"
                  f"'application/xml' AS media_type,'2026-10-31' AS retrieved_at,cast(NULL AS VARCHAR) AS original_path,"
-                 "cast(NULL AS VARCHAR),cast(NULL AS BIGINT),cast(NULL AS BIGINT),cast(NULL AS VARCHAR)"
+                 "cast(NULL AS VARCHAR) AS receipt_key,cast(NULL AS BIGINT) AS receipt_line,"
+                 "cast(NULL AS BIGINT) AS capture_index,cast(NULL AS VARCHAR) AS run_id,cast(NULL AS VARCHAR) AS fidelity"
                  for sha, url, member_path in capture_contexts) + " UNION ALL SELECT mode,complete,outcome,http_status,"
                  "arrow_cast(decode(sha_hex,'hex'),'FixedSizeBinary(32)'),family,url,requested_url,context_url,member_path,"
-                 "sniffed_format,media_type,retrieved_at,original_path,receipt_key,receipt_line,capture_index,run_id FROM capture_inputs", materialize=True),
+                 "sniffed_format,media_type,retrieved_at,original_path,receipt_key,receipt_line,capture_index,run_id,fidelity FROM capture_inputs", materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
              *senate_step,

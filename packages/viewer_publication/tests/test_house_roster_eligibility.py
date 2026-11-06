@@ -41,7 +41,7 @@ def retained_original():
     # Completion receipt line 59: verified original file, with unknown acquisition time and HTTP facts.
     return capture(ORIGINAL_SHA, receipt_key='receipts/house/witness-xml/undated/assemble-20260930-completion.jsonl.gz',
                    receipt_line=59, capture_index=0, run_id='external-sources/hearing-text/docs_house_xml/wlist/100876.xml',
-                   original_path='external-sources/hearing-text/docs_house_xml/wlist/100876.xml')
+                   original_path='external-sources/hearing-text/docs_house_xml/wlist/100876.xml', fidelity='retained-file')
 
 
 def manual_captures(sha=MANUAL_SHA, **values):
@@ -115,12 +115,27 @@ def test_identical_bytes_with_an_independent_source_context_remain_eligible(tmp_
         independent.update(complete=True, http_status=200, retrieved_at='2026-11-06T12:00:00Z',
                            url='https://docs.house.gov/meetings/IF/IF16/20130521/100876/WList.xml')
     else:
-        independent['original_path'] = 'separately-qualified/wlist/100876.xml'
+        independent.update(original_path='separately-qualified/wlist/100876.xml', fidelity='retained-file')
     result = run_rosters(tmp_path, captures=[retained_original(), *manual_captures(), independent])
     assert len(result['resolved']) == 1
     assert result['resolved'][0]['record_sha_hex'] == MANUAL_SHA
     assert next(row for row in result['observations'] if row['record_sha_hex'] == MANUAL_SHA)['observation_eligible'] is True
     assert len([row for row in result['capture_contexts'] if row['exclusion_reason']]) == 2
+
+
+@pytest.mark.parametrize('unqualified', [
+    dict(complete=False, http_status=500, outcome='failed', url='https://docs.house.gov/failed.xml'),
+    dict(mode='expand', complete=True, outcome='stored', member_path='archive/wlist/100876.xml'),
+    dict(outcome='stored', fidelity='exact-bytes', original_path='manual-copy/wlist/100876.xml'),
+])
+def test_unqualified_capture_cannot_restore_an_excluded_manual_roster(tmp_path, unqualified):
+    extra = capture(MANUAL_SHA, receipt_key='receipts/unqualified.jsonl.gz', receipt_line=1,
+                    capture_index=0, run_id='unqualified-capture')
+    extra.update(unqualified)
+    result = run_rosters(tmp_path, captures=[retained_original(), *manual_captures(), extra])
+    assert_original_occurrences(result['resolved'])
+    manual = next(row for row in result['observations'] if row['record_sha_hex'] == MANUAL_SHA)
+    assert manual['observation_eligible'] is False
 
 
 @pytest.mark.parametrize('state', ['present', 'empty'])

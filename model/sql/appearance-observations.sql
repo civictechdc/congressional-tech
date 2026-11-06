@@ -10,9 +10,12 @@ WITH capture_contexts AS (
   AND http_status BETWEEN 200 AND 299
  GROUP BY record_sha_hex,source,source_url,member_path
 ), body_eligibility AS (
- -- Preserve the context-free retained-file fallback unless every known context was explicitly
- -- excluded. Identical bytes with a separate source observation remain eligible.
- SELECT record_sha_hex,source,bool_or(exclusion_reason IS NULL) AS eligible,
+ -- Preserve ordinary context-free fallback. When reviewed exclusions exist for these bytes,
+ -- only a positive nonexcluded fetch or retained-file observation restores roster authority;
+ -- failed captures and archive members cannot make an excluded manual copy authoritative.
+ SELECT record_sha_hex,source,
+  NOT bool_or(exclusion_reason IS NOT NULL)
+   OR bool_or(exclusion_reason IS NULL AND source_qualified) AS eligible,
   min(exclusion_reason) AS exclusion_reason
  FROM appearance_capture_contexts GROUP BY record_sha_hex,source
 ), meeting_updates AS (
