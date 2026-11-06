@@ -27,8 +27,10 @@ import json
 import re
 import sys
 from pathlib import Path
+from collections.abc import Mapping
 
 import duckdb
+from viewer_publication.release_files import directory_files
 
 OFFSETS = {'src_start', 'rec_start', 'file_row_number'}  # shift whenever an earlier row changes
 TRIPLE = 'receipt_key,receipt_line,capture_index'
@@ -37,25 +39,25 @@ ATTEMPTED_URLS = 'new attempts'
 
 
 class Diff:
-    def __init__(self, base: Path, candidate: Path, history=()):
-        self.dirs = {'base': base, 'candidate': candidate}
-        self.manifest = {s: json.loads((d / 'manifest.json').read_text()) for s, d in self.dirs.items()}
+    def __init__(self, base: Mapping[str, Path], candidate: Mapping[str, Path], history=()):
+        self.files = {'base': base, 'candidate': candidate}
+        self.manifest = {s: json.loads(files['manifest.json'].read_text()) for s, files in self.files.items()}
         self.entry = {s: {f['name']: f for f in m['files']} for s, m in self.manifest.items()}
         self.con = duckdb.connect()
-        for side, directory in self.dirs.items():
+        for side, files in self.files.items():
             for entry in self.manifest[side]['files']:
                 name = entry['name'].removesuffix('.parquet')
-                path = directory / entry['name']
+                path = files[entry['name']]
                 if entry['name'].endswith('.parquet') and path.exists():
                     extra = ',file_row_number=true' if name in ('list', 'detail') else ''
                     self.view(f'{side}_{name}', f"SELECT * FROM read_parquet('{path}'{extra})")
-        self.identities = identities(self.dirs)
+        self.identities = identities(self.files)
         self.cannot_see = []  # stated limits for this comparison, never silence
         # Earlier releases named by the publish (link_history): their link keys must not vanish either.
         self.history = []
-        for index, directory in enumerate(history):
+        for index, files in enumerate(history):
             name = f'history{index}_links'
-            self.view(name, f"SELECT * FROM read_parquet('{Path(directory) / 'links.parquet'}')")
+            self.view(name, f"SELECT * FROM read_parquet('{files['links.parquet']}')")
             self.history.append(name)
         self.link_causes = False
         self.witness_rekey = None  # set by rekeyed()
@@ -158,16 +160,16 @@ def value_group(column, count):
             'status': 'unverified', 'value': True}
 
 
-def identities(dirs):
+def identities(releases):
     """Read each release's own admitted keys; refuse conflicting comparison keys."""
     found = {}
     for side in ('base', 'candidate'):
-        directory = dirs[side]
-        manifest = json.loads((directory/'manifest.json').read_text())
+        files = releases[side]
+        manifest = json.loads(files['manifest.json'].read_text())
         entries = {item['name']: item for item in manifest['files']}
         controls = {}
         for name in ('catalog.ddk.json', 'catalog.report.json'):
-            data = (directory/name).read_bytes()
+            data = files[name].read_bytes()
             entry = entries[name]
             if len(data) != entry['size'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
                 raise ValueError('Comparison catalog control differs from release membership: '+name)
@@ -353,8 +355,8 @@ def sources(d: Diff):
            group('new URLs', 'no previous row has this address', q('url IS NOT NULL AND member_path IS NULL AND pn=0')),
            group('same-URL rows removed', 'fewer documents list the address', q('url IS NOT NULL AND member_path IS NULL AND pn>0 AND ln>0 AND ln<pn')),
            group('same-URL rows added', 'more documents list the address', q('url IS NOT NULL AND member_path IS NULL AND pn>0 AND ln>pn'))]
-    notes = {'null_url_rows': {s: d.one(f'SELECT count(*) FROM {s}_sources WHERE url IS NULL') for s in d.dirs},
-             'member_rows': {s: d.one(f'SELECT count(*) FROM {s}_sources WHERE member_path IS NOT NULL') for s in d.dirs},
+    notes = {'null_url_rows': {s: d.one(f'SELECT count(*) FROM {s}_sources WHERE url IS NULL') for s in d.files},
+             'member_rows': {s: d.one(f'SELECT count(*) FROM {s}_sources WHERE member_path IS NOT NULL') for s in d.files},
              'same_url_rows_on_removed_documents': (on_removed := d.one("""SELECT count(*) FROM base_sources s JOIN sources_diff x
                ON s.url=x.url AND x.member_path IS NULL AND x.pn>x.ln AND x.ln>0 WHERE s.member_path IS NULL
                AND s.list_row IN (SELECT r FROM removed_rows)"""))}
@@ -549,7 +551,7 @@ def witness_key_map(d: Diff):
 
 
 def url_state(d: Diff):
-    scope = json.loads((d.dirs['candidate'] / 'capture_scope.json').read_text())
+    scope = json.loads(d.files['candidate']['capture_scope.json'].read_text())
     patterns = {re.compile(p) for e in scope['entries'] for p in e.get('exclusions', [])}
     removed = d.rows('SELECT requested_url,attempts FROM base_url_state ANTI JOIN candidate_url_state USING(requested_url)')
     matching = [(u, n) for u, n in removed if any(p.search(u) for p in patterns)]
@@ -596,8 +598,7 @@ def account(d: Diff):
                     groups.append(group(f'{side} manifest disagrees with file', 'unexplained', entry['rows'] - actual))
         groups = [g for g in groups if g['count'] or g.get('flag')]
         for side, entry in (('base', base), ('candidate', candidate)):
-            path = d.dirs[side] / name
-            if entry and path.exists() and digest(path)['sha256'] != entry['sha256']:
+            if entry and digest(d.files[side][name])['sha256'] != entry['sha256']:
                 groups.append(flag(f'{side} manifest digest disagrees with file', 'unexplained'))
         if stem == 'sources' and candidate:
             # The 'NULL url' group is net (candidate minus base): only a positive part is new NULLs.
@@ -674,10 +675,10 @@ def link_rule(d: Diff, sample=100):
 
 
 def compare(base, candidate, *, evidence_base=None, evidence_candidate=None, record_digest=(), removed_keys=None, history=()):
-    """Compare two local release directories; the report is the gate's only input."""
+    """Compare two named local asset inventories; return the gate's report."""
     if bool(evidence_base) != bool(evidence_candidate):
         raise ValueError('--evidence-base and --evidence-candidate go together')
-    d = Diff(Path(base), Path(candidate), history)
+    d = Diff(base, candidate, history)
     flips = add_evidence(d, evidence_base, evidence_candidate) if evidence_base else None
     files = account(d)
     result = {'base_release': d.manifest['base']['release_id'], 'candidate_release': d.manifest['candidate']['release_id'],
@@ -704,7 +705,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if bool(args.evidence_base) != bool(args.evidence_candidate):
         parser.error('--evidence-base and --evidence-candidate go together')
-    result = compare(args.base, args.candidate, evidence_base=args.evidence_base, evidence_candidate=args.evidence_candidate,
+    result = compare(directory_files(args.base), directory_files(args.candidate), evidence_base=args.evidence_base, evidence_candidate=args.evidence_candidate,
                      record_digest=args.record_digest, removed_keys=args.removed_keys)
     args.output.write_text(json.dumps(result, indent=1, default=str) + '\n')
     for entry in result['failing']:

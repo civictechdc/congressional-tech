@@ -10,6 +10,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from viewer_publication.archive_format import release_identity
+from viewer_publication.release_files import directory_files
 from viewer_publication.release_gate import (RETIRED, fetch_base, fetch_release, load_causes, render_notes,
                                              require_release_gates)
 from test_release_comparison import current_catalog, descriptor
@@ -91,7 +92,7 @@ def pair(tmp_path):
 
 
 def gate(pair, tmp_path, causes):
-    return require_release_gates(*pair, causes, report_path=tmp_path / 'report.json')
+    return require_release_gates(*map(directory_files, pair), causes, report_path=tmp_path / 'report.json')
 
 
 def test_refuses_without_cause_record(pair, tmp_path):
@@ -174,11 +175,11 @@ def test_link_rule_refuses_missing_base_key_even_with_record(tmp_path):
     candidate = tmp_path / 'candidate'
     release_dir(candidate, ['A'])  # B vanishes: no redirect, no removal notice
     with pytest.raises(ValueError):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json')
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json')
     groups = [g for g in PAIR_GROUPS if g[0] != 'retired_links.parquet']
     causes = record_for(*ids((base, candidate)), tmp_path, groups=groups)
     with pytest.raises(ValueError, match='link rule: 1 base link keys vanish'):
-        require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
+        require_release_gates(directory_files(base), directory_files(candidate), causes, report_path=tmp_path / 'r.json')
 
 
 def test_dangling_successor_refuses(tmp_path):
@@ -187,11 +188,11 @@ def test_dangling_successor_refuses(tmp_path):
     candidate = tmp_path / 'candidate'
     release_dir(candidate, ['A'], retired=[dict(link_key=K('B'), successor_key=K('Z'), last_release_id='b' * 64, last_filename='B.pdf')])
     with pytest.raises(ValueError, match='1 successors are not published keys'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json')
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json')
 
 
 def test_no_live_release_passes_vacuously_and_says_so(pair, tmp_path):
-    report = require_release_gates(None, pair[1], None, report_path=tmp_path / 'r.json')
+    report = require_release_gates(None, directory_files(pair[1]), None, report_path=tmp_path / 'r.json')
     assert report['gates'].startswith('vacuous')
 
 
@@ -232,7 +233,7 @@ def test_notes_render_witness_statement_and_link_counts(pair, tmp_path):
     with pytest.raises(ValueError):
         gate(pair, tmp_path, None)
     causes = record_for(*ids(pair), tmp_path)
-    text = render_notes(causes, *pair)
+    text = render_notes(causes, *map(directory_files, pair))
     assert '- Witness IDs changed. (ct-ktfe 2026-11-02)' in text
     assert '0 link keys from earlier releases now redirect to their current document. 1 show a removal notice. 0 vanish.' in text
     assert '| `list.parquet` |' in text
@@ -247,7 +248,7 @@ def test_a_named_history_key_that_vanishes_refuses(tmp_path):
     candidate = tmp_path / 'candidate'
     release_dir(candidate, ['A'], retired=[])
     with pytest.raises(ValueError, match='1 base link keys vanish'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', history=[history])
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', history=[directory_files(history)])
     assert json.loads((tmp_path / 'r.json').read_text())['link_rule']['missing_keys'] == [K('H').hex()]
 
 
@@ -360,7 +361,7 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     raw = {receipt: gzip.compress(('\n'.join(map(json.dumps, (line, unrelated))) + '\n').encode(), mtime=0)}
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     def automatic(report):
-        return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
+        return automatic_causes(report, directory_files(base), directory_files(candidate), engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
                                 live_receipt_keys=live_receipts, read_receipt=raw.__getitem__, work=tmp_path / 'auto')
     return base, candidate, automatic
 
@@ -368,7 +369,7 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
 @pytest.mark.parametrize('nested', [True, False])
 def test_additions_from_new_receipts_pass_unattended(tmp_path, nested):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], nested=nested)
-    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert report['reasons'] == [] and {e['tickets'][0] for e in report['automatic_causes']} == {'ct-ud0b'}
     assert {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys', 'added URLs'}
     trace = json.loads((tmp_path / 'auto/automatic-trace.json').read_text())
@@ -386,28 +387,28 @@ def test_additions_from_new_receipts_pass_unattended(tmp_path, nested):
 def test_an_added_row_from_an_old_receipt_refuses(tmp_path, receipt, rule):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], receipt=receipt)
     with pytest.raises(ValueError, match='no recorded cause'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert any(rule in reason for reason in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
 
 
 def test_a_raw_line_that_does_not_name_the_body_refuses(tmp_path):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], raw_names_body=False)
     with pytest.raises(ValueError, match='no recorded cause'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert any('does not name body' in r for r in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
 
 
 def test_a_changed_value_refuses_even_beside_new_rows(tmp_path):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], filenames=['A-renamed.pdf', 'N.pdf'])
     with pytest.raises(ValueError, match='changed filename'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert any('is not an addition' in r for r in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
 
 
 def test_a_removed_row_refuses(tmp_path):
     base, candidate, automatic = nightly(tmp_path, ['A', 'B'], ['A', 'N'])
     with pytest.raises(ValueError):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     report = json.loads((tmp_path / 'r.json').read_text())
     assert any('is not an addition' in r or 'link rule' in r for r in report['automatic_reasons'])
 
@@ -423,7 +424,7 @@ def test_a_removed_row_refuses(tmp_path):
 def test_nightly_refuses_additions_without_the_exact_new_document_attempt(tmp_path, change):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], **change)
     with pytest.raises(ValueError, match='no recorded cause'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     report = json.loads((tmp_path / 'r.json').read_text())
     assert report['automatic_reasons'] and 'automatic_causes' not in report
 
@@ -435,12 +436,12 @@ def test_automatic_policy_refuses_a_verified_scope_removal(tmp_path):
     queued = url_states('https://archive.example.test/oembed/1', 0)
     release_dir(base, ['A'], scope=scope, url_state=queued)
     release_dir(candidate, ['A'], scope=scope, url_state=queued.slice(0, 0))
-    assert require_release_gates(base, candidate, None, report_path=tmp_path / 'reviewed.json')['reasons'] == []
+    assert require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'reviewed.json')['reasons'] == []
     def automatic(report):
-        return automatic_causes(report, base, candidate, engine=None, captures=None,
+        return automatic_causes(report, directory_files(base), directory_files(candidate), engine=None, captures=None,
                                 live_receipt_keys=(), read_receipt=None, work=tmp_path / 'auto')
     with pytest.raises(ValueError, match='removed URLs'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'nightly.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'nightly.json', automatic=automatic)
     report = json.loads((tmp_path / 'nightly.json').read_text())
     assert report['failing'] == [] and report['reasons'] == report['automatic_reasons']
 
@@ -448,14 +449,14 @@ def test_automatic_policy_refuses_a_verified_scope_removal(tmp_path):
 def test_no_dated_live_receipt_refuses(tmp_path):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], live_receipts={UNDATED_LIVE_RECEIPT})
     with pytest.raises(ValueError, match='no recorded cause'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert 'no dated receipt' in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'][0]
 
 
 def test_a_second_document_hash_in_raw_notes_does_not_ride_an_eligible_attempt(tmp_path):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N', 'X'])
     with pytest.raises(ValueError, match='no recorded cause'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
     assert len(reasons) == 1 and 'does not name body' in reasons[0]
 
@@ -463,7 +464,7 @@ def test_a_second_document_hash_in_raw_notes_does_not_ride_an_eligible_attempt(t
 def test_a_failed_response_sharing_the_new_documents_body_cannot_qualify_its_url(tmp_path):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], failed_duplicate=True)
     with pytest.raises(ValueError, match='no recorded cause'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=tmp_path / 'r.json', automatic=automatic)
     reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
     assert len(reasons) == 1 and 'failed-copy.pdf has 1 attempts but 0 fresh raw lines' in reasons[0]
 
@@ -472,7 +473,7 @@ def test_an_added_link_key_on_an_existing_document_requires_review(tmp_path):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['AZ', 'N'], filenames=['A.pdf', 'N.pdf'])
     report_path = tmp_path / 'r.json'
     with pytest.raises(ValueError, match='no recorded cause'):
-        require_release_gates(base, candidate, None, report_path=report_path, automatic=automatic)
+        require_release_gates(directory_files(base), directory_files(candidate), None, report_path=report_path, automatic=automatic)
     report = json.loads(report_path.read_text())
     assert report['link_rule']['ok']
     assert report['automatic_reasons'] == ['automatic causes: 2 added link keys, 1 attached to new documents']

@@ -15,6 +15,7 @@ import pytest
 ROOT = Path(__file__).parents[3]
 from viewer_publication import release_comparison as release_diff
 from viewer_publication.archive_format import release_identity
+from viewer_publication.release_files import directory_files
 
 S, I, B = pa.string(), pa.int32(), pa.binary()
 SCHEMAS = {
@@ -86,6 +87,27 @@ def run(tmp_path, prev, live, *extra):
 
 def counts(result, name):
     return {(g['group'], g['cause']): g['count'] for g in result['files'][f'{name}.parquet']['groups']}
+
+
+def test_comparison_reads_exports_at_their_retained_paths(tmp_path):
+    base = release(tmp_path/'base', documents=['A'])
+    candidate = release(tmp_path/'controls', documents=['A'])
+    assets = directory_files(candidate)
+    retained = tmp_path/'native'
+    retained.mkdir()
+    identities = {}
+    for index, (name, path) in enumerate(assets.items()):
+        if name.endswith('.parquet'):
+            destination = retained/str(index)/'output.parquet'
+            destination.parent.mkdir()
+            path.rename(destination)
+            assets[name] = destination
+            identities[name] = (destination.stat().st_ino, destination.stat().st_mtime_ns)
+    report = release_diff.compare(directory_files(base), assets)
+    assert report['ok'], report
+    assert not list(candidate.glob('*.parquet'))
+    assert identities == {name: (assets[name].stat().st_ino, assets[name].stat().st_mtime_ns)
+                          for name in identities}
 
 
 def evidence(path, rows):
@@ -544,7 +566,7 @@ def test_comparison_refuses_changed_catalog_control_bytes(tmp_path, control):
     assert changed != original and len(changed) == len(original)
     path.write_bytes(changed)
     with pytest.raises(ValueError, match='catalog control differs from release membership'):
-        release_diff.identities(dict(base=prev, candidate=live))
+        release_diff.identities(dict(base=directory_files(prev), candidate=directory_files(live)))
 
 
 def test_comparison_refuses_different_genuinely_admitted_keys(tmp_path):
@@ -567,4 +589,4 @@ def test_comparison_refuses_different_genuinely_admitted_keys(tmp_path):
     prev = release(tmp_path/'prev', documents=['A'], schemas=schemas, url_variants=rows)
     live = release(tmp_path/'live', documents=['A'], schemas=schemas, catalog=changed, url_variants=rows)
     with pytest.raises(ValueError, match='identity changed across releases: url_variants'):
-        release_diff.identities(dict(base=prev, candidate=live))
+        release_diff.identities(dict(base=directory_files(prev), candidate=directory_files(live)))

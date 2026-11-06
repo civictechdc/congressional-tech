@@ -54,7 +54,9 @@
     "Actual low-level source preparation captured 51 inputs with exact schema artifacts, 251 steps, 40 outputs and 23 reports; independent review confirmed scope/custody and corrected unique-byte accounting; native preparation and entrypoint admission remain absent",
     "Experimental schema-only native source05 inferred the complete actual job: exact 51/251/40/23 membership, 287 decodable IPC schemas, 250 declared native field/element identities and 222 required report column declarations; no source admission or data execution",
     "Adopted qualified dev5 catalog/API slice; complete private native check definitions and audience-filtered public artifacts share one captured assembly; independent review approved 31 root cases,138 MCP passes/3 producer-fixture skips and7 HTTP/browser cases",
-    "Implemented exact native report-policy construction and updated the complete ownership diagram after independent red/green review; native caller integration remains open."
+    "Implemented exact native report-policy construction and updated the complete ownership diagram after independent red/green review; native caller integration remains open.",
+    "Declared archive-model production and exact public/private/source catalog dispositions; 15 focused cases passed and independent review approved bfebe773.",
+    "Migrated comparison, publisher and local HTTP probes to exact logical-name/file-path inventories; native outputs can remain separate from controls. 131 Python, four probe-wrapper and nine HTTP/catalog-reader cases passed; independent review approved after correcting media types to use logical names."
   ],
   "active": [
     "Replace producer execution and retire old schema/controller paths atomically once shared whole-JobSpec, exact schema and accepted qualification API is available; consumer boundary is qualified separately",
@@ -475,6 +477,19 @@
       "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-native-report-inventory-02/",
       "peakRSSGiB": 0.25,
       "independentReview": "approved construction boundary; native execution and acceptance not exercised"
+    },
+    "releaseInventory": {
+      "pythonPassed": 131,
+      "probePassed": 4,
+      "httpReaderPassed": 9,
+      "scope": "Explicit inventory membership, scattered export upload, comparison and actual local HTTP/catalog reading. No replacement-native execution or full browser publication qualification.",
+      "evidenceDirectories": [
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-release-inventory-02",
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-release-probes-01",
+        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/checks-release-inventory-browser-03"
+      ],
+      "peakRSSGiB": 0.31,
+      "wholeExportsCopied": false
     }
   },
   "commits": {
@@ -585,6 +600,12 @@
       "sha256": "84fd004956d7e24f7a904ad7f274334cb828e259a373b5f1009ccd7e2b513e57",
       "size": 31037,
       "status": "authored policy from unadmitted frozen capture-v1 preparation; 222 counters, 51 inputs, 251 steps, 40 exports, 23 reports"
+    },
+    "producerStaticProofRequirements": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-proof-definition-01/producer-static-proof-requirements.json",
+      "sha256": "4e0fd5ca45b48333bf25c96c27ac300d34de4d8818b65ffdf748d21c1410c6cc",
+      "size": 14116,
+      "status": "source requirements only; native static-proof implementation and admission pending; existing Gate5 retained"
     }
   },
   "constraints": {

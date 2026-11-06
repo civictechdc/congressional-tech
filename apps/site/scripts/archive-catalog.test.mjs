@@ -1,10 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdtemp,writeFile,rm,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
+import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
-import {startArchiveServer} from './archive-server.mjs';
+import {startArchiveServer,directoryFiles} from './archive-server.mjs';
 
 // Run this separately with a retained, genuinely assembled public DDK fixture.
 // It is not a substitute for the full archive's native qualification.
@@ -25,7 +26,7 @@ async function localFetch(url,options={}){
 }
 
 test('local origin serves exact catalog companions and current reader rows',async()=>{
-  const server=await startArchiveServer({release:folder});
+  const server=await startArchiveServer({release:await directoryFiles(folder)});
   try{
     const reader=await openArchive(server.pointerUrl,{fetcher:fetch});
     assert.deepEqual(await reader.catalog(),expected);
@@ -39,6 +40,34 @@ test('local origin serves exact catalog companions and current reader rows',asyn
     const unlisted=await fetch(`${server.origin}/congressional-tech/data/archive/releases/${manifest.release_id}/queries/${'0'.repeat(64)}.sql`);
     assert.equal(unlisted.status,404);
   }finally{await server.close();}
+});
+
+test('local origin serves retained exports with controls in a separate directory',async()=>{
+  const files=await directoryFiles(folder),controls=await realpath(await mkdtemp(join(tmpdir(),'archive-controls-')));
+  const path=join(controls,'manifest.bin');
+  await writeFile(path,await readFile(files['manifest.json']));
+  files['manifest.json']=path;
+  const sql=manifest.files.find(file=>file.name.endsWith('.sql'));
+  const queryPath=join(controls,'query.bin');
+  await writeFile(queryPath,await readFile(files[sql.name]));
+  files[sql.name]=queryPath;
+  const server=await startArchiveServer({release:files});
+  try{
+    const reader=await openArchive(server.pointerUrl,{fetcher:fetch});
+    assert.ok((await reader.search({})).total>0);
+    const response=await fetch(`${server.origin}/congressional-tech/data/archive/releases/${manifest.release_id}/list.parquet`,{headers:{Range:'bytes=0-3'}});
+    assert.equal(response.status,206);
+    assert.equal(await response.text(),'PAR1');
+    const base=`${server.origin}/congressional-tech/data/archive/releases/${manifest.release_id}/`;
+    assert.match((await fetch(base+sql.name)).headers.get('Content-Type'),/^text\/plain/);
+    assert.equal((await fetch(base+'manifest.json')).headers.get('Content-Type'),'application/json');
+  }finally{await server.close();await rm(controls,{recursive:true});}
+});
+
+test('local origin refuses inventory files outside manifest membership',async()=>{
+  const files=await directoryFiles(folder);
+  files['unlisted.parquet']=files['list.parquet'];
+  await assert.rejects(startArchiveServer({release:files}),/inventory differs/);
 });
 
 test('browser reads admitted public definitions and rows with cached metadata',async()=>{

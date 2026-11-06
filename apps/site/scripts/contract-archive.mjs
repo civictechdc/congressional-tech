@@ -4,12 +4,12 @@ import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
-import {startArchiveServer} from './archive-server.mjs';
+import {startArchiveServer,directoryFiles} from './archive-server.mjs';
 import {ARCHIVE_ORIGIN,browserDependency,heapSampler,routeArchiveOrigin} from './archive-browser.mjs';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw new Error('Supply --next-release for the required browser stale-tab check.');const targets=await readTargets(args.targets);const targetsStatus=args.targets?JSON.parse(await readFile(args.targets)).status:undefined;
 const {chromium}=browserDependency('playwright');
-const server=await startArchiveServer({release:resolve(args.release),nextRelease:args['next-release']?resolve(args['next-release']):undefined,siteDist:resolve(args.dist||'dist'),bodies:args.bodies?JSON.parse(await readFile(args.bodies)):{}});
+const server=await startArchiveServer({release:JSON.parse(await readFile(args['release-files'])),nextRelease:await directoryFiles(args['next-release']),siteDist:resolve(args.dist||'dist'),bodies:args.bodies?JSON.parse(await readFile(args.bodies)):{}});
 const browser=await chromium.launch({headless:true,...(args['browser-executable']?{executablePath:args['browser-executable']}:{})});
 const fixtureBodyReads=[];
 async function fixtureContext(options={}){

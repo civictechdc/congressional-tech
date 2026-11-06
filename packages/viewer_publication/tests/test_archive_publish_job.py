@@ -344,9 +344,9 @@ def test_execute_requires_remote_before_storage_connection(tmp_path,capsys):
 def test_fixed_site_probe_arguments_use_one_publisher_and_declared_paths(tmp_path):
     from viewer_publication.archive_publish_job import load_spec,probe_commands
     value=publish_spec(tmp_path);path=tmp_path/'publish.json';path.write_text(json.dumps(value))
-    spec=load_spec(path);candidate=tmp_path/'release';release='a'*64
-    commands=probe_commands(spec,release=candidate,release_id=release,probe_selectors=dict(saved_row=7,link_key='0123456789abcdef'))
-    assert commands['contract']==['npm','run','contract:archive','--','--release',str(candidate),
+    spec=load_spec(path);candidate=tmp_path/'contract-files.json';release='a'*64
+    commands=probe_commands(spec,release_files=candidate,release_id=release,probe_selectors=dict(saved_row=7,link_key='0123456789abcdef'))
+    assert commands['contract']==['npm','run','contract:archive','--','--release-files',str(candidate),
         '--next-release',value['contract_next_release'],'--dist',value['site_dist'],'--targets',value['targets']['path'],
         '--output',str(tmp_path/'publish/contract.json'),'--link-key','0123456789abcdef']
     assert commands['canary']==['npm','run','canary:archive','--','--pointer','https://archive.fixture.test/viewer-publications/manifest.json',
@@ -394,14 +394,14 @@ def test_metadata_first_probe_selectors_are_required_and_not_daily_owner_options
     value=publish_spec(tmp_path);path=tmp_path/'publish.json';path.write_text(json.dumps(value));spec=load_spec(path)
     # Native metadata selects a saved row beyond metadata-only rows at the start.
     selectors=dict(saved_row=7,link_key='0123456789abcdef')
-    commands=probe_commands(spec,release=tmp_path/'release',release_id='a'*64,probe_selectors=selectors)
+    commands=probe_commands(spec,release_files=tmp_path/'contract-files.json',release_id='a'*64,probe_selectors=selectors)
     assert commands['contract'][-2:]==['--link-key',selectors['link_key']]
     assert commands['canary'][-2:]==['--saved-row','7']
     for invalid in [None,{},dict(saved_row=True,link_key='0'*16),dict(saved_row=-1,link_key='0'*16),
                     dict(saved_row=1,link_key='ABCDEF0123456789'),dict(saved_row=1,link_key='0'*15),
                     dict(saved_row=1,link_key='0'*16,extra=True)]:
         with pytest.raises(ValueError,match='probe selectors'):
-            probe_commands(spec,release=tmp_path/'release',release_id='a'*64,probe_selectors=invalid)
+            probe_commands(spec,release_files=tmp_path/'contract-files.json',release_id='a'*64,probe_selectors=invalid)
 
 
 def END_TO_END_PASSED(command,**kwargs):
@@ -643,9 +643,11 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     def process_runner(command,**kwargs):
         assert (outcome=='completed' or nightly) and kwargs['check'] is True
         commands.append(command)
-        release=Path(command[command.index('--release')+1])
-        release_id=(json.loads((release/'manifest.json').read_text())['release_id']
-                    if command[2]=='contract:archive' else str(release))
+        if command[2]=='contract:archive':
+            files=json.loads(Path(command[command.index('--release-files')+1]).read_text())
+            release_id=json.loads(Path(files['manifest.json']).read_text())['release_id']
+        else:
+            release_id=command[command.index('--release')+1]
 
         Path(command[command.index('--output')+1]).write_text(json.dumps(
             dict(status='passed',releaseId=release_id,targets='owner-approved')))

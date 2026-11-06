@@ -4,7 +4,7 @@ import {readFile,mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {startArchiveServer} from './archive-server.mjs';
+import {startArchiveServer,directoryFiles} from './archive-server.mjs';
 import {verifyArchive} from './verify-archive.mjs';
 import {writeTargets,checkTargets} from './archive-targets.mjs';
 import {browserDependency} from './archive-browser.mjs';
@@ -110,7 +110,7 @@ test('provisional targets refuse a different release identity and CLI validation
 
 
 test('Node canary keeps its decoded budget without applying browser runtime ceilings',async()=>{
-  const server=await startArchiveServer({release:fileURLToPath(new URL('../../../model/fixtures/archive-contract/current',import.meta.url))});
+  const server=await startArchiveServer({release:await directoryFiles(fileURLToPath(new URL('../../../model/fixtures/archive-contract/current',import.meta.url)))});
   const targets={version:1,status:'owner-approved',basis:'real-device',ceilings:{startupMs:1,searchMs:1,detailMs:1,heapBytes:1}};
   try{
     const options={pointerUrl:server.pointerUrl,releaseId:server.manifest.release_id,local:true,checkSaved:false,targets};

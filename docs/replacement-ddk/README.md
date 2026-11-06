@@ -13,6 +13,13 @@ acceptance against a replacement-produced native release and retirement of
 superseded production paths remain open.
 No full replacement, external publication or production cutover is complete.
 
+Comparison, publication and local HTTP reader probes now consume an explicit
+file inventory. Native exports can remain at their retained paths while catalog
+and manifest files live separately. The focused checks passed 131 Python cases,
+four probe-wrapper cases and nine HTTP/catalog-reader cases. Independent review
+approved the change after correcting HTTP media types to follow logical asset
+names. No native exports were copied to create a common release directory.
+
 | Artifact | Purpose |
 | --- | --- |
 | [Status](status.json) | Current implementation, tests, dependencies and retained evidence |
@@ -81,7 +88,9 @@ its parser/catalog fingerprints include the complete `uv.lock`, whose DDK
 dependency changes alter those fingerprints. Restoring only the baseline lock
 for fingerprint calculation reproduces all eight declared pins. Parser source
 and retained table pins remain unchanged; no runtime equivalence or executable
-admission follows from that observation. The shared replacement must resolve
+admission follows from that observation. DDK's catalog extra also pins `rdflib`
+to 7.2.1, replacing 7.6.0 on the HTML metadata extraction path; current extractor
+equivalence remains a separate requirement. The shared replacement must resolve
 this dependency boundary without restamping retained results. Authentic
 production policy and predecessor selection also remain unbound.
 

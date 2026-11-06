@@ -10,6 +10,7 @@ import pytest
 
 from viewer_publication.archive_publish import NativeArchiveStore,input_digest,publish_candidate,read_pointer,matching_live_input
 from viewer_publication.archive_format import release_identity
+from viewer_publication.release_files import directory_files
 
 
 def encoded(value):
@@ -89,7 +90,7 @@ def candidate(root,*,payload=b'qualified export bytes',rows=1):
     result=root/'result.json'
     result.write_bytes(encoded(dict(outputs=[entry],queries=[dict(name=name,data=[dict(violation=0)])
         for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
-    return dict(release=output,manifest_pin=pin(path),result_pin=pin(result)),manifest
+    return dict(release=directory_files(output),manifest_pin=pin(path),result_pin=pin(result)),manifest
 
 
 @pytest.mark.parametrize('name', ['queries/' + 'a' * 64 + '.sql', 'discovery.dcat.json',
@@ -99,7 +100,8 @@ def test_candidate_accepts_exact_standard_companion_paths(tmp_path, name):
     from viewer_publication.archive_publish import _candidate
     artifacts, value = candidate(tmp_path)
     data = b'SELECT 1' if name.endswith('.sql') else b'{}'
-    path = artifacts['release'] / name
+    path = artifacts['release']['manifest.json'].parent / name
+    artifacts['release'][name] = path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
     value['files'].append(dict(name=name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0))
@@ -132,7 +134,8 @@ def test_candidate_refuses_symlink_parent_for_standard_companion(tmp_path):
     name = 'a' * 64 + '.sql'
     data = b'SELECT 1'
     (outside / name).write_bytes(data)
-    (artifacts['release'] / 'queries').symlink_to(outside, target_is_directory=True)
+    (artifacts['release']['manifest.json'].parent / 'queries').symlink_to(outside, target_is_directory=True)
+    artifacts['release']['queries/' + name] = artifacts['release']['manifest.json'].parent / 'queries' / name
     value['files'].append(dict(name='queries/' + name, sha256=sha256(data).hexdigest(),
                                md5=md5(data).hexdigest(), size=len(data), rows=0))
     manifest_path = Path(artifacts['manifest_pin']['path'])
@@ -177,6 +180,36 @@ def test_input_identity_excludes_run_and_snapshot_metadata():
     third,_=record(profile={'sql':'new','parser':'pinned'})
     assert first['input_digest']!=third['input_digest']
     with pytest.raises(ValueError,match='phase one'):record(entity_digests={'members':'not-phase-one'})
+
+
+def test_publisher_uses_native_export_path_without_copying_to_controls(tmp_path):
+    artifacts, manifest = candidate(tmp_path)
+    source = artifacts['release']['list.parquet']
+    retained = tmp_path/'native'/'sealed-export.parquet'
+    retained.parent.mkdir()
+    source.rename(retained)
+    artifacts['release']['list.parquet'] = retained
+    identity = retained.stat()
+    result, store, native = launch(tmp_path, artifacts=artifacts)
+    export = next(call for call in native.calls if call['destination'].endswith('/list.parquet'))
+    assert export['source'] == str(retained)
+    assert result['release_id'] == manifest['release_id']
+    assert not source.exists()
+    assert (retained.stat().st_ino, retained.stat().st_mtime_ns) == (identity.st_ino, identity.st_mtime_ns)
+
+
+@pytest.mark.parametrize('defect', ['missing', 'extra'])
+def test_publisher_refuses_inventory_membership_changes_before_upload(tmp_path, defect):
+    artifacts, _ = candidate(tmp_path)
+    if defect == 'missing':
+        del artifacts['release']['list.parquet']
+    else:
+        artifacts['release']['unlisted.parquet'] = artifacts['release']['list.parquet']
+    store = Store()
+    native = Native(store)
+    with pytest.raises(ValueError, match='candidate asset|inventory differs'):
+        launch(tmp_path, artifacts=artifacts, store=store, native=native)
+    assert not native.calls
 
 
 def test_receipts_then_input_contract_upload_canary_and_single_flip(tmp_path):
@@ -480,7 +513,7 @@ def real_release(root,documents,retired=None):
     result=root/'result.json'
     result.write_bytes(encoded(dict(outputs=[f for f in manifest['files'] if f['name'].endswith('.parquet')],
         queries=[dict(name=name,data=[dict(violation=0)]) for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
-    return dict(release=root/'release',manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
+    return dict(release=directory_files(root/'release'),manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
 
 
 def live_store(root):

@@ -28,6 +28,7 @@ import pyarrow.parquet as pq
 from congress_api.lake.receipt_metadata import document_status, document_status_sql
 
 from viewer_publication.release_comparison import ADDED_URL_STATE, ATTEMPTED_URLS
+from viewer_publication.release_files import directory_files
 
 DIGEST = re.compile('[0-9a-f]{64}')
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
@@ -288,7 +289,7 @@ def _raw_document_proof(line):
     return bodies, url
 
 
-def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work):
+def automatic_causes(report, base, candidate, *, engine, captures, live_receipt_keys, read_receipt, work):
     """Cause entries for an addition-only difference whose every new row comes from new receipts.
 
     Returns (entries, reasons); entries is empty unless every check passes. A new document is
@@ -322,7 +323,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if not live_dates:
         return [], ['automatic causes: the live release has no dated receipt set to compare with']
     cutoff = max(live_dates)
-    d = Diff(Path(base_dir), Path(candidate_dir))
+    d = Diff(base, candidate)
     d.documents = documents(d)
     d.table('added_documents', 'SELECT file_row_number::INT r FROM candidate_list ANTI JOIN pairs ON file_row_number=lr')
     for table, fields in (('sources', 'url,member_path'), ('urls', 'lookup_key')):
@@ -430,7 +431,7 @@ def verdict(report, causes):
     return reasons
 
 
-def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evidence_base=None, evidence_candidate=None, history=(),
+def require_release_gates(base, candidate, causes, *, report_path, evidence_base=None, evidence_candidate=None, history=(),
                           automatic=None):
     """Write the comparison report, then refuse on any gate 1 or gate 2 finding.
 
@@ -439,11 +440,11 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
     """
     from viewer_publication.release_comparison import compare
     report_path = Path(report_path)
-    if base_dir is None:
+    if base is None:
         report = dict(base_release=None, gates='vacuous: no live release to compare with', reasons=[])
         report_path.write_text(json.dumps(report, indent=1) + '\n')
         return report
-    report = compare(base_dir, candidate_dir, evidence_base=evidence_base, evidence_candidate=evidence_candidate, history=history)
+    report = compare(base, candidate, evidence_base=evidence_base, evidence_candidate=evidence_candidate, history=history)
     if automatic is not None:
         entries, report['automatic_reasons'] = automatic(report)
         if entries:
@@ -462,14 +463,14 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
     return report
 
 
-def render_notes(causes, base_dir, candidate_dir):
+def render_notes(causes, base_files, candidate_files):
     """Release notes from the accepted cause record and the candidate's ledger: one source each."""
-    candidate = json.loads((Path(candidate_dir) / 'manifest.json').read_text())['release_id']
-    base = json.loads((Path(base_dir) / 'manifest.json').read_text())['release_id']
+    candidate = json.loads(candidate_files['manifest.json'].read_text())['release_id']
+    base = json.loads(base_files['manifest.json'].read_text())['release_id']
     if (causes['base_release_id'], causes['candidate_release_id']) != (base, candidate):
         raise ValueError('Cause record is bound to other releases')
-    ledger = Path(candidate_dir) / 'retired_links.parquet'
-    retired = pq.read_table(ledger, columns=['successor_key']) if ledger.exists() else RETIRED.empty_table()
+    ledger = candidate_files.get('retired_links.parquet')
+    retired = pq.read_table(ledger, columns=['successor_key']) if ledger is not None else RETIRED.empty_table()
     redirected = len(retired) - retired['successor_key'].null_count
     removed = retired['successor_key'].null_count
     lines = [f'# Release {candidate[:12]}', '', f'- Release: `{candidate}`', f'- Previous release: `{base}`', '']
@@ -518,13 +519,13 @@ def main(argv=None):
             if args.causes:
                 from congress_api.retention.provenance import file_pin
                 causes = load_causes(dict(path=str(args.causes), **file_pin(args.causes)))
-            require_release_gates(args.base, args.candidate, causes, report_path=args.output,
+            require_release_gates(directory_files(args.base), directory_files(args.candidate), causes, report_path=args.output,
                                   evidence_base=args.evidence_base, evidence_candidate=args.evidence_candidate)
             print('release gates passed')
             return 0
         from congress_api.retention.provenance import file_pin
         causes = load_causes(dict(path=str(args.causes), **file_pin(args.causes)))
-        text = render_notes(causes, args.base, args.candidate)
+        text = render_notes(causes, directory_files(args.base), directory_files(args.candidate))
         target = args.output_dir / f'{date.today().isoformat()}-{causes["candidate_release_id"][:12]}.md'
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text)

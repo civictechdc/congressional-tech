@@ -1,5 +1,6 @@
 """Run the built-site contract against two committed native hand releases."""
 import argparse
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -14,9 +15,12 @@ def main():
     args = parser.parse_args()
     args.work.mkdir(parents=True, exist_ok=True)
     fixture = ROOT / 'model/fixtures/archive-contract'
+    from viewer_publication.release_files import directory_files
+    release_files = (args.work / 'contract-files.json').resolve()
+    release_files.write_text(json.dumps({name:str(path) for name,path in directory_files(fixture/'current').items()}))
     browser = ['--browser-executable', str(args.browser_executable)] if args.browser_executable else []
     subprocess.run(['npm', 'run', 'contract:archive', '--workspaces=false', '--',
-        '--release', str(fixture / 'current'), '--next-release', str(fixture / 'next'),
+        '--release-files', str(release_files), '--next-release', str(fixture / 'next'),
         '--hand', 'true', '--output', str((args.work / 'contract.json').resolve()), *browser], cwd=ROOT / 'apps/site', check=True)
 
     for script in ('test:archive-saved-browser', 'test:archive-heap-browser'):

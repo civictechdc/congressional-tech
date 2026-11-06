@@ -339,8 +339,8 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
     Release identity remains the archive_format producer's identity. This stage
     rechecks its pinned bytes and native export facts, not a second model formula.
     """
-    if Path(manifest_pin['path']).resolve()!=(release/'manifest.json').resolve():
-        raise ValueError('Pinned manifest is outside the candidate release')
+    if Path(manifest_pin['path']).absolute()!=release['manifest.json']:
+        raise ValueError('Pinned manifest differs from the candidate inventory')
     manifest,raw=_read_pinned_json(manifest_pin)
     result,_=_read_pinned_json(result_pin)
     if 'error' in result or not isinstance(result.get('outputs'),list) or not isinstance(result.get('queries'),list):
@@ -369,10 +369,9 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
             raise ValueError('Invalid candidate file facts')
         names.add(name)
         if name=='list.parquet':listed+=item['rows']
-        source=release/name
-        if (not source.is_file() or source.is_symlink()
-                or any((release/Path(*Path(name).parts[:index])).is_symlink()
-                       for index in range(1,len(Path(name).parts)))):
+        source=release.get(name)
+        if (not isinstance(source,Path) or not source.is_absolute() or not source.is_file()
+                or source.is_symlink() or any(parent.is_symlink() for parent in source.parents)):
             raise ValueError('Missing or unsafe candidate asset')
         if name.endswith('.parquet'):
             exports=[entry for entry in result['outputs'] if entry['name']==name]
@@ -380,6 +379,8 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
                 raise ValueError('Candidate differs from the native export result')
     if release_identity(manifest['schema_version'],manifest['files'])!=release_id:
         raise ValueError('Candidate release identity differs from its content metadata')
+    if release.keys()!=names|{'manifest.json'}:
+        raise ValueError('Candidate inventory differs from release membership')
     if listed==0:raise ValueError('An empty document list cannot be published')
     return manifest,raw,release_id,{}
 
@@ -415,7 +416,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
             profile=input_record['profile'],entity_digests=input_record['entity_digests'])
         if input_record.get('input_digest')!=digest:raise ValueError('Input record semantic identity differs')
-        manifest,raw,release_id,admission=_candidate(Path(release),manifest_pin,result_pin,
+        manifest,raw,release_id,admission=_candidate(release,manifest_pin,result_pin,
             input_record=input_record,receipt_keys=receipt_keys)
         if measured_release_id is not None:
             if _sha(measured_release_id)!=release_id:
@@ -468,18 +469,20 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 body=client.get_object(Bucket=bucket,Key=key)['Body']
                 try:return body.read()
                 finally:body.close()
-            automatic=lambda report:automatic_causes(report,base_release,Path(release),engine=engine,
+            automatic=lambda report:automatic_causes(report,base_files,release,engine=engine,
                 captures=automatic_captures,live_receipt_keys=held,read_receipt=read_receipt,work=Path(work)/'automatic')
-        require_release_gates(Path(base_release) if live is not None else None,Path(release),release_causes,
-            report_path=Path(work)/'release-gate.json',history=link_history_dirs,automatic=automatic)
+        from viewer_publication.release_files import directory_files
+        base_files=directory_files(base_release) if live is not None else None
+        require_release_gates(base_files,release,release_causes,
+            report_path=Path(work)/'release-gate.json',history=[directory_files(path) for path in link_history_dirs],automatic=automatic)
         status['release_gates']='passed'
-        contract_receipt=contract(release_id=release_id,release=Path(release),manifest=manifest)
+        contract_receipt=contract(release_id=release_id,release=release,manifest=manifest)
         validate_receipt(contract_receipt,release_id=release_id,name='contract',manifest_origin=manifest.get('origin'))
         write_input_receipts(store,release_id,digest,input_record,receipt_keys)
         def uploaded_canary():
             begin=perf_counter();prefix=PREFIX+release_id+'/'
             for item in manifest['files']:
-                store.upload_file(prefix+item['name'],Path(release)/item['name'],item,
+                store.upload_file(prefix+item['name'],release[item['name']],item,
                     content_type=('application/vnd.apache.parquet' if item['name'].endswith('.parquet')
                                   else 'text/plain; charset=utf-8' if item['name'].endswith('.sql') else 'application/json'))
             store.upload_file(prefix+'manifest.json',manifest_pin['path'],

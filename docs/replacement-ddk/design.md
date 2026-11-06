@@ -137,13 +137,15 @@ flowchart TB
     end
 
     subgraph catalog["DDK — generated metadata"]
+        schema_binding["Bind observed native schemas to captured dataset definitions"]
         assemble["6. Assemble accepted versions, evidence and definitions"]
         artifacts["Freeze matching catalog, report, lock and companion bytes"]
         discovery["Later discovery and lineage views"]
-        assemble --> artifacts
+        schema_binding --> assemble --> artifacts
     end
 
     subgraph publication["Application publisher — external release authority"]
+        files["Name retained export paths and separate control files"]
         publish["7. Deliver immutable assets and activate with the expected token"]
         observation["Record the original attempt's observed outcome separately"]
         publish --> observation
@@ -160,10 +162,12 @@ flowchart TB
     logic -.-> compute
     define -.-> verify
     candidate --> verify --> accept
-    select --> assemble
-    define -.-> assemble
-    artifacts --> intent --> publish
-    candidate -->|"Exact outputs"| publish
+    select --> schema_binding
+    define -.-> schema_binding
+    candidate -->|"Exact output identities and schemas"| schema_binding
+    artifacts --> files
+    candidate -->|"Retained paths; no export copy"| files
+    files --> intent --> publish
     publish --> consume
     observation -.-> discovery
     artifacts -.-> discovery
@@ -197,6 +201,13 @@ already performed by the native job. Independent raw-data checks retain their
 different evidence boundary. Catalog assembly consumes native accepted records;
 it does not repeat the native acceptance decision.
 
+Output schema checking has a separate purpose: bind the emitted fields and nested
+types to the exact authored dataset definitions used for this execution. A passed
+native counter policy alone does not prove that binding. DDK must retain the
+captured production and dataset definitions with the native schema evidence;
+unmapped columns, mismatched types or changed definitions cannot silently acquire
+qualified status during a later catalog refresh.
+
 The publication intent fixes the original attempt, accepted native result,
 qualification, immutable release inventory and expected publisher token. Once the
 native owner accepts that intent, later native selection changes do not silently
@@ -212,6 +223,12 @@ observations refer to the frozen release and may feed a later discovery catalog
 or lineage export. Finalization requires matching candidate, output and catalog
 membership before activation; there is no absent-catalog or legacy-schema branch
 in the completed replacement.
+
+Publication receives one explicit inventory of names and local paths. Native
+exports remain at their sealed locations; the application writes its catalog and
+manifest to a separate controls directory. Comparison, reader probes and upload
+all use this inventory. A common parent directory is unnecessary, and the
+publisher does not copy every export or add files inside native-owned artifacts.
 
 ## Simplification is part of acceptance
 

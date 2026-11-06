@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
-import {startArchiveServer} from './archive-server.mjs';
+import {startArchiveServer,directoryFiles} from './archive-server.mjs';
 import {browserDependency,heapSampler,routeArchiveOrigin} from './archive-browser.mjs';
 export async function measureArchive(args){
   const samples=[],repeats=Number(args.repeats||3),deviceClass=args['device-class']||'desktop-profile';
@@ -16,7 +16,7 @@ export async function measureArchive(args){
   const {chromium}=browserDependency('playwright');
   if(args['device-class']==='real-phone'&&!args.cdp)throw new Error('A real phone run requires its remote CDP endpoint.');
   const bodies=args.bodies?JSON.parse(await readFile(args.bodies)):{};
-  const server=await startArchiveServer({release:resolve(args.release),siteDist:resolve(args.dist||'dist'),bodies,port:Number(args.port||0)});
+  const server=await startArchiveServer({release:await directoryFiles(args.release),siteDist:resolve(args.dist||'dist'),bodies,port:Number(args.port||0)});
   let browser;
   try{
     browser=args.cdp?await chromium.connectOverCDP(args.cdp):await chromium.launch({headless:true,...(args['browser-executable']?{executablePath:args['browser-executable']}:{})});

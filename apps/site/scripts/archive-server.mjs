@@ -2,24 +2,37 @@
 import {createServer} from 'node:http';
 import {readFile,realpath,stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
-import {resolve,sep,extname} from 'node:path';
+import {resolve,sep,extname,isAbsolute} from 'node:path';
 import {createHash} from 'node:crypto';
+
+export async function directoryFiles(folder){
+  const root=await realpath(folder),manifestPath=resolve(root,'manifest.json');
+  const manifest=JSON.parse(await readFile(manifestPath));
+  return Object.fromEntries([['manifest.json',manifestPath],...manifest.files.map(file=>[file.name,resolve(root,file.name)])]);
+}
+
 export async function startArchiveServer({release,siteDist,bodies={},nextRelease,port=0}){
+  const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.sql':'text/plain; charset=utf-8','.parquet':'application/vnd.apache.parquet','.svg':'image/svg+xml','.woff2':'font/woff2'};
   const releases=new Map();
-  for(const folder of [release,nextRelease].filter(Boolean)){
-    const root=await realpath(folder);
-    const manifest=JSON.parse(await readFile(resolve(folder,'manifest.json')));
+  for(const files of [release,nextRelease].filter(Boolean)){
+    const manifestPath=files['manifest.json'];
+    if(!isAbsolute(manifestPath))throw new Error('Fixture inventory needs absolute asset paths.');
+    const manifestBytes=await readFile(manifestPath),manifest=JSON.parse(manifestBytes);
     const identity=createHash('sha256').update(JSON.stringify([manifest.schema_version,manifest.files.map(f=>[f.name,f.sha256,f.size,f.rows])])).digest('hex');
     if(identity!==manifest.release_id)throw new Error('Fixture release identity failed verification.');
+    if(Object.keys(files).length!==manifest.files.length+1)throw new Error('Fixture inventory differs from release membership.');
     const assets=new Map();
     for(const file of manifest.files){
-      if(!/^(?:[a-z_0-9.-]+|queries\/[a-f0-9]{64}\.sql|lineage\/[0-9]{4}\.openlineage\.json)$/.test(file.name)||assets.has(file.name))throw new Error('Invalid fixture asset name.');
-      const path=await realpath(resolve(root,file.name));
-      if(!path.startsWith(root+sep))throw new Error('Fixture asset escapes its release directory.');
-      const bytes=await readFile(path);
-      if(bytes.byteLength!==file.size||createHash('sha256').update(bytes).digest('hex')!==file.sha256)throw new Error('Fixture asset bytes failed verification.');assets.set(file.name,{path,size:file.size,digest:file.sha256});
+      if(!/^(?:[a-z_0-9.-]+|queries\/[a-f0-9]{64}\.sql|lineage\/[0-9]{4}\.openlineage\.json)$/.test(file.name)||['.','..','manifest.json'].includes(file.name)||assets.has(file.name))throw new Error('Invalid fixture asset name.');
+      if(!Object.hasOwn(files,file.name)||typeof files[file.name]!=='string'||!isAbsolute(files[file.name]))throw new Error('Fixture inventory needs absolute asset paths.');
+      const path=await realpath(files[file.name]);
+      if(path!==resolve(files[file.name]))throw new Error('Fixture asset path contains a symbolic link.');
+      const info=await stat(path),hash=createHash('sha256');
+      if(!info.isFile()||info.size!==file.size)throw new Error('Fixture asset size failed verification.');
+      for await(const chunk of createReadStream(path))hash.update(chunk);
+      if(hash.digest('hex')!==file.sha256)throw new Error('Fixture asset bytes failed verification.');assets.set(file.name,{path,size:file.size,digest:file.sha256,contentType:mime[extname(file.name)]||'application/octet-stream'});
     }
-    const path=resolve(folder,'manifest.json'),bytes=await readFile(path);assets.set('manifest.json',{path,size:bytes.length,digest:createHash('sha256').update(bytes).digest('hex')});
+    assets.set('manifest.json',{path:manifestPath,size:manifestBytes.length,digest:createHash('sha256').update(manifestBytes).digest('hex'),contentType:mime['.json']});
     releases.set(manifest.release_id,{manifest,assets});
   }
   const bodyAssets=new Map();
@@ -31,7 +44,6 @@ export async function startArchiveServer({release,siteDist,bodies={},nextRelease
     bodyAssets.set(key,{path:resolve(path),size:bytes.length,digest:expected});
   }
   const state={releaseId:releases.keys().next().value,missingFile:null,flipOnMissing:null,pointerReads:0,pointerBody:null,delayDetailMs:0,requests:[]};
-  const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.sql':'text/plain; charset=utf-8','.svg':'image/svg+xml','.woff2':'font/woff2'};
   const server=createServer(async(req,res)=>{
     try{
       if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}
@@ -55,7 +67,7 @@ export async function startArchiveServer({release,siteDist,bodies={},nextRelease
       if(!asset){res.writeHead(404,{'Cache-Control':'no-store'});res.end();return;}
       let start=0,end=asset.size-1,status=200;
       if(req.headers.range){const range=/^bytes=(\d+)-(\d+)$/.exec(req.headers.range);if(!range||Number(range[1])>Number(range[2])||Number(range[2])>=asset.size){res.writeHead(416);res.end();return;}start=Number(range[1]);end=Number(range[2]);status=206;}
-      const headers={'Content-Type':mime[extname(asset.path)]||'application/octet-stream','Cache-Control':cache,'Accept-Ranges':'bytes','Access-Control-Allow-Origin':'*','Access-Control-Expose-Headers':'Content-Range,Content-Length,Accept-Ranges,Cache-Control,Content-Encoding','Content-Length':end-start+1};
+      const headers={'Content-Type':asset.contentType||mime[extname(asset.path)]||'application/octet-stream','Cache-Control':cache,'Accept-Ranges':'bytes','Access-Control-Allow-Origin':'*','Access-Control-Expose-Headers':'Content-Range,Content-Length,Accept-Ranges,Cache-Control,Content-Encoding','Content-Length':end-start+1};
       if(status===206)headers['Content-Range']=`bytes ${start}-${end}/${asset.size}`;if(asset.digest)headers.ETag=`"${asset.digest}"`;
       state.requests.push({path,start,end,status});res.writeHead(status,headers);if(req.method==='HEAD')res.end();else createReadStream(asset.path,{start,end}).pipe(res);
     }catch(error){res.writeHead(500);res.end('Fixture server error');}

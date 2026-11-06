@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import {argumentsMap,measurementProfiles} from './archive-targets.mjs';
 import {browserDependency,browserHeap,heapSampler,routeArchiveOrigin} from './archive-browser.mjs';
-import {startArchiveServer} from './archive-server.mjs';
+import {startArchiveServer,directoryFiles} from './archive-server.mjs';
 const args=argumentsMap(process.argv.slice(2));
-const server=await startArchiveServer({release:args.release,siteDist:args.dist||'dist'}),{chromium}=browserDependency('playwright');
+const server=await startArchiveServer({release:await directoryFiles(args.release),siteDist:args.dist||'dist'}),{chromium}=browserDependency('playwright');
 const browser=await chromium.launch({headless:true,executablePath:args['browser-executable']});
 try{
   const context=await browser.newContext();await routeArchiveOrigin(context,server);const one=await context.newPage(),two=await context.newPage();

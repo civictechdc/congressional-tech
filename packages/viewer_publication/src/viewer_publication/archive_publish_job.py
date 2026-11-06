@@ -387,7 +387,7 @@ class PublicationRuntime:
         return model
 
 
-def probe_commands(spec,*,release,release_id,probe_selectors):
+def probe_commands(spec,*,release_files,release_id,probe_selectors):
     """Fixed external probes; a job description cannot supply executable commands."""
     if (not isinstance(probe_selectors,dict) or set(probe_selectors)!={'saved_row','link_key'}
             or type(probe_selectors['saved_row']) is not int or probe_selectors['saved_row']<0
@@ -395,7 +395,7 @@ def probe_commands(spec,*,release,release_id,probe_selectors):
             or re.fullmatch('[a-f0-9]{16}',probe_selectors['link_key']) is None):
         raise ValueError('Publication requires actual native probe selectors')
     targets=spec['targets']['path'];work=Path(spec['work']);origin=spec['public_origin']
-    return dict(contract=['npm','run','contract:archive','--','--release',str(release),
+    return dict(contract=['npm','run','contract:archive','--','--release-files',str(release_files),
         '--next-release',spec['contract_next_release'],'--dist',spec['site_dist'],'--targets',targets,
         '--output',str(work/'contract.json'),'--link-key',probe_selectors['link_key']],
         canary=['npm','run','canary:archive','--','--pointer',origin+'/viewer-publications/manifest.json',
@@ -535,7 +535,12 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                     probe_work=Path(spec['work'])/('probe-'+uuid4().hex)
                     probe_work.mkdir()
                     probe_spec=dict(spec,work=str(probe_work))
-                commands=probe_commands(probe_spec,release=context.get('release',spec['_model']['output']),
+                release_files=Path(probe_spec['work'])/'contract-files.json'
+                if name=='contract':
+                    from viewer_publication.archive_format import _content_data,_retain_controls
+                    _retain_controls(release_files.parent,{release_files.name:_content_data(
+                        {key:str(path) for key,path in context['release'].items()})})
+                commands=probe_commands(probe_spec,release_files=release_files,
                     release_id=context['release_id'],probe_selectors=context.get('probe_selectors'))
                 process_runner(commands[name],cwd=SITE,check=True,timeout=180)
                 receipt_path=Path(probe_spec['work'])/(name+'.json')

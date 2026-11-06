@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {browserDependency,routeArchiveOrigin} from './archive-browser.mjs';
-import {startArchiveServer} from './archive-server.mjs';
+import {startArchiveServer,directoryFiles} from './archive-server.mjs';
 import {argumentsMap} from './archive-targets.mjs';
 const args=argumentsMap(process.argv.slice(2));
-const server=await startArchiveServer({release:args.release,siteDist:args.dist||'dist'});
+const server=await startArchiveServer({release:await directoryFiles(args.release),siteDist:args.dist||'dist'});
 const {chromium}=browserDependency('playwright'),browser=await chromium.launch({headless:true,executablePath:args['browser-executable']});
 try{
   const page=await browser.newPage(),outgoing=[];await routeArchiveOrigin(page,server);page.on('request',request=>outgoing.push(request.url()));await page.goto(server.pageUrl);
