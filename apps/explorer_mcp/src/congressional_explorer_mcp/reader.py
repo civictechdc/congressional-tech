@@ -401,7 +401,7 @@ class Reader(LegislativeReader):
             conditions.append(f'{quote(name)}=?'); args.append(value)
         order = ','.join(map(quote, key))
         result = self.page(query, f'SELECT {self.entity_columns(query.table)} FROM {quote(query.table)} WHERE ' + (' AND '.join(conditions) or 'true'), args, order=order)
-        return self.entity_rows(result, query.table)
+        return self.entity_rows(result, query.table, selected_fields=getattr(query, 'fields', None))
 
     def entity_key(self, table):
         """The table's published identity: absent tables are not published, never empty."""
@@ -415,9 +415,9 @@ class Reader(LegislativeReader):
             return '* REPLACE(list_transform(tracks,lambda t:struct_pack(body:=hex(t.body),suffix:=t.suffix,format:=t.format,language:=t.language,production:=t.production)) AS tracks)'
         return '*'
 
-    def entity_rows(self, result, table=None):
+    def entity_rows(self, result, table=None, *, selected_fields=None):
         for row in result['rows']:
-            if table == 'meetings':
+            if table == 'meetings' and selected_fields is None:
                 row.setdefault('publisher_status', row.get('status'))
                 row.setdefault('outcome', None)
                 row['outcome_evidence_available'] = 'outcome' in self.schemas['meetings']
@@ -455,4 +455,4 @@ class Reader(LegislativeReader):
             raise ExplorerError('Record does not take a cursor; query_sql can slice large nested fields')
         result = self.rows(f'SELECT {self.entity_columns(query.table)} FROM {quote(query.table)} WHERE {quote(key)}=?', [query.id], limit=1)
         result.pop('columns'); result['release_id'] = self.release_id
-        return self.entity_rows(result, query.table)
+        return self.entity_rows(result, query.table, selected_fields=getattr(query, 'fields', None))

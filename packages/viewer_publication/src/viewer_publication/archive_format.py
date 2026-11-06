@@ -254,7 +254,8 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         next(item for item in schema['files'] if item['name']=='url_state.parquet')['columns'].extend(fields)
     from viewer_publication.archive_schema import publication_checks
     diagnostics = [*diagnostics, *publication_checks(schema, aux_names, published=[item['name'] for item in outputs],
-        keyed_documents=origin['kind'] != 'converted_catalog')]
+        keyed_documents=origin['kind'] != 'converted_catalog',
+        ordered_keys={item['name'].removesuffix('.parquet'):[key['field'] for key in item['settings']['order_by']] for item in outputs})]
     outputs.extend(extra_outputs)
     facets = [f"SELECT '{name}' AS facet,cast({name} AS VARCHAR) AS value,count(*) AS count FROM ordered WHERE NOT hidden GROUP BY {name}" for name in ['format', 'congress', 'saved_kind']]
     facets += [f"SELECT '{name}' AS facet,value,count(*) AS count FROM (SELECT unnest({name}) AS value FROM ordered WHERE NOT hidden) GROUP BY value" for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys']]

@@ -95,3 +95,8 @@ def test_new_research_tools_run_through_normal_stdio(tmp_path,phase2):
                 response=(await client.call_tool(name,{'query':query})).data
                 assert len(response['rows'])==expected,(name,response)
     asyncio.run(run())
+
+
+def test_explicit_meeting_projection_does_not_inject_outcome_fields(reader):
+    result=reader.entity_rows(dict(rows=[dict(title='Projected title')]),'meetings',selected_fields=['title'])
+    assert result['rows']==[dict(title='Projected title')]
