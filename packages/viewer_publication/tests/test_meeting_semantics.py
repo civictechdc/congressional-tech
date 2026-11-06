@@ -241,7 +241,7 @@ def facts(named=(), held=(DAY,), title=TITLE):
     return dict(named_meetings=list(named), held_dates=list(held), title=title)
 
 
-def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False, print_links=False):
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False, print_links=False, capture_contexts=()):
     """Witness rows per name, from the maintained package-link and appearance SQL; with keys, the
     published rows and witness_key_map."""
     import json
@@ -280,7 +280,12 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
                  f"arrow_cast(decode('{sha}','hex'),'FixedSizeBinary(32)') AS sha256,'house/witness-xml' AS family,cast(NULL AS VARCHAR) AS url,"
                  f"cast(NULL AS VARCHAR) AS requested_url,cast(NULL AS VARCHAR) AS context_url,cast(NULL AS VARCHAR) AS member_path,"
                  f"cast(NULL AS VARCHAR) AS sniffed_format,cast(NULL AS VARCHAR) AS media_type,cast(NULL AS VARCHAR) AS retrieved_at,"
-                 f"'{path}' AS original_path" for sha, path in paths), materialize=True),
+                 f"'{path}' AS original_path" for sha, path in paths) + ''.join(
+                 f" UNION ALL SELECT 'fetch' AS mode,true AS complete,'stored' AS outcome,cast(200 AS INT) AS http_status,"
+                 f"{sha} AS sha256,'govinfo/mods' AS family,{text(url)} AS url,{text(url)} AS requested_url,"
+                 f"cast(NULL AS VARCHAR) AS context_url,{text(member_path)} AS member_path,'xml' AS sniffed_format,"
+                 f"'application/xml' AS media_type,'2026-10-31' AS retrieved_at,cast(NULL AS VARCHAR) AS original_path"
+                 for sha, url, member_path in capture_contexts), materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
              *senate_step,
@@ -578,6 +583,67 @@ def test_a_print_key_from_before_its_meeting_link_maps_to_the_linked_row(tmp_pat
     assert [w['occasion'] for w in base] == ['package:CHRG-a'] and [w['occasion'] for w in found['witnesses']] == ['meeting:9001']
     assert [(r['old_key'], r['witness_key'], r['status'], r['basis']) for r in found['map']] == [
         (base[0]['witness_key'], found['witnesses'][0]['witness_key'], 'unambiguous', 'occurrence')]
+
+
+def test_demoted_print_meeting_keys_keep_bound_and_free_context_successors(tmp_path):
+    package = 'CHRG-117hhrg00001'
+    printed = record('demoted-print', 'mods', [witness('Jane Doe')], package_id=package,
+                     context_url=f'https://www.govinfo.gov/content/pkg/{package}/mods.xml')
+    bound = f'https://www.govinfo.gov/metadata/pkg/{package}/mods.xml'
+    digest = "arrow_cast(decode('" + printed['record_sha_hex'] + "','hex'),'FixedSizeBinary(32)')"
+    results = {}
+    for name, held, contexts in [('bound', (DAY,), [(digest, bound, 'mods.xml')]),
+                                 ('free', (DAY,), []),
+                                 ('demoted', (DAY, '2021-06-10'), [(digest, bound, 'mods.xml')])]:
+        directory = tmp_path / name
+        directory.mkdir()
+        results[name] = resolve(directory, [printed], [(package, 9001)],
+                                {package: facts(held=held)}, capture_contexts=contexts, keys=True)
+    found = results['demoted']
+    assert [w['occasion'] for w in found['witnesses']] == [f'package:{package}']
+    successor = found['witnesses'][0]['witness_key']
+    mapped = {r['old_key']: r for r in found['map']}
+    old_keys = [results[context]['witnesses'][0]['witness_key'] for context in ('bound', 'free')]
+    assert len(set(old_keys)) == 2
+    for old_key in old_keys:
+        row = mapped[old_key]
+        assert (row['witness_key'], row['status'], row['basis'], row['candidate_keys']) == (
+            successor, 'unambiguous', 'occurrence', [])
+
+
+def test_demoted_repeated_print_occurrences_keep_unique_successors(tmp_path):
+    package = 'CHRG-repeat'
+    printed = record('demoted-repeats', 'mods', listed([('Lynn Goldman', dict(position='Dean'))] * 2), package_id=package)
+    results = {}
+    for name, held in [('base', (DAY,)), ('demoted', (DAY, '2021-06-10'))]:
+        directory = tmp_path / name
+        directory.mkdir()
+        results[name] = resolve(directory, [printed], [(package, 9001)], {package: facts(held=held)}, keys=True)
+    before, after = results['base'], results['demoted']
+    assert len(after['witnesses']) == 2
+    current = {w['source_locator']: w['witness_key'] for w in after['witnesses']}
+    mapped = {r['old_key']: r for r in after['map']}
+    for old in before['witnesses']:
+        row = mapped[old['witness_key']]
+        assert (row['witness_key'], row['status'], row['basis']) == (
+            current[old['source_locator']], 'unambiguous', 'occurrence')
+
+
+def test_demoted_print_with_ambiguous_refetched_repeat_does_not_guess(tmp_path):
+    newer, older = sorted(['body-1', 'body-2'], key=lambda tag: hashlib.sha256(tag.encode()).hexdigest())
+    package = 'CHRG-ambiguous'
+    entries = [('Lynn Goldman', dict(position='Dean'))]
+    before = record(older, 'mods', listed(entries * 3), package_id=package)
+    after = record(newer, 'mods', listed(entries * 2), package_id=package)
+    (tmp_path / 'base').mkdir()
+    (tmp_path / 'candidate').mkdir()
+    base = resolve(tmp_path / 'base', [before], [(package, 9001)], {package: facts()}, keys=True)
+    found = resolve(tmp_path / 'candidate', [before, after], [(package, 9001)],
+                    {package: facts(held=(DAY, '2021-06-10'))}, keys=True)
+    old = next(w for w in base['witnesses'] if w['source_locator'] == 'congress_gov:witness[3]')
+    row = next(r for r in found['map'] if r['old_key'] == old['witness_key'])
+    assert (row['status'], row['witness_key'], row['basis']) == ('ambiguous', None, 'content')
+    assert sorted(row['candidate_keys']) == sorted(w['witness_key'] for w in found['witnesses'])
 
 
 @pytest.mark.parametrize('created,shown', [('2021-04-07T11:07:59.340', True), ('2021-05-01T09:00:00', False)])
