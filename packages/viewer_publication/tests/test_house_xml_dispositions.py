@@ -466,6 +466,33 @@ def test_activation_recovers_durable_intent_after_head_record_interruption(tmp_p
     assert activate(spec)['status'] == 'activated'
 
 
+def test_activation_reconciles_lost_ack_after_head_record_is_written(tmp_path, writer, monkeypatch):
+    from congress_api.lake import daily
+    from congress_api.lake.producer_records import ProducerRecords
+    spec, _ = activation_fixture(tmp_path, writer, monkeypatch)
+    write = ProducerRecords.write
+    lost = False
+
+    def committed_then_lost(records, record):
+        nonlocal lost
+        acknowledged = write(records, record)
+        if not lost:
+            lost = True
+            raise RuntimeError('lost acknowledgment after immutable head write')
+        return acknowledged
+
+    monkeypatch.setattr(ProducerRecords, 'write', committed_then_lost)
+    with pytest.raises(RuntimeError, match='lost acknowledgment'):
+        activate(spec)
+    state = json.loads((Path(spec['work']) / 'activation.json').read_text())
+    assert state['completed'] == ['meeting_records']
+    held = state['heads']['meeting_records']
+    assert len(list((Path(spec['house_xml_activation']['raw_root']) / 'lake/producers').rglob('*.json'))) == 1
+    monkeypatch.setattr(daily.meeting_records, 'append', lambda *a, **kw: pytest.fail('reappended an acknowledged head'))
+    spec['house_xml_activation']['resume'] = True
+    assert activate(spec)['pins']['meeting_records'] == dict(kind='native_table', **held)
+
+
 def test_activation_semantic_collision_refuses_before_head_records(tmp_path, writer, monkeypatch):
     spec, _ = activation_fixture(tmp_path, writer, monkeypatch, conflict=True)
     with pytest.raises(ValueError, match='conflict with the staged values'):
