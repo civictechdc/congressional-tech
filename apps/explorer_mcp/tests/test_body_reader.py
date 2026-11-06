@@ -268,6 +268,15 @@ def test_get_document_text_reads_pdf_gzip_html_xml_and_plain_text_and_caches(tmp
                 assert len(sliced['text']) == 25
                 assert sliced['has_more'] is True
                 assert sliced['next_offset'] == 35
+                metadata_query = dict(release_id=selected['release_id'], link_key=by_row[4])
+                text_query = dict(release_id=selected['release_id'], link_key=by_row[0], section='text', page=1, offset=10, max_chars=25)
+                batch = (await client.call_tool('get_documents', {'query': {'items': [metadata_query,
+                    dict(metadata_query, link_key='0' * 16), dict(metadata_query, release_id='0' * 64), text_query]}})).data
+                assert [item['status'] for item in batch['items']] == ['ok', 'error', 'error', 'ok']
+                assert batch['items'][0]['result'] == await get_doc(**metadata_query)
+                assert batch['items'][3]['result'] == sliced
+                continued = (await client.call_tool('get_documents', {'query': {'items': [batch['items'][3]['next_query']]}})).data
+                assert continued['items'][0]['result']['offset'] == 35
 
                 search_hit = await get_doc(release_id=selected['release_id'], link_key=by_row[0], section='text', query='commingled')
                 assert search_hit['match_count'] == 1

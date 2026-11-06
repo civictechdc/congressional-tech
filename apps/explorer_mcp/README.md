@@ -22,7 +22,7 @@ the MCP queries the published result. It stays a separate Congress server.
 ## Quick setup
 
 For browser clients, the [Cloudflare deployment](cloudflare/README.md) exposes
-the same six tools at an HTTPS `/mcp` endpoint. It runs the existing Python and
+the same tools at an HTTPS `/mcp` endpoint. It runs the existing Python and
 DuckDB server in Cloudflare Containers behind a Worker; clients need no local
 Python, Node.js, or desktop installation.
 
@@ -39,7 +39,7 @@ enter this URL, select **No authentication**, and create and install the plugin.
 The [web plugin source](web/README.md) also packages the research skill for
 supported plugin import and submission workflows. Download
 [congress-explorer-web-0.6.2.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.6.2/congress-explorer-web-0.6.2.plugin.zip)
-for those workflows; connecting the URL directly adds the six tools.
+for those workflows; connecting the URL directly adds the research tools.
 
 The current plugin format does not define a browser/desktop transport selector.
 We supply separate packages: `congress-explorer-web` uses the hosted endpoint;
@@ -135,7 +135,7 @@ congress-explorer-mcp check
 ```
 
 If the command is not on your shell's PATH, run `uv tool update-shell` and open
-a new terminal. `check` should report `"status": "ok"` and six tools. It launches
+a new terminal. `check` should report `"status": "ok"` and the declared package tools. It launches
 the installed server, connects over MCP and reads one document row. Python 3.12
 is managed by uv. Windows is not supported yet.
 
@@ -234,18 +234,21 @@ The independent environment is deliberate: producer packages still pin DuckDB
 below 2. The MCP imports none of those packages. Do not install it into the
 producer's environment.
 
-## Six tools
+## Tools
 
 | Tool | Purpose |
 |---|---|
+| `get_overview` | Compact capabilities, table names, limits and discovery selectors. |
+| `get_dataset_status` | Selected release, publication time, latest known publisher updates, observed date bounds and coverage gaps. Unavailable dates stay null. |
 | `get_dataset_info` | Available tables, coverage and published relationship/recipe IDs. Pass `table` for columns, identity and incoming/outgoing IDs; `relationship` for join meaning; `recipe` for bounded SQL examples. Also accepts `table: "schema"`, `"capture_scope"`, and `"capture_profile"`. |
 | `search_documents` | Title/filename search and exact Congress, kind, format, committee, meeting, bill/nomination, member or witness filters. |
 | `get_document` | A document's summary, paged source links, paged recoveries, or verified extracted body text and snippet search (`section: "text"`). |
+| `get_documents` | Up to ten document requests in input order with independent errors and paging; shares the single-document verification path and an aggregate response/work budget. |
 | `search_entities` | Search the eight phase 2 entity tables with text and exact scalar filters. |
-| `get_entity` | One entity by its published key, or its directly associated documents. |
+| `get_entity` | One entity by its published key, with full detail, scalar summary or selected fields; also pages its directly associated documents. |
 | `query_sql` | One read-only DuckDB `SELECT`, including `WITH` and FROM-first SQL, with optional `?` parameters. All published tables are available. |
 
-Except for `get_dataset_info`, arguments are inside a `query` object. For example:
+`get_overview` and `get_dataset_status` take no arguments. `get_dataset_info` takes selectors directly. Other tools take a `query` object. For example:
 
 ```json
 {"query":{"measure_key":"119-hr-1","limit":10}}
@@ -256,6 +259,37 @@ Pass those fields to `get_document`, adding `section: "sources"` or
 `section: "recoveries"` when needed. Page cursors belong to the same release,
 filters and page size. A running server stays on its selected release; run
 `prepare` and restart it to adopt a newer one.
+
+`search_documents` keeps archive order by default. Set `sort: "recent"` or
+`"oldest"` for chronological lookup. Where the release publishes
+`document_date_status`, these modes include accepted dates by default;
+`include_suspect: true` and `include_undated: true` explicitly include the other
+rows. Literal dates and their published qualification remain visible. Older
+releases retain chronological access to literal dates and report that date
+qualification is unavailable.
+
+For compact entities, pass `mode: "summary"` or `fields: ["title", "floor_votes"]`.
+The published primary key and release identity are always retained. Requested
+fields keep their exact values, including nulls and evidence references.
+`get_dataset_info(table=...)` lists available fields and the scalar summary
+fields. Read omitted fields with `mode: "detail"`, an explicit field list, or SQL
+list slicing when a full record exceeds the response cap. Calls without these
+options preserve full detail and existing document paging.
+
+For a batch, pass `{"query":{"items":[REFERENCE,{...REFERENCE,"section":"text"}]}}`.
+Each result has `status: "ok"`, `"error"`, or `"deferred"`. Successful values
+match `get_document`; `next_query` continues a page or retries a deferred item.
+The batch runs sequentially with one request deadline, at most 64 MiB of declared
+archived body bytes, and a 128 KiB aggregate response. Unknown body sizes reserve
+the full body budget. Each extracted body also keeps the existing decompressed
+size limit. Continue deferred items individually or in a smaller batch.
+
+Publication time is recorded at the publisher's conditional release selection
+and observed once during preparation. It differs from source-update dates,
+document dates and archive captures. A pinned immutable manifest can retain that
+date only when the current public pointer identifies the same release; unavailable
+metadata stays null. Tool calls read the retained observation and do not fetch a
+mutable pointer.
 
 Entity keys come from the selected release's `schema.json`: every file whose
 `identity` is a published-identifier primary key (`get_dataset_info` returns

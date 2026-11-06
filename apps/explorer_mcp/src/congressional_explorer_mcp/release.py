@@ -65,9 +65,11 @@ def beside(location, relative):
     return str(Path(location).expanduser().absolute().parent / relative)
 
 
-def resolve(location):
+def resolve(location, *, publication_metadata=None):
     manifest = control(location)
+    pointer = None
     if 'files' not in manifest:
+        pointer = manifest
         identity = manifest.get('release_id', '')
         if not re.fullmatch('[a-f0-9]{64}', identity):
             raise ExplorerError('Expected an archive release pointer; legacy catalogs are unsupported')
@@ -75,6 +77,18 @@ def resolve(location):
         manifest = control(location)
         if manifest.get('release_id') != identity:
             raise ExplorerError('Pointer and release differ')
+    elif str(location).startswith('https://') and re.search(r'/viewer-publications/releases/[a-f0-9]{64}/manifest\.json$', str(location)):
+        # Hosted installations pin immutable manifest URLs. Observe the moving
+        # pointer once at preparation, and accept its date only for the exact ID.
+        # Failure here cannot make an otherwise valid pinned release unreadable.
+        try:
+            selected = control(urljoin(str(location), '../../manifest.json'))
+            if selected.get('release_id') == manifest.get('release_id'):
+                pointer = selected
+        except (ExplorerError, OSError, ValueError, TypeError):
+            pass
+    if publication_metadata is not None and pointer is not None and isinstance(pointer.get('published_at'), str):
+        publication_metadata.update(published_at=pointer['published_at'], basis='release pointer observed during preparation')
     if manifest.get('schema_version') != 1:
         raise ExplorerError('Expected archive schema_version=1; legacy catalogs are unsupported')
     identity = [1, [[item[key] for key in ('name', 'sha256', 'size', 'rows')] for item in manifest['files']]]
@@ -181,7 +195,8 @@ def _prepare(root, publication, archive_origin):
     previous = json.loads(selected.read_bytes()) if selected.exists() else {}
     if previous and previous.get('version') != 1:
         raise ExplorerError('Legacy selections are unsupported; choose a new data directory')
-    location, manifest, groups = resolve(publication)
+    publication_metadata = {}
+    location, manifest, groups = resolve(publication, publication_metadata=publication_metadata)
     origin = archive_origin or (urljoin(str(publication), '/') if str(publication).startswith(('http://', 'https://')) else None)
     if origin is not None:
         address = urlsplit(origin)
@@ -193,7 +208,9 @@ def _prepare(root, publication, archive_origin):
             and set(previous.get('files', {})) == {item['sha256'] for item in manifest['files']} \
             and all(Path(f['path']).exists() for f in previous.get('files', {}).values()):
         value = load_selection(root)
-        if any(len(item['stamp']) != 4 for item in value['files'].values()):
+        if publication_metadata:
+            value['publication'] = publication_metadata
+        if publication_metadata or any(len(item['stamp']) != 4 for item in value['files'].values()):
             for item in value['files'].values():
                 item['stamp'] = item['stamp'][-4:]
             atomic_json(selected, value)
@@ -210,7 +227,7 @@ def _prepare(root, publication, archive_origin):
               for name, items in groups.items()}
     value = dict(version=1, release_id=manifest['release_id'], manifest=manifest,
                  files=files, tables=tables, controls=controls,
-                 archive_origin=origin)
+                 archive_origin=origin, publication=publication_metadata)
     # Footer counts detect unusable delivery. The producer owns semantic model
     # invariants; preparation does not rebuild or rescan those relationships.
     import duckdb

@@ -11,6 +11,8 @@ import zipfile
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
+from congressional_explorer_mcp import TOOL_NAMES
+
 APP = Path(__file__).resolve().parents[1]
 REPO = APP.parents[1]
 
@@ -26,7 +28,7 @@ async def check(config, root, data, first, env):
         ['--publication', str(publication)], env=dict(env, CONGRESS_MCP_DATA_DIR=str(data)),
         cwd=str(root.parent), keep_alive=False)
     async with Client(transport, timeout=120) as client:
-        assert len(await client.list_tools()) == 6
+        assert {tool.name for tool in await client.list_tools()} == TOOL_NAMES
         assert (data / 'selection.json').exists() != first, 'Discovery must not download data'
         info = (await client.call_tool('get_dataset_info')).data
         rows = (await client.call_tool('query_sql', {'query': {'sql': 'SELECT filename FROM documents LIMIT 1'}})).data

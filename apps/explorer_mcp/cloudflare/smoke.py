@@ -6,7 +6,7 @@ import time
 
 from fastmcp import Client
 
-from congressional_explorer_mcp import __version__
+from congressional_explorer_mcp import TOOL_NAMES, __version__
 
 
 async def check(url, release_id):
@@ -15,10 +15,7 @@ async def check(url, release_id):
         assert client.server_info is not None
         assert client.server_info.version == __version__, client.server_info.version
         tools = await client.list_tools()
-        assert {tool.name for tool in tools} == {
-            'get_dataset_info', 'search_documents', 'get_document',
-            'search_entities', 'get_entity', 'query_sql',
-        }
+        assert {tool.name for tool in tools} == TOOL_NAMES
         assert all(tool.annotations.read_only_hint for tool in tools)
 
         async def call(name, arguments=None):
@@ -29,17 +26,25 @@ async def check(url, release_id):
 
         info = await call('get_dataset_info')
         assert info['release_id'] == release_id, info['release_id']
+        overview = await call('get_overview')
+        status = await call('get_dataset_status')
+        assert overview['release_id'] == status['release_id'] == release_id
+        assert (await call('get_dataset_info', {'table': 'bills'}))['available']
         found = await call('search_documents', {'query': {'measure_key': '119-hr-1', 'limit': 1}})
         reference = found['rows'][0]['reference']
         assert reference['release_id'] == release_id
         document = await call('get_document', {'query': reference})
         assert document['rows'][0]['filename'] == found['rows'][0]['filename']
+        batch = await call('get_documents', {'query': {'items': [reference]}})
+        assert batch['items'][0]['result'] == document
         entities = await call('search_entities', {'query': {
             'table': 'bills', 'filters': {'bill_id': '119-hr-1'}, 'limit': 1,
         }})
         assert entities['rows'][0]['bill_id'] == '119-hr-1'
         entity = await call('get_entity', {'query': {'table': 'bills', 'id': '119-hr-1'}})
         assert entity['rows'][0]['bill_id'] == '119-hr-1'
+        compact = await call('get_entity', {'query': {'table': 'bills', 'id': '119-hr-1', 'mode': 'summary'}})
+        assert compact['rows'][0]['bill_id'] == '119-hr-1' and compact['omitted_fields']
         count = await call('query_sql', {'query': {'sql': 'SELECT count(*) AS n FROM documents'}})
         assert count['rows'][0]['n'] > 0
         denied = await client.call_tool('query_sql', {'query': {'sql': 'DROP VIEW documents'}}, raise_on_error=False)

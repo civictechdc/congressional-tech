@@ -31,6 +31,9 @@ async def check_installation(data_dir):
     async with asyncio.timeout(30):
         async with Client(transport) as client:
             tools = await client.list_tools()
+            from . import TOOL_NAMES
+            if {tool.name for tool in tools} != TOOL_NAMES:
+                raise ExplorerError('Installed MCP tool surface differs from the declared package tools')
             info = (await client.call_tool('get_dataset_info')).data
             result = (await client.call_tool('query_sql', {'query': {
                 'sql': 'SELECT filename FROM documents LIMIT 1'}})).data

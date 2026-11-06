@@ -92,6 +92,54 @@ class Reader:
         if table not in self.schemas:
             raise ExplorerError(f'Table {table!r} is not published in this release; use get_dataset_info')
 
+    def entity_summary_fields(self, table):
+        # Scalar fields keep summaries useful for new tables and older schemas,
+        # without decoding the nested lists that dominate large entity records.
+        return [name for name, kind in self.schemas.get(table, {}).items()
+                if '[]' not in kind and not kind.startswith(('STRUCT', 'MAP', 'BLOB'))]
+
+    def overview(self, query):
+        return dict(release_id=self.release_id, tables=sorted(self.selection['tables']),
+            capabilities=['metadata_search', 'entity_lookup', 'document_metadata', 'verified_document_text',
+                          'batch_documents', 'read_only_sql', 'published_relationships_and_recipes'],
+            discovery=dict(status='get_dataset_status()', table='get_dataset_info(table=...)',
+                           relationship='get_dataset_info(relationship=...)', recipe='get_dataset_info(recipe=...)',
+                           all='get_dataset_info()'),
+            limits=dict(response_bytes=MAX_BYTES, batch_items=10),
+            notes=['Availability and coverage describe the selected release; missing data is unavailable.',
+                   'Document search reads metadata. Body text uses verified archived files.',
+                   'Entity mode=summary omits nested fields; fields selects exact published columns.'])
+
+    def dataset_status(self, query):
+        groups = {}
+        for item in self.selection['manifest']['files']:
+            if item['name'].endswith('.parquet'):
+                groups.setdefault(item.get('shard') or item['name'].removesuffix('.parquet'), []).append(item)
+        collections = {}
+        for table, files in groups.items():
+            coverage = [item.get('coverage', {}) for item in files]
+            def bound(key, aggregate):
+                values = [value[key] for value in coverage if value.get(key) is not None]
+                return aggregate(values) if values else None
+            updates = [item.get('source_updated_at') or item.get('coverage', {}).get('source_updated_at') for item in files]
+            updates = [value for value in updates if value is not None]
+            collections[table] = dict(rows=sum(item['rows'] for item in files),
+                source_updated_at=max(updates) if updates else None,
+                source_update_status='published' if updates else 'unavailable in this release',
+                source_update_basis=sorted({str(item.get('source_update_basis') or item.get('coverage', {}).get('source_update_basis'))
+                    for item in files if item.get('source_update_basis') or item.get('coverage', {}).get('source_update_basis')}),
+                observed_bounds=dict(date_start=bound('date_start', min), date_end=bound('date_end', max),
+                                     congress_start=bound('congress_start', min), congress_end=bound('congress_end', max)),
+                gaps=list(dict.fromkeys(gap for value in coverage for gap in value.get('gaps', []))))
+        publication = self.selection.get('publication', {})
+        published_at = publication.get('published_at') or self.selection['manifest'].get('published_at')
+        return dict(release_id=self.release_id, published_at=published_at,
+            publication_status='published' if published_at else 'publication date unavailable in this release',
+            publication_basis=publication.get('basis'), collections=collections,
+            notes=['Source updates are publisher-supplied update dates, not archive captures or legislative activity dates.',
+                   'Observed record dates and Congress bounds do not establish complete history.',
+                   'Release publication time describes selection of the release, not when its sources changed.'])
+
     def dataset_info(self, query):
         table, relationship, recipe = (query.get(key) for key in ('table', 'relationship', 'recipe'))
         if sum(value is not None for value in (table, relationship, recipe)) > 1:
@@ -143,7 +191,10 @@ class Reader:
                 relationships_version=version,
                 outgoing=[r['id'] for r in relationships if r['source'].get('table') == table],
                 incoming=[r['id'] for r in relationships if r['target'].get('table') == table],
-                recipes=[r['id'] for r in recipes if table in r['requires']])
+                recipes=[r['id'] for r in recipes if table in r['requires']],
+                entity_response=dict(default_mode='detail', modes=['detail', 'summary'],
+                    summary_fields=self.entity_summary_fields(table), fields=list(self.schemas.get(table, {})),
+                    omitted_details='Use mode=detail, fields=[...], or query_sql to slice large nested lists.'))
         tables = {name: dict(rows=sum(p['rows'] for p in parts), columns=list(self.schemas[name]))
                   for name, parts in self.selection['tables'].items()}
         return dict(release_id=self.release_id, tables=tables,
@@ -252,9 +303,28 @@ class Reader:
             ('meeting_key', 'meeting_keys'), ('measure_key', 'measure_keys'), ('witness_key', 'witness_keys'), ('bioguide_id', 'bioguide_ids')]:
             if (value := getattr(query, parameter)) is not None:
                 conditions.append(f'list_contains(l.{column},?)'); args.append(value)
-        return self.document_rows(self.page(query,
+        order = 'l.list_row'
+        qualification = 'not applied to archive order'
+        if query.sort != 'archive':
+            order = f"l.document_date {'DESC' if query.sort == 'recent' else 'ASC'} NULLS LAST,l.list_row"
+            if 'document_date_status' in self.schemas['detail']:
+                allowed = ["d.document_date_status='accepted'"]
+                if query.include_suspect:
+                    allowed.append("d.document_date_status='suspect'")
+                if query.include_undated:
+                    allowed.append('l.document_date IS NULL')
+                conditions.append('(' + ' OR '.join(allowed) + ')')
+                qualification = 'published document_date_status; accepted dates by default'
+            else:
+                qualification = 'unavailable in this release; chronological order uses literal dates'
+                if not query.include_undated:
+                    conditions.append('l.document_date IS NOT NULL')
+        result = self.document_rows(self.page(query,
             f'SELECT {self.document_summary} '
-            'FROM "list" l JOIN detail d USING(list_row) WHERE ' + (' AND '.join(conditions) or 'true'), args, order='l.list_row'))
+            'FROM "list" l JOIN detail d USING(list_row) WHERE ' + (' AND '.join(conditions) or 'true'), args, order=order))
+        if query.sort != 'archive':
+            result['date_qualification'] = qualification
+        return result
 
     def _resolve_document(self, query):
         if query.release_id != self.release_id:
@@ -407,9 +477,13 @@ class Reader:
             raise ExplorerError(f'Table {table!r} has no published identity in this release; use get_dataset_info or query_sql')
         return self.entity_keys[table]
 
-    def entity_columns(self, table):
-        if table == 'recordings':
+    def entity_columns(self, table, fields=None):
+        if table == 'recordings' and fields is None:
             return '* REPLACE(list_transform(tracks,lambda t:struct_pack(body:=hex(t.body),suffix:=t.suffix,format:=t.format,language:=t.language,production:=t.production)) AS tracks)'
+        if fields is not None:
+            return ','.join(
+                'list_transform(tracks,lambda t:struct_pack(body:=hex(t.body),suffix:=t.suffix,format:=t.format,language:=t.language,production:=t.production)) AS tracks'
+                if table == 'recordings' and name == 'tracks' else quote(name) for name in fields)
         return '*'
 
     def entity_rows(self, result):
@@ -431,6 +505,8 @@ class Reader:
             raise ExplorerError('Entity is absent from this release')
         query.id = stored[0][0]
         if query.section == 'documents':
+            if query.fields is not None or query.mode != 'detail':
+                raise ExplorerError('Entity fields and mode apply to section=record; document pages use their own summary fields')
             field = self.document_links.get(query.table)
             if field:
                 sql = f'list_contains(l.{field},?)'
@@ -444,6 +520,18 @@ class Reader:
                 [str(query.id)], order='l.list_row'))
         if query.cursor:
             raise ExplorerError('Record does not take a cursor; query_sql can slice large nested fields')
-        result = self.rows(f'SELECT {self.entity_columns(query.table)} FROM {quote(query.table)} WHERE {quote(key)}=?', [query.id], limit=1)
+        selected = query.fields
+        if selected is not None:
+            unknown = [name for name in selected if name not in self.schemas[query.table]]
+            if unknown:
+                raise ExplorerError(f'Unknown published field {unknown[0][:128]!r} on {query.table}; use get_dataset_info(table={query.table!r})')
+        elif query.mode == 'summary':
+            selected = self.entity_summary_fields(query.table)
+        if selected is not None:
+            selected = list(dict.fromkeys([key, *selected]))
+        result = self.rows(f'SELECT {self.entity_columns(query.table, selected)} FROM {quote(query.table)} WHERE {quote(key)}=?', [query.id], limit=1)
         result.pop('columns'); result['release_id'] = self.release_id
+        if selected is not None:
+            result['omitted_fields'] = [name for name in self.schemas[query.table] if name not in selected]
+            result['detail_access'] = 'Use mode=detail, fields=[...], or query_sql to slice large nested lists.'
         return self.entity_rows(result)

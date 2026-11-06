@@ -6,6 +6,7 @@ import sys
 import tomllib
 
 from fastmcp import Client
+from congressional_explorer_mcp import TOOL_NAMES
 from congressional_explorer_mcp.cli import main
 from congressional_explorer_mcp.release import prepare
 
@@ -30,7 +31,7 @@ def test_generated_client_configs_launch_the_same_release(tmp_path, phase2, capf
     assert main(['check', '--data-dir', str(root)]) == 0
     result = json.loads(capfd.readouterr().out)
     assert result['status'] == 'ok' and result['release_id'] == selected['release_id']
-    assert result['sample_rows'] == 1 and len(result['tools']) == 6
+    assert result['sample_rows'] == 1 and set(result['tools']) == TOOL_NAMES
 
 
 def test_setup_before_download_and_actionable_missing_data(tmp_path, capsys):

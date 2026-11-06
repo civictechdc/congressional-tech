@@ -1,6 +1,7 @@
 """The public MCP surface uses only the current published archive model."""
 from contextlib import asynccontextmanager
 from functools import partial
+import time
 
 import anyio
 
@@ -8,9 +9,9 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from . import __version__
-from .models import DocumentSearch, DocumentQuery, EntitySearch, EntityQuery, SqlQuery, ExplorerError
+from .models import DocumentSearch, DocumentQuery, DocumentBatch, EntitySearch, EntityQuery, SqlQuery, ExplorerError, MAX_BYTES
 from .worker import Worker
-from .release import PUBLICATION, load_selection, prepare
+from .release import PUBLICATION, encoded, load_selection, prepare
 
 
 def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION):
@@ -27,7 +28,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
             await worker.close()
 
     mcp = FastMCP('Congress Explorer', version=__version__, lifespan=lifespan, instructions=(
-        'Start with get_dataset_info to see available tables and scope. '
+        'Start with get_overview for capabilities and get_dataset_status for release dates and coverage. '
         'Use get_dataset_info relationship or recipe selectors for published joins and SQL examples. '
         'Search documents or entities, then follow published identifiers. '
         'Use query_sql for arbitrary joins, nested lists and aggregations across all release tables. '
@@ -50,6 +51,20 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     annotations = dict(readOnlyHint=True, destructiveHint=False, idempotentHint=True,
         openWorldHint=selection is None)
+
+    @mcp.tool(annotations=annotations)
+    async def get_overview() -> dict:
+        """Read compact capabilities, table names, limits, and focused discovery selectors."""
+        return await call('overview', {})
+
+    @mcp.tool(annotations=annotations)
+    async def get_dataset_status() -> dict:
+        """Read selected release/publication time, publisher update dates, observed coverage and gaps.
+
+        Null dates are unavailable. Source updates, capture times, record dates and release publication are distinct.
+        Bounds describe observed records and do not establish complete history. Reads retained metadata only.
+        """
+        return await call('dataset_status', {})
 
     @mcp.tool(annotations=annotations)
     async def get_dataset_info(table: str | None = None, relationship: str | None = None, recipe: str | None = None) -> dict:
@@ -76,8 +91,32 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         (captured, import_day, unknown). Neither is a page-update date, and only a meeting-sourced date is the hearing date.
         measure_key and witness_key match direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
         use the bill_hearing_transcripts, nomination_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
+        sort='archive' preserves archive order. sort='recent' or 'oldest' uses accepted dates by default;
+        include_suspect and include_undated opt into those rows. Older releases keep literal dates and report unavailable qualification.
         """
         return await call('search_documents', query.model_dump())
+
+    async def read_document(query, *, body_budget=None):
+        if query.section == 'text':
+            from .body_reader import MAX_BODY_BYTES, read_document_body
+            target = await call('document_body_target', query.model_dump())
+            if body_budget is not None:
+                size = target.get('saved_bytes')
+                charge = size if type(size) is int and size >= 0 else MAX_BODY_BYTES
+                if charge > body_budget['remaining']:
+                    raise ExplorerError('Batch body work budget reached; continue this item with get_document')
+                body_budget['remaining'] -= charge
+            try:
+                with anyio.fail_after(timeout):
+                    return await anyio.to_thread.run_sync(
+                        partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout),
+                        abandon_on_cancel=True,
+                    )
+            except TimeoutError as error:
+                raise ToolError('Document body read timed out') from error
+            except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
+                raise ToolError(str(error)) from error
+        return await call('get_document', query.model_dump())
 
     @mcp.tool(annotations=annotations)
     async def get_document(query: DocumentQuery) -> dict:
@@ -92,20 +131,55 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         A recovery's kind states its relationship to the original, and identity_note adds an authored explanation when one
         was recorded (often null); a related file is not the original.
         """
-        if query.section == 'text':
-            from .body_reader import read_document_body
-            target = await call('document_body_target', query.model_dump())
+        return await read_document(query)
+
+    @mcp.tool(annotations=annotations)
+    async def get_documents(query: DocumentBatch) -> dict:
+        """Read up to ten release-bound document requests in input order, with independent errors and paging.
+
+        Each item has get_document's query shape, including section='summary' or 'text'. Successful result values
+        equal single-document responses. next_query continues that item; deferred items retain their original query.
+        Work is sequential, shares one request deadline and 64 MiB of declared archived body bytes (unknown sizes
+        reserve 64 MiB). The aggregate response stays within 128 KiB. Retry budget-deferred items with get_document
+        or a smaller batch. An item too large for the remaining budget is not partially returned.
+        """
+        from .body_reader import MAX_BODY_BYTES
+        result = dict(release_id=None, items=[dict(status='deferred', next_query=item.model_dump(exclude_none=True),
+            reason='Batch response or work budget reached; continue this item') for item in query.items])
+        deadline = time.monotonic() + timeout
+        body_budget = dict(remaining=MAX_BODY_BYTES)
+        for index, item in enumerate(query.items):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
             try:
-                with anyio.fail_after(timeout):
-                    return await anyio.to_thread.run_sync(
-                        partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout),
-                        abandon_on_cancel=True,
-                    )
-            except TimeoutError as error:
-                raise ToolError('Document body read timed out') from error
-            except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
-                raise ToolError(str(error)) from error
-        return await call('get_document', query.model_dump())
+                with anyio.fail_after(remaining):
+                    value = await read_document(item, body_budget=body_budget)
+                result['release_id'] = value.get('release_id') or result['release_id']
+                entry = dict(status='ok', result=value)
+                continuation = item.model_dump(exclude_none=True)
+                if value.get('next_cursor'):
+                    continuation['cursor'] = value['next_cursor']
+                    entry['next_query'] = continuation
+                elif value.get('next_offset') is not None:
+                    continuation['offset'] = value['next_offset']
+                    entry['next_query'] = continuation
+                elif value.get('next_page') is not None:
+                    continuation.update(page=value['next_page'], offset=0)
+                    entry['next_query'] = continuation
+            except TimeoutError:
+                break
+            except (ToolError, ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
+                entry = dict(status='error', error=str(error)[:2000], reference=dict(release_id=item.release_id, link_key=item.link_key))
+                if 'work budget reached' in str(error):
+                    continue
+            previous = result['items'][index]
+            result['items'][index] = entry
+            if len(encoded(result)) > MAX_BYTES:
+                result['items'][index] = previous
+        if worker.selection is not None:
+            result['release_id'] = worker.selection['release_id']
+        return result
 
     @mcp.tool(annotations=annotations)
     async def search_entities(query: EntitySearch) -> dict:
@@ -123,6 +197,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Read an entity by its published primary key, or page its directly associated documents.
 
         get_dataset_info lists entity_keys. Compound keys (rosters, meeting_coverage, ...) use search_entities.
+        Default mode='detail' preserves all fields. mode='summary' reads scalar columns; fields selects exact published
+        columns and always retains the primary key. get_dataset_info(table=...) lists available and summary fields.
+        Omitted nested details remain available with mode='detail', fields, or query_sql list slicing.
         section='documents' follows direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
         use nomination_transcripts, bill_hearing_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         Integer IDs accept leading zeros and surrounding whitespace; decimals, exponents and booleans are rejected.
