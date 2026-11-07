@@ -449,7 +449,7 @@ def test_activation_resume_does_not_append_duplicate_rows(tmp_path, writer, monk
     assert activate(spec)['pins'] == first['pins']
 
 
-def test_mods_activation_appends_only_appearance_generation_and_resumes(tmp_path, writer, monkeypatch):
+def test_appearance_activation_appends_two_generations_in_one_snapshot_and_resumes(tmp_path, writer, monkeypatch):
     from congress_api.lake import daily, tables
     from congress_api.lake.producer_records import ProducerRecords
     from congress_api.retention.body_store import BodyStore, LocalAdapter
@@ -463,10 +463,14 @@ def test_mods_activation_appends_only_appearance_generation_and_resumes(tmp_path
     name = 'appearance_records'
     versions = daily.appearance_records.current_versions()
     records_path = tmp_path / 'mods.parquet'
-    rows = daily.appearance_records.table([dict(record_sha=digest(b'mods fixture'), source='mods',
-        parser_version=versions['mods'], status='completed', appearances=[])])
+    staged_versions = {key: versions[key] for key in ('mods', 'senate_page')}
+    rows = daily.appearance_records.table([
+        dict(record_sha=digest(source.encode()), source=source,
+             parser_version=version, status='completed', appearances=[])
+        for source, version in staged_versions.items()
+    ])
     pq.write_table(rows, records_path)
-    prepared['tables'] = {name: dict(prepared['tables'][name], records=pin(records_path), version=versions['mods'])}
+    prepared['tables'] = {name: dict(prepared['tables'][name], records=pin(records_path), versions=staged_versions)}
     raw = Path(job['raw_root'])
     records = ProducerRecords({key: Path(value['path']).read_bytes() for key, value in job['anchors'].items()}, root=raw)
     work = tmp_path / 'mods-activate'
@@ -476,7 +480,7 @@ def test_mods_activation_appends_only_appearance_generation_and_resumes(tmp_path
         args = dict(engine=engine, raw_store=BodyStore(LocalAdapter(raw)), producer_records=records,
                     catalog_root=job['catalog_root'], targets={name: job['tables'][name]}, work=work,
                     decided_at=STAMP, max_output_bytes=32 << 20, min_disk_bytes=1)
-        result = daily.activate_mods_appearance_records(prepared, resume=False, **args)
+        result = daily.activate_appearance_generations(prepared, resume=False, **args)
         final = tables.resolve_tables(engine=engine, work=tmp_path/'mods-after', catalog_root=job['catalog_root'],
                                       tables=job['tables'])
         assert set(result['pins']) == {name}
@@ -484,10 +488,10 @@ def test_mods_activation_appends_only_appearance_generation_and_resumes(tmp_path
         assert final[name] != initial[name]
         assert all(final[key] == head for key, head in initial.items() if key != name)
         head, _ = records.find(name, final[name])
-        assert head['mods_appearance_transition']['records'] == pin(records_path)
+        assert head['appearance_transition']['records'] == pin(records_path)
         assert not snapshot_reasons(dict(result['pins'], parser_versions={name: versions}), {name: head}, ledger=records)
-        monkeypatch.setattr(daily.appearance_records, 'append', lambda *a, **kw: pytest.fail('reappended a completed MODS generation'))
-        assert daily.activate_mods_appearance_records(prepared, resume=True, **args)['pins'] == result['pins']
+        monkeypatch.setattr(daily.appearance_records, 'append', lambda *a, **kw: pytest.fail('reappended completed appearance generations'))
+        assert daily.activate_appearance_generations(prepared, resume=True, **args)['pins'] == result['pins']
 
 
 def test_activation_completion_requires_final_proof_and_preserves_prior_success(tmp_path, writer, monkeypatch):
