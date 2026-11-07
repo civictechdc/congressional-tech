@@ -70,7 +70,9 @@
     "Publisher consumes verified accepted native evidence and exact export paths. Existing conditional writes and asset reconciliation remain; external and nightly activation refuse before effects until native intent support exists.",
     "Committed current reader duration/nominee behavior as 68b077ad; 45 focused checks and independent green review passed.",
     "Committed captured native release requests and schema/controller retirement as aaf2b45c; external activation remains explicitly unavailable pending native intent.",
-    "Committed exact-inventory parity and converter retirement as eb6f7466; 49 actual-path cases and independent red follow-up passed."
+    "Committed exact-inventory parity and converter retirement as eb6f7466; 49 actual-path cases and independent red follow-up passed.",
+    "Committed the current entity reader as 57a6bc3c: declared fields only, one dated-name resolver, preserved source unknowns, and filters bound to actual meetings or roster seats. Fifty-one focused authored-record and presentation cases passed with independent green follow-up.",
+    "Fresh source20 development-runtime hand fixture passed native execution, acceptance, DDK checking, selection and hand-release assertions; all 34 files and exact prepared/accepted/selected identities were retained."
   ],
   "active": [
     "Run fresh hand/rich fixtures and cold recovery with the next qualified native tuple; preserve the separately accepted original source11 fixture",
@@ -668,6 +670,54 @@
       "scope": "Archive reader units and presentation; no rendered browser or rich native release claim",
       "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-unit-current-01/test.log",
       "review": "Independent green follow-up closed the transient-video cache defect"
+    },
+    "currentCanonicalReader": {
+      "status": "passed",
+      "passed": 51,
+      "scope": "Current authored entity records and rendered component assertions; no native rich-fixture or browser qualification",
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-current-shapes-03",
+      "review": "Independent green follow-up closed all scoped findings, including same-Congress committee/chamber filtering",
+      "initialExplorerRun": {
+        "passed": 120,
+        "failed": 1,
+        "failure": "Node canary budget case still used a committed legacy-schema fixture; assigned to viewer owner",
+        "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-current-shapes-01/test.log"
+      }
+    },
+    "freshNativeSource20": {
+      "runtimeStatus": "development candidate; production pin unchanged",
+      "binarySha256": "7d892e29a39c09915cd2d5e46139ba14e011fec214637ca2f79fe008b637dc95",
+      "sourceIdentitySha256": "9694048ac73cd597f26e94959ef7b1e6c7bdf35276b2ef6f51e93ed99cc2471a",
+      "scope": "Fresh synthetic fixtures with explicit empty producer prerequisites, unchanged limits and no corpus replay or external publication",
+      "hand": {
+        "status": "passed",
+        "nativeAcceptance": "passed",
+        "ddkQualification": "passed",
+        "selection": "selected",
+        "releaseId": "3589cc44ff4e0d8ceedc3a926fa29e6190dbf92b5ce46c6cb937e6580e967374",
+        "fileCount": 34,
+        "nativeExports": 11,
+        "peakRSSGiB": 0.32,
+        "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-native-source20-01/result.json",
+        "inventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-native-source20-01/files.json"
+      },
+      "rich": {
+        "status": "failed",
+        "selection": "pending",
+        "accepted": false,
+        "completedExports": 17,
+        "completedReports": 5,
+        "exportBytes": 77613,
+        "error": {
+          "code": "capacity",
+          "message": "shared memory budget exhausted: requested 33554432 bytes, available 20279919 of 268435456, native reserved 0; src/storage.rs:507; completed phases remain retained"
+        },
+        "peakRSSGiB": 0.34,
+        "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source20-01/retained-failure-summary.json",
+        "readerExecuted": false,
+        "replayOrBudgetChange": false
+      },
+      "fullLane": false
     }
   },
   "commits": {

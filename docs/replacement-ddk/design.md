@@ -122,13 +122,14 @@ flowchart TB
         retry["Retry presents that same request and digest"]
     end
 
-    subgraph native["DocSpec — durable operation and data authority"]
+    subgraph native["DocSpec — execution, native evidence and data authority"]
         admit["Admit operation identity, scope and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
         input_admission["Admit exact inputs and original producer evidence — native support pending"]
         prepare["4. Infer every named schema without executing data"]
         compute["5. Execute the captured JobSpec with exact input custody"]
         candidate["Retain candidate, required reports and useful checkpoints"]
+        verify["Check the original SQL reports under their declared rules"]
         accept["6. Accept complete native report evidence"]
         requalify["Policy-only change: requalify the retained candidate under fresh authority"]
         select["8. Select the checked candidate under original authority"]
@@ -137,10 +138,6 @@ flowchart TB
         retain --> input_admission --> compute --> candidate
         prepare --> compute
         candidate --> requalify --> accept
-    end
-
-    subgraph quality["Selected evidence verifier — exact supported semantics"]
-        verify["Verify native SQL reports or supported external evaluator results"]
     end
 
     subgraph catalog["DDK — generated metadata"]
@@ -164,6 +161,8 @@ flowchart TB
 
     subgraph readers["Consumers — one exact release"]
         consume["10. Resolve one catalog and file inventory: API, MCP and site"]
+        present["Read current typed fields; join published IDs and preserve unknown values"]
+        consume --> present
     end
 
     check --> request --> admit
@@ -190,7 +189,7 @@ flowchart TB
     candidate -.-> lifetime
     request -.->|"Retained input paths stay live through uncertain outcomes"| lifetime
     observation -.-> lifetime
-    consume -.->|"Reader protection and release"| lifetime
+    present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
     class input_admission,intent pending
 ```
@@ -212,6 +211,14 @@ current public catalog may disclose definitions while withholding runtime facts;
 withheld facts remain unknown to public consumers. No second public assembly
 with current definitions, inferred identifiers or broad grants fills that gap.
 
+The site reader accepts the current declared entity fields. Presentation values
+come from explicit published relationships and dated records. It preserves
+unknown meeting Congress and chamber, witness panel labels and source-null
+titles. Member filters use the same service interval and actual committee seats;
+recording and witness filters use the same linked meeting. Reader and UI names
+share one dated committee-name resolver. These changes remove alternate input
+decoders without adding a compatibility stage.
+
 The preserved small fixture has completed native computation, requalification,
 acceptance, DDK qualification, control finalization and native selection. The
 original runtime computed its eleven exports and five reports. A restricted
@@ -221,6 +228,13 @@ files and the completion record kept their original custody, and no data was
 recomputed. The first failed observation remains retained. This qualifies reuse
 of that captured fixture only; a fresh run with the final repaired runtime and the
 current richer fixture is still required.
+
+The source20 development runtime subsequently completed a fresh hand fixture
+through that same selection boundary at the original limits. Its rich fixture
+wrote all seventeen exports and five reports, then failed a native memory
+reservation before acceptance. Those useful completions and the original failed
+observation remain retained for native-owner recovery. This does not establish
+rich reader acceptance or final runtime qualification.
 
 The model entry now supplies explicit native selection authority, requires
 original producer prerequisites and verifies the configured executable before

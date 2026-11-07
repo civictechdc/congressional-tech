@@ -1,8 +1,10 @@
 # Replacement acceptance protocol
 
-Status: planned proof inventory, November 6, 2026. No replacement acceptance has
-run. Existing source tests and retained incumbent releases establish comparison
-material; they do not establish that the replacement passes.
+Status: incomplete acceptance, November 6, 2026. The original tiny fixture has
+passed retained native requalification, DDK checking, selection and its focused
+consumer cases. Current source boundaries also have focused test evidence.
+These results do not close the full model, acquisition, recovery or publication
+proofs below. [Status](status.json) records their exact scope and remaining work.
 
 The migration is greenfield: all producers and readers move to the same current
 catalog format. Baseline inventories retain observations about old formats, but

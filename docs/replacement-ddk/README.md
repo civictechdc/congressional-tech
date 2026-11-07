@@ -70,6 +70,18 @@ The latest focused application evidence includes:
 - Independent consumers passed 21 Node checks and six Python cases against the
   accepted tiny fixture, preserving all 34 original files. This includes the
   missing-body canary with zero writes and unchanged pointer authority.
+- The current-field reader cleanup passed 51 unit and presentation cases. It
+  removes alternate entity input shapes, shares dated committee-name resolution,
+  and preserves source unknowns while joining actual meetings and roster seats.
+  This is authored-record evidence; fresh native rich-fixture acceptance remains
+  separate.
+- A fresh hand fixture passed execution, acceptance, DDK qualification and
+  selection with the source20 development runtime at the original limits. It
+  produced 11 exports and a 34-file inventory, with 0.32 GiB peak process RSS.
+  The subsequent rich fixture retained all 17 exports and five reports, then
+  failed native capacity admission before acceptance. Its 77,613 export bytes
+  and original failure evidence remain retained; no limit increase or replay
+  bypassed the failure. Rich reader acceptance did not run.
 - The earlier full MCP suite passed 138 cases, with 3 replacement-producer
   cases pending. Current consumer transport and non-native gate tests passed
   51 cases, while the complete rich entity scenario remains required.
