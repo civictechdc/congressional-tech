@@ -1,6 +1,6 @@
 ---
 id: ct-hnpc
-status: in_progress
+status: closed
 deps: [ct-6r1i]
 links: [ct-9xfg, ct-nozw]
 created: 2026-11-05T23:51:57Z
@@ -36,3 +36,9 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 82c7f333. Nomination activity coverage no longer treats received-date bounds as bounds on later actions. Receipt-date research and raw event values are preserved. The ordinary-MCP regression failed before repair; all 10 focused legislative checks passed afterward.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Final native output, ct-6r1i conservation, actual week/filter/empty/coverage/order/paging checks and installed/hosted readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-hnpc/REVIEW.md).
+
+**2026-11-07T20:43:34Z**
+
+Live acceptance passed on Explorer 0.6.2 and archive release `5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1`. The seven published inputs used by activity match the source-qualified private candidate byte for byte. Its 35 activity checks cover authentic chronology, filtered windows, deterministic paging, empty and unavailable intervals, and cursor refusal. The live Worker reproduced the exact ordered 33-row House Rules Committee week in 2.402 seconds. Two concurrent hosted clients also returned their separate parameterized SQL results. This closes the activity feed's scoped acceptance.
+
+[Hosted MCP](https://congress-explorer-mcp.mdeeb.workers.dev/mcp) · [Public archive](https://civictechdc.github.io/congressional-tech/archive/)

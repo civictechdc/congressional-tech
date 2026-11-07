@@ -36,3 +36,9 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at b20b3316. The review confirmed that the missing details are repaired at publication. It also found two acceptance-helper defects: cached proof lacked current reader/selection/environment binding, and fixed log names prevented retry after lock refusal. Both are repaired; seven isolated controls passed.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: The full two-way row/value/provenance/multiplicity comparison, authentic bill/vote/ballot checks and installed/hosted agreement on the final shared native release. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-6r1i/REVIEW.md).
+
+**2026-11-07T20:43:34Z**
+
+The three legislative Parquets on public archive `5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1` are byte-identical to the independently verified 11,524,996-row comparison against the pinned upstream inputs. Explorer 0.6.2 returned filtered bill actions, the exact roll call and the retained ballot for vote `101-house-2-1` and member `name:Ackerman`, including the original position and source generation. The same live Worker returned an explicit query deadline for the unfiltered `get_member_ballots` request with `{"query":{"limit":1}}`. Record the separate hosted performance gap and preserve the verified keyed ballot path.
+
+[Published archive manifest](https://congressional-data.spicygov.ai/viewer-publications/releases/5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1/manifest.json)

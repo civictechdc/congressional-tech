@@ -88,3 +88,17 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at d2e4b9fe. The witness ledger preserves all 36,301 originals and refuses unproved positional evidence mappings. Eighteen focused checks passed; 20 positions remain explicitly unqualified. A separate independently approved eligibility repair at 95f78bcf prevents two manual receipt contexts from winning current roster authority or re-entering through failed/expanded contexts. Its bounded native consumer selects all seven original occurrences while preserving authentic newer/empty replacements and qualified identical-byte contexts. The repair passed 25 author and 10 independent checks; 12 affected legacy rows map to six restored occurrences.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Canonical ledger reconciliation, remaining occurrence/oath/link dispositions and final selected native/site/MCP acceptance. Separate eligibility evidence is in house-roster-eligibility/HANDOFF.json beside this review folder. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-x78c/REVIEW.md).
+
+**2026-11-07T20:35:49Z**
+
+The published archive release `5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1` carries the reviewed witness-key and source-position changes. The live site opened the corrected Tony Crasi entry from the selected release. The release comparison retains the supported legacy redirects and records the exact exceptions.
+
+Keep this ticket open for the three package-scoped source fields now visible after removing unsupported precedence links.
+
+- `b60b1f935df8698b`, `CHRG-106shrg66376`, `mods:witness[25]`. Ella Wong-Ruskinko's position contains the recipient wording “to Senator McConnell.”
+- `de27460db30117e6`, `CHRG-112jhrg85228`, `mods:witness[25]`. Cindy McKim's organization text continues into separate people.
+- `ffc8f75925cd3378`, `CHRG-113shrg89525`, `mods:witness[6]`. Victor Joseph's organization text continues into Michael K. Abbott's title and employer.
+
+The three package entries have no assigned hearing event. The original `Senator Smith` contents line at `CHRG-106shrg66376`, `mods:witness[17]`, still does not establish an entry type or a unique person. Twenty-one documents retain empty role-specific witness associations because the sources do not identify one of the competing roles. Wider historical affiliation cleanup remains open.
+
+[Selected archive manifest](https://congressional-data.spicygov.ai/viewer-publications/releases/5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1/manifest.json)
