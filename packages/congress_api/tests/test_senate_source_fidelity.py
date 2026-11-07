@@ -211,7 +211,10 @@ def test_plain_testimony_buttons_do_not_turn_jec_address_lines_into_people():
         <p>Stanford, California</p><p><a href="/address-two.pdf">(Testimony here)</a></p>
         <p>Ms. Ada Rivera</p><p><a href="/rivera.pdf">(Testimony here)</a></p>
     '''
-    rows = witness_occurrences(page)
+    assert [row['name'] for row in witness_occurrences(page)] == [
+        'DC Washington', 'California Stanford', 'Ada Rivera',
+    ]
+    rows = witness_occurrences(page, exclude_address_fallback=True)
     assert [(row['name'], row['document_links']) for row in rows] == [
         ('Ada Rivera', ['/rivera.pdf'])
     ]

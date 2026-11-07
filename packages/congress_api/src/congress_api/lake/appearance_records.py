@@ -815,7 +815,7 @@ def _classify_senate_empty_state(html_text: str) -> str:
     # their preceding paragraph. That is an unread roster, not an absent one.
     if html_text.lstrip().startswith("<") and any(
         plain_testimony_address(clean_text(anchor.text_content()), line)
-        for anchor, line, _ in plain_witness_links(root, include_address_fallback=True)
+        for anchor, line, _ in plain_witness_links(root)
     ):
         return "unrecognized"
     return "absent"
@@ -895,7 +895,7 @@ def extract_senate_page_observation(
         }
 
     declared_base = explicit_base or _extract_declared_base(html_text)
-    people = senate_witness_occurrences(html_text, plain=True)
+    people = senate_witness_occurrences(html_text, plain=True, exclude_address_fallback=True)
     if people:
         raw_rows = []
         for idx, p in enumerate(people):

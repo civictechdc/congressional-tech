@@ -89,7 +89,7 @@ def sections(page_html, levels):
     return [s for s in re.split(rf"(?=<h[{levels}]\b)", page_html) if not (s.startswith("<h") and re.search(r"statement|remarks", text(s.split("</h")[0]), re.I))]
 
 
-def witnesses(page_html, url, *, plain=False, deduplicate=True):
+def witnesses(page_html, url, *, plain=False, deduplicate=True, exclude_address_fallback=False):
     """The witnesses a hearing page lists, by whichever of the seven layouts it uses."""
     page_html, out = re.sub(r"<!--.*?-->", "", page_html, flags=re.S), []
     if "capigacr-widget-card" in page_html:
@@ -147,7 +147,7 @@ def witnesses(page_html, url, *, plain=False, deduplicate=True):
         card_nodes = {node for node in root.iter() if participant_card_identity(node)}
         out += [
             {**witness(line), 'page': url}
-            for anchor, line, _ in plain_witness_links(root)
+            for anchor, line, _ in plain_witness_links(root, exclude_address_fallback=exclude_address_fallback)
             if not any(parent in card_nodes for parent in anchor.iterancestors())
         ]
     valid = [w for w in out if is_name(w["name"])]
@@ -888,7 +888,7 @@ def plain_testimony_address(label, line):
     }
 
 
-def plain_witness_links(root, *, include_address_fallback=False):
+def plain_witness_links(root, *, exclude_address_fallback=False):
     """Explicit witness sections with a name on the link or its local line.
 
     A generic testimony button can refer to the immediately preceding paragraph
@@ -916,7 +916,7 @@ def plain_witness_links(root, *, include_address_fallback=False):
                 previous_line = ' '.join(previous.text_content().split())
                 # Some JEC testimony buttons follow the witness's address,
                 # rather than their name. The address is not a name fallback.
-                if include_address_fallback or not plain_testimony_address(label, previous_line):
+                if not exclude_address_fallback or not plain_testimony_address(label, previous_line):
                     candidates.append(previous_line)
         def named(line):
             name = witness(line)['name']
@@ -1038,7 +1038,8 @@ def document_labels(page_html, url):
     return {target: text(link.group(2)) for link, target in file_anchors(page_html, url)}
 
 
-def source_details(page_html, url, people, *, plain=False, include_link=None, preserve_occurrences=False):
+def source_details(page_html, url, people, *, plain=False, include_link=None, preserve_occurrences=False,
+                   exclude_address_fallback=False):
     if not page_html.strip():
         return {}, {}, {}
     root = dom.fromstring(page_html, parser=dom.HTMLParser(remove_comments=True))
@@ -1049,10 +1050,12 @@ def source_details(page_html, url, people, *, plain=False, include_link=None, pr
         plain=plain,
         include_link=include_link,
         preserve_occurrences=preserve_occurrences,
+        exclude_address_fallback=exclude_address_fallback,
     )
 
 
-def source_details_tree(root, url, people, *, plain=False, include_link=None, exclude_link=None, preserve_occurrences=False):
+def source_details_tree(root, url, people, *, plain=False, include_link=None, exclude_link=None,
+                        preserve_occurrences=False, exclude_address_fallback=False):
     """Keep page content, links and explicit witness-card ownership.
 
     Existing witness rows and document triples remain unchanged for stable source
@@ -1175,7 +1178,7 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
             witnesses_by_node[card] = index
     plain_continuations = {}
     if plain:
-        for anchor, line, continuation in plain_witness_links(root):
+        for anchor, line, continuation in plain_witness_links(root, exclude_address_fallback=exclude_address_fallback):
             if any(parent in cards_by_node for parent in anchor.iterancestors()):
                 continue
             metadata = dict(layout='plain-witness-line', name=line, text=line, attributes=dict(anchor.attrib), fields=[])
@@ -1272,7 +1275,7 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
     return files, witness_metadata, page_metadata
 
 
-def witness_occurrences(page_html, url=None, *, plain=True):
+def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fallback=False):
     """Return every witness occurrence in source order with its card-scoped literal document links."""
     if not page_html or not page_html.strip():
         return []
@@ -1287,7 +1290,8 @@ def witness_occurrences(page_html, url=None, *, plain=True):
                 break
     except Exception:
         pass
-    people = witnesses(page_html, effective_base, plain=plain, deduplicate=False)
+    people = witnesses(page_html, effective_base, plain=plain, deduplicate=False,
+                       exclude_address_fallback=exclude_address_fallback)
     if not people:
         return []
     files, witness_metadata, _ = source_details(
@@ -1301,6 +1305,7 @@ def witness_occurrences(page_html, url=None, *, plain=True):
             or bool(re.search(r"(?:^|[?&])download=(?:1|true)\b", anchor.get("href") or "", re.I))
         ),
         preserve_occurrences=True,
+        exclude_address_fallback=exclude_address_fallback,
     )
     links_by_index = {i: [] for i in range(len(people))}
     for entry in files.values():
