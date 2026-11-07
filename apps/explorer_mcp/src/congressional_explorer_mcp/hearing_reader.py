@@ -157,7 +157,7 @@ class HearingReader:
             result['sections']['meeting']=dict(state='present',rows=[meeting],has_more=False)
         section('committees','committees', '''SELECT c.*,mc.role FROM meetings m,unnest(m.committees) u(mc),committees c
             WHERE m.event_id=? AND mc.system_code=c.system_code ORDER BY c.system_code,mc.role''',[query.event_id])
-        witness_roster = "AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement')" if (
+        witness_roster = "AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material')" if (
             'witness_type' in self.schemas.get('witnesses',{})
         ) else ''
         section('witnesses','witnesses', f'''SELECT * FROM witnesses WHERE event_id=? AND superseded_by IS NULL

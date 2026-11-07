@@ -71,7 +71,7 @@ def hearing_release(tmp_path,phase2,origin):
             UNION ALL SELECT w.* REPLACE(record_kind AS witness_key,334136::BIGINT AS event_id,
                 0::SMALLINT AS display_order,record_kind AS witness_type)
             FROM read_parquet({prior('witnesses')}) w,
-                 unnest(['statement_for_record','member_statement']) t(record_kind)
+                 unnest(['statement_for_record','member_statement','record_material']) t(record_kind)
             WHERE w.witness_key='appearance-1' ''')
         # Use the published selected-text shape as a witness passage, including an ambiguous source association.
         write('detail',f'''SELECT *,

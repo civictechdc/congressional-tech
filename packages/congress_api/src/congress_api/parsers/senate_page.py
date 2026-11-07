@@ -1369,21 +1369,5 @@ def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fall
                 "document_links": links_by_index.get(idx, []),
             }
         )
-    if qualify_roster:
-        for idx, row in enumerate(occurrences):
-            links = row['document_links']
-            if (witness_metadata.get(str(idx), {}).get('layout') != 'plain-witness-line'
-                    or len(links) != 1 or not urlsplit(links[0]).path.casefold().endswith('-longform-vita.pdf')):
-                continue
-            # Commerce lists the vita in the plain roster and testimony in the
-            # structured card. Join them only when one card names this person.
-            cards = [other for j, other in enumerate(occurrences)
-                     if other['name'] == row['name']
-                     and witness_metadata.get(str(j), {}).get('layout') == 'capigacr-widget-card'
-                     and any(re.search(r'testimony\.pdf$', urlsplit(href).path, re.I)
-                             for href in other['document_links'])]
-            if len(cards) == 1:
-                cards[0]['document_links'].extend(links)
-                row['related_file'] = True
     return occurrences
 

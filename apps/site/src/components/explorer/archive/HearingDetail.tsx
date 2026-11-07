@@ -12,6 +12,12 @@ import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
 import {savedCopy} from '../reader/archive.ts';
 import {transcriptSourceLabel} from '../reader/archive-entities.ts';
 
+const RECORD_ENTRY_LABELS = new Map([
+  ['statement_for_record','Statement for the record'],
+  ['member_statement','Member statement'],
+  ['record_material','Record material'],
+]);
+
 function savedCaptionUrl(track: any, rawBase?: string) {
   if (rawBase && track?.sha256) {
     try {
@@ -103,7 +109,7 @@ export function HearingDetail({
   const publisherStatuses:any[]=meeting.publisher_status_observations??[];
   const relation=meeting.relation_states??{};
   const coverage=meeting.coverage??{};
-  const witnessCount=witnesses.filter(w=>!['statement_for_record','member_statement'].includes(w.witness_type)).length;
+  const witnessCount=witnesses.filter(w=>!RECORD_ENTRY_LABELS.has(w.witness_type)).length;
   const shownWitnesses=compact?witnesses.slice(0,6):witnesses;
 
   return <section className="archive-entity-card" aria-label="Hearing details" data-archive-entity="hearing">
@@ -260,25 +266,26 @@ export function HearingDetail({
     </div>}
 
     {witnesses.length>0&&<div className="archive-entity-section">
-      <h3>{witnessCount===witnesses.length?`Witnesses (${witnessCount})`:`Witnesses and statements (${witnessCount} witnesses)`}</h3>
+      <h3>{witnessCount===witnesses.length?`Witnesses (${witnessCount})`:`Witnesses and record entries (${witnessCount} witnesses)`}</h3>
       <ul className="archive-witness-list">
         {shownWitnesses.map((w:any,i:number)=>{
           const wKey=w.witness_key||w.name_key||'';
+          const recordLabel=RECORD_ENTRY_LABELS.get(w.witness_type);
+          const label=w.name||recordLabel||wKey;
           const roleParts=[w.position,w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];
           return <li key={`${wKey}-${i}`} className="archive-witness-item">
             <div className="archive-witness-header">
               {w.panel!=null&&<span className="archive-witness-panel">Panel {String(w.panel)}: </span>}
               {wKey&&onWitness
-                ?<button type="button" className="explorer-text-button archive-entity-link" onClick={()=>onWitness(String(wKey))}><strong>{w.name||wKey}</strong></button>
-                :<strong>{w.name||wKey}</strong>}
+                ?<button type="button" className="explorer-text-button archive-entity-link" onClick={()=>onWitness(String(wKey))}><strong>{label}</strong></button>
+                :<strong>{label}</strong>}
               {w.bioguide_id&&onMember&&<>
                 <span aria-hidden="true"> · </span>
                 <button type="button" className="archive-measure-pill" onClick={()=>onMember(String(w.bioguide_id))}>Member ({w.bioguide_id})</button>
               </>}
             </div>
-            {w.witness_type==='statement_for_record'&&<p className="archive-source-meta">Statement for the record</p>}
-            {w.witness_type==='member_statement'&&<p className="archive-source-meta">Member statement</p>}
+            {recordLabel&&w.name&&<p className="archive-source-meta">{recordLabel}</p>}
             {roleParts.length>0&&<p className="archive-source-meta">{roleParts.join(' — ')}</p>}
             {docs.length>0&&onSelect&&<div className="archive-witness-docs">
               <span className="archive-source-meta">Submitted documents: </span>

@@ -1459,7 +1459,7 @@ def test_jec_continuation_keeps_one_witness_and_does_not_merge_shared_file():
     ]
 
 
-def test_senate_jet_roster_keeps_nominee_name_and_testimony_but_excludes_related_files():
+def test_senate_jet_roster_keeps_nominee_and_types_related_files_as_record_material():
     html = """<h2>Witnesses</h2>
       <div class="elementor-widget-jet-listing-grid">
         <div class="jet-listing-grid__item jet-listing-dynamic-post-1">
@@ -1476,8 +1476,9 @@ def test_senate_jet_roster_keeps_nominee_name_and_testimony_but_excludes_related
         </div>
       </div>"""
     rows = appearance_records.extract_senate_page_observation(html)["appearances"]
-    assert [(row["source_locator"], row["name"], row["document_links"]) for row in rows] == [
-        ("senate_page:witness[1]", "CHRISTINE M. MACEY", ["/macey-testimony.pdf"]),
+    assert [(row["source_locator"], row["name"], row["witness_type"], row["document_links"]) for row in rows] == [
+        ("senate_page:witness[1]", "CHRISTINE M. MACEY", None, ["/macey-testimony.pdf"]),
+        ("senate_page:witness[2]", "Christine M. Macey", "record_material", ["/macey-testimony.pdf"]),
     ]
 
 

@@ -33,7 +33,7 @@ WITH rows AS (
  FROM parted
 )
 SELECT record_sha_hex,source,event_id,print_id AS package_id,ordinal,
- coalesce(witness_type IN ('statement_for_record','member_statement'),false) AS statement,
+ coalesce(witness_type IN ('statement_for_record','member_statement','record_material'),false) AS statement,
  family,given,
  CASE given
   WHEN 'bob' THEN 'robert' WHEN 'bobby' THEN 'robert' WHEN 'rob' THEN 'robert' WHEN 'bill' THEN 'william' WHEN 'billy' THEN 'william'

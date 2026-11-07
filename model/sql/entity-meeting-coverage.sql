@@ -69,9 +69,9 @@ WITH observations AS (
 ), stated_documents AS (
  SELECT DISTINCT event_id FROM meeting_document_urls
 ), witness_counts AS (
- -- Each person once (superseded rows point at the row shown); statements are not witnesses.
+ -- Superseded rows point to the selected person; record material contributes no witness count.
  SELECT event_id,count(*) AS n FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
-  AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement') GROUP BY event_id
+  AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material') GROUP BY event_id
 ), witness_states AS (
  SELECT event_id,max(CASE WHEN collection_state='unresolved' THEN 2 WHEN collection_state='empty' THEN 1 ELSE 0 END) AS rank
  FROM (
@@ -94,7 +94,7 @@ WITH observations AS (
  -- A linked package holds witnesses that no raw record ties to this meeting alone (ct-dx22).
  SELECT DISTINCT l.event_id FROM meeting_transcript_links l
  JOIN witnesses_export w ON w.package_id=l.package_id AND w.event_id IS NULL AND w.name IS NOT NULL
-  AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement')
+  AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material')
 ), witness_rows AS (
  SELECT e.event_id,'witnesses' AS aspect,
   CASE WHEN c.n IS NOT NULL THEN 'present' WHEN s.rank=2 THEN 'unresolved' WHEN s.rank=1 THEN 'empty'

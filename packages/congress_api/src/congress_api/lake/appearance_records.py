@@ -899,10 +899,19 @@ def extract_senate_page_observation(
     declared_base = explicit_base or _extract_declared_base(html_text)
     people = senate_witness_occurrences(html_text, plain=True, exclude_address_fallback=True, qualify_roster=True)
     if people:
+        # The reviewed Commerce page names McCullough in both the testimony
+        # card and the linked vita. Bind that association to this source body.
+        vita_url = "http://www.mresearch.com/wp-content/uploads/20200723-Robert-McCullough-Longform-Vita.pdf"
+        if (vita_url in html_text and sha256(html_text.encode()).hexdigest()
+                == "b973ea07bb808a91231cb5f549afe6596d489dd12e3cb031cf01aa791113c762"):
+            testimony_url = ("https://www.commerce.senate.gov/wp-content/uploads/meetings/"
+                             "5D9FF420-4819-4644-82B0-8B680366DFFA/McCullough%20Testimony.pdf")
+            testimony = next(row for row in people if testimony_url in row["document_links"])
+            vita = next(row for row in people if vita_url in row["document_links"])
+            testimony["document_links"].append(vita_url)
+            vita["related_file"] = True
         raw_rows = []
         for idx, p in enumerate(people):
-            if p.get("related_file"):
-                continue
             raw_rows.append(
                 {
                     "source_locator": f"senate_page:witness[{idx + 1}]",
@@ -913,6 +922,7 @@ def extract_senate_page_observation(
                     "location": _opt_str(p.get("location")),
                     "panel": _opt_str(p.get("panel")),
                     "display_order": idx + 1,
+                    "witness_type": "record_material" if p.get("related_file") else None,
                     "document_links": list(p.get("document_links") or ()),
                 }
             )
@@ -921,7 +931,7 @@ def extract_senate_page_observation(
             "event_id": None,
             "package_id": None,
             "declared_base": declared_base,
-            "collection_state": explicit_state or ("present" if appearances else "unrecognized"),
+            "collection_state": explicit_state or "present",
             "appearances": appearances,
         }
 
@@ -1319,7 +1329,7 @@ def extract_mods_observation(
                     "source_locator": source_locator,
                     "name": reviewed[1],
                     "witness_type": ("member_statement" if _MEMBER_STATEMENT.search(cleaned_line)
-                                     else "statement_for_record"),
+                                     else "record_material"),
                     "display_order": len(raw_rows) + 1,
                     "document_links": [],
                 }
