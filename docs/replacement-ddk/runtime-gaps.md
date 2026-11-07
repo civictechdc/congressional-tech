@@ -6,9 +6,12 @@ Nothing here authorizes this worktree to change those repositories. The inventor
 distinguishes demonstrated profile restrictions from work that is merely unproved.
 Source references below preserve the initial DDK dev2/DocSpec b1270b2e gap
 inspection; those restrictions are historical findings, not a description of
-every current API. The installed catalog package is qualified dev6. The runtime
-pin in this checkout remains unchanged. Shared successor work needs a qualified
-handoff and application checks before it closes a native gap here.
+every current API. The installed SDK is `0.1.0.dev6+integrated.1` from source
+`accb5836699a5ff9c0fbb82258c620934dd57030`. Its seven retained-proof application
+binding checks passed with Arrow 25.0.1 and PyParsing 3.2.5; all 117 installed
+members match and all 131 other dependency versions remain unchanged. This is
+scoped metadata evidence. The runtime pin in this checkout remains unchanged;
+native adoption and qualification still require their own handoff and checks.
 
 Current application source, commit `941dfbc0`, consumes an accepted v3 producer
 proof and its exact adopted definition through the shared DDK binding helper.

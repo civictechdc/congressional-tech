@@ -14,7 +14,7 @@
     "verifiedDDKDocumentation": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
     "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79",
     "observedSuccessorCatalogCommit": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
-    "successorInstalledQualification": "Unchanged dev6 wheel installed normally with its SHA-256; 112 installed members verified. All ten shared runtime pins match the 234-test exact-Congress metadata supplement, including Arrow25.0.1 and PyParsing3.2.5. Native application pin unchanged.",
+    "successorInstalledQualification": "SDK 0.1.0.dev6+integrated.1 from accb583 installed through the frozen lock and ordinary hash-qualified installer. All 117 wheel members match and all 131 other distribution versions remain unchanged. Seven original native receipt binding checks passed; whole-package/native/corpus qualification is separate.",
     "qualifiedSharedNative": "d96e00172d7d4be26da4532cda35aa05f2a3709e; source-only Build/Update only; not the application native pin or experimental whole-job preparation",
     "sharedRetainedJobCloseout": {
       "implementationCommit": "46a27657442d10ae773f48a1536136d895e95daa",
@@ -65,6 +65,17 @@
       "installedDependencyChanged": false,
       "productionRuntimePinChanged": false,
       "independentReviews": "Parent reports both independent reviews closed"
+    },
+    "installedSDK": {
+      "version": "0.1.0.dev6+integrated.1",
+      "sourceCommit": "accb5836699a5ff9c0fbb82258c620934dd57030",
+      "wheelSha256": "fec39a284d886272131e24231550a75d617f7eb4136355e6aad8613e0823794c",
+      "terminal": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/terminal.json",
+        "sha256": "3d35bbdc2d7fe3dc383ea7fcb1fce88a27800add998b6ac1dbd2c54c6707f836",
+        "size": 5978
+      },
+      "nativePinChanged": false
     }
   },
   "completed": [
@@ -139,12 +150,13 @@
     "Human selected verified recovered originals plus continuing official updates: historical_exact + refresh_live. Updated the decision and boundary diagram; missing input population is not treated as an intended zero.",
     "Committed 55d08298: one same-read conditional additive generation-pin writer preserves existing protection; removed redundant collector read and maintenance unconditional fallback. Both independent source reviews closed; 106 distinct focused cases passed.",
     "Bound the selected historical recovery cohort through maintained inventory/candidate/planner owners: 24,028 distinct literal targets and explicit historical_exact / recovery-identity-v1 / refresh_live requirements; all unresolved, all 480 other relationships unchanged. Two local native calls passed in 2.8 seconds at 0.493 GiB peak RSS; independent review found no survivors or evidence discrepancy.",
-    "Regenerated policy-dependent model profiles, full JobSpec, local-file inventory, report expectations and producer-definition draft: 52 inputs, 253 steps, 40 outputs, 23 reports, 225 counters in seven required reports. Eight native selectors, observed IDs, original producer facts and successful proof preserved. Metadata-only preparation passed in 3.3 seconds at 0.199 GiB RSS after a caller-directory correction; failed attempt retained. No successor native inference or model execution."
+    "Regenerated policy-dependent model profiles, full JobSpec, local-file inventory, report expectations and producer-definition draft: 52 inputs, 253 steps, 40 outputs, 23 reports, 225 counters in seven required reports. Eight native selectors, observed IDs, original producer facts and successful proof preserved. Metadata-only preparation passed in 3.3 seconds at 0.199 GiB RSS after a caller-directory correction; failed attempt retained. No successor native inference or model execution.",
+    "Installed integrated SDK 0.1.0.dev6+integrated.1 from accb583 through frozen offline sync and the normal hash-qualified installer. All 117 installed wheel members match; all 131 other distribution versions remain unchanged. Seven application checks against original native receipts passed in 0.6 seconds at 0.071 GiB peak RSS, with five small control reads and no payload/network/native effects. Original Congress admission and native acceptance remain open."
   ],
   "active": [
     "Qualify exact producer adoption, admission, population proof and prerequisites, then execute and accept the policy-bound 52-input model. All 293 named schemas were inferred; 225 required counters now use those native schemas. The 24,028-target requirements and complete successor definition remain pinned.",
-    "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
-    "Qualify/install local shared input reuse; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
+    "Complete successor native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
+    "Qualify local shared input reuse through the installed successor; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
@@ -1534,6 +1546,35 @@
         "size": 4931
       },
       "scope": "Complete selected metadata closure; counts and sizes remain manifest declarations, not payload verification or native acceptance"
+    },
+    "installedProducerProofBindings": {
+      "passed": 7,
+      "scope": "Application metadata bindings against original accepted/unaccepted native receipts, exact adopted definition and original request; no new native or original Congress corpus acceptance",
+      "wheelMembersMatched": 117,
+      "otherDistributionVersionsUnchanged": 131,
+      "pyarrow": "25.0.1",
+      "pyparsing": "3.2.5",
+      "nativeCalls": 0,
+      "networkCalls": 0,
+      "payloadOpens": 0,
+      "sourceControlOpens": 5,
+      "seconds": 0.6,
+      "peakRSSGiB": 0.071,
+      "terminal": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/terminal.json",
+        "sha256": "3d35bbdc2d7fe3dc383ea7fcb1fce88a27800add998b6ac1dbd2c54c6707f836",
+        "size": 5978
+      },
+      "limits": [
+        "Retained real native fixture has one input; multiple-input ordering is not exercised",
+        "Custody references match the original receipt; availability was not refreshed",
+        "Installer-managed RECORD is excluded from matching the original wheel members"
+      ],
+      "independentReview": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/terminal-review.json",
+        "sha256": "4a1e36a886e9644cce0585aa1175bd01dfce81f3d2d481ceb63f8ac19cf97749",
+        "size": 1658
+      }
     }
   },
   "commits": {
@@ -1772,6 +1813,21 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/selected-snapshot-census-01/terminal.json",
       "sha256": "410eb29cf4b24c3ebbf103599c503b1ab97c9d3b3415aa099dfa44c5feae8597",
       "size": 4931
+    },
+    "installedProducerProofBindings": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/terminal.json",
+      "sha256": "3d35bbdc2d7fe3dc383ea7fcb1fce88a27800add998b6ac1dbd2c54c6707f836",
+      "size": 5978
+    },
+    "integratedSDKHandoff": {
+      "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/integrated-successor-package-01/build-02/sdk-only-handoff.json",
+      "sha256": "ae5b45e14d85913166e65b97390fb798055ddf7da6e4e9b6e96ab3c3dcafe289",
+      "size": 5245
+    },
+    "installedProducerProofBindingsReview": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/terminal-review.json",
+      "sha256": "4a1e36a886e9644cce0585aa1175bd01dfce81f3d2d481ceb63f8ac19cf97749",
+      "size": 1658
     }
   },
   "constraints": {
@@ -1788,7 +1844,7 @@
   },
   "delivery": {
     "fullReplacementComplete": false,
-    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Separate raw-row greybeard/ETL reviews closed. Parent reports shared source25 greybeard/ETL reviews closed; its complete required native gate, installed consumer checkpoint and fresh Congress fixture passed. Full model, native package/profile and publication acceptance remain pending. Greybeard/ETL accepted 14e96d07 and exact bounded two-test plan; both fixture tests passed.",
+    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Separate raw-row greybeard/ETL reviews closed. Parent reports shared source25 greybeard/ETL reviews closed; its complete required native gate, installed consumer checkpoint and fresh Congress fixture passed. Full model, native package/profile and publication acceptance remain pending. Greybeard/ETL accepted 14e96d07 and exact bounded two-test plan; both fixture tests passed. Both independent reviewers accepted the seven-case installed SDK binding closeout; one-input retained-fixture scope and unchanged native qualification limits remain explicit.",
     "supersededInfrastructureRetired": false,
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",

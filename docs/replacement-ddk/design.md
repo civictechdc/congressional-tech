@@ -104,7 +104,9 @@ assert that every connection is implemented. The implementation and qualificatio
 state remains in [status](status.json). DDK has no independent execution journal
 or mutable selection. Every reader uses the same current catalog format.
 The inner native boundary marks the source25 local-file gate and the source09
-local snapshot/reuse development cases. Installed-profile qualification remains open.
+local snapshot/reuse development cases. Seven installed SDK binding checks now
+preserve original accepted producer evidence without payload reads. Native
+installed-profile qualification remains open.
 Dashed boxes identify producer adoption, prerequisite enforcement and publication
 capabilities still required for production. Congress has staged the exact source
 facts, observed schemas, current jobs and required counter policies against a
@@ -169,7 +171,7 @@ flowchart TB
     end
 
     subgraph catalog["DDK — generated metadata"]
-        proof_binding["Shared helper: exact proof inputs, schema bytes and current custody; adopted prerequisite order"]
+        proof_binding["Installed DDK helper checked: exact proof inputs, schema bytes and current custody; adopted prerequisite order"]
         schema_binding["Bind observed native schemas to captured dataset definitions"]
         rule_binding["Match authored fields and keys to accepted export counters"]
         first_receipt["Retain exact accepted receipt bytes beside the request"]

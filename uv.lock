@@ -818,14 +818,14 @@ wheels = [
 
 [[package]]
 name = "data-design-kit"
-version = "0.1.0.dev6"
-source = { path = "vendor/ddk/data_design_kit-0.1.0.dev6-py3-none-any.whl" }
+version = "0.1.0.dev6+integrated.1"
+source = { path = "vendor/ddk/data_design_kit-0.1.0.dev6+integrated.1-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "referencing" },
 ]
 wheels = [
-    { filename = "data_design_kit-0.1.0.dev6-py3-none-any.whl", hash = "sha256:41dbccda3367ea794f0040c165abd86f43d918ecee036cbce7307a0b98b18149" },
+    { filename = "data_design_kit-0.1.0.dev6+integrated.1-py3-none-any.whl", hash = "sha256:fec39a284d886272131e24231550a75d617f7eb4136355e6aad8613e0823794c" },
 ]
 
 [package.optional-dependencies]
@@ -3309,7 +3309,7 @@ requires-dist = [
     { name = "blake3", specifier = "==1.0.11" },
     { name = "congress-api", extras = ["archive"], editable = "packages/congress_api" },
     { name = "congress-shared", editable = "packages/congress_shared" },
-    { name = "data-design-kit", extras = ["catalog"], path = "vendor/ddk/data_design_kit-0.1.0.dev6-py3-none-any.whl" },
+    { name = "data-design-kit", extras = ["catalog"], path = "vendor/ddk/data_design_kit-0.1.0.dev6+integrated.1-py3-none-any.whl" },
 ]
 
 [[package]]

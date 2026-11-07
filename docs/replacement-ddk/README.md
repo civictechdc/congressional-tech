@@ -7,12 +7,14 @@ Production migration remains incomplete: the retained application producer,
 original source admission, acquisition and nonarchive callers still need native
 qualification and adoption.
 
-The latest full-model schema check correctly refused a missing capture field:
-the staged request used the old policy-free graph. The application now requires
-byte-pinned recovery requirements and a matching version-2 capture profile before
-request creation. It preserves all required checks and uses a semi join to avoid
-aggregating captures before matching recovery candidates. Production policy
-selection remains open; the concrete choices and their effects are in the
+The selected recovery policy includes verified recovered originals and continues
+checking official sources for updates. All 24,028 selected historical targets now
+have pinned requirements; their qualification remains unresolved. The corrected
+full model has inferred schemas for all 52 inputs, 253 steps, 40 outputs and
+23 reports, with all 225 required counters bound to those schemas. The application
+requires those pinned requirements and the matching version-2 capture profile
+before request creation. It uses a semi join to avoid aggregating captures before
+matching recovery candidates. See the
 [recovery policy decision](recovery-policy-decision.md).
 
 DDK owns dataset definitions, relationships and generated checks. Application
@@ -44,15 +46,17 @@ phase journal and daily checkpoint import are removed. Nightly publication no
 longer classifies or deletes candidates using those journals. External activation
 refuses before effects until native frozen publication intent is supported.
 
-The unchanged `data-design-kit==0.1.0.dev6` wheel is installed from source
-`b2637279beef7f30f23aba3ca2b8f50f7dc02d3f`, SHA-256
-`41dbccda3367ea794f0040c165abd86f43d918ecee036cbce7307a0b98b18149`.
-Its exact Congress metadata supplement passed 234 installed tests with the
-application's existing PyArrow 25.0.1 and PyParsing 3.2.5. All ten shared pins and
-95 evidence records were verified. Installation uses `catalog` plus explicit
-BLAKE3 1.0.11; the optional `native-metadata` extra is not selected. See the
-[vendored release instructions](../../vendor/ddk/README.md). This metadata
-qualification does not qualify native application execution.
+The installed SDK is `data-design-kit==0.1.0.dev6+integrated.1`, source
+`accb5836699a5ff9c0fbb82258c620934dd57030`, wheel SHA-256
+`fec39a284d886272131e24231550a75d617f7eb4136355e6aad8613e0823794c`.
+All 117 installed members match; the other 131 dependency versions remain
+unchanged, including PyArrow 25.0.1 and PyParsing 3.2.5. Seven application binding
+checks passed against original native receipts without reopening payloads or
+running DocSpec. Installation uses `catalog` plus explicit BLAKE3 1.0.11;
+`native-metadata` is not selected. The earlier 234-case dev6 supplement remains
+historical evidence. See the [vendored release instructions](../../vendor/ddk/README.md).
+Installed binding checks do not qualify original source admission or full-model
+execution; the explicit original-S3 reader route remains with the native owner.
 
 The latest focused application evidence includes:
 

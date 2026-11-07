@@ -1,21 +1,32 @@
 # Frozen local DDK release
 
-The unchanged dev6 wheel supplies the mandatory standard catalog and native
-metadata API used by `viewer-publication`. It is vendored because this scoped
-development release has no public package source. The relative uv source keeps
-checkout installation reproducible without editable source from another tree.
+The integrated SDK supplies the mandatory standard catalog and producer-proof
+binding API used by `viewer-publication`. This development release is vendored;
+the relative uv source keeps installation reproducible without editable source
+from another checkout.
 
-- File: `data_design_kit-0.1.0.dev6-py3-none-any.whl` (329,518 bytes)
-- SHA-256: `41dbccda3367ea794f0040c165abd86f43d918ecee036cbce7307a0b98b18149`
-- Source: `b2637279beef7f30f23aba3ca2b8f50f7dc02d3f`
-- Capture: `/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/catalog-api-dev6/`
+- File: `data_design_kit-0.1.0.dev6+integrated.1-py3-none-any.whl` (379,406 bytes)
+- SHA-256: `fec39a284d886272131e24231550a75d617f7eb4136355e6aad8613e0823794c`
+- Source: `accb5836699a5ff9c0fbb82258c620934dd57030`
+- Handoff: `/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/integrated-successor-package-01/build-02/sdk-only-handoff.json`
 
-Select `catalog` with the application's existing PyArrow 25.0.1 and explicit
-BLAKE3 1.0.11 and PyParsing 3.2.5 pins. The exact Congress supplement passed 234 installed
-metadata tests, typed artifact save/reload and tamper checks, and consumption of
-eight retained native IPC schemas. The `native-metadata` convenience extra pins
-PyArrow 26 and is not selected here. Native execution and the concrete application
-producer still need their separate runtime qualification.
+Select `catalog` with the application's existing PyArrow 25.0.1, BLAKE3 1.0.11
+and PyParsing 3.2.5 pins. All 131 other installed distribution versions stayed
+unchanged during this update, and all 117 installed wheel members matched
+(excluding installer-managed `RECORD`). The
+`native-metadata` convenience extra pins PyArrow 26.0.1 and is not selected here.
+
+Seven application checks used original accepted and unaccepted native receipts
+to verify exact producer-proof bindings and refusals. They opened five small
+control files, no data payloads, and invoked no native process or network call.
+Their evidence is under main's
+`.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/`;
+`terminal.json` has SHA-256
+`3d35bbdc2d7fe3dc383ea7fcb1fce88a27800add998b6ac1dbd2c54c6707f836`.
+This qualifies those installed application bindings for the one-input fixture;
+it does not exercise multiple-input ordering or refresh custody availability.
+Full native execution, original Congress input admission and model acceptance
+remain separate.
 
 After `uv sync --frozen`, install the exact wheel with ordinary hash-qualified
 pip through the existing development command. It reads the wheel path and hash
@@ -27,9 +38,8 @@ development release. Do not construct installation metadata by hand:
 python3 scripts/dev.py install-catalog
 ```
 
-The normal installation and all ten shared runtime pins match
-`catalog-api-dev6/congress-pins-supplement-02/runtime-constraints-congress.txt`.
-Its handoff SHA-256 is `59cc6917c1d512c095265d27dab5c77f8ae4e27fc537620adbd2de9d31eebf38`;
-all 95 evidence records were verified. The native application pin remains unchanged. Exact install
-receipts, the superseded dev5 wheel and the initial Arrow 26 experiment are
-retained under main's `.cache/archive-release/ddk-replacement-20261106/catalog-install-06/`.
+The previous dev6 package's 234 installed metadata cases remain historical
+evidence under `catalog-api-dev6/congress-pins-supplement-02/`; they are not a
+test count for this successor. The previous wheel and before/after installation
+identities are retained with the new binding evidence. The application native
+runtime pin remains unchanged.
