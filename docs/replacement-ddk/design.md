@@ -114,12 +114,14 @@ The existing host watchdog now requires positive evidence that its owned process
 group is empty. Cleanup errors and unavailable process inventory fail the run,
 including when the command itself exited successfully. All 29 focused cases
 passed; this is a two-file test result, not a full application qualification.
-Original-provider and data qualification remain open.
+Original-provider access and the selected producer proof have passed. Full model
+and consumer qualification remain open.
 Dashed boxes identify prerequisite enforcement, acquisition and publication
 boundaries still under acceptance. Congress has adopted the exact source facts,
 observed schemas, current jobs and required counter policies against a frozen
 Git head. Same-request reconciliation preserved the original lifecycle table
-identity. Population proof and full application acceptance remain open.
+identity. Its eight-table population proof passed all nine required counters;
+full model and application acceptance remain open.
 
 ```mermaid
 flowchart TB
@@ -137,7 +139,7 @@ flowchart TB
         logic["Parsers, correction rules and transformation SQL"]
         observed["Read exact selected native metadata; preserve original schema and field IDs"]
         producer_definition["Freeze original Git/source/version facts, observed schemas, both JobSpecs and exact required policies"]
-        prepared_bytes["Retain exact JobSpec and policies; bind schema evidence to the final runtime"]
+        prepared_bytes["Retain exact JobSpec, native rules and policies; bind schema evidence to the final runtime — prepared"]
         local_pins["Pin all local file bytes separately from their JobSpec paths"]
         recovery_choice["Human choice: verified recovered originals and continuing official updates"]
         recovery_population["Bind all 24,028 selected historical targets, every candidate and unchanged provenance"]
@@ -158,16 +160,16 @@ flowchart TB
         acquisition_admit["Admit acquisition request and budgets before external effects — pending"]
         adopt["Adopt exact producer definition under dataset authority — same-ID reconciliation passed; original producer facts preserved"]
         proof_admit["Admit the exact proof request, active definition and budgets before effects"]
-        source_access["Native resolves private settings and credentials; preserve original URIs — synthetic checks pass, original provider pending"]
+        source_access["Native resolves private settings and credentials; original URIs preserved — original provider proof passed"]
         admit["Admit the exact model request, active definition and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
-        native_custody["Own or reuse exact inputs and observed native schemas under the same owner — local development proof only"]
-        static_proof["Check original record bytes, namespace/key, version facts and selected metadata lineage before payload work — pending"]
-        proof_counts["Population proof: materialize one aggregate per input; reuse it for required and informational reports — pending"]
-        proof_accept["Accept all 9 required zero counters; retain 7 informational history counts — pending"]
+        native_custody["Seal exact original inputs and observed native schemas under the native owner — 8 inputs and 712 files passed"]
+        static_proof["Check original record bytes, namespace/key, version facts and selected metadata lineage before payload work — passed"]
+        proof_counts["Materialize one aggregate per input; reuse it for required and informational reports — passed"]
+        proof_accept["Accept all 9 required zero counters; retain 7 informational history counts — passed"]
         input_admission["Model admission resolves exact accepted proof, both policies and inherited input custody — pending"]
         file_binding["Compare every local input's bytes with the adopted definition, including selected recovery requirements — pending"]
-        subgraph local_jobs["Local runtime evidence — original-data validation pending"]
+        subgraph local_jobs["Native model — schema passed; full data execution pending"]
             prepare["4. Infer exact proof and model schemas on final runtime — passed; no data admitted"]
             counter_policy["Bind all 225 original counters to inferred schemas; actual null or nonzero values still refuse"]
             compute["5. Execute the captured JobSpec over admitted exact inputs"]
@@ -260,7 +262,7 @@ flowchart TB
     lifetime -.-> retirement
     present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
-    class acquisition_admit,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
+    class acquisition_admit,input_admission,file_binding,first_intent,intent,permission,retirement pending
 ```
 
 The producer path uses the existing native dataset authority and retained job
@@ -283,8 +285,8 @@ metadata agree. The maintained policy builder now binds the retained inferred
 schemas; native qualification still requires exactly one complete row of
 non-null integer zeros. The original policy and refused comparison remain
 intact. This [inferred-policy successor](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-inferred-03/handoff.json)
-changes no SQL, input, job or required counter. Producer adoption has passed;
-population proof and model execution remain pending.
+changes no SQL, input, job or required counter. Producer adoption and population
+proof have passed; full model execution remains pending.
 The adopted definition must pin
 both complete jobs and both exact policies; changing a policy requires a new
 adoption in this profile. An earlier development candidate's policy-only
@@ -382,8 +384,18 @@ request allocations. A dedicated adoption profile lowered the metadata allowance
 from 64 to 32 MiB while retaining the 512 MiB total pool and 16 MiB batches.
 The identical request then reconciled successfully in the original workspace,
 using its original lifecycle table UUID. The first failure remains retained.
-Population proof has separate bounds: a 1 GiB native pool and a 2 GiB host
-reservation and stop limit. Its full-data resource fit remains under measurement.
+Population proof used a 1 GiB native pool and a 2 GiB host reservation and stop
+limit. It completed in 971.6 seconds at 0.255 GiB peak RSS and 0.174 GiB physical
+memory. Both independent metadata reviews accepted the result. The eight inputs'
+712 files remain under native custody for the full model; that model has its own
+resource and acceptance requirements.
+
+The full model request now reuses those eight custody references and the exact
+adopted job, rules and policy files. Retained preparation compares the rules'
+content with the maintained renderer and preserves their original bytes, which
+form part of the adopted definition's identity. Request preparation took 2.9
+seconds at 0.149 GiB peak RSS, with no native execution, provider calls or source
+payload opens. The 253-step model and its 40 outputs still require execution.
 
 Disclosure remains an explicit definition file. Native observations used for
 local qualification do not automatically become public catalog facts. The

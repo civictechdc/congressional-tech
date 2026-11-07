@@ -486,8 +486,8 @@ def _retained_preparation(retained, job, native_schemas, runtime):
     from base64 import b64decode
     import pyarrow as pa
 
-    if not isinstance(retained, dict) or set(retained) != {'job', 'result', 'policy', 'runtime'}:
-        raise ValueError('Retained preparation requires its job, inference, policy and runtime')
+    if not isinstance(retained, dict) or set(retained) != {'job', 'result', 'policy', 'native_rules', 'runtime'}:
+        raise ValueError('Retained preparation requires its job, inference, policy, native rules and runtime')
     if (not all(runtime.get(key) for key in ('distributionSha256', 'commit'))
             or retained['runtime'] != {key: runtime[key] for key in ('distributionSha256', 'commit')}):
         raise ValueError('Retained schema inference belongs to a different native runtime')
@@ -573,7 +573,12 @@ def prepare_native_release(job, diagnostics, *, adapter, project, catalog_result
         inferred = response['result']
     rules = native_rule_artifact(catalog_result, job_bytes,
         native_rule_profile=options['native_rule_profile'], **mapping)
-    rules_pin = _request_artifact(directory, 'native-rules.json', rules)
+    if retained_preparation is None:
+        rules_pin = _request_artifact(directory, 'native-rules.json', rules)
+    else:
+        if json.loads(_read_preparation_artifact(retained_preparation['native_rules'])) != rules:
+            raise ValueError('Retained native rules differ from the original catalog or job')
+        rules_pin = {key: retained_preparation['native_rules'][key] for key in ('path', 'sha256')}
     definition = managed_job_definition(catalog_result, native_rules=rules_pin,
         native_rule_profile=options['native_rule_profile'], **mapping)
     if producer_definition is not None and definition != producer_definition['definition']:

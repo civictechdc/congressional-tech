@@ -14,7 +14,7 @@
     "verifiedDDKDocumentation": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
     "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79",
     "observedSuccessorCatalogCommit": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
-    "successorInstalledQualification": "SDK3 normally installed with 117 exact wheel members and normal PEP610 hash; all 131 other installed versions and 134 non-DDK lock names/versions unchanged. Publisher dependency metadata points to the new wheel. Shared qualification passed 703 tests across 13 profiles; Congress passed 7 retained proof checks and 5 partial application cases. Both independent reviews accepted with preserved execution deviations. Original-provider and data acceptance remain open.",
+    "successorInstalledQualification": "SDK3 normally installed with 117 exact wheel members and normal PEP610 hash; all 131 other installed versions and 134 non-DDK lock names/versions unchanged. Publisher dependency metadata points to the new wheel. Shared qualification passed 703 tests across 13 profiles; Congress passed 7 retained proof checks and 5 partial application cases. Both independent reviews accepted with preserved execution deviations. Original-provider proof has since passed; full model and consumer acceptance remain open.",
     "qualifiedSharedNative": "d96e00172d7d4be26da4532cda35aa05f2a3709e; source-only Build/Update only; not the application native pin or experimental whole-job preparation",
     "sharedRetainedJobCloseout": {
       "implementationCommit": "46a27657442d10ae773f48a1536136d895e95daa",
@@ -169,17 +169,17 @@
     "Prepared successor execution metadata from committed source e743ffdd. The maintained renderer reproduces the exact original model JobSpec 7652afbe; all 45 local input members retain custody, with no payload/provider/native reads. Original producer facts remain unchanged.",
     "Final-runtime schema-only validation passed for the exact original producer proof and full model: two calls, all eight observed native input schemas, 9 required proof counters, 7 informational history fields and 225 required model counters. Both original policies remain valid. Two independent terminal reviews accepted; no input admission or row execution ran.",
     "Installed qualified SDK3 and committed host watchdog-group wiring as d72d0a65; seven retained proof checks and five partial application cases passed. Exact package identity and 131 unchanged installed versions verified; independent reviews closed with original guard/preflight failures preserved. No corpus or schema calls repeated.",
-    "Committed d0ff5fb0: the existing watchdog retains cleanup errors, attempts remaining termination actions and requires a positive empty owned-group inventory. All 29 focused process/watchdog cases passed; no native/provider calls or repeated DDK/schema checks."
+    "Committed d0ff5fb0: the existing watchdog retains cleanup errors, attempts remaining termination actions and requires a positive empty owned-group inventory. All 29 focused process/watchdog cases passed; no native/provider calls or repeated DDK/schema checks.",
+    "Original selected producer proof accepted through qualified SDK3 and native 255c: eight inputs, 712 files, nine required zero counters and seven preserved history fields. Two independent metadata reviews closed. Native selection remains pending; full model and consumers are separate.",
+    "Prepared the full 253-step model request with all eight accepted custody references and 45 unchanged local input members. The maintained helper preserves exact adopted rule bytes after comparing their content. Preparation passed in 2.9 seconds at 0.149 GiB RSS without native execution, schema inference, provider calls or payload opens.",
+    "The retained-rule helper change passed independent source review and all 18 focused application metadata cases, including changed-rule and changed-pin refusal. The owned process group was confirmed empty; this is a partial lane result."
   ],
   "active": [
-    "Bind the actual installed SDK3 generation to the existing captured definition, then adopt and accept the original population proof in its bounded run. Full-model execution has a separate admission and resource plan. Passed native schema evidence is retained.",
-    "Complete successor native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
-    "Qualify local shared input reuse through the installed successor; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
-    "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
+    "Execute the prepared full model after separate resource admission. Reuse accepted native input custody and passed schema evidence.",
+    "Qualify the maintained application entry, readers and cold recovery against the full model outputs. Preserve earlier fixture evidence and runtime identities.",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
     "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings",
-    "Bind native inputs from their admitted observed schemas and original physical IDs; seven local authored schemas have different IDs and cannot prove original native identity",
     "Integrate native frozen publication intent, actual publisher permission/restore fencing and complete intent/upload/reader lifetime accounting; generation-pin union is corrected but pending-prefix retirement remains open. Public execute stays closed."
   ],
   "tests": {
@@ -1695,6 +1695,56 @@
       "watchdogSeconds": 0.9,
       "ownedGroupConfirmedEmpty": true,
       "limits": "Only the adoption metadata allowance was lowered from 64 to 32 MiB; the 512 MiB pool and 16 MiB batches are unchanged. The original failure is preserved."
+    },
+    "originalProducerProof": {
+      "result": "accepted; both independent terminal reviews closed",
+      "scope": "Original selected native producer attribution/population policy only",
+      "nativeCalls": 2,
+      "nativeInputs": 8,
+      "nativeDataFiles": 712,
+      "nativeDataBytes": 510818834,
+      "requiredZeroCounters": 9,
+      "informationalHistoryFields": 7,
+      "retainedOlderAppearanceRows": 44838,
+      "peakRssGiB": 0.255,
+      "peakPhysicalGiB": 0.174,
+      "watchdogSeconds": 971.6,
+      "prepareReplyBytes": 2401393,
+      "acceptedReplyBytes": 2412184,
+      "ownedGroupConfirmedEmpty": true,
+      "selection": "pending",
+      "model": "not run",
+      "publication": "not run"
+    },
+    "originalModelPreparation": {
+      "result": "passed; metadata only",
+      "nativeInputsReused": 8,
+      "unchangedLocalMembers": 45,
+      "steps": 253,
+      "outputs": 40,
+      "reports": 23,
+      "nativeCalls": 0,
+      "providerCalls": 0,
+      "payloadOpens": 0,
+      "repeatedSchemaCalls": 0,
+      "peakRssGiB": 0.149,
+      "peakPhysicalGiB": 0.099,
+      "watchdogSeconds": 2.9,
+      "ownedGroupConfirmedEmpty": true,
+      "fullModelExecution": "not run"
+    },
+    "retainedRuleIdentity": {
+      "result": "passed",
+      "cases": 18,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "fullLane": false,
+      "peakRssGiB": 0.203,
+      "peakPhysicalGiB": 0.131,
+      "watchdogSeconds": 4.2,
+      "ownedGroupConfirmedEmpty": true,
+      "scope": "One focused application metadata file; no repeated producer proof, adoption, schema inference or full model. Doctor's fixed reading-version samples are not broader parser equivalence evidence."
     }
   },
   "commits": {
@@ -2050,6 +2100,26 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/adoption-reconciliation-01/adoption-closeout.json",
       "sha256": "79ee66d2f0e52508067e1659de54a063f65b3559ea0aa9e048499f9e876851ca",
       "size": 3886
+    },
+    "originalProducerProof": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/proof-launch-01/closeout.json",
+      "sha256": "f3dd491a4bce1d0e570ed00f937e3c8213f970e1f54bbedc32f2d7537d6a8586",
+      "size": 18476
+    },
+    "originalProducerProofReview": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/proof-launch-01/closeout-review.json",
+      "sha256": "ac1184af0ab6f1e963b0ab7e81fe7b834de7efd8dc8b40762543e5acc23af8ea",
+      "size": 1233
+    },
+    "originalModelPreparation": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/model-preparation-01/closeout.json",
+      "sha256": "8abf75a955f6535a14cb5b3ecc8b6ad4842758b95f8ebf0120541c7f60b00916",
+      "size": 2542
+    },
+    "retainedRuleIdentity": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/model-preparation-01/tests-terminal.json",
+      "sha256": "156c7b5eb8096db9be5a5694697f9e3910526502d7b3dc74f727e0c087aac72e",
+      "size": 3320
     }
   },
   "constraints": {
@@ -2068,13 +2138,13 @@
     "fullReplacementComplete": false,
     "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Separate raw-row greybeard/ETL reviews closed. Parent reports shared source25 greybeard/ETL reviews closed; its complete required native gate, installed consumer checkpoint and fresh Congress fixture passed. Full model, native package/profile and publication acceptance remain pending. Greybeard/ETL accepted 14e96d07 and exact bounded two-test plan; both fixture tests passed. Both independent reviewers accepted the seven-case installed SDK binding closeout; one-input retained-fixture scope and unchanged native qualification limits remain explicit.",
     "supersededInfrastructureRetired": false,
-    "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
+    "remainingScope": "Complete full model, acquisition and nonarchive workflow adoption; consumer, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
     "archiveModelControllerRetired": true,
-    "producerDefinitionPreparation": "The original producer definition is adopted under the existing native dataset authority. The same request, ID and workspace reconciled successfully after reducing only its metadata allowance; the original failure remains retained. Both original jobs retain their passed schema-only inference on native 255c1848/e2ed2646. The first original eight-table proof is running after a corrected credential-only preflight. Full model data acceptance and all 24,028 recovery/refresh obligations remain unresolved."
+    "producerDefinitionPreparation": "The original producer definition is adopted and its selected eight-table population proof is accepted under native 255c and SDK3. All nine required counters are zero; seven history fields remain informational, including 44,838 older appearance records. Source identities, snapshots and existing failures remain retained. Full model data acceptance and all 24,028 recovery/refresh obligations remain unresolved."
   },
   "definitionImplementation": {
-    "state": "Qualified SDK3 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Fresh original proof/model schema evidence is retained. Original-data execution remains under acceptance.",
+    "state": "Qualified SDK3 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Original producer proof is accepted, and full model schema evidence is retained. Full model data execution remains pending.",
     "owner": "application definitions and consumer adapter; shared DDK fix parent-owned",
     "remaining": [
       "Actual full native JobSpec execution and original snapshot/producer admission using observed native field/element IDs; local authored schema IDs differ for seven tables",
@@ -2087,7 +2157,7 @@
   "simplification": {
     "requirement": "Standardize and streamline the whole catalog-to-validation stack; reduce custom machinery rather than accumulate compatibility patches",
     "decision": "One maintained DDK definition and rule generator; removed old schema validator and registry from production. Native lifecycle composition adds no application journal, mutable selection or data export copy.",
-    "nextIncrement": "Admit the original native producer evidence and data using the qualified SDK3/native package; connect the existing publisher to native frozen intent without an application phase journal.",
+    "nextIncrement": "Prepare and execute the full model using the accepted proof and sealed native input custody, reusing original schema evidence. Then complete reader, workflow and publisher integration without an application phase journal.",
     "historicalCompatibility": "Not required: greenfield migration updates every reader together. Old artifacts remain retained evidence; new-stack history and recovery remain required.",
     "performance": "Removed duplicate schema generator/validator and separate registry; no measured execution speedup claimed. Focused schema retirement peaked at 0.33 GiB RSS.",
     "design": "docs/replacement-ddk/design.md#simplification-is-part-of-acceptance"

@@ -96,7 +96,8 @@ def retained(tmp_path):
     runtime = dict(distributionSha256='a'*64, commit='b'*40)
     policy = native_report_policy(Path(job_pin['path']).read_bytes(), [], inferred, policy_id='required')
     preparation = dict(job=job_pin, result=pin_json(tmp_path/'original-inference.json', inferred),
-        policy=pin_json(tmp_path/'original-policy.json', policy), runtime=runtime)
+        policy=pin_json(tmp_path/'original-policy.json', policy),
+        native_rules=pin_json(tmp_path/'original-native-rules.json', {'rules': 'captured'}), runtime=runtime)
     return SimpleNamespace(job=job, preparation=preparation, inferred=inferred,
         runtime=runtime, native_schemas={'captured': schemas[native_digest]}, payload=payload)
 
@@ -112,7 +113,8 @@ def test_retained_preparation_preserves_original_bytes(retained):
     assert schemas['captured'] == retained.native_schemas['captured']
 
 
-@pytest.mark.parametrize('change', ['runtime', 'job', 'job_pin', 'inference_pin', 'schema_id', 'native_nullability'])
+@pytest.mark.parametrize('change', ['runtime', 'job', 'job_pin', 'inference_pin', 'schema_id',
+                                    'native_nullability', 'missing_native_rules'])
 def test_retained_preparation_refuses_changed_identity(retained, change):
     from viewer_publication.archive_format import _retained_preparation
 
@@ -125,6 +127,8 @@ def test_retained_preparation_refuses_changed_identity(retained, change):
         saved['job']['sha256'] = '0'*64
     elif change == 'inference_pin':
         saved['result']['size'] += 1
+    elif change == 'missing_native_rules':
+        del saved['native_rules']
     else:
         field = pa.field('key', pa.int64(), nullable=change == 'native_nullability',
                          metadata={b'PARQUET:field_id': b'118' if change == 'schema_id' else b'117'})
@@ -133,7 +137,9 @@ def test_retained_preparation_refuses_changed_identity(retained, change):
         _retained_preparation(saved, job, schemas, retained.runtime)
 
 
-def test_retained_release_preparation_opens_no_payload_or_native_process(retained, tmp_path, monkeypatch):
+@pytest.mark.parametrize('rules_change', [None, 'pin', 'content'])
+def test_retained_release_preparation_opens_no_payload_or_native_process(retained, tmp_path, monkeypatch,
+                                                                        rules_change):
     from viewer_publication import archive_catalog, archive_model_proof
     from viewer_publication.archive_format import prepare_native_release
     import ddk.catalog_managed_jobs as managed
@@ -156,8 +162,15 @@ def test_retained_release_preparation_opens_no_payload_or_native_process(retaine
         lambda *args, **kwargs: (bindings, retained.native_schemas))
     monkeypatch.setattr(archive_catalog, 'captured_catalog_options', lambda project: {'native_rule_profile': object()})
     monkeypatch.setattr(archive_catalog, 'native_catalog_mapping', lambda *args, **kwargs: {})
-    monkeypatch.setattr(rules, 'native_rule_artifact', lambda *args, **kwargs: {'rules': 'captured'})
-    monkeypatch.setattr(managed, 'managed_job_definition', lambda *args, **kwargs: 'adopted')
+    monkeypatch.setattr(rules, 'native_rule_artifact',
+        lambda *args, **kwargs: {'rules': 'changed' if rules_change == 'content' else 'captured'})
+    original_rules_pin = {key: retained.preparation['native_rules'][key] for key in ('path', 'sha256')}
+    def definition_from_original_rules(*args, native_rules, **kwargs):
+        assert native_rules == original_rules_pin
+        return 'adopted'
+    monkeypatch.setattr(managed, 'managed_job_definition', definition_from_original_rules)
+    if rules_change == 'pin':
+        retained.preparation['native_rules']['sha256'] = '0'*64
     def must_not_run(*args, **kwargs):
         pytest.fail('Retained metadata preparation reopened a payload or executed native inference')
     monkeypatch.setattr(pq, 'read_schema', must_not_run)
@@ -167,7 +180,7 @@ def test_retained_release_preparation_opens_no_payload_or_native_process(retaine
             must_not_run()
         return original_open(path, *args, **kwargs)
     monkeypatch.setattr(Path, 'open', control_only)
-    request = prepare_native_release(retained.job, [],
+    arguments = dict(
         adapter=SimpleNamespace(tool=retained.runtime, prepare_job=must_not_run),
         project=project, catalog_result=object(), request_dir=request_dir, workspace=workspace,
         dataset='archive', operation='model', policy_id='required',
@@ -176,12 +189,21 @@ def test_retained_release_preparation_opens_no_payload_or_native_process(retaine
         expected_epoch=19, expected_selection=None, controls_dir=tmp_path/'release', private_outputs=[],
         origin={'kind': 'model'}, capture_scope=None, content_files={}, entity_digests=None,
         retained_preparation=retained.preparation)
-    saved = json.loads(Path(request['path']).read_bytes())['native']
+    if rules_change is not None:
+        with pytest.raises(ValueError, match='original artifact identity|Retained native rules'):
+            prepare_native_release(retained.job, [], **arguments)
+        assert not (request_dir/'release-request.json').exists()
+        return
+    request = prepare_native_release(retained.job, [], **arguments)
+    prepared = json.loads(Path(request['path']).read_bytes())
+    assert prepared['native_rules'] == original_rules_pin
+    saved = prepared['native']
     for name in ('job', 'policy'):
         assert saved[name] == {key: retained.preparation[name][key] for key in ('path', 'sha256')}
     assert saved['expected_epoch'] == 19
     assert all(saved[name] == value for name, value in bindings.items())
     assert not (request_dir/'job.json').exists() and not (request_dir/'policy.json').exists()
+    assert not (request_dir/'native-rules.json').exists()
 
 
 @pytest.mark.parametrize('provide_source', [False, True])
