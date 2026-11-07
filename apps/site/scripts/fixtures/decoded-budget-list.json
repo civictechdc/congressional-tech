@@ -1,0 +1,28 @@
+{
+  "kind": "unqualified-reader-test-variant",
+  "nativeQualification": "not_run",
+  "source19Used": false,
+  "baseListSha256": "d1bf684b4f913d2b8736d887bd6be63554b27a203c8ece9b0b1ad4e56770e608",
+  "listSha256": "3606d9617cc2e5bd4a613ded4af76d3d43e098d82b17d87b84f20db2ccfacf5a",
+  "rows": 7,
+  "encodedBytes": 5719,
+  "changedCell": {
+    "field": "title",
+    "row": 0,
+    "replacement": "X repeated 131072 times",
+    "characters": 131072
+  },
+  "allOtherValuesAndSchemaPreserved": true,
+  "writer": {
+    "name": "pyarrow",
+    "version": "25.0.1",
+    "compression": "zstd",
+    "compressionLevel": 3,
+    "useDictionary": true,
+    "writeStatistics": false,
+    "writePageIndex": true,
+    "useCompliantNestedType": false
+  },
+  "purpose": "Compressed list stays smaller than control files while decoded text exceeds the reader heap budget.",
+  "strictSchemaEqualityIncludingMetadata": true
+}

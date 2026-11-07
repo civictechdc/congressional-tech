@@ -1,10 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile,mkdtemp,rm} from 'node:fs/promises';
+import {readFile,writeFile,mkdtemp,rm} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {startArchiveServer,directoryFiles} from './archive-server.mjs';
+import {startArchiveServer} from './archive-server.mjs';
+import {archiveFixture,loadArchiveFixture} from './archive-test-fixture.mjs';
 import {verifyArchive} from './verify-archive.mjs';
 import {writeTargets,checkTargets} from './archive-targets.mjs';
 import {browserDependency} from './archive-browser.mjs';
@@ -109,8 +111,10 @@ test('provisional targets refuse a different release identity and CLI validation
 });
 
 
-test('Node canary keeps its decoded budget without applying browser runtime ceilings',async()=>{
-  const server=await startArchiveServer({release:await directoryFiles(fileURLToPath(new URL('../../../model/fixtures/archive-contract/current',import.meta.url)))});
+test('Node canary keeps its decoded budget without applying browser runtime ceilings',async t=>{
+  const fixture=await loadArchiveFixture();
+  const server=await startArchiveServer({release:fixture.files});
+  const folder=await mkdtemp(join(tmpdir(),'archive-decoded-budget-'));let variantServer;
   const targets={version:1,status:'owner-approved',basis:'real-device',ceilings:{startupMs:1,searchMs:1,detailMs:1,heapBytes:1}};
   try{
     const options={pointerUrl:server.pointerUrl,releaseId:server.manifest.release_id,local:true,checkSaved:false,targets};
@@ -118,8 +122,32 @@ test('Node canary keeps its decoded budget without applying browser runtime ceil
     assert.equal(receipt.status,'incomplete');assert.equal(receipt.savedCopyChecked,false);
     assert(receipt.estimatedListPeakBytes>targets.ceilings.heapBytes);
     assert.throws(()=>checkTargets({releaseId:server.manifest.release_id,startupMs:2,searchMs:2,detailMs:2,heapBytes:2},targets,server.manifest.origin),/startupMs/);
-    await assert.rejects(verifyArchive({...options,heapBytes:1}),/budget|allowance|limit|bytes/i);
-  }finally{await server.close();}
+    await assert.rejects(verifyArchive({...options,heapBytes:1}),{message:/^catalog\.ddk\.json exceeds the startup byte limit\./});
+
+    // This separate, unqualified variant changes one title. Its compressed
+    // bytes fit the control-file allowance; the decoded list must exceed it.
+    const spec=JSON.parse(await readFile(new URL('./fixtures/decoded-budget-list.json',import.meta.url),'utf8'));
+    const listPath=fileURLToPath(new URL('./fixtures/decoded-budget-list.parquet',import.meta.url));
+    const listBytes=await readFile(listPath),sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
+    assert.equal(spec.kind,'unqualified-reader-test-variant');
+    assert.equal(fixture.manifest.files.find(file=>file.name==='list.parquet').sha256,spec.baseListSha256);
+    assert.equal(sha256(listBytes),spec.listSha256);
+    const manifest=structuredClone(fixture.manifest);
+    manifest.files=manifest.files.map(file=>file.name==='list.parquet'?{...file,sha256:spec.listSha256,size:listBytes.length,rows:spec.rows}:file);
+    manifest.release_id=sha256(JSON.stringify([manifest.schema_version,manifest.files.map(file=>[file.name,file.sha256,file.size,file.rows])]));
+    manifest.test_variant={kind:spec.kind,base_release_id:fixture.manifest.release_id,native_qualified:false};
+    const manifestPath=join(folder,'manifest.json');await writeFile(manifestPath,JSON.stringify(manifest));
+    const variant=await archiveFixture({...fixture.files,'manifest.json':manifestPath,'list.parquet':listPath});
+    variantServer=await startArchiveServer({release:variant.files});
+    const startupFiles=['catalog.ddk.json','catalog.report.json','list.parquet'];
+    const heapBytes=Math.max(...manifest.files.filter(file=>startupFiles.includes(file.name)).map(file=>file.size));
+    let budgetError;
+    await assert.rejects(verifyArchive({...options,pointerUrl:variantServer.pointerUrl,releaseId:manifest.release_id,heapBytes}),error=>{
+      assert.match(error.message,/^Archive list exceeds the configured heap budget\./);budgetError=error.message;return true;
+    });
+    assert(variantServer.state.requests.some(request=>request.path.endsWith('/list.parquet')),'the bounded run fetched the list before decoded-budget refusal');
+    t.diagnostic(JSON.stringify({baseReleaseId:fixture.manifest.release_id,baseDecodedPeakBytes:receipt.estimatedListPeakBytes,variantReleaseId:manifest.release_id,variantListSha256:spec.listSha256,heapBytes,budgetError,nativeQualified:false}));
+  }finally{await variantServer?.close();await server.close();await rm(folder,{recursive:true,force:true});}
 });
 
 test('the public canary names the explorer origin so the host returns CORS headers',async()=>{
