@@ -137,16 +137,17 @@
     "Committed 14e96d07: require explicit pinned recovery requirements and matching capture-profile v2 before model request creation; preserve required output checks and migrate fixture callers.",
     "Replaced capture-wide DISTINCT in recovery eligibility with candidate-left LEFT SEMI membership, preserving decision multiplicity. Two focused native cases pass; no speedup or file-pruning claim.",
     "Human selected verified recovered originals plus continuing official updates: historical_exact + refresh_live. Updated the decision and boundary diagram; missing input population is not treated as an intended zero.",
-    "Committed 55d08298: one same-read conditional additive generation-pin writer preserves existing protection; removed redundant collector read and maintenance unconditional fallback. Both independent source reviews closed; 106 distinct focused cases passed."
+    "Committed 55d08298: one same-read conditional additive generation-pin writer preserves existing protection; removed redundant collector read and maintenance unconditional fallback. Both independent source reviews closed; 106 distinct focused cases passed.",
+    "Bound the selected historical recovery cohort through maintained inventory/candidate/planner owners: 24,028 distinct literal targets and explicit historical_exact / recovery-identity-v1 / refresh_live requirements; all unresolved, all 480 other relationships unchanged. Two local native calls passed in 2.8 seconds at 0.493 GiB peak RSS; independent review found no survivors or evidence discrepancy.",
+    "Regenerated policy-dependent model profiles, full JobSpec, local-file inventory, report expectations and producer-definition draft: 52 inputs, 253 steps, 40 outputs, 23 reports, 225 counters in seven required reports. Eight native selectors, observed IDs, original producer facts and successful proof preserved. Metadata-only preparation passed in 3.3 seconds at 0.199 GiB RSS after a caller-directory correction; failed attempt retained. No successor native inference or model execution."
   ],
   "active": [
-    "Native owner must enforce complete model file-input inventories and qualify original static proof/population/prerequisites. The preserved 51-input source09 model refused schema preparation; the human chose historical_exact + refresh_live; exact release-relevant target/candidate/provenance inputs and a frozen bounded native plan remain required before a full-model retry.",
+    "Qualify exact producer admission, population proof and prerequisites, then infer and accept the policy-bound 52-input model. The reviewed 24,028-target requirements and complete successor definition now exist; a new bounded native handoff is required before model execution.",
     "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
     "Qualify/install local shared input reuse; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
-    "Bind release-relevant missing-document targets, candidates and verified recovered-original provenance through the maintained campaign planner under the selected historical_exact + refresh_live behavior; then regenerate only affected policy profiles, model job, file inventory, report policy and adoption-definition draft.",
     "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings",
     "Bind native inputs from their admitted observed schemas and original physical IDs; seven local authored schemas have different IDs and cannot prove original native identity",
     "Integrate native frozen publication intent, actual publisher permission/restore fencing and complete intent/upload/reader lifetime accounting; generation-pin union is corrected but pending-prefix retirement remains open. Public execute stays closed."
@@ -1416,6 +1417,87 @@
         "size": 3719
       },
       "qualification": false
+    },
+    "selectedRecoveryRequirements": {
+      "status": "bounded_native_materialization_and_independent_closeout_passed",
+      "acceptance": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/policy-materialization-01/acceptance.json",
+        "sha256": "a7ea352b4c9e16c45bf1589eb695bfa207258458aa450c1886ebf1598693169f",
+        "size": 8014
+      },
+      "review": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/policy-materialization-01/post-execution-review.json",
+        "sha256": "280054ea1e612d99576238ac83632ae1b3aa9803cc19ea190b5d3a78e7a8cccc",
+        "size": 960
+      },
+      "watchdog": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/policy-materialization-01/watchdog.json",
+        "sha256": "cb6170923944bbd5dbe64771424b2b9382fde211efb0279a1e2e2e4f5df5ca33",
+        "size": 423
+      },
+      "counts": {
+        "active_decisions": 24028,
+        "current_acceptances": 0,
+        "decision_ids": 24028,
+        "literal_targets": 24028,
+        "membership_rows": 24823,
+        "other_relationships": 480,
+        "target_body_pairs": 24028,
+        "target_candidate_pairs": 24028
+      },
+      "unresolvedTargets": 24028,
+      "exitCode": 0,
+      "seconds": 2.8,
+      "peakRSSGiB": 0.493,
+      "peakPhysicalGiB": 0.393,
+      "processSurvivors": 0
+    },
+    "producerPolicySuccessor": {
+      "status": "static_metadata_preparation_passed_native_inference_adoption_and_execution_not_run",
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/final-handoff.json",
+        "sha256": "03feb8fec4733dc6636dfb37ad18c31ee8fa24b0b8df85411f27fa4be40640fb",
+        "size": 6234
+      },
+      "draft": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/producer-definition.policy.draft.json",
+        "sha256": "451665d039c8d361572c5d26a6a1803887fb97f8c08bd0b10c71a1961c0ccd1c",
+        "size": 201169
+      },
+      "job": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/model-job.json",
+        "sha256": "7652afbef21530dcca4a08bd5a5b4267b3086c1d566a8713332e7a5ff996b451",
+        "size": 534049
+      },
+      "policy": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/model-policy.json",
+        "sha256": "64dc5bf2d86a163df1b27e819b9b20b120828514d47c4e919eb335e7a79280f7",
+        "size": 34276
+      },
+      "counts": {
+        "inputs": 52,
+        "outputs": 40,
+        "reports": 23,
+        "requiredCounters": 225,
+        "requiredReports": 7,
+        "steps": 253
+      },
+      "localInputs": 44,
+      "nativeInputs": 8,
+      "generationHead": "7b23768a12ec80f71ab1e87ec63c6cce7d8b31e7",
+      "producerAuthorityHead": "ab97bb17a2ba7d58188ed234c6ce36ed54d3defb",
+      "watchdog": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/watchdog.json",
+        "sha256": "aaa23781bdc3012c643ed2f266a49c794d62290ddc3c0cc40d1cd54a96721f5f",
+        "size": 403
+      },
+      "seconds": 3.3,
+      "peakRSSGiB": 0.199,
+      "failedAttempt": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/attempt-01",
+      "directoryCorrectionChangedModelBytes": false,
+      "unchangedLocalInputs": 42,
+      "unchangedLocalInputBytes": 49637103,
+      "independentReviews": "Artifact identity, source authority, native schema declarations, input membership and reuse passed; report schemas remain authored expectations"
     }
   },
   "commits": {
@@ -1592,6 +1674,22 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/mapping-discovery.json",
       "sha256": "e3f800d608cca36aa059373488da3081c7b65e42a2c73a914ea1c18bef675756",
       "size": 3869
+    },
+    "selectedRecoveryRequirementsPlan": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/policy-materialization-01/plan.json",
+    "selectedRecoveryRequirements": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/policy-materialization-01/acceptance.json",
+      "sha256": "a7ea352b4c9e16c45bf1589eb695bfa207258458aa450c1886ebf1598693169f",
+      "size": 8014
+    },
+    "selectedRecoveryRequirementsReview": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/policy-materialization-01/post-execution-review.json",
+      "sha256": "280054ea1e612d99576238ac83632ae1b3aa9803cc19ea190b5d3a78e7a8cccc",
+      "size": 960
+    },
+    "producerPolicySuccessor": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/final-handoff.json",
+      "sha256": "03feb8fec4733dc6636dfb37ad18c31ee8fa24b0b8df85411f27fa4be40640fb",
+      "size": 6234
     }
   },
   "constraints": {
@@ -1653,11 +1751,27 @@
       "target_requirement": "historical_exact",
       "refresh_policy": "refresh_live",
       "acceptance_policy": "recovery-identity-v1",
-      "scope": "Missing-document targets in the selected Congress release; scoped local implementation and qualification only",
-      "population": "Exact release-relevant target/candidate/provenance inputs not yet bound",
+      "scope": "All 24,028 distinct literal original targets in the selected historical recovery cohort; scoped local implementation and qualification only",
+      "population": "All 24,028 distinct literal targets bound; matched/unmatched decisions and all 480 other relationships preserved; every target remains unresolved",
       "publicationAuthorized": false,
       "productionPinPromotionAuthorized": false,
-      "historicalDiscovery": "Two exact original provenance files and their pinned historical mapping verified. Native membership:11596 matched active decisions/12391 complete captures,12432 unmatched,678multi-capture decisions. All active decisions lack v2 acceptance. Exact target census and direct-history binding remain pending; requirements can be authored before acceptance."
+      "historicalDiscovery": "Two exact original provenance files and their historical mapping verified. Native membership: 11,596 matched active decisions / 12,391 complete captures; 12,432 unmatched; 678 decisions with multiple captures. All active decisions lack v2 acceptance. The selected historical cohort defines scope; no archive-wide census or direct-document absence claim is required.",
+      "requirements": {
+        "custody": [
+          16777234,
+          1092094746,
+          204427,
+          1794036353441777565,
+          1794036353447293848,
+          1
+        ],
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/policy-materialization-01/planned/recovery-requirements.parquet",
+        "rows": 24028,
+        "sha256": "d7dbf6a186cb69b867bfdada4f1c22981659a3a409206db791c1534ac7fde245",
+        "size": 204427
+      },
+      "currentAcceptances": 0,
+      "successorModel": "Complete policy-bound 52-input/253-step definition regenerated; native inference, adoption and model acceptance not run"
     }
   }
 }

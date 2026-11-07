@@ -128,7 +128,8 @@ flowchart TB
         producer_definition["Freeze original Git/source/version facts, observed schemas, both JobSpecs and exact required policies"]
         local_pins["Pin all local file bytes separately from their JobSpec paths"]
         recovery_choice["Human choice: verified recovered originals and continuing official updates"]
-        recovery_population["Bind release-relevant targets, candidates and recovered-original provenance — pending"]
+        recovery_population["Bind all 24,028 selected historical targets, every candidate and unchanged provenance"]
+        recovery_obligations["Maintained planner: 24,028 exact-original and live-refresh requirements bound; every qualification remains unresolved"]
         capture_policy["Require pinned recovery requirements and matching version-2 capture profile"]
         request["Verify the pinned runtime; retain the original request and local input paths"]
         retry["Retry presents that same request and digest"]
@@ -195,7 +196,7 @@ flowchart TB
     end
 
     check --> capture_policy --> request --> admit
-    recovery_choice --> recovery_population --> local_pins --> capture_policy
+    recovery_choice --> recovery_population --> recovery_obligations --> local_pins --> capture_policy
     frozen --> producer_definition --> adopt --> admit
     local_pins --> file_binding
     retry --> request
@@ -227,7 +228,7 @@ flowchart TB
     lifetime -.-> retirement
     present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
-    class recovery_population,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
+    class adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
 ```
 
 The producer path uses the existing native dataset authority and retained job
@@ -236,10 +237,12 @@ zero counters and seven informational history counts. The preserved policy-free
 model has seven required report groups and 224 counters, but native schema
 inference refused it: the current output requires capture fields that this old
 graph does not emit. The application now requires explicit policy-bound version-2
-preparation. Its expected model has 225 counters, including the requirements
-check. The human chose `historical_exact` plus `refresh_live`; exact
-release-relevant targets, candidates and matching recovery provenance remain
-to be bound through the [maintained campaign planner](recovery-policy-decision.md).
+preparation. The [maintained campaign planner](recovery-policy-decision.md) has
+bound all 24,028 literal targets in the selected historical recovery cohort to
+`historical_exact` plus `refresh_live`, retaining unmatched candidates and all
+other relationships. Every target's history and qualification remain explicitly
+unresolved. The regenerated model has 225 authored counters, including the
+requirements check; native inference and acceptance remain pending.
 The adopted definition must pin
 both complete jobs and both exact policies; changing a policy requires a new
 adoption in this profile. An earlier development candidate's policy-only
@@ -256,12 +259,15 @@ do not prove that the declared producer actually wrote every retained row.
 Before real payload work, native admission still needs an exact manifest and
 unique-file census, cumulative footer/index and inherited-evidence accounting,
 output/partial/spill allowances and measured free space. Snapshot summary totals
-alone cannot establish fit. Revision C adds the model's 43 local input inventories
-to the draft definition using the existing `JobFileInput` shape. Native admission
-must compare every member key, hash and size before existing custody work. That
-field closes the draft's missing content binding; enforcement remains pending.
-The selected recovery requirements will add one more local input. The existing
-draft must be regenerated after that choice; a fixture file cannot fill this gap.
+alone cannot establish fit. The
+[policy-bound successor](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/final-handoff.json)
+now has 44 local input inventories using the existing `JobFileInput` shape.
+It replaces the empty recovery input with the two original provenance files and
+adds the real requirements file. Native admission must compare every member key,
+hash and size before existing custody work. The original proof and producer
+authority remain unchanged; the successor separately records the current
+model-generation source. This preparation does not establish native adoption,
+enforcement or model acceptance.
 
 The application composition now captures one immutable release request, uses the
 maintained native `prepare`, `accept` and `select` calls, and requires a checked

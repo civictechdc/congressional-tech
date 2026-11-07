@@ -4,10 +4,12 @@ The current output needs an explicit recovery policy and its exact requirements
 file. The application now refuses a missing file or a prepared capture profile
 that does not match it. The required fields and acceptance checks remain intact.
 The human selected: **“Include verified recovered originals and keep checking
-for updates.”** For missing-document targets in this selected release, this
-means `historical_exact` plus `refresh_live`. The purpose decision is resolved;
-the exact release-relevant target, candidate and provenance inputs still need
-to be bound before generating the requirements file.
+for updates.”** For the selected historical recovery cohort, this means
+`historical_exact` plus `refresh_live`. Its boundary is all 24,028 distinct
+literal original targets in the two pinned historical recovery files. This is
+an explicit selected cohort, not a census of every missing archive document.
+The maintained planner has bound the complete cohort. Candidate acceptance remains
+pending.
 
 The maintained policy is `recovery-identity-v1`. A requirements row names one
 literal `original_url`, its `target_requirement`, that `acceptance_policy`, and
@@ -49,7 +51,9 @@ RSS; [the retained result](/Users/mikewolfd/Work/congressional-tech/.cache/archi
 records the exact inputs, checks and independent reviews. It read receipt metadata
 only. Its `retained_import` filter does not establish absence of a usable direct
 document. Selected capture membership, missing-target census and accepted-original
-qualification remain distinct checks.
+qualification remain distinct checks. The selected cohort includes every matched
+and unmatched target; membership in this cohort does not require a missing-direct
+finding. All 480 other relationships keep their original meaning.
 
 The exact historical mapping named by those decisions was also recovered and
 hash-verified: 24,028 rows in 9,638,187 bytes. Its original bytes and backup receipt
@@ -57,7 +61,7 @@ are retained beside the discovery evidence. It supplies literal target/candidate
 URLs, body keys, format, basis and status. Those fields preserve historical
 provenance; they do not supply current source-native identity or qualification.
 
-## Selected behavior and remaining input binding
+## Selected behavior and input binding
 
 | Selected field | Value | Effect |
 | --- | --- | --- |
@@ -68,19 +72,40 @@ provenance; they do not supply current source-native identity or qualification.
 The parent chat conveyed the explicit human choice on 2026-11-07. It authorizes
 scoped local implementation and qualification, not publication, production pin
 promotion or unbounded acquisition. The maintained campaign planner must emit
-one row per selected literal target from pinned release-relevant target and
-candidate inputs. Matching recovered-original provenance joins those inputs.
+one row per selected literal target from pinned historical target and candidate
+inputs. All original provenance remains bound, including superseded source
+decisions and relationships that do not satisfy `historical_exact`.
 A file path alone is insufficient: the final selection must name its SHA-256,
 byte size, policy identity and matching provenance population. The old empty
 staged input is not the chosen population. Unrelated campaigns cannot substitute
 for a missing release binding.
 
 The requirements file can be generated while candidate acceptance remains
-pending. First bind the selected release's literal target population and its
-direct-capture, scope and unknown-history facts. Then use the maintained
-inventory and planner with explicitly supplied candidates. The matching subset
-above cannot replace that census, and retained imports cannot stand in for
-ordinary direct-capture history.
+pending. The maintained inventory receives the complete literal target population
+and explicitly unresolved direct-capture history and qualification. Its planner
+then records the selected obligations using explicitly supplied candidates.
+Neither the matched subset nor a claim that every target lacks a direct document
+defines this boundary. Retained imports cannot stand in for ordinary direct-capture
+history. No archive-wide census or source fetch is needed to author these
+requirements.
+
+The bounded preparation reused the completed 24,823-row membership table. One
+native materialization removed capture multiplicity while preserving every active
+decision's fields and original source line. The descriptor pins those decisions
+and the full membership table beside the target and candidate tables. The final
+receipt also binds all 24,085 original source records. Decision, distinct literal
+target, target/body-pair and target/candidate-pair counts are checked separately.
+The maintained planner produced one unresolved ledger row and one explicit
+requirement per target. It created no version-2 acceptance.
+
+The resulting requirements contain 24,028 rows in 204,427 bytes, SHA-256
+`d7dbf6a186cb69b867bfdada4f1c22981659a3a409206db791c1534ac7fde245`.
+The two-call run completed in 2.8 seconds at 0.493 GiB peak sampled RSS. Independent
+review reconciled its native output pins, all planner counters and preserved
+source arithmetic, and found no surviving process. The
+[acceptance receipt](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/policy-materialization-01/acceptance.json)
+binds the exact inputs, jobs, results and pending obligations. No source body or
+remote data was read during this preparation.
 
 For a campaign, the maintained rules offer these meanings:
 
@@ -122,12 +147,20 @@ originals that deliberately remain eligible under `refresh_live`. Existing
 historical recovery rows retain their own evidence and meaning; selecting this
 policy does not rewrite them or establish their qualification.
 
-Once the exact selected population is bound, regenerate the policy-bound profiles, complete
-model job, local-file inventory, report policy and enclosing adoption definition.
-The expected graph is 52 inputs, 253 steps, 40 outputs and 23 reports, with 225
-required counters in seven reports, subject to native inference. Reuse the eight
-original selectors, observed schemas, unchanged prepared files and successful
-proof-schema evidence. Preserve the refused 51-input request and its receipts.
+The policy-bound profiles, complete model job, local-file inventory, report policy
+and enclosing adoption-definition draft have been regenerated. This
+[successor handoff](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/final-handoff.json)
+contains 52 inputs, 253 steps, 40 outputs and 23 reports, with 225 authored required
+counters in seven reports. Its 44 local inputs include both original provenance
+files and the requirements. The eight native selectors, observed schemas,
+unchanged prepared inputs and successful proof-schema evidence are reused.
+The refused 51-input request remains intact. Native schema inference, producer
+adoption and model execution for this successor have not run.
+
+Metadata generation completed in 3.3 seconds at 0.199 GiB sampled RSS. Its first
+attempt stopped at a missing caller-created control directory; the failed log
+and partial artifacts remain in `attempt-01`. Creating that required directory
+fixed the caller. The two attempts produced identical model JobSpec bytes.
 
 Source owners: `corpus_recovery.acceptance`, `corpus_recovery.campaign`,
 `viewer_publication.archive_url_state`, and `archive_model_job`. Native admission,
