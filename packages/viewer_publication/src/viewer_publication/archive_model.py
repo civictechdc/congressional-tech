@@ -1017,6 +1017,16 @@ def require_model_runtime(engine):
     engine.verify_runtime()
 
 
+def model_adapter(engine, *, evidence_dir):
+    """Use the host's explicit metadata bound for native capture and recovery."""
+    from ddk.adapters.docspec import DocSpecAdapter
+    limits=json.loads(engine.limits.read_bytes())
+    metadata_bytes=limits['max_metadata_bytes']
+    return DocSpecAdapter(engine.binary,limits,timeout=engine.timeout,
+        capture_bytes=metadata_bytes,metadata_bytes=metadata_bytes,
+        source_commit=engine.source_revision,evidence_dir=evidence_dir)
+
+
 def require_model_capture_policy(prepared):
     """Refuse a historical or mismatched capture graph before request creation."""
     from congress_api.models.archive_profile import validate_capture_profile,validate_recovery_policy
@@ -1034,7 +1044,6 @@ def require_model_capture_policy(prepared):
 
 def build_prepared_release(prepared,*,engine,native_scope,producer_proof,producer_definition,output,root=ROOT,snapshot_source=None):
     """Retain, qualify and select the complete model; return its exact file inventory."""
-    from ddk.adapters.docspec import DocSpecAdapter
     from ddk.catalog import assemble_catalog
     from viewer_publication.archive_catalog import capture_definitions, captured_catalog_options
     from viewer_publication.archive_format import (native_release_job,
@@ -1053,8 +1062,7 @@ def build_prepared_release(prepared,*,engine,native_scope,producer_proof,produce
     directory.mkdir(parents=True, exist_ok=False)
     project = capture_definitions(directory/'definitions', root=Path(root))
     catalog = assemble_catalog(project, **captured_catalog_options(project))
-    adapter = DocSpecAdapter(engine.binary, engine.limits, timeout=engine.timeout,
-        source_commit=engine.source_revision, evidence_dir=directory/'observations')
+    adapter = model_adapter(engine, evidence_dir=directory/'observations')
 
     def prepare(inputs, steps, **options):
         job, diagnostics = native_release_job(inputs, steps, catalog_result=catalog, **options)

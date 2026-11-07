@@ -281,15 +281,13 @@ def execute(spec, *, snapshot_source=None):
 
 def resume_prepared(prepared, *, engine_config, snapshot_source=None):
     """Consume the original request; never rebuild inputs or capture new definitions."""
-    from ddk.adapters.docspec import DocSpecAdapter
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_format import execute_native_release
-    from viewer_publication.archive_model import require_model_runtime
+    from viewer_publication.archive_model import require_model_runtime,model_adapter
 
     with NativeDatasets.from_config(engine_config) as engine:
         require_model_runtime(engine)
-        adapter=DocSpecAdapter(engine.binary,engine.limits,timeout=engine.timeout,
-            source_commit=engine.source_revision,evidence_dir=Path(prepared['path']).parent/'observations')
+        adapter=model_adapter(engine,evidence_dir=Path(prepared['path']).parent/'observations')
         manifest,files=execute_native_release(prepared,adapter=adapter,snapshot_source=snapshot_source)
     return dict(status='built',executed=True,release_id=manifest['release_id'],
         files={name:str(path) for name,path in files.items()},

@@ -38,9 +38,17 @@ def test_resume_passes_private_source_without_opening_it_or_changing_request(
 
     engine = SimpleNamespace(binary='unused', limits=tmp_path/'limits.json', timeout=5,
         source_revision='d'*40, binary_sha256='e'*64, verify_runtime=lambda: None)
+    limits = dict(max_metadata_bytes=32 << 20)
+    engine.limits.write_text(json.dumps(limits))
     monkeypatch.setattr(NativeDatasets, 'from_config', lambda path: nullcontext(engine))
-    monkeypatch.setattr(docspec, 'DocSpecAdapter', lambda *args, **kwargs:
-                        SimpleNamespace(managed_job=observe))
+
+    def adapter(binary, host_limits, **options):
+        assert binary == engine.binary and host_limits == limits
+        assert options['capture_bytes'] == options['metadata_bytes'] == 32 << 20
+        assert options['timeout'] == engine.timeout
+        return SimpleNamespace(managed_job=observe)
+
+    monkeypatch.setattr(docspec, 'DocSpecAdapter', adapter)
     original_open = Path.open
 
     def open_control(path, *args, **kwargs):
