@@ -1018,12 +1018,13 @@ def require_model_runtime(engine):
 
 
 def model_adapter(engine, *, evidence_dir):
-    """Use the host's explicit metadata bound for native capture and recovery."""
+    """Use host metadata bounds and keep native work in the host-owned group."""
     from ddk.adapters.docspec import DocSpecAdapter
     limits=json.loads(engine.limits.read_bytes())
     metadata_bytes=limits['max_metadata_bytes']
     return DocSpecAdapter(engine.binary,limits,timeout=engine.timeout,
         capture_bytes=metadata_bytes,metadata_bytes=metadata_bytes,
+        new_process_group=False,
         source_commit=engine.source_revision,evidence_dir=evidence_dir)
 
 

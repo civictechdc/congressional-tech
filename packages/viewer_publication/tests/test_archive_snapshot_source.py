@@ -45,6 +45,7 @@ def test_resume_passes_private_source_without_opening_it_or_changing_request(
     def adapter(binary, host_limits, **options):
         assert binary == engine.binary and host_limits == limits
         assert options['capture_bytes'] == options['metadata_bytes'] == 32 << 20
+        assert options['new_process_group'] is False
         assert options['timeout'] == engine.timeout
         return SimpleNamespace(managed_job=observe)
 
