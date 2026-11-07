@@ -45,6 +45,26 @@
       },
       "installedDependencyChanged": false,
       "productionRuntimePinChanged": false
+    },
+    "localNativeInputReuseDevelopment": {
+      "ddkCatalogObservationCommit": "405ed5514ac403a3fcadee2d396f9bb206bf98a8",
+      "ddkPublicConsumerCommit": "a859d21e08508f09210f7481926067d6b3257144",
+      "scope": "Exact source-consumer input reuse and earlier file/snapshot paths. Same-name and renamed-input chains preserve original bytes/operation after original producer and donor caller files are removed. Native donor retirement and physical dedup are separate unit evidence.",
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/reuse-consumer-source-02/consumer-01/handoff.json",
+        "sha256": "4976b67fc2213b0638571d3f492d16ea839e002470ad179a78b286e87f074f1e",
+        "size": 3350
+      },
+      "qualification": "not_run",
+      "nativeProfilesClaimed": [],
+      "nativeBinary": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-snapshot-custody/runtime/docspec-snapshot-custody-source09",
+        "sha256": "95a98c665717d4dd6202c62747e4f1f1b16b2d9dec7d2e572189f16c4c01c50f",
+        "size": 350352016
+      },
+      "installedDependencyChanged": false,
+      "productionRuntimePinChanged": false,
+      "independentReviews": "Parent reports both independent reviews closed"
     }
   },
   "completed": [
@@ -111,11 +131,12 @@
     "Hash-verified source25 closeout and its complete required native gate, installed dev6 consumer and fresh Congress receipts. Gate exit 0 in 849.80 seconds and installed consumer 4/4 passed. Scoped local-file retained-job repair closed; native package/profile qualification, original table custody, producer prerequisites and publication intent remain separate.",
     "Retained all eight selected native metadata objects and 18 original producer head/base records with 26 GETs totaling 31,906 bytes. Existing static proof and historical Git-source producer-version checks passed for all eight selected inputs without row reads. Captured 18 small model/anchor/schema originals for durable custody. Found 117 physical field/element-ID differences across seven authored schemas; all other schema meaning and logical identifier paths match. Native admission and observed-ID binding remain required.",
     "Built the current 30-page Astro site and passed 12 real browser cases against original source25 files: six rich entity views and document filters on desktop and phone, including explicit unknown nomination details. Zero page errors or production archive requests. No source/native change or production activation; maintained reader still matches 81f4f00d.",
-    "Verified shared source07 local native snapshot-custody handoff and its source/candidate/result/JUnit/resource/inventory references. All six public DDK source adapter cases passed at unchanged 128 MiB native memory and 64 MiB scratch; focused native snapshot and FileIO stages also passed. This is development evidence only; no application native run, dependency/pin change or guard replacement."
+    "Verified shared source07 local native snapshot-custody handoff and its source/candidate/result/JUnit/resource/inventory references. All six public DDK source adapter cases passed at unchanged 128 MiB native memory and 64 MiB scratch; focused native snapshot and FileIO stages also passed. This is development evidence only; no application native run, dependency/pin change or guard replacement.",
+    "Verified source09 local same-owner input-reuse handoff and all named metadata references. Fifteen public DDK adapter cases passed, including chained and renamed-input reuse after original source/caller-file removal, exact values/field IDs, cold replay/acceptance/selection and malformed-reference refusal. Native owner reports ten focused unit cases covering additional retirement/provenance obligations; stage receipts passed. Source development only: no application run, installed profile, successor full gate or pin promotion."
   ],
   "active": [
     "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
-    "Finish shared input-custody grants, original producer prerequisites, actual remote native inputs and frozen publication intent; qualify/install the profile and then admit the maintained application entry end to end",
+    "Qualify/install local shared input reuse; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
@@ -1215,6 +1236,69 @@
       "fullLane": false,
       "applicationNativeRuns": 0,
       "productionRuntimePinChanged": false
+    },
+    "localNativeInputReuseSource09": {
+      "status": "passed",
+      "scope": "Exact source-consumer input reuse and earlier file/snapshot paths. Same-name and renamed-input chains preserve original bytes/operation after original producer and donor caller files are removed. Native donor retirement and physical dedup are separate unit evidence.",
+      "qualification": "not_run",
+      "nativeProfilesClaimed": [],
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/reuse-consumer-source-02/consumer-01/handoff.json",
+        "sha256": "4976b67fc2213b0638571d3f492d16ea839e002470ad179a78b286e87f074f1e",
+        "size": 3350
+      },
+      "counts": {
+        "tests": 15,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      "resourceSummary": {
+        "samples": 47,
+        "peakSampledFamilyRssBytes": 190578688,
+        "peakNetAllocatedGrowthBytes": 12705792,
+        "minimumFreeBytes": 83405344768,
+        "elapsedSeconds": 237.7044952500146
+      },
+      "artifactCount": 1425,
+      "parentReportedNativeLimits": {
+        "memoryBytes": 134217728,
+        "scratchBytes": 67108864
+      },
+      "focusedNativeStages": {
+        "reportedCases": 10,
+        "scope": "Native owner reports ten focused unit cases; hashed stage receipt verifies reuse, physical-charge, snapshots, FileIO and strict Clippy exit 0",
+        "evidence": {
+          "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-snapshot-custody/focused-09-stages-result.json",
+          "sha256": "16a46cbb358dbe588403d429cec74196ecde23d6e41c83aa5cc2ea8ae48127de",
+          "size": 2135
+        }
+      },
+      "remaining": {
+        "native_deletes": "refused",
+        "producer_prerequisites": "refused/pending",
+        "remote_runtime_consumer": "not_run",
+        "full_gate": "not_run",
+        "physical_deletion": "not_run",
+        "publication_intent": "unimplemented"
+      },
+      "independentReviews": "Parent reports both closed",
+      "fullLane": false,
+      "applicationNativeRuns": 0,
+      "installedDependencyChanged": false,
+      "productionRuntimePinChanged": false,
+      "verifiedHandoffReferences": [
+        "source",
+        "nativeCandidate",
+        "result",
+        "junit",
+        "monitor",
+        "metrics",
+        "admission",
+        "processCheck",
+        "artifactInventory",
+        "priorUnexecutedSource"
+      ]
     }
   },
   "commits": {
@@ -1360,6 +1444,11 @@
       "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/consumer-01/handoff.json",
       "sha256": "2b984615cad19ba36bc55073663183624c63278cc47de4a80ee139f4aa7cdfeb",
       "size": 3513
+    },
+    "localNativeInputReuseSource09": {
+      "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/reuse-consumer-source-02/consumer-01/handoff.json",
+      "sha256": "4976b67fc2213b0638571d3f492d16ea839e002470ad179a78b286e87f074f1e",
+      "size": 3350
     }
   },
   "constraints": {

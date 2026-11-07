@@ -103,8 +103,8 @@ This is the greenfield production path. Boxes assign responsibility; they do not
 assert that every connection is implemented. The implementation and qualification
 state remains in [status](status.json). DDK has no independent execution journal
 or mutable selection. Every reader uses the same current catalog format.
-The inner native boundary marks the source25 local-file gate and the source07
-local snapshot development cases. Installed-profile qualification remains open.
+The inner native boundary marks the source25 local-file gate and the source09
+local snapshot/reuse development cases. Installed-profile qualification remains open.
 Dashed boxes identify native input and publication capabilities still required
 for production; acquisition adoption and full application acceptance also remain
 open.
@@ -130,9 +130,9 @@ flowchart TB
     subgraph native["DocSpec — execution, native evidence and data authority"]
         admit["Admit operation identity, scope and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
-        native_custody["Own the exact selected snapshot and observed native schema — local development proof only"]
-        input_admission["Bind shared input authority and original producer prerequisites — native support pending"]
-        subgraph local_jobs["Local execution evidence — file jobs and snapshot cases"]
+        native_custody["Own or reuse exact inputs and observed native schemas under the same owner — local development proof only"]
+        input_admission["Bind original producer definitions and prerequisites — native support pending"]
+        subgraph local_jobs["Local execution evidence — file jobs, snapshots and input reuse"]
             prepare["4. Infer every named schema without executing data"]
             compute["5. Execute the captured JobSpec over admitted exact inputs"]
             candidate["Retain candidate, required reports and useful checkpoints"]
@@ -309,16 +309,23 @@ the observed schema and preserve its IDs; local schema declarations cannot stand
 in for an existing table's physical identity. This is why native custody feeds
 schema preparation directly in the diagram.
 
-The shared source07 development candidate now has six passing public DDK source
-adapter cases for local native snapshots at 128 MiB native memory and 64 MiB
-scratch. They cover exact values, nulls and native field IDs; recovery after
-original metadata removal; incorrect metadata/UUID/schema/snapshot refusal; and
-accepted replay and selection. The handoff and its source, candidate, result,
-JUnit, resource and inventory references were hash-verified. This establishes the
-scoped local custody step shown above. It does not qualify an installed profile,
-remote inputs, deletes, input sharing between operations or original producer
-prerequisites. The native owner is implementing shared custody grants so proof
-and model operations can use one owned capture.
+The shared source09 development candidate now has fifteen passing public DDK
+source adapter cases at the original 128 MiB native memory and 64 MiB scratch
+limits. These cover the existing file/snapshot paths and input reuse from an
+original operation through receiving and chained operations under the same
+native owner. Renamed inputs and removal of original source/caller files preserve
+exact values, field IDs and original identity. Cold replay, acceptance, selection
+and malformed-reference refusals also pass. Native unit evidence separately
+covers retirement of the supplying operation before receiver sealing and
+retention of provenance when only results remain.
+
+The handoff and its source, candidate, result, JUnit, resource, process and
+inventory references were hash-verified; no matching owned process remained.
+This establishes local input reuse without an application copy owner or reuse
+controller. Original producer-definition adoption/prerequisites, installed
+qualification, the successor's full gate, remote/deletes and publication intent
+remain separate. Source25 and earlier accepted data retain their original
+runtime identities.
 
 The model entry now supplies explicit native selection authority, requires
 original producer prerequisites and verifies the configured executable before
@@ -328,7 +335,8 @@ new definitions. A requalification request may reference the original pinned
 rules file in another request directory; catalog admission permits that exact
 file, not its surrounding directory.
 
-Custody for the actual remote inputs, shared input authority, qualified producer interpretation,
+Custody for the actual remote inputs, application adoption of shared input authority,
+qualified producer interpretation,
 frozen publication intent and full application activation remain open shared
 requirements. The incumbent model phase controller and daily checkpoint import
 have been removed. The publisher verifies accepted native paths and retains its
