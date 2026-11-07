@@ -1,6 +1,6 @@
 ---
 id: ct-oh9y
-status: in_progress
+status: closed
 deps: []
 links: [ct-t915, ct-gi01, ct-irxg]
 created: 2026-11-05T23:51:58Z
@@ -46,3 +46,7 @@ This reviewed follow-up is not yet included in local main. Reconciled follow-up 
 Integrated approved repair c2be1c10 into main at 69048036. All 17 combined controls passed (partial lane): publisher status history survives current-record selection, and held evidence applies only to its documented date. The original review findings are resolved. Independent combined review approved the merged behavior.
 
 Keep in_progress for the five source controls, three negative plants, normal MCP/site checks and selected public readback on the final release. No final build or deployment is claimed. Evidence: .cache/archive-release/implementation/merge-prune-20261106T180951Z/oh9y-combined-checks.json and combined-cause-delta-69048036.md.
+
+**2026-11-07T22:29:58Z**
+
+November 7, 2026 public acceptance passed on Congress Explorer 0.6.2 archive 5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1. Hosted MCP get_entity and search_entities and the Pages hearing details agreed on all five controls. Scheduled 326026 stayed unknown, 106921 was canceled, Postponed 110924 showed held with dated evidence, and the rescheduled October 101422 stayed unknown while December 101545 showed held with its hearing print. MCP retained the 101422 to 101545 successor. Pages showed the selected dates, distinct publisher status and outcome, reasons, references and publisher observation history. The public manifest carries the same meetings asset digest be14d8094c40f355351a2a87c0eff995cdb0694bbeeee235002bbfdf42c1890b as qualified d30d71fc. The independent source comparison, three caught plants and old-release unavailable outcome control carry forward. Evidence: .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-oh9y/public-acceptance-5d24699a-01/summary.json, mcp.json, pages.json and reuse.json. Close ct-oh9y.

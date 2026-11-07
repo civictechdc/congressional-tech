@@ -1,6 +1,6 @@
 ---
 id: ct-nozw
-status: in_progress
+status: closed
 deps: []
 links: [ct-hnpc, ct-9xfg, ct-m94a, ct-6r1i]
 created: 2026-11-05T23:51:58Z
@@ -38,3 +38,9 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at b4741504. The source and corrected acceptance harness have independent approval. Review found and repaired a paging variable that overwrote the call function, checks that ignored extra occurrences, and failed retry after lock contention. Controls now cover paging, nulls, multiplicity/order and same-process lock recovery.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Actual shared-native four-recipe comparisons, ct-6r1i conservation, ct-hnpc activity checks and final installed/hosted readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-nozw/REVIEW.md).
+
+**2026-11-07T22:29:58Z**
+
+November 7, 2026 final readback passed. On main `6300d463d1b61ebe05b4505b97537884b4842894`, the installed Congress Explorer 0.6.2 wheel and hosted MCP both returned archive `5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1` for all four named research queries. Seven rows on each reader matched the retained release-row comparisons, including canonical IDs, references, null fields, coverage, and order. Five timezone-aware hearing fields matched by instant across local and UTC formatting. The four recipe tables, schema, and relevant logic matched the inputs for the retained 19-row paging, ambiguity, empty-window, and unavailable-collection checks. ct-6r1i conservation and ct-hnpc activity acceptance are recorded for this release.
+
+The scoped acceptance criteria are complete. Close ct-nozw. [Final readback](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-nozw/final-readback-continuation-5d24699a.json). [Acceptance summary](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-nozw/final-acceptance-5d24699a.json).

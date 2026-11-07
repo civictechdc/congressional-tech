@@ -107,3 +107,9 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 282e8152. The approved cutover handoff records exact release inputs, route readbacks and rollback material. Its dated readback found the archive/MCP on e145 while the dashboard still used legacy publication. Review confirmed that deployed route selection remains the unresolved boundary; documentation approval does not establish a cutover.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Final release route/bookmark/rollback readback and qualifying Mac publication, raw-lock/header acceptance, scheduled capture, hosted checks and retirement after live acceptance. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/cef-96wc/REVIEW.md).
+
+**2026-11-07T22:30:56Z**
+
+November 7 post-release owner update for archive 5d24699ad9fa / Explorer 0.6.2. The shared release and deployed retirement passed 25 evidence checks plus the retained 31 installed-reader checks. Event bookmarks, old-ID notices, YouTube and hosted MCP agree on the release. Public inputs, receipts and the exact prior application/data rollback pair are retained.
+
+Keep open for the assigned operators to restore the disabled 05:30 America/New_York publisher and observe a genuine scheduled additions-only publication, finish raw-lock and scheduled-capture acceptance, and record the B8/Basin dispositions. The weekly collector-to-Pages observation remains ct-5kto-owned. These are operational outcomes, not another source repair or native rebuild. [Owner evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/cef-96wc/STATUS.json).

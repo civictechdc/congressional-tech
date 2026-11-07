@@ -143,3 +143,9 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at f1d8ab05. The Phase 2 closure map preserves the original acceptance checklist and assigns remaining producer, reader, live-switch and retirement work. Independent review approved that coordination work. The owner-review findings and repairs are recorded in the individual tickets; this umbrella does not imply their remaining data or deployment criteria passed.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Source preservation dispositions, the sole final native build and same-release consumers, live switch/rollback and unattended publication, raw-lock and scheduled-capture evidence, then conditional retirement. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-77zb/REVIEW.md).
+
+**2026-11-07T22:30:56Z**
+
+November 7 post-release owner update for archive 5d24699ad9fa / Explorer 0.6.2. The current shared release, 78 reviewed comparison groups, 31 installed checks and deployed retirement supersede the old candidate/cutover holds. Credit the closed House transition, hosted CI, legislative and activity scopes, and preserve the existing rollback pair.
+
+Keep open for the already-owned preservation/reader dispositions, B8/Basin decisions, raw locks, scheduled capture, unattended Mac additions-only publication and the weekly collector-to-Pages event. The site retirement itself is accepted; deferred indexing and News Lake are not new gates. [Owner evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-77zb/STATUS.json).

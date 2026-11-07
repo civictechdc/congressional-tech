@@ -111,3 +111,9 @@ Retirement is merged, pushed and deployed at 58c138d87a75d7338a750e65816956435b1
 Independent post-deployment acceptance passed: event 100520 opened the current hearing on archive 5d24699ad9fa; the authentic legacy UUID showed the removal notice and its search link opened that same release; there were zero legacy data requests. The separate old event-map request returned 404. The YouTube CSV returned 200 and its filters/leaderboard rendered. Hosted MCP returned the same event/title/release. Evidence: .cache/archive-release/finish-merge-prune-20261107/post-retirement-live.json. The accepted archive data and MCP package did not change.
 
 Implementation and live retirement checks are complete. This ticket remains open only to observe the next normal weekly collector completion triggering Pages, as required by its retained operating acceptance. That future event does not require retaining the merged implementation branch/worktree or repeating the native archive build.
+
+**2026-11-07T22:30:56Z**
+
+November 7 post-release owner update for archive 5d24699ad9fa / Explorer 0.6.2. Retirement from 58c138d8 is deployed and accepted: current event bookmarks, old UUID notices, zero legacy-data requests, YouTube and hosted MCP all passed. The owner verified current GitHub run history; the latest Pages run was push-triggered.
+
+Keep in_progress only for the first normal weekly collector completion to trigger Pages. The next eligible scheduled start is November 7 at 7:00 p.m. EST. Close after the actual scheduled collector and successful downstream Pages run are recorded and their deployed YouTube report is verified. A manual run does not establish this criterion. [Owner evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-5kto/STATUS.json).

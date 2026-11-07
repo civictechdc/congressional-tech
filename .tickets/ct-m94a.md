@@ -1,6 +1,6 @@
 ---
 id: ct-m94a
-status: in_progress
+status: closed
 deps: []
 links: [ct-wx65, ct-gi01, ct-m104, ct-9xfg, ct-nozw]
 created: 2026-10-31T00:05:23Z
@@ -107,3 +107,7 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 764235b3. Shown and linked URL readings now share one eligibility rule, so direct alias URLs cannot reintroduce unsupported dates. Literal readings, supplier provenance and each disagreement are preserved. Eight alias cases and one reference-association case passed; the retained eight-original control rebuilt to identical public bytes.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Actual final native date counts/bounds and candidate plus selected-live MCP/site checks after the shared input transition. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-m94a/REVIEW.md).
+
+**2026-11-07T22:29:58Z**
+
+2026-11-07 final reader acceptance passed for archive 5d24699ad9fa and Congress Explorer 0.6.2 after legacy Pages retirement. The reviewed repair at 764235b3 is in main 6300d463 and deployed Pages source 58c138d8. Twenty-eight hosted MCP calls and seven live Pages document checks passed on the selected release. Four unsupported Senate download aliases remain undated and retain their source URLs. The two supported alternate names retain 2019-05-09 and 2021-03-17. The literal 2303-05-04 remains suspect. MCP recent search excludes it and the undated controls by default and returns each when explicitly included. Pages detail warns that the 2303 filename date was likely misread and displays the capture date separately. Pages search by source URL retains the literal date in its result row. MCP and the manifest loaded by Pages report 263,893 accepted, 41 suspect and 92,801 undated documents, with observed accepted bounds of 1936-05-26 through 2026-10-23. The first 30 default Pages results stayed within those bounds. Reused the completed census and the bounded native and stdio control for the authentic March 2, 1901 original with controlled filename and no Congress value. The historical control is separate from this release. Local candidate date readback is recorded separately under d30d71fc. Evidence: .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-m94a/final-5d24699ad9fa/ticket-update.json. Recommend closing ct-m94a.

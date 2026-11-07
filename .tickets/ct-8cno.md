@@ -100,3 +100,9 @@ This reviewed follow-up is not yet included in local main. Remaining: Upstream s
 Integrated approved cf0abc74 into main at 82a52289. Roster party now uses only supplied assignment evidence; missing party stays null. The unnecessary service-term inference was removed. All 32 combined roster/schema/model controls passed (partial lane); the owner also verified that all 2,973 current roster rows remain unchanged. Independent combined review approved the merge.
 
 Keep open for accepted historical data from ss-ehci, coherent snapshot selection, publication and actual historical-reader checks. The local fixtures do not establish historical availability. Evidence: .cache/archive-release/implementation/merge-prune-20261106T180951Z/roster-final-combined-checks.json and combined-cause-delta-82a52289.md.
+
+**2026-11-07T22:30:56Z**
+
+November 7 post-release owner update for archive 5d24699ad9fa / Explorer 0.6.2. The deployed roster preserves source-supplied party, and the final SQL matches the retained missing-party regression. Hosted readback returned the supplied Congress 119 value and no historical rows for the checked committee in 116–118. The current upstream index has no historical roster generation.
+
+Keep open for ss-ehci to supply accepted source-dated House and Senate rosters for 113–118. Then pin the coherent generation and verify historical keys, leadership, source periods and installed reader results. The delivered party repair needs no further implementation. [Owner evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-8cno/STATUS.json).
