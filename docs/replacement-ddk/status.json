@@ -153,10 +153,12 @@
     "Regenerated policy-dependent model profiles, full JobSpec, local-file inventory, report expectations and producer-definition draft: 52 inputs, 253 steps, 40 outputs, 23 reports, 225 counters in seven required reports. Eight native selectors, observed IDs, original producer facts and successful proof preserved. Metadata-only preparation passed in 3.3 seconds at 0.199 GiB RSS after a caller-directory correction; failed attempt retained. No successor native inference or model execution.",
     "Installed integrated SDK 0.1.0.dev6+integrated.1 from accb583 through frozen offline sync and the normal hash-qualified installer. All 117 installed wheel members match; all 131 other distribution versions remain unchanged. Seven application checks against original native receipts passed in 0.6 seconds at 0.071 GiB peak RSS, with five small control reads and no payload/network/native effects. Original Congress admission and native acceptance remain open.",
     "Prepared the optional private --snapshot-source execution path through existing model and measurement entry points. It stays outside saved requests, profiles and outputs; native owns source settings, credentials and retry placement. All 32 focused application metadata cases passed with fake native transport in 4.4 seconds at 0.236 GiB RSS. No DocSpec or corpus calls; execution requires the next qualified SDK/native tuple. Both independent source reviews accepted the scoped change.",
-    "Installed SDK2 with the optional source-reader API. All 117 wheel members match, the other 131 versions remain unchanged, and reused controls passed seven retained proof checks plus 32 partial application cases. Both independent reviews accepted; no native or corpus call occurred."
+    "Installed SDK2 with the optional source-reader API. All 117 wheel members match, the other 131 versions remain unchanged, and reused controls passed seven retained proof checks plus 32 partial application cases. Both independent reviews accepted; no native or corpus call occurred.",
+    "Committed e743ffdd: fresh and resumed model execution share explicit host metadata capture/recovery bounds; two retained fake-transport cases and independent static review pass. These bounds do not establish aggregate reply fit.",
+    "Prepared successor execution metadata from committed source e743ffdd. The maintained renderer reproduces the exact original model JobSpec 7652afbe; all 45 local input members retain custody, with no payload/provider/native reads. Original producer facts remain unchanged."
   ],
   "active": [
-    "Qualify exact producer adoption, admission, population proof and prerequisites, then execute and accept the policy-bound 52-input model. All 293 named schemas were inferred; 225 required counters now use those native schemas. The 24,028-target requirements and complete successor definition remain pinned.",
+    "Confirm proof and complete model schemas on the final qualified runtime, adopt the exact successor definition, then prepare and accept the original producer proof and policy-bound 52-input model. Historical inference and all 225 required counters remain pinned; no original-data execution has run.",
     "Complete successor native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
     "Qualify local shared input reuse through the installed successor; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
@@ -1361,7 +1363,7 @@
         "rowsDecoded": 0,
         "smallPreparedArtifactBytesHashed": 119716
       },
-      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB\u2192reviewedB fixed daily/direct classification; reviewedB\u2192C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
+      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB→reviewedB fixed daily/direct classification; reviewedB→C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
       "schemaAuthority": "Source09 proof inference matched original observed input schemas and decoded report schemas. Full staged model inference refused missing capture_disposition; no accepted current model policy.",
       "nativeAdoption": "not_run",
       "nativeJobs": "no_payload_execution; separate schema-only calls recorded below",
@@ -1898,6 +1900,23 @@
       "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/integrated-successor-package-02/build-01/sdk-only-handoff.json",
       "sha256": "9f49fdf86a7915df8e3d630f51525f2879cbbdc7d85289864a6424816d2a595c",
       "size": 5501
+    },
+    "modelMetadataBounds": {
+      "terminal": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/model-metadata-bounds-01/terminal.json",
+        "sha256": "a77729853baec9c960a43051802880c0f314f176b6278995d075dfd8bca4bda8",
+        "size": 2245
+      },
+      "review": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/model-metadata-bounds-01/terminal-review.json",
+        "sha256": "cc037c7bead7c1cded54acc4874e874b48594efb644d6dac322a09fd56daf5ce",
+        "size": 942
+      }
+    },
+    "successorModelMetadata": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/preparation/handoff.json",
+      "sha256": "b292e805924055ac6f846d8a12d99c81cec103713113a99a3e9497a783e3f982",
+      "size": 6853
     }
   },
   "constraints": {
@@ -1919,7 +1938,7 @@
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
     "archiveModelControllerRetired": true,
-    "producerDefinitionPreparation": "All 24,028 selected historical targets have explicit historical_exact and refresh_live requirements; qualification remains unresolved. Policy-bound model/profile/input definitions are retained. Schema-only inference succeeded for 52 inputs, 253 steps, 40 outputs and 23 reports; all eight observed native schemas match. The maintained policy builder bound all 225 unchanged counters to inferred schemas, correcting 217 nullable flags without permitting actual null/nonzero values. Original policies and comparison refusal remain retained. Native producer adoption, population proof and full model execution are pending."
+    "producerDefinitionPreparation": "The current committed owner reproduces the original model JobSpec byte for byte. Successor execution profiles now bind the selected readings version, observed native schemas, execution runtime and current definition fingerprints. Final-runtime proof/model inference, exact successor adoption, population proof and complete model acceptance remain pending. All 24,028 historical_exact and refresh_live obligations remain unresolved; no new official-source acquisition is authorized."
   },
   "definitionImplementation": {
     "state": "Qualified dev6 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Actual retained application execution remains under acceptance.",

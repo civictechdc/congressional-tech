@@ -107,7 +107,7 @@ The inner native boundary marks the source25 local-file gate and the source09
 local snapshot/reuse development cases. Seven installed SDK binding checks now
 preserve original accepted producer evidence without payload reads. SDK2 installs
 the optional private source path; 32 application cases pass with fake transport.
-The complete native gate and original-provider qualification remain open.
+Final installed-profile and original-provider qualification remain open.
 Dashed boxes identify producer adoption, prerequisite enforcement and publication
 capabilities still required for production. Congress has staged the exact source
 facts, observed schemas, current jobs and required counter policies against a
@@ -120,7 +120,7 @@ flowchart TB
 
     subgraph definitions["DDK — definitions and bindings"]
         define["1. Define products, datasets, components and required rules"]
-        frozen["Capture the exact small definition and profile files once"]
+        frozen["Capture current definitions and execution profile once; keep original producer identity"]
         check["2. Check definitions and bind the exact request"]
         define --> frozen --> check
     end
@@ -130,7 +130,7 @@ flowchart TB
         logic["Parsers, correction rules and transformation SQL"]
         observed["Read exact selected native metadata; preserve original schema and field IDs"]
         producer_definition["Freeze original Git/source/version facts, observed schemas, both JobSpecs and exact required policies"]
-        prepared_bytes["Retain original JobSpec, inferred schemas, runtime identity and exact counter policy"]
+        prepared_bytes["Retain exact JobSpec and policies; bind schema evidence to the final runtime"]
         local_pins["Pin all local file bytes separately from their JobSpec paths"]
         recovery_choice["Human choice: verified recovered originals and continuing official updates"]
         recovery_population["Bind all 24,028 selected historical targets, every candidate and unchanged provenance"]
@@ -145,7 +145,7 @@ flowchart TB
         acquisition_admit["Admit acquisition request and budgets before external effects — pending"]
         adopt["Trusted local owner adopts exact producer definition under existing dataset authority — pending"]
         proof_admit["Admit the exact proof request, active definition and budgets before effects"]
-        source_access["Native reads private source settings and binds original URIs and stable placement — source implemented, qualification pending"]
+        source_access["Native resolves private settings and credentials; preserve original URIs — synthetic checks pass, original provider pending"]
         admit["Admit the exact model request, active definition and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
         native_custody["Own or reuse exact inputs and observed native schemas under the same owner — local development proof only"]
@@ -154,8 +154,8 @@ flowchart TB
         proof_accept["Accept all 9 required zero counters; retain 7 informational history counts — pending"]
         input_admission["Model admission resolves exact accepted proof, both policies and inherited input custody — pending"]
         file_binding["Compare every local input's bytes with the adopted definition, including selected recovery requirements — pending"]
-        subgraph local_jobs["Local execution evidence — file jobs, snapshots and input reuse"]
-            prepare["4. Infer every named schema without executing data — all 52 inputs, 253 steps, 40 outputs and 23 reports checked"]
+        subgraph local_jobs["Local runtime evidence — original-data validation pending"]
+            prepare["4. Infer proof and complete model schemas on final runtime — pending; earlier model inference retained"]
             counter_policy["Bind all 225 original counters to inferred schemas; actual null or nonzero values still refuse"]
             compute["5. Execute the captured JobSpec over admitted exact inputs"]
             candidate["Retain candidate, required reports and useful checkpoints"]
@@ -244,7 +244,7 @@ flowchart TB
     lifetime -.-> retirement
     present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
-    class acquisition_admit,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
+    class acquisition_admit,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,prepare,first_intent,intent,permission,retirement pending
 ```
 
 The producer path uses the existing native dataset authority and retained job
@@ -313,8 +313,8 @@ selected release.
 
 For retained work, the preparation owner reuses original JobSpec, inference and
 policy bytes after checking their hashes, runtime and native input schemas. It
-requires every original local-file pin and creates no new inference or payload
-read. Fresh model authoring includes the selected combined-readings version in
+requires every original local-file pin. Matching runtime evidence avoids another
+inference; a changed runtime requires fresh schema-only evidence. Fresh model authoring includes the selected combined-readings version in
 the semantic profile and publication input digest. Kept-release validation uses
 recorded pins and refuses incomplete profiles before protection changes or
 deletion; the old entity-parser exception is removed. Today's producer hashes do
@@ -322,8 +322,28 @@ not redefine historical rows. Native admission checks
 the exact adopted job, policy and local-file inventory before payload work.
 The 179 distinct focused checks cover proof metadata, request rendering, retained
 preparation, selected daily versions, profile identity and maintenance refusal.
-They are partial suites. The successor SDK and actual v3 application acceptance
-remain pending; these checks establish application metadata behavior only.
+They are partial suites. The successor SDK is installed; actual v3 application
+acceptance remains pending. These checks establish application metadata behavior only.
+
+The [current execution preparation](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/preparation/handoff.json)
+captures committed source `e743ffdd`, the selected combined-readings version,
+eight observed native schema identities and the successor execution runtime.
+It preserves the original producer facts and all 45 local input members.
+The current maintained renderer reproduces the original 52-input, 253-step model
+JobSpec byte for byte. No payload, footer, provider or native read was needed.
+The new definition capture has its own identity and must be reused at final
+request preparation; its local source paths are part of DDK interpretation
+identity. Earlier inference remains historical until the final runtime checks it.
+
+Fresh model execution and resume use one adapter constructor with explicit host
+metadata limits. Two retained fake-transport cases and independent static review
+verify that forwarding. Native report buffers, the complete encoded reply and
+SDK recovery records have separate limits; equal configured values do not prove
+that the combined reply fits. The bounded run plan also accounts for Python
+parsing, native conversion, input custody, spill and retained outputs. A timeout
+or overflow keeps the original operation and its uncertain outcome for native
+reconciliation. The planned original-data run stops after proof and model
+acceptance, before selection or external publication.
 
 Disclosure remains an explicit definition file. Native observations used for
 local qualification do not automatically become public catalog facts. The
