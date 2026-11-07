@@ -46,7 +46,7 @@ from ..parsers.house_xml import (
 from ..parsers.xml_repair import parse_xml_with_repairs
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
-from ..parsers.witness_names import LABEL_NAME, drop_footnote_text, is_name, witness as parse_gpo_witness
+from ..parsers.witness_names import LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
@@ -193,6 +193,12 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_TESTIFIED_WORDS",
         "mods_entry_kind",
         "_MODS_REPRESENTATIVE",
+        "_MODS_REP_PRINT",
+        "_MODS_REP_COMPANION",
+        "_MODS_REP_ROLE",
+        "_MODS_REP_RUNON",
+        "_MODS_REP_PERSON_NAME",
+        "_mods_representative_value",
         "_MODS_ROLE",
         "_MODS_ORGANIZATION",
         "_MODS_COMPLETE_TITLE",
@@ -990,6 +996,52 @@ def mods_held_dates(doc: ModsDocument) -> list[str]:
 
 
 _MODS_REPRESENTATIVE = re.compile(r"(?:^|,\s*)on behalf of\s+", re.I)
+_MODS_REP_PRINT = re.compile(
+    r"[,;:]\s*(?:(?:oral|prepared|written)\s+statements?\b|testimony\b|statement\s+submitted\b)"
+    r"|\s+written\s+statements?\s*$"
+    r"|,\s*(?:[A-Za-z]+\s+\d{1,2},\s+\d{4},\s*)?submitted\s+for\s+the\s+record\b", re.I,
+)
+_MODS_REP_COMPANION = re.compile(
+    r"[,;]\s*(?:accompanied\s+by|(?:husband|wife|father|mother|son-in-law|daughter)\s+of)\b", re.I,
+)
+_MODS_REP_ROLE = re.compile(
+    r"^(?:and\s+)?(?:(?:former|current|executive|vice|assistant|deputy|clinical)\s+)*"
+    r"(?:chair(?:man|woman)?|president|chief|secretary|director)(?=\s|$)", re.I,
+)
+_MODS_REP_RUNON = re.compile(r"\s+(?:Mr\.|Ms\.|Mrs\.|Dr\.|Hon\.|MG|LTG|COL)\s+[A-Z]|\s+and Owner\b")
+_MODS_REP_PERSON_NAME = re.compile(r"[A-Z][A-Za-z]+(?:\s+(?:[A-Z]\.|[A-Z][A-Za-z]+)){1,4}$")
+
+
+def _mods_representative_value(text: str) -> str | None:
+    # Name parsing drops credentials and retirement annotations. Representation
+    # must instead keep the represented party's own literal qualifications.
+    marker = _MODS_REPRESENTATIVE.search(text)
+    if marker is None:
+        return None
+    value = text[marker.end():].strip()
+    ends = [match.start() for rule in (_MODS_REP_PRINT, _MODS_REP_COMPANION)
+            if (match := rule.search(value))]
+    if ends:
+        value = value[:min(ends)]
+    title = WITNESS_TITLE.match(re.sub(r"^the ", "The ", value))
+    if (_MODS_REP_RUNON.search(value[title.end() if title else 0:])
+            or _MODS_REPRESENTATIVE.search(value)):
+        return None
+    first = value[title.end() if title else 0:].split(",", 1)[0]
+    may_represent_person = is_name(first) and (title is not None or _MODS_REP_PERSON_NAME.fullmatch(first))
+    if not may_represent_person:
+        parts = re.split(r"([,;]\s*)", value)
+        for i in range(2, len(parts), 2):
+            if _MODS_REP_ROLE.match(parts[i]):
+                # A name followed by a role can be a second speaker; the raw
+                # occurrence retains that text without assigning it to a party.
+                if i >= 4 and _MODS_REP_PERSON_NAME.fullmatch(parts[i - 2]) and is_name(parts[i - 2]):
+                    return None
+                value = "".join(parts[:i - 1])
+                break
+    return re.sub(r"\s+", " ", value).rstrip(" ,:") or None
+
+
 _MODS_ROLE = re.compile(
     r"\b(?:president|director|officer|chief|leader|manager|counsel|secretary|administrator|"
     r"advi[sz]er|coordinator|commissioner|professor|chair(?:man|woman)?|representative)\b",
@@ -1076,7 +1128,14 @@ def _mods_witness_fields(line: str) -> dict[str, Any]:
     affiliation = ", ".join(part for part in (position, organization) if part)
     representative = _MODS_REPRESENTATIVE.search(affiliation)
     if representative:
-        parsed["on_behalf_of"] = affiliation[representative.end():].rstrip(":")
+        previous_party = _opt_str(affiliation[representative.end():].rstrip(":"))
+        parsed["on_behalf_of"] = previous_party
+        if previous_party:
+            text = strip_contents_markers(line)
+            # A removed parenthetical may contain an unrelated marker. Keep
+            # the existing party when the two readings select different text.
+            if len(_MODS_REPRESENTATIVE.findall(text)) == len(_MODS_REPRESENTATIVE.findall(affiliation)):
+                parsed["on_behalf_of"] = _mods_representative_value(text)
         affiliation = affiliation[:representative.start()]
     if not affiliation:
         parsed.update(position=None, organization=None)
