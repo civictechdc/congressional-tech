@@ -51,18 +51,18 @@ def writer(monkeypatch):
     monkeypatch.setattr(identity, 'writer_identity', lambda *a: value)
 
     # This fixture replays the historical House-only change. Its pinned
-    # predecessor never produced a later MODS generation.
+    # predecessor never produced later Senate or MODS generations.
     from viewer_publication import producer_proof
     versions_at = producer_proof.versions_at
-    historical_mods = versions_at(HOUSE_ORIGIN)['appearance_records']['mods']
-    current_versions = transition.appearance_records.current_versions
-    monkeypatch.setattr(transition.appearance_records, 'current_versions',
-        lambda **kw: dict(current_versions(**kw), mods=historical_mods))
+    historical = versions_at(HOUSE_ORIGIN)['appearance_records']
+    house_version = transition.appearance_records.current_versions()['house_xml']
+    house_fixture_versions = dict(historical, house_xml=house_version)
+    monkeypatch.setattr(transition.appearance_records, 'current_versions', lambda **kw: dict(house_fixture_versions))
 
     def fixture_versions_at(revision, **kw):
         versions = versions_at(revision, **kw)
         if revision == commit:
-            return dict(versions, appearance_records=dict(versions['appearance_records'], mods=historical_mods))
+            return dict(versions, appearance_records=dict(house_fixture_versions))
         return versions
 
     monkeypatch.setattr(producer_proof, 'versions_at', fixture_versions_at)

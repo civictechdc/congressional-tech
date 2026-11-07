@@ -882,7 +882,13 @@ def _jec_witness_continuation(anchor, line):
     return links[0], f"{line} {continuation}, {employer}"
 
 
-def plain_witness_links(root):
+def plain_testimony_address(label, line):
+    return label.casefold() == '(testimony here)' and line.casefold() in {
+        'washington, dc', 'stanford, california',
+    }
+
+
+def plain_witness_links(root, *, include_address_fallback=False):
     """Explicit witness sections with a name on the link or its local line.
 
     A generic testimony button can refer to the immediately preceding paragraph
@@ -907,7 +913,11 @@ def plain_witness_links(root):
             previous = block.getprevious()
             if (line == label and previous is not None and previous.tag == 'p'
                     and not previous.xpath('.//a[@href]')):
-                candidates.append(' '.join(previous.text_content().split()))
+                previous_line = ' '.join(previous.text_content().split())
+                # Some JEC testimony buttons follow the witness's address,
+                # rather than their name. The address is not a name fallback.
+                if include_address_fallback or not plain_testimony_address(label, previous_line):
+                    candidates.append(previous_line)
         def named(line):
             name = witness(line)['name']
             return is_name(name) and all(word[:1].isupper() or word in {'de', 'del', 'van', 'von', 'da', 'di', 'la'} for word in name.split())

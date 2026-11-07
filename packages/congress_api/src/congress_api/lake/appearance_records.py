@@ -44,6 +44,7 @@ from ..parsers.house_xml import (
     strip_house_meeting_prefix,
 )
 from ..parsers.xml_repair import parse_xml_with_repairs
+from ..parsers.senate_page import plain_testimony_address, plain_witness_links
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import LABEL_NAME, drop_footnote_text, is_name, witness as parse_gpo_witness
@@ -804,6 +805,13 @@ def _classify_senate_empty_state(html_text: str) -> str:
                 return "empty"
             return "unrecognized"
 
+    # The visible section can contain testimony buttons with an address as
+    # their preceding paragraph. That is an unread roster, not an absent one.
+    if html_text.lstrip().startswith("<") and any(
+        plain_testimony_address(clean_text(anchor.text_content()), line)
+        for anchor, line, _ in plain_witness_links(root, include_address_fallback=True)
+    ):
+        return "unrecognized"
     return "absent"
 
 

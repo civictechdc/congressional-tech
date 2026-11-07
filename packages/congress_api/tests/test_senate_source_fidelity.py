@@ -199,3 +199,26 @@ def test_witness_occurrences_scopes_cards_after_witnesses_heading_and_honors_bas
         "testimony?download=1",
     ]
 
+
+
+
+def test_plain_testimony_buttons_do_not_turn_jec_address_lines_into_people():
+    from congress_api.parsers.senate_page import witness_occurrences
+
+    page = '''
+        <p><strong>Witnesses:</strong></p>
+        <p>Washington, DC</p><p><a href="/address-one.pdf">(Testimony here)</a></p>
+        <p>Stanford, California</p><p><a href="/address-two.pdf">(Testimony here)</a></p>
+        <p>Ms. Ada Rivera</p><p><a href="/rivera.pdf">(Testimony here)</a></p>
+    '''
+    rows = witness_occurrences(page)
+    assert [(row['name'], row['document_links']) for row in rows] == [
+        ('Ada Rivera', ['/rivera.pdf'])
+    ]
+
+    from congress_api.lake.appearance_records import extract_senate_page_observation
+
+    addresses_only = page.split('<p>Ms. Ada Rivera</p>')[0]
+    observation = extract_senate_page_observation(addresses_only)
+    assert observation['collection_state'] == 'unrecognized'
+    assert observation['appearances'] == []
