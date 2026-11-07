@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 from urllib.parse import urlsplit
 
-from viewer_publication.archive_publish import (CONTROL_BYTES,NativeArchiveStore,SPICY_PINS,_encoded,
+from viewer_publication.archive_publish import (CONTROL_BYTES,NativeArchiveStore,
     _read,input_digest,read_pointer,write_spicy_generations)
 from viewer_publication.client import require_publication_client
 from viewer_publication.receipt_pins import PREFIX
@@ -274,6 +274,8 @@ def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,exe
     receipt set in O(R log R), and final deletion sorting costs O(D log D). No
     release assets, raw bodies or lake rows are read. The caller supplies explicit
     external pins and passes returned kept_inputs to D5 guards.
+    Returned spicy_generations names this census's required additions, not the
+    complete remote pin set; existing protection is retained conservatively.
     """
     now=_time(now)
     if isinstance(external_pins,str):raise ValueError('External pins must be release IDs')
@@ -338,14 +340,16 @@ def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,exe
                         for family,digest in (record.get('entity_digests') or {}).items()})
     spicy_generations=[dict(family=family,digest=digest) for family,digest in spicy_pairs]
     if execute:
+        if not callable(getattr(store,'write_spicy_generations',None)):
+            raise TypeError('Maintenance requires conditional generation-pin additions')
         if _pointer(store)!=(pointer,etag):
             raise ValueError('Live pointer changed before maintenance deletion')
         if source is not None and set(read_archive_release_pins(source))!=source_pins:
             raise ValueError('External release pins changed before maintenance deletion')
-        if callable(getattr(store,'write_spicy_generations',None)):
-            store.write_spicy_generations(spicy_generations)
-        elif callable(getattr(store,'create',None)):
-            store.create(SPICY_PINS,_encoded(dict(version=1,generations=spicy_generations)))
+        # This release census does not include every pending native intent or
+        # reader. Add its required pins; preserve existing protection until the
+        # lifetime owner can authorize a complete, stable retirement decision.
+        store.write_spicy_generations(spicy_generations)
         for key in delete_keys:
             # Keep the destructive boundary self-contained even for injected stores.
             NativeArchiveStore._key(key)

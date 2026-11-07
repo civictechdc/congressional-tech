@@ -38,6 +38,23 @@ class Store:
         self.list_calls+=1
         return [dict(Key=key,LastModified=self.times[key]) for key in sorted(self.objects)]
     def delete(self,key):self.deleted.append(key)
+    def write_spicy_generations(self,generations):
+        from viewer_publication.archive_publish import write_spicy_generations
+        def get_object(*,Bucket,Key):
+            if Key not in self.objects:
+                error=KeyError(Key);error.response={'ResponseMetadata':{'HTTPStatusCode':404}}
+                raise error
+            raw=self.objects[Key]
+            return dict(Body=io.BytesIO(raw),ContentLength=len(raw),ETag=hashlib.sha256(raw).hexdigest())
+        def put_object(**request):
+            key=request['Key'];prior=self.objects.get(key)
+            if 'IfMatch' in request:
+                assert prior is not None and hashlib.sha256(prior).hexdigest()==request['IfMatch']
+            else:assert request['IfNoneMatch']=='*' and prior is None
+            raw=bytes(request['Body']);self.create(key,raw)
+            return dict(ETag=hashlib.sha256(raw).hexdigest())
+        return write_spicy_generations(SimpleNamespace(get_object=get_object,put_object=put_object),
+            bucket='maintenance-fixture',generations=generations)
 
 
 def add_input(store,release,identity):

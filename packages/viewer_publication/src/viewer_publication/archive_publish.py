@@ -120,27 +120,65 @@ def _valid_entity_digests(entity_digests):
     return {key:entity_digests[key] for key in sorted(entity_digests)}
 
 
+def _generation_pairs(generations):
+    pairs=set()
+    for item in generations:
+        if isinstance(item,dict) and set(item)=={'family','digest'}:
+            family,digest=item['family'],item['digest']
+        elif isinstance(item,(tuple,list)) and len(item)==2:
+            family,digest=item
+        else:raise ValueError('Invalid reference generation pin')
+        if not isinstance(family,str) or not family.strip():
+            raise ValueError('Reference generation pin requires a family')
+        pairs.add((family,_sha(digest)))
+    return pairs
+
+
+def _generation_object(pairs):
+    value=dict(pairs)
+    if len(value)!=len(pairs):raise ValueError('Duplicate generation-pin JSON field')
+    return value
+
+
 def write_spicy_generations(client,*,bucket,generations):
-    """Write the pinned union of (family, digest) pairs for spicy-regs retention."""
+    """Add protection with one conditional write; never infer retirement here.
+
+    Existing pins can cover pending intents, uploads and readers absent from a
+    caller's release list. Only the lifetime owner can authorize their removal.
+    """
     require_publication_client(client)
-    pairs=sorted({(item['family'],_sha(item['digest'])) if isinstance(item,dict) else (item[0],_sha(item[1])) for item in generations})
-    payload=dict(version=1,generations=[dict(family=family,digest=digest) for family,digest in pairs])
+    requested=_generation_pairs(generations)
+    try:raw,response=_read(client,bucket,SPICY_PINS)
+    except Exception as error:
+        if _status_code(error)!=404:raise
+        existing=set();condition={'IfNoneMatch':'*'}
+    else:
+        value=json.loads(raw,object_pairs_hook=_generation_object)
+        if (not isinstance(value,dict) or set(value)!={'version','generations'}
+                or type(value['version']) is not int or value['version']!=1
+                or not isinstance(value['generations'],list)
+                or any(not isinstance(item,dict) for item in value['generations'])):
+            raise ValueError('Invalid existing reference generation pins')
+        existing=_generation_pairs(value['generations'])
+        etag=response.get('ETag')
+        if not isinstance(etag,str) or not etag.strip():
+            raise ValueError('Reference generation pins have no ETag')
+        condition={'IfMatch':etag}
+    pairs=existing|requested
+    payload=dict(version=1,generations=[dict(family=family,digest=digest) for family,digest in sorted(pairs)])
+    if 'IfMatch' in condition and pairs==existing:return payload
     raw=_encoded(payload)
-    client.put_object(Bucket=bucket,Key=SPICY_PINS,Body=raw,ContentLength=len(raw),
-        ContentType='application/json',CacheControl='no-store')
+    if len(raw)>CONTROL_BYTES:raise ValueError('Reference generation pins exceed control byte limit')
+    response=client.put_object(Bucket=bucket,Key=SPICY_PINS,Body=raw,ContentLength=len(raw),
+        ContentType='application/json',CacheControl='no-store',**condition)
+    etag=(response or {}).get('ETag')
+    if not isinstance(etag,str) or not etag.strip():
+        raise ValueError('Reference generation pin PUT returned no ETag')
     return payload
 
 
-def _collect_spicy_generations(client,store,bucket,*,live,previous,candidate_digests):
+def _collect_spicy_generations(store,*,live,previous,candidate_digests):
     pairs={(family,digest) for family,digest in candidate_digests.items()}
-    try:
-        existing_raw,_=_read(client,bucket,SPICY_PINS)
-        existing=json.loads(existing_raw)
-        for item in existing.get('generations',[]):
-            if isinstance(item,dict) and isinstance(item.get('family'),str) and DIGEST.fullmatch(str(item.get('digest',''))):
-                pairs.add((item['family'],item['digest']))
-    except Exception as error:
-        if _status_code(error)!=404:raise
     for release_id in [r for r in (live,previous) if r is not None]:
         for key in store.keys(PREFIX+release_id+'/inputs/'):
             if key.endswith('.json') and '/inputs/receipts/' not in key:
@@ -475,7 +513,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,native_ev
             write_input_receipts(store,release_id,digest,input_record,receipt_keys)
             if input_record['entity_digests']:
                 previous=pointer.get('previous_release_id') if pointer else None
-                pairs=_collect_spicy_generations(client,store,bucket,live=live,previous=previous,candidate_digests=input_record['entity_digests'])
+                pairs=_collect_spicy_generations(store,live=live,previous=previous,candidate_digests=input_record['entity_digests'])
                 write_spicy_generations(client,bucket=bucket,generations=pairs)
             status['status']='release_unchanged'
             if selected_pointer_reconciled:status['live_release_basis']='selected_pointer_reconciled'
@@ -536,7 +574,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,native_ev
                 dict(sha256=sha256(raw).hexdigest(),md5=md5(raw).hexdigest(),size=len(raw)),content_type='application/json')
             if input_record['entity_digests']:
                 previous=pointer.get('previous_release_id') if pointer else None
-                pairs=_collect_spicy_generations(client,store,bucket,live=live,previous=previous,candidate_digests=input_record['entity_digests'])
+                pairs=_collect_spicy_generations(store,live=live,previous=previous,candidate_digests=input_record['entity_digests'])
                 write_spicy_generations(client,bucket=bucket,generations=pairs)
             status['durations']['upload']=perf_counter()-begin
             return canary(release_id=release_id,public_origin=public_origin.rstrip('/'),manifest=manifest)
