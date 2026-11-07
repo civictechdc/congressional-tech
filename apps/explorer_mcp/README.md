@@ -250,7 +250,7 @@ producer's environment.
 | `search_documents` | Title/filename search and exact Congress, kind, format, committee, meeting, bill/nomination, member or witness filters. |
 | `get_document` | A document's summary, paged source links, paged recoveries, or verified extracted body text and snippet search (`section: "text"`). |
 | `get_documents` | Up to ten document requests in input order with independent errors and paging; shares the single-document verification path and an aggregate response/work budget. |
-| `search_text` | Search retained document, testimony and caption passages; filter by committee, date, speaker, witness, source kind or document type. Returns snippets, coverage and release-bound citations. |
+| `search_text` | Search document, testimony and caption passages in the selected release when it includes a retained text index. Check `get_dataset_status` for availability. In a release without an index, use `get_document` to search within a selected document or `get_transcript` to read a hearing’s transcript or captions. |
 | `search_entities` | Search the eight phase 2 entity tables with text and exact scalar filters. |
 | `get_entity` | One entity by its published key, with full detail, scalar summary or selected fields; also pages its directly associated documents. |
 | `query_sql` | One read-only DuckDB `SELECT`, including `WITH` and FROM-first SQL, with optional `?` parameters. All published tables are available. |
