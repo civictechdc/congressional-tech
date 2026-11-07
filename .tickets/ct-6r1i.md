@@ -1,6 +1,6 @@
 ---
 id: ct-6r1i
-status: in_progress
+status: closed
 deps: []
 links: [ct-gi01, ct-j49p, ct-nozw]
 created: 2026-11-05T23:51:57Z
@@ -42,3 +42,9 @@ The reviewed source reference is included in local main 1a5ae01c. Remaining: The
 The three legislative Parquets on public archive `5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1` are byte-identical to the independently verified 11,524,996-row comparison against the pinned upstream inputs. Explorer 0.6.2 returned filtered bill actions, the exact roll call and the retained ballot for vote `101-house-2-1` and member `name:Ackerman`, including the original position and source generation. The same live Worker returned an explicit query deadline for the unfiltered `get_member_ballots` request with `{"query":{"limit":1}}`. Record the separate hosted performance gap and preserve the verified keyed ballot path.
 
 [Published archive manifest](https://congressional-data.spicygov.ai/viewer-publications/releases/5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1/manifest.json)
+
+**2026-11-07T20:46:11Z**
+
+Scoped acceptance is complete. The exact final upstream comparison and the live vote/member-keyed ballot satisfy this ticket. The hosted limit-only request remains a separate runtime limitation.
+
+Supply a vote or member filter for hosted member-ballot queries because unfiltered pages can time out.
