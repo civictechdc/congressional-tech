@@ -1,0 +1,273 @@
+{
+  "raw_rows.parquet": {
+    "rows": 3,
+    "groups": [
+      {
+        "rows": 2,
+        "columns": [
+          {
+            "dataOffset": 4,
+            "compressedBytes": 41,
+            "uncompressedBytes": 39,
+            "values": 2
+          },
+          {
+            "dataOffset": 45,
+            "compressedBytes": 41,
+            "uncompressedBytes": 39,
+            "values": 2
+          },
+          {
+            "dataOffset": 86,
+            "compressedBytes": 33,
+            "uncompressedBytes": 31,
+            "values": 2
+          },
+          {
+            "dataOffset": 119,
+            "compressedBytes": 41,
+            "uncompressedBytes": 39,
+            "values": 2
+          },
+          {
+            "dataOffset": 160,
+            "compressedBytes": 41,
+            "uncompressedBytes": 39,
+            "values": 2
+          },
+          {
+            "dataOffset": 201,
+            "compressedBytes": 36,
+            "uncompressedBytes": 34,
+            "values": 2
+          },
+          {
+            "dataOffset": 237,
+            "compressedBytes": 33,
+            "uncompressedBytes": 31,
+            "values": 2
+          },
+          {
+            "dataOffset": 270,
+            "compressedBytes": 39,
+            "uncompressedBytes": 37,
+            "values": 3
+          },
+          {
+            "dataOffset": 309,
+            "compressedBytes": 34,
+            "uncompressedBytes": 32,
+            "values": 2
+          },
+          {
+            "dataOffset": 343,
+            "compressedBytes": 30,
+            "uncompressedBytes": 28,
+            "values": 2
+          },
+          {
+            "dataOffset": 373,
+            "compressedBytes": 39,
+            "uncompressedBytes": 37,
+            "values": 2
+          },
+          {
+            "dataOffset": 412,
+            "compressedBytes": 32,
+            "uncompressedBytes": 30,
+            "values": 2
+          },
+          {
+            "dataOffset": 444,
+            "compressedBytes": 34,
+            "uncompressedBytes": 32,
+            "values": 2
+          },
+          {
+            "dataOffset": 478,
+            "compressedBytes": 33,
+            "uncompressedBytes": 31,
+            "values": 2
+          },
+          {
+            "dataOffset": 511,
+            "compressedBytes": 33,
+            "uncompressedBytes": 31,
+            "values": 2
+          }
+        ]
+      },
+      {
+        "rows": 1,
+        "columns": [
+          {
+            "dataOffset": 544,
+            "compressedBytes": 33,
+            "uncompressedBytes": 31,
+            "values": 1
+          },
+          {
+            "dataOffset": 577,
+            "compressedBytes": 33,
+            "uncompressedBytes": 31,
+            "values": 1
+          },
+          {
+            "dataOffset": 610,
+            "compressedBytes": 29,
+            "uncompressedBytes": 27,
+            "values": 1
+          },
+          {
+            "dataOffset": 639,
+            "compressedBytes": 33,
+            "uncompressedBytes": 31,
+            "values": 1
+          },
+          {
+            "dataOffset": 672,
+            "compressedBytes": 33,
+            "uncompressedBytes": 31,
+            "values": 1
+          },
+          {
+            "dataOffset": 705,
+            "compressedBytes": 25,
+            "uncompressedBytes": 23,
+            "values": 1
+          },
+          {
+            "dataOffset": 730,
+            "compressedBytes": 25,
+            "uncompressedBytes": 23,
+            "values": 1
+          },
+          {
+            "dataOffset": 755,
+            "compressedBytes": 31,
+            "uncompressedBytes": 29,
+            "values": 1
+          },
+          {
+            "dataOffset": 786,
+            "compressedBytes": 34,
+            "uncompressedBytes": 32,
+            "values": 1
+          },
+          {
+            "dataOffset": 820,
+            "compressedBytes": 25,
+            "uncompressedBytes": 23,
+            "values": 1
+          },
+          {
+            "dataOffset": 845,
+            "compressedBytes": 25,
+            "uncompressedBytes": 23,
+            "values": 1
+          },
+          {
+            "dataOffset": 870,
+            "compressedBytes": 25,
+            "uncompressedBytes": 23,
+            "values": 1
+          },
+          {
+            "dataOffset": 895,
+            "compressedBytes": 25,
+            "uncompressedBytes": 23,
+            "values": 1
+          },
+          {
+            "dataOffset": 920,
+            "compressedBytes": 29,
+            "uncompressedBytes": 27,
+            "values": 1
+          },
+          {
+            "dataOffset": 949,
+            "compressedBytes": 29,
+            "uncompressedBytes": 27,
+            "values": 1
+          }
+        ]
+      }
+    ]
+  },
+  "raw_decimal.parquet": {
+    "rows": 1,
+    "groups": [
+      {
+        "rows": 1,
+        "columns": [
+          {
+            "dataOffset": 36,
+            "compressedBytes": 138,
+            "uncompressedBytes": 134,
+            "values": 1
+          }
+        ]
+      }
+    ]
+  },
+  "raw_group.parquet": {
+    "rows": 4096,
+    "groups": [
+      {
+        "rows": 4096,
+        "columns": [
+          {
+            "dataOffset": 4,
+            "compressedBytes": 17223,
+            "uncompressedBytes": 32843,
+            "values": 4096
+          },
+          {
+            "dataOffset": 17227,
+            "compressedBytes": 2374,
+            "uncompressedBytes": 49206,
+            "values": 4096
+          }
+        ]
+      }
+    ]
+  },
+  "raw_nested.parquet": {
+    "rows": 1,
+    "groups": [
+      {
+        "rows": 1,
+        "columns": [
+          {
+            "dataOffset": 4,
+            "compressedBytes": 2318,
+            "uncompressedBytes": 4180,
+            "values": 512
+          }
+        ]
+      }
+    ]
+  },
+  "raw_dotted.parquet": {
+    "rows": 1,
+    "groups": [
+      {
+        "rows": 1,
+        "columns": [
+          {
+            "dataOffset": 31,
+            "compressedBytes": 79,
+            "uncompressedBytes": 75,
+            "values": 1
+          },
+          {
+            "dataOffset": 109,
+            "compressedBytes": 76,
+            "uncompressedBytes": 72,
+            "values": 1
+          }
+        ]
+      }
+    ]
+  }
+}

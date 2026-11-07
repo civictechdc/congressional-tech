@@ -75,7 +75,8 @@
     "Fresh source20 development-runtime hand fixture passed native execution, acceptance, DDK checking, selection and hand-release assertions; all 34 files and exact prepared/accepted/selected identities were retained.",
     "Original source20 rich attempt recovered under its exact original request, runtime and limits: accepted, qualified, selected, and the rich entity Node scenario passed. All 22 phase artifacts plus view-set/completion files and original request/definition files were unchanged; no new phase files.",
     "Fresh source22 rich synthetic fixture passed its first native execution, acceptance, DDK qualification, selection, manifest assertions and entity Node scenario at unchanged 512 MiB memory/scratch and one thread. It produced 17 exports, five reports and a 40-file inventory; 1,089 source20 files kept unchanged custody. Final runtime qualification and production admission remain separate.",
-    "Produced a separate local source20 viewer catalog through installed DDK dev6 from the original captured definitions and accepted evidence: 23 datasets, 17 exact versions/representations, one run and 160 checks. Standard inventories and all native export bindings passed; original public controls and all source20 artifacts stayed unchanged; no native computation or new publication/selection claims."
+    "Produced a separate local source20 viewer catalog through installed DDK dev6 from the original captured definitions and accepted evidence: 23 datasets, 17 exact versions/representations, one run and 160 checks. Standard inventories and all native export bindings passed; original public controls and all source20 artifacts stayed unchanged; no native computation or new publication/selection claims.",
+    "Added original-row paging to the maintained archive owner. Raw mode avoids list packing; verified cached bytes feed bounded range decoding with exact values, schema and physical positions. Nineteen focused cases and 125 Explorer/entity cases passed; separate greybeard and ETL findings closed. Type diagnostics stayed at 32 with zero additions. Original 1,089 source20 custody records unchanged; no native execution or activation."
   ],
   "active": [
     "Receive the full native qualification handoff after the source22 fresh rich fixture passed; complete broader cold recovery while preserving the separately accepted source11 and source20 evidence",
@@ -858,6 +859,49 @@
       "publicDisclosureChanged": false,
       "peakRSSGiB": 0.096,
       "wallSeconds": 2.2,
+      "fullLane": false
+    },
+    "rawRowReader": {
+      "status": "passed",
+      "scope": "Local original-row API; no native producer execution, production activation or full migration qualification",
+      "evidence": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/raw-rows-06/result.json",
+        "sha256": "5fcdd2afc0dd4c8aafb3c71d383c2398f0fca54341ef065d99d771b54924fb7c",
+        "size": 5208
+      },
+      "rawTestsPassed": 19,
+      "existingExplorerAndRichEntityTestsPassed": 125,
+      "skipped": 0,
+      "typeDiagnostics": {
+        "baseline": 32,
+        "current": 32,
+        "added": 0,
+        "cleanRepositoryTypecheck": false,
+        "evidence": {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/raw-rows-06/type-comparison.json",
+          "sha256": "0aa5e9cc84034c8af253b1bbdae40cb592409381147dfa577da933c409076641",
+          "size": 23145
+        }
+      },
+      "rawPeakRSSGiB": 0.144,
+      "rawWallSeconds": 0.6,
+      "unchangedSource20CustodyRecords": 1089,
+      "nativeExecutions": 0,
+      "reviews": {
+        "greybeard": "closed; independent blind source/probe review",
+        "etl": "closed; separate resource/lifecycle review"
+      },
+      "limits": {
+        "defaultRows": 100,
+        "maxRows": 1000,
+        "defaultMaxBytes": 16777216,
+        "defaultMaxCompressedFileBytes": 1048576,
+        "allocationAccounting": "Conservative metadata-based estimates and returned-byte limits; not a hard process RSS bound",
+        "cancellation": "Cooperative; shared verification reservation survives canceled waiters until actual completion",
+        "temporalMarker": "Direct owner type guards; original schema required after structured cloning",
+        "query": "unsupported",
+        "productionScale": "unqualified"
+      },
       "fullLane": false
     }
   },

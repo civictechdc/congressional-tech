@@ -164,7 +164,9 @@ flowchart TB
     subgraph readers["Consumers — one exact release"]
         consume["10. Resolve one catalog and file inventory: API, MCP and site"]
         present["Read current typed fields; join published IDs and preserve unknown values"]
+        raw_rows["Page original columns and exact types with bounded file verification, physical positions and file identity"]
         consume --> present
+        consume --> raw_rows
     end
 
     check --> request --> admit
@@ -234,6 +236,11 @@ titles. Member filters use the same service interval and actual committee seats;
 recording and witness filters use the same linked meeting. Reader and UI names
 share one dated committee-name resolver. These changes remove alternate input
 decoders without adding a compatibility stage.
+
+The same reader has a [raw-row interface](raw-row-reader.md) for the local viewer.
+Its raw mode skips the browsing list decode and pages original file values with
+exact schema, release identity and physical row positions. It reuses the existing
+digest owner and byte cache; it adds no query engine or lifecycle controller.
 
 The preserved small fixture has completed native computation, requalification,
 acceptance, DDK qualification, control finalization and native selection. The

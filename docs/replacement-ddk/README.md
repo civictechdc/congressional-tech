@@ -115,6 +115,12 @@ The latest focused application evidence includes:
   records stayed unchanged. The assembly ran in 2.2 seconds with 0.096 GiB peak
   RSS and no native computation. Public disclosure stays unchanged; viewer
   connection and production admission remain separate.
+- The [original-row API](raw-row-reader.md) passed 19 focused cases and all 125
+  existing Explorer and rich entity cases. Raw mode skips list packing and
+  preserves exact values, original schema, file identity and row positions.
+  Separate greybeard and ETL reviews closed their findings. The repository's
+  32 TypeScript diagnostics remain unchanged, with zero additions. All 1,089
+  source20 custody records stayed unchanged; no native computation occurred.
 
 These are focused results, not a full Python lane, product release or production
 cutover. Durable receipts are under the main checkout's

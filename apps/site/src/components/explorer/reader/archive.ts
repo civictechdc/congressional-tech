@@ -1,14 +1,17 @@
 import {ArchiveReleaseChangedError} from './cache.ts';
 /** The release reader is shared by the worker, site and publish canary. */
-import {parquetMetadataAsync, parquetReadObjects} from 'hyparquet';
+import {parquetMetadataAsync, parquetReadObjects, rowIndex} from 'hyparquet';
 import {parquetReadColumn} from 'hyparquet/src/read.js';
 import {compressors} from 'hyparquet-compressors';
 import readerLimits from '../../../../../../model/registries/reader-limits.json' with {type:'json'};
-import {awaitShared, byteCache, retainedBytes} from './cache.ts';
+import {awaitShared, byteCache, retainedBytes, sharedLoad} from './cache.ts';
 import {withVerifiedBytes} from './startup.ts';
 import {rangeFile} from './range-file.ts';
 import {yieldToMessages, scanBatchRows} from './cooperative.ts';
 import {createArchiveEntities} from './archive-entities.ts';
+import {ArchiveRowsError, checkRawSchema, detachRawMetadata, ownRawValue, rawDecodeBytes, rawOutputBytes, rawParsers, type ArchiveReadRowsOptions, type ArchiveRowsPage} from './archive-rows.ts';
+export {ArchiveRowsError,isArchiveDateValue,isArchiveTimestampValue} from './archive-rows.ts';
+export type {ArchiveDateValue, ArchiveTimestampValue, ArchiveRawValue, ArchiveReadRowsOptions, ArchiveRowsPage} from './archive-rows.ts';
 
 const hex = (value: Uint8Array) => [...value].map(v=>v.toString(16).padStart(2,'0')).join('');
 const digest = async (value: Uint8Array) => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', value)));
@@ -60,10 +63,18 @@ function column(values: any[], isArray: boolean) {
   return { get, packed, matches: (i: number, wanted: any[]) => { const v = get(i); return v != null && (wanted.includes(v) || wanted.includes(String(v))); }, bytes: packed.byteLength };
 }
 
-export async function openArchive(pointerUrl: string, options: any = {}) {
+type RawArchiveReader=Extract<Awaited<ReturnType<typeof openArchiveReader>>, {mode:'rows'}>;
+type BrowseArchiveReader=Extract<Awaited<ReturnType<typeof openArchiveReader>>, {count:number}>;
+export function openArchive(pointerUrl:string,options:{mode:'rows';[key:string]:any}):Promise<RawArchiveReader>;
+export function openArchive(pointerUrl:string,options?:any):Promise<BrowseArchiveReader>;
+export function openArchive(pointerUrl:string,options:any={}) {return openArchiveReader(pointerUrl,options);}
+
+async function openArchiveReader(pointerUrl: string, options: any = {}) {
   const fetcher=options.fetcher??fetch, heapBytes=options.heapBytes??256*1024*1024;
+  if(!Number.isSafeInteger(heapBytes)||heapBytes<1)throw new Error('Invalid archive heap budget.');
   options.signal?.throwIfAborted();
   const metrics={rangeRequests:0,rangeBytes:0,decodedBytes:0,decodedPeak:0,listColumns:0,detailColumns:0};
+  let listDecodedBytes=0;
   const retained={entries:new Map<string,any>(),bytes:0,maxBytes:options.indexBytes??32*1024*1024};
   const compressed=byteCache(options.cacheBytes??48*1024*1024,options.cacheBytes??48*1024*1024);
   const pointer=async()=>{
@@ -110,23 +121,27 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       const range=item.row_range;
       if(!['detail','sources'].includes(item.shard)||!new RegExp('^'+item.shard+'-[0-9]{5}[.]parquet$').test(item.name)||!Array.isArray(range)||range.length!==2||!range.every(Number.isSafeInteger)||range[0]<0||range[1]<=range[0]||range[1]-range[0]!==item.rows)throw new Error('Invalid archive shard range.');
     }else if(item.row_range!=null||/-[0-9]{5}[.]parquet$/.test(item.name))throw new Error('Invalid archive shard descriptor.');
-    files.set(item.name,item);
+    files.set(item.name,structuredClone(item));
   }
   const catalogControls=['catalog.ddk.json','catalog.report.json','catalog.lock.json'];
   const shards=new Map<string,any[]>();
   for(const descriptor of files.values())if(descriptor.shard){const group=shards.get(descriptor.shard)??[];group.push(descriptor);shards.set(descriptor.shard,group);}
   for(const [name,group] of shards){
-    group.sort((a,b)=>a.row_range[0]-b.row_range[0]);let end=0;
+    group.sort((a,b)=>a.name.localeCompare(b.name));let end=0;
     if(files.has(name+'.parquet'))throw new Error('Ambiguous archive shards.');
     for(const item of group){if(item.row_range[0]!==end)throw new Error('Archive shard ranges contain a gap or overlap.');end=item.row_range[1];}
   }
   for(const name of ['list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet','recoveries.parquet','url_state.parquet','capture_scope.json',...catalogControls])if(!files.has(name)&&!shards.has(name.replace('.parquet','')))throw new Error(`Required archive file is missing: ${name}`);
   const identity=[manifest.schema_version,manifest.files.map((f: any)=>[f.name,f.sha256,f.size,f.rows])];
   if(manifest.release_id!==releaseId||await digest(utf8.encode(JSON.stringify(identity)))!==releaseId)throw new Error('Archive release identity failed verification.');
-  const verified=async(name: string)=>{
+  const listCount=files.get('list.parquet').rows;
+  if(!listCount)throw new Error('The archive is empty.');
+  if(shards.has('detail')&&shards.get('detail')!.at(-1).row_range[1]!==listCount)throw new Error('Archive detail shards do not cover the list.');
+  const verified=async(name: string,signal?:AbortSignal,maxBytes=heapBytes)=>{
     const descriptor=files.get(name);if(!descriptor)throw new Error(`Archive file not found: ${name}`);
-    return withVerifiedBytes({deadlineMs:30_000,maxBytes:heapBytes},'Archive bytes',
-      read=>read(immutableFetch,new URL(name,base).href,descriptor.sha256,descriptor.size,name));
+    return withVerifiedBytes({deadlineMs:30_000,maxBytes},'Archive bytes',
+      read=>read(immutableFetch,new URL(name,base).href,descriptor.sha256,descriptor.size,name),
+      options.signal&&signal?AbortSignal.any([options.signal,signal]):options.signal??signal);
   };
   const jsonControl=async(name:string)=>JSON.parse(new TextDecoder().decode(await verified(name)));
   let discovery:Promise<any>|undefined;
@@ -144,6 +159,79 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     return catalog;
   })();
   await discoverySchema();
+  const rawPending=new Map<string,Promise<any>>();
+  let rawActiveBytes=0;
+  const rawReserve=(bytes:number)=>{
+    if(!Number.isSafeInteger(bytes)||bytes<0||rawActiveBytes+bytes+listDecodedBytes+compressed.stats.bytes+retained.bytes>heapBytes)
+      throw new ArchiveRowsError('BUDGET_EXCEEDED','Raw rows exceed the archive working-byte budget.');
+    rawActiveBytes+=bytes;
+    return ()=>{rawActiveBytes-=bytes;};
+  };
+  async function readRows(name:string,{offset=0,limit=100,maxBytes=16*1024*1024,signal}:ArchiveReadRowsOptions={}):Promise<ArchiveRowsPage> {
+    signal=options.signal&&signal?AbortSignal.any([options.signal,signal]):options.signal??signal;
+    signal?.throwIfAborted();
+    if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000||!Number.isSafeInteger(offset+limit)||!Number.isSafeInteger(maxBytes)||maxBytes<1||maxBytes>heapBytes)
+      throw new ArchiveRowsError('INVALID_PAGE','Invalid raw archive page or byte budget.');
+    const descriptor=files.get(name);
+    if(!descriptor||!name.endsWith('.parquet'))throw new ArchiveRowsError('UNAVAILABLE',`Archive Parquet file is unavailable: ${name}`);
+    const catalog=await discoverySchema();
+    const definitions=catalog.extensions['urn:ddk:catalog:assembly'].datasetDefinitions;
+    const matching=catalog.datasets.filter(item=>item.definition.object+'.parquet'===(descriptor.shard?descriptor.shard+'.parquet':name)).map(item=>definitions[item.alias]);
+    if(matching.length!==1)throw new ArchiveRowsError('SCHEMA_MISMATCH','Raw archive file has no unique catalog field definition.');
+    const url=new URL(name,base).href,key=`verified:${url}:${descriptor.sha256}`;
+    // The existing browser digest owner requires complete compressed bytes. They
+    // must fit the bounded cache; no persistent table closure retains them.
+    if(descriptor.size*16>maxBytes||!compressed.admits(descriptor.size,key))
+      throw new ArchiveRowsError('BUDGET_EXCEEDED','Raw rows exceed the verified-file byte budget.');
+    let stored=compressed.get(key) as any;
+    if(!stored)stored=await sharedLoad(rawPending,key,async()=>{
+      const release=rawReserve(descriptor.size*3);
+      try {
+        const bytes=await verified(name,undefined,maxBytes);
+        const item={url,start:0,end:descriptor.size,bytes:bytes.buffer};
+        compressed.set(key,item,bytes.byteLength);
+        return item;
+      } finally {release();}
+    },signal);
+    signal?.throwIfAborted();
+    const file={byteLength:descriptor.size,slice:async(start:number,end=descriptor.size)=>{
+      await yieldToMessages(signal);
+      if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||end>descriptor.size)throw new Error('Invalid raw Parquet byte range.');
+      return stored.bytes.slice(start,end);
+    }};
+    let release=rawReserve(descriptor.size*16);
+    try {
+      const metadata=stored.metadata??detachRawMetadata(await parquetMetadataAsync(file,{geoparquet:false}));
+      if(Number(metadata.num_rows)!==descriptor.rows)throw new ArchiveRowsError('SCHEMA_MISMATCH','Archive row count failed verification.');
+      checkRawSchema(metadata,matching[0]);
+      const metadataBytes=retainedBytes(metadata), cacheBytes=descriptor.size+metadataBytes;
+      if(!compressed.admits(cacheBytes,key))throw new ArchiveRowsError('BUDGET_EXCEEDED','Raw file metadata exceeds the cache budget.');
+      stored.metadata=metadata;compressed.set(key,stored,cacheBytes);
+      const end=Math.min(offset+limit,descriptor.rows),start=Math.min(offset,descriptor.rows);
+      const workingBytes=descriptor.size*2+metadataBytes+rawDecodeBytes(metadata,start,end);
+      if(workingBytes>maxBytes)throw new ArchiveRowsError('BUDGET_EXCEEDED','Raw row groups exceed the page working-byte budget.');
+      release();release=()=>{};release=rawReserve(workingBytes);
+      const decoded=start===end?[]:await parquetReadObjects({file,metadata,compressors,geoparquet:false,utf8:false,
+        parsers:rawParsers,rowStart:start,rowEnd:end,useOffsetIndex:true,includeRowIndex:true});
+      await yieldToMessages(signal);
+      if(decoded.length!==end-start)throw new ArchiveRowsError('SCHEMA_MISMATCH','Raw Parquet page returned an unexpected row count.');
+      const sourceStart=descriptor.row_range?.[0]??0;
+      const page:ArchiveRowsPage={releaseId,file:{name,sha256:descriptor.sha256,size:descriptor.size,rows:descriptor.rows,rowRange:[sourceStart,sourceStart+descriptor.rows]},
+        offset,totalRows:descriptor.rows,nextOffset:end<descriptor.rows?end:null,schema:structuredClone(metadata.schema),rows:[],rowPositions:[]};
+      for(let index=0;index<decoded.length;index++) {
+        if(index%scanBatchRows===0)await yieldToMessages(signal);
+        const fileRow=decoded[index][rowIndex];
+        if(fileRow!==start+index)throw new ArchiveRowsError('SCHEMA_MISMATCH','Raw Parquet page lost its physical row position.');
+        page.rows.push(ownRawValue(decoded[index]) as Record<string,any>);
+        page.rowPositions.push({row:sourceStart+fileRow,fileRow});
+      }
+      if(rawOutputBytes(page)>maxBytes)throw new ArchiveRowsError('BUDGET_EXCEEDED','Raw rows exceed the returned-page byte budget.');
+      signal?.throwIfAborted();return page;
+    } finally {release();}
+  }
+  const rawReader={mode:'rows' as const,releaseId,manifest:structuredClone(manifest),metrics,readRows,
+    has:(name:string)=>files.has(name+'.parquet')||shards.has(name),catalog:async()=>structuredClone(await discoverySchema())};
+  if(options.mode==='rows')return rawReader;
   const tables=new Map<string,Promise<any>>();
   async function table(name: string, whole=false){
     if(!tables.has(name)){const pending=(async()=>{
@@ -171,8 +259,6 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   }
   const list=await table('list.parquet',true), columns=new Map<string,any>();
   const count=Number(list.metadata.num_rows);
-  if(!count)throw new Error('The archive is empty.');
-  if(shards.has('detail')&&shards.get('detail')!.at(-1).row_range[1]!==count)throw new Error('Archive detail shards do not cover the list.');
   for(const name of ['filename','title','hidden','format','document_date','first_captured','date_kind','saved_kind',...arrayFields])if(!list.names.includes(name))throw new Error(`Archive list is missing ${name}.`);
   for(const name of list.names){
     const values=await parquetReadColumn({...list,columns:[name],compressors});
@@ -180,7 +266,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     const packed=column(values,arrayFields.has(name));
     metrics.decodedPeak=Math.max(metrics.decodedPeak,metrics.decodedBytes+packed.bytes+retainedBytes(values));
     if(metrics.decodedPeak>heapBytes)throw new Error('Archive list exceeds the configured heap budget.');
-    metrics.decodedBytes+=packed.bytes;metrics.listColumns++;columns.set(name,packed);
+    listDecodedBytes+=packed.bytes;metrics.decodedBytes=listDecodedBytes;metrics.listColumns++;columns.set(name,packed);
   }
   tables.delete('list.parquet'); // The compressed list is released after its columns are packed.
   const value=(name: string,i: number)=>columns.get(name)?.get(i);
@@ -329,7 +415,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,meetingCoverage,
     entityHasColumn:async(name,column)=>(await table(name+'.parquet',true)).names.includes(column)});
 
-  const reader={releaseId,manifest,metrics,count,
+  const reader={mode:'browse' as const,releaseId,manifest:structuredClone(manifest),metrics,count,readRows,
     has:(name: string)=>files.has(name+'.parquet')||shards.has(name),
     async search(rawQuery: any={},signal?: AbortSignal){
       signal?.throwIfAborted();const offset=rawQuery.offset??0,limit=rawQuery.limit??100;
@@ -452,7 +538,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     retired,
     witnessKeyMap,
     locate,
-    catalog:discoverySchema,
+    catalog:async()=>structuredClone(await discoverySchema()),
     async openSaved(detail: any){
       const saved=savedCopy(detail,options.rawBase??new URL('/',pointerUrl).href);
       if(saved.compressedDownload||detail.saved_suffix!=='.gz')return saved;
