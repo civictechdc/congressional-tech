@@ -168,7 +168,8 @@
     "Committed e743ffdd: fresh and resumed model execution share explicit host metadata capture/recovery bounds; two retained fake-transport cases and independent static review pass. These bounds do not establish aggregate reply fit.",
     "Prepared successor execution metadata from committed source e743ffdd. The maintained renderer reproduces the exact original model JobSpec 7652afbe; all 45 local input members retain custody, with no payload/provider/native reads. Original producer facts remain unchanged.",
     "Final-runtime schema-only validation passed for the exact original producer proof and full model: two calls, all eight observed native input schemas, 9 required proof counters, 7 informational history fields and 225 required model counters. Both original policies remain valid. Two independent terminal reviews accepted; no input admission or row execution ran.",
-    "Installed qualified SDK3 and committed host watchdog-group wiring as d72d0a65; seven retained proof checks and five partial application cases passed. Exact package identity and 131 unchanged installed versions verified; independent reviews closed with original guard/preflight failures preserved. No corpus or schema calls repeated."
+    "Installed qualified SDK3 and committed host watchdog-group wiring as d72d0a65; seven retained proof checks and five partial application cases passed. Exact package identity and 131 unchanged installed versions verified; independent reviews closed with original guard/preflight failures preserved. No corpus or schema calls repeated.",
+    "Committed d0ff5fb0: the existing watchdog retains cleanup errors, attempts remaining termination actions and requires a positive empty owned-group inventory. All 29 focused process/watchdog cases passed; no native/provider calls or repeated DDK/schema checks."
   ],
   "active": [
     "Bind the actual installed SDK3 generation to the existing captured definition, then adopt and accept the original population proof in its bounded run. Full-model execution has a separate admission and resource plan. Passed native schema evidence is retained.",
@@ -1376,7 +1377,7 @@
         "rowsDecoded": 0,
         "smallPreparedArtifactBytesHashed": 119716
       },
-      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB→reviewedB fixed daily/direct classification; reviewedB→C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
+      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB\u2192reviewedB fixed daily/direct classification; reviewedB\u2192C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
       "schemaAuthority": "Source09 proof inference matched original observed input schemas and decoded report schemas. Full staged model inference refused missing capture_disposition; no accepted current model policy.",
       "nativeAdoption": "not_run",
       "nativeJobs": "no_payload_execution; separate schema-only calls recorded below",
@@ -1661,6 +1662,17 @@
       "otherCompleteLockEntriesUnchanged": 133,
       "hostOwnedProcessGroupConfigured": true,
       "peakRSSGiB": 0.234
+    },
+    "watchdogCleanup": {
+      "result": "29 passed; zero failures, errors or skips",
+      "scope": "production-offline partial, two of 506 lane files; not a full lane result",
+      "sourceCommit": "d0ff5fb0",
+      "peakRssGiB": 0.23,
+      "peakPhysicalGiB": 0.135,
+      "watchdogSeconds": 15.3,
+      "ownedGroupConfirmedEmpty": true,
+      "review": "Greybeard accepted exact committed source and retained test evidence; no material finding",
+      "limits": "Detached groups and unrelated callers that discard cleanup notes are outside this repair."
     }
   },
   "commits": {
@@ -1678,7 +1690,8 @@
       "aaf2b45c",
       "eb6f7466",
       "14e96d07",
-      "d72d0a65"
+      "d72d0a65",
+      "d0ff5fb0"
     ],
     "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
     "checkpoint": "Reviewed application reader, captured native request, schema/controller retirement and exact-inventory comparison changes are committed. Native producer adoption and full replacement acceptance remain pending."
@@ -1995,6 +2008,16 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/terminal-review.json",
       "sha256": "f617fa8c822c078058928eb3453d1afb167ea724d8e6f66c57f13ba012b4e946",
       "size": 1396
+    },
+    "watchdogCleanup": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/watchdog-cleanup-01/terminal.json",
+      "sha256": "932c272825520fa7a5441454398ff0ce2067a4c114cd74ab0f5bd04be9f102d0",
+      "size": 3177
+    },
+    "watchdogCleanupReview": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/watchdog-cleanup-01/terminal-review.json",
+      "sha256": "017d480390ff045803d42efe39c7afc4d5fae351963f5a61a8b023a0756efca5",
+      "size": 1181
     }
   },
   "constraints": {
@@ -2007,7 +2030,7 @@
     "resourceNote": "Bounded local checks ran under the shared watchdog with measured peaks. Parent owns the successor build lane; complete replacement-native acceptance remains pending.",
     "boundedLocalChecksAdmitted": true,
     "replacementNativeAcceptanceAdmitted": false,
-    "currentProducerEntrypoint": "Source now requires a pinned accepted v3 producer proof and its exact adopted definition. Shared DDK supplies original schemas and current custody; adopted input order is preserved. The model states its combined-readings version and records observed native schema hashes. Current producer hashes no longer replace historical authority; native admission binds the complete adopted job/policy and local input bytes. The required successor SDK and actual native application qualification remain pending."
+    "currentProducerEntrypoint": "The installed and qualified SDK3 supplies original schemas, current custody, private native source access and host-owned process-group placement. The model requires pinned accepted v3 producer evidence and its adopted definition. Native admission binds the original producer facts, complete JobSpecs/policies and local input bytes. Actual original-data adoption, proof and model acceptance remain pending."
   },
   "delivery": {
     "fullReplacementComplete": false,
@@ -2019,7 +2042,7 @@
     "producerDefinitionPreparation": "The exact successor definition and adoption request are frozen; only the DDK interpretation identity changed. Original producers, interpretation facts, selectors, JobSpecs, policies and local inventory remain intact. Both jobs passed fresh schema-only inference on native 255c1848/e2ed2646; the original 9-counter proof and 225-counter model policies remain valid. Adoption, population values and full model data acceptance remain pending. All 24,028 recovery/refresh obligations remain unresolved."
   },
   "definitionImplementation": {
-    "state": "Qualified dev6 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Actual retained application execution remains under acceptance.",
+    "state": "Qualified SDK3 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Fresh original proof/model schema evidence is retained. Original-data execution remains under acceptance.",
     "owner": "application definitions and consumer adapter; shared DDK fix parent-owned",
     "remaining": [
       "Actual full native JobSpec execution and original snapshot/producer admission using observed native field/element IDs; local authored schema IDs differ for seven tables",
@@ -2027,12 +2050,12 @@
       "Broader application cold recovery and complete consumer acceptance beyond the passed source25 rich fixture and required native gate",
       "Native frozen publication intent and application activation integration"
     ],
-    "wheelSHA256": "41dbccda3367ea794f0040c165abd86f43d918ecee036cbce7307a0b98b18149"
+    "wheelSHA256": "bd3218fb8c95e54fbbb54711ba2913fc1a5ac27ca3473757065da7d1858f4486"
   },
   "simplification": {
     "requirement": "Standardize and streamline the whole catalog-to-validation stack; reduce custom machinery rather than accumulate compatibility patches",
     "decision": "One maintained DDK definition and rule generator; removed old schema validator and registry from production. Native lifecycle composition adds no application journal, mutable selection or data export copy.",
-    "nextIncrement": "Qualify the dev6 native package/profile, admit original native source and producer evidence, and connect the existing publisher to native frozen intent without an application phase journal",
+    "nextIncrement": "Admit the original native producer evidence and data using the qualified SDK3/native package; connect the existing publisher to native frozen intent without an application phase journal.",
     "historicalCompatibility": "Not required: greenfield migration updates every reader together. Old artifacts remain retained evidence; new-stack history and recovery remain required.",
     "performance": "Removed duplicate schema generator/validator and separate registry; no measured execution speedup claimed. Focused schema retirement peaked at 0.33 GiB RSS.",
     "design": "docs/replacement-ddk/design.md#simplification-is-part-of-acceptance"

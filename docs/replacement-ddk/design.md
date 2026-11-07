@@ -110,6 +110,10 @@ installed with the private source path and explicit host process-group option.
 Its shared qualification passed 703 tests across 13 profiles; Congress passed
 seven retained-proof checks and five application cases with fake transport.
 Both original JobSpec schema checks remain valid on the unchanged native runtime.
+The existing host watchdog now requires positive evidence that its owned process
+group is empty. Cleanup errors and unavailable process inventory fail the run,
+including when the command itself exited successfully. All 29 focused cases
+passed; this is a two-file test result, not a full application qualification.
 Original-provider and data qualification remain open.
 Dashed boxes identify producer adoption, prerequisite enforcement and publication
 capabilities still required for production. Congress has staged the exact source
@@ -145,7 +149,9 @@ flowchart TB
     end
 
     subgraph host["Host — process lifetime and resource bounds"]
-        process_limits["Existing watchdog and explicit limits; SDK3 keeps the native child in the owned process group — checked"]
+        process_limits["Existing watchdog owns the native process group; explicit resource limits and remaining stage time"]
+        process_cleanup["Require empty-group evidence; cleanup errors or unknown inventory fail the run — 29 focused cases passed"]
+        process_limits --> process_cleanup
     end
 
     subgraph native["DocSpec — execution, native evidence and data authority"]
