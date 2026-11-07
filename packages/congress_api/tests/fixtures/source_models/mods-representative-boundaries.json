@@ -1,0 +1,774 @@
+[
+  {
+    "body_sha": "019936fae18781bb450175002605fae739522de8b4d3cc06756e9bbaefaf43e8",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-115hhrg25310",
+    "source_literal": "Mark Berven, President and Chief Operating Officer, Property and Casualty Operations, Nationwide Mutual Insurance Company, on behalf of the BuildStrong Coalition: Testimony",
+    "expected_source_span": "the BuildStrong Coalition",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "0c31075d2cdcfc122bf2e218c4476f51fd561fb825beb1322a72a5718a1ad721",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-114hhrg96988",
+    "source_literal": "Greg R. White, Commissioner, Michigan Public Service Commission, on behalf of the National Association of Regulatory Utility Commissioners, Chairman, Subcommittee on Nuclear Issues, Waste Disposal",
+    "expected_source_span": "the National Association of Regulatory Utility Commissioners",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "11fd8b25091006b56b578d0298352c48d0d42036f2e1c84594c7393866bd9cfa",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-112hhrg72944",
+    "source_literal": "Fox, Frederick, Administrator, Tribal Energy Department, MHA Nation, New Town, North Dakota, on behalf of The Honorable Tex G. Hall, Chairman, Mandan, Hidatsa, and Arikara Nation of the Fort Berthold Reservation, Oral statement of",
+    "expected_source_span": "The Honorable Tex G. Hall, Chairman, Mandan, Hidatsa, and Arikara Nation of the Fort Berthold Reservation",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "19b66bc5179274c1550384a6efa631e63c181d95e82dc33b4edf528a0aef973f",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-107shrg79625",
+    "source_literal": "Halperin, Morton H., chair, Advisory Board and Kate Martin, director, on behalf of the Center for National Security Studies, prepared statement",
+    "expected_source_span": "the Center for National Security Studies",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "2120ae9eec7df3a137245ee22b91db62fa0b12a281a8c639ca205d89225faaad",
+    "locator": "mods:witness[13]",
+    "package": "CHRG-108hhrg85771",
+    "source_literal": "Sweeney, Patrick, Executive Director, Western Organization of Resource Councils, on behalf of Eric Barlow, Oral statement of",
+    "expected_source_span": "Eric Barlow",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "21ba11786111a76c35fb076df9c881475d1966f4f8e2ea094bab1b57fe0852c9",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-112hhrg80844",
+    "source_literal": "Mr. Kim Beck, President and CEO, Automatic Feed Company, on behalf of the Association for Manufacturing Technology, Testimony",
+    "expected_source_span": "the Association for Manufacturing Technology",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "2693a01e6f15b02f200a113a7c11de0e9bdecd840e7199e34caa5e7918ca76fc",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-110hhrg41376",
+    "source_literal": "Wade, Sarah, Chapel Hill, NC, on behalf of Sergeant Edward Wade, USA (Ret.)",
+    "expected_source_span": "Sergeant Edward Wade, USA (Ret.)",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "30972808aa6ba4bf1c5c6eb43c78e1ede8b70265e6d5e5d2ab64313a27ee3f2d",
+    "locator": "mods:witness[14]",
+    "package": "CHRG-111hhrg52366",
+    "source_literal": "Flocken, Jeff, Washington, D.C., Office Director, on behalf of the International Fund for Animal Welfare, Statement submitted for the record on H.R. 1054",
+    "expected_source_span": "the International Fund for Animal Welfare",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "322788f8a9e83b1ee3e0a4bd9113f262206a245dc178ad90bc8e8216e0a4cb36",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-115hhrg25483",
+    "source_literal": "Hon. Pete Buttigieg, Mayor, City of South Bend, Indiana, on behalf of the U.S. Conference of Mayors: Testimony",
+    "expected_source_span": "the U.S. Conference of Mayors",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "322788f8a9e83b1ee3e0a4bd9113f262206a245dc178ad90bc8e8216e0a4cb36",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-115hhrg25483",
+    "source_literal": "Hon. Johnny I. Dupree, Ph.D., Mayor, City of Hattiesburg, Mississippi, on behalf of the National League of Cities: Testimony",
+    "expected_source_span": "the National League of Cities",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "322788f8a9e83b1ee3e0a4bd9113f262206a245dc178ad90bc8e8216e0a4cb36",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-115hhrg25483",
+    "source_literal": "Hon. Todd Portune, Commissioner, Hamilton County Board of Commissioners, on behalf of the National Association of Counties: Testimony",
+    "expected_source_span": "the National Association of Counties",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "322788f8a9e83b1ee3e0a4bd9113f262206a245dc178ad90bc8e8216e0a4cb36",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-115hhrg25483",
+    "source_literal": "Craig Butler, Director, Ohio Environmental Protection Agency, on behalf of the Environmental Council of the States: Testimony",
+    "expected_source_span": "the Environmental Council of the States",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "322788f8a9e83b1ee3e0a4bd9113f262206a245dc178ad90bc8e8216e0a4cb36",
+    "locator": "mods:witness[9]",
+    "package": "CHRG-115hhrg25483",
+    "source_literal": "William E. Spearman III, P.E., Principal, WE3 Consultants, LLC, on behalf of the American Public Works Association: Testimony",
+    "expected_source_span": "the American Public Works Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "3789c42af1dc8cb5d7de5406ab2f50e3528065967779b14f63215188129f1ad7",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-115hhrg24657",
+    "source_literal": "Hon. Catherine Pugh, Mayor, City of Baltimore, on behalf of the United States Conference of Mayors: Testimony",
+    "expected_source_span": "the United States Conference of Mayors",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "3789c42af1dc8cb5d7de5406ab2f50e3528065967779b14f63215188129f1ad7",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-115hhrg24657",
+    "source_literal": "Wendy Smith-Reeve, Director, Arizona Department of Emergency and Military Affairs Division of Emergency Management, on behalf of the National Emergency Management Association: Testimony",
+    "expected_source_span": "the National Emergency Management Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "3789c42af1dc8cb5d7de5406ab2f50e3528065967779b14f63215188129f1ad7",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-115hhrg24657",
+    "source_literal": "Nick Crossley, CEM, CPM, Director, Emergency Management and Homeland Security Agency of Hamilton County, Ohio, on behalf of the International Association of Emergency Managers and the National Association of Counties: Testimony",
+    "expected_source_span": "the International Association of Emergency Managers and the National Association of Counties",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "3789c42af1dc8cb5d7de5406ab2f50e3528065967779b14f63215188129f1ad7",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-115hhrg24657",
+    "source_literal": "Joseph Lawless, Director of Maritime Security, Massachusetts Port Authority, on behalf of the American Association of Port Authorities: Testimony",
+    "expected_source_span": "the American Association of Port Authorities",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "3789c42af1dc8cb5d7de5406ab2f50e3528065967779b14f63215188129f1ad7",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-115hhrg24657",
+    "source_literal": "Art Martynuska, President, Pennsylvania Professional Fire Fighters Association, on behalf of the International Association of Fire Fighters: Testimony",
+    "expected_source_span": "the International Association of Fire Fighters",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "37a9e2585b829e16c87bcbe745295aaf728120f63798733cd5c9fedf54c40d0b",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-116hhrg48996",
+    "source_literal": "Accompanied by: Mr. Carlos Fuentes, Director, National Legislative Service, Veterans of Foreign Wars, On behalf of the Independent Budget Mr. Morgan Brown, National Legislative Director, Paralyzed Veterans of America, On behalf of the Independent Budget Ms. Melissa Bryant, National Legislative Director, The American Legion",
+    "expected_source_span": "the Independent Budget",
+    "allowed_if_boundary_remains_unresolved": [
+      null
+    ]
+  },
+  {
+    "body_sha": "393238e556650893bd015fa9acab7a5760b5b2d7acafae4dbcd230e9f273b797",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-109hhrg23921",
+    "source_literal": "Fisher-Barton Co., Watertown, WI, on behalf of the National Association of Manufacturers, Richard Wilkey, President",
+    "expected_source_span": "the National Association of Manufacturers",
+    "allowed_if_boundary_remains_unresolved": [
+      null
+    ]
+  },
+  {
+    "body_sha": "393238e556650893bd015fa9acab7a5760b5b2d7acafae4dbcd230e9f273b797",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-109hhrg23921",
+    "source_literal": "International Federation of Phonogram Industries, on behalf of the Recording Industry Association of America, Jay Berman, Chief Executive Officer Emeritus",
+    "expected_source_span": "the Recording Industry Association of America",
+    "allowed_if_boundary_remains_unresolved": [
+      null
+    ]
+  },
+  {
+    "body_sha": "3cc3343a3ef16df8d24dbf4426186fbb973b1d875f9cc0a102dc5fb21a7dc949",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-118hhrg58131",
+    "source_literal": "Vincent E. Messerly, President, Stream and Wetlands Foundation, on behalf of the National Association of Home Builders, oral statement",
+    "expected_source_span": "the National Association of Home Builders",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "47341339374a6da4d002cb3f7f7484fda91179e8f3cee33a0b2fa1141752435c",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-111hhrg50047",
+    "source_literal": "Lipnic, Hon. Victoria A., on behalf of the U.S. Chamber of Commerce; former Assistant Secretary of Labor for Employment Standards, U.S. Department of Labor",
+    "expected_source_span": "the U.S. Chamber of Commerce",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "4968930fcd4ace5bbe8f5a9de814139bf7502e2384f5e1f6a3dc3dfe3713a1b1",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-106shrg73484",
+    "source_literal": "Becker, Hon. Edward R., Chief Judge, U.S. Court of Appeals for the Third Circuit, Philadelphia, PA, on behalf of Judicial Conference of the United States, prepared statement",
+    "expected_source_span": "Judicial Conference of the United States",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "4968930fcd4ace5bbe8f5a9de814139bf7502e2384f5e1f6a3dc3dfe3713a1b1",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-106shrg73484",
+    "source_literal": "Busiek, David, News Director, KCCI Television, Des Moines, IA, on behalf of the Radio-Television News Directors Association, prepared statement",
+    "expected_source_span": "the Radio-Television News Directors Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "4ba3964b9e67f319e5513ea2272c2c2c84d7104ec28b49fd6ad2fe27e8fe2ad5",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-118hhrg51661",
+    "source_literal": "Mark Williams, Environmental Manager, Luck Companies, on behalf of the National Stone, Sand & Gravel Association, oral statement",
+    "expected_source_span": "the National Stone, Sand & Gravel Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "511e2c90275c07a46d34146af86f10aca0ab620716e2e4780f870c95c46a3bb7",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-106shrg74413",
+    "source_literal": "Horovitz, Pamela, on behalf of the National Association of Recording Merchandisers, prepared statement",
+    "expected_source_span": "the National Association of Recording Merchandisers",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "51ff56143604c73058a8ef38b8e34100578cdc60a7718672a4ed92f8ba45f5e1",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-114hhrg93853",
+    "source_literal": "Douglas Parker, Chairman and Chief Executive Officer, American Airlines Group, Inc., on behalf of Airlines for America: Testimony",
+    "expected_source_span": "Airlines for America",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "550c6925978a825ec5a3368085dbfbf3aec835086a96d74c819e39985274aa91",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-111shrg51750",
+    "source_literal": "Randy Noel, President, Reve, Inc., on behalf of The National Association of Home Builders, prepared statement",
+    "expected_source_span": "The National Association of Home Builders",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "57162a86534691acba8e164cdc6f562d22e38a84c2bceab0184654d3f91a95e8",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-111hhrg76585",
+    "source_literal": "John S. Bradley, MD, on behalf of American Academy Of Pediatrics, Chief, Division of Infectious Diseases, Department of Pediatrics, University of California School of Medicine, Clinical Director, Division of Infectious Diseases, Rady Children's Hospital, San Diego",
+    "expected_source_span": "American Academy Of Pediatrics",
+    "allowed_if_boundary_remains_unresolved": [
+      null
+    ]
+  },
+  {
+    "body_sha": "5921bf3cbb9379872c1e6606a112034545a4544fe2e5df0e6b9aa22be35b95fe",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-117hhrg47872",
+    "source_literal": "Erica Bornemann, Director, Vermont Emergency Management, on behalf of the National Emergency Management Association, oral statement",
+    "expected_source_span": "the National Emergency Management Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "5c3080b6f9015c0af150c9191397408f1e1f98a1f1d2b5e520a90bbd9d010180",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-117hhrg48155",
+    "source_literal": "Kelly Kupcak, Executive Director, Oregon Tradeswomen, on behalf of the National Taskforce on Tradeswomen's Issues, oral statement",
+    "expected_source_span": "the National Taskforce on Tradeswomen's Issues",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "70d3667252c026ea26c9547f837abfb32f1efc8394cc54e32b50191183634b47",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-107jhrg72497",
+    "source_literal": "Hon. James R. Schlesinger, Commissioner, on behalf of the U.S. Commission on National Security/21st Century, accompanied by Admiral Harry D. Train, USN, Ret., Commissioner, on behalf of the U.S. Commisison on National Security/21st Century",
+    "expected_source_span": "the U.S. Commission on National Security/21st Century",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "782b36b5fde0b7c5df9c566cc3a6dba9db558cf62dacbdfab2adfbed3bcf3a6a",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-106shrg73138",
+    "source_literal": "Lleiman, Bryan, Principal, Miami Springs High School, on behalf of the Youth Crime Watch of America, prepared statement",
+    "expected_source_span": "the Youth Crime Watch of America",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "7feb807f45eedf0dcd7720be52877bca2328ee69aef6f249ec499770cc23e842",
+    "locator": "mods:witness[13]",
+    "package": "CHRG-110hhrg41371",
+    "source_literal": "Veterans' Disability Benefits Commission, Vice Admiral Dennis Vincent McGinn, USN (Ret.), Member, on behalf of Lieutenant General James Terry Scott, USA (Ret.), Chairman",
+    "expected_source_span": "Lieutenant General James Terry Scott, USA (Ret.), Chairman",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "83bda872dc402d839255a5c08027b32609104bd3bbf5afd30a308e287344327d",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-115hhrg29828",
+    "source_literal": "Thomas DeJoseph, Senior Advisor of Industry Relations, Loram Maintenance of Way, on behalf of the Railway Supply Institute: Testimony",
+    "expected_source_span": "the Railway Supply Institute",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "849394fe932dc2527c9064d43ab30e376db715acaa880aac154c474f54f4ddfa",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-116hhrg37561",
+    "source_literal": "Paul Njoroge, on behalf of the families of Ethiopian Airlines flight 302, husband of Carolyne Karanja, father of Ryan Njuguna, Kelli Pauls, Rubi Pauls, and son-in-law of Ann Karanja, victims of flight ET302, accompanied by Michael Stumo, father of Samya Stumo, victim of flight ET302:",
+    "expected_source_span": "the families of Ethiopian Airlines flight 302",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "8f165c52011e809b22e2ddfcf2f10214b990eb298f71277cf70ba351f104373d",
+    "locator": "mods:witness[11]",
+    "package": "CHRG-112hhrg74588",
+    "source_literal": "Accompanied by: Mr. Skip Gebhart, Administrator, Office of Veterans Education and Training Programs, West Virginia Higher Education Policy Commission, On Behalf of The National Association of State Approving Agencies (NASAA) MG Robert M. Worley II USAF (Ret.), Director, Education Service, Veterans Benefit Administration, U.S. Department of Veterans Affairs",
+    "expected_source_span": "The National Association of State Approving Agencies (NASAA)",
+    "allowed_if_boundary_remains_unresolved": [
+      null
+    ]
+  },
+  {
+    "body_sha": "8fb00c9ae2c914dfc4b9eba50cd854c4c6612e30f3bae500b6b1fa0606c7eb7e",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-119hhrg60508",
+    "source_literal": "Nathaniel Phillip Ford, Sr., Chief Executive Officer, Jacksonville Transportation Authority, on behalf of the American Public Transportation Association (APTA), oral statement",
+    "expected_source_span": "the American Public Transportation Association (APTA)",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "8fb00c9ae2c914dfc4b9eba50cd854c4c6612e30f3bae500b6b1fa0606c7eb7e",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-119hhrg60508",
+    "source_literal": "Matthew Booterbaugh, Chief Executive Officer, RATP Dev USA, on behalf of the North American Transit Alliance (NATA), oral statement",
+    "expected_source_span": "the North American Transit Alliance (NATA)",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "92071d600f89ace0c9da350bd432427fbadfb00ec51ab5f5f6393bf3965f7db1",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-107shrg72497",
+    "source_literal": "Hon. James R. Schlesinger, Commissioner, on behalf of the U.S. Commission on National Security/21st Century, accompanied by Admiral Harry D. Train, USN, Ret., Commissioner, on behalf of the U.S. Commisison on National Security/21st Century",
+    "expected_source_span": "the U.S. Commission on National Security/21st Century",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "93a5e4d5cb48efcd494caf8d02ec217cfc6f36c89ac40938351f45dab23b1384",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-112hhrg75303",
+    "source_literal": "Mr. Dean Peschel,Peschel Consulting LLC, on Behalf of The Great Bay Municipal Coalition Written Statement",
+    "expected_source_span": "The Great Bay Municipal Coalition",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "93a5e4d5cb48efcd494caf8d02ec217cfc6f36c89ac40938351f45dab23b1384",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-112hhrg75303",
+    "source_literal": "Mr. John Hall, Hall & Associates, on Behalf of the Great Bay Municipal Coalition Written Statement",
+    "expected_source_span": "the Great Bay Municipal Coalition",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "9819f62d137ba61629621f762802f8807df882e66015e336cc67aeb2b76ea442",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-117hhrg49704",
+    "source_literal": "Teddy Andrews, Flight Attendant, American Airlines, on behalf of the Association of Professional Flight Attendants, oral statement",
+    "expected_source_span": "the Association of Professional Flight Attendants",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "9e249ec5f17be75b282d55586aa17c712521d6ecd3393417ed1088d9741d9c94",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-119hhrg59733",
+    "source_literal": "Tom Reynolds, Chief Strategy Officer, Seasats, on behalf of the Association for Uncrewed Vehicle Systems International, oral statement",
+    "expected_source_span": "the Association for Uncrewed Vehicle Systems International",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "9e5222c1585f7c78730ed7f48f59bce179472dc0e6c8933d4069ad6740a2f084",
+    "locator": "mods:witness[10]",
+    "package": "CHRG-112hhrg65823",
+    "source_literal": "Zeringue, Jerome, Office of the Governor, on behalf of The Honorable Garret Graves, Chairman, Coastal Protection and Restoration Authority, Oral statement of",
+    "expected_source_span": "The Honorable Garret Graves, Chairman, Coastal Protection and Restoration Authority",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a03f1c4b34751c5066c85b75819d974a3eac14aa6ce86e3f24bf12402edbb2d4",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-108hhrg96545",
+    "source_literal": "Tam, Chung Chung, Revenue Systems Engineer, Chicago Transit Authority, on behalf of the American Public Transportation Association, Chairman Revenue Management Committee",
+    "expected_source_span": "the American Public Transportation Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a0f7d9debed7a906114fa30cd68d3f4f4f0fa42a5b2ce9031827047ea4f210cf",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-115hhrg38032",
+    "source_literal": "Patrick Sheehan, Director, Tennessee Emergency Management Agency, on behalf of the National Emergency Management Association: Testimony",
+    "expected_source_span": "the National Emergency Management Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a0f7d9debed7a906114fa30cd68d3f4f4f0fa42a5b2ce9031827047ea4f210cf",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-115hhrg38032",
+    "source_literal": "Mistie Gardner, CEM, Emergency Management Coordinator, city of Richardson, Texas, on behalf of the U.S. Council of the International Association of Emergency Managers: Testimony",
+    "expected_source_span": "the U.S. Council of the International Association of Emergency Managers",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a0f7d9debed7a906114fa30cd68d3f4f4f0fa42a5b2ce9031827047ea4f210cf",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-115hhrg38032",
+    "source_literal": "Hon. Robert David Paulison, Former Administrator, Federal Emergency Management Agency, on behalf of the BuildStrong Coalition: Testimony",
+    "expected_source_span": "the BuildStrong Coalition",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a200581aaec196d865894aefa5b998bec2b27d18e9323b1ef14ae38ba18bce34",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-114shrg95273",
+    "source_literal": "Crasi, Tony, on behalf of the National Association of Home Builders and Owner and Founder, The Crasi Company, Inc",
+    "expected_source_span": "the National Association of Home Builders",
+    "allowed_if_boundary_remains_unresolved": [
+      null
+    ]
+  },
+  {
+    "body_sha": "a22e19b791787d5e33cbaeba95b8501df3d7751a598709cf880871077fc58b0d",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-115hhrg28114",
+    "source_literal": "Patrick K. McKenna, Director, Missouri Department of Transportation, on behalf of the American Association of State Highway and Transportation Officials: Testimony",
+    "expected_source_span": "the American Association of State Highway and Transportation Officials",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a22e19b791787d5e33cbaeba95b8501df3d7751a598709cf880871077fc58b0d",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-115hhrg28114",
+    "source_literal": "James Roberts, President and CEO, Granite Construction, Inc., on behalf of the Transportation Construction Coalition: Testimony",
+    "expected_source_span": "the Transportation Construction Coalition",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a22e19b791787d5e33cbaeba95b8501df3d7751a598709cf880871077fc58b0d",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-115hhrg28114",
+    "source_literal": "Ray McCarty, President and Chief Executive Officer, Associated Industries of Missouri, on behalf of the National Association of Manufacturers: Testimony",
+    "expected_source_span": "the National Association of Manufacturers",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a5dfcaea0a0fd612f48427aa4967dddc97df5ba323f1e395b97cffd89e508cc0",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-106shrg73292",
+    "source_literal": "Gallegos, Gilbert G., on behalf of the Fraternal Order of Police, prepared statement and attachments",
+    "expected_source_span": "the Fraternal Order of Police",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a5dfcaea0a0fd612f48427aa4967dddc97df5ba323f1e395b97cffd89e508cc0",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-106shrg73292",
+    "source_literal": "Stephens, Andreas, on behalf of the Federal Bureau of Investigation, prepared statement",
+    "expected_source_span": "the Federal Bureau of Investigation",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a61965ca44920b444b26387047c71ac4beebffce30e85eead95f98122a59e1e0",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-113hhrg89589",
+    "source_literal": "Trudy Lyon-Hart, Office of Disability Determination Services, Vermont Agency of Human Services, on behalf of the National Council of Disability Determination Directors, Testimony",
+    "expected_source_span": "the National Council of Disability Determination Directors",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a677ba1748371a59ba4e4b8aed3c43024da4e87ad4549eb044ee6f43d2796a58",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-119hhrg64473",
+    "source_literal": "Hon. Cynthia Lee Sheng, President, Jefferson Parish, Louisiana, on behalf of the National Association of Counties, oral statement",
+    "expected_source_span": "the National Association of Counties",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a966592c2d972fccfdbf6b1ca55859a2f695058926557772cc31c5aa417bed79",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-114hhrg94380",
+    "source_literal": "Danny Schnautz, Vice President, Clark Freight Lines, on behalf of the Owner-Operator Independent Drivers Association: Testimony",
+    "expected_source_span": "the Owner-Operator Independent Drivers Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a966592c2d972fccfdbf6b1ca55859a2f695058926557772cc31c5aa417bed79",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-114hhrg94380",
+    "source_literal": "Tom B. Kretsinger, Jr., President and Chief Executive Officer, American Central Transport, on behalf of the American Trucking Associations: Testimony",
+    "expected_source_span": "the American Trucking Associations",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a966592c2d972fccfdbf6b1ca55859a2f695058926557772cc31c5aa417bed79",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-114hhrg94380",
+    "source_literal": "William \"Bill\" Reese, Captain, Idaho State Police, on behalf of the Commercial Vehicle Safety Alliance: Testimony",
+    "expected_source_span": "the Commercial Vehicle Safety Alliance",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "a966592c2d972fccfdbf6b1ca55859a2f695058926557772cc31c5aa417bed79",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-114hhrg94380",
+    "source_literal": "Brian Scott, President, Escot Bus Lines, LLC, on behalf of the United Motorcoach Association: Testimony",
+    "expected_source_span": "the United Motorcoach Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "aafd571fee74b2ace97f6eb29e23c043ca23d1febdf40054c363b4def2443c2b",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-117hhrg48625",
+    "source_literal": "Shawn D. Wilson, Ph.D., Secretary, Louisiana Department of Transportation and Development, on behalf of the American Association of State Highway and Transportation Officials, oral statement",
+    "expected_source_span": "the American Association of State Highway and Transportation Officials",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ace05886c7acae1f6146046e3d36bd62489d35e3eb14d2dc75be4cc06626740f",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-118hhrg60063",
+    "source_literal": "Jeff Firth, Vice President, Hamilton Construction Company, on behalf of the Associated General Contractors of America, oral statement",
+    "expected_source_span": "the Associated General Contractors of America",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "b3863ed4ade77e74e5a75e724ced4b3c7e4bce05fd2883904ea5fb9299f5e53a",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-111hhrg48421",
+    "source_literal": "Magallanes, Sherry, on behalf of Master Sergeant Gilbert Magallanes, Jr., USA (Ret.), Clarksville, TN",
+    "expected_source_span": "Master Sergeant Gilbert Magallanes, Jr., USA (Ret.), Clarksville, TN",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "c1d6df89ed97b546710d5fb96700ad63e9a8d284d78ffc267e0509f0ec8000b2",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-119hhrg59960",
+    "source_literal": "Noah Hanners, Executive Vice President, Nucor Corporation, on behalf of the National Association of Manufacturers, oral statement",
+    "expected_source_span": "the National Association of Manufacturers",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "c3bf839ca2e4d25382cf4fe8c4c8e82fc5f3ccf27add239cdb5338f93c63edce",
+    "locator": "mods:witness[9]",
+    "package": "CHRG-107hhrg79406",
+    "source_literal": "Marin, Carlos, Principal Engineer of the United States Section, on behalf of Carlos Ramirez, Commissioner, International Boundary and Water Commission, United States and Mexico, Oral statement of",
+    "expected_source_span": "Carlos Ramirez, Commissioner, International Boundary and Water Commission, United States and Mexico",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "cc6969017d188d5d33da746cb6b530486e14f480f101e720b3c402be0174354d",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-118hhrg56115",
+    "source_literal": "Mike Koles, Executive Director, Wisconsin Towns Association, on behalf of the National Association of Towns and Townships, oral statement",
+    "expected_source_span": "the National Association of Towns and Townships",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "cc6969017d188d5d33da746cb6b530486e14f480f101e720b3c402be0174354d",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-118hhrg56115",
+    "source_literal": "Jeff Greteman, President and Chief Executive Officer, Windstar Lines, on behalf of the American Bus Association, oral statement",
+    "expected_source_span": "the American Bus Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "d1ae13819e5ded00570edb761257c89cab9bef9ec49fb0c5f28658c88d2fdd18",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-114hhrg95231",
+    "source_literal": "Hon. Paul Trombino III, P.E., Director, Iowa Department of Transportation, on behalf of the American Association of State Highway and Transportation Officials: Testimony",
+    "expected_source_span": "the American Association of State Highway and Transportation Officials",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "d1ae13819e5ded00570edb761257c89cab9bef9ec49fb0c5f28658c88d2fdd18",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-114hhrg95231",
+    "source_literal": "Hon. Bob Fox, Commissioner, Renville County, Minnesota, on behalf of the National Association of Counties: Testimony",
+    "expected_source_span": "the National Association of Counties",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "d1ae13819e5ded00570edb761257c89cab9bef9ec49fb0c5f28658c88d2fdd18",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-114hhrg95231",
+    "source_literal": "Steve Woelfel, President, Jefferson Lines, on behalf of the American Bus Association: Testimony",
+    "expected_source_span": "the American Bus Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "d1ae13819e5ded00570edb761257c89cab9bef9ec49fb0c5f28658c88d2fdd18",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-114hhrg95231",
+    "source_literal": "Charles L. \"Shorty\" Whittington, President, Grammer Industries, Inc., on behalf of The Fertilizer Institute: Testimony",
+    "expected_source_span": "The Fertilizer Institute",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "d26ca732f5fac0faef4518774a6de057e27d57d8e2d5073b46ce3a374ffc91ec",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-118hhrg52631",
+    "source_literal": "Paula Hammond, Senior Vice President, WSP USA, on behalf of the American Road and Transportation Builders Association, oral statement",
+    "expected_source_span": "the American Road and Transportation Builders Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "d6bc044abbf6d2cfed53d69c27ab9ef63998d58edd6317d5879aeae06ff4eab6",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-110hhrg36240",
+    "source_literal": "Truex, Ron, President and General Manager, Creighton Brothers, LLC, on behalf of United Egg Producers, Atwood, Indiana, Oral statement",
+    "expected_source_span": "United Egg Producers, Atwood, Indiana",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "dd4803296400beb25ef04ec0df6d18226da26a973fc94b698fd0e3acd2167e5f",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-113hhrg89583",
+    "source_literal": "Lisa D. Ekman, Director of Federal Policy, Health & Disability Advocates, on behalf of the Consortium for Citizens with Disabilities Social Security Task Force, Testimony",
+    "expected_source_span": "the Consortium for Citizens with Disabilities Social Security Task Force",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ddb6ecc6ba79b9731f824f735833b55bd890ba54cbe2277ec77efed28ce633a1",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-110shrg79551",
+    "source_literal": "Reiser, Richard S., on behalf of the American Trucking Associations, Inc. (ATA); Executive Vice President and General Counsel, Werner Enterprises, Inc.; Chairman, ATA's Hours-of- Service Committee",
+    "expected_source_span": "the American Trucking Associations, Inc. (ATA)",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "de0fb6465c918dcad74c54fbda4e46d8206a81498f3c486a5fdcea37f2375942",
+    "locator": "mods:witness[9]",
+    "package": "CHRG-107hhrg73741",
+    "source_literal": "Zeman, Robert L., Vice President and Assistant General Counsel, National Association of Independent Insurers, on behalf of the National Association of Independent Insurers and the Alliance of American Insurers; accompanied by Rita Nowak, Assistant Vice President, Alliance of American Insurers",
+    "expected_source_span": "the National Association of Independent Insurers and the Alliance of American Insurers",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ea460d863792b81d29b0be029d3ef122a9d8bfb56acf030f488793d3a52993ab",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-114hhrg93775",
+    "source_literal": "Hon. Patrick McCrory, Governor, State of North Carolina, on behalf of the National Governors Association: Testimony",
+    "expected_source_span": "the National Governors Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ea460d863792b81d29b0be029d3ef122a9d8bfb56acf030f488793d3a52993ab",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-114hhrg93775",
+    "source_literal": "Hon. Ralph Becker, Mayor, Salt Lake City, Utah, on behalf of the National League of Cities: Testimony",
+    "expected_source_span": "the National League of Cities",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ea460d863792b81d29b0be029d3ef122a9d8bfb56acf030f488793d3a52993ab",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-114hhrg93775",
+    "source_literal": "Hon. John Cox, Director, Wyoming Department of Transportation, on behalf of the American Association of State Highway and Transportation Officials: Testimony",
+    "expected_source_span": "the American Association of State Highway and Transportation Officials",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ea46989585ca22fa3b00cc478748e8d26cc6b9a269541952826d9f12babac60e",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-108hhrg95011",
+    "source_literal": "Csiszar, Ernst, Director, South Carolina Department of Insurance, on behalf of the National Association of Insurance Commissioners, Accompanied by Gregory W. Serio, Superintendent, New York State Insurance Department, and Mike Kreidler, Washington State Insurance Commissioner",
+    "expected_source_span": "the National Association of Insurance Commissioners",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ebe6a9ba504321134d45dff36a425b5426823d0c3cc63f07aeaedd05b430b369",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-111hhrg47756",
+    "source_literal": "Trandahl, Jeff, Executive Director, National Fish and Wildlife Foundation, on behalf of Mark Rockefeller, Chairman, Board of Directors, National Fish and Wildlife Foundation, Oral statement of",
+    "expected_source_span": "Mark Rockefeller, Chairman, Board of Directors, National Fish and Wildlife Foundation",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ef320a7102dd91db3180714944edeb215e82bbe3eca161739ae6f08472182909",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-115hhrg30253",
+    "source_literal": "John C. Schroer, Commissioner, Tennessee Department of Transportation, on behalf of the American Association of State Highway and Transportation Officials: Testimony",
+    "expected_source_span": "the American Association of State Highway and Transportation Officials",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "ef320a7102dd91db3180714944edeb215e82bbe3eca161739ae6f08472182909",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-115hhrg30253",
+    "source_literal": "Michael Lewis, Executive Director, Colorado Department of Transportation, on behalf of the Western Road Usage Charge Consortium (RUC West): Testimony",
+    "expected_source_span": "the Western Road Usage Charge Consortium (RUC West)",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "f1d396782ab173959329072009a859b89e12dd2b3c0cd4c84410668e271a6dc0",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-119hhrg60064",
+    "source_literal": "Haley Norman, Co-Owner, Direct Traffic Control, Inc., on behalf of the American Traffic Safety Services Association, oral statement",
+    "expected_source_span": "the American Traffic Safety Services Association",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "f2ac07f0f5d28ae7e5e7cb6e0af54316aabc18ed483652749e79c3ce7221aa36",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-112hhrg67405",
+    "source_literal": "Statement of Gregory E. Conrad, Executive Director, Interstate Mining Compact Commission, on Behalf of the Interstate Mining Compact Commission and the National Association of Abandoned Mine Land Programs, May 18, 2011, submitted for the record",
+    "expected_source_span": "the Interstate Mining Compact Commission and the National Association of Abandoned Mine Land Programs",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "f97deaa815d592bd70a35c8bd47bc5fbff3660ecb8a5dde8ee2ac908cbf11592",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-113hhrg89474",
+    "source_literal": "Ambassador Stuart E. Eizenstat, Partner, Covington & Burling LLP, on behalf of the Transatlantic Business Coalition, Testimony",
+    "expected_source_span": "the Transatlantic Business Coalition",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "f97deaa815d592bd70a35c8bd47bc5fbff3660ecb8a5dde8ee2ac908cbf11592",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-113hhrg89474",
+    "source_literal": "Mr. Greg Slater, Director, Global Trade and Competition Policy, Intel Corporation, on behalf of the Business Coalition for Transatlantic Trade and the Coalition of Services Industries, Testimony",
+    "expected_source_span": "the Business Coalition for Transatlantic Trade and the Coalition of Services Industries",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "fd162d80bafed01408742068e6642187034e000be03c390a1cab48dd7d97512e",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-112hhrg65676",
+    "source_literal": "Ellis, Stephen, on behalf of the SmarterSafer Coalition, and Vice President, Taxpayers for Common Sense",
+    "expected_source_span": "the SmarterSafer Coalition",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "fd162d80bafed01408742068e6642187034e000be03c390a1cab48dd7d97512e",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-112hhrg65676",
+    "source_literal": "Jallick, Donna M., on behalf of the Property Casualty Insurers Association of America (PCI), and Vice President, Flood Operations, Harleysville Insurance",
+    "expected_source_span": "the Property Casualty Insurers Association of America (PCI)",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "b75b5a4f8899cccc231b5c8df8c1dd65d6eab94c11c94fb51a327897a77f379c",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-112shrg72554",
+    "source_literal": "Lyle Wong, Ph.D., Plant Industry Administrator, Hawaii Department of Agriculture, on behalf of the Hon. James J. Nakatani, Deputy to the Chairperson, Board of Agriculture, State of Hawaii",
+    "expected_source_span": "the Hon. James J. Nakatani, Deputy to the Chairperson, Board of Agriculture, State of Hawaii",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "c3dbfcfac119599b7793d6b22487fc4700115fab402567d0444d80ffe3023efd",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-112shrg76070",
+    "source_literal": "Kevin L. Perkins, Associate Deputy Director, Federal Bureau of Investigation, U.S. Department of Justice, on behalf of the Hon. Robert S. Mueller III, Director, Federal Bureau of Investigation, U.S. Department of Justice",
+    "expected_source_span": "the Hon. Robert S. Mueller III, Director, Federal Bureau of Investigation, U.S. Department of Justice",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "7475b4c5d1a220afc07fbe01ba023e11094bc90e9b8967602f2d48a1dd5b43f4",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-110hhrg35445",
+    "source_literal": "Rowlan, Steven, general manager, environmental affairs, Nucor Corporation, on behalf of Dan DiMicco, chairman, president, and chief executive officer, Nucor Corporation",
+    "expected_source_span": "Dan DiMicco, chairman, president, and chief executive officer, Nucor Corporation",
+    "allowed_if_boundary_remains_unresolved": []
+  },
+  {
+    "body_sha": "1fefdd69fa12d140dd2934fad998c6b9d7463b8dc8728274680d7e28a134557d",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-117hhrg46369",
+    "source_literal": "Michael J. Boskin, Ph.D., Tully M. Friedman Professor of Economics and Wohlford Family Senior Fellow, Hoover Institution, Stanford University, on behalf of himself, oral statement",
+    "expected_source_span": "himself",
+    "allowed_if_boundary_remains_unresolved": []
+  }
+]

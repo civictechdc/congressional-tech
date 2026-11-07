@@ -2097,6 +2097,35 @@ def test_mods_affiliation_recovery_refuses_competing_or_unsupported_boundaries(a
     assert item["position"] is None and item["organization"] is None
 
 
+@pytest.mark.parametrize("control", json.loads(
+    (Path(__file__).parent / "fixtures/source_models/mods-representative-boundaries.json").read_text()
+), ids=lambda control: control["package"] + ":" + control["locator"])
+def test_mods_representative_preserves_party_qualifiers_and_excludes_other_entries(control):
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension><witness>'
+           + escape(control["source_literal"]) + '</witness></extension></mods>')
+    row = appearance_records.build_appearance_record_row(_sha(xml), "mods", xml)
+    item, = row["appearances"]
+    assert item["on_behalf_of"] in [
+        control["expected_source_span"], *control["allowed_if_boundary_remains_unresolved"],
+    ]
+
+
+@pytest.mark.parametrize("line, expected", [
+    ("Jane Doe, Director, on behalf of (Ret.) :", None),
+    ("Jane Doe, Director, on behalf of The Testimony Project", "The Testimony Project"),
+    ("Jane Doe, Director, on behalf of The Hon. Jane Roe", "The Hon. Jane Roe"),
+    ("Jane Doe, Director, on behalf of the Hon. Jane Roe", "the Hon. Jane Roe"),
+    ("Jane Doe, Director, on behalf of Agency, and President's Council on the Arts",
+     "Agency, and President's Council on the Arts"),
+    ("Jane Doe (filed, on behalf of Panel 42), Director, on behalf of Agency", "Agency"),
+])
+def test_mods_representative_preserves_names_and_legacy_marker_selection(line, expected):
+    row = appearance_records.build_appearance_record_row(_sha(line), "mods", {"witnesses": [line]})
+    item, = row["appearances"]
+    assert item["on_behalf_of"] == expected
+    assert item["position"] == "Director"
+
+
 def test_mods_print_states_every_held_day_and_labels_statements():
     """A multi-day print states later days in constituent items (Haaland 328803), and its <witness> list
     carries letters for the record and Members' statements, which are not witnesses (red-f2)."""
