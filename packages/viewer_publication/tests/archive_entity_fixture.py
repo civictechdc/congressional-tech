@@ -50,7 +50,7 @@ def records():
                     dict(name='House Committee on Transportation and Infrastructure',
                          start=date(1995, 1, 3), end=None),
                     dict(name='House Committee on Public Works and Transportation',
-                         start=date(1975, 1, 3), end=date(1995, 1, 2))]),
+                         start=date(1975, 1, 3), end=date(1995, 1, 3))]),
             dict(system_code='hspw12', name='Subcommittee on Highways and Transit', chamber='house',
                 committee_type='subcommittee', parent_system_code='hspw00', is_current=True,
                 names=[dict(name='Subcommittee on Highways and Transit', start=date(2023, 1, 3), end=None)])],

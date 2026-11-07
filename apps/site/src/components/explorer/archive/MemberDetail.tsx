@@ -73,7 +73,7 @@ export function MemberDetail({
       <h3>Congressional Terms ({terms.length})</h3>
       <ul className="archive-entity-list">
         {terms.map((t:any,i:number)=><li key={i}>
-          <strong>{t.congress?congressLabel(t.congress):`${t.start_year||t.start||''}–${t.end_year||t.end||''}`}</strong>
+          <strong>{t.start||'Start not stated'}–{t.end||'End not stated'}</strong>
           <span className="archive-source-meta">
             {' '}— {[formatChamber(t.chamber),t.party,t.state?(t.district!=null?`${t.state}-${t.district}`:t.state):null].filter(Boolean).join(', ')}
           </span>

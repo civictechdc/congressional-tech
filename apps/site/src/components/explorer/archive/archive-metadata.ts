@@ -1,4 +1,6 @@
 import congressMetadata from '../../../data/congress_metadata.json' with { type: 'json' };
+import {resolveCommitteeName} from './record-history.ts';
+export {resolveCommitteeName};
 
 const standingCommittees: Record<string, string> = {
   hhah00: "House Ad Hoc Committee on Energy",
@@ -656,14 +658,6 @@ export type CommitteeCatalogInput =
   | null
   | undefined;
 
-function normalizeDateString(value: any): string | null {
-  if (!value) return null;
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  const str = String(value).trim();
-  const match = /^(\d{4}-\d{2}-\d{2})/.exec(str);
-  return match ? match[1] : null;
-}
-
 export function indexCommittees(committees?: CommitteeCatalogInput): Map<string, any> {
   const map = new Map<string, any>();
   if (!committees) return map;
@@ -693,62 +687,6 @@ export function indexCommittees(committees?: CommitteeCatalogInput): Map<string,
     }
   }
   return map;
-}
-
-export function resolveCommitteeName(
-  committee: any,
-  dateOrCongress?: string | number | Date | null,
-): string {
-  if (!committee) return '';
-  const historyList: any[] = Array.isArray(committee.names)
-    ? committee.names
-    : Array.isArray(committee.histories)
-      ? committee.histories
-      : [];
-  if (dateOrCongress != null && historyList.length > 0) {
-    const asNumber = typeof dateOrCongress === 'number'
-      ? dateOrCongress
-      : /^\d{1,3}$/.test(String(dateOrCongress).trim())
-        ? Number(String(dateOrCongress).trim())
-        : null;
-    if (asNumber != null && Number.isInteger(asNumber) && asNumber >= 1 && asNumber <= 300) {
-      for (const entry of historyList) {
-        if (entry?.congress != null && Number(entry.congress) === asNumber && entry.name) {
-          return String(entry.name);
-        }
-        if (Array.isArray(entry?.congresses) && entry.congresses.map(Number).includes(asNumber) && entry.name) {
-          return String(entry.name);
-        }
-      }
-      const meta = (congressMetadata as Record<string, { start: string; end: string }>)[String(asNumber)];
-      if (meta) {
-        for (const entry of historyList) {
-          const start = normalizeDateString(entry?.start ?? entry?.start_date);
-          const end = normalizeDateString(entry?.end ?? entry?.end_date);
-          if ((!start || start < meta.end) && (!end || end > meta.start) && entry?.name) {
-            return String(entry.name);
-          }
-        }
-      }
-    } else {
-      const targetDate = normalizeDateString(dateOrCongress);
-      if (targetDate) {
-        for (const entry of historyList) {
-          const start = normalizeDateString(entry?.start ?? entry?.start_date);
-          const end = normalizeDateString(entry?.end ?? entry?.end_date);
-          if ((!start || targetDate >= start) && (!end || targetDate < end) && entry?.name) {
-            return String(entry.name);
-          }
-        }
-      }
-    }
-  }
-  return String(
-    committee.current_name
-    || committee.name
-    || historyList.at(-1)?.name
-    || '',
-  ).trim();
 }
 
 export function parentCommitteeCode(code: string, committees?: CommitteeCatalogInput): string {

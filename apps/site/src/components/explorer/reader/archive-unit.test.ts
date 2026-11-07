@@ -174,6 +174,7 @@ test('historical committee names, nominations, durations, and external URLs reso
     {
       committee_key:'hspw00',
       system_code:'hspw00',
+      name:'House Committee on Transportation and Infrastructure',
       current_name:'House Committee on Transportation and Infrastructure',
       names:[
         {name:'House Committee on Public Works and Transportation',start:'1975-01-03',end:'1995-01-03'},
@@ -185,6 +186,7 @@ test('historical committee names, nominations, durations, and external URLs reso
       committee_key:'hspw12',
       system_code:'hspw12',
       parent_key:'hspw00',
+      name:'Highways and Transit',
       current_name:'Highways and Transit',
       names:[
         {name:'Surface Transportation',start:'1975-01-03',end:'1999-01-03'},
@@ -255,8 +257,8 @@ test('default hearing, document and member views keep each current witness occur
 test('a nomination keeps its own data when optional hearings fail',async()=>{
   const {createArchiveEntities}=await import('./archive-entities.ts');
   const reads:string[]=[];
-  const nomination={nomination_id:'119-pn-850',citation:'PN850',committee_activities:[]};
-  const unreadable={nomination_id:'119-pn-12-10',committee_activities:undefined};
+  const nomination={nomination_id:'119-pn-850',committee_activities:[]};
+  const unreadable={nomination_id:'119-pn-12-10',committee_activities:null};
   let loadMeetings=async ():Promise<any[]>=>{throw new Error('Hearings unavailable');};
   const reader=createArchiveEntities({
     count:0,files:new Map(['bills','meetings','nominations'].map(name=>[name+'.parquet',{}])),columns:new Map(),
@@ -268,7 +270,7 @@ test('a nomination keeps its own data when optional hearings fail',async()=>{
       throw new Error('Bills unavailable');
     },
   });
-  const found=await reader.getSubject(nomination.citation);
+  const found=await reader.getSubject(nomination.nomination_id);
   assert.equal(found?.nomination_id,nomination.nomination_id);
   assert.equal(found?.nominees,null,'A missing structured nominee field does not establish an empty list');
   assert.deepEqual(found?.committee_activities,[]);
@@ -286,6 +288,156 @@ test('a nomination keeps its own data when optional hearings fail',async()=>{
   await started;
   controller.abort();
   await assert.rejects(pending,{name:'AbortError'});
+});
+
+async function currentEntityReader(tables:Record<string,any[]>,documents:any[]=[]){
+  const {createArchiveEntities}=await import('./archive-entities.ts');
+  const fields=[...new Set(documents.flatMap(row=>Object.keys(row)))];
+  return createArchiveEntities({count:documents.length,
+    files:new Map(Object.keys(tables).map(name=>[name+'.parquet',{}])),
+    columns:new Map(fields.map(name=>[name,{}])),
+    value:(name,index)=>documents[index]?.[name],row:index=>documents[index],
+    entity:async name=>tables[name]??[],entityHasColumn:async()=>true,
+    resolve:async()=>null,entry:async()=>null,versions:async()=>[],
+  });
+}
+
+test('current meeting records preserve unknown Congress, sitting instants and panel labels',async()=>{
+  const reader=await currentEntityReader({
+    meetings:[{event_id:100,congress:null,chamber:'senate',meeting_date:'2024-05-01',
+      committees:[{system_code:'hspw00',role:'lead'},{system_code:null,role:'unspecified'}],subject_keys:[],
+      sittings:[{start:new Date('2024-05-01T14:05:06.123Z'),end:null,room:'2167',building:'Rayburn'}]},
+      {event_id:101,congress:118,chamber:null,committees:[],subject_keys:[],sittings:[]}],
+    witnesses:[{witness_key:'appearance-1',event_id:100,occasion:'meeting:100',
+      name:'Alex Smith',panel:'01',panel_order:null,display_order:2,testified:null}],
+    recordings:[{video_key:'youtube:fixture',event_ids:[100],tracks:[{
+      body:new Uint8Array(32).fill(17),suffix:'.gz',format:'vtt',language:'en',production:'manual'}]}],
+  },[{meeting_keys:['100','101','999'],committee_keys:['hspw00'],witness_keys:['appearance-1'],congress:118}]);
+  const meeting=await reader.getMeeting(100);
+  assert.equal(meeting.congress,null);
+  assert.equal(meeting.sittings[0].start,'2024-05-01T14:05:06.123Z');
+  assert.equal(meeting.sittings[0].end,null);
+  assert.equal(meeting.sittings[0].place,'Rayburn 2167');
+  assert.deepEqual(meeting.list_rows,[0]);
+  assert.deepEqual(meeting.committee_keys,['hspw00']);
+  assert.equal(meeting.committees[1].system_code,null);
+  assert.equal(meeting.committees[1].role,'unspecified');
+  assert.equal(meeting.witnesses[0].panel,'01');
+  assert.equal(meeting.witnesses[0].panel_order,null);
+  assert.equal(meeting.witnesses[0].testified,null);
+  assert.equal(meeting.recordings[0].tracks[0].sha256,'11'.repeat(32));
+  const witness=await reader.getWitness('appearance-1');
+  assert.equal(witness.appearances[0].panel,'01');
+  assert.equal(witness.appearances[0].panel_order,null);
+  assert.deepEqual(witness.list_rows,[0]);
+  assert.equal(await reader.getMeeting('house',100),null,'A chamber mismatch cannot replace a known meeting');
+  assert.equal(await reader.getMeeting('house',101),null,'An unknown source chamber does not establish House');
+  const referenced=await reader.getMeeting('house',999);
+  assert.equal(referenced.congress,null,'A related document does not state the meeting Congress');
+  assert.equal(referenced.chamber,null);
+  assert.equal(referenced.chamber_basis,'meeting_detail_missing');
+  assert.equal(referenced.committees[0].system_code,'hspw00');
+});
+
+test('latest-first member terms retain their intervals and bound historical roster details',async()=>{
+  const reader=await currentEntityReader({
+    members:[{bioguide_id:'A000001',name:'Alex Smith',terms:[
+      {start:'2023-01-03',end:'2025-01-03',chamber:'house',state:'WA',party:'D',district:9},
+      {start:'2017-01-03',end:'2023-01-03',chamber:'senate',state:'OR',party:'R',district:null}]},
+      {bioguide_id:'B000001',name:'Blair Jones',terms:[
+        {start:'2025-01-03',end:'2027-01-03',chamber:'house',state:'CA',party:'D',district:1}]}],
+    rosters:[{congress:117,system_code:'sscm00',bioguide_id:'A000001',title:null,rank:1,party:'R'},
+      {congress:117,system_code:'sscm00',bioguide_id:'B000001',title:'Chair',rank:1,party:'D'}],
+    committees:[{system_code:'sscm00',name:'Commerce',chamber:'senate',names:[],parent_system_code:null}],
+  });
+  const member=await reader.getMember('A000001');
+  assert.equal(member.party,'D');assert.equal(member.state,'WA');assert.equal(member.district,9);
+  assert.equal(member.terms[1].start,'2017-01-03');assert.equal(member.terms[1].end,'2023-01-03');
+  assert(!Object.hasOwn(member.terms[1],'congress'),'A service interval does not become one Congress');
+  assert.deepEqual((await reader.listEntities('members',{congress:117})).rows.map(row=>row.bioguide_id),['A000001']);
+  assert.deepEqual((await reader.listEntities('members',{congress:118})).rows.map(row=>row.bioguide_id),['A000001']);
+  assert.deepEqual((await reader.listEntities('members',{congress:119})).rows.map(row=>row.bioguide_id),['B000001']);
+  assert.equal((await reader.listEntities('members',{congress:117,chamber:'house'})).total,0);
+  assert.deepEqual((await reader.listEntities('members',{congress:117,chamber:'senate'})).rows.map(row=>row.bioguide_id),['A000001']);
+  assert.deepEqual((await reader.listEntities('members',{congress:117,chamber:'senate',committee:'sscm00'})).rows.map(row=>row.bioguide_id),['A000001']);
+  assert.equal((await reader.listEntities('members',{congress:118,committee:'sscm00'})).total,0,'Service does not establish an unrecorded committee seat');
+  const committee=await reader.getCommittee('sscm00',{congress:117});
+  const historical=committee.roster.find(row=>row.bioguide_id==='A000001');
+  assert.equal(historical.state,'OR');assert.equal(historical.party,'R');
+  assert.equal(historical.rank_in_party,1);assert.equal(historical.role,null);
+  assert.equal(historical.title,null,'Rank and party do not establish an unstated title');
+});
+
+test('historical term and committee intervals use each Congress boundary',async()=>{
+  const reader=await currentEntityReader({members:[
+    {bioguide_id:'A000001',name:'Earlier member',terms:[{start:'1931-03-04',end:'1933-03-04',chamber:'house'}]},
+    {bioguide_id:'B000001',name:'Later member',terms:[{start:'1933-03-04',end:'1935-01-03',chamber:'house'}]},
+  ]});
+  assert.deepEqual((await reader.listEntities('members',{congress:72})).rows.map(row=>row.bioguide_id),['A000001']);
+  assert.deepEqual((await reader.listEntities('members',{congress:73})).rows.map(row=>row.bioguide_id),['B000001']);
+  assert.equal((await reader.listEntities('members',{congress:74})).total,0);
+  const committee={name:'Current name',names:[
+    {name:'New name',start:'1933-03-04',end:null},
+    {name:'Earlier name',start:'1931-03-04',end:'1933-03-04'},
+  ]};
+  assert.equal(resolveCommitteeName(committee,72),'Earlier name');
+  assert.equal(resolveCommitteeName(committee,73),'New name');
+  assert.equal(resolveCommitteeName(committee),'Current name');
+});
+
+test('member seat filters respect committee chamber during a same-Congress chamber change',async()=>{
+  const reader=await currentEntityReader({
+    members:[{bioguide_id:'A000001',name:'Alex Smith',terms:[
+      {start:'2024-01-01',end:'2025-01-03',chamber:'senate'},
+      {start:'2023-01-03',end:'2024-01-01',chamber:'house'}]}],
+    committees:[{system_code:'sscm00',name:'Commerce',chamber:'senate',names:[]},
+      {system_code:'jsec00',name:'Joint Economic',chamber:'joint',names:[]}],
+    rosters:[{congress:118,system_code:'sscm00',bioguide_id:'A000001'},
+      {congress:118,system_code:'jsec00',bioguide_id:'A000001'}],
+  });
+  assert.equal((await reader.listEntities('members',{congress:118,chamber:'house',committee:'sscm00'})).total,0);
+  assert.equal((await reader.listEntities('members',{congress:118,chamber:'senate',committee:'sscm00'})).total,1);
+  assert.equal((await reader.listEntities('members',{congress:118,chamber:'house',committee:'jsec00'})).total,1);
+  assert.equal((await reader.listEntities('members',{congress:118,chamber:'senate',committee:'jsec00'})).total,1);
+});
+
+test('witness and recording filters use one linked meeting with stated facts',async()=>{
+  const reader=await currentEntityReader({
+    meetings:[{event_id:100,congress:null,chamber:'house',committees:[{system_code:'hspw00'}]},
+      {event_id:101,congress:118,chamber:'house',committees:[{system_code:'hspw00'}]},
+      {event_id:102,congress:117,chamber:'senate',committees:[{system_code:'sscm00'}]}],
+    witnesses:[{witness_key:'unknown',event_id:100},{witness_key:'house-appearance',event_id:101},
+      {witness_key:'senate-appearance',event_id:102}],
+    recordings:[{video_key:'shared',event_ids:[101,102],tracks:[]},
+      {video_key:'unknown',event_ids:[100],tracks:[]}],
+  });
+  const filters={congress:118,chamber:'house',committee:'hspw00'};
+  assert.deepEqual((await reader.listEntities('witnesses',filters)).rows.map(row=>row.witness_key),['house-appearance']);
+  assert.deepEqual((await reader.listEntities('recordings',filters)).rows.map(row=>row.video_key),['shared']);
+  assert.equal((await reader.listEntities('recordings',{congress:118,chamber:'senate'})).total,0);
+  assert.equal((await reader.listEntities('recordings',{congress:118,committee:'sscm00'})).total,0);
+  assert.equal((await reader.listEntities('witnesses',{congress:119})).total,0);
+});
+
+test('current bill and nomination fields retain law numbers, votes and transcript identifiers',async()=>{
+  const reader=await currentEntityReader({
+    bills:[{bill_id:'118-hr-1234',introduced:'2023-02-01',stage:'enacted',public_law_number:'118-42',
+      floor_votes:[{vote_id:'118-house-2024-100',result:'Passed'}],
+      cbo_estimates:[{publication_id:'1234',date:'2024-05-01',description:'Estimated spending'}],
+      amendments:[{amendment_id:'118-hamdt-1',purpose:'Transit reporting',latest_action_date:'2024-05-01'}]}],
+    nominations:[{nomination_id:'118-pn-730-2',received:'2023-06-01',committee_activities:null,
+      transcripts:['CHRG-118shrg1'],floor_votes:[{vote_id:'118-senate-2024-101',result:'Confirmed'}]}],
+  });
+  const bill=await reader.getBill('118-hr-1234');
+  assert.equal(bill.public_law_number,'118-42');assert.equal(bill.congress,118);
+  assert.equal(bill.introduced_date,'2023-02-01');assert.equal(bill.status,'enacted');
+  assert.equal(bill.votes[0].result,'Passed');assert.equal(bill.amendment_count,1);
+  assert.equal(bill.cbo_estimates[0].url,'https://www.cbo.gov/publication/1234');
+  const nomination=await reader.getSubject('118-pn-730-2');
+  assert.equal(nomination.received_date,'2023-06-01');assert.equal(nomination.nominees,null);
+  assert.equal(nomination.committee_activities,null);
+  assert.deepEqual(nomination.transcripts,['CHRG-118shrg1']);
+  assert.equal(nomination.votes[0].result,'Confirmed');
 });
 
 test('recording observations use only explicit meeting links, including package context',async()=>{
