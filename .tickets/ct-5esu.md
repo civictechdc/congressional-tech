@@ -1,6 +1,6 @@
 ---
 id: ct-5esu
-status: in_progress
+status: closed
 deps: []
 links: [ct-v51p, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:13Z
@@ -74,3 +74,9 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 8f8ea786. Exact URL matches remain authoritative; the fallback preserves every admitted edition. The retained candidate resolves 1,005 percent-case and 21 literal-space misses while preserving 611,729 exact index pairs. Review found no blocking defect in the lookup repair.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Final selected index, explicit alias and negative controls, and deployed site/MCP acceptance against that same index. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-5esu/REVIEW.md).
+
+**2026-11-07T23:00:34Z**
+
+November 7 selected-release acceptance is complete for alternate URL lookup. Recommend closing `ct-5esu`. Archive `5d24699ad9fa` and Explorer `0.6.2` preserve exact results and separate editions, while supported percent-case and literal-space variants find their intended documents. The maintained reader passed 12,946 checks, including all 1,005 percent-case and 21 space misses and 6,383 original exact cases. Twenty deployed-site journeys and 20 hosted MCP controls covered matching links, empty negatives, two editions, and timestamped/bare Wayback pairs. The selected index preserves the old exact index and is 4.82% larger; no speed improvement is claimed.
+
+The independent four-skill closure review inspected the actual selected-release evidence and found the scoped acceptance complete. No source change or additional build is required. [Owner results](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-5esu/RESULTS.md) · [Closure review](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/non-mcp-ticket-addendum-02/CLOSURE-REVIEW.md).
