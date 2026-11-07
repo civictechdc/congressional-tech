@@ -956,7 +956,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     ledger; absent, the ledger starts empty. They stay out of the input identity.
     """
     from congress_api.lake import compatible_versions
-    from viewer_publication.archive_format import _settings
+    from viewer_publication.archive_format import AUXILIARY_ROW_GROUP_ROWS, _settings
     from viewer_publication.archive_model_profile import (expand_parser_version_rows,profile_record,
         readings_bundle_version,validate_parser_versions)
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
@@ -1086,7 +1086,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
             binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
         lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in lake_tables},
         snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
-            ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key'])),root=root,
+            ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),
+            auxiliary_row_group_rows=AUXILIARY_ROW_GROUP_ROWS),root=root,
         recovery_policy=recovery_policy)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),

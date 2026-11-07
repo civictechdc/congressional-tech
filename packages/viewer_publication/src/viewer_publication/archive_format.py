@@ -142,8 +142,14 @@ def _lookup_steps(source):
     ]
 
 
-def _settings(profile, order, *, columns=None, dictionary=(), delta=(), footer_limit=512 << 10):
-    return dict(profile=profile, row_group_rows=65536, order_by=[dict(field=name) for name in order],
+DEFAULT_ROW_GROUP_ROWS = 65_536
+# The ballot table needs fewer groups to stay within the shared footer allowance.
+AUXILIARY_ROW_GROUP_ROWS = {'member_votes': 131_072}
+
+
+def _settings(profile, order, *, columns=None, dictionary=(), delta=(), footer_limit=512 << 10,
+              row_group_rows=DEFAULT_ROW_GROUP_ROWS):
+    return dict(profile=profile, row_group_rows=row_group_rows, order_by=[dict(field=name) for name in order],
         columns=columns or [], dictionary_columns=list(dictionary), delta_columns=list(delta),
         key_column=order[0] if profile == 'lookup' else None, created_by='docspec archive release v1', footer_limit=footer_limit)
 
@@ -253,7 +259,8 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     for name, sql, keys, dictionary in aux_items:
         steps.append(_step(name + '_export', sql, materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
-            settings=_settings('whole', keys, dictionary=dictionary)))
+            settings=_settings('whole', keys, dictionary=dictionary,
+                               row_group_rows=AUXILIARY_ROW_GROUP_ROWS.get(name, DEFAULT_ROW_GROUP_ROWS))))
     schema = _release_schema([item['name'] for item in outputs], entity_digests)
     if (content_files or {}).get('capture_profile.json',{}).get('version')==2:
         fields=json.loads((ROOT/'model/registries/capture-eligibility-fields.json').read_text())
