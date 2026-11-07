@@ -92,7 +92,13 @@ WITH observations AS (
   LEFT JOIN witness_states ws ON e.event_id=ws.event_id
 ), unattached_package_witnesses AS (
  -- A linked package holds witnesses that no raw record ties to this meeting alone (ct-dx22).
- SELECT DISTINCT l.event_id FROM meeting_transcript_links l
+ -- These publisher jacket references point to different same-day proceedings.
+ SELECT DISTINCT l.event_id FROM (VALUES
+  (105990,'CHRG-115hhrg27490'), (106820,'CHRG-115hhrg29991'),
+  (110525,'CHRG-116hhrg43523'), (111173,'CHRG-117hhrg47471'),
+  (117523,'CHRG-118hhrg56208'), (329023,'CHRG-117shrg45981')
+ ) AS unrelated(event_id,package_id)
+ RIGHT ANTI JOIN meeting_transcript_links l ON l.event_id=unrelated.event_id AND l.package_id=unrelated.package_id
  JOIN witnesses_export w ON w.package_id=l.package_id AND w.event_id IS NULL AND w.name IS NOT NULL
   AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material')
 ), witness_rows AS (
