@@ -990,7 +990,7 @@ def append_scoped_recovery(prepared, *, engine, catalog_root, targets, producer_
         _record_activation_step(producer_records,base[name],head,'Scoped recovery')
         columns=','.join(f'h."{c}"' for c in pq.read_schema(stages[name]).names)
         using=','.join(f'"{k}"' for k in keys[name])
-        checks=run_job(attempt/f'{phase}-{name}',engine,inputs=[
+        checks=run_job(attempt/f'verify-{phase}-{name}',engine,inputs=[
             tables.table_input('before_rows',base[name]),tables.table_input('after_rows',head),
             tables.table_input('incoming',stages[name])],steps=[dict(name='matching_rows',
                 sql=f'SELECT {columns} FROM incoming i JOIN after_rows h USING ({using})',materialize=True)],
