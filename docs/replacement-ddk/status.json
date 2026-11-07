@@ -1509,6 +1509,31 @@
         "size": 3283
       },
       "scope": "Proof binding, original preparation reuse, selected version identity and kept-release refusal; actual native acceptance pending"
+    },
+    "selectedSnapshotCensus": {
+      "status": "complete_metadata_census",
+      "nativeCalls": 0,
+      "payloadOpens": 0,
+      "tables": 8,
+      "manifestLists": 8,
+      "manifests": 28,
+      "metadataGetObjects": 36,
+      "storedMetadataBytes": 1000030,
+      "dataFiles": 712,
+      "declaredDataBytes": 510818834,
+      "declaredDataRecords": 7259809,
+      "deleteFiles": 0,
+      "maximumDeclaredFileBytes": 137765101,
+      "seconds": 4.7,
+      "peakRssGiB": 0.171,
+      "peakPhysicalGiB": 0.119,
+      "survivors": 0,
+      "terminal": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/selected-snapshot-census-01/terminal.json",
+        "sha256": "410eb29cf4b24c3ebbf103599c503b1ab97c9d3b3415aa099dfa44c5feae8597",
+        "size": 4931
+      },
+      "scope": "Complete selected metadata closure; counts and sizes remain manifest declarations, not payload verification or native acceptance"
     }
   },
   "commits": {
@@ -1534,7 +1559,8 @@
     "Exact original native table-pin protection and nested field/element-ID/schema mappings",
     "Managed native multi-output JobSpec preserving the actual materialized graph, retained recovery and selection",
     "Complete bounded candidate-bound quality and accepted native evidence/catalog version membership",
-    "Durable acquisition adoption and workflow-specific publication/reconciliation paths"
+    "Durable acquisition adoption and workflow-specific publication/reconciliation paths",
+    "Explicit original-S3 source readers for local managed custody; parent/native owner confirmed the current CLI and DDK route is missing. Preserve original URIs, stable source placement on retry and offline reuse of retained members."
   ],
   "evidence": {
     "partialPreparationSnapshot": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/preparation-01",
@@ -1726,6 +1752,26 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/app-proof-wiring-01/metadata-closeout.json",
       "sha256": "ee0b306b9a580489f684bfe3f075739e1fd530e1d9da4ea32788893ab45273a0",
       "size": 3283
+    },
+    "selectedSnapshotCensusPlan": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/selected-snapshot-census-01/plan.json",
+      "sha256": "6825824d1798dcf4fec4f5702c2e5eee12c132855fd2a5c1d0585dfce62fc426",
+      "size": 2954
+    },
+    "selectedSnapshotCensusReview": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/selected-snapshot-census-01/review.json",
+      "sha256": "482cf616097370ecf94760e417690609cc46c750eee207fa8490b5980fa6435e",
+      "size": 901
+    },
+    "selectedSnapshotCensusResult": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/selected-snapshot-census-01/result.json",
+      "sha256": "dd82e3b0daf788cdce1d0abf34d8bb7c5e601b356fbaa2a13a79d45e98ad3546",
+      "size": 17606
+    },
+    "selectedSnapshotCensusTerminal": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/selected-snapshot-census-01/terminal.json",
+      "sha256": "410eb29cf4b24c3ebbf103599c503b1ab97c9d3b3415aa099dfa44c5feae8597",
+      "size": 4931
     }
   },
   "constraints": {

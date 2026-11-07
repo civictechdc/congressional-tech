@@ -27,8 +27,16 @@ reader for the original S3 selectors. The CLI's current `--remote` path creates 
 remote engine, and the public DDK adapter has no source-read configuration route.
 The native owner confirmed the missing route; the parent owns its replacement. Local URI
 substitution would change the selected identities and is not the migration path.
-The separately prepared manifest census will supply file counts and declared
-byte budgets; it grants no native custody or producer acceptance.
+The exact selected metadata census completed with 36 GETs and 1,000,030 metadata
+bytes: eight manifest lists, 28 manifests and 712 live data files. All counts
+reconcile to the original snapshot summaries: 510,818,834 declared bytes,
+7,259,809 declared rows and no delete files. The largest file declares
+137,765,101 bytes. The census took 4.7 seconds at 0.171 GiB peak RSS, opened no
+payload and left no native/build/watchdog process. These are complete metadata
+observations, not payload verification, native custody or producer acceptance.
+The existing 64 KiB transfer loop would issue 8,215 payload range requests over
+those declared sizes, before HEAD and metadata requests. This is a request-count
+estimate, not measured transfer latency.
 
 The source09 model-only schema call refused the staged policy-free URL-state
 output, which lacks the capture fields required by the current catalog. This is
