@@ -107,6 +107,14 @@ The latest focused application evidence includes:
   cases pending. Current consumer transport and non-native gate tests passed
   51 cases. The current rich entity Node scenario passed against both the
   recovered source20 result and the fresh source22 result.
+- A separate local viewer catalog assembled through installed DDK dev6 from
+  the original source20 definitions and accepted receipt. It contains 23 dataset
+  declarations, 17 exact versions and file representations, one run and 160
+  checks. Its 20 standard controls, 27 source records and all export bindings
+  passed verification. All 40 original release files and 1,089 source20 custody
+  records stayed unchanged. The assembly ran in 2.2 seconds with 0.096 GiB peak
+  RSS and no native computation. Public disclosure stays unchanged; viewer
+  connection and production admission remain separate.
 
 These are focused results, not a full Python lane, product release or production
 cutover. Durable receipts are under the main checkout's

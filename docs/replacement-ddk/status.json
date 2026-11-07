@@ -74,7 +74,8 @@
     "Committed the current entity reader as 57a6bc3c: declared fields only, one dated-name resolver, preserved source unknowns, and filters bound to actual meetings or roster seats. Fifty-one focused authored-record and presentation cases passed with independent green follow-up.",
     "Fresh source20 development-runtime hand fixture passed native execution, acceptance, DDK checking, selection and hand-release assertions; all 34 files and exact prepared/accepted/selected identities were retained.",
     "Original source20 rich attempt recovered under its exact original request, runtime and limits: accepted, qualified, selected, and the rich entity Node scenario passed. All 22 phase artifacts plus view-set/completion files and original request/definition files were unchanged; no new phase files.",
-    "Fresh source22 rich synthetic fixture passed its first native execution, acceptance, DDK qualification, selection, manifest assertions and entity Node scenario at unchanged 512 MiB memory/scratch and one thread. It produced 17 exports, five reports and a 40-file inventory; 1,089 source20 files kept unchanged custody. Final runtime qualification and production admission remain separate."
+    "Fresh source22 rich synthetic fixture passed its first native execution, acceptance, DDK qualification, selection, manifest assertions and entity Node scenario at unchanged 512 MiB memory/scratch and one thread. It produced 17 exports, five reports and a 40-file inventory; 1,089 source20 files kept unchanged custody. Final runtime qualification and production admission remain separate.",
+    "Produced a separate local source20 viewer catalog through installed DDK dev6 from the original captured definitions and accepted evidence: 23 datasets, 17 exact versions/representations, one run and 160 checks. Standard inventories and all native export bindings passed; original public controls and all source20 artifacts stayed unchanged; no native computation or new publication/selection claims."
   ],
   "active": [
     "Receive the full native qualification handoff after the source22 fresh rich fixture passed; complete broader cold recovery while preserving the separately accepted source11 and source20 evidence",
@@ -809,6 +810,54 @@
         "link_count"
       ],
       "productionRuntimePinUnchangedSha256": "2b5651f58cec5c4aaf27e36f7f6ea22e6eef8062553a3a76dd5329cea84a43d3",
+      "fullLane": false
+    },
+    "localViewerSource20": {
+      "status": "passed",
+      "scope": "Metadata-only local catalog handoff; viewer connection and production acceptance remain separate",
+      "method": "ddk.catalog.assemble_catalog with original captured definitions and accepted metadata",
+      "ddkVersion": "0.1.0.dev6",
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/viewer-handoff/source20-rich-local-01/handoff.json",
+        "sha256": "b59c3cc000613cbc202906300d93f0619f5e9a948223de84462015145ba71e62"
+      },
+      "catalog": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/viewer-handoff/source20-rich-local-01/catalog/catalog.ddk.json",
+        "sha256": "e45c819098623a7edc352230ce839691e3d954d28bd0abac56bd12afd8d2a834",
+        "size": 630127
+      },
+      "catalogInventory": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/viewer-handoff/source20-rich-local-01/catalog-files.json",
+        "sha256": "9e621b0aab4e62b3e4329711caaa49ce60280a6655d3e16e78606542ad27f162",
+        "size": 7828
+      },
+      "dataInventory": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/viewer-handoff/source20-rich-local-01/data-files.json",
+        "sha256": "435767beba7866cc75de6f55b66afd5ebf3546d9820233044aad736d28f08da9",
+        "size": 10781
+      },
+      "counts": {
+        "datasets": 23,
+        "versions": 17,
+        "representations": 17,
+        "releases": 0,
+        "selections": 0,
+        "runs": 1,
+        "checks": 160,
+        "sources": 0,
+        "sourceInventory": 27
+      },
+      "outputFiles": 20,
+      "standardSchemas": "passed",
+      "catalogAndLockInventories": "passed",
+      "exactCandidateAndFileBindings": "passed",
+      "sourceInventoryVerified": 27,
+      "unchangedOriginalReleaseFiles": 40,
+      "unchangedSource20CustodyRecords": 1089,
+      "nativeExecutions": 0,
+      "publicDisclosureChanged": false,
+      "peakRSSGiB": 0.096,
+      "wallSeconds": 2.2,
       "fullLane": false
     }
   },

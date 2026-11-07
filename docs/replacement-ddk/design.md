@@ -146,9 +146,11 @@ flowchart TB
         first_receipt["Retain exact accepted receipt bytes beside the request"]
         assemble["7. Check exact schemas, required values and keys"]
         artifacts["Freeze the explicitly disclosed catalog and companions"]
-        discovery["Later discovery and lineage views"]
+        local_catalog["Freeze a separate local catalog from the original accepted evidence"]
+        discovery["Local discovery and lineage views"]
         first_receipt --> schema_binding --> assemble
         rule_binding --> assemble --> artifacts
+        assemble --> local_catalog --> discovery
     end
 
     subgraph publication["Application publisher — external release authority"]
@@ -212,6 +214,18 @@ local qualification do not automatically become public catalog facts. The
 current public catalog may disclose definitions while withholding runtime facts;
 withheld facts remain unknown to public consumers. No second public assembly
 with current definitions, inferred identifiers or broad grants fills that gap.
+
+The local viewer uses a separate standard DDK catalog assembled from the same
+original captured definitions, interpretation sources, rules and accepted
+receipt. The source20 handoff contains twenty-three dataset declarations,
+seventeen exact versions and file representations, one run and 160 checks.
+Its twenty catalog/report/lock/companion files passed schema and inventory checks;
+all twenty-seven source records and all seventeen export bindings were verified.
+The original forty release files and 1,089 source20 custody records stayed
+unchanged. This metadata-only assembly took 2.2 seconds under the watchdog and
+peaked at 0.096 GiB process RSS. It makes no new release, publication or selection
+claim and does not alter public disclosure. Six declared datasets have no file
+version in this fixture. The viewer connection is separate from this handoff.
 
 The site reader accepts the current declared entity fields. Presentation values
 come from explicit published relationships and dated records. It preserves
