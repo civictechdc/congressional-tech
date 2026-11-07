@@ -156,7 +156,7 @@ flowchart TB
 
     subgraph native["DocSpec — execution, native evidence and data authority"]
         acquisition_admit["Admit acquisition request and budgets before external effects — pending"]
-        adopt["Trusted local owner adopts exact producer definition under existing dataset authority — pending"]
+        adopt["Adopt exact producer definition under dataset authority — first attempt stopped; same-ID reconciliation pending"]
         proof_admit["Admit the exact proof request, active definition and budgets before effects"]
         source_access["Native resolves private settings and credentials; preserve original URIs — synthetic checks pass, original provider pending"]
         admit["Admit the exact model request, active definition and budgets before effects"]

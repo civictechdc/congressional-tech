@@ -1673,6 +1673,19 @@
       "ownedGroupConfirmedEmpty": true,
       "review": "Greybeard accepted exact committed source and retained test evidence; no material finding",
       "limits": "Detached groups and unrelated callers that discard cleanup notes are outside this repair."
+    },
+    "originalProducerAdoption": {
+      "result": "stopped: native capacity refusal; original adoption outcome remains unknown until same-owner reconciliation",
+      "nativeCalls": 1,
+      "providerProofCalls": 0,
+      "modelCalls": 0,
+      "selectionCalls": 0,
+      "publicationCalls": 0,
+      "peakRssGiB": 0.061,
+      "peakPhysicalGiB": 0.041,
+      "watchdogSeconds": 0.9,
+      "ownedGroupConfirmedEmpty": true,
+      "cause": "The schema-only 64 MiB metadata allowance is unsuitable for adoption: two lifecycle row caches, a 4x16 MiB writer batch allowance and a 64 MiB writer metadata allowance exhaust the 256 MiB shared pool before remaining request charges. No automatic retry or memory increase."
     }
   },
   "commits": {
@@ -2018,6 +2031,11 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/watchdog-cleanup-01/terminal-review.json",
       "sha256": "017d480390ff045803d42efe39c7afc4d5fae351963f5a61a8b023a0756efca5",
       "size": 1181
+    },
+    "firstOriginalProducerAdoption": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/adoption-closeout.json",
+      "sha256": "f7802c53d7ece361968e4acab304921b52c0b092b69c5b1c6cebb004d9579681",
+      "size": 3121
     }
   },
   "constraints": {
@@ -2039,7 +2057,7 @@
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
     "archiveModelControllerRetired": true,
-    "producerDefinitionPreparation": "The exact successor definition and adoption request are frozen; only the DDK interpretation identity changed. Original producers, interpretation facts, selectors, JobSpecs, policies and local inventory remain intact. Both jobs passed fresh schema-only inference on native 255c1848/e2ed2646; the original 9-counter proof and 225-counter model policies remain valid. Adoption, population values and full model data acceptance remain pending. All 24,028 recovery/refresh obligations remain unresolved."
+    "producerDefinitionPreparation": "The exact original producer definition, adoption request, source facts, selectors, jobs, policies and local inventory are frozen. Both jobs passed schema-only inference on native 255c1848/e2ed2646. The first actual adoption stopped on deterministic reservation exhaustion under a schema-only resource profile; its request, native workspace and unknown outcome are retained for same-ID reconciliation. No provider proof or model data execution has run. All 24,028 recovery/refresh obligations remain unresolved."
   },
   "definitionImplementation": {
     "state": "Qualified SDK3 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Fresh original proof/model schema evidence is retained. Original-data execution remains under acceptance.",
