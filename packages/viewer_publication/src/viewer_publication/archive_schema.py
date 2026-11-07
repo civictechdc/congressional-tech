@@ -247,6 +247,7 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
     if keyed_documents:
         checks.append('''(SELECT count(*) FROM (SELECT link_key FROM details WHERE link_key IS NOT NULL
         GROUP BY link_key HAVING count(*)>1)) AS duplicate_document_key''')
+    required_counts = []
     published = None if published is None else {name.removesuffix('.parquet') for name in published}
     for table in schema['files']:
         name = table['name'].removesuffix('.parquet')
@@ -256,8 +257,13 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
             if required and published is not None and name in published:
                 raise ValueError(f'Declared non-null column has no export relation: {name}.{required[0]}')
             continue
-        for column in required:
-            checks.append(f'(SELECT count(*) FROM {relation} WHERE "{column}" IS NULL) AS null_{name}_{column}')
+        if required:
+            # One aggregate returns every required-column count, including zero
+            # for an empty export. Scalar subqueries would rescan it per column.
+            required_counts.append('SELECT ' + ','.join(
+                f'count(*) FILTER (WHERE "{column}" IS NULL) AS null_{name}_{column}'
+                for column in required) + f' FROM {relation}')
+            checks.extend(f'null_{name}_{column}' for column in required)
     for table in schema['files']:
         name = table['name'].removesuffix('.parquet')
         if name not in auxiliary or name == 'url_state':
@@ -297,7 +303,9 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
             WHERE (status='unambiguous') <> (witness_key IS NOT NULL) OR (status='unresolved') <> (basis IS NULL)
             OR (status='ambiguous') <> (coalesce(cardinality(candidate_keys),0)>1)
             OR status NOT IN ('unambiguous','ambiguous','unresolved')) AS inconsistent_witness_key_map''')
-    return [dict(name='relationship_invariants', sql='SELECT ' + ',\n'.join(checks))] if checks else []
+    counts = ' CROSS JOIN '.join(f'({sql}) required_{i}' for i, sql in enumerate(required_counts))
+    sql = 'SELECT ' + ',\n'.join(checks) + (' FROM ' + counts if counts else '')
+    return [dict(name='relationship_invariants', sql=sql)] if checks else []
 
 
 def render_reference(schema):

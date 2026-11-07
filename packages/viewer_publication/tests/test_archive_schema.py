@@ -191,9 +191,11 @@ def test_non_null_column_without_relation_is_refused():
     # An unpublished table writes nothing, so it has nothing to check.
     assert publication_checks(schema, set(), published=['list.parquet'])
     sql = publication_checks(schema, set(), published=['list.parquet'])[0]['sql']
-    for core in ['ordered WHERE "filename"', 'details WHERE "link_key"', 'links WHERE "list_row"',
-                 'url_keys WHERE "lookup_key"', 'source_rows WHERE "url"', 'recovery_rows WHERE "body"']:
-        assert core in sql
+    for relation, table, column in [('ordered', 'list', 'filename'), ('details', 'detail', 'link_key'),
+            ('links', 'links', 'list_row'), ('url_keys', 'urls', 'lookup_key'),
+            ('source_rows', 'sources', 'url'), ('recovery_rows', 'recoveries', 'body')]:
+        assert f'count(*) FILTER (WHERE "{column}" IS NULL) AS null_{table}_{column}' in sql
+        assert f'FROM {relation}' in sql
 
 
 def test_output_footers_cannot_silently_drift_from_reference_types(tmp_path):
@@ -243,6 +245,25 @@ def test_key_uniqueness_reuses_only_matching_native_export_order():
     checked=publication_checks(schema,{'member_votes'},keyed_documents=False,ordered_keys=fields)[0]['sql']
     assert 'cast(0 AS BIGINT) AS invalid_member_votes_key' in checked
     assert 'member_votes_export GROUP BY' not in checked
-    assert 'member_votes_export WHERE "vote_id" IS NULL' in checked
+    assert 'count(*) FILTER (WHERE "vote_id" IS NULL) AS null_member_votes_vote_id' in checked
     fallback=publication_checks(schema,{'member_votes'},keyed_documents=False,ordered_keys={'member_votes':['vote_id','member_key','position']})[0]['sql']
     assert 'member_votes_export GROUP BY "vote_id","member_key"' in fallback
+
+
+@pytest.mark.parametrize('empty', [False, True])
+def test_required_column_counts_preserve_each_null_total_and_empty_exports(tmp_path, empty):
+    from congress_api.retention.provenance import run_job
+    from docspec_client.client import NativeDatasets
+    schema = build_schema()
+    schema['files'] = [t for t in schema['files'] if t['name'] == 'sources.parquet']
+    for column in schema['files'][0]['columns']:
+        column['nullable'] = column['name'] not in {'url', 'ordinal'}
+    rows = "SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS BIGINT) AS ordinal UNION ALL SELECT 'valid',NULL UNION ALL SELECT 'other',2"
+    steps = [dict(name='source_rows', sql=f'SELECT * FROM ({rows})' + (' WHERE false' if empty else '')),
+        dict(name='details', sql="SELECT cast(NULL AS VARCHAR) AS link_key WHERE false"),
+        dict(name='links', sql="SELECT 'present' AS link_key WHERE false")]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        result = run_job(tmp_path, engine, inputs=[], steps=steps, outputs=[],
+            queries=publication_checks(schema, set()))
+    assert result['relationship_invariants'] == [dict(missing_primary_link=0, duplicate_document_key=0,
+        null_sources_url=0 if empty else 1, null_sources_ordinal=0 if empty else 2)]

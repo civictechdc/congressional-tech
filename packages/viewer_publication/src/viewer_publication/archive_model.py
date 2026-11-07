@@ -603,21 +603,21 @@ GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
 # lookup address and every recovery row of its URL, and each value its own annotation gives: shown
 # by the document, filled into it, or, where the copy differs, kept on the link's annotation, which
 # the address row proves is a member. One row per merged link; lost_* flags are signal not found.
+# Decision exceptions are needed only by the final loss checks. Joining here
+# would repeat that table through all five references to merged.
 MERGED_RECOVERY_SQL="""WITH merged AS (
  SELECT m.source_id,dm.source_url,nullif(dm.filename,'') AS filename,a.title,a.congress,a.filename_date,a.package_id,
   a.document_kind,a.document_family,a.committee_keys,a.chambers,a.meeting_keys,a.measure_keys,a.bioguide_ids,a.facts,
-  bd.id AS bill_decision_id,bd.rejected_package_ids,bd.excluded_measure_keys,
   o.list_row,o.filename AS o_filename,o.title AS o_title,o.congress AS o_congress,o.document_date AS o_date,o.package_id AS o_package,
   o.document_kind AS o_kind,o.document_family AS o_family,o.committee_keys AS o_committees,o.chambers AS o_chambers,
   o.meeting_keys AS o_meetings,o.measure_keys AS o_measures,o.bioguide_ids AS o_bioguides,o.facts AS o_facts,
   nullif(s.filename,'') AS c_filename,coalesce(sa.reading_title,sa.listing_title) AS c_title,sa.congress AS c_congress,
   coalesce(sa.filename_date,sa.content_date) AS c_date,sa.package_id AS c_package,sa.document_kind AS c_kind,
-  sa.document_family AS c_family,sa.facts AS c_facts
+  sa.document_family AS c_family,sa.facts AS c_facts,dm.component
  FROM recovered_copy_members m JOIN document_members dm ON dm.source_id=m.source_id
  JOIN source_annotations a ON a.source_id=m.source_id
  JOIN document_identities d ON d.component=dm.component JOIN ordered o ON o.doc_key=d.document_id
  JOIN saved_files s ON s.component=dm.component AND s.saved_rank=1 JOIN source_annotations sa ON sa.source_id=s.source_id
- LEFT JOIN document_bill_decisions bd ON bd.component=dm.component
 ), addressed AS (
  SELECT DISTINCT g.source_id FROM merged g JOIN source_rows r ON r.list_row=g.list_row AND r.url=g.source_url
 ), keyed AS (
@@ -632,14 +632,15 @@ MERGED_RECOVERY_SQL="""WITH merged AS (
   LEFT JOIN recovery_rows r ON r.list_row=g.list_row AND r.original_url=c.original_url AND encode(r.body,'hex')=c.body_sha
   GROUP BY g.source_id,c.original_url,c.body_sha) GROUP BY source_id
 )
-SELECT g.*,a.source_id IS NULL AS lost_address,k.source_id IS NULL AS lost_link,u.source_id IS NULL AS lost_lookup,
+SELECT g.* EXCLUDE(component),bd.id AS bill_decision_id,bd.rejected_package_ids,bd.excluded_measure_keys,
+ a.source_id IS NULL AS lost_address,k.source_id IS NULL AS lost_link,u.source_id IS NULL AS lost_lookup,
  coalesce(r.unmoved,1)>0 AS lost_recovery,
  g.filename IS NOT NULL AND coalesce(g.o_filename,'')='' AS lost_filename,
  g.title IS NOT NULL AND g.o_title IS NULL AS lost_title,
  g.congress IS NOT NULL AND g.o_congress IS NULL AS lost_congress,
  g.filename_date IS NOT NULL AND g.o_date IS NULL AS lost_date,
  g.package_id IS NOT NULL AND g.o_package IS NULL
-  AND NOT coalesce(array_has(g.rejected_package_ids,g.package_id),false) AS lost_package,
+  AND NOT coalesce(array_has(bd.rejected_package_ids,g.package_id),false) AS lost_package,
  coalesce(array_length(g.document_kind),0)>0 AND coalesce(array_length(g.o_kind),0)=0 AS lost_kind,
  coalesce(array_length(g.document_family),0)>0 AND coalesce(array_length(g.o_family),0)=0 AS lost_family,
  coalesce(array_length(g.facts),0)>0 AND coalesce(array_length(g.o_facts),0)=0 AS lost_facts,
@@ -647,11 +648,13 @@ SELECT g.*,a.source_id IS NULL AS lost_address,k.source_id IS NULL AS lost_link,
  coalesce(array_length(g.chambers),0)>0 AND NOT coalesce(array_has_all(g.o_chambers,g.chambers),false) AS lost_chambers,
  coalesce(array_length(g.meeting_keys),0)>0 AND NOT coalesce(array_has_all(g.o_meetings,g.meeting_keys),false) AS lost_meetings,
  coalesce(array_length(g.measure_keys),0)>0 AND NOT coalesce(array_has_all(
-  array_concat(g.o_measures,coalesce(g.excluded_measure_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))),
+  array_concat(g.o_measures,coalesce(bd.excluded_measure_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))),
   g.measure_keys),false) AS lost_measures,
  coalesce(array_length(g.bioguide_ids),0)>0 AND NOT coalesce(array_has_all(g.o_bioguides,g.bioguide_ids),false) AS lost_bioguides
-FROM recovered r RIGHT JOIN (looked_up u RIGHT JOIN (keyed k RIGHT JOIN (addressed a RIGHT JOIN merged g
- ON a.source_id=g.source_id) ON k.source_id=g.source_id) ON u.source_id=g.source_id) ON r.source_id=g.source_id"""
+FROM document_bill_decisions bd RIGHT JOIN (
+ recovered r RIGHT JOIN (looked_up u RIGHT JOIN (keyed k RIGHT JOIN (addressed a RIGHT JOIN merged g
+ ON a.source_id=g.source_id) ON k.source_id=g.source_id) ON u.source_id=g.source_id) ON r.source_id=g.source_id
+) ON bd.component=g.component"""
 LOST_FLAGS=['address','link','lookup','recovery','filename','title','congress','date','package','kind','family','facts',
     'committees','chambers','meetings','measures','bioguides']
 # Per field: merged links whose value fills a field the copy itself lacks, and links whose value
@@ -679,12 +682,20 @@ _NAME_FIELDS=[('filename_date','cast(o.filename_date AS VARCHAR)','cast(l.filena
     ('document_kind',"array_to_string(array_sort(o.document_kind),',')","array_to_string(array_sort(l.document_kind),',')",'filled_kind'),
     ('document_family',"array_to_string(array_sort(o.document_family),',')","array_to_string(array_sort(l.document_family),',')",'filled_family'),
     ('committee_code',"array_to_string(array_sort(o.committee_code),',')","array_to_string(array_sort(l.committee_code),',')",'filled_committee')]
-FILENAME_CONFLICTS_SQL=' UNION ALL '.join(
-    f"""SELECT o.source_id,'{name}' AS field,{shown} AS shown_value,o.{name}_name AS shown_name,o.{name}_url AS shown_url,
-    {other} AS other_value,l.requested_filename AS other_name,l.requested_url AS other_url
-    FROM source_filename_readings o JOIN source_linked_filename_readings l USING(source_id)
-    WHERE nullif({shown},'') IS NOT NULL AND nullif({other},'') IS NOT NULL AND {shown}<>{other}"""
-    for name,shown,other,filled in _NAME_FIELDS)
+# Expand the five comparisons after one joined pass; UNION branches would
+# re-plan the same two input scans once per field. Keep every linked occurrence.
+FILENAME_CONFLICTS_SQL="""SELECT source_id,comparison['field'] AS field,
+ comparison['shown_value'] AS shown_value,comparison['shown_name'] AS shown_name,comparison['shown_url'] AS shown_url,
+ comparison['other_value'] AS other_value,other_name,other_url
+ FROM (SELECT o.source_id,l.requested_filename AS other_name,l.requested_url AS other_url,
+ unnest(make_array(""" + ','.join(
+    f"named_struct('field','{name}','shown_value',{shown},'shown_name',o.{name}_name,"
+    f"'shown_url',o.{name}_url,'other_value',{other})"
+    for name,shown,other,_filled in _NAME_FIELDS) + """)) AS comparison
+ FROM source_linked_filename_readings l JOIN source_filename_readings o USING(source_id)) compared
+ WHERE nullif(comparison['shown_value'],'') IS NOT NULL
+ AND nullif(comparison['other_value'],'') IS NOT NULL
+ AND comparison['shown_value']<>comparison['other_value']"""
 # A qualified linked date can supersede an ineligible shown alias. Retain that
 # shown disagreement too, unless reference association has made the same shown
 # pair available to the ordinary linked comparison (capture-sources.sql).

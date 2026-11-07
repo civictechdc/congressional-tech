@@ -39,14 +39,13 @@ MEASURED = json.loads((Path(__file__).parent/'fixtures/model-relation-rows.json'
 # that is not listed may not cross the line.
 REPEAT_COST_TRACKED = {
     'entity_profile_completeness': 49_033_171,  # query; captures x10, readings x9 (M17, M28)
-    'model_invariants': 48_118_770,             # query; the merged 7-way join x5 (M13)
+    'model_invariants': 50_877_106,             # merged join x5 (M13), plus independent final bill-identity check
     'merged_recovery_fields': 43_005_605,       # query; the merged 7-way join x5 (M13)
     'bills_export': 33_468_701,                 # spicy_congress_bills x30, ordered x27 (M17)
     'component_meeting_links': 32_189_482,      # effective_filenames x4, source_annotations x6 (M17)
     'retired_links_export': 31_775_718,         # the links view: ordered x29, prior_links x21 (M16)
     'profile_completeness': 23_295_486,         # query; readings through the current selected_readings (M28)
     'model_url_keys': 18_289_579,               # url_normalized x11 through mappings (M17)
-    'relationship_invariants': 32_996_170,      # includes exact legislative leaf rows; pre-repair plan has the same score
     'source_url_keys': 13_842_862,              # source_url_normalized x11 through mappings (M17)
     'pinned_readings': 14_177_632,              # current compatible reading selection (M28)
     'link_inputs': 14_177_632,                  # current compatible reading selection (M28)
@@ -57,8 +56,11 @@ REPEAT_COST_TRACKED = {
 # Only caption_resources added work in that reconciliation. The later legislative
 # leaf counts and meetings regex baseline are bound by before/after tiny job replays
 # in parallel-sessions/ct-m104/repeat-audit-{before-v2,after-v1}/report.json.
-# Both plans have identical tracked costs and no new offender. These are estimated
-# row-scan scores, never measured time or RSS.
+# The window repair did not change those scores. Later, aggregating required-column counts
+# once per export took relationship_invariants below the threshold. The independent final
+# bill-identity check adds one decision, document identity and ordered scan to model_invariants;
+# the decision count uses the largest-input fallback. These are estimated row-scan scores,
+# never measured time or RSS.
 # Readers whose plan runs the same regex join more than once, with that join's runs: a nested-loop
 # regex join costs CPU per rule and row, which the row score cannot see (audit M15). Tracked under
 # ct-6v77 likewise.
