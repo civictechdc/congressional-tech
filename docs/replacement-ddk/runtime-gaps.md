@@ -6,8 +6,8 @@ Nothing here authorizes this worktree to change those repositories. The inventor
 distinguishes demonstrated profile restrictions from work that is merely unproved.
 Source references below preserve the initial DDK dev2/DocSpec b1270b2e gap
 inspection; those restrictions are historical findings, not a description of
-every current API. The installed SDK is `0.1.0.dev6+integrated.1` from source
-`accb5836699a5ff9c0fbb82258c620934dd57030`. Its seven retained-proof application
+every current API. The installed SDK is `0.1.0.dev6+integrated.2` from source
+`5086bf4cce6a6ad7314e248a6d447a4d3ee30f0e`. Its seven retained-proof application
 binding checks passed with Arrow 25.0.1 and PyParsing 3.2.5; all 117 installed
 members match and all 131 other dependency versions remain unchanged. This is
 scoped metadata evidence. The runtime pin in this checkout remains unchanged;
@@ -29,12 +29,12 @@ runtime. `src/engine/managed_job.rs` requires a local engine;
 reader for the original S3 selectors. The CLI's current `--remote` path creates a
 remote engine, and the public DDK adapter has no source-read configuration route.
 The parent-owned successor now has an explicit `--snapshot-source PATH` source
-interface under review. Application wiring passes this optional execution path
+interface with synthetic native CLI/replay evidence. Application wiring passes this optional execution path
 through the existing model and measurement entry points; 32 partial metadata
 cases passed with fake native transport. The private configuration is excluded
 from saved requests and output. Native code owns credential lookup and stable
-placement on incomplete retries. Installed `integrated.1` lacks this keyword;
-actual use awaits the next qualified SDK/native tuple. Local URI substitution
+placement on incomplete retries. Installed `integrated.2` provides this keyword;
+actual original-provider use awaits the complete native gate and bounded admission. Local URI substitution
 would change the selected identities and is not the migration path.
 The exact selected metadata census completed with 36 GETs and 1,000,030 metadata
 bytes: eight manifest lists, 28 manifests and 712 live data files. All counts

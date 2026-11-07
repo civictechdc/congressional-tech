@@ -19,10 +19,10 @@ native custody is sealed, a retry can omit the configuration. Acceptance and
 selection do not receive it. The measurement resume command accepts the same
 option and excludes it from its output.
 
-This wiring has partial application tests using fake native transport. Execution,
-including replay without the option, requires the next qualified SDK/runtime
-tuple: installed `0.1.0.dev6+integrated.1` does not provide the `snapshot_source`
-keyword. Native execution remains held.
+Installed SDK `0.1.0.dev6+integrated.2` provides this optional source-path API.
+Its 32 application checks pass with fake native transport; seven original
+native-receipt binding checks pass separately. Native execution remains held
+until the complete native gate and original-provider admission are qualified.
 
 The site reads these files through `apps/site/src/components/explorer/reader/archive.ts`.
 Fixtures exercise the same current catalog reader. The old preparer, schema

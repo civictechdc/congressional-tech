@@ -46,17 +46,18 @@ phase journal and daily checkpoint import are removed. Nightly publication no
 longer classifies or deletes candidates using those journals. External activation
 refuses before effects until native frozen publication intent is supported.
 
-The installed SDK is `data-design-kit==0.1.0.dev6+integrated.1`, source
-`accb5836699a5ff9c0fbb82258c620934dd57030`, wheel SHA-256
-`fec39a284d886272131e24231550a75d617f7eb4136355e6aad8613e0823794c`.
+The installed SDK is `data-design-kit==0.1.0.dev6+integrated.2`, source
+`5086bf4cce6a6ad7314e248a6d447a4d3ee30f0e`, wheel SHA-256
+`5a7e14211d01b46f27677874d1424b3b210fc2cce915df50a5b63972ef55f55b`.
 All 117 installed members match; the other 131 dependency versions remain
 unchanged, including PyArrow 25.0.1 and PyParsing 3.2.5. Seven application binding
 checks passed against original native receipts without reopening payloads or
-running DocSpec. Installation uses `catalog` plus explicit BLAKE3 1.0.11;
+running DocSpec. The 32 application source-option and retained-control cases
+also pass with fake transport. Installation uses `catalog` plus explicit BLAKE3 1.0.11;
 `native-metadata` is not selected. The earlier 234-case dev6 supplement remains
 historical evidence. See the [vendored release instructions](../../vendor/ddk/README.md).
 Installed binding checks do not qualify original source admission or full-model
-execution; the explicit original-S3 reader route remains with the native owner.
+execution; the complete native gate and original-S3 provider admission remain open.
 
 The latest focused application evidence includes:
 

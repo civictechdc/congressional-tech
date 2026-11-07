@@ -105,8 +105,9 @@ state remains in [status](status.json). DDK has no independent execution journal
 or mutable selection. Every reader uses the same current catalog format.
 The inner native boundary marks the source25 local-file gate and the source09
 local snapshot/reuse development cases. Seven installed SDK binding checks now
-preserve original accepted producer evidence without payload reads. Native
-installed-profile qualification remains open.
+preserve original accepted producer evidence without payload reads. SDK2 installs
+the optional private source path; 32 application cases pass with fake transport.
+The complete native gate and original-provider qualification remain open.
 Dashed boxes identify producer adoption, prerequisite enforcement and publication
 capabilities still required for production. Congress has staged the exact source
 facts, observed schemas, current jobs and required counter policies against a

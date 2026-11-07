@@ -14,7 +14,7 @@
     "verifiedDDKDocumentation": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
     "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79",
     "observedSuccessorCatalogCommit": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
-    "successorInstalledQualification": "SDK 0.1.0.dev6+integrated.1 from accb583 installed through the frozen lock and ordinary hash-qualified installer. All 117 wheel members match and all 131 other distribution versions remain unchanged. Seven original native receipt binding checks passed; whole-package/native/corpus qualification is separate.",
+    "successorInstalledQualification": "SDK2 normally installed through frozen offline lock/sync with unchanged Arrow25.0.1/PyParsing3.2.5. All 117 installed members match; all 131 other versions unchanged. Seven retained actual proof bindings and 32 partial fake-transport application cases pass. Both independent metadata reviews accepted. Native gate and original-provider qualification remain open.",
     "qualifiedSharedNative": "d96e00172d7d4be26da4532cda35aa05f2a3709e; source-only Build/Update only; not the application native pin or experimental whole-job preparation",
     "sharedRetainedJobCloseout": {
       "implementationCommit": "46a27657442d10ae773f48a1536136d895e95daa",
@@ -67,13 +67,13 @@
       "independentReviews": "Parent reports both independent reviews closed"
     },
     "installedSDK": {
-      "version": "0.1.0.dev6+integrated.1",
-      "sourceCommit": "accb5836699a5ff9c0fbb82258c620934dd57030",
-      "wheelSha256": "fec39a284d886272131e24231550a75d617f7eb4136355e6aad8613e0823794c",
+      "version": "0.1.0.dev6+integrated.2",
+      "sourceCommit": "5086bf4cce6a6ad7314e248a6d447a4d3ee30f0e",
+      "wheelSha256": "5a7e14211d01b46f27677874d1424b3b210fc2cce915df50a5b63972ef55f55b",
       "terminal": {
-        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/terminal.json",
-        "sha256": "3d35bbdc2d7fe3dc383ea7fcb1fce88a27800add998b6ac1dbd2c54c6707f836",
-        "size": 5978
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-02/terminal.json",
+        "sha256": "467ea4d09513f6c37500876d9b4c9e4ea66c8f21e11b1046c9292762856cead2",
+        "size": 8517
       },
       "nativePinChanged": false
     }
@@ -152,7 +152,8 @@
     "Bound the selected historical recovery cohort through maintained inventory/candidate/planner owners: 24,028 distinct literal targets and explicit historical_exact / recovery-identity-v1 / refresh_live requirements; all unresolved, all 480 other relationships unchanged. Two local native calls passed in 2.8 seconds at 0.493 GiB peak RSS; independent review found no survivors or evidence discrepancy.",
     "Regenerated policy-dependent model profiles, full JobSpec, local-file inventory, report expectations and producer-definition draft: 52 inputs, 253 steps, 40 outputs, 23 reports, 225 counters in seven required reports. Eight native selectors, observed IDs, original producer facts and successful proof preserved. Metadata-only preparation passed in 3.3 seconds at 0.199 GiB RSS after a caller-directory correction; failed attempt retained. No successor native inference or model execution.",
     "Installed integrated SDK 0.1.0.dev6+integrated.1 from accb583 through frozen offline sync and the normal hash-qualified installer. All 117 installed wheel members match; all 131 other distribution versions remain unchanged. Seven application checks against original native receipts passed in 0.6 seconds at 0.071 GiB peak RSS, with five small control reads and no payload/network/native effects. Original Congress admission and native acceptance remain open.",
-    "Prepared the optional private --snapshot-source execution path through existing model and measurement entry points. It stays outside saved requests, profiles and outputs; native owns source settings, credentials and retry placement. All 32 focused application metadata cases passed with fake native transport in 4.4 seconds at 0.236 GiB RSS. No DocSpec or corpus calls; execution requires the next qualified SDK/native tuple. Both independent source reviews accepted the scoped change."
+    "Prepared the optional private --snapshot-source execution path through existing model and measurement entry points. It stays outside saved requests, profiles and outputs; native owns source settings, credentials and retry placement. All 32 focused application metadata cases passed with fake native transport in 4.4 seconds at 0.236 GiB RSS. No DocSpec or corpus calls; execution requires the next qualified SDK/native tuple. Both independent source reviews accepted the scoped change.",
+    "Installed SDK2 with the optional source-reader API. All 117 wheel members match, the other 131 versions remain unchanged, and reused controls passed seven retained proof checks plus 32 partial application cases. Both independent reviews accepted; no native or corpus call occurred."
   ],
   "active": [
     "Qualify exact producer adoption, admission, population proof and prerequisites, then execute and accept the policy-bound 52-input model. All 293 named schemas were inferred; 225 required counters now use those native schemas. The 24,028-target requirements and complete successor definition remain pinned.",
@@ -1597,6 +1598,28 @@
         "sha256": "c403b7cf20549d6c0f0c4e0c4792b71ddfbfeae4316878b8f23816250a6f3362",
         "size": 1535
       }
+    },
+    "installedSDK2": {
+      "proofChecksPassed": 7,
+      "applicationCasesPassed": 32,
+      "scope": "Partial metadata only; existing proof controls and application suites reused; no native/corpus calls",
+      "terminal": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-02/terminal.json",
+        "sha256": "467ea4d09513f6c37500876d9b4c9e4ea66c8f21e11b1046c9292762856cead2",
+        "size": 8517
+      },
+      "independentReview": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-02/terminal-review.json",
+        "sha256": "eb152d62ea9688b101b9178d2aaea1d1e2741f568ce903380ce0f0ec65bfb381",
+        "size": 1526
+      },
+      "wheelMembersMatched": 117,
+      "otherVersionsUnchanged": 131,
+      "sourceKeywordInstalled": true,
+      "proofSeconds": 0.6,
+      "proofPeakRSSGiB": 0.08,
+      "applicationSeconds": 3.8,
+      "applicationPeakRSSGiB": 0.202
     }
   },
   "commits": {
@@ -1623,7 +1646,7 @@
     "Managed native multi-output JobSpec preserving the actual materialized graph, retained recovery and selection",
     "Complete bounded candidate-bound quality and accepted native evidence/catalog version membership",
     "Durable acquisition adoption and workflow-specific publication/reconciliation paths",
-    "Qualify explicit original-S3 source readers for local managed custody. Native and DDK source interfaces are authored; application optional-path wiring passed fake-transport metadata checks. Installed integrated.1 has no source keyword; qualified successor bytes remain pending. Preserve original URIs, stable source placement on incomplete retry and offline sealed-custody replay."
+    "Complete native gate and original-S3 provider qualification for local managed custody. SDK2 source-path interface is installed; application metadata checks pass. Preserve original URIs, native credential/placement ownership and offline sealed-custody replay."
   ],
   "evidence": {
     "partialPreparationSnapshot": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/preparation-01",
@@ -1860,6 +1883,21 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/snapshot-source-wiring-01/terminal-review.json",
       "sha256": "c403b7cf20549d6c0f0c4e0c4792b71ddfbfeae4316878b8f23816250a6f3362",
       "size": 1535
+    },
+    "installedSDK2": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-02/terminal.json",
+      "sha256": "467ea4d09513f6c37500876d9b4c9e4ea66c8f21e11b1046c9292762856cead2",
+      "size": 8517
+    },
+    "installedSDK2Review": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-02/terminal-review.json",
+      "sha256": "eb152d62ea9688b101b9178d2aaea1d1e2741f568ce903380ce0f0ec65bfb381",
+      "size": 1526
+    },
+    "integratedSDK2Handoff": {
+      "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/integrated-successor-package-02/build-01/sdk-only-handoff.json",
+      "sha256": "9f49fdf86a7915df8e3d630f51525f2879cbbdc7d85289864a6424816d2a595c",
+      "size": 5501
     }
   },
   "constraints": {

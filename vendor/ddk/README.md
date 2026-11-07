@@ -5,10 +5,10 @@ binding API used by `viewer-publication`. This development release is vendored;
 the relative uv source keeps installation reproducible without editable source
 from another checkout.
 
-- File: `data_design_kit-0.1.0.dev6+integrated.1-py3-none-any.whl` (379,406 bytes)
-- SHA-256: `fec39a284d886272131e24231550a75d617f7eb4136355e6aad8613e0823794c`
-- Source: `accb5836699a5ff9c0fbb82258c620934dd57030`
-- Handoff: `/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/integrated-successor-package-01/build-02/sdk-only-handoff.json`
+- File: `data_design_kit-0.1.0.dev6+integrated.2-py3-none-any.whl` (379,957 bytes)
+- SHA-256: `5a7e14211d01b46f27677874d1424b3b210fc2cce915df50a5b63972ef55f55b`
+- Source: `5086bf4cce6a6ad7314e248a6d447a4d3ee30f0e`
+- Handoff: `/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/integrated-successor-package-02/build-01/sdk-only-handoff.json`
 
 Select `catalog` with the application's existing PyArrow 25.0.1, BLAKE3 1.0.11
 and PyParsing 3.2.5 pins. All 131 other installed distribution versions stayed
@@ -19,10 +19,12 @@ unchanged during this update, and all 117 installed wheel members matched
 Seven application checks used original accepted and unaccepted native receipts
 to verify exact producer-proof bindings and refusals. They opened five small
 control files, no data payloads, and invoked no native process or network call.
-Their evidence is under main's
-`.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/`;
+The 32 application routing and retained-control cases also passed as a partial
+lane with fake native transport. The optional `snapshot_source` keyword is now
+installed. Their evidence is under main's
+`.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-02/`;
 `terminal.json` has SHA-256
-`3d35bbdc2d7fe3dc383ea7fcb1fce88a27800add998b6ac1dbd2c54c6707f836`.
+`467ea4d09513f6c37500876d9b4c9e4ea66c8f21e11b1046c9292762856cead2`.
 This qualifies those installed application bindings for the one-input fixture;
 it does not exercise multiple-input ordering or refresh custody availability.
 Full native execution, original Congress input admission and model acceptance
