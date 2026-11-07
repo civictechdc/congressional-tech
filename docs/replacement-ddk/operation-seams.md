@@ -16,6 +16,20 @@ cannot invent a local `VersionRef`, drop a group, reassign field IDs or export a
 reimport the table merely to satisfy today's adapter. Any missing snapshot or
 protection refuses explicitly. Never fall back to a table's current head.
 
+Source access is an optional execution argument, separate from the original
+request. The existing model and measurement entry points accept
+`--snapshot-source PATH`; DDK passes the path to the native managed-job command.
+The application does not parse the private file or resolve its credentials.
+Native code owns the `prefix`, `endpoint`, `region`, `path_style` and `secret_env`
+interpretation and checks stable nonsecret placement before unfinished reads.
+`secret_env` maps `s3.access-key-id`, `s3.secret-access-key` and optional
+`s3.session-token` to environment-variable names. No private configuration enters
+the saved job, profile, request digest, catalog or measurement output. Original
+S3 selectors stay unchanged. A sealed-custody replay can omit source access;
+acceptance and selection do not need the private configuration. Application
+routing/privacy checks passed with fake transport; the next installed SDK/native
+tuple must qualify actual source access.
+
 The application supplies the declared materialized job graph, exact SQL bytes,
 output layout, effective parameters and original input pins. DocSpec already has
 job inputs/steps/outputs; use that supported representation for computation rather

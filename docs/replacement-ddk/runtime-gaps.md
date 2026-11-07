@@ -23,13 +23,19 @@ The policy-bound successor now has complete schema inference for 52 inputs,
 rules and use native-inferred nullability; actual null and nonzero values refuse.
 Adoption, population proof and full-model acceptance remain unexecuted.
 
-Source inspection identified a specific original-S3 admission gap in the shared
+Source inspection identified a specific original-S3 admission gap in the prior
 runtime. `src/engine/managed_job.rs` requires a local engine;
 `src/engine/managed_job/snapshots.rs::source_io` needs a registered remote object
 reader for the original S3 selectors. The CLI's current `--remote` path creates a
 remote engine, and the public DDK adapter has no source-read configuration route.
-The native owner confirmed the missing route; the parent owns its replacement. Local URI
-substitution would change the selected identities and is not the migration path.
+The parent-owned successor now has an explicit `--snapshot-source PATH` source
+interface under review. Application wiring passes this optional execution path
+through the existing model and measurement entry points; 32 partial metadata
+cases passed with fake native transport. The private configuration is excluded
+from saved requests and output. Native code owns credential lookup and stable
+placement on incomplete retries. Installed `integrated.1` lacks this keyword;
+actual use awaits the next qualified SDK/native tuple. Local URI substitution
+would change the selected identities and is not the migration path.
 The exact selected metadata census completed with 36 GETs and 1,000,030 metadata
 bytes: eight manifest lists, 28 manifests and 712 live data files. All counts
 reconcile to the original snapshot summaries: 510,818,834 declared bytes,

@@ -136,6 +136,7 @@ flowchart TB
         recovery_obligations["Maintained planner: 24,028 exact-original and live-refresh requirements bound; every qualification remains unresolved"]
         capture_policy["Require pinned recovery requirements and matching version-2 capture profile"]
         request["Verify runtime, original preparation bytes, accepted proof and local input paths"]
+        source_config["Pass an optional private source configuration at execution; keep it outside saved requests"]
         retry["Retry presents that same request and digest"]
     end
 
@@ -143,7 +144,7 @@ flowchart TB
         acquisition_admit["Admit acquisition request and budgets before external effects — pending"]
         adopt["Trusted local owner adopts exact producer definition under existing dataset authority — pending"]
         proof_admit["Admit the exact proof request, active definition and budgets before effects"]
-        source_access["Bind original source URIs to an explicit storage reader — local managed/S3 route pending"]
+        source_access["Native reads private source settings and binds original URIs and stable placement — source implemented, qualification pending"]
         admit["Admit the exact model request, active definition and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
         native_custody["Own or reuse exact inputs and observed native schemas under the same owner — local development proof only"]
@@ -212,6 +213,7 @@ flowchart TB
     retry --> request
     check --> acquisition_admit --> acquire
     proof_admit --> source_access --> static_proof
+    source_config --> source_access
     proof_accept --> proof_binding --> request
     admit --> input_admission
     sources --> acquire

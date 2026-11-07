@@ -115,12 +115,14 @@ def main(argv=None):
     for name in ('prepared-request', 'engine-config', 'live', 'packages', 'work'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--request-sha256', required=True)
+    parser.add_argument('--snapshot-source', type=Path,
+                        help='Private native source-reader configuration; excluded from measurement output')
     args = parser.parse_args(argv)
     work = args.work.resolve()
     packages = args.packages.resolve(strict=True)
     work.mkdir(parents=True, exist_ok=False)
     request = dict(path=str(args.prepared_request.resolve(strict=True)), sha256=args.request_sha256)
-    built = resume_prepared(request, engine_config=args.engine_config)
+    built = resume_prepared(request, engine_config=args.engine_config, snapshot_source=args.snapshot_source)
     with duckdb.connect(config=dict(memory_limit='2GB', threads=4)) as db:
         result = dict(release_id=built['release_id'], prepared_request=request,
                       **measure(db, built['files'], args.live, packages))

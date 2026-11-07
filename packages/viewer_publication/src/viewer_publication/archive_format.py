@@ -600,12 +600,14 @@ def prepare_native_release(job, diagnostics, *, adapter, project, catalog_result
         capture_scope=capture_scope, content_files=content_files, entity_digests=entity_digests))
 
 
-def execute_native_release(prepared, *, adapter):
+def execute_native_release(prepared, *, adapter, snapshot_source=None):
     """Execute or resume the exact request through the maintained native owner.
 
     Keep the first accepted receipt as the catalog's immutable metadata input.
     Later native observations never replace that observation's timestamp or
     identity. Selection follows successful DDK schema and rule qualification.
+    The optional private source configuration is native-owned execution input;
+    it stays outside the saved request, receipt and catalog.
     """
     from ddk.catalog import assemble_catalog
     from ddk.catalog_managed_jobs import managed_job_metadata
@@ -628,7 +630,7 @@ def execute_native_release(prepared, *, adapter):
     # Requalification keeps the original rules beside the original request.
     # Admit that one pinned file, without granting access to its whole directory.
     options['permitted_roots'].append(Path(saved['native_rules']['path']))
-    response = adapter.managed_job(workspace, request)
+    response = adapter.managed_job(workspace, request, snapshot_source=snapshot_source)
     if response['status'] != 'succeeded' or response['result']['status'] != 'completed':
         raise NativeReleaseNotReady('preparation', response)
     verify_completed_job(response['result'])

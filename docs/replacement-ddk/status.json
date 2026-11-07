@@ -151,7 +151,8 @@
     "Committed 55d08298: one same-read conditional additive generation-pin writer preserves existing protection; removed redundant collector read and maintenance unconditional fallback. Both independent source reviews closed; 106 distinct focused cases passed.",
     "Bound the selected historical recovery cohort through maintained inventory/candidate/planner owners: 24,028 distinct literal targets and explicit historical_exact / recovery-identity-v1 / refresh_live requirements; all unresolved, all 480 other relationships unchanged. Two local native calls passed in 2.8 seconds at 0.493 GiB peak RSS; independent review found no survivors or evidence discrepancy.",
     "Regenerated policy-dependent model profiles, full JobSpec, local-file inventory, report expectations and producer-definition draft: 52 inputs, 253 steps, 40 outputs, 23 reports, 225 counters in seven required reports. Eight native selectors, observed IDs, original producer facts and successful proof preserved. Metadata-only preparation passed in 3.3 seconds at 0.199 GiB RSS after a caller-directory correction; failed attempt retained. No successor native inference or model execution.",
-    "Installed integrated SDK 0.1.0.dev6+integrated.1 from accb583 through frozen offline sync and the normal hash-qualified installer. All 117 installed wheel members match; all 131 other distribution versions remain unchanged. Seven application checks against original native receipts passed in 0.6 seconds at 0.071 GiB peak RSS, with five small control reads and no payload/network/native effects. Original Congress admission and native acceptance remain open."
+    "Installed integrated SDK 0.1.0.dev6+integrated.1 from accb583 through frozen offline sync and the normal hash-qualified installer. All 117 installed wheel members match; all 131 other distribution versions remain unchanged. Seven application checks against original native receipts passed in 0.6 seconds at 0.071 GiB peak RSS, with five small control reads and no payload/network/native effects. Original Congress admission and native acceptance remain open.",
+    "Prepared the optional private --snapshot-source execution path through existing model and measurement entry points. It stays outside saved requests, profiles and outputs; native owns source settings, credentials and retry placement. All 32 focused application metadata cases passed with fake native transport in 4.4 seconds at 0.236 GiB RSS. No DocSpec or corpus calls; execution requires the next qualified SDK/native tuple. Both independent source reviews accepted the scoped change."
   ],
   "active": [
     "Qualify exact producer adoption, admission, population proof and prerequisites, then execute and accept the policy-bound 52-input model. All 293 named schemas were inferred; 225 required counters now use those native schemas. The 24,028-target requirements and complete successor definition remain pinned.",
@@ -1575,6 +1576,27 @@
         "sha256": "4a1e36a886e9644cce0585aa1175bd01dfce81f3d2d481ceb63f8ac19cf97749",
         "size": 1658
       }
+    },
+    "snapshotSourceApplicationWiring": {
+      "passed": 32,
+      "failed": 0,
+      "scope": "Partial production-offline: three modules; native transport mocked, original request/privacy checks only",
+      "terminal": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/snapshot-source-wiring-01/terminal.json",
+        "sha256": "2b90b6351b31f0141fa6fea68ad71978e17b34a85a83e7577a52a7ff8e4e1609",
+        "size": 2383
+      },
+      "nativeCalls": 0,
+      "sourceConfigReads": 0,
+      "seconds": 4.4,
+      "peakRSSGiB": 0.236,
+      "installedSDKAPI": "not_available_in_integrated.1",
+      "nativeQualification": "not_run",
+      "independentReview": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/snapshot-source-wiring-01/terminal-review.json",
+        "sha256": "c403b7cf20549d6c0f0c4e0c4792b71ddfbfeae4316878b8f23816250a6f3362",
+        "size": 1535
+      }
     }
   },
   "commits": {
@@ -1601,7 +1623,7 @@
     "Managed native multi-output JobSpec preserving the actual materialized graph, retained recovery and selection",
     "Complete bounded candidate-bound quality and accepted native evidence/catalog version membership",
     "Durable acquisition adoption and workflow-specific publication/reconciliation paths",
-    "Explicit original-S3 source readers for local managed custody; parent/native owner confirmed the current CLI and DDK route is missing. Preserve original URIs, stable source placement on retry and offline reuse of retained members."
+    "Qualify explicit original-S3 source readers for local managed custody. Native and DDK source interfaces are authored; application optional-path wiring passed fake-transport metadata checks. Installed integrated.1 has no source keyword; qualified successor bytes remain pending. Preserve original URIs, stable source placement on incomplete retry and offline sealed-custody replay."
   ],
   "evidence": {
     "partialPreparationSnapshot": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/preparation-01",
@@ -1828,6 +1850,16 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-01/terminal-review.json",
       "sha256": "4a1e36a886e9644cce0585aa1175bd01dfce81f3d2d481ceb63f8ac19cf97749",
       "size": 1658
+    },
+    "snapshotSourceApplicationWiring": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/snapshot-source-wiring-01/terminal.json",
+      "sha256": "2b90b6351b31f0141fa6fea68ad71978e17b34a85a83e7577a52a7ff8e4e1609",
+      "size": 2383
+    },
+    "snapshotSourceApplicationWiringReview": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/snapshot-source-wiring-01/terminal-review.json",
+      "sha256": "c403b7cf20549d6c0f0c4e0c4792b71ddfbfeae4316878b8f23816250a6f3362",
+      "size": 1535
     }
   },
   "constraints": {

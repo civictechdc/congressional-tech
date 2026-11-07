@@ -991,7 +991,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                   spicy_regs=None,include_entities=False,recovery_requirements,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
-                  prior_links=None,base_retired=None,root=ROOT,registry=None):
+                  prior_links=None,base_retired=None,root=ROOT,registry=None,snapshot_source=None):
     """Prepare inputs once and run the document model's maintained full job."""
     from viewer_publication.archive_model_proof import require_producer_proof
     require_producer_proof(producer_proof)
@@ -1006,7 +1006,8 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,prior_links=prior_links,base_retired=base_retired,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,native_scope=native_scope,
-        producer_proof=producer_proof,producer_definition=producer_definition,output=output,root=root)
+        producer_proof=producer_proof,producer_definition=producer_definition,output=output,root=root,
+        snapshot_source=snapshot_source)
 
 
 def require_model_runtime(engine):
@@ -1031,7 +1032,7 @@ def require_model_capture_policy(prepared):
     return recovery_policy
 
 
-def build_prepared_release(prepared,*,engine,native_scope,producer_proof,producer_definition,output,root=ROOT):
+def build_prepared_release(prepared,*,engine,native_scope,producer_proof,producer_definition,output,root=ROOT,snapshot_source=None):
     """Retain, qualify and select the complete model; return its exact file inventory."""
     from ddk.adapters.docspec import DocSpecAdapter
     from ddk.catalog import assemble_catalog
@@ -1066,7 +1067,7 @@ def build_prepared_release(prepared,*,engine,native_scope,producer_proof,produce
             **{key: options[key] for key in ('origin', 'capture_scope', 'content_files', 'entity_digests')})
 
     request = _prepared_release(prepared, output=output, root=root, finish=prepare)
-    return execute_native_release(request, adapter=adapter)
+    return execute_native_release(request, adapter=adapter, snapshot_source=snapshot_source)
 
 
 def plan_prepared_release(prepared,*,output,catalog_result,root=ROOT):

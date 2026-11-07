@@ -114,7 +114,8 @@ def test_successful_observation_of_unfinished_work_never_calls_accept(tmp_path, 
     response = dict(status='succeeded', result=dict(status=native_status),
                     evidence={'path': 'original-retained-observation'})
     calls = []
-    def observe(workspace, value):
+    def observe(workspace, value, *, snapshot_source=None):
+        assert snapshot_source is None
         calls.append((workspace, value))
         return response
     with pytest.raises(NativeReleaseNotReady) as failure:

@@ -184,7 +184,8 @@ def test_retained_release_preparation_opens_no_payload_or_native_process(retaine
     assert not (request_dir/'job.json').exists() and not (request_dir/'policy.json').exists()
 
 
-def test_measurement_resumes_the_original_request(tmp_path, monkeypatch):
+@pytest.mark.parametrize('provide_source', [False, True])
+def test_measurement_resumes_the_original_request(tmp_path, monkeypatch, provide_source):
     import importlib.util
     from viewer_publication import archive_model_job
 
@@ -198,20 +199,24 @@ def test_measurement_resumes_the_original_request(tmp_path, monkeypatch):
     packages = tmp_path/'packages.parquet'
     packages.write_bytes(b'Package selection is outside this routing test.')
     runtime = tmp_path/'runtime.json'
+    source = tmp_path/'private-source.json' if provide_source else None
     calls = []
     files = {'list.parquet': '/retained/original/list.parquet'}
-    def resume(original, *, engine_config):
-        calls.append((original, engine_config))
+    def resume(original, *, engine_config, snapshot_source):
+        calls.append((original, engine_config, snapshot_source))
         return dict(release_id='checked-model', files=files)
     def observe(db, selected, live, population):
         assert selected is files and population == packages
         return {'list_rows': 3}
     monkeypatch.setattr(archive_model_job, 'resume_prepared', resume)
     monkeypatch.setattr(measurement, 'measure', observe)
-    measurement.main(['--prepared-request', str(request), '--request-sha256', digest,
+    args = ['--prepared-request', str(request), '--request-sha256', digest,
         '--engine-config', str(runtime), '--packages', str(packages), '--live', str(tmp_path/'live'),
-        '--work', str(tmp_path/'measurement')])
+        '--work', str(tmp_path/'measurement')]
+    if source is not None:
+        args += ['--snapshot-source', str(source)]
+    measurement.main(args)
     original = dict(path=str(request), sha256=digest)
-    assert calls == [(original, runtime)]
+    assert calls == [(original, runtime, source)]
     assert json.loads((tmp_path/'measurement/measure.json').read_bytes()) == dict(
         release_id='checked-model', prepared_request=original, list_rows=3)

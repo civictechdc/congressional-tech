@@ -255,7 +255,7 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
     for _source,verified in retained.values():verified.require(verified.path)
 
 
-def execute(spec):
+def execute(spec, *, snapshot_source=None):
     """Verify inputs, then invoke the one maintained model producer."""
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_model import build_release
@@ -273,13 +273,13 @@ def execute(spec):
             manifest,files=build_release(**arguments,parser_versions=spec['parser_versions'],
                 catalog_version=spec['catalog_version'],engine=engine,native_scope=spec['native_scope'],
                 producer_proof=producer_proof,producer_definition=producer_definition,readings_version=spec['readings_version'],
-                output=Path(spec['output']),scratch=Path(spec['scratch']))
+                output=Path(spec['output']),scratch=Path(spec['scratch']),snapshot_source=snapshot_source)
     return dict(status='built',executed=True,release_id=manifest['release_id'],
         output=spec['output'],scratch=spec['scratch'],files={name:str(path) for name,path in files.items()},
         rows={entry['name']:entry['rows'] for entry in manifest['files']})
 
 
-def resume_prepared(prepared, *, engine_config):
+def resume_prepared(prepared, *, engine_config, snapshot_source=None):
     """Consume the original request; never rebuild inputs or capture new definitions."""
     from ddk.adapters.docspec import DocSpecAdapter
     from docspec_client.client import NativeDatasets
@@ -290,7 +290,7 @@ def resume_prepared(prepared, *, engine_config):
         require_model_runtime(engine)
         adapter=DocSpecAdapter(engine.binary,engine.limits,timeout=engine.timeout,
             source_commit=engine.source_revision,evidence_dir=Path(prepared['path']).parent/'observations')
-        manifest,files=execute_native_release(prepared,adapter=adapter)
+        manifest,files=execute_native_release(prepared,adapter=adapter,snapshot_source=snapshot_source)
     return dict(status='built',executed=True,release_id=manifest['release_id'],
         files={name:str(path) for name,path in files.items()},
         rows={entry['name']:entry['rows'] for entry in manifest['files']})
@@ -303,14 +303,18 @@ def main(argv=None):
     source.add_argument('--prepared-request',type=Path)
     parser.add_argument('--request-sha256')
     parser.add_argument('--engine-config',type=Path)
+    parser.add_argument('--snapshot-source',type=Path,
+        help='Private native source-reader configuration for execution; excluded from the saved request')
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
     args=parser.parse_args(argv)
     try:
+        if args.snapshot_source is not None and not args.execute:
+            raise ValueError('Snapshot source configuration belongs to --execute')
         if args.prepared_request:
             if not args.request_sha256 or not re.fullmatch('[a-f0-9]{64}',args.request_sha256) or not args.engine_config:
                 raise ValueError('An original prepared request requires its SHA-256 and explicit engine config')
             prepared=dict(path=str(args.prepared_request.resolve()),sha256=args.request_sha256)
-            result=(resume_prepared(prepared,engine_config=args.engine_config) if args.execute else
+            result=(resume_prepared(prepared,engine_config=args.engine_config,snapshot_source=args.snapshot_source) if args.execute else
                     dict(status='planned',executed=False,prepared=prepared))
         else:
             if args.request_sha256 or args.engine_config:
@@ -318,7 +322,7 @@ def main(argv=None):
             spec=load_spec(args.spec)
             if spec.get('status')=='blocked':
                 print(json.dumps(spec,sort_keys=True));return 2
-            result=(execute(spec) if args.execute else dict(status='planned',executed=False,
+            result=(execute(spec,snapshot_source=args.snapshot_source) if args.execute else dict(status='planned',executed=False,
                 inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},
                 output=spec['output'],scratch=spec['scratch'],native_scope=spec['native_scope'],
                 producer_proof=spec['producer_proof'],producer_definition=spec['producer_definition'],
