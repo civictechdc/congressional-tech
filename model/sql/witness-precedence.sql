@@ -7,7 +7,7 @@
 -- list names is that witness. Within one record, collapse repeats when the normalized name and appearance facts agree.
 -- Its own step: as a CTE it re-ran the whole appearance resolution.
 WITH people AS (
- SELECT w.witness_key,w.occasion,s.priority,w.source,w.record_sha_hex,w.ordinal,w.name_key,p.statement,p.family,p.given,p.given_canon,
+ SELECT w.witness_key,w.occasion,s.priority,w.source,w.record_sha_hex,w.source_locator,w.ordinal,w.name_key,p.statement,p.family,p.given,p.given_canon,
   sha256(json_array(w.position,w.organization,w.on_behalf_of,w.location,w.panel,w.panel_order,
    w.witness_type,w.testified,w.bioguide_id,array_sort(array_distinct(w.document_urls)))) AS occurrence_facts
  FROM appearance_records_resolved w
@@ -29,7 +29,16 @@ WITH people AS (
   AND ((a.occasion LIKE 'meeting:%' AND (b.priority<a.priority OR (b.priority=a.priority AND b.record_sha_hex<a.record_sha_hex)))
    -- A list can repeat a witness or list them in separate roles (ct-x78c). Keep distinct facts and statements.
    OR (b.source=a.source AND b.record_sha_hex=a.record_sha_hex AND b.ordinal<a.ordinal
-    AND b.name_key=a.name_key AND b.occurrence_facts=a.occurrence_facts AND NOT a.statement AND NOT b.statement))
+    AND b.name_key=a.name_key AND b.occurrence_facts=a.occurrence_facts AND NOT a.statement AND NOT b.statement
+    -- Reviewed multi-date prints: equal names and affiliation do not identify the same listed position.
+    AND NOT (a.source='mods' AND (
+     (a.record_sha_hex='c19faf04fd9ff3e540201000432f1c2618171da2c9923a636da99e1ae2d002a7'
+      AND a.source_locator='mods:witness[17]' AND b.source_locator='mods:witness[12]') -- Akaka: different nominations
+     OR (a.record_sha_hex='756c789edf803c341270b65b47a0f270a2f3c9eb0bf3810429f94f12cc5af792'
+      AND a.source_locator='mods:witness[79]' AND b.source_locator='mods:witness[26]') -- Torres Small: different companion lists
+     OR (a.record_sha_hex='50015b69c0cc39055f21052eef025933b2bdf34f96be2ec3061ec91a8e909451'
+      AND a.source_locator='mods:witness[86]' AND b.source_locator='mods:witness[53]') -- McCants: shared affiliation only
+    ))))
  WHERE (a.statement OR NOT b.statement)
   AND (a.family=b.family OR (length(a.family)>=5 AND levenshtein(a.family,b.family)<=1))
   AND (a.given IS NULL OR b.given IS NULL OR a.given_canon=b.given_canon
