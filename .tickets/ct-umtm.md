@@ -93,3 +93,9 @@ Keep open. ct-rie2 and root own the single USAID/ecoi capture/import and later s
 November 7 shared recovery update: the one USAID/ecoi target is now captured and accepted into shared raw storage under ct-rie2. The exact PDF matches the retained qualification; its new complete, timestamped source receipt and acknowledged import resolve this target's missing capture/import evidence. The original public target has not yet been attached in a new selected release.
 
 Keep open. Reuse the accepted operation for the maintained selected-input handoff; do not fetch it again. Duke and the twelve Wayback cases remain separate, and both retired homepage successors stay null. [Accepted operation and remaining publication boundary](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/writer-run/ROOT-RESULT.json).
+
+**2026-11-07T23:48:03Z**
+
+The USAID/ecoi recovery is now included in the prepared shared-lake inputs for the next coordinated release. The reviewed append at 88e2deee added one capture and one filename row, preserved all 24,341 prior receipt keys and added exactly the acknowledged import, with body readings and unrelated input selections unchanged. Independent readback confirmed the accepted PDF/source binding and provenance.
+
+Keep open: public archive 5d24699ad9fa is unchanged. Candidate gates, public attachment and site/MCP readback remain pending, with both retired USAID homepage successors kept null. Duke and the twelve Wayback cases remain separate. [Owner status](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-umtm/STATUS.json) · [Selected inputs](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/selection-execution-20261107/work/model-spec.json).
