@@ -67,7 +67,12 @@ def hearing_release(tmp_path,phase2,origin):
         write('recording_matches',f'''SELECT * REPLACE(NULL::BIGINT AS event_id,'CHRG-context' AS package_id,
             'senate:complete' AS video_key,[struct_pack(event_id:=334136::BIGINT,basis:='print_agreement',scope:='package_context')] AS meeting_links)
             FROM read_parquet({prior('recording_matches')})''')
-        write('witnesses',f'''SELECT * REPLACE(334136::BIGINT AS event_id) FROM read_parquet({prior('witnesses')})''')
+        write('witnesses',f'''SELECT * REPLACE(334136::BIGINT AS event_id) FROM read_parquet({prior('witnesses')})
+            UNION ALL SELECT w.* REPLACE(record_kind AS witness_key,334136::BIGINT AS event_id,
+                0::SMALLINT AS display_order,record_kind AS witness_type)
+            FROM read_parquet({prior('witnesses')}) w,
+                 unnest(['statement_for_record','member_statement']) t(record_kind)
+            WHERE w.witness_key='appearance-1' ''')
         # Use the published selected-text shape as a witness passage, including an ambiguous source association.
         write('detail',f'''SELECT *,
           CASE WHEN row_number() OVER()=2 THEN 'Prepared witness statement with original wording.' ELSE NULL END AS selected_text,
@@ -123,6 +128,7 @@ def test_hearing_tools_transcript_paging_cues_dossier_and_passage_roundtrips(tmp
                 bundle=await call('get_hearing_bundle',event_id=334136,limit=1)
                 witnesses=bundle['sections']['witnesses']
                 assert all(w['superseded_by'] is None for w in witnesses['rows'])
+                assert witnesses['rows'][0]['witness_key']=='appearance-1'
                 assert witnesses['has_more']
                 continued=await call('get_hearing_bundle',**witnesses['next'])
                 assert continued['sections']['witnesses']['rows'][0]['witness_key']!=witnesses['rows'][0]['witness_key']

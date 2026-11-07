@@ -642,6 +642,15 @@ def participant_card_role(card):
     return None
 
 
+def _jet_related_file_card(card):
+    for ancestor in card.iterancestors():
+        if _has_class(ancestor, 'elementor-widget-jet-listing-grid'):
+            heading = ancestor.getprevious()
+            return (heading is not None and _has_class(heading, 'elementor-widget-heading')
+                    and _node_value(heading).rstrip(':').strip().casefold() == 'related files')
+    return False
+
+
 def related_page(anchor, page_url):
     """Qualify a source link's purpose without asserting destination content.
 
@@ -1039,7 +1048,7 @@ def document_labels(page_html, url):
 
 
 def source_details(page_html, url, people, *, plain=False, include_link=None, preserve_occurrences=False,
-                   exclude_address_fallback=False):
+                   exclude_address_fallback=False, qualify_roster=False):
     if not page_html.strip():
         return {}, {}, {}
     root = dom.fromstring(page_html, parser=dom.HTMLParser(remove_comments=True))
@@ -1051,11 +1060,12 @@ def source_details(page_html, url, people, *, plain=False, include_link=None, pr
         include_link=include_link,
         preserve_occurrences=preserve_occurrences,
         exclude_address_fallback=exclude_address_fallback,
+        qualify_roster=qualify_roster,
     )
 
 
 def source_details_tree(root, url, people, *, plain=False, include_link=None, exclude_link=None,
-                        preserve_occurrences=False, exclude_address_fallback=False):
+                        preserve_occurrences=False, exclude_address_fallback=False, qualify_roster=False):
     """Keep page content, links and explicit witness-card ownership.
 
     Existing witness rows and document triples remain unchanged for stable source
@@ -1156,6 +1166,8 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
         metadata = {"layout": family, "name": raw_name.strip(), "text": value(card), "attributes": dict(card.attrib), "fields": fields}
         if role := participant_card_role(card):
             metadata['role'] = role
+        if qualify_roster and family == 'jet-listing-grid__item' and _jet_related_file_card(card):
+            metadata['role'] = 'related_file'
         for ancestor in card.iterancestors():
             if has(ancestor, "capigacr-widget-card__panel-section"):
                 headings = nodes(ancestor, "capigacr-widget-card__panel-section-title")
@@ -1275,7 +1287,8 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
     return files, witness_metadata, page_metadata
 
 
-def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fallback=False):
+def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fallback=False,
+                        qualify_roster=False):
     """Return every witness occurrence in source order with its card-scoped literal document links."""
     if not page_html or not page_html.strip():
         return []
@@ -1306,6 +1319,7 @@ def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fall
         ),
         preserve_occurrences=True,
         exclude_address_fallback=exclude_address_fallback,
+        qualify_roster=qualify_roster,
     )
     links_by_index = {i: [] for i in range(len(people))}
     for entry in files.values():
@@ -1337,6 +1351,14 @@ def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fall
         ]
         if not org and org_fields and not pos_fields and pos == org_fields[0]:
             pos, org = "", ", ".join(org_fields[:2])
+        if qualify_roster and meta.get('layout') == 'jet-listing-grid__item':
+            if meta.get('role') == 'related_file':
+                row = {**row, 'related_file': True}
+            elif (pos == 'to be an Associate Judge'
+                    and re.fullmatch(r"[A-Z][A-Z'-]+ [A-Z]\. (?:[A-Z][A-Z'-]+ )*[A-Z][A-Z'-]+(?: IV)?", meta['name'])):
+                # These nominee headings put the full name in its own field.
+                # An uppercase surname there is not a trailing credential.
+                row = {**row, 'name': meta['name']}
         occurrences.append(
             {
                 **row,
@@ -1347,5 +1369,21 @@ def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fall
                 "document_links": links_by_index.get(idx, []),
             }
         )
+    if qualify_roster:
+        for idx, row in enumerate(occurrences):
+            links = row['document_links']
+            if (witness_metadata.get(str(idx), {}).get('layout') != 'plain-witness-line'
+                    or len(links) != 1 or not urlsplit(links[0]).path.casefold().endswith('-longform-vita.pdf')):
+                continue
+            # Commerce lists the vita in the plain roster and testimony in the
+            # structured card. Join them only when one card names this person.
+            cards = [other for j, other in enumerate(occurrences)
+                     if other['name'] == row['name']
+                     and witness_metadata.get(str(j), {}).get('layout') == 'capigacr-widget-card'
+                     and any(re.search(r'testimony\.pdf$', urlsplit(href).path, re.I)
+                             for href in other['document_links'])]
+            if len(cards) == 1:
+                cards[0]['document_links'].extend(links)
+                row['related_file'] = True
     return occurrences
 

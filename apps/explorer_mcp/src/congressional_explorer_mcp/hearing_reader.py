@@ -157,8 +157,11 @@ class HearingReader:
             result['sections']['meeting']=dict(state='present',rows=[meeting],has_more=False)
         section('committees','committees', '''SELECT c.*,mc.role FROM meetings m,unnest(m.committees) u(mc),committees c
             WHERE m.event_id=? AND mc.system_code=c.system_code ORDER BY c.system_code,mc.role''',[query.event_id])
-        section('witnesses','witnesses', '''SELECT * FROM witnesses WHERE event_id=? AND superseded_by IS NULL
-            ORDER BY panel_order NULLS LAST,display_order NULLS LAST,witness_key''',[query.event_id])
+        witness_roster = "AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement')" if (
+            'witness_type' in self.schemas.get('witnesses',{})
+        ) else ''
+        section('witnesses','witnesses', f'''SELECT * FROM witnesses WHERE event_id=? AND superseded_by IS NULL
+            {witness_roster} ORDER BY panel_order NULLS LAST,display_order NULLS LAST,witness_key''',[query.event_id])
         section('prepared_testimony','documents', '''SELECT '''+self.document_summary+''',l.witness_keys FROM "list" l JOIN detail d USING(list_row)
             WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,cast(? AS VARCHAR))
               AND list_has_any(l.document_kind,['testimony','witness-statement','prepared-statement','witness-testimony'])

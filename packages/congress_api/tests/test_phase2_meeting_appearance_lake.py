@@ -1459,6 +1459,28 @@ def test_jec_continuation_keeps_one_witness_and_does_not_merge_shared_file():
     ]
 
 
+def test_senate_jet_roster_keeps_nominee_name_and_testimony_but_excludes_related_files():
+    html = """<h2>Witnesses</h2>
+      <div class="elementor-widget-jet-listing-grid">
+        <div class="jet-listing-grid__item jet-listing-dynamic-post-1">
+          <h3 class="jet-listing-dynamic-field__content">CHRISTINE M. MACEY</h3>
+          <div class="jet-listing-dynamic-field__content">to be an Associate Judge</div>
+          <a href="/macey-testimony.pdf">Download Testimony</a>
+        </div>
+      </div>
+      <div class="elementor-widget-heading"><h2>Related Files</h2></div>
+      <div class="elementor-widget-jet-listing-grid">
+        <div class="jet-listing-grid__item jet-listing-dynamic-post-2">
+          <h3 class="jet-listing-dynamic-field__content">Christine M. Macey (testimony.pdf)</h3>
+          <a href="/macey-testimony.pdf">Related PDF</a>
+        </div>
+      </div>"""
+    rows = appearance_records.extract_senate_page_observation(html)["appearances"]
+    assert [(row["source_locator"], row["name"], row["document_links"]) for row in rows] == [
+        ("senate_page:witness[1]", "CHRISTINE M. MACEY", ["/macey-testimony.pdf"]),
+    ]
+
+
 def test_ct_30fp_senate_page_repeated_witness_names_and_relative_document_links():
     """ct-30fp:
     - Two witness cards on a Senate hearing page sharing the same normalized name ('John Smith' from 'Org A'

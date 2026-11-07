@@ -48,6 +48,7 @@ from ..parsers.senate_page import plain_testimony_address, plain_witness_links
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
+from .mods_record_entries import MODS_RECORD_ENTRIES
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
@@ -238,6 +239,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "parsers_gpo_hearings": pkg_dir / "parsers/gpo_hearings.py",
                 "parsers_xml": pkg_dir / "parsers/xml.py",
                 "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
+                "reviewed_mods_record_entries": pkg_dir / "lake/mods_record_entries.py",
                 "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
@@ -895,10 +897,12 @@ def extract_senate_page_observation(
         }
 
     declared_base = explicit_base or _extract_declared_base(html_text)
-    people = senate_witness_occurrences(html_text, plain=True, exclude_address_fallback=True)
+    people = senate_witness_occurrences(html_text, plain=True, exclude_address_fallback=True, qualify_roster=True)
     if people:
         raw_rows = []
         for idx, p in enumerate(people):
+            if p.get("related_file"):
+                continue
             raw_rows.append(
                 {
                     "source_locator": f"senate_page:witness[{idx + 1}]",
@@ -917,7 +921,7 @@ def extract_senate_page_observation(
             "event_id": None,
             "package_id": None,
             "declared_base": declared_base,
-            "collection_state": explicit_state or "present",
+            "collection_state": explicit_state or ("present" if appearances else "unrecognized"),
             "appearances": appearances,
         }
 
@@ -1304,8 +1308,22 @@ def extract_mods_observation(
         }
 
     raw_rows = []
+    reviewed_entries = MODS_RECORD_ENTRIES.get(resolved_pkg or "", {})
     for idx, w_line in enumerate(raw_witness_lines, start=1):
         cleaned_line = (w_line or "").strip()
+        reviewed = reviewed_entries.get(idx)
+        if reviewed and sha256(cleaned_line.encode()).hexdigest() == reviewed[0]:
+            raw_rows.append(
+                {
+                    "source_locator": f"mods:witness[{idx}]",
+                    "name": reviewed[1],
+                    "witness_type": ("member_statement" if _MEMBER_STATEMENT.search(cleaned_line)
+                                     else "statement_for_record"),
+                    "display_order": len(raw_rows) + 1,
+                    "document_links": [],
+                }
+            )
+            continue
         if not cleaned_line:
             raw_rows.append(
                 {

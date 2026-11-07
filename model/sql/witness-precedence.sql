@@ -13,7 +13,8 @@ WITH people AS (
  FROM appearance_records_resolved w
  JOIN meeting_sources s ON s.kind='appearance' AND s.source=w.source
  JOIN appearance_people p ON p.record_sha_hex=w.record_sha_hex AND p.source=w.source AND p.ordinal=w.ordinal
- WHERE p.family IS NOT NULL
+ -- The publisher numbers Official Briefer slots and supplies no names for them.
+ WHERE p.family IS NOT NULL AND NOT (w.source='senate_page' AND w.name_key='official briefer')
 ), pairs AS (
  SELECT
   a.witness_key,
@@ -29,7 +30,8 @@ WITH people AS (
    -- A list can repeat a witness or list them in separate roles (ct-x78c). Keep distinct facts and statements.
    OR (b.source=a.source AND b.record_sha_hex=a.record_sha_hex AND b.ordinal<a.ordinal
     AND b.name_key=a.name_key AND b.occurrence_facts=a.occurrence_facts AND NOT a.statement AND NOT b.statement))
- WHERE (a.family=b.family OR (length(a.family)>=5 AND levenshtein(a.family,b.family)<=1))
+ WHERE (a.statement OR NOT b.statement)
+  AND (a.family=b.family OR (length(a.family)>=5 AND levenshtein(a.family,b.family)<=1))
   AND (a.given IS NULL OR b.given IS NULL OR a.given_canon=b.given_canon
    OR (length(a.given)>=3 AND length(b.given)>=3 AND substr(a.given,1,3)=substr(b.given,1,3))
    OR (length(a.given)=1 AND a.given=substr(b.given,1,1)) OR (length(b.given)=1 AND b.given=substr(a.given,1,1)))
