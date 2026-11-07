@@ -1,11 +1,14 @@
-# Congress Explorer and the retained committee reader
+# Congress Explorer and historical committee reader fixtures
 
 The public site uses `archive/ArchiveExplorer.tsx` at `/archive/`. It opens one native
 release through `reader/archive.ts`. The old `/dashboard/` page forwards supported
-bookmarks to that explorer. The retained event map translates old opaque meeting IDs
-when it contains a single matching event.
+event-ID and filter bookmarks to that explorer. Old UUID record links show a
+removal notice and a search link without opening the retired publication or ID map.
 
-The remaining notes describe the retained committee reader and publisher.
+The remaining notes describe historical committee reader/exporter code retained
+for fixtures and preservation work. Pages no longer stages its files or runs its
+writer. Public pages do not mount `Explorer.tsx`; the archive reader owns the
+shared release. Broader package removal remains separate from delivery retirement.
 `Explorer.tsx` contains the former dashboard workspace. Its supporting modules include:
 
 - `view/` — coverage, record detail, related materials, and paging
@@ -16,7 +19,7 @@ The UI receives one `ExplorerReader` with `search`, `getRecord`, `getRelated` an
 `getCoverage`. React components know nothing about Parquet or HTTP ranges.
 `openPublicationReader` chooses the reader from the release manifest.
 
-The weekly committee publisher exports six logical tables:
+The retired committee publisher exported six logical tables:
 
 | Table | Contents |
 | --- | --- |
@@ -87,8 +90,7 @@ The current publisher CLI defaults to Parquet; Python callers can explicitly use
 still run upstream. This change removes JSON packaging and graph navigation; it
 does not replace acquisition or the normalized model with a new matching system.
 
-Frontend changes deploy the existing published files. Data/source changes trigger
-the exporter. To convert an existing local release without rebuilding records:
+For deliberate local historical conversion without rebuilding records:
 
 ```sh
 python -m committee_explorer.parquet --input path/to/old-release --output path/to/parquet-release

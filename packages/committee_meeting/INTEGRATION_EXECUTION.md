@@ -272,6 +272,11 @@ Specific limits remain visible:
 
 ## Production publication and storage
 
+This section records the retired Explorer's implementation and retained rollback
+material. Current Pages deployment reads the shared archive release directly;
+the old `publish-explorer.yml` workflow and its Pages staging were removed on
+November 7, 2026. See `.github/workflows/raw-source-tables.md` for current callers.
+
 The automated input set contains every retained pipeline family above, but does
 not import the six research transcript examples. Its first production build
 contains **2,022,124 domain records and 221,164 source observations**: exactly

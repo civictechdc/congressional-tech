@@ -22,25 +22,12 @@ import { withBase } from '../lib/paths';
     ['witnesses', 'witnesses'],
   ]);
 
-  async function findLegacyEvent(id: string) {
-    try {
-      const response = await fetch(withBase('/data/explorer/event-meetings.json'));
-      if (!response.ok) return;
-      const events = Object.entries(await response.json());
-      // The old Explorer used opaque IDs. Translate only an unambiguous entry.
-      const matches = events.filter(([, record]) => Array.isArray(record) && record[0] === id);
-      if (matches.length === 1) return matches[0][0];
-    } catch {
-      // The fallback link remains available when the retained map cannot be read.
-    }
-  }
-
-  async function forwardBookmark() {
+  function forwardBookmark() {
     const previous = new URLSearchParams(location.search);
     const view = previous.get('view');
     const kind = previous.get('kind');
     const id = previous.get('id')?.trim();
-    let hearing = (previous.get('hearing') || previous.get('meeting') || previous.get('event_id'))?.trim();
+    const hearing = (previous.get('hearing') || previous.get('meeting') || previous.get('event_id'))?.trim();
     const tab = hearing || kind === 'meeting' ? 'hearings' : tabs.get(view ?? '') ?? 'hearings';
     const destination = new URL(withBase('/archive/'), location.origin);
     if (tab !== 'documents') destination.searchParams.set('tab', tab);
@@ -58,18 +45,17 @@ import { withBase } from '../lib/paths';
     const link = document.querySelector<HTMLAnchorElement>('#dashboard-destination')!;
     const note = document.getElementById('dashboard-move-note')!;
     link.href = destination.href;
-    if (!hearing && kind === 'meeting' && id) hearing = await findLegacyEvent(id);
     if (hearing) {
       searchParams.set('hearing', hearing);
     } else if (view === 'coverage' || view === 'gaps') {
       note.textContent = 'The former Coverage and Gaps views have closed. Open a hearing to see its available sources and evidence.';
       return;
-    } else if (kind && id) {
-      note.textContent = 'This bookmark uses an older record identifier. Open Congress Explorer to search the current release.';
+    } else if (id) {
+      note.textContent = 'This old Committee Explorer record link has been removed. Open Congress Explorer to search the current release.';
       return;
     }
     location.replace(destination.href);
   }
 
-  void forwardBookmark();
+  forwardBookmark();
 </script>

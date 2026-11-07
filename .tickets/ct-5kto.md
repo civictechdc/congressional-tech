@@ -1,6 +1,6 @@
 ---
 id: ct-5kto
-status: open
+status: in_progress
 deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz, ct-4jms, ct-gi01, ct-m104, cef-96wc, ct-x78c]
 links: [cefr-vnw8, cef-jh7i, cef-96wc, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-gi01, ct-8kl2, ct-a3le, ct-082q]
 created: 2026-10-30T14:32:31Z
@@ -95,3 +95,11 @@ Independent review: REQUEST CHANGES; current owner state: repair in progress. Th
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at de16b440. The review caught loss of the weekly YouTube report deployment handoff when retiring the old publisher. The repair restores that handoff while preserving revision-specific checkout, browser/upload gates, bookmark forwarding and rollback material. The new regression failed before repair; 24 focused workflow checks passed afterward.
 
 This reviewed follow-up is not yet included in local main. Remaining: Authentic collector-to-Pages execution, cef-96wc live cutover acceptance, paired rollback references and post-retirement readback. Retirement remains conditional. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-5kto/REVIEW.md).
+
+**2026-11-07T21:42:56Z**
+
+The accepted November 7 archive and site now supply the retirement boundary. The pre-retirement Pages run 42410703083 used application 8d3ab43ba3213401074163c7c94bb155722e0661 and pipeline-data 5462f013e69a73876f27a588e63e4a2a960dddb6. Both exact revisions are preserved under refs/archive/finish-merge-prune-20261107/rollback; the prior e145 archive remains retained. Independent live checks confirmed an event bookmark, YouTube coverage and hosted MCP on 5d24699ad9fa. The old writer is disabled with no queued or running jobs.
+
+Integrated both reviewed retirement commits b343b1c6 and de16b440, preserving current main's capture-fixture and testimony controls. Removed three stale Congress API test assertions that still read the deleted writer, and marked its old implementation document as historical. The combined focused Python selection passed all 51 checks (partial lane); all 111 site reader tests and the static build passed. No model, parser, runtime, root lock, MCP package or stored-data deletion is involved. The generated local legacy staging copy was moved to retained rollback material.
+
+Evidence: .cache/archive-release/finish-merge-prune-20261107/. Post-retirement deployed browser/MCP readback follows the Pages deployment. The next normal weekly collector completion remains the authentic check of its new Pages trigger; this cleanup does not launch unrelated acquisition.

@@ -8,8 +8,6 @@ name: Update committee data
 # CSVs. Every tool exits non-zero on any failure. Derived output commits require
 # success; committee raw state also preserves failed-refresh receipts and the
 # last usable result. Fetching is incremental, so the next run catches up.
-# Publish Committee Explorer data listens for this entire workflow's completion;
-# deployment happens only after that publication passes verification.
 on:
   schedule:
     - cron: "0 0 * * 0" # 12:00 AM UTC Sunday
@@ -19,8 +17,7 @@ permissions:
   contents: write
 
 concurrency:
-  # Saves pipeline-data to raw, so it joins the shared R2 writer lock; this also
-  # keeps the two pipeline-data writers (update and publish) from overlapping.
+  # Saves pipeline-data to raw, so it joins the shared R2 writer lock.
   group: raw-source-mirror
   cancel-in-progress: false
   queue: max

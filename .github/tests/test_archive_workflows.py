@@ -24,7 +24,7 @@ def assert_site_browser_pin(steps, consumer):
 
 def test_publish_backfill_maintenance_share_one_non_canceling_group():
     value = workflow('archive-jobs.yml')
-    for name in ['archive-jobs.yml','update-data.yml','publish-explorer.yml']:
+    for name in ['archive-jobs.yml','update-data.yml']:
         assert workflow(name)['concurrency'] == {'group': 'raw-source-mirror', 'cancel-in-progress': 'false', 'queue': 'max'}
     assert set(value['jobs']) == {'publish', 'backfill', 'maintenance'}
     assert value['permissions'] == {'contents': 'read'}

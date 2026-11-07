@@ -19,9 +19,16 @@ harness and its targets. Device and live-publication gates remain owner-run step
 Congress Explorer at `/archive/` browses documents, hearings, committees, witnesses,
 members, bills, and nominations in the same immutable engine release. It provides direct
 file links, saved copies, and source evidence where available. The old `/dashboard/`
-route forwards supported bookmarks to Congress Explorer. Its former Coverage and Gaps
-views have closed. Readers can find source evidence on individual hearing pages.
+route forwards event-ID and filter bookmarks to Congress Explorer. Old record UUID
+links show a removal notice and a search link; they do not load a historical ID map.
+Its former Coverage and Gaps views have closed. Readers can find source evidence
+on individual hearing pages.
 
 Pages builds run the explorer checks and the native archive contract before
 uploading the static site. Archive releases publish separately through the engine
 publisher. The removed `/filenames/` redirect and filename worker are not public routes.
+
+Pages builds use the workflow's application revision without staging the retired
+`pipeline-data/committee-explorer/public` files. The independent
+`/youtube-coverage/` report still reads `public/data/youtube/youtube_event_id_report.csv`.
+Retained old publications and application revisions remain rollback evidence.

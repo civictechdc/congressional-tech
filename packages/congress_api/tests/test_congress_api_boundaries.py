@@ -69,9 +69,6 @@ def test_weekly_workflow_keeps_explore_tools_out_of_production():
     assert not re.search(r'\bcongress-meetings\b', workflow)
     assert '--meetings pipeline-data/congress_meetings.jsonl.gz' in workflow
     assert 'continue-on-error' not in workflow
-    publication = (ROOT / '.github/workflows/publish-explorer.yml').read_text()
-    assert 'types: [completed]' in publication
-    assert 'offline-python.py -m committee_explorer.export' in publication
 
 
 def test_weekly_gpo_preserves_completed_rows_after_saving_retry_evidence():
