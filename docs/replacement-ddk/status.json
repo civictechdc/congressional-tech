@@ -135,18 +135,21 @@
     "Verified source09 local same-owner input-reuse handoff and all named metadata references. Fifteen public DDK adapter cases passed, including chained and renamed-input reuse after original source/caller-file removal, exact values/field IDs, cold replay/acceptance/selection and malformed-reference refusal. Native owner reports ten focused unit cases covering additional retirement/provenance obligations; stage receipts passed. Source development only: no application run, installed profile, successor full gate or pin promotion.",
     "Staged reviewed revision-C original producer definition at explicit frozen ab97bb17: exact Git/byte/algorithm facts,8observedschemas preserving117IDdifferences,26recordtransports,31producerfacts/13commits, both exact JobSpecs and required policies. Re-rendered current51/251/40/23model from189unchanged definition inputs and retained64step prefix;7requiredreports224counters. Producerproof uses8materializedaggregates for9blocking+7informational counters. Both independent reviews accept unbound preparation; native adoption/execution remains unclaimed. RevisionC adds the exact43local file-input inventories to the draft while retaining both earlierB versions unchanged.",
     "Committed 14e96d07: require explicit pinned recovery requirements and matching capture-profile v2 before model request creation; preserve required output checks and migrate fixture callers.",
-    "Replaced capture-wide DISTINCT in recovery eligibility with candidate-left LEFT SEMI membership, preserving decision multiplicity. Two focused native cases pass; no speedup or file-pruning claim."
+    "Replaced capture-wide DISTINCT in recovery eligibility with candidate-left LEFT SEMI membership, preserving decision multiplicity. Two focused native cases pass; no speedup or file-pruning claim.",
+    "Human selected verified recovered originals plus continuing official updates: historical_exact + refresh_live. Updated the decision and boundary diagram; missing input population is not treated as an intended zero.",
+    "Committed 55d08298: one same-read conditional additive generation-pin writer preserves existing protection; removed redundant collector read and maintenance unconditional fallback. Both independent source reviews closed; 106 distinct focused cases passed."
   ],
   "active": [
-    "Native owner must enforce complete model file-input inventories and qualify original static proof/population/prerequisites. The preserved 51-input source09 model refused schema preparation; no production full-model retry is authorized until actual recovery requirements are selected.",
+    "Native owner must enforce complete model file-input inventories and qualify original static proof/population/prerequisites. The preserved 51-input source09 model refused schema preparation; the human chose historical_exact + refresh_live; exact release-relevant target/candidate/provenance inputs and a frozen bounded native plan remain required before a full-model retry.",
     "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
     "Qualify/install local shared input reuse; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
-    "Select the intended production recovery requirements and provenance, then regenerate the 257-field capture-profile-v2 model, policy and adoption definition together; do not infer eligibility from the v1 baseline.",
+    "Bind release-relevant missing-document targets, candidates and verified recovered-original provenance through the maintained campaign planner under the selected historical_exact + refresh_live behavior; then regenerate only affected policy profiles, model job, file inventory, report policy and adoption-definition draft.",
     "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings",
-    "Bind native inputs from their admitted observed schemas and original physical IDs; seven local authored schemas have different IDs and cannot prove original native identity"
+    "Bind native inputs from their admitted observed schemas and original physical IDs; seven local authored schemas have different IDs and cannot prove original native identity",
+    "Integrate native frozen publication intent, actual publisher permission/restore fencing and complete intent/upload/reader lifetime accounting; generation-pin union is corrected but pending-prefix retirement remains open. Public execute stays closed."
   ],
   "tests": {
     "replacementAcceptance": "not_run",
@@ -1378,6 +1381,41 @@
         "size": 3220
       },
       "scope": "Current model preconditions and two eligibility fixtures only; no production policy selection, full-model execution, source09 fixture qualification, adoption or deployment."
+    },
+    "generationPinCorrection": {
+      "commit": "55d08298d255fb9398d2066d7a15c565ab039f4f",
+      "distinctPassed": 106,
+      "fullLane": false,
+      "peakRssGiB": 0.271,
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/generation-pin-correction-01/handoff.json",
+        "sha256": "6e44467a52a4de085f0e6c41ffe3e303fde0e9bbf4763af723ef3baa72b3efaf",
+        "size": 4524
+      },
+      "reviews": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/generation-pin-correction-01/reviews.json",
+        "sha256": "1f989ad1adcdd3022d5d822f0e965d07936f762ae95a114c01cad3fdfd7e7527",
+        "size": 1227
+      },
+      "scope": "Local source and focused failure-injection checks; no live publication or complete maintenance qualification."
+    },
+    "selectedRecoveryMembership": {
+      "status": "historical_membership_only",
+      "counts": {
+        "activeDecisions": 24028,
+        "matchedDecisions": 11596,
+        "matchedCompleteCaptures": 12391,
+        "unmatchedDecisions": 12432,
+        "multipleCaptureDecisions": 678
+      },
+      "seconds": 5,
+      "peakRssGiB": 0.516,
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/capture-membership-01/handoff.json",
+        "sha256": "76def52c95d16a763f853ed2153f8bb31f8e5f22b41cacfb02e468b2b13927f1",
+        "size": 3719
+      },
+      "qualification": false
     }
   },
   "commits": {
@@ -1534,6 +1572,26 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/capture-policy-correction-01/handoff.json",
       "sha256": "835a498985b4595b221f3b235ba972dfc4d20986c0fadebc948a1aaf70ae6ded",
       "size": 3220
+    },
+    "generationPinCorrection": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/generation-pin-correction-01/handoff.json",
+      "sha256": "6e44467a52a4de085f0e6c41ffe3e303fde0e9bbf4763af723ef3baa72b3efaf",
+      "size": 4524
+    },
+    "historicalRecoveryDiscovery": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/provenance-discovery.json",
+      "sha256": "5eb1b30aa529e00f67f4954d42d3678823e1244830148a45a92a737c6861def9",
+      "size": 35755
+    },
+    "selectedRecoveryMembership": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/capture-membership-01/handoff.json",
+      "sha256": "76def52c95d16a763f853ed2153f8bb31f8e5f22b41cacfb02e468b2b13927f1",
+      "size": 3719
+    },
+    "historicalRecoveryMapping": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/mapping-discovery.json",
+      "sha256": "e3f800d608cca36aa059373488da3081c7b65e42a2c73a914ea1c18bef675756",
+      "size": 3869
     }
   },
   "constraints": {
@@ -1555,7 +1613,7 @@
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
     "archiveModelControllerRetired": true,
-    "producerDefinitionPreparation": "Original source facts, observed schemas and proof-schema evidence retained. Revision-C model refused current schema inference; selected recovery requirements are missing. Application precondition fixed and scoped fixture SQL verified; affected model/definition regeneration remains pending that choice."
+    "producerDefinitionPreparation": "Original source facts, observed schemas and successful unchanged proof-schema evidence are preserved. The human selected verified recovered originals with continuing updates (historical_exact + refresh_live). Exact release-relevant campaign inputs and matching provenance are being bound; dependent model/profile/policy/definition regeneration remains pending that evidence. The refused 51-input request remains preserved."
   },
   "definitionImplementation": {
     "state": "Qualified dev6 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Actual retained application execution remains under acceptance.",
@@ -1588,6 +1646,18 @@
       "Exact data meaning and membership",
       "New-stack durable phases, qualification, recovery and protection"
     ],
-    "authority": "Direct user clarification in this chat, confirmed by parent for both applications"
+    "authority": "Direct user clarification in this chat, confirmed by parent for both applications",
+    "recoveryPolicyDecision": {
+      "date": "2026-11-07",
+      "choice": "Include verified recovered originals and keep checking for updates.",
+      "target_requirement": "historical_exact",
+      "refresh_policy": "refresh_live",
+      "acceptance_policy": "recovery-identity-v1",
+      "scope": "Missing-document targets in the selected Congress release; scoped local implementation and qualification only",
+      "population": "Exact release-relevant target/candidate/provenance inputs not yet bound",
+      "publicationAuthorized": false,
+      "productionPinPromotionAuthorized": false,
+      "historicalDiscovery": "Two exact original provenance files and their pinned historical mapping verified. Native membership:11596 matched active decisions/12391 complete captures,12432 unmatched,678multi-capture decisions. All active decisions lack v2 acceptance. Exact target census and direct-history binding remain pending; requirements can be authored before acceptance."
+    }
   }
 }

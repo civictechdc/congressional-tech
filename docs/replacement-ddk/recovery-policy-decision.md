@@ -1,9 +1,13 @@
-# Recovery policy: production choice still required
+# Recovery policy: verified originals with continuing updates
 
 The current output needs an explicit recovery policy and its exact requirements
 file. The application now refuses a missing file or a prepared capture profile
 that does not match it. The required fields and acceptance checks remain intact.
-No production policy or requirements population has been selected.
+The human selected: **“Include verified recovered originals and keep checking
+for updates.”** For missing-document targets in this selected release, this
+means `historical_exact` plus `refresh_live`. The purpose decision is resolved;
+the exact release-relevant target, candidate and provenance inputs still need
+to be bound before generating the requirements file.
 
 The maintained policy is `recovery-identity-v1`. A requirements row names one
 literal `original_url`, its `target_requirement`, that `acceptance_policy`, and
@@ -25,17 +29,58 @@ No native table, source body or published data row was read for this decision.
 The local removal-notice, ct-rie2 and combined-cause campaign files belong to
 other work; none was substituted into this release.
 
-## The decision to make
+A subsequent authorized discovery read verified the two original recovery files:
+19,657,343 bytes and 24,085 historical decisions. All 57 superseded IDs resolve;
+the files name 24,028 targets and 20,245 bodies. None carries version-2 acceptance
+or qualification fields. Historical `recovered_document` labels therefore do not
+establish acceptance under the selected policy. The bounded read took 1.01 seconds
+and peaked at 92.9 MiB process RSS. Its exact pins, counts and limits are retained
+in [provenance discovery](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/provenance-discovery.json).
 
-| Choice | Concrete resulting requirements | Effect |
+Source metadata establishes the selected captures snapshot as a direct append
+descendant of the earlier audit snapshot, with 12 additional rows. That ancestry
+does not identify those rows or prove recovery membership. The bounded native
+query now verifies 11,596 active decisions against 12,391 complete retained
+captures, preserving 12,432 unmatched decisions and 678 decisions with multiple
+capture rows. Of those matches, 11,173 targets have the historical
+`recovered_document` label; 423 have other relationships. Both complete outputs
+fit the declared caps. The run took five seconds and peaked at 0.516 GiB sampled
+RSS; [the retained result](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/recovery-policy-selected-01/capture-membership-01/handoff.json)
+records the exact inputs, checks and independent reviews. It read receipt metadata
+only. Its `retained_import` filter does not establish absence of a usable direct
+document. Selected capture membership, missing-target census and accepted-original
+qualification remain distinct checks.
+
+The exact historical mapping named by those decisions was also recovered and
+hash-verified: 24,028 rows in 9,638,187 bytes. Its original bytes and backup receipt
+are retained beside the discovery evidence. It supplies literal target/candidate
+URLs, body keys, format, basis and status. Those fields preserve historical
+provenance; they do not supply current source-native identity or qualification.
+
+## Selected behavior and remaining input binding
+
+| Selected field | Value | Effect |
 | --- | --- | --- |
-| Select the intended recovery campaigns | The maintained campaign planner emits one row per selected literal target, using pinned target/candidate inputs and the owner's chosen requirement and refresh intent. Matching recovery provenance joins the model inputs. | Qualified recovery can satisfy those historical targets. |
-| Explicitly select no recovery campaigns for this release | Zero requirements rows and no recovery provenance, both expressly selected by the owner. This matches the current staged input population but is not inferred from it. | No URL is marked satisfied by recovery; existing scope exclusions and ordinary refresh remain active. |
+| Required recovery meaning | `historical_exact` | Require a verified recovered original, using the maintained `recovered_document` relationship and accepted evidence. |
+| Continued acquisition | `refresh_live` | Keep the official target eligible for ordinary refresh even when a verified recovery exists. |
+| Acceptance rules | `recovery-identity-v1` | Require the maintained identity, body qualification and complete-import checks. |
 
-Neither choice has been adopted. A file path alone is insufficient: the final
-selection must name its SHA-256, byte size, policy identity and the matching
-provenance population. A production requirements Parquet file has not been
-generated from this draft.
+The parent chat conveyed the explicit human choice on 2026-11-07. It authorizes
+scoped local implementation and qualification, not publication, production pin
+promotion or unbounded acquisition. The maintained campaign planner must emit
+one row per selected literal target from pinned release-relevant target and
+candidate inputs. Matching recovered-original provenance joins those inputs.
+A file path alone is insufficient: the final selection must name its SHA-256,
+byte size, policy identity and matching provenance population. The old empty
+staged input is not the chosen population. Unrelated campaigns cannot substitute
+for a missing release binding.
+
+The requirements file can be generated while candidate acceptance remains
+pending. First bind the selected release's literal target population and its
+direct-capture, scope and unknown-history facts. Then use the maintained
+inventory and planner with explicitly supplied candidates. The matching subset
+above cannot replace that census, and retained imports cannot stand in for
+ordinary direct-capture history.
 
 For a campaign, the maintained rules offer these meanings:
 
@@ -51,6 +96,9 @@ Requirement level and refresh intent express the owner's purpose; they cannot
 be inferred from a filename, HTTP status, snapshot summary or missing policy.
 Campaign authoring can default unstated refresh intent to `refresh_live`, but
 the resulting model input must contain that explicit value in every row.
+The target-inventory helper has a different default (`historical_only`), so
+this selected campaign must pass `refresh_live` explicitly and verify the
+emitted values.
 
 ## What the existing checks include and refuse
 
@@ -66,7 +114,15 @@ identity. Superseded, ambiguous, mismatched, unqualified and live-refresh cases
 remain eligible; scope exclusions remain excluded. HTTP history stays unchanged.
 Repeated captures cannot multiply a decision.
 
-Once the owner selects the input, regenerate the policy-bound profiles, complete
+The requirements file controls capture eligibility; it does not itself qualify
+viewer content. Count verified originals from accepted import/decision evidence
+and exact selected capture/body membership. The planner's `accepted_recovery`
+disposition depends on `satisfied` URL state, so it cannot count accepted
+originals that deliberately remain eligible under `refresh_live`. Existing
+historical recovery rows retain their own evidence and meaning; selecting this
+policy does not rewrite them or establish their qualification.
+
+Once the exact selected population is bound, regenerate the policy-bound profiles, complete
 model job, local-file inventory, report policy and enclosing adoption definition.
 The expected graph is 52 inputs, 253 steps, 40 outputs and 23 reports, with 225
 required counters in seven reports, subject to native inference. Reuse the eight

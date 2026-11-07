@@ -127,7 +127,8 @@ flowchart TB
         logic["Parsers, correction rules and transformation SQL"]
         producer_definition["Freeze original Git/source/version facts, observed schemas, both JobSpecs and exact required policies"]
         local_pins["Pin all local file bytes separately from their JobSpec paths"]
-        recovery_choice["Select recovery targets, required meaning and refresh intent — production choice pending"]
+        recovery_choice["Human choice: verified recovered originals and continuing official updates"]
+        recovery_population["Bind release-relevant targets, candidates and recovered-original provenance — pending"]
         capture_policy["Require pinned recovery requirements and matching version-2 capture profile"]
         request["Verify the pinned runtime; retain the original request and local input paths"]
         retry["Retry presents that same request and digest"]
@@ -151,7 +152,8 @@ flowchart TB
             accept["6. Accept complete native report evidence"]
             select["8. Select the checked candidate under original authority"]
         end
-        intent["Freeze result, qualification, inventory, destination and original authority — native support pending"]
+        first_intent["First intent admission requires the accepted candidate to be the current native selection — pending"]
+        intent["Freeze result, qualification, inventory, destination and original authority; exact replay survives later selection — pending"]
         lifetime["Release transient admission and computation resources after their last consumer; protect retained data obligations"]
         retain --> static_proof --> native_custody --> proof_counts --> proof_accept --> input_admission
         input_admission --> file_binding --> compute --> candidate
@@ -174,9 +176,13 @@ flowchart TB
 
     subgraph publication["Application publisher — external release authority"]
         files["Name retained export paths and separate control files"]
-        permission["Verify publisher permission and restore fence"]
-        publish["9. Deliver exact assets and activate with the expected token"]
+        permission["Verify actual publisher permission and restore fence — owner integration pending"]
+        upload["9a. Deliver exact assets and run release checks"]
+        generation_pins["Add generation protection with a conditional union — source checked"]
+        publish["9b. Activate the exact pointer with the expected token"]
         observation["Record the original attempt's observed outcome separately"]
+        retirement["Existing maintenance: require complete intent, upload and reader obligations before retirement — pending"]
+        upload --> generation_pins --> publish
         publish --> observation
     end
 
@@ -189,7 +195,7 @@ flowchart TB
     end
 
     check --> capture_policy --> request --> admit
-    recovery_choice --> local_pins --> capture_policy
+    recovery_choice --> recovery_population --> local_pins --> capture_policy
     frozen --> producer_definition --> adopt --> admit
     local_pins --> file_binding
     retry --> request
@@ -208,7 +214,7 @@ flowchart TB
     artifacts --> files
     files -->|"Controls finalized after local qualification"| select
     candidate -->|"Retained paths; no export copy"| files
-    select --> intent --> permission --> publish
+    select --> first_intent --> intent --> permission --> upload
     publish --> consume
     observation -.-> discovery
     artifacts -.-> discovery
@@ -217,9 +223,11 @@ flowchart TB
     candidate -.-> lifetime
     request -.->|"Retained input paths stay live through uncertain outcomes"| lifetime
     observation -.-> lifetime
+    generation_pins -.-> lifetime
+    lifetime -.-> retirement
     present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
-    class recovery_choice,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,intent pending
+    class recovery_population,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
 ```
 
 The producer path uses the existing native dataset authority and retained job
@@ -229,7 +237,9 @@ model has seven required report groups and 224 counters, but native schema
 inference refused it: the current output requires capture fields that this old
 graph does not emit. The application now requires explicit policy-bound version-2
 preparation. Its expected model has 225 counters, including the requirements
-check, and awaits the [production policy choice](recovery-policy-decision.md).
+check. The human chose `historical_exact` plus `refresh_live`; exact
+release-relevant targets, candidates and matching recovery provenance remain
+to be bound through the [maintained campaign planner](recovery-policy-decision.md).
 The adopted definition must pin
 both complete jobs and both exact policies; changing a policy requires a new
 adoption in this profile. An earlier development candidate's policy-only
@@ -388,8 +398,8 @@ conditional write and asset-reconciliation behavior. Its external activation
 entry refuses before effects until the shared intent capability exists.
 The intent must preserve the accepted result, qualification, exact inventory,
 destination, expected token and real publisher authority even after a newer
-dataset selection. The publisher separately enforces permission and restore
-fences; reading the latest selection cannot reconstruct an original attempt.
+dataset selection. The publisher still needs actual permission and restore
+fencing; reading the latest selection cannot reconstruct an original attempt.
 
 Acquisition admission precedes every new external attempt. A caller timeout does
 not create another operation. The same native owner retains completed effects,
@@ -441,12 +451,28 @@ job, including its actual writer and column selection. DDK verifies the accepted
 counter evidence. This adds no second data-quality scan or execution controller.
 
 The publication intent fixes the original attempt, accepted native result,
-qualification, immutable release inventory and expected publisher token. Once the
-native owner accepts that intent, later native selection changes do not silently
-revoke it. External activation still requires the original publisher token: an
+qualification, immutable release inventory and expected publisher token. The
+first admission transaction must verify that this exact accepted candidate is
+the current native selection. Once the native owner accepts that intent, later
+native selection changes do not silently revoke it. External activation still requires the original publisher token: an
 older attempt cannot replace a newer published release. A retry reconciles the
 same intent and records uncertainty when retained evidence cannot settle the
 historical outcome. This protocol adds no second publication controller.
+
+The existing publisher now adds generation pins through one conditional union.
+It reads the existing bytes and their ETag together, preserves all existing pins,
+and refuses a conflicting or uncertain write before activation. Maintenance uses
+the same writer and does not shrink protection it cannot account for. Commit
+`55d08298` passed 106 focused cases; this is source and local test evidence, not
+live publication acceptance. Pending release-prefix protection and complete
+intent, upload and reader accounting still need the native lifetime boundary.
+
+DocSpec's maintained `Engine::fence_operations(dataset, expected_epoch)` advances
+native dataset authority. It does not revoke credentials, stop readers or exclude
+old external writers during restore. Congress has no callable owner for that
+external publication authority in the inspected publisher path. Destination
+configuration, namespace generation and pointer ETag do not establish it. The
+public entry remains closed until that owner and native intent integration exist.
 
 The embedded catalog describes the candidate and facts already observed when its
 bytes were frozen. The publisher never writes its eventual outcome back into
