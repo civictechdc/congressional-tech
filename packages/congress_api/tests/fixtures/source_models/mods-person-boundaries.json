@@ -1,0 +1,1292 @@
+[
+  {
+    "body_sha": "c19faf04fd9ff3e540201000432f1c2618171da2c9923a636da99e1ae2d002a7",
+    "locator": "mods:witness[12]",
+    "package": "CHRG-110shrg37791",
+    "source_literal": "Nomination of Christine Hill to be Assistant Secretary of Veterans Affairs (Congressional Affairs) SENATORS Akaka, Hon. Daniel K., Chairman, U.S. Senator from Hawaii",
+    "expected_name": "Daniel K. Akaka",
+    "fields": {
+      "name": "Daniel K. Akaka",
+      "honorific": null,
+      "position": "Chairman, U.S. Senator from Hawaii",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "756228ebf094f58149f266f19044bb60f3fdff785260b08ee6126b08cb612afb"
+  },
+  {
+    "body_sha": "e4b6cb5dfff6818da7366cc6eac3109c7eb0ed9a1e342670a3b5adcf477be41b",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-108hhrg93119",
+    "source_literal": "National Organization of Social Security Claimants' Representatives, Richard P. Morris",
+    "expected_name": "Richard P. Morris",
+    "fields": {
+      "name": "Richard P. Morris",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "3f44aa33a1a97948e276d770aa43d4c50feebe5b727e2b348c8810da443ada5d"
+  },
+  {
+    "body_sha": "bc0808d7abda5b81ea9b34842a945818fbeb0d7212ac46aef4111cafcb100e24",
+    "locator": "mods:witness[9]",
+    "package": "CHRG-109hhrg30176",
+    "source_literal": "Friday, March 24, 2006--Afternoon Session--Cambridge, OH Aaby, Aane, President, Ohio Conference of Community Development",
+    "expected_name": "Aane Aaby",
+    "fields": {
+      "name": "Aane Aaby",
+      "honorific": null,
+      "position": "President",
+      "organization": "Ohio Conference of Community Development",
+      "on_behalf_of": null
+    },
+    "line_sha256": "f5d337baf7bc17ed470c1ff4374713a90566bf6ca1f2a617ca5fe81d5130a007"
+  },
+  {
+    "body_sha": "01714948e122b158f3c7bbbd82ea3f63b53ae0c1a1d58878647bd31851392d26",
+    "locator": "mods:witness[14]",
+    "package": "CHRG-106hhrg66850",
+    "source_literal": "U.S. Department of the Treasury, Dennis S. Schindel, Assistant Inspector General for Audit, Office of the Inspector General",
+    "expected_name": "Dennis S. Schindel",
+    "fields": {
+      "name": "Dennis S. Schindel",
+      "honorific": null,
+      "position": "Assistant Inspector General for Audit",
+      "organization": "Office of the Inspector General",
+      "on_behalf_of": null
+    },
+    "line_sha256": "93f261ea1843c321d74869f56b160ad2e0160617bb5f16d3889e75fafe50d3eb"
+  },
+  {
+    "body_sha": "eee380f723ed93e7896cec7c8864a49d1baaee46dd28426758d0e77582970d12",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-107hhrg74213",
+    "source_literal": "American Medical Association, Richard F. Corlin, M.D",
+    "expected_name": "Richard F. Corlin",
+    "fields": {
+      "name": "Richard F. Corlin",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "f7f99f9ee2b8e61f70dc0011475132803541c9c9bd203b3b41f62e890f8aeefd"
+  },
+  {
+    "body_sha": "756c789edf803c341270b65b47a0f270a2f3c9eb0bf3810429f94f12cc5af792",
+    "locator": "mods:witness[79]",
+    "package": "CHRG-117hhrg49906",
+    "source_literal": "Torres Small, Hon. Xochitl, Under Secretary for Rural Development, U.S. Department of Agriculture, Washington, D.C.; accompanied by Chris McLean, LL.M., J.D., Acting Administrator, Rural Utilities Service, USDA",
+    "expected_name": "Xochitl Torres Small",
+    "fields": {
+      "name": "Xochitl Torres Small",
+      "honorific": null,
+      "position": "Under Secretary for Rural Development",
+      "organization": "U.S. Department of Agriculture, Washington, D.C.",
+      "on_behalf_of": null
+    },
+    "line_sha256": "c7b65492bdbf87007c9b106c7f3dcd202302e76b784b8ce93ed45875c3433829"
+  },
+  {
+    "body_sha": "bdb18bc1489181ee49ba4035c9677f37f29374c3af35979dd098cc12f6a24333",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-107hhrg74229",
+    "source_literal": "American Public Power Association, Large Public Power Council, and South Carolina Public Service Authority, John H. Tiencken",
+    "expected_name": "John H. Tiencken",
+    "fields": {
+      "name": "John H. Tiencken",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "8d066060a4730475c79875475c8a1428bd2a6a4b204c45087c7cb2b413d85b4c"
+  },
+  {
+    "body_sha": "eb4343bf440e50142c6fc7ce5484a0544e09e3ca6870278f20bacf3222a4691d",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-107hhrg74225",
+    "source_literal": "Minnesota Farm Bureau Association, Al Christopherson",
+    "expected_name": "Al Christopherson",
+    "fields": {
+      "name": "Al Christopherson",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "8628050168ff5eba892ac3eb3a962566d01f79ce7d8668709b34b5e5c13af5bc"
+  },
+  {
+    "body_sha": "bab84bc738c92d4b0b3d00e2dad19a6d6b1a9e23ed68c4dd4b6951c0cccd7098",
+    "locator": "mods:witness[10]",
+    "package": "CHRG-109hhrg26372",
+    "source_literal": "National Credit Union Administration, the Honorable Norman E. D'Amours",
+    "expected_name": "Norman E. D'Amours",
+    "fields": {
+      "name": "Norman E. D'Amours",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "c4f559799af578cce1540f894e4dca2a84d481127a79eb847505dc9942d66003"
+  },
+  {
+    "body_sha": "bdcd31af2894751dcfb6ae0f1f752c0176e10136aa659fcec156d47db3cd2927",
+    "locator": "mods:witness[16]",
+    "package": "CHRG-106hhrg57366",
+    "source_literal": "National Women's Law Center, Joan Entmacher",
+    "expected_name": "Joan Entmacher",
+    "fields": {
+      "name": "Joan Entmacher",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "e2cfadbffcc3963c6c3327d2776800f935715c5c9065b95d7657e3b1a9530966"
+  },
+  {
+    "body_sha": "e86d66ce9f90ad13b0b94a6c300731345f52ef54bf4a31c20640c2cf547fa9b1",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-109hhrg29943",
+    "source_literal": "Thursday, August 18, 2005--Afternoon Session--Chillicothe Carey, Sen. John, 17th District, Ohio State Senate",
+    "expected_name": "John Carey",
+    "fields": {
+      "name": "John Carey",
+      "honorific": null,
+      "position": "Senator, 17th District",
+      "organization": "Ohio State Senate",
+      "on_behalf_of": null
+    },
+    "line_sha256": "6f5e8a4c247545d135de6c5d5e9a359e262e5c426c576ea58f9f452519215da0"
+  },
+  {
+    "body_sha": "d8cc167a5f99da303ca6b73ae66dae45c0e72967639dd76be68576338fe0166c",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-109hhrg31494",
+    "source_literal": "U.S. Department of Homeland Security, Hon. Julie Myers, Assistant Secretary, U.S. Immigration and Customs Enforcement",
+    "expected_name": "Julie Myers",
+    "fields": {
+      "name": "Julie Myers",
+      "honorific": null,
+      "position": "Assistant Secretary",
+      "organization": "U.S. Immigration and Customs Enforcement",
+      "on_behalf_of": null
+    },
+    "line_sha256": "fa4a8367ed0f8e0d9db37f8265936fa6ff2d2be76586d8e6ad21b22552dff097"
+  },
+  {
+    "body_sha": "c19faf04fd9ff3e540201000432f1c2618171da2c9923a636da99e1ae2d002a7",
+    "locator": "mods:witness[17]",
+    "package": "CHRG-110shrg37791",
+    "source_literal": "Nomination of Patrick W. Dunne to be Under Secretary for Benefits of the Department of Veterans Affairs SENATORS Akaka, Hon. Daniel K., Chairman, U.S. Senator from Hawaii",
+    "expected_name": "Daniel K. Akaka",
+    "fields": {
+      "name": "Daniel K. Akaka",
+      "honorific": null,
+      "position": "Chairman, U.S. Senator from Hawaii",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "d838834eb7aa1b570da5ae4fa67da5866d0f19f558f65c7c5503067a4b81dc49"
+  },
+  {
+    "body_sha": "f794b9a813129f7e451a5915d72d697fd157dce437e74e4c0d5280101feb6f7e",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-107hhrg84170",
+    "source_literal": "Social Security Administration, Hon. James G. Huse, Jr., Inspector General",
+    "expected_name": "James G. Huse Jr.",
+    "fields": {
+      "name": "James G. Huse Jr.",
+      "honorific": null,
+      "position": "Inspector General",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "e4e980d165800202ca3f6ce4747d76661aa4eb99fc557833d3e9fa5defff9e53"
+  },
+  {
+    "body_sha": "cfedf08db9515ff2be61e535f2e8c72049d9d062d388bb9a27a856ac540cb339",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-108hhrg89629",
+    "source_literal": "American Hospital Association, and Moses Cone Health System, Dennis Barry",
+    "expected_name": "Dennis Barry",
+    "fields": {
+      "name": "Dennis Barry",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "dc35af27d9e28d034083ea9ff112b3d65e3e980ecc507762ea2ab4a6c613505f"
+  },
+  {
+    "body_sha": "bdb18bc1489181ee49ba4035c9677f37f29374c3af35979dd098cc12f6a24333",
+    "locator": "mods:witness[10]",
+    "package": "CHRG-107hhrg74229",
+    "source_literal": "National Rural Electric Cooperative Association, and Claiborne Electric Co-op, Inc., Jerry D. Williams",
+    "expected_name": "Jerry D. Williams",
+    "fields": {
+      "name": "Jerry D. Williams",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "ccff5990cb00f95ffee2d85096824a5f191e9962747b68b3fd0173afe0971dc7"
+  },
+  {
+    "body_sha": "d43926e59709f5c3379ca30c6f2536f9e4fc3b1615599127de6b84bd4f525c45",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-106hhrg71743",
+    "source_literal": "American Medical Association, Richard F. Corlin, M.D",
+    "expected_name": "Richard F. Corlin",
+    "fields": {
+      "name": "Richard F. Corlin",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "f7f99f9ee2b8e61f70dc0011475132803541c9c9bd203b3b41f62e890f8aeefd"
+  },
+  {
+    "body_sha": "fae1f9a4b644d7b2d4f5b5c9dd33d961f876ab578d4f7308d28de9ec2a6e6a28",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-108hhrg99686",
+    "source_literal": "Internal Revenue Service, Hon. Sheldon S. Cohen, Commissioner, 1965-1969",
+    "expected_name": "Sheldon S. Cohen",
+    "fields": {
+      "name": "Sheldon S. Cohen",
+      "honorific": null,
+      "position": "Commissioner, 1965-1969",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "36db80b51c299e5736483771c17480c4b56b1b2249e6e10c2481d28198218648"
+  },
+  {
+    "body_sha": "dd85ee36b5a070ead8fdf016d4a1e2f03d7494e8bad1e91c82ac545c96185c18",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-107hhrg81751",
+    "source_literal": "American Nurses Association, Mary Foley",
+    "expected_name": "Mary Foley",
+    "fields": {
+      "name": "Mary Foley",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "a22d1162147ca892cb94cb0d50fb52e69792d9f1c202d93f2cb7cc2ccfa71d05"
+  },
+  {
+    "body_sha": "aecfef357ca081e023df249d277cc2c1cc1b4f2885abdcd636c70bdddae3db9a",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-109hhrg36662",
+    "source_literal": "U.S. Department of Labor, Office of Inspector General, Elliot P. Lewis, Assistant Inspector General for Audit",
+    "expected_name": "Elliot P. Lewis",
+    "fields": {
+      "name": "Elliot P. Lewis",
+      "honorific": null,
+      "position": "Assistant Inspector General for Audit",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "6f273091c75cd4ea50843297e99f18de6a94162747616fab1e49f2a99949f331"
+  },
+  {
+    "body_sha": "756c789edf803c341270b65b47a0f270a2f3c9eb0bf3810429f94f12cc5af792",
+    "locator": "mods:witness[26]",
+    "package": "CHRG-117hhrg49906",
+    "source_literal": "Torres Small, Hon. Xochitl, Under Secretary for Rural Development, U.S. Department of Agriculture, Washington, D.C.; accompanied by Karama Neal, Ph.D., Administrator, Rural Business--Cooperative Service, USDA; Chris McLean, LL.M., J.D., Acting Administrator, Rural Utilities Service, USDA",
+    "expected_name": "Xochitl Torres Small",
+    "fields": {
+      "name": "Xochitl Torres Small",
+      "honorific": null,
+      "position": "Under Secretary for Rural Development",
+      "organization": "U.S. Department of Agriculture, Washington, D.C.",
+      "on_behalf_of": null
+    },
+    "line_sha256": "05b7303a2baed0acdae6c48c88232626da0de145f5e3eb1fc1aa3ae33f18547c"
+  },
+  {
+    "body_sha": "ef4b05b7318da236359ae233360caf86f9f4e4464667ff3d94e7c46fbec62162",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-106hhrg66685",
+    "source_literal": "American Yarn Spinners Association, Jim H. Conner",
+    "expected_name": "Jim H. Conner",
+    "fields": {
+      "name": "Jim H. Conner",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "4380c4eb68af6271aa834fa54d75b7e5e1a082f7cb3fc5664fcc355255937876"
+  },
+  {
+    "body_sha": "fae1f9a4b644d7b2d4f5b5c9dd33d961f876ab578d4f7308d28de9ec2a6e6a28",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-108hhrg99686",
+    "source_literal": "Internal Revenue Service, Hon. Fred T. Goldberg, Jr., Commissioner, 1989-1992",
+    "expected_name": "Fred T. Goldberg Jr.",
+    "fields": {
+      "name": "Fred T. Goldberg Jr.",
+      "honorific": null,
+      "position": "Commissioner, 1989-1992",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "fc0390d1bf2c36e8043ab6649fb0e5058aa981d519dc3e5ac72968a5f8de8e85"
+  },
+  {
+    "body_sha": "d2b6a109234e9dac47c1f48cc20aa85e8f42ceba96203425a86157547930e6cd",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-106hhrg69818",
+    "source_literal": "American Hospital Association, and Cedars-Sinai Health System, Michael Langberg, M.D",
+    "expected_name": "Michael Langberg",
+    "fields": {
+      "name": "Michael Langberg",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "65a5b82a46d0a6909ac634dfb8a07cfe5088f71929d493d24ef682e465a9d24b"
+  },
+  {
+    "body_sha": "eee380f723ed93e7896cec7c8864a49d1baaee46dd28426758d0e77582970d12",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-107hhrg74213",
+    "source_literal": "American Hospital Association, and Northwestern Memorial Healthcare, Gary Mecklenburg",
+    "expected_name": "Gary Mecklenburg",
+    "fields": {
+      "name": "Gary Mecklenburg",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "4227398a74d51e7b798659abfbb95b6dd2d62b1986e7ec4e69dae8ec63540e8a"
+  },
+  {
+    "body_sha": "a8dfc19f6c318844db52db524ba8794c698bfe6fe0880376ef4b8e3f11a02b70",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-107hhrg86746",
+    "source_literal": "Social Security Administration, Ticket to Work and Work Incentives Advisory Panel, Sarah Wiggins Mitchell, Chair",
+    "expected_name": "Sarah Wiggins Mitchell",
+    "fields": {
+      "name": "Sarah Wiggins Mitchell",
+      "honorific": null,
+      "position": "Chair",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "9d3220e09be102b0c327aefcd8e4ad437a9bf3f187554c6c6d7ff917911a0fbe"
+  },
+  {
+    "body_sha": "e22a8e8499f678a1be2e6f5cb1c27ef681563d42d778bf2532a312eb12d07420",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-109hhrg30451",
+    "source_literal": "U.S. Department of Health and Human Services, Robert A. Vito, Regional Inspector General for Evaluations and Inspections",
+    "expected_name": "Robert A. Vito",
+    "fields": {
+      "name": "Robert A. Vito",
+      "honorific": null,
+      "position": "Regional Inspector General for Evaluations and Inspections",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "9f6c88b04f4e2ca4d9e8ad1f71f0e66eef0d99b663629872e9d86e3abf536dd0"
+  },
+  {
+    "body_sha": "fae1f9a4b644d7b2d4f5b5c9dd33d961f876ab578d4f7308d28de9ec2a6e6a28",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-108hhrg99686",
+    "source_literal": "Internal Revenue Service, Hon. Mortimer M. Caplin, Commissioner, 1961-1964",
+    "expected_name": "Mortimer M. Caplin",
+    "fields": {
+      "name": "Mortimer M. Caplin",
+      "honorific": null,
+      "position": "Commissioner, 1961-1964",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "b355eac11098b7f55ceac9ffc324a9d9282909db9799dde2c4e24fbf8d1b1ee6"
+  },
+  {
+    "body_sha": "b0f992b38a8ec557c3f94ba1a50d53374d442445cfa18663bc8330f4ce511211",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-111hhrg51872",
+    "source_literal": "U.S. Department of Defense/U.S. Department of Veterans Affairs Interagency Program Office, Rear Admiral Gregory A. Timberlake, SHCE, USN, Acting Director",
+    "expected_name": "Gregory A. Timberlake",
+    "fields": {
+      "name": "Gregory A. Timberlake",
+      "honorific": null,
+      "position": "Acting Director",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "0c7dcfdedb56b003d0e97b473d6de7aee2a2ed9643264259f7e8e6c05ba6dd77"
+  },
+  {
+    "body_sha": "9e8687034d6704beb5df28176534abf093bc3139714e0e3e48331f7871aa3124",
+    "locator": "mods:witness[25]",
+    "package": "CHRG-107hhrg74524",
+    "source_literal": "Shriners Hospitals for Children, Troy Bryant Yopp, Jr",
+    "expected_name": "Troy Bryant Yopp Jr",
+    "fields": {
+      "name": "Troy Bryant Yopp Jr",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "e80b559749bd7b78f69f813ced46abd343a2c1cb9403af9f753c3a436c415321"
+  },
+  {
+    "body_sha": "d43926e59709f5c3379ca30c6f2536f9e4fc3b1615599127de6b84bd4f525c45",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-106hhrg71743",
+    "source_literal": "American Hospital Association, and Guadalupe Valley Hospital, Don Richey",
+    "expected_name": "Don Richey",
+    "fields": {
+      "name": "Don Richey",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "a1de2f4f0133812491ab8ab8635f83e1eebcc26ba9ab3084274f16e37f01a614"
+  },
+  {
+    "body_sha": "d696b510990f8320c416ae59bd6b8e0581dac0cb583da8bdc12f43a662d5a464",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-109hhrg23928",
+    "source_literal": "National Rehabilitation Hospital, Gerben DeJong",
+    "expected_name": "Gerben DeJong",
+    "fields": {
+      "name": "Gerben DeJong",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "85ca7b84195cac4a57485cd0bc3f6df491b8197775ae5baa81eb96e045027eef"
+  },
+  {
+    "body_sha": "d2b6a109234e9dac47c1f48cc20aa85e8f42ceba96203425a86157547930e6cd",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-106hhrg69818",
+    "source_literal": "American Medical Association, Thomas R. Reardon, M.D",
+    "expected_name": "Thomas R. Reardon",
+    "fields": {
+      "name": "Thomas R. Reardon",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "0b79f0187661b8868da0ae4d9b33221e6ffd90e0c3b0c38b7654d8cca161692e"
+  },
+  {
+    "body_sha": "b6438a79fadc4ce4d4c1d1b88d7a531b90c59f3b16c3e22f637bc890afb4ef22",
+    "locator": "mods:witness[13]",
+    "package": "CHRG-109hhrg35501",
+    "source_literal": "Thursday, July 13, 2006, 2:12 p.m., Part III Mr. Bernard Cohen, Director, Lower Manhattan Recovery Office, Federal Transit Administration, U.S. Department of Transportation:",
+    "expected_name": "Bernard Cohen",
+    "fields": {
+      "name": "Bernard Cohen",
+      "honorific": "Mr.",
+      "position": "Director",
+      "organization": "Lower Manhattan Recovery Office, Federal Transit Administration, U.S. Department of Transportation",
+      "on_behalf_of": null
+    },
+    "line_sha256": "bc832c71262532b7cd58ca6b7867cf7fc24b4a2583896fb0858f4a94f0c1f8e6"
+  },
+  {
+    "body_sha": "ec7149c1b92c6b75a35b31a9104f57e81659d7034228ca7b74fc8f47fb8f71c0",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-108hhrg95742",
+    "source_literal": "Office of the U.S. Trade Representative, Hon. Allen Johnson, Chief Agricultural Negotiator",
+    "expected_name": "Allen Johnson",
+    "fields": {
+      "name": "Allen Johnson",
+      "honorific": null,
+      "position": "Chief Agricultural Negotiator",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "d44fc61139740a7238ab92a47855f4c8031e3b62563c8d5daf869981c575f5c2"
+  },
+  {
+    "body_sha": "ab3470799d61a18c8c1cfff708336160ef11a18b0d447f5aeb8412abd4907b35",
+    "locator": "mods:witness[13]",
+    "package": "CHRG-106hhrg59940",
+    "source_literal": "U.S.-Vietnam Trade Council, Virginia B. Foote",
+    "expected_name": "Virginia B. Foote",
+    "fields": {
+      "name": "Virginia B. Foote",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "30fa68804a542cfdb84aef1218e2935d45bfe5f1cb4c064e757e931ffd8465d1"
+  },
+  {
+    "body_sha": "cfedf08db9515ff2be61e535f2e8c72049d9d062d388bb9a27a856ac540cb339",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-108hhrg89629",
+    "source_literal": "American Medical Association, William G. Plested, III, M.D",
+    "expected_name": "William G. Plested III",
+    "fields": {
+      "name": "William G. Plested III",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "1f3a7e21a62ee9b96803116a70436c60d1ad04754e027b42876a28a6c10abace"
+  },
+  {
+    "body_sha": "9aa69fa0da0761ef2acec631138dcd49e7d4089ffb02e58d090b20823b455540",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-108hhrg87019",
+    "source_literal": "American Medical Association, J. Edward Hill, M.D",
+    "expected_name": "J. Edward Hill",
+    "fields": {
+      "name": "J. Edward Hill",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "1160ab32b6c1c5de5a5d96dfd3e1212ada7e4fdba7dcec99603f5d4ee6771a07"
+  },
+  {
+    "body_sha": "2bbc6bc9f2b944f73945a5bc5ee88cc9958f6854b566357863b07ea230564aca",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-111hhrg51865",
+    "source_literal": "National Military Family Association, Barbara Cohoon, RN, Ph.D., Government Relations Deputy Director",
+    "expected_name": "Barbara Cohoon",
+    "fields": {
+      "name": "Barbara Cohoon",
+      "honorific": null,
+      "position": "Government Relations Deputy Director",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "4de1d6d2a9351a96effa9a3eccce992a9901db1c11bc1a6838e3f04bb6104511"
+  },
+  {
+    "body_sha": "158e32c103e35a0a0e12e94f313bd3f991da81b4e1904b555f4c215aa60b6fcd",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-111hhrg55230",
+    "source_literal": "American Psychological Association, M. David Rudd, Ph.D., ABPP, Dean, College of Social and Behavioral Science, The University of Utah, Salt Lake City, UT",
+    "expected_name": "M. David Rudd",
+    "fields": {
+      "name": "M. David Rudd",
+      "honorific": null,
+      "position": "Dean",
+      "organization": "College of Social and Behavioral Science, The University of Utah, Salt Lake City, UT",
+      "on_behalf_of": null
+    },
+    "line_sha256": "b7f353ff9671981b030b5d0f6fdc82405a0d2e5a73ff8415fc2d19ba9d20b4ef"
+  },
+  {
+    "body_sha": "8d2ff77cc50c27f8cc7ddceedcc3d450c962b6bbdacc5a4a09c4adda362864cf",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-108hhrg91630",
+    "source_literal": "American Enterprise Institute, John H. Makin",
+    "expected_name": "John H. Makin",
+    "fields": {
+      "name": "John H. Makin",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "729ea3e64391021a6f5ea1e0aa63d1c5fe04d50265508d5116cbdee660ea7739"
+  },
+  {
+    "body_sha": "2bcf73346dfd4e4e0cabe2758031a5593981150b8aebeb7683bbebe6dbe11a47",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-106hhrg71553",
+    "source_literal": "U.S.-Vietnam Trade Council, Virginia B. Foote",
+    "expected_name": "Virginia B. Foote",
+    "fields": {
+      "name": "Virginia B. Foote",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "30fa68804a542cfdb84aef1218e2935d45bfe5f1cb4c064e757e931ffd8465d1"
+  },
+  {
+    "body_sha": "4b58b21c9341ce24ed4f2e8ec055e33cb51c9d4742354ea0e39fbc06295f8046",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-108hhrg23795",
+    "source_literal": "U.S. Department of Homeland Security, Hon. Michael J. Garcia, Assistant Secretary for U.S. Immigration and Customs Enforcement",
+    "expected_name": "Michael J. Garcia",
+    "fields": {
+      "name": "Michael J. Garcia",
+      "honorific": null,
+      "position": "Assistant Secretary for U.S. Immigration and Customs Enforcement",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "74716408f11fe852cc0a73460969afbf6e24192808ab624981fd8880a3964607"
+  },
+  {
+    "body_sha": "50015b69c0cc39055f21052eef025933b2bdf34f96be2ec3061ec91a8e909451",
+    "locator": "mods:witness[93]",
+    "package": "CHRG-106hhrg60332",
+    "source_literal": "National Association of Manufacturers, Michael E. Baroody",
+    "expected_name": "Michael E. Baroody",
+    "fields": {
+      "name": "Michael E. Baroody",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "4204b184fcbbe7a1d0164410f497b1d1e5e01c41f4e736c82f4dd52a4836482e"
+  },
+  {
+    "body_sha": "82e13d2497655fd2f125ed012dec2defd25ce2a4b882ec033048fdfaa3d0f607",
+    "locator": "mods:witness[9]",
+    "package": "CHRG-106hhrg65092",
+    "source_literal": "American Insurance Association, Charles Lake",
+    "expected_name": "Charles Lake",
+    "fields": {
+      "name": "Charles Lake",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "542971c3df8bd50790cd41fdd881ae44542e20b4edf8c00e069521a67232438a"
+  },
+  {
+    "body_sha": "4e53f7e6f47d033d94f52285d9cf06876280db7fa012327d0f0e93f9684260e0",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-109hhrg23920",
+    "source_literal": "Social Security and Medicare Trust Funds, Thomas R. Saving, Ph.D., Public Trustee",
+    "expected_name": "Thomas R. Saving",
+    "fields": {
+      "name": "Thomas R. Saving",
+      "honorific": null,
+      "position": "Public Trustee",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "12a22aebd9f36f27f9c909f8360ad3f9a089ce3113681044ab69671c5ecbcfd5"
+  },
+  {
+    "body_sha": "526a54efff990c3ff8b392e396bfc91e0bcc7a6d58aaa45c68d83b81f4e90abc",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-107jhrg82573",
+    "source_literal": "Internal Revenue Service, Hon. Larry Levitan, Chairman, IRS Oversight Board",
+    "expected_name": "Larry Levitan",
+    "fields": {
+      "name": "Larry Levitan",
+      "honorific": null,
+      "position": "Chairman",
+      "organization": "IRS Oversight Board",
+      "on_behalf_of": null
+    },
+    "line_sha256": "e7d822c10c2a80450908c4a4f006c557b71b0335cece06896c847460ad1af0f0"
+  },
+  {
+    "body_sha": "4d528c0e3ffdf70b210f9f330d741b0a9fe5572633102f70d5f12ecf48f63868",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-108hhrg23797",
+    "source_literal": "Centers for Medicare and Medicaid Services, Leslie V. Norwalk, Acting Deputy Administrator and Chief Operating Officer",
+    "expected_name": "Leslie V. Norwalk",
+    "fields": {
+      "name": "Leslie V. Norwalk",
+      "honorific": null,
+      "position": "Acting Deputy Administrator and Chief Operating Officer",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "cd7970bf14e9e574761710a3ea153441e7dfbb7b7523ea41fdc6fc96092ef414"
+  },
+  {
+    "body_sha": "8e7de6ee5e2797507fa92502a5aa7449d824e35c62710a9f935d5892995af2a6",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-108hhrg93734",
+    "source_literal": "U.S. General Accounting Office, Linda D. Koontz, Director, Information Management Issues",
+    "expected_name": "Linda D. Koontz",
+    "fields": {
+      "name": "Linda D. Koontz",
+      "honorific": null,
+      "position": "Director, Information Management Issues",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "813c0db14c5c69e28375bccbfd9a170995406157bda2f7bd29cfeb4501677ca8"
+  },
+  {
+    "body_sha": "2cc6f810a14d020617993ceb9e2138f2fe42c4a4fdf9ac240229837bb925ca39",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-109hhrg23919",
+    "source_literal": "American Urological Association, William F. Gee",
+    "expected_name": "William F. Gee",
+    "fields": {
+      "name": "William F. Gee",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "088184e66f7e3cecb430f91e7bcd5f009c785e5f2783b2b729de634bd49f4cc9"
+  },
+  {
+    "body_sha": "50015b69c0cc39055f21052eef025933b2bdf34f96be2ec3061ec91a8e909451",
+    "locator": "mods:witness[55]",
+    "package": "CHRG-106hhrg60332",
+    "source_literal": "American Forest and Paper Association, Hon. W. Henson Moore",
+    "expected_name": "W. Henson Moore",
+    "fields": {
+      "name": "W. Henson Moore",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "e7e90da6a9e608f7337c45627c91b6278f25bc50a0898e830e4f94c43264026e"
+  },
+  {
+    "body_sha": "25b608f8bab9920f197b0bdbc53177f07e5d9ebb75106a39976bcb474ee7a4f9",
+    "locator": "mods:witness[12]",
+    "package": "CHRG-109hhrg30447",
+    "source_literal": "American Family Rights Association, William Tower, Fair Oaks, California",
+    "expected_name": "William Tower",
+    "fields": {
+      "name": "William Tower",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "31d93bd253aa826f28c8e3204e4cac85d2fcc267aa14eefa8028686e7f274329"
+  },
+  {
+    "body_sha": "6633887bb6426e52e0038dc180c156799aa40e5dbdecf87aba9dc41d41ebf6e8",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-108hhrg90545",
+    "source_literal": "American Public Human Services Association, and Utah Department of Human Services, Robin Arnold-Williams",
+    "expected_name": "Robin Arnold-Williams",
+    "fields": {
+      "name": "Robin Arnold-Williams",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "aa59eafdcb99e1798edb7ff9d68e97e8037447bbe010f99743a65e648780c1ee"
+  },
+  {
+    "body_sha": "3f91dba04a0e2749eeb05a8e073e8228f4fce0cbf10452b4f807bb9f53145423",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-107hhrg80217",
+    "source_literal": "American Physical Therapy Association, and Spine and Sports Rehabilitation Center, Stephen M. Levine",
+    "expected_name": "Stephen M. Levine",
+    "fields": {
+      "name": "Stephen M. Levine",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "2d39ca982d3c35dcf05f72a514b8007d5f89126042cb1162918d1a3d922f4cac"
+  },
+  {
+    "body_sha": "0845cfacda86439365616ac6b905363c41a8fcf64054181e5032234b5d855635",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-109hhrg26387",
+    "source_literal": "American Medical Informatics Association, Don E. Detmer, M.D",
+    "expected_name": "Don E. Detmer",
+    "fields": {
+      "name": "Don E. Detmer",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "0d5eb28b34336a43517d34ad071d7c266265418818f23e3019dffd48af6cdb19"
+  },
+  {
+    "body_sha": "4d528c0e3ffdf70b210f9f330d741b0a9fe5572633102f70d5f12ecf48f63868",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-108hhrg23797",
+    "source_literal": "Centers for Medicare and Medicaid Services, Jeff Flick, San Francisco Regional Administrator",
+    "expected_name": "Jeff Flick",
+    "fields": {
+      "name": "Jeff Flick",
+      "honorific": null,
+      "position": "San Francisco Regional Administrator",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "a1d4a2853f55804a344013378231015d52e1300008f62473cf0b98f1f14a82eb"
+  },
+  {
+    "body_sha": "81c60a21b42f41e4de5fe8f3340df7bf3b0585e75148c3c7dab9753f3d444d5d",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-119shrg64123",
+    "source_literal": "Christine M. Macey to be Associate Judge, Superior Court of the District of Columbia Prepared statement",
+    "expected_name": "Christine M. Macey",
+    "fields": {
+      "name": "Christine M. Macey",
+      "honorific": null,
+      "position": "to be Associate Judge, Superior Court of the District of Columbia",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "c39e625234f7a6cef07109a05e935f46d76303ff48c37c8c1b383a6004dd1310"
+  },
+  {
+    "body_sha": "643a21f0c85d3cbc3d405ef9125b5bde1e32a0864256c1ad48758f0e0de030cc",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-109hhrg26376",
+    "source_literal": "Internal Revenue Service, Nina Olson, National Taxpayer Advocate",
+    "expected_name": "Nina Olson",
+    "fields": {
+      "name": "Nina Olson",
+      "honorific": null,
+      "position": "National Taxpayer Advocate",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "e2982f2de9378b3411816e00d8dc85b9dc395e2b1b7f1b70a9623457a09ff4b6"
+  },
+  {
+    "body_sha": "0d0a6ea42da05ff3718661e7a40b47f41b39b99dd3b4a5d40f552261bc3e472b",
+    "locator": "mods:witness[9]",
+    "package": "CHRG-106hhrg66895",
+    "source_literal": "Air Transport Association of America, Carol B. Hallett",
+    "expected_name": "Carol B. Hallett",
+    "fields": {
+      "name": "Carol B. Hallett",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "2b524e8b9dbd0ec5eda9d68d41845f02bda667222aaffa9e51d44dd993d8725a"
+  },
+  {
+    "body_sha": "9212ad9cc7d464e1da605529a8dd41222aa016f850761424a695cbe8dd2b10f2",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-108hhrg99672",
+    "source_literal": "Social Security Administration, Patrick P. O'Carroll, Acting Inspector General",
+    "expected_name": "Patrick P. O'Carroll",
+    "fields": {
+      "name": "Patrick P. O'Carroll",
+      "honorific": null,
+      "position": "Acting Inspector General",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "36ef35166e0ff34eaa92a16db618741487a85aa3e3774d57f33ffc18a68bc863"
+  },
+  {
+    "body_sha": "9d3157a7794e52817389a4860f73af94635f86412ec86bce6aa6ae5c9371bcd1",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-109hhrg23916",
+    "source_literal": "University of Miami School of Law, Miami, Florida, Frances R. Hill",
+    "expected_name": "Frances R. Hill",
+    "fields": {
+      "name": "Frances R. Hill",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "08b589eb39848486d6253fbf569bed0200949adbce00c2c41b2c2eb82ee79126"
+  },
+  {
+    "body_sha": "1e66ae6b85364d593a57f70a6d5d9dec59ca0a6647fd9b3fda77090c10c6b88b",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-109hhrg30637",
+    "source_literal": "Social Security Administration, Hon. Patrick P. O'Carroll, Inspector General",
+    "expected_name": "Patrick P. O'Carroll",
+    "fields": {
+      "name": "Patrick P. O'Carroll",
+      "honorific": null,
+      "position": "Inspector General",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "9dda70ff2439a4f729e56681e202e07f738a417c73366a4b32ce44701fbdb4a0"
+  },
+  {
+    "body_sha": "5007ddfdb116f579dd6f8b3eaee63b857e0b064b2e74cc2e2710b5424ad13b90",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-106hhrg65699",
+    "source_literal": "American Speech-Language-Hearing Association, and Swigert and Associates, Nancy B. Swigert",
+    "expected_name": "Nancy B. Swigert",
+    "fields": {
+      "name": "Nancy B. Swigert",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "2ce6ac7cdda3049b0162dbe7f89497b6e1bbbdb7753facdb874d0712657edd0e"
+  },
+  {
+    "body_sha": "8bb3744afa600ec232db3240dea8d639370f29f3b901b68690c904c8e73b92e8",
+    "locator": "mods:witness[10]",
+    "package": "CHRG-108hhrg23796",
+    "source_literal": "Ticket to Work and Work Incentives Advisory Panel, Thomas P. Golden",
+    "expected_name": "Thomas P. Golden",
+    "fields": {
+      "name": "Thomas P. Golden",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "07bfa6512f2eb89d328a5fc45fea45745110e5e4c2ee3bcf12376e3604096dc8"
+  },
+  {
+    "body_sha": "5007ddfdb116f579dd6f8b3eaee63b857e0b064b2e74cc2e2710b5424ad13b90",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-106hhrg65699",
+    "source_literal": "American Hospital Association, and Providence Hospital, Sister Carol Keehan",
+    "expected_name": "Carol Keehan",
+    "fields": {
+      "name": "Carol Keehan",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "ac3468fc9adffe2582b0c9aee132aae5269abc7919fb5f27d0995cc679366181"
+  },
+  {
+    "body_sha": "6b91c2ecc49df1411be20516727b70b6592941e5561987e1cd7227f1257c11ed",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-107hhrg82682",
+    "source_literal": "U.S. Department of Labor, Hon. Gordon S. Heddell, Inspector General, Office of Inspector General",
+    "expected_name": "Gordon S. Heddell",
+    "fields": {
+      "name": "Gordon S. Heddell",
+      "honorific": null,
+      "position": "Inspector General",
+      "organization": "Office of Inspector General",
+      "on_behalf_of": null
+    },
+    "line_sha256": "e19b1f54569f07d011a77da76b6e318a1dd14df513e3f06a01fc48f97f3ee262"
+  },
+  {
+    "body_sha": "50015b69c0cc39055f21052eef025933b2bdf34f96be2ec3061ec91a8e909451",
+    "locator": "mods:witness[91]",
+    "package": "CHRG-106hhrg60332",
+    "source_literal": "National Alliance of Sales Representatives Associations, Michael A. Wolyn",
+    "expected_name": "Michael A. Wolyn",
+    "fields": {
+      "name": "Michael A. Wolyn",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "5d111d7bd22bd139902719633e5726a11cd3f080f8e6b548d89a5b245acfd463"
+  },
+  {
+    "body_sha": "50015b69c0cc39055f21052eef025933b2bdf34f96be2ec3061ec91a8e909451",
+    "locator": "mods:witness[96]",
+    "package": "CHRG-106hhrg60332",
+    "source_literal": "National Multi-Housing Council/National Apartment Association, Arthur Greenberg",
+    "expected_name": "Arthur Greenberg",
+    "fields": {
+      "name": "Arthur Greenberg",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "f3d9da11648683a11d61a72047b719846d6869dd4aaf8c9c768f2f3a213eda46"
+  },
+  {
+    "body_sha": "1f968c24d6cb3a1fe0b64d1c118901ef0e1da99e79a6f50dcc0556c999ef5262",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-107hhrg80224",
+    "source_literal": "Florida Office of the Attorney General, 17th Judicial Circuit: Lee Cohen",
+    "expected_name": "Lee Cohen",
+    "fields": {
+      "name": "Lee Cohen",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "0ec8f775cc52684bdd738093c7b29eab7d29f4542a924d4752e4dcd77aff0b95"
+  },
+  {
+    "body_sha": "01714948e122b158f3c7bbbd82ea3f63b53ae0c1a1d58878647bd31851392d26",
+    "locator": "mods:witness[9]",
+    "package": "CHRG-106hhrg66850",
+    "source_literal": "U.S. General Accounting Office, James R. White, Director, Tax Policy and Administration Issues, General Government Division",
+    "expected_name": "James R. White",
+    "fields": {
+      "name": "James R. White",
+      "honorific": null,
+      "position": "Director, Tax Policy and Administration Issues",
+      "organization": "General Government Division",
+      "on_behalf_of": null
+    },
+    "line_sha256": "16400c9aad03d2393bce6035ce948a157e9853db8c7fcccfeae19414aa14317f"
+  },
+  {
+    "body_sha": "9aa69fa0da0761ef2acec631138dcd49e7d4089ffb02e58d090b20823b455540",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-108hhrg87019",
+    "source_literal": "American Hospital Association, and Province Healthcare Company, Tony Fay",
+    "expected_name": "Tony Fay",
+    "fields": {
+      "name": "Tony Fay",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "d490021b83fb61437736fb4d2b8cd1bd13e616ec45f6bd0b6f0e06cb3fb24aad"
+  },
+  {
+    "body_sha": "5d8ef6f3744d974e93bc54bd0a729a4494e6e9140780e09293914c989cbfb45c",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-107hhrg86581",
+    "source_literal": "American Society of Pension Actuaries, and Actuarial Consulting Group, Inc., Scott D. Miller",
+    "expected_name": "Scott D. Miller",
+    "fields": {
+      "name": "Scott D. Miller",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "6418b72173c1adb8632e068ac2bcd19636363812fc685956e00a27752483e3a7"
+  },
+  {
+    "body_sha": "50015b69c0cc39055f21052eef025933b2bdf34f96be2ec3061ec91a8e909451",
+    "locator": "mods:witness[53]",
+    "package": "CHRG-106hhrg60332",
+    "source_literal": "American Bankers Association, Larry McCants",
+    "expected_name": "Larry McCants",
+    "fields": {
+      "name": "Larry McCants",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "f49c359e8b17171e6210209b5791459e302fe7556de0468cee06c7c40a59e955"
+  },
+  {
+    "body_sha": "9b7d609d03e89873e2a0a9a6016952d2de6dd8260204fc2fc76319ab1a03dcd7",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-107hhrg77410",
+    "source_literal": "Social Security Administration, Office of the Inspector General, Hon. James G. Huse, Jr., Inspector General",
+    "expected_name": "James G. Huse, Jr.",
+    "fields": {
+      "name": "James G. Huse Jr.",
+      "honorific": null,
+      "position": "Inspector General",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "1f7f8db2c41f89e255a09b6cedab4ddeb6a14f84158c50534f437b4316eb07fa"
+  },
+  {
+    "body_sha": "9212ad9cc7d464e1da605529a8dd41222aa016f850761424a695cbe8dd2b10f2",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-108hhrg99672",
+    "source_literal": "Internal Revenue Service, Nina E. Olson, National Taxpayer Advocate",
+    "expected_name": "Nina E. Olson",
+    "fields": {
+      "name": "Nina E. Olson",
+      "honorific": null,
+      "position": "National Taxpayer Advocate",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "0f4cb9623c7a6a1ddfae5a953a5110014a6e41eb61aa248eee8019b934112760"
+  },
+  {
+    "body_sha": "8272432fcfd7083a41ada47f3a40a79da9aad05e4e37fd49b6e8256288564339",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-108hhrg91098",
+    "source_literal": "Internal Revenue Service, Nina E. Olson, National Taxpayer Advocate",
+    "expected_name": "Nina E. Olson",
+    "fields": {
+      "name": "Nina E. Olson",
+      "honorific": null,
+      "position": "National Taxpayer Advocate",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "0f4cb9623c7a6a1ddfae5a953a5110014a6e41eb61aa248eee8019b934112760"
+  },
+  {
+    "body_sha": "43ddf8695b84edd06bad179b20e62dcd624604517f82da44ea7bf89631da8468",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-107hhrg83375",
+    "source_literal": "Social Security Administration, Office of the Inspector General, Hon. James G. Huse, Jr., Inspector General",
+    "expected_name": "James G. Huse, Jr.",
+    "fields": {
+      "name": "James G. Huse Jr.",
+      "honorific": null,
+      "position": "Inspector General",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "1f7f8db2c41f89e255a09b6cedab4ddeb6a14f84158c50534f437b4316eb07fa"
+  },
+  {
+    "body_sha": "3ad7cad3c9a696a4f17f4107b070df795531532f6e266821e046f32dab597301",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-109hhrg30444",
+    "source_literal": "U.S. Department of Health and Human Services, Lewis Morris, Chief Counsel to the Inspector General",
+    "expected_name": "Lewis Morris",
+    "fields": {
+      "name": "Lewis Morris",
+      "honorific": null,
+      "position": "Chief Counsel to the Inspector General",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "c6e1ba2b5e27048248007f544c45f9f9e440815ae973be84e2fd8e64dc952a4e"
+  },
+  {
+    "body_sha": "01714948e122b158f3c7bbbd82ea3f63b53ae0c1a1d58878647bd31851392d26",
+    "locator": "mods:witness[18]",
+    "package": "CHRG-106hhrg66850",
+    "source_literal": "American Hospital Association, and BJC Health Systems, Fred Brown",
+    "expected_name": "Fred Brown",
+    "fields": {
+      "name": "Fred Brown",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "8d526c4fb95dab20317b076509dc47c8bede8a6c10d07f5a838f39dbad513c33"
+  },
+  {
+    "body_sha": "7fb1b01fb1bad53e0d546674a89bcaf4a0afa9b856de073657b45299ed98fa2d",
+    "locator": "mods:witness[13]",
+    "package": "CHRG-106hhrg66357",
+    "source_literal": "2030 Center, Hans Riemer",
+    "expected_name": "Hans Riemer",
+    "fields": {
+      "name": "Hans Riemer",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "851df5877529c26d2c4d9fbbf3fd5c840712c7f0e0533bf9f893eed206e8721e"
+  },
+  {
+    "body_sha": "01714948e122b158f3c7bbbd82ea3f63b53ae0c1a1d58878647bd31851392d26",
+    "locator": "mods:witness[15]",
+    "package": "CHRG-106hhrg66850",
+    "source_literal": "U.S. General Accounting Office, Randolph C. Hite, Associate Director, Governmentwide and Defense Information Systems, Accounting and Information Management Division",
+    "expected_name": "Randolph C. Hite",
+    "fields": {
+      "name": "Randolph C. Hite",
+      "honorific": null,
+      "position": "Associate Director, Governmentwide and Defense Information Systems",
+      "organization": "Accounting and Information Management Division",
+      "on_behalf_of": null
+    },
+    "line_sha256": "be8d51574fedefd910607ba27b9a7aa8ac7cf9034db2a6c996adc9c00d25f660"
+  },
+  {
+    "body_sha": "40c5729cb70867fcf3db023cf00e3e66e7ccf574d0d5ca722a87955acb6475b1",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-106hhrg68979",
+    "source_literal": "Florida Department of Children and Families, Don Winstead",
+    "expected_name": "Don Winstead",
+    "fields": {
+      "name": "Don Winstead",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "942a8b673ed607e752b1a0a24aa0e41ed6ebc95c58ba8128c358e998b944fc90"
+  },
+  {
+    "body_sha": "01714948e122b158f3c7bbbd82ea3f63b53ae0c1a1d58878647bd31851392d26",
+    "locator": "mods:witness[19]",
+    "package": "CHRG-106hhrg66850",
+    "source_literal": "American Medical Association, and National Patient Safety Foundation, Donald J. Palmisano",
+    "expected_name": "Donald J. Palmisano",
+    "fields": {
+      "name": "Donald J. Palmisano",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "566bb71e158a5f61246700fa66503d3b9470f2632fe57b74121ced9a944eae98"
+  },
+  {
+    "body_sha": "01714948e122b158f3c7bbbd82ea3f63b53ae0c1a1d58878647bd31851392d26",
+    "locator": "mods:witness[12]",
+    "package": "CHRG-106hhrg66850",
+    "source_literal": "U.S. Customs Service, S.W. Hall, Jr., Assistant Commissioner and Chief Information Officer",
+    "expected_name": "S.W. Hall, Jr.",
+    "fields": {
+      "name": "S.W. Hall Jr.",
+      "honorific": null,
+      "position": "Assistant Commissioner and Chief Information Officer",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "fd77761b17817da3b20fc799f44d3bb5d1a3c9797e394cfb00386462207464c7"
+  },
+  {
+    "body_sha": "48c1c849959e01ae50f71e33fc935bcf5749986d633c71c81c290ea6e605caf3",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-109jhrg23854",
+    "source_literal": "Internal Revenue Service, Ms. Nina E. Olson, National Taxpayer Advocate",
+    "expected_name": "Nina E. Olson",
+    "fields": {
+      "name": "Nina E. Olson",
+      "honorific": "Ms.",
+      "position": "National Taxpayer Advocate",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "178286746e98fbb9ca6c388016027d4f67ea5d258afdc34e9e59f85772c115e3"
+  },
+  {
+    "body_sha": "5ce194f2d08b3787006ca66807fdb4104b664556b8142f66674e2b14bb701b91",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-111hhrg49909",
+    "source_literal": "Jacksonville, FL, National Cemetery Advisory Committee, Corporal Daniel V. Hughes, Sr., USMC (Ret.), Chairman",
+    "expected_name": "Daniel V. Hughes Sr.",
+    "fields": {
+      "name": "Daniel V. Hughes Sr.",
+      "honorific": null,
+      "position": "Chairman",
+      "organization": null,
+      "on_behalf_of": null
+    },
+    "line_sha256": "3ac21bc480dbbb0c819275b992bf8486661f535c9bf73f54e29b4383857d6078"
+  }
+]
