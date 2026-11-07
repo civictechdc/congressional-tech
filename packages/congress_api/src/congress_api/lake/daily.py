@@ -18,7 +18,7 @@ from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStor
 from congress_api.retention.writer_identity import writer_identity
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
-from congress_api.retention.provenance import field,file_pin,instant,json_input,local_unreadable_inventory,parquet_output,run_job
+from congress_api.retention.provenance import durable_json,field,file_pin,instant,json_input,local_unreadable_inventory,parquet_output,run_job
 from congress_api.retention.provenance_inventory import UnreadableInventory,unreadable_inventory
 from congress_shared.custody import custody_identity,VerifiedFile
 
@@ -939,6 +939,107 @@ def _record_activation_step(records,before,after,label):
     lineage=records.lineage(after['metadata_location'])
     if lineage.get(after['snapshot'])!=(before['snapshot'],'append'):
         raise ValueError(f'{label} activation cannot explain the advanced head as its one append')
+
+
+def append_scoped_recovery(prepared, *, engine, catalog_root, targets, producer_records, work):
+    """Append a staged recovery under the caller's archive writer lock.
+
+    The caller admits and stages one receipt and its filename work locally.
+    An interrupted append can be adopted only from durable intent and an exact
+    one-append delta. No parser or raw provenance writer runs here.
+    """
+    authority=dict(engine=engine,catalog_root=catalog_root)
+    base=prepared['base']
+    versions={'captures':captures.current_version(),'filename_readings':filenames.current_version()}
+    if (set(targets)!=set(TABLE_NAMES) or set(base)!=set(targets)
+            or prepared['versions']!=versions or set(prepared['stages'])!=set(versions)):
+        raise ValueError('Scoped recovery requires its original table and producer bindings')
+    instant(prepared['decided_at'])
+    chain,refusal=_producer_bases(producer_records,base)
+    if chain is None:
+        raise ValueError(f'Scoped recovery predecessor proof unavailable: {refusal}')
+    work=Path(work)
+    work.mkdir(parents=True,exist_ok=True)
+    journal=work/'intent.json'
+    identity=dict(prepared=prepared,targets=targets,catalog_root=catalog_root,chain=chain)
+    if journal.exists():
+        state=json.loads(journal.read_text())
+        if state['identity']!=identity:
+            raise ValueError('Scoped recovery continuation inputs changed')
+    else:
+        state=dict(identity=identity,intents=[])
+        durable_json(journal,state)
+    attempt=work/('attempt-'+str(len(list(work.glob('attempt-*')))+1))
+    attempt.mkdir()
+    stages={name:_record_activation_file(pin,'Scoped recovery') for name,pin in prepared['stages'].items()}
+    rows={name:pq.read_metadata(path).num_rows for name,path in stages.items()}
+    if rows['captures']!=1 or rows['filename_readings']>1:
+        raise ValueError('Scoped recovery admits one capture row and at most one filename row')
+    capture,=pq.read_table(stages['captures'],
+        columns=['receipt_key','mode','original_url','mapping_version']).to_pylist()
+    names=pq.read_table(stages['filename_readings'],columns=filenames.PK).to_pylist()
+    if (capture['receipt_key']!=prepared['receipt_key'] or capture['mode']!='retained_import'
+            or capture['mapping_version']!=versions['captures']
+            or [[row['filename'],row['source_url']] for row in names]!=prepared['filename_pairs']
+            or any(row['source_url']!=capture['original_url'] or row['catalog_version']!=versions['filename_readings']
+                   for row in names)):
+        raise ValueError('Scoped recovery staged keys differ from the admitted receipt and filename')
+    keys={'captures':['receipt_key'],'filename_readings':filenames.PK}
+
+    def prove_delta(name,head,phase):
+        _record_activation_step(producer_records,base[name],head,'Scoped recovery')
+        columns=','.join(f'h."{c}"' for c in pq.read_schema(stages[name]).names)
+        using=','.join(f'"{k}"' for k in keys[name])
+        checks=run_job(attempt/f'{phase}-{name}',engine,inputs=[
+            tables.table_input('before_rows',base[name]),tables.table_input('after_rows',head),
+            tables.table_input('incoming',stages[name])],steps=[dict(name='matching_rows',
+                sql=f'SELECT {columns} FROM incoming i JOIN after_rows h USING ({using})',materialize=True)],
+            outputs=[],queries=[dict(name='delta',sql='''SELECT
+                (SELECT count(*) FROM after_rows)-(SELECT count(*) FROM before_rows) AS added,
+                (SELECT count(*) FROM (SELECT * FROM matching_rows EXCEPT ALL SELECT * FROM incoming) extra) AS extra,
+                (SELECT count(*) FROM (SELECT * FROM incoming EXCEPT ALL SELECT * FROM matching_rows) missing) AS missing''')])
+        if checks['delta']!=[dict(added=rows[name],extra=0,missing=0)]:
+            raise ValueError(f'Scoped recovery advanced head differs from the staged {name} delta')
+
+    heads=tables.resolve_tables(**authority,work=attempt/'heads',tables=targets)
+    for name,head in heads.items():
+        if head==base[name]:
+            continue
+        if name not in state['intents'] or not rows.get(name):
+            raise ValueError(f'Scoped recovery observed an unexplained {name} head')
+        prove_delta(name,head,'resume')
+
+    def record(heads):
+        return _record_moved(producer_records,chain,base,heads,decided_at=prepared['decided_at'],
+            transition_inputs={name:dict(records=prepared['stages'][name],
+                receipt_key=prepared['receipt_key'],new_unreadable_files=[]) for name in stages},
+            transition_field='scoped_recovery')
+
+    records=record(heads)
+    for name,path in stages.items():
+        if heads[name]!=base[name] or not rows[name]:
+            continue
+        _record_activation_file(prepared['stages'][name],'Scoped recovery')
+        if name not in state['intents']:
+            state['intents'].append(name)
+            durable_json(journal,state)
+        if name=='captures':
+            result=tables.append_rows(path,**authority,work=attempt/'append-captures',table=targets[name],
+                keys=keys[name],definition=versions[name])
+        else:
+            result=filenames.append(dict(readings=path,catalog_version=versions[name],unreadable_pending=False),
+                **authority,work=attempt/'append-filenames',table=targets[name])
+        head=tables.resolve_tables(**authority,work=attempt/f'head-{name}',tables={name:targets[name]})[name]
+        if head!={key:result[key] for key in head}:
+            raise ValueError(f'Scoped recovery append no longer names the current {name} head')
+        prove_delta(name,head,'append')
+        heads[name]=head
+        records.update(record({name:head}))
+    final=tables.resolve_tables(**authority,work=attempt/'final-heads',tables=targets)
+    if final!=heads:
+        raise ValueError('Scoped recovery heads changed before selection')
+    return dict(pins=final,producers=records,
+        receipt_keys=_complete_receipt_keys(final['captures'],engine=engine,work=attempt/'receipt-identity'))
 
 
 def activate_house_xml_records(prepared,*,engine,raw_store,producer_records,catalog_root,targets,work,
