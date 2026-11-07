@@ -115,11 +115,11 @@ group is empty. Cleanup errors and unavailable process inventory fail the run,
 including when the command itself exited successfully. All 29 focused cases
 passed; this is a two-file test result, not a full application qualification.
 Original-provider and data qualification remain open.
-Dashed boxes identify producer adoption, prerequisite enforcement and publication
-capabilities still required for production. Congress has staged the exact source
-facts, observed schemas, current jobs and required counter policies against a
-frozen Git head. Staging does not establish native adoption or acceptance.
-Acquisition adoption and full application acceptance also remain open.
+Dashed boxes identify prerequisite enforcement, acquisition and publication
+boundaries still under acceptance. Congress has adopted the exact source facts,
+observed schemas, current jobs and required counter policies against a frozen
+Git head. Same-request reconciliation preserved the original lifecycle table
+identity. Population proof and full application acceptance remain open.
 
 ```mermaid
 flowchart TB
@@ -156,7 +156,7 @@ flowchart TB
 
     subgraph native["DocSpec — execution, native evidence and data authority"]
         acquisition_admit["Admit acquisition request and budgets before external effects — pending"]
-        adopt["Adopt exact producer definition under dataset authority — first attempt stopped; same-ID reconciliation pending"]
+        adopt["Adopt exact producer definition under dataset authority — same-ID reconciliation passed; original producer facts preserved"]
         proof_admit["Admit the exact proof request, active definition and budgets before effects"]
         source_access["Native resolves private settings and credentials; preserve original URIs — synthetic checks pass, original provider pending"]
         admit["Admit the exact model request, active definition and budgets before effects"]
@@ -260,7 +260,7 @@ flowchart TB
     lifetime -.-> retirement
     present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
-    class acquisition_admit,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
+    class acquisition_admit,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
 ```
 
 The producer path uses the existing native dataset authority and retained job
@@ -283,8 +283,8 @@ metadata agree. The maintained policy builder now binds the retained inferred
 schemas; native qualification still requires exactly one complete row of
 non-null integer zeros. The original policy and refused comparison remain
 intact. This [inferred-policy successor](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-inferred-03/handoff.json)
-changes no SQL, input, job or required counter. Producer adoption, population
-proof and model execution remain pending.
+changes no SQL, input, job or required counter. Producer adoption has passed;
+population proof and model execution remain pending.
 The adopted definition must pin
 both complete jobs and both exact policies; changing a policy requires a new
 adoption in this profile. An earlier development candidate's policy-only
@@ -375,6 +375,15 @@ or overflow keeps the original operation and its uncertain outcome for native
 reconciliation. The next original-data run stops after producer-proof acceptance.
 Full-model execution requires its own bounded plan and measured admission;
 selection and external publication remain later integration steps.
+
+Native memory reservations and measured process memory are different limits.
+The first adoption profile reserved its entire 256 MiB shared pool before small
+request allocations. A dedicated adoption profile lowered the metadata allowance
+from 64 to 32 MiB while retaining the 512 MiB total pool and 16 MiB batches.
+The identical request then reconciled successfully in the original workspace,
+using its original lifecycle table UUID. The first failure remains retained.
+Population proof has separate bounds: a 1 GiB native pool and a 2 GiB host
+reservation and stop limit. Its full-data resource fit remains under measurement.
 
 Disclosure remains an explicit definition file. Native observations used for
 local qualification do not automatically become public catalog facts. The

@@ -27,8 +27,9 @@ interpretation and checks stable nonsecret placement before unfinished reads.
 the saved job, profile, request digest, catalog or measurement output. Original
 S3 selectors stay unchanged. A sealed-custody replay can omit source access;
 acceptance and selection do not need the private configuration. Application
-routing/privacy checks passed with fake transport and SDK2 is installed. Actual
-original-provider access still requires the complete native gate and bounded admission.
+routing/privacy checks passed with fake transport. The qualified SDK3 is installed
+and keeps native children in the existing host watchdog's process group. Original
+provider access still requires successful bounded adoption and proof execution.
 
 The application supplies the declared materialized job graph, exact SQL bytes,
 output layout, effective parameters and original input pins. DocSpec already has
