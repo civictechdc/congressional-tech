@@ -14,7 +14,7 @@
     "verifiedDDKDocumentation": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
     "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79",
     "observedSuccessorCatalogCommit": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
-    "successorInstalledQualification": "SDK2 normally installed through frozen offline lock/sync with unchanged Arrow25.0.1/PyParsing3.2.5. All 117 installed members match; all 131 other versions unchanged. Seven retained actual proof bindings and 32 partial fake-transport application cases pass. Both independent metadata reviews accepted. Native gate and original-provider qualification remain open.",
+    "successorInstalledQualification": "SDK3 normally installed with 117 exact wheel members and normal PEP610 hash; all 131 other installed versions and 134 non-DDK lock names/versions unchanged. Publisher dependency metadata points to the new wheel. Shared qualification passed 703 tests across 13 profiles; Congress passed 7 retained proof checks and 5 partial application cases. Both independent reviews accepted with preserved execution deviations. Original-provider and data acceptance remain open.",
     "qualifiedSharedNative": "d96e00172d7d4be26da4532cda35aa05f2a3709e; source-only Build/Update only; not the application native pin or experimental whole-job preparation",
     "sharedRetainedJobCloseout": {
       "implementationCommit": "46a27657442d10ae773f48a1536136d895e95daa",
@@ -67,15 +67,26 @@
       "independentReviews": "Parent reports both independent reviews closed"
     },
     "installedSDK": {
-      "version": "0.1.0.dev6+integrated.2",
-      "sourceCommit": "5086bf4cce6a6ad7314e248a6d447a4d3ee30f0e",
-      "wheelSha256": "5a7e14211d01b46f27677874d1424b3b210fc2cce915df50a5b63972ef55f55b",
+      "version": "0.1.0.dev6+integrated.3",
+      "sourceCommit": "cc9c44297fb78a6b061951462cd42541e98182bf",
+      "wheelSha256": "bd3218fb8c95e54fbbb54711ba2913fc1a5ac27ca3473757065da7d1858f4486",
       "terminal": {
-        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-02/terminal.json",
-        "sha256": "467ea4d09513f6c37500876d9b4c9e4ea66c8f21e11b1046c9292762856cead2",
-        "size": 8517
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/terminal.json",
+        "sha256": "d2087c3022218da725326eb785346bb2b912525d12fcaecd5d88929eb8f3279a",
+        "size": 8231
       },
-      "nativePinChanged": false
+      "clarification": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/lock-entry-clarification.json",
+        "sha256": "ef79932946c52715cb04f06097ae3df3ca550d04895bcf8b4dd44e94f1fbcc5c",
+        "size": 828
+      },
+      "independentReview": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/terminal-review.json",
+        "sha256": "f617fa8c822c078058928eb3453d1afb167ea724d8e6f66c57f13ba012b4e946",
+        "size": 1396
+      },
+      "nativePinChanged": false,
+      "newProcessGroup": false
     }
   },
   "completed": [
@@ -156,10 +167,11 @@
     "Installed SDK2 with the optional source-reader API. All 117 wheel members match, the other 131 versions remain unchanged, and reused controls passed seven retained proof checks plus 32 partial application cases. Both independent reviews accepted; no native or corpus call occurred.",
     "Committed e743ffdd: fresh and resumed model execution share explicit host metadata capture/recovery bounds; two retained fake-transport cases and independent static review pass. These bounds do not establish aggregate reply fit.",
     "Prepared successor execution metadata from committed source e743ffdd. The maintained renderer reproduces the exact original model JobSpec 7652afbe; all 45 local input members retain custody, with no payload/provider/native reads. Original producer facts remain unchanged.",
-    "Final-runtime schema-only validation passed for the exact original producer proof and full model: two calls, all eight observed native input schemas, 9 required proof counters, 7 informational history fields and 225 required model counters. Both original policies remain valid. Two independent terminal reviews accepted; no input admission or row execution ran."
+    "Final-runtime schema-only validation passed for the exact original producer proof and full model: two calls, all eight observed native input schemas, 9 required proof counters, 7 informational history fields and 225 required model counters. Both original policies remain valid. Two independent terminal reviews accepted; no input admission or row execution ran.",
+    "Installed qualified SDK3 and committed host watchdog-group wiring as d72d0a65; seven retained proof checks and five partial application cases passed. Exact package identity and 131 unchanged installed versions verified; independent reviews closed with original guard/preflight failures preserved. No corpus or schema calls repeated."
   ],
   "active": [
-    "Install and qualify the SDK successor process-group option, bind the actual application/package identity, adopt the exact successor definition, then prepare and accept the original population proof and 52-input model. The final-runtime schema evidence is complete and retained.",
+    "Bind the actual installed SDK3 generation to the existing captured definition, then adopt and accept the original population proof in its bounded run. Full-model execution has a separate admission and resource plan. Passed native schema evidence is retained.",
     "Complete successor native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
     "Qualify local shared input reuse through the installed successor; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
@@ -1623,6 +1635,32 @@
       "proofPeakRSSGiB": 0.08,
       "applicationSeconds": 3.8,
       "applicationPeakRSSGiB": 0.202
+    },
+    "installedSDK3": {
+      "proofChecksPassed": 7,
+      "applicationCasesPassed": 5,
+      "scope": "Partial metadata and fake-transport checks; one of 506 lane files; no original-data or full-lane acceptance",
+      "terminal": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/terminal.json",
+        "sha256": "d2087c3022218da725326eb785346bb2b912525d12fcaecd5d88929eb8f3279a",
+        "size": 8231
+      },
+      "clarification": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/lock-entry-clarification.json",
+        "sha256": "ef79932946c52715cb04f06097ae3df3ca550d04895bcf8b4dd44e94f1fbcc5c",
+        "size": 828
+      },
+      "independentReview": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/terminal-review.json",
+        "sha256": "f617fa8c822c078058928eb3453d1afb167ea724d8e6f66c57f13ba012b4e946",
+        "size": 1396
+      },
+      "wheelMembersMatched": 117,
+      "otherInstalledVersionsUnchanged": 131,
+      "otherLockNamesAndVersionsUnchanged": 134,
+      "otherCompleteLockEntriesUnchanged": 133,
+      "hostOwnedProcessGroupConfigured": true,
+      "peakRSSGiB": 0.234
     }
   },
   "commits": {
@@ -1639,7 +1677,8 @@
       "68b077ad",
       "aaf2b45c",
       "eb6f7466",
-      "14e96d07"
+      "14e96d07",
+      "d72d0a65"
     ],
     "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
     "checkpoint": "Reviewed application reader, captured native request, schema/controller retirement and exact-inventory comparison changes are committed. Native producer adoption and full replacement acceptance remain pending."
@@ -1649,7 +1688,7 @@
     "Managed native multi-output JobSpec preserving the actual materialized graph, retained recovery and selection",
     "Complete bounded candidate-bound quality and accepted native evidence/catalog version membership",
     "Durable acquisition adoption and workflow-specific publication/reconciliation paths",
-    "Complete native gate and original-S3 provider qualification for local managed custody. SDK2 source-path interface is installed; application metadata checks pass. Preserve original URIs, native credential/placement ownership and offline sealed-custody replay."
+    "Original-S3 provider qualification for local managed custody remains open. Qualified SDK3 source-path and host-group interfaces are installed; application metadata checks pass. Preserve original URIs, native credential/placement ownership and offline sealed-custody replay."
   ],
   "evidence": {
     "partialPreparationSnapshot": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/preparation-01",
@@ -1941,6 +1980,21 @@
       "peakPhysicalGiB": 0.092,
       "inputAdmission": "not_run",
       "execution": "not_run"
+    },
+    "installedSDK3": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/terminal.json",
+      "sha256": "d2087c3022218da725326eb785346bb2b912525d12fcaecd5d88929eb8f3279a",
+      "size": 8231
+    },
+    "installedSDK3Clarification": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/lock-entry-clarification.json",
+      "sha256": "ef79932946c52715cb04f06097ae3df3ca550d04895bcf8b4dd44e94f1fbcc5c",
+      "size": 828
+    },
+    "installedSDK3Review": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/retained-proof-binding-03/terminal-review.json",
+      "sha256": "f617fa8c822c078058928eb3453d1afb167ea724d8e6f66c57f13ba012b4e946",
+      "size": 1396
     }
   },
   "constraints": {

@@ -105,11 +105,12 @@ state remains in [status](status.json). DDK has no independent execution journal
 or mutable selection. Every reader uses the same current catalog format.
 The inner native boundary marks the source25 local-file gate and the source09
 local snapshot/reuse development cases. Seven installed SDK binding checks now
-preserve original accepted producer evidence without payload reads. SDK2 installs
-the optional private source path; 32 application cases pass with fake transport.
-SDK2's installed-profile qualification and both original JobSpec schema checks
-have passed. Managed execution awaits the successor SDK's host process-group
-option; original-provider and data qualification remain open.
+preserve original accepted producer evidence without payload reads. SDK3 is now
+installed with the private source path and explicit host process-group option.
+Its shared qualification passed 703 tests across 13 profiles; Congress passed
+seven retained-proof checks and five application cases with fake transport.
+Both original JobSpec schema checks remain valid on the unchanged native runtime.
+Original-provider and data qualification remain open.
 Dashed boxes identify producer adoption, prerequisite enforcement and publication
 capabilities still required for production. Congress has staged the exact source
 facts, observed schemas, current jobs and required counter policies against a
@@ -141,6 +142,10 @@ flowchart TB
         request["Verify runtime, original preparation bytes, accepted proof and local input paths"]
         source_config["Pass an optional private source configuration at execution; keep it outside saved requests"]
         retry["Retry presents that same request and digest"]
+    end
+
+    subgraph host["Host — process lifetime and resource bounds"]
+        process_limits["Existing watchdog and explicit limits; SDK3 keeps the native child in the owned process group — checked"]
     end
 
     subgraph native["DocSpec — execution, native evidence and data authority"]
@@ -209,6 +214,9 @@ flowchart TB
     end
 
     check --> capture_policy --> request --> admit
+    process_limits -.-> adopt
+    process_limits -.-> proof_admit
+    process_limits -.-> admit
     prepared_bytes --> request
     recovery_choice --> recovery_population --> recovery_obligations --> local_pins --> capture_policy
     frozen --> producer_definition --> adopt --> proof_admit
@@ -348,15 +356,19 @@ this schema-only result. Neither input admission nor row execution ran.
 
 Fresh model execution and resume share one adapter constructor with explicit host
 metadata limits. That forwarding passed two retained fake-transport cases and
-independent static review. Host process-group wiring is prepared for the qualified
-SDK successor; its installed application acceptance remains pending. Native
-report buffers, the complete encoded reply and
+independent static review. The installed SDK3 factory also passes
+`new_process_group=False`; five current application cases verify source privacy
+and forwarding, and the shared SDK qualification checks process behavior. All
+131 other installed package versions are unchanged. The lock preserves all 134
+other package names and versions; the publisher's dependency metadata also points
+to the new DDK wheel. Native report buffers, the complete encoded reply and
 SDK recovery records have separate limits; equal configured values do not prove
 that the combined reply fits. The bounded run plan also accounts for Python
 parsing, native conversion, input custody, spill and retained outputs. A timeout
 or overflow keeps the original operation and its uncertain outcome for native
-reconciliation. The planned original-data run stops after proof and model
-acceptance, before selection or external publication.
+reconciliation. The next original-data run stops after producer-proof acceptance.
+Full-model execution requires its own bounded plan and measured admission;
+selection and external publication remain later integration steps.
 
 Disclosure remains an explicit definition file. Native observations used for
 local qualification do not automatically become public catalog facts. The
