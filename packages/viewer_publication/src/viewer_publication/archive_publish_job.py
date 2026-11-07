@@ -69,10 +69,10 @@ def completed_daily_inputs(template,production,records):
                 raise ValueError(f'Daily publication {entity_name} producer version differs from current source-scoped definitions')
             if entity_name in pins:
                 merged_parsers[entity_name]=dict(ver)
-    # Reuse template pins for Explorer tables absent from this daily run.
-    for name in EXPLORER_TABLES:
-        if template.get(name) is not None and name in (template.get('parser_versions') or {}):
-            merged_parsers[name]=dict(template['parser_versions'][name])
+    # Unchanged entity and Explorer selectors keep their pinned parser definitions.
+    for name in (*ENTITY_TABLES,*EXPLORER_TABLES):
+        if name not in pins and template.get(name) is not None and name in template_parsers:
+            merged_parsers[name]=dict(template_parsers[name])
     for name,module in DAILY_CAPTURE_RECORDS.items():
         if name in pins:
             version=versions.get(name)
