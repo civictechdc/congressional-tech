@@ -129,7 +129,7 @@ flowchart TB
     subgraph native["DocSpec — execution, native evidence and data authority"]
         admit["Admit operation identity, scope and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
-        input_admission["Admit exact inputs and original producer evidence — native support pending"]
+        input_admission["Admit exact inputs, observed native field IDs and original producer evidence — native support pending"]
         subgraph local_jobs["Verified local-file retained jobs — source25"]
             prepare["4. Infer every named schema without executing data"]
             compute["5. Execute the captured JobSpec over pinned local files"]
@@ -142,6 +142,7 @@ flowchart TB
         intent["Freeze result, qualification, inventory, destination and original authority — native support pending"]
         lifetime["Release transient admission and computation resources after their last consumer; protect retained data obligations"]
         retain --> input_admission --> compute --> candidate
+        input_admission -->|"Original observed input schema"| prepare
         prepare --> compute
         candidate --> requalify --> accept
     end
@@ -291,6 +292,20 @@ retained-job repair represented by the inner boundary above. Native package and
 profile qualification, original native table custody, producer prerequisites and
 publication intent remain separate. The production runtime pin and the original
 runtime identities of earlier accepted releases are unchanged.
+
+The original producer evidence is now retained locally for all eight selected
+native tables: eight metadata objects, eighteen head/base records and eight
+checked-in anchors. Existing static rules verified the exact selectors, original
+record hashes, append lineage and producing Git commits. Reconstructing the
+original producer definitions also reproduced all selected versions. No table
+payload was read, and these observations do not supply native admission authority.
+
+Observed native metadata exposes 117 field/element-ID differences from the local
+authored schemas across seven tables. Names, types, order, nullability and logical
+identifier paths match for all eight. The native admission boundary must return
+the observed schema and preserve its IDs; local schema declarations cannot stand
+in for an existing table's physical identity. This is why input admission feeds
+schema preparation directly in the diagram.
 
 The model entry now supplies explicit native selection authority, requires
 original producer prerequisites and verifies the configured executable before

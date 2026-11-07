@@ -130,6 +130,13 @@ The latest focused application evidence includes:
   Separate greybeard and ETL reviews closed their findings. The repository's
   32 TypeScript diagnostics remain unchanged, with zero additions. All 1,089
   source20 custody records stayed unchanged; no native computation occurred.
+- Retained 26 original metadata/producer objects for the eight selected native
+  tables: 31,906 bytes, with no table payload reads. Existing static checks and
+  historical producer-version calculations passed for all eight inputs. The
+  schema comparison found 117 field/element-ID differences across seven tables;
+  names, types, order, nullability and logical identifier paths match. Native
+  admission must return the observed IDs. Original evidence is preserved; this
+  metadata check does not establish native custody or prerequisite authority.
 
 These are focused results, not a full Python lane, product release or production
 cutover. Durable receipts are under the main checkout's

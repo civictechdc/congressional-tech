@@ -89,7 +89,8 @@
     "Produced a separate local source20 viewer catalog through installed DDK dev6 from the original captured definitions and accepted evidence: 23 datasets, 17 exact versions/representations, one run and 160 checks. Standard inventories and all native export bindings passed; original public controls and all source20 artifacts stayed unchanged; no native computation or new publication/selection claims.",
     "Added original-row paging to the maintained archive owner. Raw mode avoids list packing; verified cached bytes feed bounded range decoding with exact values, schema and physical positions. Nineteen focused cases and 125 Explorer/entity cases passed; separate greybeard and ETL findings closed. Type diagnostics stayed at 32 with zero additions. Original 1,089 source20 custody records unchanged; no native execution or activation.",
     "Source25 fresh rich fixture passed at the original limits on its first attempt: 17 exports, five reports, 40 inventory files and the entity reader scenario. All 1,776 earlier source20/source22 and local-catalog custody records stayed unchanged. Reader implementation 81f4f00d and production runtime pin stayed unchanged.",
-    "Hash-verified source25 closeout and its complete required native gate, installed dev6 consumer and fresh Congress receipts. Gate exit 0 in 849.80 seconds and installed consumer 4/4 passed. Scoped local-file retained-job repair closed; native package/profile qualification, original table custody, producer prerequisites and publication intent remain separate."
+    "Hash-verified source25 closeout and its complete required native gate, installed dev6 consumer and fresh Congress receipts. Gate exit 0 in 849.80 seconds and installed consumer 4/4 passed. Scoped local-file retained-job repair closed; native package/profile qualification, original table custody, producer prerequisites and publication intent remain separate.",
+    "Retained all eight selected native metadata objects and 18 original producer head/base records with 26 GETs totaling 31,906 bytes. Existing static proof and historical Git-source producer-version checks passed for all eight selected inputs without row reads. Captured 18 small model/anchor/schema originals for durable custody. Found 117 physical field/element-ID differences across seven authored schemas; all other schema meaning and logical identifier paths match. Native admission and observed-ID binding remain required."
   ],
   "active": [
     "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
@@ -98,7 +99,8 @@
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
     "Standardize new publication on policy-bound capture_profile v2 and 257 physical fields; retain the original 254-field baseline and add three explicit current fields without inventing v1 eligibility",
-    "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings"
+    "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings",
+    "Bind native inputs from their admitted observed schemas and original physical IDs; seven local authored schemas have different IDs and cannot prove original native identity"
   ],
   "tests": {
     "replacementAcceptance": "not_run",
@@ -1014,6 +1016,66 @@
         "original_producer_adoption_and_prerequisites",
         "publication_intent"
       ]
+    },
+    "originalProducerMetadata": {
+      "status": "metadata_and_original_proof_checked_native_admission_open",
+      "scope": "Original metadata capture plus incumbent static and historical-version checks; not row-population validation, native custody/protection or prerequisite authority",
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/handoff.json",
+        "sha256": "64395b7c3eff86190a636b9e597e65b0ded4c64ad74968b692e3b98d2186e356",
+        "size": 3238
+      },
+      "retainedInputs": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/retained-inputs.json",
+        "sha256": "c2a7ebb48356d6131f2d2bfa729b3f22ff3559b9bffd5b8cb5b30ff564e15e73",
+        "size": 11385
+      },
+      "capture": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/result.json",
+        "sha256": "920e93f9dbe6041f4af27b975cf98dd592c994010a344dbfe4932c3e89e67ffb",
+        "size": 43657
+      },
+      "inventory": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/inventory.json",
+        "sha256": "6410f3cbacf40b0a181d41afd1fa61d2e014e82122530796f7a9bcc70b410224",
+        "size": 28416
+      },
+      "staticCheck": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/static-check.json",
+        "sha256": "69b241989fbea1d33c7489073fa0be1febd4c4345d19053f04346bdfe583f8ee",
+        "size": 4472
+      },
+      "originalVersions": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/version-check.json",
+        "sha256": "17f518ea121d503a7dea707a269aff102bc07257fc226f5ee19a597e87498527",
+        "size": 7695
+      },
+      "schemaComparison": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/schema-comparison.json",
+        "sha256": "31cde3dd96240adaacdc189edcba778105a7ec37df449f6dfdf26c7eb5374500",
+        "size": 28212
+      },
+      "tables": 8,
+      "remoteObjects": 26,
+      "originalObjectBytes": 31906,
+      "staticProofsPassed": 8,
+      "originalVersionsMatched": 8,
+      "tablesWithDifferentPhysicalIds": 7,
+      "differentPhysicalIds": 117,
+      "namesTypesOrderNullabilityAndLogicalIdentifiersMatch": true,
+      "snapshotSummaryTotals": {
+        "records": 7259809,
+        "dataFiles": 712,
+        "deleteFiles": 0,
+        "filesBytes": 510818834
+      },
+      "summaryScope": "Original snapshot summary values only; no payload reads or independent recount",
+      "captureWallSeconds": 3.3,
+      "capturePeakRSSGiB": 0.083,
+      "versionCheckWallSeconds": 5.4,
+      "versionCheckPeakRSSGiB": 0.26,
+      "productionRuntimePinChanged": false,
+      "fullLane": false
     }
   },
   "commits": {
@@ -1139,7 +1201,17 @@
     "nativeCounterSchemaMismatch": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-native-source11-01/counter-schema-diff.json",
     "retainedFixtureSelectedInventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-requalify-source11-14-01/files.json",
     "freshSource25": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source25-01/result.json",
-    "nativeSource25Closeout": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-retained-job/gate-closeout-25.json"
+    "nativeSource25Closeout": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-retained-job/gate-closeout-25.json",
+    "originalProducerMetadata": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/handoff.json",
+      "sha256": "64395b7c3eff86190a636b9e597e65b0ded4c64ad74968b692e3b98d2186e356",
+      "size": 3238
+    },
+    "originalProducerRetainedInputs": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/retained-inputs.json",
+      "sha256": "c2a7ebb48356d6131f2d2bfa729b3f22ff3559b9bffd5b8cb5b30ff564e15e73",
+      "size": 11385
+    }
   },
   "constraints": {
     "lastLocalDiskFreeGiB": 90.79,
@@ -1165,7 +1237,7 @@
     "state": "Qualified dev6 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Actual retained application execution remains under acceptance.",
     "owner": "application definitions and consumer adapter; shared DDK fix parent-owned",
     "remaining": [
-      "Actual full native JobSpec execution and original snapshot/producer admission",
+      "Actual full native JobSpec execution and original snapshot/producer admission using observed native field/element IDs; local authored schema IDs differ for seven tables",
       "Current acquisition and nonarchive caller adoption across the full scope",
       "Broader application cold recovery and complete consumer acceptance beyond the passed source25 rich fixture and required native gate",
       "Native frozen publication intent and application activation integration"
