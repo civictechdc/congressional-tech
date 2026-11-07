@@ -2055,69 +2055,40 @@ def test_unset_form_values_state_no_place(placeholder):
     assert congress["sittings"][0]["room"] is None and congress["sittings"][0]["building"] is None
 
 
-def test_mods_witness_affiliation_boundaries_keep_source_occurrences():
-    # The named lines are from CHRG-112hhrg72238, whose printed contents III
-    # also show the complete roles, employers and Reese's representative role.
-    lines = [
-        "Mr. Thomas L. Farmer, Assistant Vice President for Security, Safety, and Operations, Association of American Railroads:",
-        "Mr. Raymond J. Reese, Corporate Health, Safety, and Security Leader, Colonial Pipeline Company, On Behalf of The Association of Oil Pipe Lines and the American Petroleum Institute:",
-        "Mr. Martin Rojas, Vice President for Security and Operations, American Trucking Association:",
-        "Mansooreh Mollaghasemi, Ph.D., President, Atria Technologies, LLC",
-        "Ms. Jane Doe, Deputy Director for Finance, Safety, and Operations, Northeast Programs",
-    ]
-    xml = '<mods xmlns="http://www.loc.gov/mods/v3"><extension>' + "".join(
-        f"<witness>{line}</witness>" for line in lines
-    ) + "</extension></mods>"
-    row = appearance_records.build_appearance_record_row(_sha("affiliation"), "mods", xml)
-    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["on_behalf_of"])
-            for a in row["appearances"]] == [
-        ("mods:witness[1]", "Thomas L. Farmer", "Assistant Vice President for Security, Safety, and Operations",
-         "Association of American Railroads", None),
-        ("mods:witness[2]", "Raymond J. Reese", "Corporate Health, Safety, and Security Leader",
-         "Colonial Pipeline Company", "The Association of Oil Pipe Lines and the American Petroleum Institute"),
-        ("mods:witness[3]", "Martin Rojas", "Vice President for Security and Operations", "American Trucking Association", None),
-        ("mods:witness[4]", "Mansooreh Mollaghasemi", "President", "Atria Technologies, LLC", None),
-        ("mods:witness[5]", "Jane Doe", None, None, None),
-    ]
-
-
 @pytest.mark.parametrize("control", json.loads(
     (Path(__file__).parent / "fixtures/source_models/mods-witness-affiliations.json").read_text()
 ), ids=lambda control: control["package"] + ":" + control["locator"])
 def test_mods_affiliation_spans_match_independently_read_originals(control):
-    # Each excerpt records its original body and locator. Repeating the line
-    # also checks that field recovery preserves distinct source occurrences.
+    # Keep the exact source position and an adjacent copy as distinct occurrences.
+    index = int(control["locator"].removeprefix("mods:witness[").removesuffix("]"))
     xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+           + '<witness/>' * (index - 1)
            + f'<witness>{escape(control["literal"])}</witness>' * 2
            + '</extension></mods>')
-    row = appearance_records.build_appearance_record_row(_sha(xml), "mods", xml)
-    assert [item["source_locator"] for item in row["appearances"]] == [
-        "mods:witness[1]", "mods:witness[2]",
-    ]
-    for item in row["appearances"]:
-        assert {field: item[field] for field in control["expected"]} == control["expected"]
+    row = appearance_records.build_appearance_record_row(_sha(xml), "mods", xml, package_id=control["package"])
+    item, copy = (item for item in row["appearances"] if item["name"])
+    assert item["source_locator"] == control["locator"]
+    assert copy["source_locator"] == f"mods:witness[{index + 1}]"
+    assert {field: item[field] for field in control["expected"]} == control["expected"]
 
 
-@pytest.mark.parametrize("affiliation", [
-    "Chairman, President, and CEO, Example Company, and Director, Another Company",
-    "Director, Education, Workforce, and Income Security Team, accompanied by Jane Smith",
-    "Director, Division of Finance, Safety, and Operations; President, Example Works",
-    "Director for Finance, Safety, and Operations, Northeast Programs",
-    "Director, Education, and Health Division, Association of X, and Operations, Company Y Inc",
-    "Chairman, President, and CEO, Dr. Jane Smith",
-    "Chair of Association A, and President of Company B, Washington, DC",
-    "Under Secretary of Commerce for Intellectual Property, and Director, U.S. Patent and Trademark Office",
-    "Texas Transportation Commissioner, and Chairman, Transportation Transformation Group",
-    "immigration services manager, global mobility services team, Ingersoll Rand Co., "
-    "and on fehalf of the U.S. Chamber of Commerce",
+@pytest.mark.parametrize("package,index,suffix", [
+    ("CHRG-112hhrg72238", 3, ""),
+    ("CHRG-112hhrg72239", 2, ""),
+    ("CHRG-112hhrg72238", 2, " (test)"),
+    (None, 2, ""),
 ])
-def test_mods_affiliation_recovery_refuses_competing_or_unsupported_boundaries(affiliation):
+def test_mods_unreviewed_affiliation_keeps_original_field_split(package, index, suffix):
+    line = ("Mr. Thomas L. Farmer, Assistant Vice President for Security, Safety, and Operations, "
+            "Association of American Railroads" + suffix + ":")
     row = appearance_records.build_appearance_record_row(
-        _sha(affiliation), "mods", {"witnesses": ["Ms. Jane Doe, " + affiliation]},
+        _sha(line), "mods", {"witnesses": [""] * (index - 1) + [line]}, package_id=package,
     )
     item, = row["appearances"]
-    assert item["name"] == "Jane Doe"
-    assert item["position"] is None and item["organization"] is None
+    assert item["source_locator"] == f"mods:witness[{index}]"
+    assert item["name"] == "Thomas L. Farmer"
+    assert item["position"] == "Assistant Vice President for Security"
+    assert item["organization"] == "Safety, and Operations, Association of American Railroads" + suffix + ":"
 
 
 @pytest.mark.parametrize("control", json.loads(

@@ -203,16 +203,6 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_REP_RUNON",
         "_MODS_REP_PERSON_NAME",
         "_mods_representative_value",
-        "_MODS_ROLE",
-        "_MODS_ORGANIZATION",
-        "_MODS_COMPLETE_TITLE",
-        "_MODS_OFFICE_TITLE",
-        "_MODS_UNIT",
-        "_MODS_PUBLIC_INSTITUTION",
-        "_MODS_MULTIPLE_ROLES",
-        "_MODS_CRS_DIVISION",
-        "_MODS_NOAA_SERVICE",
-        "_mods_recover_affiliation_boundary",
         "_mods_witness_fields",
         "extract_mods_observation",
         "extract_mods_appearances",
@@ -1086,92 +1076,9 @@ def _mods_representative_value(text: str) -> str | None:
     return re.sub(r"\s+", " ", value).rstrip(" ,:") or None
 
 
-_MODS_ROLE = re.compile(
-    r"\b(?:president|director|officer|chief|leader|manager|counsel|secretary|administrator|"
-    r"advi[sz]er|coordinator|commissioner|professor|chair(?:man|woman)?|representative)\b",
-    re.I,
-)
-_MODS_ORGANIZATION = re.compile(
-    r"^(?:the )?(?:association|department|office|university|institute|federation|"
-    r"council|commission|committee|foundation|center|bureau) of\b"
-    r"|\b(?:association|company|corporation|university|institute|inc\.?|llc|"
-    r"federation|council|commission|committee|foundation|center|agency|union|society)$",
-    re.I,
-)
-_MODS_COMPLETE_TITLE = re.compile(
-    r"(?:[a-z][\w.-]*\s+)*(?:president|director|officer|leader|manager|counsel|"
-    r"secretary|administrator|advi[sz]er|coordinator|commissioner|professor|"
-    r"chair(?:man|woman)?|representative|analyst|specialist|fellow|inspector|CEO)"
-    r"(?:\s+(?:of|for|in)\s+[^,]+)?",
-    re.I,
-)
-_MODS_OFFICE_TITLE = re.compile(
-    r"(?:(?:executive|assistant|deputy|associate|senior|vice|managing)\s+)*"
-    r"(?:president|director|chair(?:man|woman)?|chief (?:executive|operating|financial) officer|CEO)",
-    re.I,
-)
-_MODS_UNIT = re.compile(r"\b(?:division|team|section|directorate)\b", re.I)
-_MODS_PUBLIC_INSTITUTION = re.compile(
-    r"\b(?:office|administration|service)(?:\s+\([A-Z]+\))?$", re.I,
-)
-_MODS_MULTIPLE_ROLES = re.compile(
-    r";|\b(?:former|current|retired|accompanied by|on [bf]ehalf of|prepared statement|testimony)\b"
-    r"|(?:^|,\s*)(?:and\s+)?(?:Mr\.|Ms\.|Mrs\.|Dr\.|Hon\.)\s", re.I,
-)
-_MODS_CRS_DIVISION = (
-    "foreign affairs", "defense", "and trade division", "congressional research service",
-)
-_MODS_NOAA_SERVICE = ("national environmental satellite", "data", "and information service")
-
-
-def _mods_recover_affiliation_boundary(parts: list[str], conjuncts: list[int], name: str) -> int | None:
-    """Recover explicit titles or named units that the generic list rule cannot split."""
-    if _MODS_MULTIPLE_ROLES.search(", ".join(parts)):
-        return None
-
-    candidates = set()
-    first_title = _MODS_COMPLETE_TITLE.fullmatch(parts[0])
-    # A named unit owns its internal list: "Analyst, Foreign Affairs, Defense,
-    # and Trade Division, Congressional Research Service".
-    unit_parts = parts[1:conjuncts[0] + 1]
-    if (first_title and (_MODS_UNIT.search(", ".join(unit_parts))
-                        or tuple(part.casefold() for part in unit_parts) == _MODS_NOAA_SERVICE)
-            and not any(_MODS_ROLE.search(part) for part in parts[1:])):
-        candidates.add(1)
-    # This source-established unit chain also occurs without a job title.
-    # An unfamiliar leading phrase elsewhere is not evidence of no title.
-    if tuple(part.casefold() for part in parts) == _MODS_CRS_DIVISION and is_name(name):
-        candidates.add(0)
-
-    for end in conjuncts:
-        split = end + 1
-        if split == len(parts) or any(_MODS_ROLE.search(part) for part in parts[split:]):
-            continue
-        titles = [re.sub(r"^and ", "", part, flags=re.I) for part in parts[:split]]
-        # "Chairman, President, and CEO, Questar" states three complete
-        # titles, then an employer. Do not require a corporate suffix.
-        if (all(_MODS_OFFICE_TITLE.fullmatch(title) for title in titles)
-                and not any(i >= split for i in conjuncts)):
-            candidates.add(split)
-        # "Director of Education, Workforce, and Income Security, ..." keeps
-        # its preposition-linked scope. A unit label instead belongs to the
-        # organization and cannot also become part of that scope.
-        if (first_title and re.search(r"\b(?:of|for|in)\b", parts[0], re.I)
-                and not any(_MODS_COMPLETE_TITLE.fullmatch(title) for title in titles[1:])
-                and not _MODS_UNIT.search(", ".join(parts[:split]))
-                and not any(_MODS_PUBLIC_INSTITUTION.search(part) for part in parts[1:split])
-                and (_MODS_ORGANIZATION.search(parts[split])
-                     or _MODS_PUBLIC_INSTITUTION.search(parts[split]))):
-            candidates.add(split)
-    return next(iter(candidates)) if len(candidates) == 1 else None
-
-
 def _mods_witness_fields(
     line: str, *, package_id: str | None = None, source_index: int | None = None,
 ) -> dict[str, Any]:
-    reviewed = MODS_PERSON_FIELDS.get(package_id or "", {}).get(source_index)
-    if reviewed and sha256(line.strip().encode()).hexdigest() == reviewed[0]:
-        return dict(reviewed[1])
     parsed = parse_gpo_witness(line)
     position, organization = parsed["position"], parsed["organization"]
     affiliation = ", ".join(part for part in (position, organization) if part)
@@ -1185,36 +1092,13 @@ def _mods_witness_fields(
             # the existing party when the two readings select different text.
             if len(_MODS_REPRESENTATIVE.findall(text)) == len(_MODS_REPRESENTATIVE.findall(affiliation)):
                 parsed["on_behalf_of"] = _mods_representative_value(text)
-        affiliation = affiliation[:representative.start()]
-    if not affiliation:
-        parsed.update(position=None, organization=None)
-        return parsed
+        # Keep the original name parser's field split before the marker.
+        position, _, organization = affiliation[:representative.start()].partition(", ")
+        parsed.update(position=position or None, organization=organization or None)
 
-    parts = affiliation.rstrip(":").split(", ")
-    # The final conjunct of a role's list precedes the named institution:
-    # "Vice President for Security, Safety, and Operations, Association of ...".
-    # A recognizable institution before the conjunction instead belongs to
-    # the usual first-comma split. Never pick a boundary from a conjunction alone.
-    conjuncts = [i for i, part in enumerate(parts[1:], 1) if part.lower().startswith("and ")]
-    if conjuncts and not any(_MODS_ORGANIZATION.search(part) for part in parts[1:conjuncts[0]]):
-        candidates = [
-            i + 1 for i in conjuncts
-            if i + 1 < len(parts)
-            and _MODS_ROLE.search(", ".join(parts[:i + 1]))
-            and _MODS_ORGANIZATION.search(parts[i + 1])
-        ]
-        if len(candidates) != 1:
-            split = (_mods_recover_affiliation_boundary(parts, conjuncts, parsed["name"])
-                     if not candidates else None)
-            if split is None:
-                # The immutable body and locator retain ambiguous source text.
-                parsed.update(position=None, organization=None)
-                return parsed
-        else:
-            split = candidates[0]
-    else:
-        split = 1
-    parsed.update(position=", ".join(parts[:split]), organization=", ".join(parts[split:]))
+    reviewed = MODS_PERSON_FIELDS.get(package_id or "", {}).get(source_index)
+    if reviewed and sha256(line.strip().encode()).hexdigest() == reviewed[0]:
+        parsed.update(reviewed[1])
     return parsed
 
 

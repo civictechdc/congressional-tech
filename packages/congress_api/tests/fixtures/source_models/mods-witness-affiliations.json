@@ -262,5 +262,236 @@
       "organization": "Fraud, Child Exploitation, and Asset Forfeiture Division, U.S. Postal Inspection Service, Washington, DC",
       "on_behalf_of": null
     }
+  },
+  {
+    "body_sha": "15c0b074548f512ae7d38fcf7ea3a65e2a0aefc74651fb21902150911aa5d811",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-115hhrg38052",
+    "literal": "Rear Admiral William G. Kelly, Assistant Commandant for Human Resources, U.S. Coast Guard, and Rear Admiral Melvin W. Bouboulis, Assistant Commandant for Engineering and Logistics, U.S. Coast Guard: Testimony",
+    "expected": {
+      "name": "William G. Kelly",
+      "honorific": null,
+      "position": "Assistant Commandant for Human Resources",
+      "organization": "U.S. Coast Guard",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "a184ea7c37685751d603c1a81960a136a20bec564eaa2efaf77751ede054264b",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-117hhrg50336",
+    "literal": "Hon. Michel Bechtel, Mayor, Morgan's Point, Texas, and Board President, Gulf Coast Protection District,",
+    "expected": {
+      "name": "Michel Bechtel",
+      "honorific": null,
+      "position": "Mayor, Morgan's Point, Texas, and Board President, Gulf Coast Protection District",
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "a184ea7c37685751d603c1a81960a136a20bec564eaa2efaf77751ede054264b",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-117hhrg50336",
+    "literal": "Mario Cordero, Executive Director, Port of Long Beach, California, and Chairman, Board of Directors, American Association of Port Authorities,",
+    "expected": {
+      "name": "Mario Cordero",
+      "honorific": null,
+      "position": "Executive Director, Port of Long Beach, California, and Chairman, Board of Directors, American Association of Port Authorities",
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "fb5416258c0d1e39323995dfa5b5b04e12bdd7654504e3218a9f8141cb2d7ef5",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-114hhrg20310",
+    "literal": "Alan Speir, Medical Director of Cardiac Surgical Services for Inova Health System, and Chair, Workforce on Health Policy, Reform, and Advocacy, The Society of Thoracic Surgeons",
+    "expected": {
+      "name": "Alan Speir",
+      "honorific": null,
+      "position": "Medical Director of Cardiac Surgical Services for Inova Health System, and Chair, Workforce on Health Policy, Reform, and Advocacy, The Society of Thoracic Surgeons",
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "d54fdab874f78159d9c1d454c7c67490beef78cc9495909b412778db0ca88f56",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-114hhrg96269",
+    "literal": "Woteki, Ph.D., Hon. Catherine, Under Secretary, Research, Education, and Economics, U.S. Department of Agriculture, Washington, D.C.; accompanied by Chavonda Jacobs-Young, Ph.D., Administrator, Agricultural Research Service, USDA; Sonny Ramaswamy, Ph.D., Director, National Institute of Food and Agriculture, USDA; Mary Bohman, Ph.D., Administrator, Economic Research Service, USDA; and Renee Picanso, Associate Administrator, National Agricultural Statistics Service, USDA",
+    "expected": {
+      "name": "Catherine Woteki",
+      "honorific": null,
+      "position": "Under Secretary, Research, Education, and Economics",
+      "organization": "U.S. Department of Agriculture",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "cc63078f540ad46e08c767cac0b4a2bbc362289429f6a39c49a46faea5a5cbfb",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-117shrg46202",
+    "literal": "Bryce, Robert, Author, Journalist, Podcaster, and Film Producer",
+    "expected": {
+      "name": "Robert Bryce",
+      "honorific": null,
+      "position": "Author, Journalist, Podcaster, and Film Producer",
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "1404d71a48919c269a0f193e4bf16710141c4e1251f63d6df4f3c9f123c535ec",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-118hhrg52397",
+    "literal": "Kulkin, Matthew, Partner and Chair, Futures and Derivatives Practice, Wilmer Cutler Pickering Hale and Dorr LLP, and former Director, CFTC Division of Swap Dealer and Intermediary Oversight",
+    "expected": {
+      "name": "Matthew Kulkin",
+      "honorific": null,
+      "position": "Partner and Chair, Futures and Derivatives Practice, Wilmer Cutler Pickering Hale and Dorr LLP, and former Director, CFTC Division of Swap Dealer and Intermediary Oversight",
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "fb5416258c0d1e39323995dfa5b5b04e12bdd7654504e3218a9f8141cb2d7ef5",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-114hhrg20310",
+    "literal": "Geraldine O'Shea, First Vice President, AOA Board Of Trustees, and Medical Director, Foothills Women's Medical Center in California",
+    "expected": {
+      "name": "Geraldine O'Shea",
+      "honorific": null,
+      "position": "First Vice President, AOA Board Of Trustees, and Medical Director, Foothills Women's Medical Center in California",
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "d54fdab874f78159d9c1d454c7c67490beef78cc9495909b412778db0ca88f56",
+    "locator": "mods:witness[17]",
+    "package": "CHRG-114hhrg96269",
+    "literal": "Concannon, Hon. Kevin, Under Secretary, Food, Nutrition, and Consumer Services, U.S. Department of Agriculture, Washington, D.C.; accompanied by Audrey Rowe, Administrator, Food and Nutrition Service, USDA; and Angela Tagtow, M.S., R.D., L.D., Executive Director, Center for Nutrition Policy and Promotion, USDA",
+    "expected": {
+      "name": "Kevin Concannon",
+      "honorific": null,
+      "position": "Under Secretary, Food, Nutrition, and Consumer Services",
+      "organization": "U.S. Department of Agriculture",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "df4e972fcb9d87cb7de8ef3a45930bd4c16ebdd40977b0938e15d0629d4f72a5",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-118shrg55517",
+    "literal": "Moore, Randy, Chief, U.S. Forest Service, U.S. Department of Agriculture; accompanied by Mark Lichtenstein, Director of Strategic Planning, Budget, and Accountability, U.S. Forest Service",
+    "expected": {
+      "name": "Randy Moore",
+      "honorific": null,
+      "position": "Chief",
+      "organization": "U.S. Forest Service, U.S. Department of Agriculture",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "b35e154136b3385d5aae76c520f733207205f272ae9e856fd06a7a020e644181",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-117shrg47624",
+    "literal": "Seth G. Jones, Ph.,D., Senior Vice President, Harold Brown Chair, and Director, International Security Program, Center for Strategic and International Studies",
+    "expected": {
+      "name": "Seth G. Jones",
+      "honorific": null,
+      "position": "Senior Vice President, Harold Brown Chair, and Director, International Security Program",
+      "organization": "Center for Strategic and International Studies",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "20a022c1e23b09756434006cb3677c470ffe5419b9d89db264ffb2885deba1a7",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-117shrg48356",
+    "literal": "Bucella, Donna A., former director, Executive Office for United States Attorneys, and former U.S. Attorney for the Middle District of Florida, Irving, Texas",
+    "expected": {
+      "name": "Donna A. Bucella",
+      "honorific": null,
+      "position": "former director, Executive Office for United States Attorneys, and former U.S. Attorney for the Middle District of Florida",
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "569d61b6a25089e98c4c0fbbcfda8db8e1cfe7fbabfce17b118a1309a5fe9c9f",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-118shrg58248",
+    "literal": "Kevin A. Sabet, President and CEO, Smart Approaches to Marijuana, and Fellow, Yale University",
+    "expected": {
+      "name": "Kevin A. Sabet",
+      "honorific": null,
+      "position": "President and CEO, Smart Approaches to Marijuana, and Fellow, Yale University",
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "71d8f507c95fe6c7c1b328efc6bc16f6eb00ba7337416622ba697b7131ae35b9",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-118hhrg57440",
+    "literal": "Mr. Luis Elizondo, Author, and Former Department of Defense Official",
+    "expected": {
+      "name": "Luis Elizondo",
+      "honorific": "Mr.",
+      "position": "Author, and Former Department of Defense Official",
+      "organization": null,
+      "on_behalf_of": null
+    }
+},
+  {
+    "body_sha": "af8586c7afbd93964697d25d65ddf594afce7fe396c71ea774af13e8c7b3df04",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-113hhrg79877",
+    "literal": "John H. Beisner, on behalf of the U.S. Chamber Institute for Legal Reform, Skadden, Arps, Slate, Meagher & Flom LLP",
+    "expected": {
+      "name": "John H. Beisner",
+      "honorific": null,
+      "position": null,
+      "organization": null,
+      "on_behalf_of": "the U.S. Chamber Institute for Legal Reform"
+    }
+  },
+  {
+    "body_sha": "061467cf783dedfa0712344aa6964cfe8c1cbc9cc49073f6cfc9f553d0807113",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-106hhrg59318",
+    "literal": "Rezendes, Victor S., Director, Energy, Resources, and Science Issues; Resources, Community and Development Division, U.S. General Accounting Office",
+    "expected": {
+      "name": "Victor S. Rezendes",
+      "position": "Director",
+      "organization": "Resources, Community and Development Division, U.S. General Accounting Office",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "01b3d44f838f5acdcd4d79a6f551c7027eda9bc2068657b3ac652e90690cc485",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-112shrg72560",
+    "literal": "Walter L. Tamosaitis, Ph.D., URS Corporation, and Former Research and Technology Manager, Waste Treatment Project, Hanford Waste Treatment Plant",
+    "expected": {
+      "name": "Walter L. Tamosaitis",
+      "position": null,
+      "organization": "URS Corporation",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "022704f8d5b14b4fbd027fce51ab1ff589b2a1addc4444469cc72070b9a64d05",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-114hhrg94222",
+    "literal": "James, Hon. Deborah Lee, Secretary of the Air Force, and Gen Mark A. Welsh, USAF, Chief of Staff, U.S. Air Force",
+    "expected": {
+      "name": "Deborah Lee James",
+      "position": "Secretary of the Air Force",
+      "organization": null,
+      "on_behalf_of": null
+    }
   }
 ]
