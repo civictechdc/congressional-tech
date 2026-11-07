@@ -47,6 +47,7 @@ from ..parsers.xml_repair import parse_xml_with_repairs
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
+from .mods_person_fields import MODS_PERSON_FIELDS
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
@@ -237,6 +238,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "parsers_gpo_hearings": pkg_dir / "parsers/gpo_hearings.py",
                 "parsers_xml": pkg_dir / "parsers/xml.py",
                 "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
+                "reviewed_mods_person_fields": pkg_dir / "lake/mods_person_fields.py",
                 "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
@@ -1122,7 +1124,12 @@ def _mods_recover_affiliation_boundary(parts: list[str], conjuncts: list[int], n
     return next(iter(candidates)) if len(candidates) == 1 else None
 
 
-def _mods_witness_fields(line: str) -> dict[str, Any]:
+def _mods_witness_fields(
+    line: str, *, package_id: str | None = None, source_index: int | None = None,
+) -> dict[str, Any]:
+    reviewed = MODS_PERSON_FIELDS.get(package_id or "", {}).get(source_index)
+    if reviewed and sha256(line.strip().encode()).hexdigest() == reviewed[0]:
+        return dict(reviewed[1])
     parsed = parse_gpo_witness(line)
     position, organization = parsed["position"], parsed["organization"]
     affiliation = ", ".join(part for part in (position, organization) if part)
@@ -1192,7 +1199,7 @@ def extract_mods_observation(
         raw_rows: list[dict[str, Any]] = []
         for idx, w in enumerate(raw_witnesses, start=1):
             if isinstance(w, str):
-                parsed = _mods_witness_fields(w)
+                parsed = _mods_witness_fields(w, package_id=resolved_pkg, source_index=idx)
                 w_name = _opt_str(parsed.get("name"))
                 if not w_name:
                     continue
@@ -1308,7 +1315,7 @@ def extract_mods_observation(
                 }
             )
             continue
-        parsed = _mods_witness_fields(cleaned_line)
+        parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
         w_name = _opt_str(parsed.get("name"))
         # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
         if w_name and LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name):

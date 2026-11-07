@@ -2126,6 +2126,39 @@ def test_mods_representative_preserves_names_and_legacy_marker_selection(line, e
     assert item["position"] == "Director"
 
 
+@pytest.mark.parametrize("control", json.loads(
+    (Path(__file__).parent / "fixtures/source_models/mods-person-boundaries.json").read_text()
+), ids=lambda control: control["package"] + ":" + control["locator"])
+def test_mods_reads_qualified_person_fields_at_exact_source_position(control):
+    index = int(control["locator"].split("[")[1].removesuffix("]"))
+    row = appearance_records.build_appearance_record_row(
+        _sha(control["source_literal"]), "mods",
+        {"witnesses": [""] * (index - 1) + [control["source_literal"]]},
+        package_id=control["package"],
+    )
+    item, = row["appearances"]
+    assert item["source_locator"] == control["locator"]
+    assert {key: item[key] for key in control["fields"]} == control["fields"]
+    assert item["name_key"] == appearance_records.normalize_name_key(control["expected_name"])
+
+
+def test_mods_person_qualification_requires_package_position_and_original_line():
+    line = "American Enterprise Institute, John H. Makin"
+    expected = "John H. Makin"
+    assert appearance_records._mods_witness_fields(
+        line, package_id="CHRG-108hhrg91630", source_index=4,
+    )["name"] == expected
+    for package, index, text in [
+        ("CHRG-108hhrg91630", 3, line),
+        ("CHRG-108hhrg91631", 4, line),
+        ("CHRG-108hhrg91630", 4, line + ", Additional material"),
+        (None, 4, line),
+    ]:
+        assert appearance_records._mods_witness_fields(
+            text, package_id=package, source_index=index,
+        )["name"] != expected
+
+
 def test_mods_print_states_every_held_day_and_labels_statements():
     """A multi-day print states later days in constituent items (Haaland 328803), and its <witness> list
     carries letters for the record and Members' statements, which are not witnesses (red-f2)."""
