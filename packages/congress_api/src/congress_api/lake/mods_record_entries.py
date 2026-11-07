@@ -219,3 +219,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, tuple[str, str | None]]] = {
         11: ('9d9ab24fc2f867396fb3373455e84d8cf840ef6e1e91169dc5b1284ea596fcd2', 'Charlton Allen'),
     },
 }
+
+# The print's contents and oral proceedings both name Jim Bresson separately.
+# The MODS line joins his roster entry to Robert Brandewie's prepared statement.
+# https://www.govinfo.gov/content/pkg/CHRG-109hhrg28454/pdf/CHRG-109hhrg28454.pdf
+MODS_MIXED_RECORD_ENTRIES = frozenset({("CHRG-109hhrg28454", 5)})

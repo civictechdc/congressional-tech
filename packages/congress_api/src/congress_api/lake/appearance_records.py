@@ -48,7 +48,7 @@ from ..parsers.senate_page import plain_testimony_address, plain_witness_links
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
-from .mods_record_entries import MODS_RECORD_ENTRIES
+from .mods_record_entries import MODS_MIXED_RECORD_ENTRIES, MODS_RECORD_ENTRIES
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
@@ -1311,11 +1311,12 @@ def extract_mods_observation(
     reviewed_entries = MODS_RECORD_ENTRIES.get(resolved_pkg or "", {})
     for idx, w_line in enumerate(raw_witness_lines, start=1):
         cleaned_line = (w_line or "").strip()
+        source_locator = f"mods:witness[{idx}]"
         reviewed = reviewed_entries.get(idx)
         if reviewed and sha256(cleaned_line.encode()).hexdigest() == reviewed[0]:
             raw_rows.append(
                 {
-                    "source_locator": f"mods:witness[{idx}]",
+                    "source_locator": source_locator,
                     "name": reviewed[1],
                     "witness_type": ("member_statement" if _MEMBER_STATEMENT.search(cleaned_line)
                                      else "statement_for_record"),
@@ -1323,11 +1324,14 @@ def extract_mods_observation(
                     "document_links": [],
                 }
             )
-            continue
+            if (resolved_pkg, idx) not in MODS_MIXED_RECORD_ENTRIES:
+                continue
+            cleaned_line = re.split(r"\.{4,}", cleaned_line, maxsplit=1)[1].strip()
+            source_locator += "/part[2]"
         if not cleaned_line:
             raw_rows.append(
                 {
-                    "source_locator": f"mods:witness[{idx}]",
+                    "source_locator": source_locator,
                     "name": None,
                     "display_order": len(raw_rows) + 1,
                     "document_links": [],
@@ -1348,7 +1352,7 @@ def extract_mods_observation(
         bg = member_bioguides.get(nk) if nk else None
         raw_rows.append(
             {
-                "source_locator": f"mods:witness[{idx}]",
+                "source_locator": source_locator,
                 "name": w_name,
                 "honorific": _opt_str(parsed.get("honorific")),
                 "position": _opt_str(parsed.get("position")),
