@@ -46,12 +46,22 @@ class LegislativeReader:
             matches.append(f'EXISTS (SELECT 1 FROM bills linked,unnest(linked.floor_votes) f(vote) WHERE linked.bill_id={bill_id} AND vote.vote_id={vote}.vote_id)')
         return '('+' OR '.join(matches)+')'
 
-    def activity_bill_match(self):
-        matches = ['b.bill_id=e.subject_id']
+    def activity_bill_matches(self, ctes, name, field):
+        # Build eligible IDs once. Correlating each event to bills and then
+        # to vote references produces a cross product on archive-sized feeds.
+        bills = name+'_bills'
+        ctes.append(f'{bills} AS (SELECT bill_id FROM bills WHERE list_contains({field},?))')
+        matches = [f'e.subject_id IN (SELECT bill_id FROM {bills})']
         if 'roll_call_votes' in self.schemas:
-            matches.append("(e.source_table='roll_call_votes' AND EXISTS (SELECT 1 FROM roll_call_votes linked_vote "
-                'WHERE linked_vote.vote_id=e.event_key AND '+self.roll_call_bill_match('linked_vote','b.bill_id')+'))')
-        return '('+' OR '.join(matches)+')'
+            votes = [f'SELECT v.vote_id FROM roll_call_votes v JOIN {bills} b ON lower(v.bill_id)=lower(b.bill_id)']
+            if 'bill_references' in self.schemas['roll_call_votes']:
+                votes.append(f'SELECT v.vote_id FROM roll_call_votes v CROSS JOIN unnest(v.bill_references) refs(r) '
+                             f'JOIN {bills} b ON lower(r.bill_id)=lower(b.bill_id)')
+            else:
+                votes.append(f'SELECT vote.vote_id FROM bills linked CROSS JOIN unnest(linked.floor_votes) f(vote) '
+                             f'JOIN {bills} b ON linked.bill_id=b.bill_id')
+            matches.append("(e.source_table='roll_call_votes' AND e.event_key IN ("+' UNION ALL '.join(votes)+'))')
+        return matches
 
     def legislative_page(self, query, table, date_field, identity):
         query.window()
@@ -221,21 +231,29 @@ class LegislativeReader:
             unions.append("SELECT 'meeting_scheduled',cast(event_id AS VARCHAR),meeting_date,cast(meeting_date AS VARCHAR),NULL::VARCHAR,'day',cast(event_id AS VARCHAR),title,chamber,'meetings',to_json(struct_pack(event_id:=event_id)) FROM meetings")
         if not unions:
             return dict(release_id=self.release_id,rows=[],has_more=False,coverage=coverage)
-        args = []
+        ctes, filter_args, args = [], [], []
         terms = self.dated_filters(query, 'e.event_date', args)
         if query.chamber: terms.append('e.chamber=?'); args.append(query.chamber)
         if committee:
-            matches = []
-            if 'bills' in self.schemas: matches.append('EXISTS (SELECT 1 FROM bills b WHERE '+self.activity_bill_match()+' AND list_contains(b.committees,?))'); args.append(committee)
-            if 'nominations' in self.schemas: matches.append('EXISTS (SELECT 1 FROM nominations n WHERE n.nomination_id=e.subject_id AND list_contains(n.committees,?))'); args.append(committee)
-            if 'meetings' in self.schemas: matches.append("EXISTS (SELECT 1 FROM meetings m,unnest(m.committees) c(item) WHERE e.source_table='meetings' AND cast(m.event_id AS VARCHAR)=e.subject_id AND item.system_code=?)"); args.append(committee)
+            matches = self.activity_bill_matches(ctes, 'committee', 'committees')
+            filter_args.append(committee)
+            if 'nominations' in self.schemas:
+                matches.append('e.subject_id IN (SELECT nomination_id FROM nominations WHERE list_contains(committees,?))')
+                args.append(committee)
+            if 'meetings' in self.schemas:
+                matches.append("(e.source_table='meetings' AND e.subject_id IN (SELECT cast(m.event_id AS VARCHAR) "
+                               'FROM meetings m,unnest(m.committees) c(item) WHERE item.system_code=?))')
+                args.append(committee)
             terms.append('('+' OR '.join(matches)+')')
         if topic:
-            matches = ['EXISTS (SELECT 1 FROM bills b WHERE '+self.activity_bill_match()+' AND list_contains(b.subjects,?))']; args.append(topic)
+            matches = self.activity_bill_matches(ctes, 'topic', 'subjects')
+            filter_args.append(topic)
             if 'meetings' in self.schemas:
-                matches.append("EXISTS (SELECT 1 FROM meetings m,bills b WHERE e.source_table='meetings' AND cast(m.event_id AS VARCHAR)=e.subject_id AND list_contains(m.subject_keys,b.bill_id) AND list_contains(b.subjects,?))"); args.append(topic)
+                matches.append("(e.source_table='meetings' AND e.subject_id IN (SELECT cast(m.event_id AS VARCHAR) "
+                               'FROM meetings m CROSS JOIN unnest(m.subject_keys) s(bill_id) JOIN topic_bills b ON s.bill_id=b.bill_id))')
             terms.append('('+' OR '.join(matches)+')')
-        result = self.page(query, 'SELECT e.* FROM ('+' UNION ALL '.join(unions)+') e(event_type,event_key,event_date,source_date,source_time,date_precision,subject_id,description,chamber,source_table,source_key) WHERE '+' AND '.join(terms), args,
+        prefix = 'WITH '+', '.join(ctes)+' ' if ctes else ''
+        result = self.page(query, prefix+'SELECT e.* FROM ('+' UNION ALL '.join(unions)+') e(event_type,event_key,event_date,source_date,source_time,date_precision,subject_id,description,chamber,source_table,source_key) WHERE '+' AND '.join(terms), [*filter_args,*args],
             order='e.event_date ASC NULLS LAST,'+self.local_action_time('e.source_time')+
                 " ASC NULLS LAST,e.event_type,e.subject_id ASC NULLS LAST,try_cast(json_extract_string(e.source_key,'$.action_index') AS BIGINT) ASC NULLS LAST,e.event_key")
         for row in result['rows']:
