@@ -900,6 +900,8 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
  'CHRG-112hhrg80145': {4: ('56651477acb2e428d7b3f23f227e3467fdd4f875fb8c8813c429b88d9d281d6a',
                            {'organization': 'Emmis Communications',
                             'position': 'Chairman, President, and Chief Executive Officer'})},
+ 'CHRG-112jhrg85228': {25: ('2bc01641b71947fb51ee084465f8cd748575a8c73de544fdf4742802cce6110f',
+                            {'organization': 'Department of Transportation, State of California'})},
  'CHRG-112shrg66674': {3: ('3a741e8a413793b5e60ba0e6cbb64945b71f30dcce69c70b9998dcc5f55a8cc8',
                            {'organization': 'U.S. Government Accountability Office',
                             'position': 'Director of Education, Workforce, and Income Security Issues'})},
@@ -947,6 +949,8 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
  'CHRG-113shrg87033': {1: ('098abe58c403448ae3a331b7eb0b342fa0c2c181b34c2b9b2431c267a2c6c55e',
                            {'organization': 'U.S. Accountability Office, Boston, MA',
                             'position': 'Director of Education, Workforce, and Income Security Issues'})},
+ 'CHRG-113shrg89525': {6: ('7fc2f30fbfe6c95cf115fcb4543b1327cf4d9b331087062880bfdcee89cb4f38',
+                           {'organization': 'Tanana Chiefs Conference'})},
  'CHRG-113shrg89684': {4: ('2026f4eeefa6c01f411cc48a1e272e74bb2f7e25fb83570d267f4f0be1ffbb69',
                            {'organization': 'Resources, Science, and Industry Division, Congressional '
                                             'Research Service, Library of Congress',

@@ -37,6 +37,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-106shrg59382': {
         20: ('a1cfe3e56a0d13ebf4c066338214a1407f2d24c4bc59724c24dceb99841c556a', None),
     },
+    'CHRG-106shrg66376': {
+        17: ('f7efd85d4cb7c2c8af6fa2546a6108b12485e5095d6576ea14f6213cf7b1eb9b', 'Senator Smith'),
+        25: ('c0072a5d03d490de0212885e9a7eae2aed5758dd3ad2ec35f94c9b7d5cd3a694', 'Ella Wong-Ruskinko'),
+    },
     'CHRG-106shrg73821': {
         19: ('ebaac7aca5d25b82c2825243fae3db6c93986b3ddd8d716b328752cfca9f4965', 'Paul Warner'),
     },
