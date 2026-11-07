@@ -186,7 +186,7 @@ def admit(registry, me, *, headroom, wait_seconds):
 
 def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval, timeline=None,
           youngest=lambda: True, hold_fd=None):
-    """Return (exit code, peak resident GiB, peak physical GiB, reason, seconds).
+    """Return exit code, memory peaks, reason, elapsed seconds and cleanup evidence.
 
     The limit applies to max(resident, physical): macOS charged footprint also counts
     compressed memory that RSS misses. Below the machine floor the job stops only when
@@ -198,6 +198,7 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
     peak = physical_peak = 0.0
     started = time.monotonic()
     process = None
+    code, reason, cleanup = STOPPED, None, None
     try:
         # The owned group holds this descriptor until parent-death cleanup ends.
         pass_fds = () if hold_fd is None else (hold_fd,)
@@ -222,16 +223,31 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
                     reason = (f'machine memory available {available:.1f} GiB under {min_available_gb} GiB; '
                               'the youngest running job stops first')
             if reason:
-                return STOPPED, peak, physical_peak, reason, time.monotonic() - started
+                break
             time.sleep(interval)
-        return process.returncode, peak, physical_peak, None, time.monotonic() - started
+        else:
+            code = process.returncode
     except Exception as error:  # Interrupted included: the finally stops the job
-        return STOPPED, peak, physical_peak, f'{type(error).__name__}: {error}', time.monotonic() - started
+        reason = f'{type(error).__name__}: {error}'
     finally:
         if process is not None:
-            sampler.stop_owned(process)
+            notes = sampler.stop_owned(process)
+            inventory = next((note for note in reversed(notes)
+                              if note.get('action') == 'group_inventory'), None)
+            errors = [note for note in notes if note.get('type')]
+            empty = (inventory is not None and inventory.get('group') == process.pid
+                     and inventory.get('members') == [])
+            complete = empty and not errors
+            cleanup = dict(owned_pgid=process.pid, owned_leader_exit_code=process.returncode,
+                           confirmed_empty=empty,
+                           complete=complete, notes=notes)
+            if not complete:
+                code = STOPPED
+                failure = 'owned process cleanup failed or its final inventory is unavailable'
+                reason = f'{reason}; {failure}' if reason else failure
         for number, handler in old.items():
             signal.signal(number, handler)
+    return code, peak, physical_peak, reason, time.monotonic() - started, cleanup
 
 
 def main(argv=None):
@@ -279,7 +295,7 @@ def main(argv=None):
         waited = time.monotonic() - began
         if args.timeline:
             timeline = args.report.with_suffix('.timeline.jsonl').open('w')
-        code, peak, physical_peak, reason, seconds = watch(command, rss_gb=args.rss_gb,
+        code, peak, physical_peak, reason, seconds, cleanup = watch(command, rss_gb=args.rss_gb,
             min_available_gb=args.min_available_gb, min_disk_gb=args.min_disk_gb,
             disk_root=args.report.parent if args.report else Path.cwd(), interval=args.interval, timeline=timeline,
             youngest=youngest, hold_fd=args.hold_fd)
@@ -290,7 +306,7 @@ def main(argv=None):
     if args.report:
         args.report.write_text(json.dumps(dict(command=command, rss_limit_gb=args.rss_gb, expect_gb=args.expect_gb,
             peak_rss_gb=round(peak, 3), peak_physical_gb=round(physical_peak, 3), waited_seconds=round(waited, 1),
-            seconds=round(seconds, 1), exit_code=code, stopped=reason), indent=1) + '\n')
+            seconds=round(seconds, 1), exit_code=code, stopped=reason, cleanup=cleanup), indent=1) + '\n')
     if reason:
         print(f'archive_watchdog: stopped; {reason}; peak {peak:.2f} GiB RSS, {physical_peak:.2f} GiB physical', file=sys.stderr)
     else:

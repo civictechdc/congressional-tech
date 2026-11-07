@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import time
@@ -35,6 +36,8 @@ def test_a_clean_job_keeps_its_exit_code_and_records_a_peak(tmp_path):
     report = json.loads((tmp_path / 'report.json').read_text())
     assert result.returncode == 7 and report['exit_code'] == 7 and report['stopped'] is None
     assert 0 < report['peak_rss_gb'] < 4
+    assert report['cleanup']['complete'] and report['cleanup']['confirmed_empty']
+    assert report['cleanup']['notes'][-1]['members'] == []
 
 
 def test_a_runaway_descendant_stops_the_tree_with_a_named_failure(tmp_path):
@@ -83,6 +86,39 @@ def test_a_high_kill_limit_does_not_delay_a_small_job(tmp_path):
     result = run(tmp_path, '--rss-gb', '100000', '--expect-gb', '0.1', '--wait-seconds', '0',
                  command=[sys.executable, '-c', 'pass'])
     assert result.returncode == 0, result.stderr
+    assert json.loads((tmp_path/'report.json').read_text())['cleanup']['complete']
+
+
+@pytest.mark.parametrize('failure',['kill','kill_wait','inventory'])
+def test_cleanup_failure_cannot_preserve_a_successful_exit(tmp_path,monkeypatch,failure):
+    """Use a real harmless child; planted cleanup failures must remain visible."""
+    owner=watchdog.sampler
+    if failure=='kill':
+        original=owner._signal_group
+        def signal_group(group,number,*args):
+            if number==signal.SIGKILL:
+                raise PermissionError('injected cleanup signal failure')
+            return original(group,number,*args)
+        monkeypatch.setattr(owner,'_signal_group',signal_group)
+    elif failure=='kill_wait':
+        original=owner._cleanup_child
+        def cleanup(child,send):
+            notes=original(child,send)
+            return notes+[dict(action='kill_wait',type='TimeoutExpired',message='injected wait failure')]
+        monkeypatch.setattr(owner,'_cleanup_child',cleanup)
+    else:
+        def inventory(_group):
+            raise OSError('injected unavailable process inventory')
+        monkeypatch.setattr(owner,'group_members',inventory)
+    report=tmp_path/'cleanup-report.json'
+    code=watchdog.main(['--rss-gb','2','--min-disk-gb','0','--min-available-gb','0',
+        '--interval','0.1','--report',str(report),'--',sys.executable,'-c','pass'])
+    value=json.loads(report.read_text())
+    assert code==99 and value['exit_code']==99 and 'cleanup' in value['stopped']
+    assert value['cleanup']['owned_leader_exit_code']==0
+    assert not value['cleanup']['complete']
+    assert any(note.get('type') for note in value['cleanup']['notes'])
+    assert value['cleanup']['confirmed_empty'] is (failure!='inventory')
 
 
 def entry(pid, queued, expect, admitted=None):
@@ -260,9 +296,13 @@ def test_a_term_ignoring_grandchild_is_killed(tmp_path):
     leader = (f"import pathlib,subprocess,sys,time\nsubprocess.Popen([sys.executable,'-c',{sleeper(marker, ignore_term=True)!r}])\n"
               f"p=pathlib.Path({str(marker)!r})\nwhile not (p.exists() and p.read_text()):time.sleep(0.05)\n")
     result = subprocess.run([sys.executable, str(WATCHDOG), '--rss-gb', '4', '--min-disk-gb', '0', '--min-available-gb', '0',
-        '--interval', '0.1', '--', sys.executable, '-c', leader], capture_output=True, text=True, timeout=60, cwd=tmp_path)
+        '--interval', '0.1', '--report', str(tmp_path/'report.json'), '--', sys.executable, '-c', leader],
+        capture_output=True, text=True, timeout=60, cwd=tmp_path)
     assert result.returncode == 0, result.stderr
     assert gone(int(marker.read_text()), seconds=5), 'a TERM-ignoring grandchild outlived the job'
+    cleanup=json.loads((tmp_path/'report.json').read_text())['cleanup']
+    assert cleanup['complete'] and cleanup['confirmed_empty']
+    assert cleanup['notes'][-1]['members']==[]
 
 
 def test_too_little_memory_at_start_refuses_before_the_job_runs(tmp_path):
