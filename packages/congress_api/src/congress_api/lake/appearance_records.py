@@ -171,6 +171,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_extract_declared_base",
         "_fallback_senate_cards",
         "_classify_senate_empty_state",
+        "_SENATE_REVIEWED_ROSTER_FIELDS",
         "extract_senate_page_observation",
         "extract_senate_page_appearances",
         *_TABLE_SYMBOLS,
@@ -825,6 +826,22 @@ def _classify_senate_empty_state(html_text: str) -> str:
     return "absent"
 
 
+# These two JEC pages give the witness fields on distinct lines. The generic
+# link reader joined them to a testimony label or to the next line.
+_SENATE_REVIEWED_ROSTER_FIELDS = {
+    "Read Ms. Amy Swearer's TestimonyWhen: July": (
+        "016db65d9ba38ba1449db5a0b0e4782f7ace62d5473a56931e1d9969ba1bf9d0",
+        dict(name="Amy Swearer", honorific="Ms.", position="Legal Fellow",
+             organization="The Heritage Foundation", location="Washington, DC"),
+    ),
+    "Wendy EdelbergDirector": (
+        "9198248596289256b7ea359948e438ef4cdc12ad2a939a83a2f3ffa5d5442187",
+        dict(name="Wendy Edelberg", honorific="Dr.", position="Director, The Hamilton Project; Senior Fellow in Economic Studies",
+             organization="Brookings Institution", location="Washington, DC"),
+    ),
+}
+
+
 def extract_senate_page_observation(
     payload: bytes | str | Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -901,6 +918,9 @@ def extract_senate_page_observation(
     declared_base = explicit_base or _extract_declared_base(html_text)
     people = senate_witness_occurrences(html_text, plain=True, exclude_address_fallback=True, qualify_roster=True)
     if people:
+        if len(people) == 1 and (reviewed := _SENATE_REVIEWED_ROSTER_FIELDS.get(people[0]["name"])):
+            if sha256(html_text.encode()).hexdigest() == reviewed[0]:
+                people[0].update(reviewed[1])
         # The reviewed Commerce page names McCullough in both the testimony
         # card and the linked vita. Bind that association to this source body.
         vita_url = "http://www.mresearch.com/wp-content/uploads/20200723-Robert-McCullough-Longform-Vita.pdf"

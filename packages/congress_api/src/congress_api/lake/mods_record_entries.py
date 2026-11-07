@@ -188,6 +188,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, tuple[str, str | None]]] = {
     'CHRG-113shrg88369': {
         6: ('f7075fa4ada87f99df81cd42c428812b9c20d751e065970ab8341c6a845f8170', None),
     },
+    'CHRG-114hhrg96269': {
+        2: ('682824679f8f0f5ed8cd774cd88282f11a846d6907605a8bf403d78e7d6843ae', 'Alexis Taylor'),
+        13: ('ffb76f9cca6a2d1aee4acf3250ca5034edeef6d7e44940b5c08d7206e300833c', 'Edward M Avalos'),
+    },
     'CHRG-114hhrg98359': {
         22: ('afb2f393f470baee8c43bcee90c9991b5d3508300bd8130a4f0c51bf975ec206', 'Peter Weber'),
     },
