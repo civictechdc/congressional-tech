@@ -103,3 +103,11 @@ The accepted November 7 archive and site now supply the retirement boundary. The
 Integrated both reviewed retirement commits b343b1c6 and de16b440, preserving current main's capture-fixture and testimony controls. Removed three stale Congress API test assertions that still read the deleted writer, and marked its old implementation document as historical. The combined focused Python selection passed all 51 checks (partial lane); all 111 site reader tests and the static build passed. No model, parser, runtime, root lock, MCP package or stored-data deletion is involved. The generated local legacy staging copy was moved to retained rollback material.
 
 Evidence: .cache/archive-release/finish-merge-prune-20261107/. Post-retirement deployed browser/MCP readback follows the Pages deployment. The next normal weekly collector completion remains the authentic check of its new Pages trigger; this cleanup does not launch unrelated acquisition.
+
+**2026-11-07T21:50:36Z**
+
+Retirement is merged, pushed and deployed at 58c138d87a75d7338a750e65816956435b1c381c. Pages run 42417261480 passed on that exact revision. The complete maintained local browser helper passed, alongside the 51 focused Python checks and 111 site reader checks already recorded.
+
+Independent post-deployment acceptance passed: event 100520 opened the current hearing on archive 5d24699ad9fa; the authentic legacy UUID showed the removal notice and its search link opened that same release; there were zero legacy data requests. The separate old event-map request returned 404. The YouTube CSV returned 200 and its filters/leaderboard rendered. Hosted MCP returned the same event/title/release. Evidence: .cache/archive-release/finish-merge-prune-20261107/post-retirement-live.json. The accepted archive data and MCP package did not change.
+
+Implementation and live retirement checks are complete. This ticket remains open only to observe the next normal weekly collector completion triggering Pages, as required by its retained operating acceptance. That future event does not require retaining the merged implementation branch/worktree or repeating the native archive build.
