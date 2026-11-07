@@ -462,7 +462,13 @@ def test_a_model_runtime_change_resumes_and_a_predicate_change_still_refuses(tmp
     spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,through='tables')
     assert execute(spec)['status']=='tables_built'
     # Defect guarded: identity covering the model runtime, so a retry with a new pool redoes D1-D4.
-    other=tmp_path/'model-runtime.json';other.write_text(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
+    original=Path(os.environ['DOCSPEC_JOB_CONFIG']).resolve()
+    runtime=json.loads(original.read_text())
+    # Preserve each path's meaning when the retry config moves to another directory.
+    for name in ('binary', 'workspace', 'limits'):
+        if name in runtime and not Path(runtime[name]).is_absolute():
+            runtime[name]=str((original.parent/runtime[name]).resolve())
+    other=tmp_path/'model-runtime.json';other.write_text(json.dumps(runtime))
     retry=dict(spec,resume=True,through='model',selective=dict(spec['selective'],model=dict(spec['selective']['model'],engine_config=str(other))))
     assert execute(retry)['status']=='built'
     with pytest.raises(ValueError,match='identity changed'):
@@ -714,7 +720,7 @@ def test_records_written_on_a_resume_of_an_older_build_say_so(tmp_path,fixture,m
     assert records and all(r['recorded']=='after production, on resume' for r in records)
 
 
-def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path, monkeypatch):
+def test_historical_record_only_replay_preserves_rows_but_refuses_head_producer_proof(tmp_path, monkeypatch):
     from hashlib import sha256
 
     from congress_api.retention.provenance import file_pin
@@ -723,7 +729,8 @@ def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path,
     from viewer_publication.archive_selective_records import SELECTION_SCHEMA
     from viewer_publication.producer_proof import BACKFILL, snapshot_reasons
 
-    # This fixture exercises the reviewed historical endpoint, before the later House syntax transition.
+    # Rehearse the historical endpoint; attributing these versions to today's HEAD must refuse.
+    assert meeting_records.current_versions() != MEETING_DOCUMENT_REFERENCES
     monkeypatch.setattr(meeting_records, "current_versions", lambda: dict(MEETING_DOCUMENT_REFERENCES))
 
     def pin(path):
@@ -785,6 +792,7 @@ def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path,
     assert {name:(item['reused_rows'],item['appended']) for name,item in result.items()} == {
         'meeting_records': (1,1), 'appearance_records': (4,2)}
     current_meetings = pq.read_table(result['meeting_records']['selector']['path']).to_pylist()
+    assert {row['source']: row['parser_version'] for row in current_meetings} == MEETING_DOCUMENT_REFERENCES
     assert next(r for r in current_meetings if r['source']=='congress_gov')['meetings'][0]['document_references'] == [
         dict(collection='meetingDocuments',ordinal=0,url='https://example.test/one.pdf',role='Support Document',
              format=None,description=None,name=None)]
@@ -793,8 +801,13 @@ def test_record_only_preserves_history_and_emits_real_backfill_origins(tmp_path,
     records = {name:json.loads(Path(item['producer']['path']).read_text()) for name,item in result.items()}
     assert all(r['job']==BACKFILL for r in records.values())
     selected = {name:item['selector'] for name,item in result.items()}
-    assert snapshot_reasons(dict(**selected,parser_versions=dict(meeting_records=meeting_records.current_versions(),
-        appearance_records=appearance_records.current_versions())),records) == []
+    # Gate 5 reads real checked-in code in a separate process, outside this historical simulation.
+    # Real current-code acceptance remains covered in test_producer_proof.py.
+    producing_commit = records['meeting_records']['commit']
+    assert snapshot_reasons(dict(**selected,parser_versions=dict(meeting_records=MEETING_DOCUMENT_REFERENCES,
+        appearance_records=appearance_records.current_versions())),records) == [
+            f'producer proof: meeting_records: the code at {producing_commit[:12]} computes another version than the pinned rows carry'
+        ]
 
 
 @pytest.mark.parametrize('endpoint,source', [

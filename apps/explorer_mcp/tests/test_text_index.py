@@ -334,7 +334,18 @@ def test_digest_refusal_cannot_become_successful_unreadable_coverage(tmp_path):
         assert build(selected,tmp_path/'work',only_sources=['document:'+link])['processed_bodies']==1
 
 
-def test_freeze_generations_prune_and_restore_reappearing_readings(tmp_path):
+@pytest.fixture
+def independent_clone_for_lifecycle(monkeypatch):
+    """Model isolation with tiny copies; the real probe owns native CoW capability proof."""
+    import congressional_explorer_mcp.index_storage as storage
+    monkeypatch.setattr(storage, '_qualified_devices', set())
+    def clone(source, target):
+        shutil.copyfile(source, target)
+        return 'test-independent-copy'
+    monkeypatch.setattr(storage, '_native_clone', clone)
+
+
+def test_freeze_generations_prune_and_restore_reappearing_readings(tmp_path, independent_clone_for_lifecycle):
     import congressional_explorer_mcp.index_storage as storage
     routes={}
     with local_archive_server(routes) as (origin,requests):
@@ -376,7 +387,7 @@ def test_freeze_generations_prune_and_restore_reappearing_readings(tmp_path):
         assert build(selected,work,tmp_path/'reappeared.sqlite',snapshot_mode='freeze')['reused_snapshot']
 
 
-def test_freeze_recovers_both_rename_and_link_interruption(tmp_path,monkeypatch):
+def test_freeze_recovers_both_rename_and_link_interruption(tmp_path,monkeypatch,independent_clone_for_lifecycle):
     import congressional_explorer_mcp.index_storage as storage
     report=dict(source_data_id='a'*64,definition={'sha256':'d'*64})
     work=tmp_path/'durable';work.mkdir();(work/'work.sqlite').write_bytes(b'closed verified SQLite bytes')
@@ -408,6 +419,24 @@ def test_unsupported_cow_refuses_before_existing_snapshot_mutation(tmp_path,monk
     monkeypatch.setattr(storage,'_native_clone',unsupported)
     with pytest.raises(ExplorerError,match='unavailable'):storage.preflight(tmp_path)
     assert not (tmp_path/'work.sqlite').exists()
+
+
+def test_real_native_clone_preflight_reports_qualified_or_unsupported(tmp_path,monkeypatch,record_property):
+    import congressional_explorer_mcp.index_storage as storage
+    monkeypatch.setattr(storage, '_qualified_devices', set())
+    try:
+        storage.preflight(tmp_path)
+    except ExplorerError as error:
+        # Only the documented capability refusal is acceptable; isolation errors must fail.
+        assert str(error) == 'Native copy-on-write storage is unavailable; freeze preparation refused before writes'
+        assert tmp_path.stat().st_dev not in storage._qualified_devices
+        record_property('native_clone_capability', 'unavailable-refused')
+    else:
+        assert tmp_path.stat().st_dev in storage._qualified_devices
+        record_property('native_clone_capability', 'qualified')
+    assert not (tmp_path/'work.sqlite').exists()
+    assert not (tmp_path/'freeze-intent.json').exists()
+    assert not list(tmp_path.glob('.cow-probe-*'))
 
 
 def test_pdf_only_runtime_drift_preserves_markup_readings(tmp_path,monkeypatch):
@@ -525,7 +554,7 @@ def test_retained_caption_page_preserves_cues_cursor_and_zero_raw_reads(tmp_path
         assert len(requests)==count
 
 
-def test_freeze_admits_bounded_mutation_without_reserving_a_database_copy(tmp_path,monkeypatch):
+def test_freeze_admits_bounded_mutation_without_reserving_a_database_copy(tmp_path,monkeypatch,independent_clone_for_lifecycle):
     from types import SimpleNamespace
     import congressional_explorer_mcp.index_builder as builder
     routes={}

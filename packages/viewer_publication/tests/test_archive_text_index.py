@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import shutil
 import sqlite3
+import sys
 import os
 from types import SimpleNamespace
 
@@ -107,7 +108,8 @@ def test_native_controller_resumes_index_before_checkpoint_without_model_replay(
     from viewer_publication.archive_model_job import load_spec
     import viewer_publication.archive_controller as controller
     spec,_,_=real_model_spec(tmp_path)
-    policy=dict(python=str(ROOT/'apps/explorer_mcp/.venv/bin/python'),work=str(tmp_path/'index-work'),
+    # The app subprocess is mocked below; this controller fixture needs only an existing interpreter.
+    policy=dict(python=sys.executable,work=str(tmp_path/'index-work'),
         archive_origin='https://archive.example',definition='d'*64,body_timeout=120,memory_mb=768,
         max_work_bytes=32<<30,min_free_bytes=15<<30)
     spec['text_index']=policy
