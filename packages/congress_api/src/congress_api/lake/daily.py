@@ -975,9 +975,11 @@ def append_scoped_recovery(prepared, *, engine, catalog_root, targets, producer_
     rows={name:pq.read_metadata(path).num_rows for name,path in stages.items()}
     if rows['captures']!=1 or rows['filename_readings']>1:
         raise ValueError('Scoped recovery admits one capture row and at most one filename row')
-    capture,=pq.read_table(stages['captures'],columns=['receipt_key','mode','original_url']).to_pylist()
+    capture,=pq.read_table(stages['captures'],
+        columns=['receipt_key','mode','original_url','mapping_version']).to_pylist()
     names=pq.read_table(stages['filename_readings'],columns=filenames.PK).to_pylist()
     if (capture['receipt_key']!=prepared['receipt_key'] or capture['mode']!='retained_import'
+            or capture['mapping_version']!=versions['captures']
             or [[row['filename'],row['source_url']] for row in names]!=prepared['filename_pairs']
             or any(row['source_url']!=capture['original_url'] or row['catalog_version']!=versions['filename_readings']
                    for row in names)):
@@ -991,7 +993,7 @@ def append_scoped_recovery(prepared, *, engine, catalog_root, targets, producer_
         checks=run_job(attempt/f'{phase}-{name}',engine,inputs=[
             tables.table_input('before_rows',base[name]),tables.table_input('after_rows',head),
             tables.table_input('incoming',stages[name])],steps=[dict(name='matching_rows',
-                sql=f'SELECT {columns} FROM after_rows h JOIN incoming i USING ({using})')],
+                sql=f'SELECT {columns} FROM incoming i JOIN after_rows h USING ({using})',materialize=True)],
             outputs=[],queries=[dict(name='delta',sql='''SELECT
                 (SELECT count(*) FROM after_rows)-(SELECT count(*) FROM before_rows) AS added,
                 (SELECT count(*) FROM (SELECT * FROM matching_rows EXCEPT ALL SELECT * FROM incoming) extra) AS extra,
@@ -1032,7 +1034,7 @@ def append_scoped_recovery(prepared, *, engine, catalog_root, targets, producer_
             raise ValueError(f'Scoped recovery append no longer names the current {name} head')
         prove_delta(name,head,'append')
         heads[name]=head
-        records=record(heads)
+        records.update(record({name:head}))
     final=tables.resolve_tables(**authority,work=attempt/'final-heads',tables=targets)
     if final!=heads:
         raise ValueError('Scoped recovery heads changed before selection')
