@@ -143,9 +143,9 @@ def url_state_steps(*,root=ROOT,recovery_policy=None):
         eligibility=f"""WITH candidates AS (
           SELECT d.original_url,d.id,d.kind,d.target_requirement,d.acceptance_policy
           FROM recovery_decisions d JOIN recovery_requirements r ON d.original_url=r.original_url
-          JOIN (SELECT DISTINCT original_url,encode(sha256,'hex') AS body_sha FROM captures
-                WHERE mode='retained_import' AND complete) c
-            ON c.original_url=d.original_url AND c.body_sha=lower(d.body_sha256)
+          LEFT SEMI JOIN captures c
+            ON c.original_url=d.original_url AND encode(c.sha256,'hex')=lower(d.body_sha256)
+              AND c.mode='retained_import' AND c.complete
           WHERE d.recovery_record_version=2 AND d.acceptance_status='accepted'
             AND d.acceptance_policy='{policy}' AND r.acceptance_policy='{policy}'
             AND d.target_requirement=r.target_requirement AND r.refresh_policy='historical_only'

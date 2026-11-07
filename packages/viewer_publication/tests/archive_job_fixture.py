@@ -50,6 +50,18 @@ def versions():
     return {p:readings.current_version(p) for p in ['sniff','html','xml','json']},filenames.current_version()
 
 
+def empty_recovery_requirements(directory):
+    """Explicit fixture policy; an empty set means no accepted recovery targets."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    path=directory/'empty-recovery-requirements.parquet'
+    schema=pa.schema([(name,pa.string()) for name in
+        ('original_url','target_requirement','acceptance_policy','refresh_policy')])
+    if not path.exists():pq.write_table(schema.empty_table(),path)
+    return dict(path=str(path),**file_pin(path),acceptance_policy='recovery-identity-v1')
+
+
 def model_spec(tmp_path):
     parsers,catalog=versions()
     return dict(version=1,engine_config=str(tmp_path/'unopened-runtime.json'),
@@ -58,6 +70,8 @@ def model_spec(tmp_path):
                           policy_id='archive-required-v1',expected_epoch=0,expected_selection=None),
         **{name:dict(kind='parquet',path=str(tmp_path/(name+'.parquet')),sha256='a'*64,size=17)
            for name in ['captures','readings','filename_readings']},
+        recovery_requirements=dict(path=str(tmp_path/'recovery-requirements.parquet'),sha256='b'*64,size=17,
+                                   acceptance_policy='recovery-identity-v1'),
         parser_versions=parsers,catalog_version=catalog,output=str(tmp_path/'release'),scratch=str(tmp_path/'model'))
 
 
@@ -115,6 +129,7 @@ def derive_model_spec(tmp_path,*,raw,captures,entities=False):
             engine=engine,work=tmp_path/'reading-stage',decided_at='2026-10-27T12:00:00Z')
         names=filenames.stage(captures=captures,recovery_files=(),engine=engine,work=tmp_path/'filename-stage',decided_at='2026-10-27T12:00:00Z')
         value=model_spec(tmp_path);value['engine_config']=runtime
+        value['recovery_requirements']=empty_recovery_requirements(tmp_path)
         staged=[('captures',captures),('readings',pages['readings']),('filename_readings',names['readings'])]
         if entities:
             from congress_api.lake import appearance_records,meeting_records

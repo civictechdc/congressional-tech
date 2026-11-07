@@ -1,4 +1,5 @@
 """The real raw/lake producer feeds one document release and its private evidence."""
+from archive_job_fixture import empty_recovery_requirements
 import gzip
 import hashlib
 import json
@@ -50,7 +51,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
         dict(id='old',canonical_url='https://fixture.test/obsolete.pdf',variant_url='https://fixture.test/mirror.pdf',basis='fixture',decided_at='2026-10-20T12:00:00Z',supersedes=None),
         dict(id='current',canonical_url='https://fixture.test/report.pdf',variant_url='https://fixture.test/mirror.pdf',basis='fixture',decided_at='2026-10-21T12:00:00Z',supersedes='old')]))
     variant_files=[dict(key='provenance/url_variants/fixture.jsonl',path=str(variants))]
-    manifest=build_release(captures=captures,readings=pages['readings'],filename_readings=names['readings'],
+    manifest=build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=captures,readings=pages['readings'],filename_readings=names['readings'],
         parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},catalog_version=names['catalog_version'],variant_files=variant_files,
         engine=engine,output=tmp_path/'release',scratch=tmp_path/'model')
     listed=pq.read_table(tmp_path/'release/list.parquet').to_pylist()
@@ -79,7 +80,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     arguments=dict(captures=captures,readings=pages['readings'],filename_readings=names['readings'],
         parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},
         catalog_version=names['catalog_version'],engine=engine,variant_files=variant_files)
-    repeated=build_release(**arguments,output=tmp_path/'repeat-release',scratch=tmp_path/'repeat-model')
+    repeated=build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **arguments,output=tmp_path/'repeat-release',scratch=tmp_path/'repeat-model')
     assert repeated==manifest
     for item in manifest['files']:
         assert (tmp_path/'release'/item['name']).read_bytes()==(tmp_path/'repeat-release'/item['name']).read_bytes()
@@ -95,26 +96,26 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
             ['receipt_key','receipt_line','capture_index'])])
     pins=cv.current_pins()
     covered=tmp_path/'covered.json';covered.write_text(json.dumps(dict(version=2,entries=[compatible_entry(p,'old-'+p,pins[p]) for p in ('sniff','html')])))
-    build_release(**dict(arguments,readings=old/'readings.parquet',captures=old/'captures.parquet'),registry=covered,
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **dict(arguments,readings=old/'readings.parquet',captures=old/'captures.parquet'),registry=covered,
         output=tmp_path/'old-release',scratch=tmp_path/'old-model')
     for name in ('list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet'):
         assert pq.read_table(tmp_path/'old-release'/name).to_pylist()==pq.read_table(tmp_path/'release'/name).to_pylist(),name
     uncovered=tmp_path/'uncovered.json';uncovered.write_text(json.dumps(dict(version=2,entries=[])))
     with pytest.raises(ValueError,match='invariant'):
-        build_release(**dict(arguments,readings=old/'readings.parquet',captures=old/'captures.parquet'),registry=uncovered,
+        build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **dict(arguments,readings=old/'readings.parquet',captures=old/'captures.parquet'),registry=uncovered,
             output=tmp_path/'uncovered-release',scratch=tmp_path/'uncovered-model')
     for missing,column in [('page','readings'),('filename','filename_readings')]:
         source=arguments[column];empty=tmp_path/(missing+'-empty.parquet')
         pq.write_table(pq.read_table(source).slice(0,0),empty)
         with pytest.raises(ValueError,match='invariant'):
-            build_release(**dict(arguments,**{column:empty}),output=tmp_path/(missing+'-release'),scratch=tmp_path/(missing+'-model'))
+            build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **dict(arguments,**{column:empty}),output=tmp_path/(missing+'-release'),scratch=tmp_path/(missing+'-model'))
         assert not (tmp_path/(missing+'-release')/'manifest.json').exists()
 
     # A compressed saved original must carry its decoded size for the reader guard.
     subset=tmp_path/'html-only';subset.mkdir()
     run_job(subset,engine,inputs=[dict(name='captures',kind='parquet',path=str(captures))],steps=[],outputs=[
         parquet_output(subset,'captures',"SELECT * FROM captures WHERE media_type='text/html'",['receipt_key','receipt_line','capture_index'])])
-    build_release(**dict(arguments,captures=subset/'captures.parquet'),output=tmp_path/'html-release',scratch=tmp_path/'html-model')
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **dict(arguments,captures=subset/'captures.parquet'),output=tmp_path/'html-release',scratch=tmp_path/'html-model')
     html_detail=pq.read_table(tmp_path/'html-release/detail.parquet').to_pylist()[0]
     assert html_detail['saved_suffix']=='.gz' and html_detail['saved_bytes']==len(html)
 
@@ -123,7 +124,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     run=registry[0]
     run_job(imported,engine,inputs=[dict(name='captures',kind='parquet',path=str(subset/'captures.parquet'))],steps=[],outputs=[
         parquet_output(imported,'captures',"SELECT * EXCLUDE(run_id),'"+run['run_id'].replace("'","''")+"' AS run_id FROM captures",['receipt_key','receipt_line','capture_index'])])
-    build_release(**dict(arguments,captures=imported/'captures.parquet'),output=tmp_path/'import-release',scratch=tmp_path/'import-model')
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **dict(arguments,captures=imported/'captures.parquet'),output=tmp_path/'import-release',scratch=tmp_path/'import-model')
     import_list=pq.read_table(tmp_path/'import-release/list.parquet').to_pylist()[0]
     import_detail=pq.read_table(tmp_path/'import-release/detail.parquet').to_pylist()[0]
     assert import_list['first_captured'] is None and import_list['date_kind']=='import_day'

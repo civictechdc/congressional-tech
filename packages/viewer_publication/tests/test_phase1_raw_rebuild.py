@@ -30,7 +30,7 @@ def test_raw_only_rebuild_matches_before_and_after_registry_change(tmp_path):
     next(row for row in value['entries'] if row['family']=='documents')['patterns'].append(r'^https://fixture\.test/')
     policy.write_text(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n')
     def build(spec,label,root):
-        return build_release(**{name:spec[name]['path'] for name in ['captures','readings','filename_readings']},
+        return build_release(recovery_requirements=spec['recovery_requirements'], **{name:spec[name]['path'] for name in ['captures','readings','filename_readings']},
             parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version'],
             engine=engine,output=tmp_path/(label+'-release'),scratch=tmp_path/(label+'-model'),root=root)
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:

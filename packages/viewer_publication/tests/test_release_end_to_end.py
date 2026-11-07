@@ -141,7 +141,7 @@ def build(root, spec, *, captures=None, model_root=None, label='release'):
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         # Entities on, so all six admission suites run (entity_profile_completeness included);
         # entity files need stated spicy-regs generations (925036be).
-        build_release(spicy_regs=spicy_input(),captures=spec['captures']['path'], readings=spec['readings']['path'],
+        build_release(recovery_requirements=spec['recovery_requirements'], spicy_regs=spicy_input(),captures=spec['captures']['path'], readings=spec['readings']['path'],
             filename_readings=spec['filename_readings']['path'], parser_versions=spec['parser_versions'],
             meeting_records=spec['meeting_records']['path'], appearance_records=spec['appearance_records']['path'],
             catalog_version=spec['catalog_version'], engine=engine, output=root / label,

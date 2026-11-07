@@ -118,7 +118,7 @@ def submitted_job(root, engine):
     versions = dict(value['parser_versions'], meeting_records=meeting_records.current_versions(),
                     appearance_records=appearance_records.current_versions(),
                     video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'}, committee_records={'house_xml': 'pc'})
-    prepared = prepare_model_inputs(**empty, parser_versions=versions, catalog_version=value['catalog_version'],
+    prepared = prepare_model_inputs(recovery_requirements=value['recovery_requirements'], **empty, parser_versions=versions, catalog_version=value['catalog_version'],
         engine=engine, scratch=root/'prepared', spicy_regs=spicy_input(), include_entities=True,
         recording_decision_files=[dict(key='provenance/recording_decisions/empty.jsonl', path=str(decisions))])
     with pytest.raises(_Submitted):

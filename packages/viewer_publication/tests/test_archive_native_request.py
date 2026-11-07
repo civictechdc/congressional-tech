@@ -1,10 +1,9 @@
-"""Characterize request assembly from a frozen input prefix without execution.
+"""Characterize current request assembly from a frozen prefix without execution.
 
 The retained preparation inventory predates the builder extraction. It records
 the incumbent SQL, shared steps, outputs and checks, not replacement acceptance.
-The fixture supplies that historical prefix; it does not invoke current
-prepare_model_inputs. The later whole-job-binding-04 diagnostic capture records
-the real current prefix, including its readings-bundle compatibility selection.
+The fixture adds an explicit recovery policy and an unopened requirements input
+to that prefix. It does not select production requirements or execute rows.
 """
 from copy import deepcopy
 import json
@@ -29,6 +28,7 @@ def catalog_result():
 
 @pytest.fixture
 def incumbent_request(tmp_path):
+    from congress_api.models.archive_profile import build_capture_profile
     inventory = json.loads((ROOT / 'docs/replacement-ddk/native-profile.json').read_text())
     bindings = {binding['name']: binding['original_table_pin']
                 for binding in inventory['exact_native_bindings']}
@@ -39,8 +39,16 @@ def incumbent_request(tmp_path):
               for item in inventory['all_inputs']]
     steps = [deepcopy(item['specification']) for item in inventory['graph']['steps']]
     prefix = next(index for index, step in enumerate(steps) if step['name'] == 'link_contexts')
-    prepared = dict(inputs=inputs, steps=steps[:prefix], scratch=tmp_path / 'scratch',
-                    evidence=tmp_path / 'scratch/evidence', capture_profile=dict(version=1),
+    policy=dict(acceptance_policy='recovery-identity-v1',requirements_sha256='c'*64)
+    inputs.append(dict(name='recovery_requirements_input',kind='parquet',path=str(tmp_path/'unopened/requirements.parquet')))
+    prepared_steps=steps[:prefix]+[dict(name='recovery_requirements',materialize=True,
+        sql='SELECT original_url,target_requirement,acceptance_policy,refresh_policy FROM recovery_requirements_input')]
+    profile=build_capture_profile(engine_revision='a'*40,
+        url_normalized_sql=(ROOT/'model/sql/url-normalized.sql').read_text(),
+        url_keys_sql=(ROOT/'model/sql/url-keys.sql').read_text(),
+        url_rules=json.loads((ROOT/'model/registries/url-rules.json').read_text()),recovery_policy=policy)
+    prepared = dict(inputs=inputs, steps=prepared_steps, scratch=tmp_path / 'scratch',
+                    evidence=tmp_path / 'scratch/evidence', capture_profile=profile,recovery_policy=policy,
                     parser_versions=inventory['source_request']['parser_versions'],
                     catalog_version=inventory['source_request']['catalog_version'],
                     include_entities=True, explorer_inputs=True,
@@ -70,7 +78,18 @@ def test_full_plan_preserves_domain_pins_steps_exports_and_uses_ddk_checks(tmp_p
     for binding in inventory['exact_native_bindings']:
         assert next(item for item in job['inputs'] if item['name'] == binding['name']) == {
             'name': binding['name'], **binding['original_table_pin']}
-    assert job['steps'] == [item['specification'] for item in inventory['graph']['steps']]
+    # Preserve the original work except the explicit policy input and eligibility.
+    # Last-reader annotations may move when the policy reads an existing relation.
+    affected={'recovery_requirements','url_state','url_state_history','url_state_invariants_step'}
+    def unchanged(steps):
+        return [{key:value for key,value in step.items() if key!='release_after'}
+                for step in steps if step['name'] not in affected]
+    baseline=[item['specification'] for item in inventory['graph']['steps']]
+    assert unchanged(job['steps']) == unchanged(baseline)
+    assert next(step for step in job['steps'] if step['name']=='url_state_history')['sql'] == next(
+        step for step in baseline if step['name']=='url_state')['sql']
+    assert 'invalid_recovery_requirements' in next(
+        step for step in job['steps'] if step['name']=='url_state_invariants_step')['sql']
     assert [(item['name'], item['sql'], item['settings']) for item in job['outputs']] == [
         (item['name'], item['sql'], item['settings']) for item in inventory['graph']['outputs']]
     assert [query for query in job['queries'] if query['name'] != 'relationship_invariants'] == [
@@ -118,3 +137,25 @@ def test_blocking_inventory_tracks_the_actual_explorer_scope(tmp_path, incumbent
     job, diagnostics = plan_prepared_release(prepared, output=tmp_path / 'release', catalog_result=catalog_result)
     assert 'explorer_invariants' not in {report['name'] for report in diagnostics}
     assert 'explorer_invariants' not in {report['name'] for report in job['queries']}
+
+
+@pytest.mark.parametrize('defect',['missing_policy','legacy_profile','different_policy','missing_requirements'])
+def test_policy_free_or_mismatched_preparation_refuses_before_rendering(tmp_path,incumbent_request,defect):
+    from viewer_publication.archive_model import plan_prepared_release
+    _inventory,prepared=incumbent_request
+    if defect=='missing_policy':
+        del prepared['recovery_policy']
+        expected='pinned recovery policy'
+    elif defect=='legacy_profile':
+        prepared['capture_profile'].pop('recovery_policy')
+        prepared['capture_profile']['version']=1
+        expected='version 2 capture profile'
+    elif defect=='different_policy':
+        prepared['capture_profile']['recovery_policy']['requirements_sha256']='d'*64
+        expected='bound to its recovery policy'
+    else:
+        prepared['inputs']=[item for item in prepared['inputs'] if item['name']!='recovery_requirements_input']
+        expected='pinned recovery requirements input'
+    with pytest.raises(ValueError,match=expected):
+        plan_prepared_release(prepared,output=tmp_path/'release',catalog_result=None)
+    assert not (tmp_path/'release').exists() and not prepared['scratch'].exists()

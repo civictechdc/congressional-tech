@@ -105,7 +105,8 @@ def test_native_requirement_relationship_and_literal_identity_matrix(tmp_path):
     def inp(name,rows,**fields):return json_input(tmp_path,name,rows,**fields)
     inputs=[inp('recovery_requirements',requirements,original_url='Utf8',target_requirement='Utf8',acceptance_policy='Utf8',refresh_policy='Utf8'),
         inp('recovery_decisions',decisions,**{**{k:'Utf8' for k in ('id','original_url','body_sha256','kind','target_requirement','acceptance_policy','acceptance_status','evidence_sha256','qualification_sha256','supersedes')},'recovery_record_version':'Int32'}),
-        inp('retained',[dict(original_url=url,body='a'*64) for url in urls],original_url='Utf8',body='Utf8'),
+        # Repeated captures must not multiply an otherwise accepted decision.
+        inp('retained',[dict(original_url=url,body='a'*64) for url in [*urls,urls[0],urls[0]]],original_url='Utf8',body='Utf8'),
         inp('url_state_history',[dict(requested_url=url,attempts=2,last_status=404) for url in urls],requested_url='Utf8',attempts='Int32',last_status='Int32'),
         inp('url_state_latest',[dict(requested_url=url,family='senate/captions' if url==caption else 'documents') for url in urls],requested_url='Utf8',family='Utf8'),
         inp('url_state_scope_exclusions',[dict(family='documents',pattern='[.]mp4$')],family='Utf8',pattern='Utf8')]

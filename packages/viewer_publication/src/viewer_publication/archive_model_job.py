@@ -21,11 +21,11 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
 OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records')
-OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements'}
+OPTIONAL={*OPTIONAL_TABLES,'spicy_regs'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
-REQUIRED={'version','engine_config','native_scope','prerequisites',*TABLES,'parser_versions','catalog_version','output','scratch'}
+REQUIRED={'version','engine_config','native_scope','prerequisites',*TABLES,'parser_versions','catalog_version','output','scratch','recovery_requirements'}
 
 
 def provenance_record_kind(key):
@@ -88,6 +88,8 @@ def validate_spec(value,*,base):
             raise ValueError('Blocked model job requires its reason')
         return dict(status='blocked',reason=value['reason'])
     if set(value)-REQUIRED-PROVENANCE.keys()-OPTIONAL:raise ValueError('Model job has unknown fields')
+    if value.get('recovery_requirements') is None:
+        raise ValueError('Archive model requires pinned recovery requirements and acceptance policy')
     if not REQUIRED<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Model job requires version 1 and all explicit inputs')
     result=dict(value,**{name:_selector(value[name],base) for name in TABLES})
@@ -97,12 +99,11 @@ def validate_spec(value,*,base):
     result['native_scope']=dict(scope,workspace=_local(scope['workspace'],base))
     if not isinstance(value['prerequisites'],list):
         raise ValueError('Model job requires an explicit original producer prerequisite inventory')
-    if value.get('recovery_requirements') is not None:
-        requirement=value['recovery_requirements']
-        _pin(requirement,{'path','sha256','size','acceptance_policy'})
-        if not isinstance(requirement['acceptance_policy'],str) or not requirement['acceptance_policy'].strip():
-            raise ValueError('Recovery requirements need a policy version')
-        result['recovery_requirements']=dict(requirement,path=_local(requirement['path'],base))
+    requirement=value['recovery_requirements']
+    _pin(requirement,{'path','sha256','size','acceptance_policy'})
+    from congress_api.models.archive_profile import validate_recovery_policy
+    validate_recovery_policy(dict(acceptance_policy=requirement['acceptance_policy'],requirements_sha256=requirement['sha256']))
+    result['recovery_requirements']=dict(requirement,path=_local(requirement['path'],base))
     for name in OPTIONAL_TABLES:
         if value.get(name) is not None:
             result[name]=_selector(value[name],base)
@@ -245,9 +246,8 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
             value=spec[name]
             arguments[name]=(dict(kind='parquet',path=hold(value))
                              if value['kind']=='parquet' else dict(value))
-    if spec.get('recovery_requirements') is not None:
-        value=spec['recovery_requirements']
-        arguments['recovery_requirements']=dict(value,path=hold(value))
+    value=spec['recovery_requirements']
+    arguments['recovery_requirements']=dict(value,path=hold(value))
     if spec.get('spicy_regs') is not None:
         arguments['spicy_regs']=_spicy_arguments(spec['spicy_regs'],hold)
     for _source,verified in retained.values():verified.require(verified.path)

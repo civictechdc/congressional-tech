@@ -36,7 +36,7 @@ def fake_release(directory, release_id, rows, retired=None, addresses=None):
 def build(tmp_path, spec, prior, retired, root=None):
     from viewer_publication.archive_model import ROOT, build_release
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
-        return build_release(**{name: spec[name]['path'] for name in ['captures', 'readings', 'filename_readings']},
+        return build_release(recovery_requirements=spec['recovery_requirements'], **{name: spec[name]['path'] for name in ['captures', 'readings', 'filename_readings']},
             parser_versions=spec['parser_versions'], catalog_version=spec['catalog_version'], engine=engine,
             output=tmp_path / 'release', scratch=tmp_path / 'model', prior_links=prior, base_retired=retired, root=root or ROOT)
 

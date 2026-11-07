@@ -5,6 +5,16 @@ import re
 RULE_FIELDS=('id','kind','host_pattern','pattern','replacement','decoder')
 
 
+def validate_recovery_policy(policy):
+    """Require the exact acceptance policy and requirements content identity."""
+    if (not isinstance(policy,dict) or set(policy)!={'acceptance_policy','requirements_sha256'}
+            or not isinstance(policy['acceptance_policy'],str) or not policy['acceptance_policy'].strip()
+            or not isinstance(policy['requirements_sha256'],str)
+            or re.fullmatch('[0-9a-f]{64}',policy['requirements_sha256']) is None):
+        raise ValueError('Invalid pinned recovery policy')
+    return policy
+
+
 def build_capture_profile(*,engine_revision,url_normalized_sql,url_keys_sql,url_rules,recovery_policy=None):
     """Copy the model's pinned capture instructions into content-only metadata."""
     value=dict(version=1,engine_revision=engine_revision,
@@ -29,12 +39,7 @@ def validate_capture_profile(value,*,engine_revision):
             or value['engine_revision']!=engine_revision):
         raise ValueError('Public capture profile version or engine revision is incompatible')
     if value['version']==2:
-        policy=value['recovery_policy']
-        if (not isinstance(policy,dict) or set(policy)!={'acceptance_policy','requirements_sha256'}
-                or not isinstance(policy['acceptance_policy'],str) or not policy['acceptance_policy'].strip()
-                or not isinstance(policy['requirements_sha256'],str)
-                or re.fullmatch('[0-9a-f]{64}',policy['requirements_sha256']) is None):
-            raise ValueError('Invalid pinned recovery policy')
+        validate_recovery_policy(value['recovery_policy'])
     if value['url_variants_file']!='url_variants.parquet':
         raise ValueError('Public variants must name the release-bound variant file')
     definitions=value['sql']

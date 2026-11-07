@@ -3,6 +3,7 @@
 Readings rows are made by the real reader (``reading_row``) from small pages, so the SQL reads
 the producer's own field vocabulary. Expectations follow the contract, not the SQL.
 """
+from archive_job_fixture import empty_recovery_requirements
 import hashlib
 import json
 import os
@@ -281,7 +282,7 @@ def _release(tmp_path, *, with_metadata, extra_pages=(), unreadable=()):
     run_job(joined, engine, inputs=[dict(name=f'p{i}', kind='parquet', path=str(p)) for i, p in enumerate(parts)], steps=[], outputs=[
         parquet_output(joined, 'readings', ' UNION ALL '.join(f'SELECT * FROM p{i}' for i in range(len(parts))), readings.PK)])
     names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=tmp_path / 'filename-stage', decided_at='2026-10-27T12:00:00Z')
-    build_release(captures=captures, readings=joined / 'readings.parquet', filename_readings=names['readings'], parser_versions=versions,
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=captures, readings=joined / 'readings.parquet', filename_readings=names['readings'], parser_versions=versions,
                   catalog_version=names['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model',
                   unreadable_files=unreadable_files)
     return tmp_path / 'release', pq

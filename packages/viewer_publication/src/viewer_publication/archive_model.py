@@ -863,7 +863,7 @@ def probe_selectors_query(*,root=ROOT):
 def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
                          unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
-                         spicy_regs=None,include_entities=False,recovery_requirements=None,
+                         spicy_regs=None,include_entities=False,recovery_requirements,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          prior_links=None,base_retired=None,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
@@ -876,6 +876,11 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     from viewer_publication.archive_format import _settings
     from viewer_publication.archive_model_profile import (expand_parser_version_rows,profile_record,
         readings_bundle_version,validate_parser_versions)
+    from congress_api.models.archive_profile import build_capture_profile,validate_recovery_policy
+    if not isinstance(recovery_requirements,dict):
+        raise ValueError('Archive model requires pinned recovery requirements and acceptance policy')
+    recovery_policy=validate_recovery_policy(dict(acceptance_policy=recovery_requirements.get('acceptance_policy'),
+                                                requirements_sha256=recovery_requirements.get('sha256')))
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
     # All or none: an omitted table means unavailable, never empty (DM8).
     explorer_inputs=video_records is not None or committee_records is not None or bool(recording_decision_files)
@@ -913,12 +918,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     provenance,prelude=provenance_inputs(scratch/'provenance',recovery_files=recovery_files,review_files=review_files)
     prelude[0:0]=compatible_versions.selected_readings_steps(entries,parsers=pins)
     inputs += provenance
-    recovery_policy=None
-    if recovery_requirements is not None:
-        recovery_policy=dict(acceptance_policy=recovery_requirements['acceptance_policy'],
-                             requirements_sha256=recovery_requirements['sha256'])
-        inputs.append(dict(name='recovery_requirements_input',kind='parquet',path=recovery_requirements['path']))
-        prelude.append(dict(name='recovery_requirements',sql='SELECT original_url,target_requirement,acceptance_policy,refresh_policy FROM recovery_requirements_input',materialize=True))
+    inputs.append(dict(name='recovery_requirements_input',kind='parquet',path=recovery_requirements['path']))
+    prelude.append(dict(name='recovery_requirements',sql='SELECT original_url,target_requirement,acceptance_policy,refresh_policy FROM recovery_requirements_input',materialize=True))
     def _record_table_sql(table_name,payload_col):
         extra_select=''
         if table_name=='appearance_records':
@@ -956,7 +957,6 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
             prelude.append(dict(name='playlist_records',sql=PLAYLIST_RECORDS_UNAVAILABLE,materialize=True))
         prelude.append(selected_record_step('playlist_records','playlist_records',root=root))
     prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
-    from congress_api.models.archive_profile import build_capture_profile
     capture_profile=build_capture_profile(engine_revision=engine.source_revision,
         url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),
         url_keys_sql=(Path(root)/'model/sql/url-keys.sql').read_text(),
@@ -982,7 +982,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
                   engine,native_scope,prerequisites,output,scratch,recovery_files=(),review_files=(),verification_files=(),
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
-                  spicy_regs=None,include_entities=False,recovery_requirements=None,
+                  spicy_regs=None,include_entities=False,recovery_requirements,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   prior_links=None,base_retired=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
@@ -1016,6 +1016,21 @@ def require_model_runtime(engine):
     engine.verify_runtime()
 
 
+def require_model_capture_policy(prepared):
+    """Refuse a historical or mismatched capture graph before request creation."""
+    from congress_api.models.archive_profile import validate_capture_profile,validate_recovery_policy
+    recovery_policy=validate_recovery_policy(prepared.get('recovery_policy'))
+    capture_profile=prepared.get('capture_profile')
+    if not isinstance(capture_profile,dict):
+        raise ValueError('Archive model requires a version 2 capture profile bound to its recovery policy')
+    validate_capture_profile(capture_profile,engine_revision=capture_profile.get('engine_revision'))
+    if capture_profile['version']!=2 or capture_profile.get('recovery_policy')!=recovery_policy:
+        raise ValueError('Archive model requires a version 2 capture profile bound to its recovery policy')
+    if not any(item['name']=='recovery_requirements_input' for item in prepared['inputs']):
+        raise ValueError('Archive model requires its pinned recovery requirements input')
+    return recovery_policy
+
+
 def build_prepared_release(prepared,*,engine,native_scope,prerequisites,output,root=ROOT):
     """Retain, qualify and select the complete model; return its exact file inventory."""
     from ddk.adapters.docspec import DocSpecAdapter
@@ -1029,6 +1044,7 @@ def build_prepared_release(prepared,*,engine,native_scope,prerequisites,output,r
         raise ValueError('Model execution requires explicit native scope and selection authority')
     require_model_prerequisites(prerequisites)
     require_model_runtime(engine)
+    require_model_capture_policy(prepared)
     workspace = Path(native_scope['workspace']).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
     directory = Path(prepared['scratch'])/'release-request'
@@ -1077,6 +1093,7 @@ def _prepared_release(prepared,*,output,root,finish):
     from viewer_publication.archive_provenance import attachment_steps,body_review_steps,recovered_copy_steps
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
     inputs=prepared['inputs'];capture_profile=prepared['capture_profile']
+    recovery_policy=require_model_capture_policy(prepared)
     parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
     steps=list(prepared['steps'])+link_steps(root=root)
     steps += _sql_steps(['archive-member-addresses'],root=root)
@@ -1136,7 +1153,7 @@ def _prepared_release(prepared,*,output,root,finish):
             WHERE m.meeting_date IS NOT NULL"""
     steps += [dict(name='url_state_meeting_dates',sql=url_state_meeting_dates_sql,materialize=True)]
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
-    steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
+    steps += url_state_steps(root=root,recovery_policy=recovery_policy)
     auxiliary=[('meetings',(Path(root)/'model/sql/entity-meetings.sql').read_text(),['event_id'],MEETING_DICTIONARY)]
     if not prepared.get('include_entities'):
         # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.

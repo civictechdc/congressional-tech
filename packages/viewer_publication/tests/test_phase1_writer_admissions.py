@@ -1,4 +1,5 @@
 """The model derives writer facts from current captures, never a prior proof file."""
+from archive_job_fixture import empty_recovery_requirements
 import gzip
 import hashlib
 import json
@@ -54,7 +55,7 @@ def test_metadata_only_writer_caption_never_becomes_a_public_source(tmp_path):
     from viewer_publication.archive_model import prepare_model_inputs,build_prepared_release
     arguments=model_inputs(tmp_path)
     assert pq.ParquetFile(arguments['readings']).metadata.num_rows==0
-    prepared=prepare_model_inputs(**arguments,scratch=tmp_path/'model')
+    prepared=prepare_model_inputs(recovery_requirements=empty_recovery_requirements(tmp_path), **arguments,scratch=tmp_path/'model')
     build_prepared_release(prepared,engine=arguments['engine'],output=tmp_path/'release')
     reports=json.loads((tmp_path/'model/result.json').read_text())
     receipts=next(query['data'] for query in reports['queries'] if query['name']=='input_receipts')
@@ -74,14 +75,14 @@ def test_model_refuses_a_current_byte_fact_that_conflicts_with_writer_proof(tmp_
     arguments=model_inputs(tmp_path,conflict=True)
     assert pq.ParquetFile(arguments['readings']).metadata.num_rows==1
     with pytest.raises(ValueError,match='invariant'):
-        build_release(**arguments,output=tmp_path/'release',scratch=tmp_path/'model')
+        build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **arguments,output=tmp_path/'release',scratch=tmp_path/'model')
     assert not (tmp_path/'release/manifest.json').exists()
 
 
 def test_prepared_admission_checks_current_pins_without_public_artifacts(tmp_path):
     from viewer_publication.archive_model import prepare_model_inputs,admission_checks,input_receipts_query
     arguments=model_inputs(tmp_path)
-    prepared=prepare_model_inputs(**arguments,scratch=tmp_path/'admission')
+    prepared=prepare_model_inputs(recovery_requirements=empty_recovery_requirements(tmp_path), **arguments,scratch=tmp_path/'admission')
     assert (prepared['scratch']/'profile.json').is_file()
     assert json.loads((prepared['scratch']/'profile.json').read_text())==prepared['profile']
     assert not (tmp_path/'release').exists()
@@ -91,10 +92,10 @@ def test_prepared_admission_checks_current_pins_without_public_artifacts(tmp_pat
     assert set(reports)=={'model_invariants','profile_completeness','input_receipts'}
     assert reports['input_receipts']==[dict(receipt_key='receipts/documents/2026-10-27/writer.jsonl.gz')]
     assert not any(value for name,rows in reports.items() if name!='input_receipts' for row in rows for value in row.values())
-    with pytest.raises(FileExistsError):prepare_model_inputs(**arguments,scratch=prepared['scratch'])
+    with pytest.raises(FileExistsError):prepare_model_inputs(recovery_requirements=empty_recovery_requirements(tmp_path), **arguments,scratch=prepared['scratch'])
     empty=tmp_path/'missing-filenames.parquet'
     pq.write_table(pq.read_table(arguments['filename_readings']).slice(0,0),empty)
-    incomplete=prepare_model_inputs(**dict(arguments,filename_readings=empty),scratch=tmp_path/'incomplete')
+    incomplete=prepare_model_inputs(recovery_requirements=empty_recovery_requirements(tmp_path), **dict(arguments,filename_readings=empty),scratch=tmp_path/'incomplete')
     check=incomplete['scratch']/'check';check.mkdir()
     refused=run_job(check,arguments['engine'],inputs=incomplete['inputs'],steps=incomplete['steps'],outputs=[],
         queries=admission_checks(parser_versions=arguments['parser_versions'],catalog_version=arguments['catalog_version']))

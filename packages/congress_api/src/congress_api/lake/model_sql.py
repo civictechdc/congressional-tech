@@ -22,14 +22,14 @@ ROOT = Path(__file__).resolve().parents[5]
 
 def _dependencies(parser, sql, *, completed_outputs=()):
     # DuckDB's maintained parser accepts the model's expressions without binding
-    # functions or opening tables. DataFusion spells anti joins LEFT/RIGHT ANTI;
-    # remove only that lexer token in the parser copy, retaining both operands.
+    # functions or opening tables. DataFusion spells joins LEFT/RIGHT SEMI or ANTI;
+    # remove only SEMI/ANTI in the parser copy, retaining both operands.
     tokens = duckdb.tokenize(sql)
     encoded = sql.encode('utf-8')  # The maintained lexer returns UTF-8 byte offsets.
     words = [encoded[start:tokens[i+1][0] if i+1 < len(tokens) else len(encoded)].decode('utf-8').strip().upper()
              for i, (start, _kind) in enumerate(tokens)]
     for index in range(len(tokens)-2, 0, -1):
-        if (words[index] == 'ANTI' and words[index-1] in {'LEFT', 'RIGHT'}
+        if (words[index] in {'SEMI', 'ANTI'} and words[index-1] in {'LEFT', 'RIGHT'}
                 and words[index+1] == 'JOIN'
                 and tokens[index][1] == duckdb.token_type.keyword):
             start, end = tokens[index][0], tokens[index+1][0]

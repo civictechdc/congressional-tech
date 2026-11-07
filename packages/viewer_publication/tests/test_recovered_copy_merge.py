@@ -7,6 +7,7 @@ keep every signal: the dead link stays an address with its own listing page and 
 its recovery record and keys move to the copy, and a document field the copy lacks is filled
 from the recovered link while a differing one stays on that link's annotation.
 """
+from archive_job_fixture import empty_recovery_requirements
 import gzip
 import hashlib
 import json
@@ -103,7 +104,7 @@ def _release(tmp_path):
     pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine,
         work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
     names = filenames.stage(captures=captures, recovery_files=recovery_files, engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
-    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
         parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
         engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     release = tmp_path / 'release'

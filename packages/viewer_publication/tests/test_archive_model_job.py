@@ -60,6 +60,33 @@ def test_pending_spec_refuses_without_runtime_or_storage(tmp_path,capsys):
     assert json.loads(capsys.readouterr().out)==dict(status='blocked',reason='owner binding pending')
 
 
+@pytest.mark.parametrize('defect',['missing','null','missing_pin','blank_policy'])
+def test_model_refuses_unbound_capture_policy_before_runtime_or_storage(tmp_path,capsys,defect):
+    from viewer_publication.archive_model_job import main
+    value=spec(tmp_path)
+    if defect=='missing':value.pop('recovery_requirements')
+    elif defect=='null':value['recovery_requirements']=None
+    elif defect=='missing_pin':value['recovery_requirements'].pop('sha256')
+    else:value['recovery_requirements']['acceptance_policy']=' '
+    with pytest.raises(SystemExit) as error:
+        main(['--spec',write_spec(tmp_path,value),'--execute'])
+    assert error.value.code==2
+    expected={'missing':'pinned recovery requirements','null':'pinned recovery requirements',
+              'missing_pin':'immutable fields','blank_policy':'pinned recovery policy'}
+    assert expected[defect] in capsys.readouterr().err
+    assert not (tmp_path/'model').exists() and not (tmp_path/'release').exists()
+    assert not (tmp_path/'unopened-runtime.json').exists()
+
+
+def test_direct_preparation_refuses_absent_policy_before_creating_inputs(tmp_path):
+    from viewer_publication.archive_model import prepare_model_inputs
+    with pytest.raises(ValueError,match='pinned recovery requirements'):
+        prepare_model_inputs(captures='unopened',readings='unopened',filename_readings='unopened',
+            parser_versions={},catalog_version='unopened',engine=None,scratch=tmp_path/'scratch',
+            recovery_requirements=None)
+    assert not (tmp_path/'scratch').exists()
+
+
 @pytest.mark.parametrize('key',[
     'provenance/recoveries/accepted-backup.json',
     'provenance/recoveries/archive/fixture.jsonl',
@@ -106,6 +133,8 @@ def pinned_local_spec(tmp_path):
         value[name]=dict(kind='parquet',path=str(source),**file_pin(source))
     decision=tmp_path/'review.jsonl';decision.write_bytes(b'{"selected":"A"}\n')
     value['review_files']=[dict(key='provenance/reviews/fixture.jsonl',path=str(decision),**file_pin(decision))]
+    # The custody tests use arbitrary bytes; policy rows are not decoded here.
+    value['recovery_requirements']=dict(path=str(source),**file_pin(source),acceptance_policy='recovery-identity-v1')
     return load_spec(write_spec(tmp_path,value))
 
 
@@ -222,13 +251,17 @@ def test_validate_spec_rejects_scalar_composite_entity_versions(tmp_path,table,k
 
 
 
-def test_checked_in_job_specs_load():
-    """The committed specs must pass their own loaders (2351caf4 added Explorer pins the loader refused)."""
+def test_checked_in_policy_free_job_refuses_until_production_requirements_are_selected():
+    """Retain the old pins without treating a missing production policy as v1 permission."""
     from viewer_publication import archive_backfill_job, archive_model_job, archive_publish_job
     jobs = Path(__file__).resolve().parents[3] / 'model/jobs'
-    model = archive_model_job.load_spec(jobs / 'publish-model.json')
+    model = json.loads((jobs / 'publish-model.json').read_text())
     assert set(model['parser_versions']) >= {'video_records', 'committee_records'}
-    assert archive_publish_job.load_spec(jobs / 'publish.json')
+    assert 'recovery_requirements' not in model
+    with pytest.raises(ValueError,match='pinned recovery requirements'):
+        archive_model_job.load_spec(jobs / 'publish-model.json')
+    with pytest.raises(ValueError,match='pinned recovery requirements'):
+        archive_publish_job.load_spec(jobs / 'publish.json')
     assert archive_backfill_job.load_spec(jobs / 'backfill-selective.json')['status'] == 'blocked'
 
 
@@ -236,6 +269,7 @@ def test_a_spec_pin_for_a_table_the_helper_omits_is_refused(tmp_path):
     from viewer_publication import archive_model_job
     jobs = Path(__file__).resolve().parents[3] / 'model/jobs'
     value = json.loads((jobs / 'publish-model.json').read_text())
+    value['recovery_requirements']=spec(tmp_path)['recovery_requirements']
     value['parser_versions']['video_records'] = dict(youtube_cache='0' * 64)
     path = jobs / '.stale-pin-test.json'
     try:
@@ -249,8 +283,9 @@ def test_a_spec_pin_for_a_table_the_helper_omits_is_refused(tmp_path):
 def entity_spec(tmp_path,*,spicy=True):
     """A model spec with entity inputs and, unless refused, the production spicy-regs pin shape."""
     from congress_api.lake import appearance_records,meeting_records
-    from archive_job_fixture import spicy_pin
+    from archive_job_fixture import empty_recovery_requirements,spicy_pin
     value=spec(tmp_path)
+    value['recovery_requirements']=empty_recovery_requirements(tmp_path)
     value['parser_versions'].update(meeting_records=meeting_records.current_versions(),
                                     appearance_records=appearance_records.current_versions())
     value['meeting_records']=dict(kind='parquet',path=str(tmp_path/'meeting_records.parquet'),sha256='a'*64,size=17)

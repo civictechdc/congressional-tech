@@ -5,6 +5,7 @@ linked URL's name often carries what the final name lacks: 320 documents lost a 
 525 lost a kind in the r1b candidate (causes/attribution/documents.json). Raw shapes from the Senate
 `/download/<slug>` redirects to `/imo/media/doc/<Name>.pdf`.
 """
+from archive_job_fixture import empty_recovery_requirements
 import gzip
 import hashlib
 import json
@@ -101,7 +102,7 @@ def _release(tmp_path, capture_cases=None, transform_names=None):
         reading_rows = table.to_pylist()
         transform_names(reading_rows)
         pq.write_table(pa.Table.from_pylist(reading_rows, schema=table.schema), names['readings'])
-    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'],
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=captures, readings=pages['readings'], filename_readings=names['readings'],
         parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
         engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     details = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()

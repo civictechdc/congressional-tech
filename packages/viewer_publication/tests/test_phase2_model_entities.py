@@ -1,4 +1,5 @@
 """Phase-2 entity resolution, spicy-regs projections, and generation pinning."""
+from archive_job_fixture import empty_recovery_requirements
 from copy import deepcopy
 from datetime import date
 import gzip
@@ -708,7 +709,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                                        local_root=tmp_path / 'raw', decided_at='2026-10-27T12:00:00Z')
     staged['parser_versions']['playlist_records'] = playlist_records.current_versions()
     release_dir = tmp_path / 'release'
-    manifest = build_release(
+    manifest = build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged,
         playlist_records=playlists['records'],
         meeting_records=meeting_records,
@@ -964,7 +965,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     decisions.write_text(''.join(json.dumps(dict(id=letter * 64, subject_kind=kind, subject_id=subject, verdict='found',
         video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n'
         for letter,kind,subject in [('a','event','115538'),('b','package','CHRG-118hhrg55555')]))
-    explorer = build_release(**staged, playlist_records=playlists['records'], meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
+    explorer = build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **staged, playlist_records=playlists['records'], meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
         video_records=video_path, committee_records=committee_path,
         recording_decision_files=[dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions))],
         engine=engine, output=tmp_path / 'release-explorer', scratch=tmp_path / 'model-explorer')
@@ -1166,7 +1167,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
             ],
         ),
     ]
-    build_release(
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged,
         meeting_records=valid_meetings,
         appearance_records=variant_appearances,
@@ -1196,7 +1197,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
 
     # 1b. Verify Invariant 15 missing_committee_keys refuses when committees_export is empty (0 rows) and committee_keys exist
     with pytest.raises(ValueError, match='Release key invariant failed'):
-        build_release(
+        build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
             **staged,
             meeting_records=valid_meetings,
             appearance_records=variant_appearances,
@@ -1233,7 +1234,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
         ),
     ]
     with pytest.raises(ValueError, match='Release key invariant failed'):
-        build_release(
+        build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
             **staged,
             meeting_records=conflicting_meetings,
             appearance_records=variant_appearances,
@@ -1245,7 +1246,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
 
     # 3. Verify entity_profile_completeness refuses duplicate (record_sha, parser_version) rows
     with pytest.raises(ValueError, match='Release key invariant failed'):
-        build_release(
+        build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
             **staged,
             meeting_records=valid_meetings + valid_meetings,
             appearance_records=variant_appearances,
@@ -1332,7 +1333,7 @@ def test_senate_coldfusion_download_query_stripped_in_witness_document_matching(
         source='senate_page',
         appearances=appearances,
     )]
-    build_release(
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged,
         meeting_records=meetings,
         appearance_records=appearance_rows,
@@ -1477,7 +1478,7 @@ def test_context_free_a_then_b_capture_binding_and_collection_states(tmp_path):
             ),
         ],
     )
-    build_release(
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged,
         spicy_regs=spicy_regs,
         meeting_records=meetings,
@@ -1585,7 +1586,7 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
     )
 
     # 1. Both old and current versions present: SQL selects only current version and completeness succeeds
-    build_release(
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged,
         spicy_regs=spicy_regs,
         meeting_records=[old_mr_row, cur_mr_row],
@@ -1601,7 +1602,7 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
 
     # 2. Only old version present (missing current reading): refused by entity_profile_completeness
     with pytest.raises(ValueError, match='Release key invariant failed'):
-        build_release(
+        build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
             **staged,
             spicy_regs=spicy_regs,
             meeting_records=[old_mr_row],
@@ -1621,7 +1622,7 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
         parser_version=cur_mr_ver,
         supersedes=None,
     )) + '\n')
-    build_release(
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged,
         spicy_regs=spicy_regs,
         unreadable_files=[dict(key='unreadable/mr.jsonl', path=str(unreadable_file))],
@@ -1814,7 +1815,7 @@ def test_zip_contents_are_the_documents_from_receipts_to_release(tmp_path):
         'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
     pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
     names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
-    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'],
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=captures, readings=pages['readings'], filename_readings=names['readings'],
         parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
         engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     release = tmp_path / 'release'
@@ -1887,7 +1888,7 @@ def test_imported_zip_identical_to_a_good_download_keeps_its_members(tmp_path):
         'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
     pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
     names = filenames.stage(captures=captures, recovery_files=recovery_files, engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
-    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
         parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
         engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     release = tmp_path / 'release'
@@ -1960,7 +1961,7 @@ def _govinfo_release(tmp_path, packages):
         'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
     pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
     names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
-    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'],
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=captures, readings=pages['readings'], filename_readings=names['readings'],
         parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
         engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     release = tmp_path / 'release'
@@ -2022,7 +2023,7 @@ def test_a_page_never_groups_itself_through_its_own_navigation_links(tmp_path):
     pdf = b'%PDF-1.7\nALERT Act Title II section by section\n%%EOF\n'
     staged = _stage_raw_fixture(tmp_path, engine, [dict(url=page_url, data=page, format='html'),
                                                    dict(url=pdf_url, data=pdf, format='pdf', compress=False)])
-    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
         parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
         catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
@@ -2055,7 +2056,7 @@ def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
         (f'https://science.house.gov/uploadedfiles/{bus}', 'Bus testimony', '2026-10-20T12:00:00Z')]
     staged = _stage_raw_fixture(tmp_path, engine, [dict(url=url, data=pdf(text), format='pdf', compress=False, retrieved_at=at)
                                                    for url, text, at in captures])
-    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
         parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
         catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
@@ -2093,7 +2094,7 @@ def test_printed_hearing_date_and_conflicting_bill_packages_reach_the_export(tmp
         dict(url=url, data=body, format='pdf', compress=False, retrieved_at=at)
         for url, body, at in captures
     ])
-    build_release(
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged, engine=engine, output=tmp_path/'release', scratch=tmp_path/'model',
         spicy_regs=spicy_input(spicy_committees=[dict(system_code='HSGO00', name='Oversight', chamber='House')]),
         meeting_records=[dict(
@@ -2134,7 +2135,7 @@ def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
     pdf = b'%PDF-1.7\nAppendix D tables\n%%EOF\n'
     staged = _stage_raw_fixture(tmp_path, engine, [dict(url='https://appropriations.house.gov/hearing', data=listing, format='html'),
         dict(url=f'https://appropriations.house.gov/news/appendix-d-text', data=html, format='html'), dict(url=f'{base}/appendix-d.pdf', data=pdf, format='pdf', compress=False)])
-    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
         parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
         catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
@@ -2273,7 +2274,7 @@ def test_hhrg_slug_witness_matching_precedence_title_enrichment_and_meeting_prop
         dict(system_code='HSAG00', name='House Agriculture', chamber='House'),
         dict(system_code='SSBK00', name='Senate Banking', chamber='Senate', website_url='https://www.banking.senate.gov/'),
     ])
-    build_release(
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged,
         meeting_records=meetings,
         appearance_records=appearance_rows,
@@ -2792,7 +2793,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     )
 
     release_dir = tmp_path / 'release'
-    manifest = build_release(
+    manifest = build_release(recovery_requirements=empty_recovery_requirements(tmp_path),
         **staged,
         meeting_records=meeting_records,
         appearance_records=[],
@@ -2933,7 +2934,7 @@ def _roster_release(tmp_path, congresses):
                                                                        ('B000002', 'Ranking Member', 'Republican'))],
     )
     release_dir = tmp_path / 'release'
-    build_release(**staged, meeting_records=[], appearance_records=[], spicy_regs=spicy_regs,
+    build_release(recovery_requirements=empty_recovery_requirements(tmp_path), **staged, meeting_records=[], appearance_records=[], spicy_regs=spicy_regs,
                   engine=engine, output=release_dir, scratch=tmp_path / 'model')
     return release_dir
 

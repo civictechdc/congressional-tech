@@ -17,11 +17,12 @@ def test_missing_model_relation_refuses_before_the_engine_runs():
             provided=['capture_evidence', 'good_archive_containers']))
 
 
-def test_parser_sees_every_join_form_the_model_uses():
+@pytest.mark.parametrize('join',['LEFT ANTI','RIGHT ANTI','LEFT SEMI','RIGHT SEMI'])
+def test_parser_sees_every_join_form_the_model_uses(join):
     sql = '''/* FROM ignored_block */ -- FROM ignored_line
         WITH source_files AS (SELECT * FROM source_files)
         SELECT 'FROM ignored_literal' FROM (effective_filenames f JOIN "Page_Facts" p ON true),
-        SNIFF_FACTS s LEFT ANTI JOIN body_evidence b USING(body_sha), source_files'''
+        SNIFF_FACTS s JOIN_FORM JOIN body_evidence b USING(body_sha), source_files'''.replace('JOIN_FORM',join)
     assert sql_dependencies(sql) == {'source_files', 'effective_filenames', 'page_facts',
                                      'sniff_facts', 'body_evidence'}
 
