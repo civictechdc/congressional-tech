@@ -31,6 +31,7 @@ import {
 import {RequestMessage,useRequest,integer} from '../view/request-state.tsx';
 
 const pageSize=30;
+const missingResults={status:'error',message:''} as const;
 export type Navigation={
   tab:ArchiveTab;
   text:string;
@@ -135,7 +136,8 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   const totalDocs:number|undefined=info.status==='ready'?info.value.count:undefined;
   const committeeFacets=allFacets.filter(item=>item.facet==='committee_keys');
   const effectiveSort=nav.sort||'document_date';
-  const isDocTab=nav.tab==='documents';
+  const activeTab=nav.tab;
+  const isDocTab=activeTab==='documents';
   const activeTabMeta=ARCHIVE_TABS.find(item=>item.key===nav.tab)??ARCHIVE_TABS[0];
 
   const [rows,retryRows]=useRequest(async signal=>{
@@ -458,7 +460,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         rows.status==='ready'&&rows.value?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{rows.value.total===1?'1 document':`${integer(rows.value.total)} documents`}</p></div>{rows.value.total===0?<p className="explorer-muted">No matching documents found.</p>:<>
           <ArchiveRows rows={rows.value.rows} committeesCatalog={committeesCatalog} sort={effectiveSort} onSelect={select}/>
           <nav className="explorer-pagination" aria-label="Document pages"><button type="button" className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{rows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+rows.value.rows.length,rows.value.total))} of {integer(rows.value.total)}</span><button type="button" className="explorer-button" disabled={rows.value.next===null} onClick={()=>navigate({offset:rows.value.next})}>Next</button></nav>
-        </>}</section>:<RequestMessage state={rows} retry={retryRows} noun="document results"/>
+        </>}</section>:<RequestMessage state={rows.status==='ready'?missingResults:rows} retry={retryRows} noun="document results"/>
       ):isInspectingEntity?(
         <div className="archive-detail-view" data-archive-entity-inspector={nav.tab}>
           <button type="button" className="explorer-button archive-back-button" onClick={clearInspectedEntity}>← Back to {activeTabMeta.noun}</button>
@@ -519,7 +521,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
           )}
         </div>
       ):(
-        entityRows.status==='ready'&&entityRows.value?<section aria-label={`${activeTabMeta.label} results`} data-archive-entity-tab={nav.tab}><div className="archive-results-bar"><p className="archive-total" data-archive-entity-total>{entityRows.value.total===1?`1 ${activeTabMeta.singular}`:`${integer(entityRows.value.total)} ${activeTabMeta.noun}`}</p></div><ArchiveEntityRows tab={nav.tab} rows={entityRows.value.rows} committeesCatalog={committeesCatalog} onInspectHearing={inspectHearing} onInspectCommittee={inspectCommittee} onInspectWitness={inspectWitness} onInspectMember={inspectMember} onInspectSubject={inspectSubject}/>{entityRows.value.total>0&&<nav className="explorer-pagination" aria-label={`${activeTabMeta.label} pages`}><button type="button" className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{entityRows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+entityRows.value.rows.length,entityRows.value.total))} of {integer(entityRows.value.total)}</span><button type="button" className="explorer-button" disabled={entityRows.value.next===null} onClick={()=>navigate({offset:entityRows.value.next})}>Next</button></nav>}</section>:<RequestMessage state={entityRows} retry={retryEntityRows} noun={`${activeTabMeta.noun}`}/>
+        entityRows.status==='ready'&&entityRows.value?<section aria-label={`${activeTabMeta.label} results`} data-archive-entity-tab={nav.tab}><div className="archive-results-bar"><p className="archive-total" data-archive-entity-total>{entityRows.value.total===1?`1 ${activeTabMeta.singular}`:`${integer(entityRows.value.total)} ${activeTabMeta.noun}`}</p></div><ArchiveEntityRows tab={activeTab} rows={entityRows.value.rows} committeesCatalog={committeesCatalog} onInspectHearing={inspectHearing} onInspectCommittee={inspectCommittee} onInspectWitness={inspectWitness} onInspectMember={inspectMember} onInspectSubject={inspectSubject}/>{entityRows.value.total>0&&<nav className="explorer-pagination" aria-label={`${activeTabMeta.label} pages`}><button type="button" className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{entityRows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+entityRows.value.rows.length,entityRows.value.total))} of {integer(entityRows.value.total)}</span><button type="button" className="explorer-button" disabled={entityRows.value.next===null} onClick={()=>navigate({offset:entityRows.value.next})}>Next</button></nav>}</section>:<RequestMessage state={entityRows.status==='ready'?missingResults:entityRows} retry={retryEntityRows} noun={`${activeTabMeta.noun}`}/>
       )}
   </div>;
 }

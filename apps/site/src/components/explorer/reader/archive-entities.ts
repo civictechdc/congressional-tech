@@ -517,7 +517,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       entitySets.push(rowSet);
     }
     let allowedRows: Set<number> | null = null;
-    for (const set of entitySets) allowedRows = allowedRows === null ? set : new Set([...allowedRows].filter(r => set.has(r)));
+    for (const set of entitySets) allowedRows = allowedRows === null ? set : new Set([...allowedRows].filter((r: number) => set.has(r)));
     return { query, allowedRows };
   };
 

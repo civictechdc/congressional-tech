@@ -1,8 +1,18 @@
-import {byteCache, sharedLoad} from './cache.ts';
+import {byteCache, sharedLoad, type ByteCache} from './cache.ts';
+
+export type ByteRange = {url: string; start: number; end: number; bytes: ArrayBuffer};
+type RangeMetrics = Partial<Record<'rangeHits' | 'rangeRequests' | 'rangeBytes', number>>;
+type RetainedRanges = {entries: Map<string, ByteRange>; bytes: number; maxBytes: number};
 
 /** Bounded compressed-byte cache; the host must return the exact requested range. */
-export function rangeFile(url, byteLength, fetcher = fetch, cache = byteCache(48 * 1024 * 1024, 32 * 1024 * 1024), metrics = {}, retained = {entries:new Map(),bytes:0,maxBytes:32*1024*1024}) {
-  const pending = new Map();
+export function rangeFile(
+  url: string, byteLength: number,
+  fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+  cache: ByteCache<ByteRange> = byteCache(48 * 1024 * 1024, 32 * 1024 * 1024),
+  metrics: RangeMetrics = {},
+  retained: RetainedRanges = {entries:new Map(),bytes:0,maxBytes:32*1024*1024},
+) {
+  const pending = new Map<string, Promise<ArrayBuffer>>();
   let protectedRanges:number[][]=[];
   const put=(start:number,end:number,bytes:ArrayBuffer)=>{
     const key=`${url}:${start}/${end}`;if(retained.entries.has(key))return;
@@ -21,7 +31,7 @@ export function rangeFile(url, byteLength, fetcher = fetch, cache = byteCache(48
     }
     for(const [,item] of cache.entries())if(item.url===url)protect(item.start,item.end,item.bytes);
   };
-  async function slice(start, end = byteLength, signal) {
+  async function slice(start: number, end = byteLength, signal?: AbortSignal): Promise<ArrayBuffer> {
     signal?.throwIfAborted();
     if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end <= start || end > byteLength) throw new Error('Invalid catalog byte range.');
     for(const item of retained.entries.values())if(item.url===url&&item.start<=start&&item.end>=end){metrics.rangeHits=(metrics.rangeHits||0)+1;return item.bytes.slice(start-item.start,end-item.start);}
@@ -57,7 +67,7 @@ export function rangeFile(url, byteLength, fetcher = fetch, cache = byteCache(48
     }, signal);
     signal?.throwIfAborted(); return bytes;
   }
-  return { slice, retain, canRetain: size => cache.admits(size,`${url}:${byteLength}/${byteLength}`), cacheBudget: cache.stats.maxBytes,
-    file: signal => ({ byteLength, slice: (start, end) => slice(start, end, signal) }) };
+  return { slice, retain, canRetain: (size: number) => cache.admits(size,`${url}:${byteLength}/${byteLength}`), cacheBudget: cache.stats.maxBytes,
+    file: (signal?: AbortSignal) => ({ byteLength, slice: (start: number, end?: number) => slice(start, end, signal) }) };
 }
 

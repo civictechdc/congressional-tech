@@ -1,9 +1,9 @@
 export interface CatalogWorker {
   postMessage(message: unknown): void;
   terminate(): void;
-  onmessage: ((event: { data: { id?: number; result?: unknown; error?: string; releaseId?: string } }) => void) | null;
-  onerror: ((event: unknown) => void) | null;
-  onmessageerror: ((event: unknown) => void) | null;
+  onmessage: ((event: MessageEvent<{ id?: number; result?: unknown; error?: string; releaseId?: string }>) => void) | null;
+  onerror: Worker['onerror'];
+  onmessageerror: Worker['onmessageerror'];
 }
 
 /** Own transport cleanup; each reader supplies its identity policy. */

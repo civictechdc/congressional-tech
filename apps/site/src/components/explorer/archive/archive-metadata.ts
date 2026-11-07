@@ -1372,7 +1372,7 @@ export function presentDocument(
     ? document.document_kind.map(documentKindLabel).filter(Boolean)
     : [];
   const dateOrCongress = document?.document_date || document?.congress;
-  const explicitCodes = Array.isArray(document?.committee_keys)
+  const explicitCodes: string[] = Array.isArray(document?.committee_keys)
     ? document.committee_keys.map((key: any) => String(key ?? '').trim().toLowerCase()).filter(Boolean)
     : [];
   const rawCodes = explicitCodes.length > 0

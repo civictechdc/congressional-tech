@@ -6,12 +6,12 @@ import {compressors} from 'hyparquet-compressors';
 import readerLimits from '../../../../../../model/registries/reader-limits.json' with {type:'json'};
 import {awaitShared, byteCache, retainedBytes} from './cache.ts';
 import {withVerifiedBytes} from './startup.ts';
-import {rangeFile} from './range-file.ts';
+import {rangeFile, type ByteRange} from './range-file.ts';
 import {yieldToMessages, scanBatchRows} from './cooperative.ts';
 import {createArchiveEntities} from './archive-entities.ts';
 
 const hex = (value: Uint8Array) => [...value].map(v=>v.toString(16).padStart(2,'0')).join('');
-const digest = async (value: Uint8Array) => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', value)));
+const digest = async (value: Uint8Array<ArrayBuffer>) => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', value)));
 const utf8 = new TextEncoder();
 const date = (value: any) => value instanceof Date ? value.toISOString().slice(0,10) : value == null ? null : String(value).slice(0,10);
 const fields = (metadata: any) => {
@@ -41,7 +41,7 @@ export function lookupAlias(value: string): string {
 }
 
 /** Keep decoded list columns, never a retained catalog of row objects. */
-function column(values: any[], isArray: boolean) {
+function column(values: Awaited<ReturnType<typeof parquetReadColumn>>, isArray: boolean) {
   if (isArray || values.some(value => typeof value === 'string')) {
     const dictionary: any[] = [null], lookup = new Map<any, number>([[null, 0]]);
     const code = (value: any) => { value ??= null; let id = lookup.get(value); if (id === undefined) { id = dictionary.length; dictionary.push(value); lookup.set(value, id); } return id; };
@@ -68,8 +68,8 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   const fetcher=options.fetcher??fetch, heapBytes=options.heapBytes??256*1024*1024;
   options.signal?.throwIfAborted();
   const metrics={rangeRequests:0,rangeBytes:0,decodedBytes:0,decodedPeak:0,listColumns:0,detailColumns:0};
-  const retained={entries:new Map<string,any>(),bytes:0,maxBytes:options.indexBytes??32*1024*1024};
-  const compressed=byteCache(options.cacheBytes??48*1024*1024,options.cacheBytes??48*1024*1024);
+  const retained={entries:new Map<string,ByteRange>(),bytes:0,maxBytes:options.indexBytes??32*1024*1024};
+  const compressed=byteCache<ByteRange>(options.cacheBytes??48*1024*1024,options.cacheBytes??48*1024*1024);
   const pointer=async()=>{
     const response=await fetcher(pointerUrl,{cache:'no-store', signal:options.signal});
     if(!response.ok)throw new Error('Could not read the archive pointer.');
