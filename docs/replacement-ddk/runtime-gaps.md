@@ -10,12 +10,33 @@ every current API. The installed catalog package is qualified dev6. The runtime
 pin in this checkout remains unchanged. Shared successor work needs a qualified
 handoff and application checks before it closes a native gap here.
 
+Current application source, commit `941dfbc0`, consumes an accepted v3 producer
+proof and its exact adopted definition through the shared DDK binding helper.
+It preserves original JobSpec, inference and policy bytes, records the selected
+combined-readings version in new profile identities, and uses observed native
+schema digests. The 179 focused metadata checks do not establish native admission.
+The policy-bound successor now has complete schema inference for 52 inputs,
+253 steps, 40 exports and 23 reports. Its 225 required counters retain the original
+rules and use native-inferred nullability; actual null and nonzero values refuse.
+Adoption, population proof and full-model acceptance remain unexecuted.
+
+Source inspection identified a specific original-S3 admission gap in the shared
+runtime. `src/engine/managed_job.rs` requires a local engine;
+`src/engine/managed_job/snapshots.rs::source_io` needs a registered remote object
+reader for the original S3 selectors. The CLI's current `--remote` path creates a
+remote engine, and the public DDK adapter has no source-read configuration route.
+The native owner confirmed the missing route; the parent owns its replacement. Local URI
+substitution would change the selected identities and is not the migration path.
+The separately prepared manifest census will supply file counts and declared
+byte budgets; it grants no native custody or producer acceptance.
+
 The source09 model-only schema call refused the staged policy-free URL-state
 output, which lacks the capture fields required by the current catalog. This is
 an application input mismatch, not a native schema encoding problem. Commit
 `14e96d07` requires explicit pinned recovery requirements and matching version-2
-preparation before request creation. The selected production requirements and
-provenance remain unresolved; see the [decision draft](recovery-policy-decision.md).
+preparation before request creation. The later selected production requirements
+bind all 24,028 historical targets; their qualification remains unresolved.
+See the [decision](recovery-policy-decision.md).
 No full-model retry, adoption, output execution or production pin change followed
 the refusal. The earlier proof-schema result remains reusable.
 
@@ -84,15 +105,13 @@ complete inferred schema set. Its model policy remains unqualified.
 
 Revision B lacked a binding for the model's 43 local input inventories. Revision C
 adds their exact existing `JobFileInput` records to the adopted definition; the
-reviewed B draft is retained unchanged. Native admission still needs to enforce
-the complete member key/hash/size comparison before existing custody work. No
-extra application controller or file scan is required. The draft remains
-unadoptable as staged. A selected requirements input adds one local inventory
-and one required counter; the job, profiles, policy and enclosing definition
-must be regenerated together. The production entrypoint still refuses missing
-prerequisites and whole-lock version drift; it must also consume observed input
-schemas instead of the seven mismatched local declarations when adoption is
-qualified. Before any real payload run, exact manifest/unique-file and cumulative
+reviewed B draft is retained unchanged. Native admission enforces the complete
+member key/hash/size comparison before existing custody work in the pending
+shared successor. No extra application controller or file scan is required. The
+later policy-bound draft adds the selected requirements input and its required
+counter; job, profiles, policy and definition were regenerated together. The
+application now consumes original proof-observed schemas and explicit selected
+producer versions. Before any real payload run, exact manifest/unique-file and cumulative
 metadata/evidence/output/spill/free-space admission remains necessary.
 
 Shared source09 now passes all fifteen public DDK source adapter cases at the
@@ -112,8 +131,8 @@ guards are unchanged.
 | G01 | Preserve exact nested native schema and field/element IDs. `ddk/adapters/docspec.py:444-459` accepted scalar Arrow type names only at the initial inspection. Actual selected metadata now shows 117 field/element-ID differences from local declarations across seven tables, with matching names/types/order/nullability and logical identifiers. | DDK native mapping plus DocSpec exact view. Return observed schema/IDs from admitted exact snapshots; retain every type/ID/null/order/multiplicity and reject a wrong element-ID map. Reuse native formats rather than flattening. | Authentic metadata comparison complete; native admission and observed-ID binding remain open. Earlier declared-ID preparation is not observed source identity |
 | G02 | Support the actual native update and retained computation families. DDK `_job_request` at `adapters/docspec.py:396-398` refuses catalog operations; local managed Build refuses inherited bases and computed/related groups at DocSpec `src/engine/managed_build.rs:300-311,380-385`. Existing `lake/tables.py:108-220` uses guarded table operations. | DocSpec lifecycle and DDK explicit operation profile. Bind exact request/versions, append/correct/delete, preserve unaffected data, interrupt a completed phase and reconcile the same operation after restart. Required operation census must drive the extension; do not add a generic scheduler. | Demonstrated profile limit; broader native engine behavior requires qualification |
 | G03 | Evaluate the full exact candidate with bounded process memory. Native quality reads complete IPC then `read_all()` at `adapters/native_quality.py:188-195`; lines 224-233 set the small-data limits. | DDK quality adapter and maintained evaluator/DocSpec exact view. Qualify a supported streaming or pushed-down path, same required check IDs and native field mapping; measure total process peak and unread coverage at increasing scale. Do not solve only by increasing the limit. | Verified mechanism; production-size failure has not been run |
-| G04 | Execute the entire declared multi-step/multi-table application and compose one complete release. The initial DDK fixture executor required one SQL output and exact files. Congressional jobs use many shared materialized steps and export tables. | One DDK component with named input/output ports delegates the complete native JobSpec to DocSpec. Preserve `plan_prepared_release`, shared steps, every export/report and exact dependency bindings; return partial-output evidence and resume without duplicate native state. | Source25 passed the required native gate and fresh 17-export/five-report local-file fixture through selection; source20 separately proved retained recovery. The historical 51-input/251-step graph has earlier schema-only evidence; the current catalog refused that policy-free output. Its policy-bound successor awaits selected requirements and full execution/adoption qualification |
-| G05 | Keep data selection, publication membership and reader activation recoverable together. The application model controller has been removed. `archive_publish.py` retains conditional pointer writes and asset reconciliation; `archive_publish_job.execute` and the nightly wrapper refuse activation before effects until native intent exists. | DocSpec selection plus application publication owner. Bind the accepted result, exact inventory, destination, expected token and actual publisher authority in native intent. Exercise failure before/after selection and lost acknowledgment; preserve prior readable releases and the publisher permission/restore fence. | Native intent and end-to-end composition pending; external cutover not performed |
+| G04 | Execute the entire declared multi-step/multi-table application and compose one complete release. The initial DDK fixture executor required one SQL output and exact files. Congressional jobs use many shared materialized steps and export tables. | One DDK component with named input/output ports delegates the complete native JobSpec to DocSpec. Preserve `plan_prepared_release`, shared steps, every export/report and exact dependency bindings; return partial-output evidence and resume without duplicate native state. | Source25 passed the required native gate and fresh 17-export/five-report local-file fixture through selection; source20 separately proved retained recovery. The policy-bound successor now has all 293 named schemas inferred for 52 inputs, 253 steps, 40 exports and 23 reports. Selected requirements are bound; producer adoption and full execution/acceptance remain open |
+| G05 | Keep data selection, publication membership and reader activation recoverable together. The application model controller has been removed. `archive_publish.py` retains conditional pointer writes and asset reconciliation; `archive_publish_job.execute` and the nightly wrapper refuse activation before effects until native intent exists. | DocSpec selection plus application publication owner. Bind the accepted result, exact inventory, destination, expected token and actual publisher authority in native intent. Exercise failure before/after selection and lost acknowledgment; preserve prior readable releases and the publisher permission/restore fence. | Local saved-intent recovery is implemented in the pending shared successor. Actual publisher authority, restore fencing and end-to-end application composition remain open; external cutover not performed |
 | G06 | Qualify the selected new runtime/client tuple against actual retained inputs and required execution guarantees. Current `model/docspec-runtime-pin.json` is b0342a73/fed9ea73; DDK uses b1270b2e/b89b43e2. DDK binary source advertises request-deadline/owned-stdin-eof at `src/main.rs:1488`. | Parent runtime release owner, congressional integration owner. Compare exact pin/capability/client schemas, run bounded native client and operation cases, then use the maintained pin/config helper. Never substitute bytes at an existing address. | Source25 required native gate, installed consumer checkpoint and fresh application fixture passed. Dev6 native package/profile qualification and production pin adoption remain pending |
 | G07 | Generate reader-facing fields, relationships and recipes from maintained DDK definitions. The dev4 application profile admits all 70 declarations and 19 artifacts; the new target retains 254 baseline physical fields plus three explicit capture-policy fields. | Direct catalog consumers passed the complete MCP suite (138 passed, three replacement-native fixture cases pending), seven browser catalog cases including HTTP delivery, 39 comparison cases and 88 publication/gate cases. Qualify the remaining native producer fixture, replace its metadata owner and retire the old registry. | Consumer boundary qualified; full native release acceptance pending |
 | G08 | Carry news, YouTube, committee report and CPI/Sheets workflows through the same ownership model without inventing unsupported live sources. | Congressional domain owners; parent DDK/runtime owner only for reusable missing features. Use each workflow's genuine entry point and observable output; preserve supported domain outputs, available evidence and unsatisfied capture/acceptance needs; remove old-format reader support. | Repository-wide acceptance remains unverified |
@@ -121,7 +140,7 @@ guards are unchanged.
 | G10 | Retain existing exact native table pins without export/reimport. The initial DDK profile refused `native_table`/`iceberg`/raw `version`; Congress uses metadata location, table UUID, snapshot and schema ID. Shared source09 demonstrates local snapshot custody and input reuse through the public source adapter. | Parent native view/protection profile plus DDK adapter. Preserve observed schema/IDs; qualify and adopt shared custody, original producer prerequisites and actual remote inputs without fabricating a VersionRef or substituting latest. Concrete bindings and step census belong in `native-profile.md`/`.json`. | Fifteen public source adapter cases and focused native stages passed. Local same-owner input reuse is demonstrated. Installed profile, remote/deletes, producer prerequisites and full application admission remain open |
 | G11 | Define how acquisition phase state and external effects enter the native durable owner. Current capture journal seals downloads/frozen receipts and preserves uncertain calls; the inspected native operation enum has no acquisition request (`src/model/operations.rs:330-339`). | Parent DocSpec lifecycle profile plus application acquisition adapter. Specify stable request and admitted budgets before effects, durable sealed completion, same-ID reconciliation and fresh native operation state. Admit valid retained inputs without importing old journal/controller formats. Preserve old uncertain effects as evidence, without automatic replay. | Target protocol required; no proof that current managed Build can execute capture |
 | G12 | Admit schema-valid external relationship targets during project dependency collection. The dev2 compiler raised `KeyError: 'dataset'` for external targets. | Parent DDK owner fixed dependency collection in dev3. The application profile assesses the supported external/domain/virtual-key declarations without claiming actual target existence or candidate validity. | Resolved: installed dev6 preserves declaration checks and generated artifacts |
-| G13 | Bind retained producer meaning without treating every workspace dependency edit as a parser change. The current entrypoint refuses the checked-in model after the DDK dependency changes `uv.lock`; seven source-parser fingerprints and the filename catalog fingerprint hash that whole file. | Application/native admission must retain exact producer versions and qualified interpretation. `parser-lock-drift-02/fingerprints.json` reproduces all eight original pins using the baseline lock and unchanged parser owners. Preserve the refusal until the new admission boundary qualifies retained inputs; do not restamp rows or replace their pins merely to pass the old guard. | Fingerprint cause verified; replacement admission remains unresolved |
+| G13 | Bind retained producer meaning without treating every workspace dependency edit as a parser change. The prior entrypoint refused the checked-in model after the DDK dependency changed `uv.lock`; seven source-parser fingerprints and the filename catalog fingerprint hashed that whole file. | Application/native admission must retain exact producer versions and qualified interpretation. `parser-lock-drift-02/fingerprints.json` reproduces all eight original pins using the baseline lock and unchanged parser owners. The current source uses the accepted producer proof and explicit selected versions instead of today's hashes; do not restamp retained rows. | Source replacement and focused metadata checks passed; actual original-input native admission remains unresolved |
 
 G12 was resolved by the qualified catalog dev3 package and remains covered by
 dev6. The earlier dev2 failure

@@ -37,7 +37,7 @@ candidate. DDK records those references without computing competing phase keys.
 
 | Decision | Required candidate-bound evidence | Owning action |
 | --- | --- | --- |
-| Native archive input admission | Original producer proofs bound to every exact source snapshot before model computation. `archive_model.py` and prepared-request execution require the prerequisite inventory; its native interpretation is still pending. | Native admission validates the original proof inventory once; publication reuses this bound evidence. A nonempty caller list is not itself proof. |
+| Native archive input admission | One verified, accepted v3 producer proof and its exact adopted definition; original native selectors, observed Arrow schemas, current custody references, adopted prerequisite order and complete local-file pins. | The shared DDK helper supplies the binding. DocSpec enforces the adopted job and policies before model computation. Application source is implemented; original S3 input admission remains unqualified. |
 | Native archive data selection | Complete output table membership and schema; six standard native SQL families: `invariants`, `model_invariants`, `url_state_invariants`, `profile_completeness`, `entity_profile_completeness`, `relationship_invariants`, plus required `explorer_invariants` when the Explorer closure is present; exact rule bytes, engine/evaluator identity, all required outcomes and checked scope | DocSpec accepts the complete conditional check inventory declared by the actual job, then selects only when accepted evidence and current authority conditions match |
 | External archive release activation | Existing application gates, including explained value/cause changes, public-link continuity, supported access, schema/reader checks and actual candidate consumer evidence as defined by the current publisher; preserved Gate 5 admission evidence, exact candidate/release/asset digests and previous selection | Application publisher performs the existing conditional pointer operation and reconciles exact readback; DDK records the result |
 | News availability and checkpoint advancement | Exact pins across required native tables/views, `check_corpus` result and independent semantic acceptance, completed fenced cycle and release membership | Native/news publication owner records availability before advancing the applicable source checkpoints |
@@ -51,6 +51,46 @@ checks. Post-selection checks are audit evidence unless the particular visibilit
 boundary deliberately waits for them. A native pass cannot impersonate uploaded
 asset/read-path acceptance, and a browser receipt cannot qualify missing native
 invariants. One complete candidate/release binding joins the two decisions.
+
+## Remaining publisher authority interface
+
+The shared successor's saved publication intent currently supports
+`scope.kind = local_fixture`. It binds the selected accepted result, complete
+output dispositions, control bytes, destination and original pointer condition.
+It reports `external_authorization` and `dispatch` as `not_run`. This supports
+local recovery acceptance; it supplies no R2 write permission.
+
+The existing application publisher remains the external owner:
+`archive_publish.publish_candidate` validates the release and transfers assets;
+`archive_gate.gate_and_flip` runs the release checks;
+`client.publish_manifest_pointer` sends the conditional pointer write;
+`write_spicy_generations` adds protection through a conditional union. The nightly
+launcher holds a local process lock and obtains the configured R2 credentials.
+Neither that lock nor the pointer's ETag can revoke an old writer at storage.
+
+The missing interface belongs at this publisher's existing credential and
+restore authority. Before any external send, it must resolve the exact saved
+intent into permission for its account, bucket, release prefix and pointer key;
+bind a delivery attempt to the active publisher generation; and refuse stale
+permission even while the original pointer condition still matches. Restore
+must revoke or invalidate the old generation at the actual write boundary.
+Native lifecycle fencing alone cannot retract an already authorized external
+request. No callable provider-enforced grant/restore interface has been found in
+the inspected publisher. The parent owns the remaining integration; the public
+entrypoint stays closed until that interface is implemented and qualified.
+
+The existing publisher needs these independent cases at its actual write seam:
+
+| Case | Required result |
+| --- | --- |
+| Local fixture intent supplied for an R2 destination | Refuse before any upload or pointer request |
+| Wrong account, bucket, prefix, pointer or revoked publisher generation | Refuse before external effects |
+| Delayed old writer after restore, with its original ETag still valid | The real storage authority rejects the write |
+| Lost pointer acknowledgment, followed by exact desired bytes | Preserve the original attempt as unknown unless attempt-bound evidence establishes commit; record the observed state separately |
+| Lost acknowledgment followed by a newer release | Preserve the newer release and the original unknown outcome; do not refresh the old pointer condition |
+| Acknowledged original commit followed by a newer release | Preserve the original committed outcome and the newer current state |
+| Restart or caller-file loss after a saved intent | Reuse the original native inventory, controls and condition; do not regenerate the catalog or select another result |
+| Maintenance while delivery or readers still need the release | Retain the exact protected outputs and pending remote prefix until the existing lifetime owner releases those obligations |
 
 Missing, duplicate, wrong-candidate, wrong-rule, stale, failed, unknown or not-run
 required outcomes prevent the applicable selection. A qualification-only policy

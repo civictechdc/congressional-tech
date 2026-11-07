@@ -141,6 +141,7 @@ flowchart TB
         acquisition_admit["Admit acquisition request and budgets before external effects — pending"]
         adopt["Trusted local owner adopts exact producer definition under existing dataset authority — pending"]
         proof_admit["Admit the exact proof request, active definition and budgets before effects"]
+        source_access["Bind original source URIs to an explicit storage reader — local managed/S3 route pending"]
         admit["Admit the exact model request, active definition and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
         native_custody["Own or reuse exact inputs and observed native schemas under the same owner — local development proof only"]
@@ -208,7 +209,7 @@ flowchart TB
     local_pins --> file_binding
     retry --> request
     check --> acquisition_admit --> acquire
-    proof_admit --> static_proof
+    proof_admit --> source_access --> static_proof
     proof_accept --> proof_binding --> request
     admit --> input_admission
     sources --> acquire
