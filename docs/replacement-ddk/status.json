@@ -15,7 +15,18 @@
     "verifiedDocSpec": "b1270b2e964becc5844bb6ca95ee5d605c7a3d79",
     "observedSuccessorCatalogCommit": "b2637279beef7f30f23aba3ca2b8f50f7dc02d3f",
     "successorInstalledQualification": "Unchanged dev6 wheel installed normally with its SHA-256; 112 installed members verified. All ten shared runtime pins match the 234-test exact-Congress metadata supplement, including Arrow25.0.1 and PyParsing3.2.5. Native application pin unchanged.",
-    "qualifiedSharedNative": "d96e00172d7d4be26da4532cda35aa05f2a3709e; source-only Build/Update only; not the application native pin or experimental whole-job preparation"
+    "qualifiedSharedNative": "d96e00172d7d4be26da4532cda35aa05f2a3709e; source-only Build/Update only; not the application native pin or experimental whole-job preparation",
+    "sharedRetainedJobCloseout": {
+      "implementationCommit": "46a27657442d10ae773f48a1536136d895e95daa",
+      "documentationCommit": "f92be2069512f2ab99b44e04bbfb19788b2d574b",
+      "commitCorrespondence": "Parent reports implementation commit matches all 59 frozen source25 files; hash-verified closeout records zero source mismatches.",
+      "scope": "Scoped local-file retained jobs and schema preparation; dev6 native package/profile and production adoption remain separate",
+      "sourceIdentitySha256": "24af479a31da7a863f1f0d33b740dd351c9036346ace0248b4a8f6e92bd0826d",
+      "binarySha256": "dd129fde622b56399b5ebd38626420bce2d74731e9eb685d1b15aa294afc0a9e",
+      "closeout": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-retained-job/gate-closeout-25.json",
+      "closeoutSha256": "2b5724cf8e8e94351013f6c50f4e101591477b5edf74f3c490a319bb1e8fe647",
+      "productionRuntimePinChanged": false
+    }
   },
   "completed": [
     "Isolated branch at current local-main baseline; main working files preserved",
@@ -76,12 +87,14 @@
     "Original source20 rich attempt recovered under its exact original request, runtime and limits: accepted, qualified, selected, and the rich entity Node scenario passed. All 22 phase artifacts plus view-set/completion files and original request/definition files were unchanged; no new phase files.",
     "Fresh source22 rich synthetic fixture passed its first native execution, acceptance, DDK qualification, selection, manifest assertions and entity Node scenario at unchanged 512 MiB memory/scratch and one thread. It produced 17 exports, five reports and a 40-file inventory; 1,089 source20 files kept unchanged custody. Final runtime qualification and production admission remain separate.",
     "Produced a separate local source20 viewer catalog through installed DDK dev6 from the original captured definitions and accepted evidence: 23 datasets, 17 exact versions/representations, one run and 160 checks. Standard inventories and all native export bindings passed; original public controls and all source20 artifacts stayed unchanged; no native computation or new publication/selection claims.",
-    "Added original-row paging to the maintained archive owner. Raw mode avoids list packing; verified cached bytes feed bounded range decoding with exact values, schema and physical positions. Nineteen focused cases and 125 Explorer/entity cases passed; separate greybeard and ETL findings closed. Type diagnostics stayed at 32 with zero additions. Original 1,089 source20 custody records unchanged; no native execution or activation."
+    "Added original-row paging to the maintained archive owner. Raw mode avoids list packing; verified cached bytes feed bounded range decoding with exact values, schema and physical positions. Nineteen focused cases and 125 Explorer/entity cases passed; separate greybeard and ETL findings closed. Type diagnostics stayed at 32 with zero additions. Original 1,089 source20 custody records unchanged; no native execution or activation.",
+    "Source25 fresh rich fixture passed at the original limits on its first attempt: 17 exports, five reports, 40 inventory files and the entity reader scenario. All 1,776 earlier source20/source22 and local-catalog custody records stayed unchanged. Reader implementation 81f4f00d and production runtime pin stayed unchanged.",
+    "Hash-verified source25 closeout and its complete required native gate, installed dev6 consumer and fresh Congress receipts. Gate exit 0 in 849.80 seconds and installed consumer 4/4 passed. Scoped local-file retained-job repair closed; native package/profile qualification, original table custody, producer prerequisites and publication intent remain separate."
   ],
   "active": [
-    "Receive the full native qualification handoff after the source22 fresh rich fixture passed; complete broader cold recovery while preserving the separately accepted source11 and source20 evidence",
+    "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
     "Finish exact native source custody, original producer prerequisites and frozen publication intent, then qualify the maintained application entry end to end",
-    "Integrate parent-owned native multi-output candidate, required qualification, retained recovery and exact catalog membership",
+    "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
     "Standardize new publication on policy-bound capture_profile v2 and 257 physical fields; retain the original 254-field baseline and add three explicit current fields without inventing v1 eligibility",
@@ -766,7 +779,7 @@
     },
     "freshNativeSource22": {
       "status": "passed",
-      "runtimeStatus": "scoped development candidate; full native gate and production handoff remain separate",
+      "runtimeStatus": "Historical development candidate proof; source25 has separate required-native-gate closeout. Production handoff remains separate.",
       "binarySha256": "0ddf112c6390091e21306b9ec076769c12b8ee709ab1c57786e08080b3ab1167",
       "sourceIdentitySha256": "07c75857f35998a4d4ffc6e5279b5df457ab68e1da615a053b75472e2de3fbd1",
       "consumerHandoffSha256": "381180f07475dae29f650090223925dba26c67c61453b0d98cfefee121594c40",
@@ -903,6 +916,104 @@
         "productionScale": "unqualified"
       },
       "fullLane": false
+    },
+    "freshNativeSource25": {
+      "status": "passed",
+      "runtimeStatus": "Complete required source25 native gate passed separately; dev6 native package/profile and production handoff remain separate",
+      "scope": "Development candidate; bounded synthetic fixture proof, not a pytest lane, full native gate or production qualification",
+      "binarySha256": "dd129fde622b56399b5ebd38626420bce2d74731e9eb685d1b15aa294afc0a9e",
+      "sourceIdentitySha256": "24af479a31da7a863f1f0d33b740dd351c9036346ace0248b4a8f6e92bd0826d",
+      "consumerHandoffSha256": "2436769c6799c783ad44dba8159c7a58a854ae4de00dba5c2d999d8fad3294a2",
+      "limits": {
+        "compute_threads": 1,
+        "memory_bytes": 536870912,
+        "scratch_bytes": 536870912,
+        "batch_rows": 2048,
+        "max_batch_bytes": 8388608,
+        "max_metadata_bytes": 33554432
+      },
+      "adapterTimeoutSeconds": 120,
+      "freshNativeAttempts": 1,
+      "retries": 0,
+      "nativePreparation": "passed",
+      "nativeExecution": "passed",
+      "nativeAcceptance": "passed",
+      "ddkQualification": "passed",
+      "selection": "selected",
+      "richEntityReaderScenario": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      "releaseId": "eeb08c0b5ad5eeda0ee5cc120618d76274447b41a599bbeea792d718ad07ab7e",
+      "fileCount": 40,
+      "nativeExports": 17,
+      "nativeReports": 5,
+      "requestDigest": "d2f2e2318dc945c135c3e6b2470adf3aa600c4f9e138481a026f32c4fea97cba",
+      "acceptedQualification": "463037b02ef3801c8336b9d66fd0824e50de99c7906abdb56f7f379706e6a873",
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source25-01/result.json",
+      "evidenceSha256": "946c50a0a307bba233daeb9c1c81b6c2cad032e89c419bfae1c0cb1031b5820a",
+      "handoff": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source25-01/handoff.json",
+      "inventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source25-01/files.json",
+      "inventorySha256": "a40a8f6ed6852c47c946fa11af817318dd4a4006a12173c19cee3a2d170ade18",
+      "peakRSSGiB": 0.346,
+      "peakPhysicalGiB": 0.183,
+      "wallSeconds": 26.3,
+      "preservedFilesWithUnchangedCustody": 1776,
+      "preservedRootCounts": {
+        "fixture-native-source20-01": 414,
+        "rich-native-source20-01": 675,
+        "rich-native-source22-01": 657,
+        "viewer-handoff/source20-rich-local-01": 30
+      },
+      "preservationChecks": [
+        "device",
+        "inode",
+        "size",
+        "mtime_ns",
+        "ctime_ns",
+        "mode",
+        "link_count"
+      ],
+      "preservationScope": "Recorded custody metadata; no new full-byte hash sweep of all prior files",
+      "producerPrerequisites": [],
+      "stableReaderCommit": "81f4f00d3e8db9a09a9eb190d5b07b851fd72979",
+      "productionRuntimePinUnchangedSha256": "2b5651f58cec5c4aaf27e36f7f6ea22e6eef8062553a3a76dd5329cea84a43d3",
+      "fullLane": false
+    },
+    "nativeRequiredGateSource25": {
+      "status": "passed",
+      "owner": "parent DocSpec owner",
+      "scope": "Complete required DocSpec gate for the frozen source25 local-file retained-job implementation; not a congressional Python lane or package/profile qualification",
+      "evidence": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-retained-job/full-gate-25-result.json",
+      "evidenceSha256": "749dfeb261e26308252a18f2945777f56d7fd3b022240912a86af3202dba1895",
+      "logSha256": "d8e3d3574be29fb1b5a10bf0bbc69dce68170a120f6eb27ae02ffd98e5351563",
+      "metricsSha256": "a90870b565da51e8a405bb1aaa059916fe0008021abdd201c322776a81b02ab8",
+      "result": {
+        "name": "full-gate-25",
+        "exitCode": 0,
+        "stopReason": null,
+        "elapsedSeconds": 849.8003733329824,
+        "peakOwnedRssBytes": 2384297984,
+        "minimumFreeBytes": 90225053696,
+        "targetAllocatedBytes": 11962073088,
+        "diskScanRaces": 4
+      },
+      "remainingOwnedProcesses": [],
+      "installedConsumer": {
+        "passed": 4,
+        "failed": 0,
+        "evidence": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-retained-job/installed-consumer-checkpoint/source25-01/handoff.json",
+        "evidenceSha256": "2436769c6799c783ad44dba8159c7a58a854ae4de00dba5c2d999d8fad3294a2",
+        "nativeProfileQualification": "not_run"
+      },
+      "closeout": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-retained-job/gate-closeout-25.json",
+      "closeoutSha256": "2b5724cf8e8e94351013f6c50f4e101591477b5edf74f3c490a319bb1e8fe647",
+      "remainingCapabilities": [
+        "native_snapshot_custody",
+        "original_producer_adoption_and_prerequisites",
+        "publication_intent"
+      ]
     }
   },
   "commits": {
@@ -1026,7 +1137,9 @@
     },
     "catalogDev6ExactPins": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/catalog-api-dev6/congress-pins-supplement-02/handoff.json",
     "nativeCounterSchemaMismatch": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-native-source11-01/counter-schema-diff.json",
-    "retainedFixtureSelectedInventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-requalify-source11-14-01/files.json"
+    "retainedFixtureSelectedInventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-requalify-source11-14-01/files.json",
+    "freshSource25": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source25-01/result.json",
+    "nativeSource25Closeout": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-retained-job/gate-closeout-25.json"
   },
   "constraints": {
     "lastLocalDiskFreeGiB": 90.79,
@@ -1042,7 +1155,7 @@
   },
   "delivery": {
     "fullReplacementComplete": false,
-    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Parent independently accepted the fresh source22 rich fixture proof. Full model, native qualification and publication acceptance remain pending.",
+    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Separate raw-row greybeard/ETL reviews closed. Parent reports shared source25 greybeard/ETL reviews closed; its complete required native gate, installed consumer checkpoint and fresh Congress fixture passed. Full model, native package/profile and publication acceptance remain pending.",
     "supersededInfrastructureRetired": false,
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
@@ -1054,7 +1167,7 @@
     "remaining": [
       "Actual full native JobSpec execution and original snapshot/producer admission",
       "Current acquisition and nonarchive caller adoption across the full scope",
-      "Broader cold recovery and complete consumer acceptance beyond the passed fresh source22 rich fixture",
+      "Broader application cold recovery and complete consumer acceptance beyond the passed source25 rich fixture and required native gate",
       "Native frozen publication intent and application activation integration"
     ],
     "wheelSHA256": "41dbccda3367ea794f0040c165abd86f43d918ecee036cbce7307a0b98b18149"
@@ -1062,7 +1175,7 @@
   "simplification": {
     "requirement": "Standardize and streamline the whole catalog-to-validation stack; reduce custom machinery rather than accumulate compatibility patches",
     "decision": "One maintained DDK definition and rule generator; removed old schema validator and registry from production. Native lifecycle composition adds no application journal, mutable selection or data export copy.",
-    "nextIncrement": "Finish full native qualification after the source22 fresh fixture proof, admit original source evidence and connect the existing publisher to native frozen intent without restoring an application phase journal",
+    "nextIncrement": "Qualify the dev6 native package/profile, admit original native source and producer evidence, and connect the existing publisher to native frozen intent without an application phase journal",
     "historicalCompatibility": "Not required: greenfield migration updates every reader together. Old artifacts remain retained evidence; new-stack history and recovery remain required.",
     "performance": "Removed duplicate schema generator/validator and separate registry; no measured execution speedup claimed. Focused schema retirement peaked at 0.33 GiB RSS.",
     "design": "docs/replacement-ddk/design.md#simplification-is-part-of-acceptance"

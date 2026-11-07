@@ -103,6 +103,10 @@ This is the greenfield production path. Boxes assign responsibility; they do not
 assert that every connection is implemented. The implementation and qualification
 state remains in [status](status.json). DDK has no independent execution journal
 or mutable selection. Every reader uses the same current catalog format.
+The inner native boundary marks the verified source25 local-file job path.
+Dashed boxes identify native input and publication capabilities still required
+for production; acquisition adoption and full application acceptance also remain
+open.
 
 ```mermaid
 flowchart TB
@@ -126,13 +130,15 @@ flowchart TB
         admit["Admit operation identity, scope and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
         input_admission["Admit exact inputs and original producer evidence — native support pending"]
-        prepare["4. Infer every named schema without executing data"]
-        compute["5. Execute the captured JobSpec with exact input custody"]
-        candidate["Retain candidate, required reports and useful checkpoints"]
-        verify["Check the original SQL reports under their declared rules"]
-        accept["6. Accept complete native report evidence"]
-        requalify["Policy-only change: requalify the retained candidate under fresh authority"]
-        select["8. Select the checked candidate under original authority"]
+        subgraph local_jobs["Verified local-file retained jobs — source25"]
+            prepare["4. Infer every named schema without executing data"]
+            compute["5. Execute the captured JobSpec over pinned local files"]
+            candidate["Retain candidate, required reports and useful checkpoints"]
+            verify["Check the original SQL reports under their declared rules"]
+            accept["6. Accept complete native report evidence"]
+            requalify["Policy-only change: requalify the retained candidate under fresh authority"]
+            select["8. Select the checked candidate under original authority"]
+        end
         intent["Freeze result, qualification, inventory, destination and original authority — native support pending"]
         lifetime["Release transient admission and computation resources after their last consumer; protect retained data obligations"]
         retain --> input_admission --> compute --> candidate
@@ -270,9 +276,21 @@ seventeen exports, five reports and a forty-file inventory at the original
 resource lifetime failure for the bounded fixture. Transient native resource
 ownership stays inside DocSpec, as shown above; the application adds no resource
 or retry controller. Recorded identities, sizes, timestamps, modes and link
-counts for all 1,089 source20 files stayed unchanged. The synthetic fixture has
-no producer prerequisites; the full native gate and production admission remain
-separate requirements.
+counts for all 1,089 source20 files stayed unchanged. This synthetic fixture has
+no producer prerequisites; production admission remains a separate requirement.
+
+Source25 subsequently passed the complete required native gate, all four
+installed dev6 consumer cases and the fresh rich Congress fixture on its first
+attempt. The fixture used the same limits and produced seventeen exports, five
+reports and forty inventory files; its entity reader scenario passed. The
+watchdog measured 26.3 seconds and 0.346 GiB peak process RSS. All 1,776 earlier
+source20/source22 and local-catalog custody records stayed unchanged. The native
+gate took 849.80 seconds and left no owned process running. Its closeout, gate,
+consumer and Congress receipts were hash-verified. This closes the local-file
+retained-job repair represented by the inner boundary above. Native package and
+profile qualification, original native table custody, producer prerequisites and
+publication intent remain separate. The production runtime pin and the original
+runtime identities of earlier accepted releases are unchanged.
 
 The model entry now supplies explicit native selection authority, requires
 original producer prerequisites and verifies the configured executable before

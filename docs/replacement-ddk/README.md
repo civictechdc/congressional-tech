@@ -23,10 +23,11 @@ observations preserve their evidence and produce no selected release. Independen
 red/green source reviews found no remaining concrete issue in the scoped recovery,
 path-separation and incomplete-observation fixes. The preserved small fixture now
 passes native acceptance, DDK qualification and selection after a policy-only
-schema repair. Its original exports were reused without computation. The source22
-development runtime also passed the current rich fixture on its first fresh
-attempt at the original limits. Final runtime qualification and production input
-admission remain separate.
+schema repair. Its original exports were reused without computation. The source25
+development runtime passed its complete required native gate and the current rich
+fixture on its first fresh attempt at the original limits. This closes the scoped
+local-file retained-job repair. Native package/profile qualification, production
+input admission and publication remain separate.
 
 The model entry verifies mandatory runtime pins, retains local input paths through
 uncertain admission, and resumes only the original request and digest. Both new
@@ -101,12 +102,20 @@ The latest focused application evidence includes:
   The watchdog measured 21.9 seconds and 0.354 GiB peak process RSS. All 1,089
   existing source20 files kept identical recorded file identities, sizes,
   timestamps, modes and link counts. This bounded synthetic proof uses no
-  producer prerequisites; full native qualification and production admission
-  remain open.
+  producer prerequisites; the later source25 gate below supplies separate native
+  evidence, while production admission remains open.
+- Source25 passed the complete required native gate in 849.80 seconds, the four
+  installed dev6 consumer cases, and one fresh rich Congress fixture at the same
+  limits. The fixture produced 17 exports, five reports and 40 inventory files;
+  its entity reader scenario passed. It took 26.3 seconds with 0.346 GiB peak
+  process RSS. All 1,776 earlier source20/source22 and local-catalog custody
+  records stayed unchanged. The source25 closeout and its gate, consumer and
+  fixture receipts were hash-verified. The source20 reader files keep their
+  original runtime identity; the production runtime pin remains unchanged.
 - The earlier full MCP suite passed 138 cases, with 3 replacement-producer
   cases pending. Current consumer transport and non-native gate tests passed
-  51 cases. The current rich entity Node scenario passed against both the
-  recovered source20 result and the fresh source22 result.
+  51 cases. The current rich entity Node scenario passed against the
+  recovered source20 result and the fresh source22 and source25 results.
 - A separate local viewer catalog assembled through installed DDK dev6 from
   the original source20 definitions and accepted receipt. It contains 23 dataset
   declarations, 17 exact versions and file representations, one run and 160
@@ -139,10 +148,10 @@ machinery and export copying.
 | [Runtime gaps](runtime-gaps.md) | Shared capabilities still needed from their owner |
 | [Reviews](reviews/active-greybeard-review.md) | Scoped reviews and historical decisions |
 
-The remaining work includes final runtime qualification and broader cold recovery;
-rich entity browser and remaining producer-consumer acceptance; original native
-source custody and producer prerequisites; frozen publication intent; explicit
-policy-bound capture fields;
+The remaining work includes native package/profile qualification and broader
+cold recovery; rich entity browser and remaining producer-consumer acceptance;
+original native source custody and producer prerequisites; frozen publication
+intent; explicit policy-bound capture fields;
 actual acquisition and nonarchive adoption; and authentic data and efficiency
 acceptance. Retained rows keep their original versions. A changed application
 lockfile does not authorize restamping them or bypassing producer admission.
