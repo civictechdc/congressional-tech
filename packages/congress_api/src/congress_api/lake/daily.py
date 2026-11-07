@@ -18,7 +18,7 @@ from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStor
 from congress_api.retention.writer_identity import writer_identity
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
-from congress_api.retention.provenance import field,file_pin,instant,json_input,local_unreadable_inventory,parquet_output,run_job
+from congress_api.retention.provenance import durable_json,field,file_pin,instant,json_input,local_unreadable_inventory,parquet_output,run_job
 from congress_api.retention.provenance_inventory import UnreadableInventory,unreadable_inventory
 from congress_shared.custody import custody_identity,VerifiedFile
 
@@ -975,6 +975,13 @@ def append_scoped_recovery(prepared, *, engine, catalog_root, targets, producer_
     rows={name:pq.read_metadata(path).num_rows for name,path in stages.items()}
     if rows['captures']!=1 or rows['filename_readings']>1:
         raise ValueError('Scoped recovery admits one capture row and at most one filename row')
+    capture,=pq.read_table(stages['captures'],columns=['receipt_key','mode','original_url']).to_pylist()
+    names=pq.read_table(stages['filename_readings'],columns=filenames.PK).to_pylist()
+    if (capture['receipt_key']!=prepared['receipt_key'] or capture['mode']!='retained_import'
+            or [[row['filename'],row['source_url']] for row in names]!=prepared['filename_pairs']
+            or any(row['source_url']!=capture['original_url'] or row['catalog_version']!=versions['filename_readings']
+                   for row in names)):
+        raise ValueError('Scoped recovery staged keys differ from the admitted receipt and filename')
     keys={'captures':['receipt_key'],'filename_readings':filenames.PK}
 
     def prove_delta(name,head,phase):
@@ -1010,6 +1017,7 @@ def append_scoped_recovery(prepared, *, engine, catalog_root, targets, producer_
     for name,path in stages.items():
         if heads[name]!=base[name] or not rows[name]:
             continue
+        _record_activation_file(prepared['stages'][name],'Scoped recovery')
         if name not in state['intents']:
             state['intents'].append(name)
             durable_json(journal,state)
