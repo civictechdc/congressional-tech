@@ -2,10 +2,15 @@
 
 Each entry binds a package and one-based witness locator to the SHA-256
 of the stripped original line. A supplied name is the person named in
-the entry. The original MODS retains the full paper or heading text.
+the entry. The optional third value distinguishes a reviewed paper from
+a member's own statement. The original MODS retains the full text.
 """
 
-MODS_RECORD_ENTRIES: dict[str, dict[int, tuple[str, str | None]]] = {
+from typing import Literal
+
+RecordEntry = tuple[str, str | None] | tuple[str, str | None, Literal["record_material"]]
+
+MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-106hhrg55613': {
         3: ('41d409bf6240374a4ac65994590e3e72b3f2fc3e907830c977986df22a2439b3', None),
     },
@@ -141,6 +146,11 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, tuple[str, str | None]]] = {
     'CHRG-112hhrg64533': {
         5: ('c7e315dd2ba93cb317d4385401363d47910263e53ebc7db7dcaa3009b5bc25ed', None),
     },
+    'CHRG-112hhrg68336': {
+        2: ('81b348c4e8e2bcd85d4ad1951484b8a2112948477874c71b9a27b48e12a96109', None),
+        15: ('0022e0935d7db8e7c4a2704e5ae72d0302b4a14ca1960bd2b3b75ca4413864ed', None),
+        24: ('fc6e158ea53f2020b569eb9c172fc0a416e630ac062e5f2845f5139f32b41ea1', None),
+    },
     'CHRG-112hhrg73287': {
         6: ('0107bdea1d4c4a9838cd18c1d8cc0b47d11df810d74bf7e6edd260c2f8624f58', None),
     },
@@ -206,8 +216,20 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, tuple[str, str | None]]] = {
     'CHRG-114shrg94274': {
         2: ('c9938097cc6447df2cdfac661cf536bdc95f4b470de9722f5220ee39a0f01e9e', 'Eugene Dodaro'),
     },
+    'CHRG-115shrg33409': {
+        2: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
+        4: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
+        6: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
+        8: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
+    },
     'CHRG-115shrg57804': {
         6: ('b84f0982a08e4207738d802d274b2556ca23cf908c7d9a513c10e25bb465ef77', None),
+    },
+    'CHRG-116hhrg44091': {
+        10: ('f81ee95c12cf35889542143e57008238f6cf04a93b39f48a28ca8592d2276977', 'David Cicilline', 'record_material'),
+        11: ('1e2c28c1352c50c9ced760ead7e4fa278362445391db9cabedd0fbadf28c07c7', 'David Cicilline', 'record_material'),
+        12: ('f4f441fa3bba03c5e8e5c2e84486a7865bbb775e54ae0082b3fc5c8dbc82c5f6', 'David Cicilline', 'record_material'),
+        13: ('da87589782b6dafb128c6ec0ebd6a3a3220220cd6679112e7810760cd0ebb99e', 'David Cicilline', 'record_material'),
     },
     'CHRG-117hhrg49906': {
         73: ('90fad09498efeba8e1f7def4b216fe40478737e6790fff0f055b18d4763fa13a', 'Glenn Thompson'),

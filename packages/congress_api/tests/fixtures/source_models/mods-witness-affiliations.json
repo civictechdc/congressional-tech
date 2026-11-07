@@ -187,17 +187,6 @@
     }
   },
   {
-    "body_sha": "19b1cd54b72cd9daed3c2917d0e28550fcb2953706f59d45f5b0e25849741199",
-    "locator": "mods:witness[8]",
-    "package": "CHRG-115shrg33409",
-    "literal": "Senators Warner, Cotton, Tillis, and Jones",
-    "expected": {
-      "position": null,
-      "organization": null,
-      "on_behalf_of": null
-    }
-  },
-  {
     "body_sha": "b0456b43ab20321071e494587ebb627945115eed1d4e2a830de16928bc933d18",
     "locator": "mods:witness[6]",
     "package": "CHRG-110hhrg35234",

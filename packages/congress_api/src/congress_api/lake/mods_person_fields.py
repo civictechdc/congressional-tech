@@ -7,12 +7,26 @@ representation by itself. Original bytes retain that listing context, separate
 companions, and printed headings.
 """
 
-MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'CHRG-106hhrg57366': {16: ('e2cfadbffcc3963c6c3327d2776800f935715c5c9065b95d7657e3b1a9530966',
+MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'CHRG-106hhrg57366': {9: ('7409e3e059e4a34a44b1d0051d29d0b52acbcdda5994016eb97ea4000ce610cc',
+                            {'honorific': None,
+                             'name': 'Barbara D. Bovbjerg',
+                             'on_behalf_of': None,
+                             'organization': 'U.S. General Accounting Office',
+                             'position': 'Associate Director, Income Security Issues, Health, Education, '
+                                         'and Human Services Division'}),
+                       16: ('e2cfadbffcc3963c6c3327d2776800f935715c5c9065b95d7657e3b1a9530966',
                             {'honorific': None,
                              'name': 'Joan Entmacher',
                              'on_behalf_of': None,
                              'organization': None,
-                             'position': None})},
+                             'position': None}),
+                       18: ('1a334aac5299b5c453afb03c6e909afe925ae150a8d98f7b5f1793a69c66ae5d',
+                            {'honorific': None,
+                             'name': 'Cynthia M. Fagnoni',
+                             'on_behalf_of': None,
+                             'organization': 'U.S. General Accounting Office',
+                             'position': 'Director, Income Security Issues, Health, Education, and '
+                                         'Human Services Division'})},
  'CHRG-106hhrg59318': {7: ('70b7003995f3e6446f871d30daad739b4384edf55b82d0ae0848e1ea81909f33',
                            {'organization': 'Resources, Community and Development Division, U.S. General '
                                             'Accounting Office',
@@ -1057,8 +1071,6 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
                            {'organization': 'Ballad Health, Johnson City, TN',
                             'position': 'Executive Chairman, President, and Chief Executive Officer'}),
                        4: ('875d246b735b07531dffbbf8ca5b2b8091d0c7832a0bc302e82d6f024bf66d7d',
-                           {'on_behalf_of': None, 'organization': None, 'position': None})},
- 'CHRG-115shrg33409': {8: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07',
                            {'on_behalf_of': None, 'organization': None, 'position': None})},
  'CHRG-115shrg34306': {2: ('48a659bff340229fd884f9f4844d5b6fab845a98509fe749169049b1ca1e8b10',
                            {'organization': 'Navistar, Inc',

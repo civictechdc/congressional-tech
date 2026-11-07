@@ -1235,12 +1235,12 @@ def extract_mods_observation(
         source_locator = f"mods:witness[{idx}]"
         reviewed = reviewed_entries.get(idx)
         if reviewed and sha256(cleaned_line.encode()).hexdigest() == reviewed[0]:
+            entry_type = "member_statement" if _MEMBER_STATEMENT.search(cleaned_line) else "record_material"
             raw_rows.append(
                 {
                     "source_locator": source_locator,
                     "name": reviewed[1],
-                    "witness_type": ("member_statement" if _MEMBER_STATEMENT.search(cleaned_line)
-                                     else "record_material"),
+                    "witness_type": reviewed[2] if len(reviewed) == 3 else entry_type,
                     "display_order": len(raw_rows) + 1,
                     "document_links": [],
                 }
