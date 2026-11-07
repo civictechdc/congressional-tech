@@ -2,7 +2,7 @@
   "version": 1,
   "date": "2026-11-07",
   "objective": "Full end-to-end DDK replacement for the congressional-tech workspace",
-  "phase": "greenfield-implementation-standard-catalog-required",
+  "phase": "stopped-before-full-model-execution",
   "worktree": "/Users/mikewolfd/.codex/worktrees/9c45/congressional-tech",
   "branch": "codex/ddk-congress-replacement-20261106",
   "baselineCommit": "a06eb64bf3caa4a44e12a89bdd08939323de3092",
@@ -174,14 +174,7 @@
     "Prepared the full 253-step model request with all eight accepted custody references and 45 unchanged local input members. The maintained helper preserves exact adopted rule bytes after comparing their content. Preparation passed in 2.9 seconds at 0.149 GiB RSS without native execution, schema inference, provider calls or payload opens.",
     "The retained-rule helper change passed independent source review and all 18 focused application metadata cases, including changed-rule and changed-pin refusal. The owned process group was confirmed empty; this is a partial lane result."
   ],
-  "active": [
-    "Execute the prepared full model after separate resource admission. Reuse accepted native input custody and passed schema evidence.",
-    "Qualify the maintained application entry, readers and cold recovery against the full model outputs. Preserve earlier fixture evidence and runtime identities.",
-    "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
-    "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
-    "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings",
-    "Integrate native frozen publication intent, actual publisher permission/restore fencing and complete intent/upload/reader lifetime accounting; generation-pin union is corrected but pending-prefix retirement remains open. Public execute stays closed."
-  ],
+  "active": [],
   "tests": {
     "replacementAcceptance": "not_run",
     "pythonLanes": "no full lane run; focused checks passed as separately recorded; earlier failed provisional experiment retained",
@@ -1377,7 +1370,7 @@
         "rowsDecoded": 0,
         "smallPreparedArtifactBytesHashed": 119716
       },
-      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB\u2192reviewedB fixed daily/direct classification; reviewedB\u2192C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
+      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB→reviewedB fixed daily/direct classification; reviewedB→C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
       "schemaAuthority": "Source09 proof inference matched original observed input schemas and decoded report schemas. Full staged model inference refused missing capture_disposition; no accepted current model policy.",
       "nativeAdoption": "not_run",
       "nativeJobs": "no_payload_execution; separate schema-only calls recorded below",
@@ -1745,6 +1738,14 @@
       "watchdogSeconds": 4.2,
       "ownedGroupConfirmedEmpty": true,
       "scope": "One focused application metadata file; no repeated producer proof, adoption, schema inference or full model. Doctor's fixed reading-version samples are not broader parser equivalence evidence."
+    },
+    "modelPrelaunch": {
+      "result": "failed before process/capacity admission; model not started",
+      "error": "ValueError: No closing quotation while applying shlex.split to ps display text",
+      "modelNativeCalls": 0,
+      "watchdogStarted": false,
+      "ownedModelProcessGroup": null,
+      "cleanup": "No model process was created; fresh numeric census found no members of prior groups 10057, 95952 or 18853."
     }
   },
   "commits": {
@@ -2120,6 +2121,21 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/model-preparation-01/tests-terminal.json",
       "sha256": "156c7b5eb8096db9be5a5694697f9e3910526502d7b3dc74f727e0c087aac72e",
       "size": 3320
+    },
+    "modelPrelaunch": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/model-execution-02/prelaunch-refusal.json",
+      "sha256": "abeafc037d0d75ab3a72d519e41721e8b4bd6ab8459909388e14bae1f01530f0",
+      "size": 1598
+    },
+    "stoppedHandoff": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/model-execution-02/stop-handoff.json",
+      "sha256": "bd75400a70766442c4986fc6cf30d14d47fb2dab63d5381a9fe19de58d39f646",
+      "size": 3545
+    },
+    "stoppedProcessCensus": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/model-execution-02/stop-process-census.json",
+      "sha256": "8e9c0bd24e85ae3b706acea504565cfb76b71fdd5287b5129dae866aee461dde",
+      "size": 706
     }
   },
   "constraints": {
@@ -2203,5 +2219,22 @@
       "currentAcceptances": 0,
       "successorModel": "Complete policy-bound 52-input/253-step definition; native schema inference complete and counter policy corrected; adoption and model acceptance pending"
     }
+  },
+  "pendingOnResume": [
+    "Execute the prepared full model after separate resource admission. Reuse accepted native input custody and passed schema evidence.",
+    "Qualify the maintained application entry, readers and cold recovery against the full model outputs. Preserve earlier fixture evidence and runtime identities.",
+    "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
+    "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
+    "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings",
+    "Integrate native frozen publication intent, actual publisher permission/restore fencing and complete intent/upload/reader lifetime accounting; generation-pin union is corrected but pending-prefix retirement remains open. Public execute stays closed."
+  ],
+  "session": {
+    "state": "stopped_at_user_request",
+    "modelStarted": false,
+    "ownedRuntimeRemaining": false,
+    "activeGoal": false,
+    "queuedAutoContinuation": false,
+    "priorRuntimeReleases": "Superseded by explicit stop; future execution requires an explicit resume and fresh admission.",
+    "handoff": "/Users/mikewolfd/.codex/worktrees/9c45/congressional-tech/docs/replacement-ddk/handoff-2026-11-07.md"
   }
 }
