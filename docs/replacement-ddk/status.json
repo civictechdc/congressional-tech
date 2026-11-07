@@ -155,10 +155,11 @@
     "Prepared the optional private --snapshot-source execution path through existing model and measurement entry points. It stays outside saved requests, profiles and outputs; native owns source settings, credentials and retry placement. All 32 focused application metadata cases passed with fake native transport in 4.4 seconds at 0.236 GiB RSS. No DocSpec or corpus calls; execution requires the next qualified SDK/native tuple. Both independent source reviews accepted the scoped change.",
     "Installed SDK2 with the optional source-reader API. All 117 wheel members match, the other 131 versions remain unchanged, and reused controls passed seven retained proof checks plus 32 partial application cases. Both independent reviews accepted; no native or corpus call occurred.",
     "Committed e743ffdd: fresh and resumed model execution share explicit host metadata capture/recovery bounds; two retained fake-transport cases and independent static review pass. These bounds do not establish aggregate reply fit.",
-    "Prepared successor execution metadata from committed source e743ffdd. The maintained renderer reproduces the exact original model JobSpec 7652afbe; all 45 local input members retain custody, with no payload/provider/native reads. Original producer facts remain unchanged."
+    "Prepared successor execution metadata from committed source e743ffdd. The maintained renderer reproduces the exact original model JobSpec 7652afbe; all 45 local input members retain custody, with no payload/provider/native reads. Original producer facts remain unchanged.",
+    "Final-runtime schema-only validation passed for the exact original producer proof and full model: two calls, all eight observed native input schemas, 9 required proof counters, 7 informational history fields and 225 required model counters. Both original policies remain valid. Two independent terminal reviews accepted; no input admission or row execution ran."
   ],
   "active": [
-    "Confirm proof and complete model schemas on the final qualified runtime, adopt the exact successor definition, then prepare and accept the original producer proof and policy-bound 52-input model. Historical inference and all 225 required counters remain pinned; no original-data execution has run.",
+    "Install and qualify the SDK successor process-group option, bind the actual application/package identity, adopt the exact successor definition, then prepare and accept the original population proof and 52-input model. The final-runtime schema evidence is complete and retained.",
     "Complete successor native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
     "Qualify local shared input reuse through the installed successor; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
@@ -1914,9 +1915,32 @@
       }
     },
     "successorModelMetadata": {
-      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/preparation/handoff.json",
-      "sha256": "b292e805924055ac6f846d8a12d99c81cec103713113a99a3e9497a783e3f982",
-      "size": 6853
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/preparation/final-handoff.json",
+      "sha256": "a7357fefa4cc2d4737e4e8b8aa4d8b361ae41a25639b502c4e524b4751a61c7e",
+      "size": 8482
+    },
+    "freshOriginalSchemaChecks": {
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/handoff.json",
+        "sha256": "702e436687df3c62ea55ec3092e608c6255341189b1e34dc77bc09fc124ae0cc",
+        "size": 2983
+      },
+      "closeout": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/schema-closeout.json",
+        "sha256": "c6bde8baaccabb2110344f2460b56714b5912347b5ebb2a135dcc56154a7a787",
+        "size": 2735
+      },
+      "review": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/schema-terminal-review.json",
+        "sha256": "58ca3eaad781c3144ada7d8cd9dddaa24109aad88c37751246b72e3a4449b27f",
+        "size": 1627
+      },
+      "nativeCalls": 2,
+      "watchdogSeconds": 9.3,
+      "peakRssGiB": 0.202,
+      "peakPhysicalGiB": 0.092,
+      "inputAdmission": "not_run",
+      "execution": "not_run"
     }
   },
   "constraints": {
@@ -1938,7 +1962,7 @@
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
     "archiveModelControllerRetired": true,
-    "producerDefinitionPreparation": "The current committed owner reproduces the original model JobSpec byte for byte. Successor execution profiles now bind the selected readings version, observed native schemas, execution runtime and current definition fingerprints. Final-runtime proof/model inference, exact successor adoption, population proof and complete model acceptance remain pending. All 24,028 historical_exact and refresh_live obligations remain unresolved; no new official-source acquisition is authorized."
+    "producerDefinitionPreparation": "The exact successor definition and adoption request are frozen; only the DDK interpretation identity changed. Original producers, interpretation facts, selectors, JobSpecs, policies and local inventory remain intact. Both jobs passed fresh schema-only inference on native 255c1848/e2ed2646; the original 9-counter proof and 225-counter model policies remain valid. Adoption, population values and full model data acceptance remain pending. All 24,028 recovery/refresh obligations remain unresolved."
   },
   "definitionImplementation": {
     "state": "Qualified dev6 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Actual retained application execution remains under acceptance.",

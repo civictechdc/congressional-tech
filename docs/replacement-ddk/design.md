@@ -107,7 +107,9 @@ The inner native boundary marks the source25 local-file gate and the source09
 local snapshot/reuse development cases. Seven installed SDK binding checks now
 preserve original accepted producer evidence without payload reads. SDK2 installs
 the optional private source path; 32 application cases pass with fake transport.
-Final installed-profile and original-provider qualification remain open.
+SDK2's installed-profile qualification and both original JobSpec schema checks
+have passed. Managed execution awaits the successor SDK's host process-group
+option; original-provider and data qualification remain open.
 Dashed boxes identify producer adoption, prerequisite enforcement and publication
 capabilities still required for production. Congress has staged the exact source
 facts, observed schemas, current jobs and required counter policies against a
@@ -155,7 +157,7 @@ flowchart TB
         input_admission["Model admission resolves exact accepted proof, both policies and inherited input custody — pending"]
         file_binding["Compare every local input's bytes with the adopted definition, including selected recovery requirements — pending"]
         subgraph local_jobs["Local runtime evidence — original-data validation pending"]
-            prepare["4. Infer proof and complete model schemas on final runtime — pending; earlier model inference retained"]
+            prepare["4. Infer exact proof and model schemas on final runtime — passed; no data admitted"]
             counter_policy["Bind all 225 original counters to inferred schemas; actual null or nonzero values still refuse"]
             compute["5. Execute the captured JobSpec over admitted exact inputs"]
             candidate["Retain candidate, required reports and useful checkpoints"]
@@ -244,7 +246,7 @@ flowchart TB
     lifetime -.-> retirement
     present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
-    class acquisition_admit,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,prepare,first_intent,intent,permission,retirement pending
+    class acquisition_admit,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
 ```
 
 The producer path uses the existing native dataset authority and retained job
@@ -325,19 +327,30 @@ preparation, selected daily versions, profile identity and maintenance refusal.
 They are partial suites. The successor SDK is installed; actual v3 application
 acceptance remains pending. These checks establish application metadata behavior only.
 
-The [current execution preparation](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/preparation/handoff.json)
+The [current execution preparation](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/preparation/final-handoff.json)
 captures committed source `e743ffdd`, the selected combined-readings version,
-eight observed native schema identities and the successor execution runtime.
+eight observed native schema identities and the successor execution runtime,
+including its actual `remote`, `substrait` and `test-util` build features.
 It preserves the original producer facts and all 45 local input members.
 The current maintained renderer reproduces the original 52-input, 253-step model
 JobSpec byte for byte. No payload, footer, provider or native read was needed.
 The new definition capture has its own identity and must be reused at final
 request preparation; its local source paths are part of DDK interpretation
-identity. Earlier inference remains historical until the final runtime checks it.
+identity. The [fresh schema checks](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/original-data-execution-01/handoff.json)
+now bind both original jobs to native source `255c1848` and binary `e2ed2646`.
+They preserve nine required proof counters, seven informational history fields
+and all 225 required model counters. The model's inputs, steps, outputs and
+reports use 293 distinct schemas. Its new stdout is byte-identical to the earlier inference,
+but its new path, runtime and execution evidence remain separate. Both original
+policies remain valid; the proof schema's IPC serialization differs while its
+decoded schema, including metadata, is equal. Two independent reviews accepted
+this schema-only result. Neither input admission nor row execution ran.
 
-Fresh model execution and resume use one adapter constructor with explicit host
-metadata limits. Two retained fake-transport cases and independent static review
-verify that forwarding. Native report buffers, the complete encoded reply and
+Fresh model execution and resume share one adapter constructor with explicit host
+metadata limits. That forwarding passed two retained fake-transport cases and
+independent static review. Host process-group wiring is prepared for the qualified
+SDK successor; its installed application acceptance remains pending. Native
+report buffers, the complete encoded reply and
 SDK recovery records have separate limits; equal configured values do not prove
 that the combined reply fits. The bounded run plan also accounts for Python
 parsing, native conversion, input custody, spill and retained outputs. A timeout
