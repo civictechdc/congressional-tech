@@ -19,6 +19,7 @@ from viewer_publication.archive_backfill_job import execute, load_spec, plan
 from viewer_publication.producer_proof import BACKFILL
 
 STAMP = '2026-11-06T18:00:00Z'
+HOUSE_ORIGIN = '742dbe70b42f0618e95816cd7cf0e6ba2f9939b0'
 GOOD = b'<committee-meeting meeting-id="HMKP117001" update-date="2020-01-01"/>'
 BAD = b'<committee-meeting'
 RESOLUTION = b'<resolution><title>Complete resolution</title></resolution>'
@@ -48,6 +49,23 @@ def writer(monkeypatch):
     monkeypatch.setattr(transition, 'writer_identity', lambda *a: value)
     import congress_api.retention.writer_identity as identity
     monkeypatch.setattr(identity, 'writer_identity', lambda *a: value)
+
+    # This fixture replays the historical House-only change. Its pinned
+    # predecessor never produced a later MODS generation.
+    from viewer_publication import producer_proof
+    versions_at = producer_proof.versions_at
+    historical_mods = versions_at(HOUSE_ORIGIN)['appearance_records']['mods']
+    current_versions = transition.appearance_records.current_versions
+    monkeypatch.setattr(transition.appearance_records, 'current_versions',
+        lambda **kw: dict(current_versions(**kw), mods=historical_mods))
+
+    def fixture_versions_at(revision, **kw):
+        versions = versions_at(revision, **kw)
+        if revision == commit:
+            return dict(versions, appearance_records=dict(versions['appearance_records'], mods=historical_mods))
+        return versions
+
+    monkeypatch.setattr(producer_proof, 'versions_at', fixture_versions_at)
     return value
 
 
@@ -76,7 +94,7 @@ def make_spec(tmp_path, *, selected=None, candidate_extra=None, decisions=(), bo
         bases[name] = dict(kind='parquet', **pin(path))
         origin = tmp_path / (name + '.origin.json')
         origin.write_text(json.dumps(dict(version=1, input=name, selector=bases[name], job=BACKFILL,
-            commit='742dbe70b42f0618e95816cd7cf0e6ba2f9939b0', lockfile_digest=file_pin(transition.ROOT / 'uv.lock')['sha256'])))
+            commit=HOUSE_ORIGIN, lockfile_digest=file_pin(transition.ROOT / 'uv.lock')['sha256'])))
         origins[name] = pin(origin)
         keys = {row['record_sha'] for row in selected[name]} | set(candidate_extra.get(name, []))
         key_path = tmp_path / (name + '.keys.parquet')
@@ -337,7 +355,7 @@ def activation_fixture(tmp_path, writer, monkeypatch, *, conflict=False):
                 tables={name: targets[name]})[name]
             selector = dict(kind='native_table', **head)
             origin = dict(version=1, input=name, selector=source, job=BACKFILL,
-                commit='742dbe70b42f0618e95816cd7cf0e6ba2f9939b0', lockfile_digest=writer['lockfile_digest'])
+                commit=HOUSE_ORIGIN, lockfile_digest=writer['lockfile_digest'])
             anchor = dict(version=1, input=name, selector=selector, job=IMPORT,
                 commit=origin['commit'], lockfile_digest=origin['lockfile_digest'], source={k: v for k, v in source.items() if k != 'kind'},
                 origin=dict(record=origin))
@@ -429,6 +447,47 @@ def test_activation_resume_does_not_append_duplicate_rows(tmp_path, writer, monk
         monkeypatch.setattr(module, 'append', lambda *a, **kw: pytest.fail('reappended completed activation'))
     spec['house_xml_activation']['resume'] = True
     assert activate(spec)['pins'] == first['pins']
+
+
+def test_mods_activation_appends_only_appearance_generation_and_resumes(tmp_path, writer, monkeypatch):
+    from congress_api.lake import daily, tables
+    from congress_api.lake.producer_records import ProducerRecords
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    from docspec_client.client import NativeDatasets
+    from viewer_publication import archive_house_xml_activation as activation
+    from viewer_publication.producer_proof import snapshot_reasons
+
+    spec, _ = activation_fixture(tmp_path, writer, monkeypatch)
+    job = spec['house_xml_activation']
+    prepared = activation.prepare_activation(job['cohort'])
+    name = 'appearance_records'
+    versions = daily.appearance_records.current_versions()
+    records_path = tmp_path / 'mods.parquet'
+    rows = daily.appearance_records.table([dict(record_sha=digest(b'mods fixture'), source='mods',
+        parser_version=versions['mods'], status='completed', appearances=[])])
+    pq.write_table(rows, records_path)
+    prepared['tables'] = {name: dict(prepared['tables'][name], records=pin(records_path), version=versions['mods'])}
+    raw = Path(job['raw_root'])
+    records = ProducerRecords({key: Path(value['path']).read_bytes() for key, value in job['anchors'].items()}, root=raw)
+    work = tmp_path / 'mods-activate'
+    with NativeDatasets.from_config(spec['engine_config']) as engine, activation._activation_lock(job['catalog_root']):
+        initial = tables.resolve_tables(engine=engine, work=tmp_path/'mods-before', catalog_root=job['catalog_root'],
+                                        tables=job['tables'])
+        args = dict(engine=engine, raw_store=BodyStore(LocalAdapter(raw)), producer_records=records,
+                    catalog_root=job['catalog_root'], targets={name: job['tables'][name]}, work=work,
+                    decided_at=STAMP, max_output_bytes=32 << 20, min_disk_bytes=1)
+        result = daily.activate_mods_appearance_records(prepared, resume=False, **args)
+        final = tables.resolve_tables(engine=engine, work=tmp_path/'mods-after', catalog_root=job['catalog_root'],
+                                      tables=job['tables'])
+        assert set(result['pins']) == {name}
+        assert result['pins'][name] == dict(kind='native_table', **final[name])
+        assert final[name] != initial[name]
+        assert all(final[key] == head for key, head in initial.items() if key != name)
+        head, _ = records.find(name, final[name])
+        assert head['mods_appearance_transition']['records'] == pin(records_path)
+        assert not snapshot_reasons(dict(result['pins'], parser_versions={name: versions}), {name: head}, ledger=records)
+        monkeypatch.setattr(daily.appearance_records, 'append', lambda *a, **kw: pytest.fail('reappended a completed MODS generation'))
+        assert daily.activate_mods_appearance_records(prepared, resume=True, **args)['pins'] == result['pins']
 
 
 def test_activation_completion_requires_final_proof_and_preserves_prior_success(tmp_path, writer, monkeypatch):
