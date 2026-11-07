@@ -73,10 +73,11 @@
     "Committed exact-inventory parity and converter retirement as eb6f7466; 49 actual-path cases and independent red follow-up passed.",
     "Committed the current entity reader as 57a6bc3c: declared fields only, one dated-name resolver, preserved source unknowns, and filters bound to actual meetings or roster seats. Fifty-one focused authored-record and presentation cases passed with independent green follow-up.",
     "Fresh source20 development-runtime hand fixture passed native execution, acceptance, DDK checking, selection and hand-release assertions; all 34 files and exact prepared/accepted/selected identities were retained.",
-    "Original source20 rich attempt recovered under its exact original request, runtime and limits: accepted, qualified, selected, and the rich entity Node scenario passed. All 22 phase artifacts plus view-set/completion files and original request/definition files were unchanged; no new phase files."
+    "Original source20 rich attempt recovered under its exact original request, runtime and limits: accepted, qualified, selected, and the rich entity Node scenario passed. All 22 phase artifacts plus view-set/completion files and original request/definition files were unchanged; no new phase files.",
+    "Fresh source22 rich synthetic fixture passed its first native execution, acceptance, DDK qualification, selection, manifest assertions and entity Node scenario at unchanged 512 MiB memory/scratch and one thread. It produced 17 exports, five reports and a 40-file inventory; 1,089 source20 files kept unchanged custody. Final runtime qualification and production admission remain separate."
   ],
   "active": [
-    "Run fresh hand/rich fixtures and cold recovery with the next qualified native tuple; preserve the separately accepted original source11 fixture",
+    "Receive the full native qualification handoff after the source22 fresh rich fixture passed; complete broader cold recovery while preserving the separately accepted source11 and source20 evidence",
     "Finish exact native source custody, original producer prerequisites and frozen publication intent, then qualify the maintained application entry end to end",
     "Integrate parent-owned native multi-output candidate, required qualification, retained recovery and exact catalog membership",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
@@ -760,6 +761,55 @@
         }
       },
       "fullLane": false
+    },
+    "freshNativeSource22": {
+      "status": "passed",
+      "runtimeStatus": "scoped development candidate; full native gate and production handoff remain separate",
+      "binarySha256": "0ddf112c6390091e21306b9ec076769c12b8ee709ab1c57786e08080b3ab1167",
+      "sourceIdentitySha256": "07c75857f35998a4d4ffc6e5279b5df457ab68e1da615a053b75472e2de3fbd1",
+      "consumerHandoffSha256": "381180f07475dae29f650090223925dba26c67c61453b0d98cfefee121594c40",
+      "scope": "Development candidate; bounded synthetic fixture proof, not a pytest lane or production qualification",
+      "limits": {
+        "compute_threads": 1,
+        "memory_bytes": 536870912,
+        "scratch_bytes": 536870912,
+        "batch_rows": 2048,
+        "max_batch_bytes": 8388608,
+        "max_metadata_bytes": 33554432
+      },
+      "freshNativeAttempts": 1,
+      "retries": 0,
+      "nativePreparation": "passed",
+      "nativeExecution": "passed",
+      "nativeAcceptance": "passed",
+      "ddkQualification": "passed",
+      "selection": "selected",
+      "richEntityReaderScenario": "passed",
+      "releaseId": "2ca7b504da6ff44dfdf5cb5c03836e2c6fc2e4aac8f868145a078a9db50f081f",
+      "fileCount": 40,
+      "nativeExports": 17,
+      "nativeReports": 5,
+      "requestDigest": "46abc4412cc60f0487d9f4ca73b7a360ce7a568addc103dec6139aede4358d8c",
+      "preparedSha256": "48080aae85af74b338585708f95399a4d38c64daf5bc31ff5d7ccd14846b938f",
+      "acceptedQualification": "56cb8cbca3e6d5341c718e093c052ec13669d13fe943f5e01a53b5439959b957",
+      "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source22-01/result.json",
+      "inventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source22-01/files.json",
+      "inventorySha256": "6ad68300072d96eec4d7e70997f173dde2bf3e304a6430ebc633c09949415cc2",
+      "peakRSSGiB": 0.354,
+      "peakPhysicalGiB": 0.192,
+      "wallSeconds": 21.9,
+      "source20FilesWithUnchangedCustody": 1089,
+      "source20PreservationChecks": [
+        "device",
+        "inode",
+        "size",
+        "mtime_ns",
+        "ctime_ns",
+        "mode",
+        "link_count"
+      ],
+      "productionRuntimePinUnchangedSha256": "2b5651f58cec5c4aaf27e36f7f6ea22e6eef8062553a3a76dd5329cea84a43d3",
+      "fullLane": false
     }
   },
   "commits": {
@@ -899,7 +949,7 @@
   },
   "delivery": {
     "fullReplacementComplete": false,
-    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Full model, rich fixture and native publication acceptance remain pending.",
+    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Parent independently accepted the fresh source22 rich fixture proof. Full model, native qualification and publication acceptance remain pending.",
     "supersededInfrastructureRetired": false,
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
@@ -911,7 +961,7 @@
     "remaining": [
       "Actual full native JobSpec execution and original snapshot/producer admission",
       "Current acquisition and nonarchive caller adoption across the full scope",
-      "Fresh rich fixture, cold recovery and complete consumer acceptance",
+      "Broader cold recovery and complete consumer acceptance beyond the passed fresh source22 rich fixture",
       "Native frozen publication intent and application activation integration"
     ],
     "wheelSHA256": "41dbccda3367ea794f0040c165abd86f43d918ecee036cbce7307a0b98b18149"
@@ -919,7 +969,7 @@
   "simplification": {
     "requirement": "Standardize and streamline the whole catalog-to-validation stack; reduce custom machinery rather than accumulate compatibility patches",
     "decision": "One maintained DDK definition and rule generator; removed old schema validator and registry from production. Native lifecycle composition adds no application journal, mutable selection or data export copy.",
-    "nextIncrement": "Qualify fresh native execution, admit original source evidence and connect the existing publisher to native frozen intent without restoring an application phase journal",
+    "nextIncrement": "Finish full native qualification after the source22 fresh fixture proof, admit original source evidence and connect the existing publisher to native frozen intent without restoring an application phase journal",
     "historicalCompatibility": "Not required: greenfield migration updates every reader together. Old artifacts remain retained evidence; new-stack history and recovery remain required.",
     "performance": "Removed duplicate schema generator/validator and separate registry; no measured execution speedup claimed. Focused schema retirement peaked at 0.33 GiB RSS.",
     "design": "docs/replacement-ddk/design.md#simplification-is-part-of-acceptance"

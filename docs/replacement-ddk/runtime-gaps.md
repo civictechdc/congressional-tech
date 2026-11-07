@@ -13,9 +13,10 @@ handoff and application checks before it closes a native gap here.
 The original tiny fixture now has accepted native evidence, checked DDK metadata,
 finalized controls and native selection. A policy-only schema correction reused
 all eleven original exports without computation. Its 21 Node checks and six
-Python consumer cases passed. This establishes the captured fixture's path, not
-fresh rich-fixture execution or production input admission. Current callers
-require original producer prerequisites and retain the exact request for retry.
+Python consumer cases passed. This establishes the captured fixture's reuse path.
+The fresh rich-fixture evidence below remains separate from production input
+admission. Current callers require original producer prerequisites and retain
+the exact request for retry.
 The old model phase journal and daily continuation path are removed; normal
 nightly execution refuses before setup or candidate access while native frozen
 publication intent is unavailable. The remaining native work is exact snapshot
@@ -27,8 +28,17 @@ completed all seventeen exports and five reports before a final native capacity
 failure. One unchanged-request retry on that same runtime recovered acceptance
 and selection; all twenty-four phase/view/completion files retained identical
 bytes and custody. The rich Node reader scenario then passed. This qualifies
-that recovery path, while the fresh-path resource defect and the production
-runtime handoff remain open.
+that recovery path and preserves the original failure evidence.
+
+The source22 development runtime then passed the current rich fixture on its
+first fresh attempt: preparation, execution, acceptance, DDK checking, selection,
+manifest assertions and the entity Node scenario. It produced seventeen exports,
+five reports and forty inventory files at the unchanged 512 MiB memory and
+scratch limits with one thread, using 0.354 GiB peak process RSS over 21.9 seconds.
+This closes the reviewed fresh-path resource lifetime defect for that bounded
+fixture. All 1,089 source20 files retained identical recorded custody metadata.
+The fixture supplies no producer prerequisites; full native qualification,
+production input admission and the production runtime handoff remain open.
 
 | ID | Required result and present evidence | Owner and smallest next proof | Status |
 | --- | --- | --- | --- |

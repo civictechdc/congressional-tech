@@ -23,8 +23,10 @@ observations preserve their evidence and produce no selected release. Independen
 red/green source reviews found no remaining concrete issue in the scoped recovery,
 path-separation and incomplete-observation fixes. The preserved small fixture now
 passes native acceptance, DDK qualification and selection after a policy-only
-schema repair. Its original exports were reused without computation. A fresh run
-with the final runtime and current rich fixture remains required.
+schema repair. Its original exports were reused without computation. The source22
+development runtime also passed the current rich fixture on its first fresh
+attempt at the original limits. Final runtime qualification and production input
+admission remain separate.
 
 The model entry verifies mandatory runtime pins, retains local input paths through
 uncertain admission, and resumes only the original request and digest. Both new
@@ -73,8 +75,8 @@ The latest focused application evidence includes:
 - The current-field reader cleanup passed 51 unit and presentation cases. It
   removes alternate entity input shapes, shares dated committee-name resolution,
   and preserves source unknowns while joining actual meetings and roster seats.
-  This is authored-record evidence; fresh native rich-fixture acceptance remains
-  separate.
+  This is authored-record evidence; the fresh native rich-fixture result below
+  separately checks the selected data through the entity reader.
 - The full Node Explorer suite passed 124 cases against the fresh source20 hand
   inventory after fixing the budget test's input binding. Its oversized input
   stays an explicitly unqualified regression fixture; the test still requires
@@ -90,10 +92,21 @@ The latest focused application evidence includes:
   completed acceptance, DDK checks, selection and the rich entity Node scenario.
   All 22 phase files plus the view set and completion record kept identical bytes
   and custody; no new phase files appeared. Recovery peaked at 0.18 GiB RSS.
-  The fresh-path capacity failure and final runtime qualification remain open.
+  The subsequent source22 result below closes this fresh-path fixture failure;
+  the source20 recovery and original failure evidence remain retained separately.
+- A fresh rich fixture passed preparation, execution, acceptance, DDK checks,
+  selection, manifest assertions and the entity Node scenario with source22 on
+  its first attempt. It produced 17 exports, five reports and a 40-file inventory
+  at the unchanged 512 MiB memory and scratch limits with one compute thread.
+  The watchdog measured 21.9 seconds and 0.354 GiB peak process RSS. All 1,089
+  existing source20 files kept identical recorded file identities, sizes,
+  timestamps, modes and link counts. This bounded synthetic proof uses no
+  producer prerequisites; full native qualification and production admission
+  remain open.
 - The earlier full MCP suite passed 138 cases, with 3 replacement-producer
   cases pending. Current consumer transport and non-native gate tests passed
-  51 cases, while the complete rich entity scenario remains required.
+  51 cases. The current rich entity Node scenario passed against both the
+  recovered source20 result and the fresh source22 result.
 
 These are focused results, not a full Python lane, product release or production
 cutover. Durable receipts are under the main checkout's
@@ -112,9 +125,10 @@ machinery and export copying.
 | [Runtime gaps](runtime-gaps.md) | Shared capabilities still needed from their owner |
 | [Reviews](reviews/active-greybeard-review.md) | Scoped reviews and historical decisions |
 
-The remaining work includes fresh final-runtime execution and broader cold recovery; rich
-entity browser and consumer acceptance; original native-source custody and producer
-prerequisites; frozen publication intent; explicit policy-bound capture fields;
+The remaining work includes final runtime qualification and broader cold recovery;
+rich entity browser and remaining producer-consumer acceptance; original native
+source custody and producer prerequisites; frozen publication intent; explicit
+policy-bound capture fields;
 actual acquisition and nonarchive adoption; and authentic data and efficiency
 acceptance. Retained rows keep their original versions. A changed application
 lockfile does not authorize restamping them or bypassing producer admission.

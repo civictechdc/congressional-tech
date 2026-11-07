@@ -134,7 +134,7 @@ flowchart TB
         requalify["Policy-only change: requalify the retained candidate under fresh authority"]
         select["8. Select the checked candidate under original authority"]
         intent["Freeze result, qualification, inventory, destination and original authority — native support pending"]
-        lifetime["Protect live obligations; retire disposable work after its last consumer"]
+        lifetime["Release transient admission and computation resources after their last consumer; protect retained data obligations"]
         retain --> input_admission --> compute --> candidate
         prepare --> compute
         candidate --> requalify --> accept
@@ -186,6 +186,8 @@ flowchart TB
     publish --> consume
     observation -.-> discovery
     artifacts -.-> discovery
+    admit -.-> lifetime
+    compute -.-> lifetime
     candidate -.-> lifetime
     request -.->|"Retained input paths stay live through uncertain outcomes"| lifetime
     observation -.-> lifetime
@@ -226,8 +228,7 @@ schema-preparation repair supplied corrected report schemas; the original runtim
 then requalified the same candidate under a distinct policy. All eleven export
 files and the completion record kept their original custody, and no data was
 recomputed. The first failed observation remains retained. This qualifies reuse
-of that captured fixture only; a fresh run with the final repaired runtime and the
-current richer fixture is still required.
+of that captured fixture only; fresh development-runtime evidence follows below.
 
 The source20 development runtime subsequently completed a fresh hand fixture
 through that same selection boundary at the original limits. Its rich fixture
@@ -237,8 +238,20 @@ runtime, policy and limits completed acceptance, DDK qualification and selection
 All twenty-two phase files, the view set and completion record kept identical
 bytes and custody; no new phase files appeared. The selected forty-file inventory
 then passed the rich entity Node reader scenario. The original failure remains
-retained. This proves recovery; fresh-path resource and final runtime qualification
-remain open.
+retained. This proves recovery independently of the fresh source22 result.
+
+The source22 development runtime passed the current rich fixture on its first
+fresh attempt through native preparation, execution, acceptance, DDK checking,
+selection, manifest assertions and the entity Node reader scenario. It retained
+seventeen exports, five reports and a forty-file inventory at the original
+512 MiB memory and scratch limits with one compute thread. The watchdog measured
+21.9 seconds and 0.354 GiB peak process RSS. This closes the reviewed fresh-path
+resource lifetime failure for the bounded fixture. Transient native resource
+ownership stays inside DocSpec, as shown above; the application adds no resource
+or retry controller. Recorded identities, sizes, timestamps, modes and link
+counts for all 1,089 source20 files stayed unchanged. The synthetic fixture has
+no producer prerequisites; the full native gate and production admission remain
+separate requirements.
 
 The model entry now supplies explicit native selection authority, requires
 original producer prerequisites and verifies the configured executable before
