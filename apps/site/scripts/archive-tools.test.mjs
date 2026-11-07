@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {parquetMetadata} from 'hyparquet';
 import {startArchiveServer} from './archive-server.mjs';
 import {archiveFixture,loadArchiveFixture} from './archive-test-fixture.mjs';
 import {verifyArchive} from './verify-archive.mjs';
@@ -129,14 +130,26 @@ test('Node canary keeps its decoded budget without applying browser runtime ceil
     assert.throws(()=>checkTargets({releaseId:server.manifest.release_id,startupMs:2,searchMs:2,detailMs:2,heapBytes:2},targets,server.manifest.origin),/startupMs/);
     await assert.rejects(verifyArchive({...options,heapBytes:1}),{message:/^catalog\.ddk\.json exceeds the startup byte limit\./});
 
-    // Combine selected controls with a fixed, unqualified oversized list.
-    // Its recorded source hash describes its historical base, not this selection.
-    // Compressed bytes fit the allowance; the decoded list must exceed it.
-    const spec=JSON.parse(await readFile(new URL('./fixtures/decoded-budget-list.json',import.meta.url),'utf8'));
-    const listPath=fileURLToPath(new URL('./fixtures/decoded-budget-list.parquet',import.meta.url));
+    // Each bounded variant belongs to an exact selected list. Unknown inputs
+    // need their own schema-preserving fixture before this check can run.
+    const choices=await Promise.all(['decoded-budget-list','decoded-budget-list-source20'].map(async name=>({
+      name,spec:JSON.parse(await readFile(new URL(`./fixtures/${name}.json`,import.meta.url),'utf8')),
+    })));
+    const matches=choices.filter(({spec})=>spec.baseListSha256===selectedList.sha256);
+    assert.equal(matches.length,1,'The selected list needs one explicitly bound decoded-budget fixture.');
+    const {name:variantName,spec}=matches[0];
+    const listPath=fileURLToPath(new URL(`./fixtures/${variantName}.parquet`,import.meta.url));
     const listBytes=await readFile(listPath);
     assert.equal(spec.kind,'unqualified-reader-test-variant');
     assert.equal(sha256(listBytes),spec.listSha256);
+    const fieldSchema=bytes=>{
+      const schema=parquetMetadata(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)).schema;
+      // Writers name the root differently and may omit its REQUIRED marker.
+      // Preserve every actual field element, including all nested nullability.
+      schema[0]={...schema[0],name:'schema',repetition_type:schema[0].repetition_type??'REQUIRED'};
+      return schema;
+    };
+    assert.deepEqual(fieldSchema(listBytes),fieldSchema(selectedListBytes),'The decoded-budget fixture must preserve every selected Parquet field definition.');
     const manifest=structuredClone(fixture.manifest);
     manifest.files=manifest.files.map(file=>file.name==='list.parquet'?{...file,sha256:spec.listSha256,md5:createHash('md5').update(listBytes).digest('hex'),size:listBytes.length,rows:spec.rows}:file);
     manifest.release_id=sha256(JSON.stringify([manifest.schema_version,manifest.files.map(file=>[file.name,file.sha256,file.size,file.rows])]));
@@ -151,7 +164,7 @@ test('Node canary keeps its decoded budget without applying browser runtime ceil
       assert.match(error.message,/^Archive list exceeds the configured heap budget\./);budgetError=error.message;return true;
     });
     assert(variantServer.state.requests.some(request=>request.path.endsWith('/list.parquet')),'the bounded run fetched the list before decoded-budget refusal');
-    t.diagnostic(JSON.stringify({selectedReleaseId:fixture.manifest.release_id,selectedListSha256:selectedList.sha256,selectedDecodedPeakBytes:receipt.estimatedListPeakBytes,regressionListSourceSha256:spec.baseListSha256,variantReleaseId:manifest.release_id,variantListSha256:spec.listSha256,heapBytes,budgetError,nativeQualified:false}));
+    t.diagnostic(JSON.stringify({selectedReleaseId:fixture.manifest.release_id,selectedListSha256:selectedList.sha256,selectedDecodedPeakBytes:receipt.estimatedListPeakBytes,regressionListSourceSha256:spec.baseListSha256,variantFixture:variantName,selectedFieldSchemaPreserved:true,variantReleaseId:manifest.release_id,variantListSha256:spec.listSha256,heapBytes,budgetError,nativeQualified:false}));
   }finally{await variantServer?.close();await server.close();await rm(folder,{recursive:true,force:true});}
 });
 

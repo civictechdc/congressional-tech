@@ -1,0 +1,28 @@
+{
+  "kind": "unqualified-reader-test-variant",
+  "nativeQualification": "not_run",
+  "sourceReleaseId": "3589cc44ff4e0d8ceedc3a926fa29e6190dbf92b5ce46c6cb937e6580e967374",
+  "baseListSha256": "5f377b9b2732bb58d7be5ae4107527bc2ef32ccccdcdca67726168747d0876e4",
+  "listSha256": "8952f8c41649757f405261b34c1e1e38ce6974436a2d9b2a6ac39acef86922d4",
+  "rows": 7,
+  "encodedBytes": 5724,
+  "changedCell": {
+    "field": "title",
+    "row": 0,
+    "replacement": "X repeated 131072 times",
+    "characters": 131072
+  },
+  "allOtherValuesAndSchemaPreserved": true,
+  "strictSchemaEqualityIncludingMetadata": true,
+  "writer": {
+    "name": "pyarrow",
+    "version": "25.0.1",
+    "compression": "zstd",
+    "compressionLevel": 3,
+    "useDictionary": true,
+    "writeStatistics": false,
+    "writePageIndex": true,
+    "useCompliantNestedType": false
+  },
+  "purpose": "Preserve the selected source20 field schema while compressed bytes fit and decoded text exceeds the reader heap budget."
+}
