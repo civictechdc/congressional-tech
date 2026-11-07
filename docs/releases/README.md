@@ -1,6 +1,8 @@
 # Release notes
 
-Latest: [November 5, 2026 — e145d24c389e](2026-11-05-e145d24c389e.md).
+Latest: [November 7, 2026 — Congress Explorer 0.6.2 / 5d24699ad9fa](2026-11-07-5d24699ad9fa.md).
+
+Previous: [November 5, 2026 — e145d24c389e](2026-11-05-e145d24c389e.md).
 
 Each published archive release that changes keys or values against the live release gets
 a note here, named `<YYYY-MM-DD>-<release id, first 12>.md`. The publisher's gates write
