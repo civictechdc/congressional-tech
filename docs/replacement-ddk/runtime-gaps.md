@@ -22,6 +22,14 @@ publication intent is unavailable. The remaining native work is exact snapshot
 custody, original producer evidence, publication intent, and fresh execution and
 recovery qualification. [Status](status.json) records the evidence and limits.
 
+The source20 development runtime passed a fresh hand fixture. Its rich fixture
+completed all seventeen exports and five reports before a final native capacity
+failure. One unchanged-request retry on that same runtime recovered acceptance
+and selection; all twenty-four phase/view/completion files retained identical
+bytes and custody. The rich Node reader scenario then passed. This qualifies
+that recovery path, while the fresh-path resource defect and the production
+runtime handoff remain open.
+
 | ID | Required result and present evidence | Owner and smallest next proof | Status |
 | --- | --- | --- | --- |
 | G01 | Preserve exact nested native schema and field/element IDs. `ddk/adapters/docspec.py:444-459` accepts scalar Arrow type names only; `model/lake/meeting-records.schema.json:12-46` requires list/struct paths. | DDK native mapping plus DocSpec exact view. Read an authentic nested version, retain every type/ID/null/order/multiplicity, and reject a wrong element-ID map. Reuse native formats rather than flattening. | DDK mapping remains unsupported; experimental native preparation preserves declared nested IDs/nullability without observed source admission |

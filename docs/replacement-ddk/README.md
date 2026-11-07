@@ -75,13 +75,22 @@ The latest focused application evidence includes:
   and preserves source unknowns while joining actual meetings and roster seats.
   This is authored-record evidence; fresh native rich-fixture acceptance remains
   separate.
+- The full Node Explorer suite passed 124 cases against the fresh source20 hand
+  inventory after fixing the budget test's input binding. Its oversized input
+  stays an explicitly unqualified regression fixture; the test still requires
+  the exact decoded-memory refusal. Both independent reviews closed and all
+  original inputs stayed unchanged.
 - A fresh hand fixture passed execution, acceptance, DDK qualification and
   selection with the source20 development runtime at the original limits. It
   produced 11 exports and a 34-file inventory, with 0.32 GiB peak process RSS.
   The subsequent rich fixture retained all 17 exports and five reports, then
   failed native capacity admission before acceptance. Its 77,613 export bytes
   and original failure evidence remain retained; no limit increase or replay
-  bypassed the failure. Rich reader acceptance did not run.
+  bypassed the failure. A subsequent exact-request retry on the same runtime
+  completed acceptance, DDK checks, selection and the rich entity Node scenario.
+  All 22 phase files plus the view set and completion record kept identical bytes
+  and custody; no new phase files appeared. Recovery peaked at 0.18 GiB RSS.
+  The fresh-path capacity failure and final runtime qualification remain open.
 - The earlier full MCP suite passed 138 cases, with 3 replacement-producer
   cases pending. Current consumer transport and non-native gate tests passed
   51 cases, while the complete rich entity scenario remains required.
@@ -103,8 +112,8 @@ machinery and export copying.
 | [Runtime gaps](runtime-gaps.md) | Shared capabilities still needed from their owner |
 | [Reviews](reviews/active-greybeard-review.md) | Scoped reviews and historical decisions |
 
-The remaining work includes fresh final-runtime execution and cold recovery; complete rich
-entity reader acceptance; original native-source custody and producer
+The remaining work includes fresh final-runtime execution and broader cold recovery; rich
+entity browser and consumer acceptance; original native-source custody and producer
 prerequisites; frozen publication intent; explicit policy-bound capture fields;
 actual acquisition and nonarchive adoption; and authentic data and efficiency
 acceptance. Retained rows keep their original versions. A changed application

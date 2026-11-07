@@ -72,7 +72,8 @@
     "Committed captured native release requests and schema/controller retirement as aaf2b45c; external activation remains explicitly unavailable pending native intent.",
     "Committed exact-inventory parity and converter retirement as eb6f7466; 49 actual-path cases and independent red follow-up passed.",
     "Committed the current entity reader as 57a6bc3c: declared fields only, one dated-name resolver, preserved source unknowns, and filters bound to actual meetings or roster seats. Fifty-one focused authored-record and presentation cases passed with independent green follow-up.",
-    "Fresh source20 development-runtime hand fixture passed native execution, acceptance, DDK checking, selection and hand-release assertions; all 34 files and exact prepared/accepted/selected identities were retained."
+    "Fresh source20 development-runtime hand fixture passed native execution, acceptance, DDK checking, selection and hand-release assertions; all 34 files and exact prepared/accepted/selected identities were retained.",
+    "Original source20 rich attempt recovered under its exact original request, runtime and limits: accepted, qualified, selected, and the rich entity Node scenario passed. All 22 phase artifacts plus view-set/completion files and original request/definition files were unchanged; no new phase files."
   ],
   "active": [
     "Run fresh hand/rich fixtures and cold recovery with the next qualified native tuple; preserve the separately accepted original source11 fixture",
@@ -682,6 +683,13 @@
         "failed": 1,
         "failure": "Node canary budget case still used a committed legacy-schema fixture; assigned to viewer owner",
         "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-current-shapes-01/test.log"
+      },
+      "freshHandExplorerRun": {
+        "passed": 123,
+        "failed": 1,
+        "failure": "Canary decoded-budget variant is pinned to a different accepted hand fixture byte hash; viewer owner is repairing the fixture boundary",
+        "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-current-shapes-04",
+        "inventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-native-source20-01/files.json"
       }
     },
     "freshNativeSource20": {
@@ -715,7 +723,28 @@
         "peakRSSGiB": 0.34,
         "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source20-01/retained-failure-summary.json",
         "readerExecuted": false,
-        "replayOrBudgetChange": false
+        "replayOrBudgetChange": false,
+        "recovery": {
+          "status": "passed",
+          "sameRuntime": true,
+          "originalRequestAndPolicy": true,
+          "unchangedLimits": true,
+          "releaseId": "0ed378bde1c3dfbf218d1b3be9b067551dbc522f3b00bc854fe8b9f9a664b311",
+          "fileCount": 40,
+          "nativeExports": 17,
+          "unchangedPhaseFiles": 22,
+          "unchangedViewAndCompletionFiles": 2,
+          "originalRequestsAndDefinitionsUnchanged": true,
+          "newPhaseFiles": 0,
+          "nativeAcceptance": "passed",
+          "ddkQualification": "passed",
+          "selection": "selected",
+          "readerScenario": "passed",
+          "peakRSSGiB": 0.18,
+          "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source20-01/retry-01/result.json",
+          "inventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-native-source20-01/retry-01/files.json",
+          "scope": "Same-runtime retained recovery plus rich Node reader scenario; fresh-path capacity defect and final runtime qualification remain open"
+        }
       },
       "fullLane": false
     }

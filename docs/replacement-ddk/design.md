@@ -232,9 +232,13 @@ current richer fixture is still required.
 The source20 development runtime subsequently completed a fresh hand fixture
 through that same selection boundary at the original limits. Its rich fixture
 wrote all seventeen exports and five reports, then failed a native memory
-reservation before acceptance. Those useful completions and the original failed
-observation remain retained for native-owner recovery. This does not establish
-rich reader acceptance or final runtime qualification.
+reservation before acceptance. One retry using the exact original request,
+runtime, policy and limits completed acceptance, DDK qualification and selection.
+All twenty-two phase files, the view set and completion record kept identical
+bytes and custody; no new phase files appeared. The selected forty-file inventory
+then passed the rich entity Node reader scenario. The original failure remains
+retained. This proves recovery; fresh-path resource and final runtime qualification
+remain open.
 
 The model entry now supplies explicit native selection authority, requires
 original producer prerequisites and verifies the configured executable before
