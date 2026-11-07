@@ -10,13 +10,7 @@ import {
 } from './archive-metadata.ts';
 import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
 import {savedCopy} from '../reader/archive.ts';
-import {transcriptSourceLabel} from '../reader/archive-entities.ts';
-
-const RECORD_ENTRY_LABELS = new Map([
-  ['statement_for_record','Statement for the record'],
-  ['member_statement','Member statement'],
-  ['record_material','Record material'],
-]);
+import {transcriptSourceLabel, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
 
 function savedCaptionUrl(track: any, rawBase?: string) {
   if (rawBase && track?.sha256) {
@@ -109,7 +103,7 @@ export function HearingDetail({
   const publisherStatuses:any[]=meeting.publisher_status_observations??[];
   const relation=meeting.relation_states??{};
   const coverage=meeting.coverage??{};
-  const witnessCount=witnesses.filter(w=>!RECORD_ENTRY_LABELS.has(w.witness_type)).length;
+  const witnessCount=witnesses.filter(w=>!witnessRecordEntryLabel(w.witness_type)).length;
   const shownWitnesses=compact?witnesses.slice(0,6):witnesses;
 
   return <section className="archive-entity-card" aria-label="Hearing details" data-archive-entity="hearing">
@@ -266,11 +260,11 @@ export function HearingDetail({
     </div>}
 
     {witnesses.length>0&&<div className="archive-entity-section">
-      <h3>{witnessCount===witnesses.length?`Witnesses (${witnessCount})`:`Witnesses and record entries (${witnessCount} witnesses)`}</h3>
+      <h3>{witnessCount===witnesses.length?`Witnesses (${witnessCount})`:`Witnesses and record entries (${witnessCount} on the roster)`}</h3>
       <ul className="archive-witness-list">
         {shownWitnesses.map((w:any,i:number)=>{
           const wKey=w.witness_key||w.name_key||'';
-          const recordLabel=RECORD_ENTRY_LABELS.get(w.witness_type);
+          const recordLabel=witnessRecordEntryLabel(w.witness_type);
           const label=w.name||recordLabel||wKey;
           const roleParts=[w.position,w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];

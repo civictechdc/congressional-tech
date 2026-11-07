@@ -214,17 +214,27 @@ test('detail view derives committees from facts and URLs, renders GovInfo packag
   }
 });
 
-test('hearing evidence distinguishes witnesses, statements and publisher link metadata',()=>{
+test('hearing evidence distinguishes the roster, record entries and publisher links',()=>{
   const html=renderToStaticMarkup(React.createElement(HearingDetail,{meeting:{
     event_id:100031,title:'A hearing',witnesses:[
       {witness_key:'witness',name:'Witness Example',testified:true},
       {witness_key:'statement',name:'Statement Example',witness_type:'statement_for_record',testified:false},
+      {witness_key:'bio',name:'Biography Author',witness_type:'record_material'},
     ],
     document_references:[{collection:'meetingDocuments',ordinal:0,name:'Printed Hearing Record',
       role:'Support Document',format:'PDF',url:'https://www.congress.gov/example.pdf'}],
   }}));
-  assert(html.includes('Witnesses and statements (1 witnesses)'));
+  assert(html.includes('Witnesses and record entries (1 on the roster)'));
   assert(html.includes('Statement for the record'));
+  assert(html.includes('Biography Author'));
+  assert(html.includes('Record material'));
+  const biography=renderToStaticMarkup(React.createElement(WitnessDetail,{witness:{
+    witness_key:'bio',name:'Biography Author',witness_type:'record_material',
+    appearances:[{event_id:100031,title:'A hearing'}],
+  }}));
+  assert(biography.includes('Record material'));
+  assert(biography.includes('Related Hearings (1)'));
+  assert(!biography.includes('Congressional Witness'));
   for(const value of ['Printed Hearing Record','Support Document','Publisher format PDF','https://www.congress.gov/example.pdf']){
     assert(html.includes(value));
   }

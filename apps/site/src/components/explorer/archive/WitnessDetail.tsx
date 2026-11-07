@@ -4,6 +4,7 @@ import {
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
 import {day} from './ArchiveRows.tsx';
+import {witnessRecordEntryLabel} from '../reader/archive-entities.ts';
 
 export function WitnessDetail({
   witness,
@@ -36,18 +37,19 @@ export function WitnessDetail({
   const appearances:any[]=Array.isArray(witness.appearances)?witness.appearances:[];
   const documents:any[]=Array.isArray(witness.documents)?witness.documents:[];
   const shownAppearances=compact?appearances.slice(0,5):appearances;
+  const recordLabel=witnessRecordEntryLabel(witness.witness_type);
 
-  return <section className="archive-entity-card" aria-label="Witness details" data-archive-entity="witness">
+  return <section className="archive-entity-card" aria-label={recordLabel||'Witness details'} data-archive-entity="witness">
     <header className="archive-entity-header">
       <div className="archive-entity-header-top">
-        <p className="archive-detail-context">Congressional Witness</p>
+        <p className="archive-detail-context">{recordLabel||'Congressional Witness'}</p>
         <div className="archive-pill-list">
           {onInspect&&<button type="button" className="archive-measure-pill" onClick={onInspect}>Open full profile →</button>}
           {onFilterDocuments&&<button type="button" className="archive-measure-pill" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
           {onClose&&<button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel||'Clear witness filter'}</button>}
         </div>
       </div>
-      <h2>{witness.name||witness.witness_key}</h2>
+      <h2>{witness.name||recordLabel||witness.witness_key}</h2>
       {organizations.length>0&&<p className="archive-entity-meta"><strong>Organizations:</strong> {organizations.join(' · ')}</p>}
       {positions.length>0&&<p className="archive-entity-meta"><strong>Positions:</strong> {positions.join(' · ')}</p>}
       {witness.bioguide_id&&<p className="archive-entity-meta">
@@ -61,7 +63,7 @@ export function WitnessDetail({
     </header>
 
     {appearances.length>0&&<div className="archive-entity-section">
-      <h3>Hearing Appearances ({appearances.length})</h3>
+      <h3>{recordLabel?'Related Hearings':'Hearing Appearances'} ({appearances.length})</h3>
       <ul className="archive-entity-list">
         {shownAppearances.map((app:any,i:number)=>{
           const ev=String(app.event_id??app.meeting_key??'');

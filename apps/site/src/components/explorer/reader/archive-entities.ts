@@ -2,6 +2,14 @@ import {ArchiveReleaseChangedError, awaitShared} from './cache.ts';
 
 export type RelationState = 'ready' | 'missing' | 'unavailable';
 
+const RECORD_ENTRY_LABELS = new Map([
+  ['statement_for_record', 'Statement for the record'],
+  ['member_statement', 'Member statement'],
+  ['record_material', 'Record material'],
+]);
+
+export const witnessRecordEntryLabel = (kind: string) => RECORD_ENTRY_LABELS.get(kind);
+
 const hex = (value: Uint8Array) => [...value].map(v => v.toString(16).padStart(2, '0')).join('');
 const date = (value: any) => value instanceof Date ? value.toISOString().slice(0, 10) : value == null ? null : String(value).slice(0, 10);
 
@@ -373,10 +381,10 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const rows = (await entity('witnesses')).map(normalizeWitness);
     rows.sort((a: any, b: any) => (b.list_rows.length - a.list_rows.length) || (b.appearances.length - a.appearances.length) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
     const byKey = new Map<string, any>(), byEventId = new Map<string, any[]>(), byBioguide = new Map<string, any[]>(), byDocRow = new Map<number, any[]>();
-    const currentRows = rows.filter(w => w.superseded_by == null);
+    const currentRows = rows.filter(w => w.superseded_by == null && !witnessRecordEntryLabel(w.witness_type));
     for (const w of rows) {
       if (w.witness_key) byKey.set(w.witness_key.toLowerCase(), w);
-      if (w.name_key && w.superseded_by == null) byKey.set(String(w.name_key).toLowerCase(), w);
+      if (w.name_key && w.superseded_by == null && !witnessRecordEntryLabel(w.witness_type)) byKey.set(String(w.name_key).toLowerCase(), w);
       if (w.bioguide_id) pushMap(byBioguide, String(w.bioguide_id).toLowerCase(), w);
       for (const ev of new Set(w.appearances.map((a: any) => String(a.event_id ?? a.meeting_key ?? '')))) {
         if (ev) pushMap(byEventId, String(ev), w);

@@ -239,6 +239,7 @@ test('default hearing, document and member views keep each current witness occur
       {witness_key:'earlier',superseded_by:'current',event_id:100,name:'Alex Smith',bioguide_id:member},
       {witness_key:'current',superseded_by:null,event_id:100,name:'Alex Smith',bioguide_id:member},
       {witness_key:'repeated',superseded_by:null,event_id:100,name:'Alex Smith',bioguide_id:member,witness_type:'statement_for_record'},
+      {witness_key:'bio',superseded_by:null,event_id:100,name:'Alex Smith',witness_type:'record_material'},
     ],
     meetings:[{event_id:100,title:'Test hearing'}],
     members:[{bioguide_id:member,name:'Alex Smith'}],
@@ -251,11 +252,13 @@ test('default hearing, document and member views keep each current witness occur
   });
   const keys=(rows:any[])=>rows.map(w=>w.witness_key).sort();
   const meeting=await reader.getMeeting(100);
-  assert.deepEqual(keys(meeting?.witnesses??[]),['current','repeated']);
+  assert.deepEqual(keys(meeting?.witnesses??[]),['bio','current','repeated']);
   assert.equal(meeting?.witnesses.find(w=>w.witness_key==='repeated').witness_type,'statement_for_record');
   assert.deepEqual(keys((await reader.openDocument(0)).witnesses),['current','repeated']);
   assert.deepEqual(keys((await reader.getMember(member))?.witness_records??[]),['current','repeated']);
   assert.equal((await reader.getWitness('earlier'))?.witness_key,'earlier');
+  assert.equal((await reader.getWitness('bio'))?.witness_type,'record_material');
+  assert.deepEqual(keys((await reader.listEntities('witnesses')).rows),['current']);
 });
 
 test('a nomination keeps its own data when optional hearings fail',async()=>{
