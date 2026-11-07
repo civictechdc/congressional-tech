@@ -283,7 +283,10 @@ class Reader(HearingReader, LegislativeReader):
                 position = saved['position']
             except (ValueError, KeyError, TypeError) as error:
                 raise ExplorerError('Cursor belongs to another release or query') from error
-        result = self.rows(sql + f' ORDER BY {order} OFFSET ?', [*args, position], limit=query.limit)
+        # Keep the lookahead limit beside ORDER BY so DuckDB can use Top N.
+        # An outer relation limit after OFFSET leaves a full wide-row sort.
+        result = self.rows(sql + f' ORDER BY {order} LIMIT ? OFFSET ?',
+                           [*args, query.limit+1, position], limit=query.limit)
         result.pop('columns')
         if result['has_more']:
             result['next_cursor'] = base64.urlsafe_b64encode(encoded(dict(binding=binding, position=position+len(result['rows'])))).decode()

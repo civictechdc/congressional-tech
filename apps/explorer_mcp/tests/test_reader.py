@@ -6,7 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from congressional_explorer_mcp.models import ExplorerError, MAX_BYTES
+from congressional_explorer_mcp.models import ExplorerError, MAX_BYTES, Page
 from congressional_explorer_mcp.release import encoded, prepare
 from congressional_explorer_mcp.reader import Reader
 from conftest import CURRENT, REPO, manifest
@@ -135,6 +135,51 @@ def test_paging_is_complete_and_bound_to_query(reader):
         reader.search_documents({'limit':2,'text':'different','cursor':cursor})
     with pytest.raises(ExplorerError,match='Cursor'):
         reader.search_documents({'cursor':'invalid'})
+
+
+def test_ballot_pages_use_a_bounded_sort(reader, monkeypatch):
+    reader.db.execute('CREATE TEMP TABLE ballot_base AS SELECT * FROM member_votes')
+    reader.db.execute("""CREATE OR REPLACE TEMP VIEW member_votes AS
+        SELECT b.* REPLACE(member_key||':'||lpad(i::VARCHAR,5,'0') AS member_key)
+        FROM ballot_base b CROSS JOIN range(5000) r(i)""")
+    plans = []
+    rows = reader.rows
+
+    def measured(sql, args=(), *, limit=100):
+        plans.append(json.loads(reader.db.execute('EXPLAIN (FORMAT JSON) '+sql, args).fetchone()[1]))
+        return rows(sql, args, limit=limit)
+
+    monkeypatch.setattr(reader, 'rows', measured)
+    first = reader.get_member_ballots({'limit':7})
+    second = reader.get_member_ballots({'limit':7,'cursor':first['next_cursor']})
+    assert [row['member_key'] for row in first['rows']+second['rows']] == [f'bioguide:A000001:{i:05}' for i in range(14)]
+    assert first['has_more'] and second['has_more']
+
+    def operators(nodes):
+        for node in nodes:
+            yield node
+            yield from operators(node.get('children', []))
+
+    for page, plan in enumerate(plans):
+        top = [node for node in operators(plan) if node['name'].replace('_',' ').lower() == 'top n']
+        assert len(top) == 1, 'Paging must not sort every wide row before applying its limit'
+        assert int(top[0]['extra_info']['Top']) == 8
+        assert int(top[0]['extra_info'].get('Offset', 0)) == page*7
+
+
+def test_byte_limited_pages_resume_after_rows_actually_returned(reader):
+    sql = "SELECT i AS n,repeat('é',9000) AS text FROM range(17) r(i)"
+    query = Page(limit=100)
+    observed = []
+    while True:
+        page = reader.page(query, sql, [], order='n')
+        assert 0 < len(page['rows']) < query.limit
+        assert len(encoded(page)) <= MAX_BYTES
+        observed.extend(row['n'] for row in page['rows'])
+        if not page['has_more']:
+            break
+        query = Page(limit=100, cursor=page['next_cursor'])
+    assert observed == list(range(17))
 
 
 def test_absent_empty_and_unknown_are_distinct(tmp_path):
