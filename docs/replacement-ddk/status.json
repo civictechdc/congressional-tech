@@ -90,7 +90,8 @@
     "Added original-row paging to the maintained archive owner. Raw mode avoids list packing; verified cached bytes feed bounded range decoding with exact values, schema and physical positions. Nineteen focused cases and 125 Explorer/entity cases passed; separate greybeard and ETL findings closed. Type diagnostics stayed at 32 with zero additions. Original 1,089 source20 custody records unchanged; no native execution or activation.",
     "Source25 fresh rich fixture passed at the original limits on its first attempt: 17 exports, five reports, 40 inventory files and the entity reader scenario. All 1,776 earlier source20/source22 and local-catalog custody records stayed unchanged. Reader implementation 81f4f00d and production runtime pin stayed unchanged.",
     "Hash-verified source25 closeout and its complete required native gate, installed dev6 consumer and fresh Congress receipts. Gate exit 0 in 849.80 seconds and installed consumer 4/4 passed. Scoped local-file retained-job repair closed; native package/profile qualification, original table custody, producer prerequisites and publication intent remain separate.",
-    "Retained all eight selected native metadata objects and 18 original producer head/base records with 26 GETs totaling 31,906 bytes. Existing static proof and historical Git-source producer-version checks passed for all eight selected inputs without row reads. Captured 18 small model/anchor/schema originals for durable custody. Found 117 physical field/element-ID differences across seven authored schemas; all other schema meaning and logical identifier paths match. Native admission and observed-ID binding remain required."
+    "Retained all eight selected native metadata objects and 18 original producer head/base records with 26 GETs totaling 31,906 bytes. Existing static proof and historical Git-source producer-version checks passed for all eight selected inputs without row reads. Captured 18 small model/anchor/schema originals for durable custody. Found 117 physical field/element-ID differences across seven authored schemas; all other schema meaning and logical identifier paths match. Native admission and observed-ID binding remain required.",
+    "Built the current 30-page Astro site and passed 12 real browser cases against original source25 files: six rich entity views and document filters on desktop and phone, including explicit unknown nomination details. Zero page errors or production archive requests. No source/native change or production activation; maintained reader still matches 81f4f00d."
   ],
   "active": [
     "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
@@ -1076,6 +1077,38 @@
       "versionCheckPeakRSSGiB": 0.26,
       "productionRuntimePinChanged": false,
       "fullLane": false
+    },
+    "renderedRichSource25": {
+      "status": "passed",
+      "scope": "Built Astro Explorer against original selected source25 files; six entity views and their document filters on desktop and phone. Synthetic rich data only; no native execution, production-sized data or publication.",
+      "passed": 12,
+      "failed": 0,
+      "result": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-browser-source25-01/result.json",
+        "sha256": "72100d98b880a759e8bdc86d4820bedaa1735760a533f3c3687f9a31f46d1745",
+        "size": 2101
+      },
+      "artifacts": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-browser-source25-01/artifact-files.json",
+        "sha256": "f614c1b5015e454c5d5cacf4fa154eaaff14699b0bbe430437f5b3d39fb16d07",
+        "size": 41118
+      },
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-browser-source25-01/handoff.json",
+        "sha256": "9a9aef49e06ded1f29b0f640285ed6c159a74d4dc687539de8ba621359a257d0",
+        "size": 3258
+      },
+      "applicationCommit": "1848e3e7b4832999d81ee286b5368573999c5dc7",
+      "stableReaderCommit": "81f4f00d3e8db9a09a9eb190d5b07b851fd72979",
+      "buildPages": 30,
+      "buildWallSeconds": 2.3,
+      "buildPeakRSSGiB": 0.594,
+      "browserWallSeconds": 3.9,
+      "browserPeakRSSGiB": 0.71,
+      "browserErrors": 0,
+      "productionArchiveRequests": 0,
+      "nativeRuns": 0,
+      "publication": false
     }
   },
   "commits": {
@@ -1211,6 +1244,11 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/native-producer-evidence-01/retained-inputs.json",
       "sha256": "c2a7ebb48356d6131f2d2bfa729b3f22ff3559b9bffd5b8cb5b30ff564e15e73",
       "size": 11385
+    },
+    "renderedRichSource25": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-browser-source25-01/handoff.json",
+      "sha256": "9a9aef49e06ded1f29b0f640285ed6c159a74d4dc687539de8ba621359a257d0",
+      "size": 3258
     }
   },
   "constraints": {

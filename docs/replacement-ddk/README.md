@@ -137,6 +137,11 @@ The latest focused application evidence includes:
   names, types, order, nullability and logical identifier paths match. Native
   admission must return the observed IDs. Original evidence is preserved; this
   metadata check does not establish native custody or prerequisite authority.
+- The built Explorer passed 12 browser cases against the original source25 rich
+  files: six entity views and their document filters on desktop and phone. The
+  nomination view preserves unknown structured details. The 30-page build took
+  2.3 seconds at 0.594 GiB peak RSS; browser checks took 3.9 seconds at 0.710 GiB.
+  No page error, production archive read, source change or native run occurred.
 
 These are focused results, not a full Python lane, product release or production
 cutover. Durable receipts are under the main checkout's
@@ -156,7 +161,7 @@ machinery and export copying.
 | [Reviews](reviews/active-greybeard-review.md) | Scoped reviews and historical decisions |
 
 The remaining work includes native package/profile qualification and broader
-cold recovery; rich entity browser and remaining producer-consumer acceptance;
+cold recovery; remaining producer-consumer and production-data browser acceptance;
 original native source custody and producer prerequisites; frozen publication
 intent; explicit policy-bound capture fields;
 actual acquisition and nonarchive adoption; and authentic data and efficiency
