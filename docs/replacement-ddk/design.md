@@ -105,9 +105,11 @@ state remains in [status](status.json). DDK has no independent execution journal
 or mutable selection. Every reader uses the same current catalog format.
 The inner native boundary marks the source25 local-file gate and the source09
 local snapshot/reuse development cases. Installed-profile qualification remains open.
-Dashed boxes identify native input and publication capabilities still required
-for production; acquisition adoption and full application acceptance also remain
-open.
+Dashed boxes identify producer adoption, prerequisite enforcement and publication
+capabilities still required for production. Congress has staged the exact source
+facts, observed schemas, current jobs and required counter policies against a
+frozen Git head. Staging does not establish native adoption or acceptance.
+Acquisition adoption and full application acceptance also remain open.
 
 ```mermaid
 flowchart TB
@@ -123,30 +125,38 @@ flowchart TB
     subgraph domain["Application — source and domain meaning"]
         acquire["3. Acquire and interpret through domain adapters"]
         logic["Parsers, correction rules and transformation SQL"]
+        producer_definition["Freeze original Git/source/version facts, observed schemas, both JobSpecs and exact required policies"]
+        local_pins["Pin all local file bytes separately from their JobSpec paths"]
+        recovery_choice["Select recovery targets, required meaning and refresh intent — production choice pending"]
+        capture_policy["Require pinned recovery requirements and matching version-2 capture profile"]
         request["Verify the pinned runtime; retain the original request and local input paths"]
         retry["Retry presents that same request and digest"]
     end
 
     subgraph native["DocSpec — execution, native evidence and data authority"]
-        admit["Admit operation identity, scope and budgets before effects"]
+        adopt["Trusted local owner adopts exact producer definition under existing dataset authority — pending"]
+        admit["Admit exact identity, active definition, role and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
         native_custody["Own or reuse exact inputs and observed native schemas under the same owner — local development proof only"]
-        input_admission["Bind original producer definitions and prerequisites — native support pending"]
+        static_proof["Check original record bytes, namespace/key, version facts and selected metadata lineage before payload work — pending"]
+        proof_counts["Population proof: materialize one aggregate per input; reuse it for required and informational reports — pending"]
+        proof_accept["Accept all 9 required zero counters; retain 7 informational history counts — pending"]
+        input_admission["Model admission resolves exact accepted proof, both policies and inherited input custody — pending"]
+        file_binding["Compare every local input's bytes with the adopted definition, including selected recovery requirements — pending"]
         subgraph local_jobs["Local execution evidence — file jobs, snapshots and input reuse"]
             prepare["4. Infer every named schema without executing data"]
             compute["5. Execute the captured JobSpec over admitted exact inputs"]
             candidate["Retain candidate, required reports and useful checkpoints"]
             verify["Check the original SQL reports under their declared rules"]
             accept["6. Accept complete native report evidence"]
-            requalify["Policy-only change: requalify the retained candidate under fresh authority"]
             select["8. Select the checked candidate under original authority"]
         end
         intent["Freeze result, qualification, inventory, destination and original authority — native support pending"]
         lifetime["Release transient admission and computation resources after their last consumer; protect retained data obligations"]
-        retain --> native_custody --> input_admission --> compute --> candidate
+        retain --> static_proof --> native_custody --> proof_counts --> proof_accept --> input_admission
+        input_admission --> file_binding --> compute --> candidate
         native_custody -->|"Original observed input schema"| prepare
         prepare --> compute
-        candidate --> requalify --> accept
     end
 
     subgraph catalog["DDK — generated metadata"]
@@ -178,7 +188,10 @@ flowchart TB
         consume --> raw_rows
     end
 
-    check --> request --> admit
+    check --> capture_policy --> request --> admit
+    recovery_choice --> local_pins --> capture_policy
+    frozen --> producer_definition --> adopt --> admit
+    local_pins --> file_binding
     retry --> request
     admit --> acquire
     sources --> acquire
@@ -206,8 +219,39 @@ flowchart TB
     observation -.-> lifetime
     present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
-    class input_admission,intent pending
+    class recovery_choice,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,intent pending
 ```
+
+The producer path uses the existing native dataset authority and retained job
+owners. The proof has eight materialized aggregates, no exports, nine required
+zero counters and seven informational history counts. The preserved policy-free
+model has seven required report groups and 224 counters, but native schema
+inference refused it: the current output requires capture fields that this old
+graph does not emit. The application now requires explicit policy-bound version-2
+preparation. Its expected model has 225 counters, including the requirements
+check, and awaits the [production policy choice](recovery-policy-decision.md).
+The adopted definition must pin
+both complete jobs and both exact policies; changing a policy requires a new
+adoption in this profile. An earlier development candidate's policy-only
+requalification is separate historical evidence.
+
+The staged source facts bind Git head
+`ab97bb17a2ba7d58188ed234c6ce36ed54d3defb`, 31 original producer identities across
+13 historical commits, original anchor/store locations and all eight observed
+schemas. They preserve 117 physical field/element-ID differences from local
+declarations. Historical AST normalization uses Python 3.12.13; its exact bytes
+are retained because host Python 3.15 produces different AST dumps. These facts
+do not prove that the declared producer actually wrote every retained row.
+
+Before real payload work, native admission still needs an exact manifest and
+unique-file census, cumulative footer/index and inherited-evidence accounting,
+output/partial/spill allowances and measured free space. Snapshot summary totals
+alone cannot establish fit. Revision C adds the model's 43 local input inventories
+to the draft definition using the existing `JobFileInput` shape. Native admission
+must compare every member key, hash and size before existing custody work. That
+field closes the draft's missing content binding; enforcement remains pending.
+The selected recovery requirements will add one more local input. The existing
+draft must be regenerated after that choice; a fixture file cannot fill this gap.
 
 The application composition now captures one immutable release request, uses the
 maintained native `prepare`, `accept` and `select` calls, and requires a checked

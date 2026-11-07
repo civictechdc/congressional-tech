@@ -7,6 +7,14 @@ Production migration remains incomplete: the retained application producer,
 original source admission, acquisition and nonarchive callers still need native
 qualification and adoption.
 
+The latest full-model schema check correctly refused a missing capture field:
+the staged request used the old policy-free graph. The application now requires
+byte-pinned recovery requirements and a matching version-2 capture profile before
+request creation. It preserves all required checks and uses a semi join to avoid
+aggregating captures before matching recovery candidates. Production policy
+selection remains open; the concrete choices and their effects are in the
+[recovery policy decision](recovery-policy-decision.md).
+
 DDK owns dataset definitions, relationships and generated checks. Application
 code owns domain interpretation. DocSpec owns the job's execution, retained
 results, acceptance and selection. The application publisher keeps its existing
@@ -152,6 +160,28 @@ The latest focused application evidence includes:
   their focused stage receipts passed verification. Both independent reviews
   closed, as reported by the parent. Installed qualification, the successor's
   full gate, remote inputs, producer prerequisites and publication remain open.
+- Staged the revision-C producer definition against frozen Git head
+  `ab97bb17a2ba7d58188ed234c6ce36ed54d3defb`: original Git/byte facts, algorithms,
+  model and compatibility registry, eight observed schemas and both exact jobs
+  and policies. The staged model was rendered from committed definitions using
+  retained prepared inputs: 51 inputs, 251 steps, 40 outputs and 23 reports, with
+  224 required counters across seven reports. The population proof plans eight
+  aggregates reused by nine blocking and seven informational counters. All
+  original IDs and production pins remain intact. Native inference subsequently
+  refused this model's policy-free output. The draft remains unadoptable until
+  the actual requirements are selected and the affected artifacts regenerated.
+  The reviewed revision-B draft is preserved unchanged. The durable artifacts
+  are in `producer-authority-stage-01/` under the evidence root below.
+- Source09 inferred the proof's eight original input schemas and both report
+  schemas. An offline inspector correction matched all 250 field/element entries
+  and the decoded report schemas; it preserved their different IPC byte encodings.
+  The model-only call separately refused the missing capture field in 7.84 seconds
+  at 0.148 GiB peak RSS, without data execution or a full-model retry.
+- Commit `14e96d07` closes the application precondition gap. Across the scoped
+  runs, 86 distinct metadata cases passed. Two native eligibility fixtures also
+  passed at 512 MiB engine memory and one thread, including repeated captures;
+  the watchdog measured 3.0 seconds and 0.224 GiB peak RSS. No native process
+  survived. Production policy selection and full-model acceptance remain open.
 
 These are focused results, not a full Python lane, product release or production
 cutover. Durable receipts are under the main checkout's

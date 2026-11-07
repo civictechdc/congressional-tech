@@ -1,6 +1,6 @@
 # Shared DDK and DocSpec capabilities required
 
-Status: shared capability work in progress, November 6, 2026. Greenfield migration removes old-reader and legacy-controller-state compatibility work.
+Status: shared capability work in progress, November 7, 2026. Greenfield migration removes old-reader and legacy-controller-state compatibility work.
 Parent owns shared implementations.
 Nothing here authorizes this worktree to change those repositories. The inventory
 distinguishes demonstrated profile restrictions from work that is merely unproved.
@@ -9,6 +9,15 @@ inspection; those restrictions are historical findings, not a description of
 every current API. The installed catalog package is qualified dev6. The runtime
 pin in this checkout remains unchanged. Shared successor work needs a qualified
 handoff and application checks before it closes a native gap here.
+
+The source09 model-only schema call refused the staged policy-free URL-state
+output, which lacks the capture fields required by the current catalog. This is
+an application input mismatch, not a native schema encoding problem. Commit
+`14e96d07` requires explicit pinned recovery requirements and matching version-2
+preparation before request creation. The selected production requirements and
+provenance remain unresolved; see the [decision draft](recovery-policy-decision.md).
+No full-model retry, adoption, output execution or production pin change followed
+the refusal. The earlier proof-schema result remains reusable.
 
 The original tiny fixture now has accepted native evidence, checked DDK metadata,
 finalized controls and native selection. A policy-only schema correction reused
@@ -62,6 +71,30 @@ metadata observations do not establish native custody, row-population checks or
 prerequisite authority. See `native-producer-evidence-01/handoff.json` under the
 main checkout's retained DDK evidence directory.
 
+`producer-authority-stage-01/` now freezes the missing original identities against
+Git head `ab97bb17a2ba7d58188ed234c6ce36ed54d3defb`. The revision-C draft binds
+original record namespaces/keys, anchor blobs, producer source/dependency bytes,
+historical version algorithms, model/registry bytes, and exact proof/model jobs
+and required policies. The staged model was rendered from committed
+definitions using retained preparation: seven required reports, 224 counters.
+The proof shares eight materialized aggregates between nine blocking and seven
+informational counters. Source09 inferred the proof's observed input and report
+schemas. The model-only call refused the policy-free output before returning a
+complete inferred schema set. Its model policy remains unqualified.
+
+Revision B lacked a binding for the model's 43 local input inventories. Revision C
+adds their exact existing `JobFileInput` records to the adopted definition; the
+reviewed B draft is retained unchanged. Native admission still needs to enforce
+the complete member key/hash/size comparison before existing custody work. No
+extra application controller or file scan is required. The draft remains
+unadoptable as staged. A selected requirements input adds one local inventory
+and one required counter; the job, profiles, policy and enclosing definition
+must be regenerated together. The production entrypoint still refuses missing
+prerequisites and whole-lock version drift; it must also consume observed input
+schemas instead of the seven mismatched local declarations when adoption is
+qualified. Before any real payload run, exact manifest/unique-file and cumulative
+metadata/evidence/output/spill/free-space admission remains necessary.
+
 Shared source09 now passes all fifteen public DDK source adapter cases at the
 original 128 MiB native memory and 64 MiB scratch limits. The cases cover the
 existing file/snapshot paths plus chained reuse under the same native owner,
@@ -79,7 +112,7 @@ guards are unchanged.
 | G01 | Preserve exact nested native schema and field/element IDs. `ddk/adapters/docspec.py:444-459` accepted scalar Arrow type names only at the initial inspection. Actual selected metadata now shows 117 field/element-ID differences from local declarations across seven tables, with matching names/types/order/nullability and logical identifiers. | DDK native mapping plus DocSpec exact view. Return observed schema/IDs from admitted exact snapshots; retain every type/ID/null/order/multiplicity and reject a wrong element-ID map. Reuse native formats rather than flattening. | Authentic metadata comparison complete; native admission and observed-ID binding remain open. Earlier declared-ID preparation is not observed source identity |
 | G02 | Support the actual native update and retained computation families. DDK `_job_request` at `adapters/docspec.py:396-398` refuses catalog operations; local managed Build refuses inherited bases and computed/related groups at DocSpec `src/engine/managed_build.rs:300-311,380-385`. Existing `lake/tables.py:108-220` uses guarded table operations. | DocSpec lifecycle and DDK explicit operation profile. Bind exact request/versions, append/correct/delete, preserve unaffected data, interrupt a completed phase and reconcile the same operation after restart. Required operation census must drive the extension; do not add a generic scheduler. | Demonstrated profile limit; broader native engine behavior requires qualification |
 | G03 | Evaluate the full exact candidate with bounded process memory. Native quality reads complete IPC then `read_all()` at `adapters/native_quality.py:188-195`; lines 224-233 set the small-data limits. | DDK quality adapter and maintained evaluator/DocSpec exact view. Qualify a supported streaming or pushed-down path, same required check IDs and native field mapping; measure total process peak and unread coverage at increasing scale. Do not solve only by increasing the limit. | Verified mechanism; production-size failure has not been run |
-| G04 | Execute the entire declared multi-step/multi-table application and compose one complete release. The initial DDK fixture executor required one SQL output and exact files. Congressional jobs use many shared materialized steps and export tables. | One DDK component with named input/output ports delegates the complete native JobSpec to DocSpec. Preserve `plan_prepared_release`, shared steps, every export/report and exact dependency bindings; return partial-output evidence and resume without duplicate native state. | Source25 passed the required native gate and fresh 17-export/five-report local-file fixture through selection; source20 separately proved retained recovery. The actual 51-input/251-step/40-output/23-report job has schema-preparation evidence only; full execution/adoption remains unqualified |
+| G04 | Execute the entire declared multi-step/multi-table application and compose one complete release. The initial DDK fixture executor required one SQL output and exact files. Congressional jobs use many shared materialized steps and export tables. | One DDK component with named input/output ports delegates the complete native JobSpec to DocSpec. Preserve `plan_prepared_release`, shared steps, every export/report and exact dependency bindings; return partial-output evidence and resume without duplicate native state. | Source25 passed the required native gate and fresh 17-export/five-report local-file fixture through selection; source20 separately proved retained recovery. The historical 51-input/251-step graph has earlier schema-only evidence; the current catalog refused that policy-free output. Its policy-bound successor awaits selected requirements and full execution/adoption qualification |
 | G05 | Keep data selection, publication membership and reader activation recoverable together. The application model controller has been removed. `archive_publish.py` retains conditional pointer writes and asset reconciliation; `archive_publish_job.execute` and the nightly wrapper refuse activation before effects until native intent exists. | DocSpec selection plus application publication owner. Bind the accepted result, exact inventory, destination, expected token and actual publisher authority in native intent. Exercise failure before/after selection and lost acknowledgment; preserve prior readable releases and the publisher permission/restore fence. | Native intent and end-to-end composition pending; external cutover not performed |
 | G06 | Qualify the selected new runtime/client tuple against actual retained inputs and required execution guarantees. Current `model/docspec-runtime-pin.json` is b0342a73/fed9ea73; DDK uses b1270b2e/b89b43e2. DDK binary source advertises request-deadline/owned-stdin-eof at `src/main.rs:1488`. | Parent runtime release owner, congressional integration owner. Compare exact pin/capability/client schemas, run bounded native client and operation cases, then use the maintained pin/config helper. Never substitute bytes at an existing address. | Source25 required native gate, installed consumer checkpoint and fresh application fixture passed. Dev6 native package/profile qualification and production pin adoption remain pending |
 | G07 | Generate reader-facing fields, relationships and recipes from maintained DDK definitions. The dev4 application profile admits all 70 declarations and 19 artifacts; the new target retains 254 baseline physical fields plus three explicit capture-policy fields. | Direct catalog consumers passed the complete MCP suite (138 passed, three replacement-native fixture cases pending), seven browser catalog cases including HTTP delivery, 39 comparison cases and 88 publication/gate cases. Qualify the remaining native producer fixture, replace its metadata owner and retire the old registry. | Consumer boundary qualified; full native release acceptance pending |

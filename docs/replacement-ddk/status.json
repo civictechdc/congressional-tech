@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "date": "2026-11-06",
+  "date": "2026-11-07",
   "objective": "Full end-to-end DDK replacement for the congressional-tech workspace",
   "phase": "greenfield-implementation-standard-catalog-required",
   "worktree": "/Users/mikewolfd/.codex/worktrees/9c45/congressional-tech",
@@ -132,15 +132,19 @@
     "Retained all eight selected native metadata objects and 18 original producer head/base records with 26 GETs totaling 31,906 bytes. Existing static proof and historical Git-source producer-version checks passed for all eight selected inputs without row reads. Captured 18 small model/anchor/schema originals for durable custody. Found 117 physical field/element-ID differences across seven authored schemas; all other schema meaning and logical identifier paths match. Native admission and observed-ID binding remain required.",
     "Built the current 30-page Astro site and passed 12 real browser cases against original source25 files: six rich entity views and document filters on desktop and phone, including explicit unknown nomination details. Zero page errors or production archive requests. No source/native change or production activation; maintained reader still matches 81f4f00d.",
     "Verified shared source07 local native snapshot-custody handoff and its source/candidate/result/JUnit/resource/inventory references. All six public DDK source adapter cases passed at unchanged 128 MiB native memory and 64 MiB scratch; focused native snapshot and FileIO stages also passed. This is development evidence only; no application native run, dependency/pin change or guard replacement.",
-    "Verified source09 local same-owner input-reuse handoff and all named metadata references. Fifteen public DDK adapter cases passed, including chained and renamed-input reuse after original source/caller-file removal, exact values/field IDs, cold replay/acceptance/selection and malformed-reference refusal. Native owner reports ten focused unit cases covering additional retirement/provenance obligations; stage receipts passed. Source development only: no application run, installed profile, successor full gate or pin promotion."
+    "Verified source09 local same-owner input-reuse handoff and all named metadata references. Fifteen public DDK adapter cases passed, including chained and renamed-input reuse after original source/caller-file removal, exact values/field IDs, cold replay/acceptance/selection and malformed-reference refusal. Native owner reports ten focused unit cases covering additional retirement/provenance obligations; stage receipts passed. Source development only: no application run, installed profile, successor full gate or pin promotion.",
+    "Staged reviewed revision-C original producer definition at explicit frozen ab97bb17: exact Git/byte/algorithm facts,8observedschemas preserving117IDdifferences,26recordtransports,31producerfacts/13commits, both exact JobSpecs and required policies. Re-rendered current51/251/40/23model from189unchanged definition inputs and retained64step prefix;7requiredreports224counters. Producerproof uses8materializedaggregates for9blocking+7informational counters. Both independent reviews accept unbound preparation; native adoption/execution remains unclaimed. RevisionC adds the exact43local file-input inventories to the draft while retaining both earlierB versions unchanged.",
+    "Committed 14e96d07: require explicit pinned recovery requirements and matching capture-profile v2 before model request creation; preserve required output checks and migrate fixture callers.",
+    "Replaced capture-wide DISTINCT in recovery eligibility with candidate-left LEFT SEMI membership, preserving decision multiplicity. Two focused native cases pass; no speedup or file-pruning claim."
   ],
   "active": [
+    "Native owner must enforce complete model file-input inventories and qualify original static proof/population/prerequisites. The preserved 51-input source09 model refused schema preparation; no production full-model retry is authorized until actual recovery requirements are selected.",
     "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
     "Qualify/install local shared input reuse; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
-    "Standardize new publication on policy-bound capture_profile v2 and 257 physical fields; retain the original 254-field baseline and add three explicit current fields without inventing v1 eligibility",
+    "Select the intended production recovery requirements and provenance, then regenerate the 257-field capture-profile-v2 model, policy and adoption definition together; do not infer eligibility from the v1 baseline.",
     "Replace whole-lock parser-fingerprint admission with qualified exact producer/version interpretation while preserving retained pins and their original meanings",
     "Bind native inputs from their admitted observed schemas and original physical IDs; seven local authored schemas have different IDs and cannot prove original native identity"
   ],
@@ -1299,6 +1303,81 @@
         "artifactInventory",
         "priorUnexecutedSource"
       ]
+    },
+    "producerAuthorityStaging": {
+      "status": "historical_static_review_passed_model_schema_refused_unadoptable",
+      "frozenHead": "ab97bb17a2ba7d58188ed234c6ce36ed54d3defb",
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-stage-01/handoff-revision-c.json",
+        "sha256": "00ef8670b91ece7944ed75bdb60d64c3252a79568227d4ec4e671fd2e219aa37",
+        "size": 11156
+      },
+      "draft": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-stage-01/producer-definition.revision-c.draft.json",
+        "sha256": "c3e42d3786871ad50c84df3c6924eed6892e0605287219738b4ce82ce4242d70",
+        "size": 200690
+      },
+      "counts": {
+        "informationalProducerCounters": 7,
+        "inputs": 51,
+        "modelLocalInputs": 43,
+        "nativeInputs": 8,
+        "originalRecordTransports": 26,
+        "outputs": 40,
+        "physicalIdDifferencesPreserved": 117,
+        "producerCommits": 13,
+        "producerFacts": 31,
+        "proofAggregates": 8,
+        "reports": 23,
+        "requiredCounters": 224,
+        "requiredProducerCounters": 9,
+        "requiredReports": 7,
+        "steps": 251
+      },
+      "reuse": {
+        "historicalRuntime": "Python3.12.13; all nine AST normalizations retained because hostPython3.15 differs",
+        "modelPreparation": "189 unchanged definitions and original64step prefix; current model renderer regenerates downstream SQL and exact export counters",
+        "nativeJobsExecuted": 0,
+        "newRemoteRequests": 0,
+        "originalPayloadBytesReusedByCustody": 49517437,
+        "rowsDecoded": 0,
+        "smallPreparedArtifactBytesHashed": 119716
+      },
+      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB→reviewedB fixed daily/direct classification; reviewedB→C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
+      "schemaAuthority": "Source09 proof inference matched original observed input schemas and decoded report schemas. Full staged model inference refused missing capture_disposition; no accepted current model policy.",
+      "nativeAdoption": "not_run",
+      "nativeJobs": "no_payload_execution; separate schema-only calls recorded below",
+      "productionPinsChanged": false
+    },
+    "producerSchemaSource09": {
+      "proofComparison": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-schema-source09-proposal-01/offline-proof-comparison-v2/proof-schema-comparison.json",
+        "sha256": "dcb68bd6393112bdbd0ecb105a31148458e72963f55f49f9a9d21b346d451fc8",
+        "size": 51323
+      },
+      "proofScope": "Eight observed inputs, 250 field/element entries, nine required and seven informational report fields; no population execution. Corrected inspector uses native +00:00 and full decoded-schema equality; original byte identities and first failure retained.",
+      "modelRefusal": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-schema-model-source09-02/terminal.json",
+        "sha256": "ef6edccd8770d34f24ffa448d4890976e7dd080b4213a223addbae7ee7ca0b28",
+        "size": 1199
+      },
+      "modelScope": "One schema-only model call refused missing capture_disposition at 7.84 s; 0.148 GiB peak RSS. Execution not_run, pins/custody unchanged, no surviving native process, no full-model retry."
+    },
+    "requiredCapturePolicy": {
+      "sourceCommit": "14e96d076c41519268a711efd5bd3eee533389a2",
+      "metadataDistinctPassed": 86,
+      "metadataFullLane": false,
+      "nativePassed": 2,
+      "nativeFailed": 0,
+      "nativeSkipped": 0,
+      "nativeWallSeconds": 3.0,
+      "nativePeakRSSGiB": 0.224,
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/capture-policy-correction-01/handoff.json",
+        "sha256": "835a498985b4595b221f3b235ba972dfc4d20986c0fadebc948a1aaf70ae6ded",
+        "size": 3220
+      },
+      "scope": "Current model preconditions and two eligibility fixtures only; no production policy selection, full-model execution, source09 fixture qualification, adoption or deployment."
     }
   },
   "commits": {
@@ -1314,7 +1393,8 @@
       "36f61f6e",
       "68b077ad",
       "aaf2b45c",
-      "eb6f7466"
+      "eb6f7466",
+      "14e96d07"
     ],
     "constraint": "Current full access permits local evidence and Git operations; preserve unrelated main changes",
     "checkpoint": "Reviewed application reader, captured native request, schema/controller retirement and exact-inventory comparison changes are committed. Native producer adoption and full replacement acceptance remain pending."
@@ -1449,6 +1529,11 @@
       "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/reuse-consumer-source-02/consumer-01/handoff.json",
       "sha256": "4976b67fc2213b0638571d3f492d16ea839e002470ad179a78b286e87f074f1e",
       "size": 3350
+    },
+    "capturePolicyCorrection": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/capture-policy-correction-01/handoff.json",
+      "sha256": "835a498985b4595b221f3b235ba972dfc4d20986c0fadebc948a1aaf70ae6ded",
+      "size": 3220
     }
   },
   "constraints": {
@@ -1465,11 +1550,12 @@
   },
   "delivery": {
     "fullReplacementComplete": false,
-    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Separate raw-row greybeard/ETL reviews closed. Parent reports shared source25 greybeard/ETL reviews closed; its complete required native gate, installed consumer checkpoint and fresh Congress fixture passed. Full model, native package/profile and publication acceptance remain pending.",
+    "independentCodeReview": "Scoped red/green follow-ups closed runtime-pin, original-prerequisite, retained-input, accepted-export-path, nightly-retirement, scalar-comparison and reader-cache findings. Separate raw-row greybeard/ETL reviews closed. Parent reports shared source25 greybeard/ETL reviews closed; its complete required native gate, installed consumer checkpoint and fresh Congress fixture passed. Full model, native package/profile and publication acceptance remain pending. Greybeard/ETL accepted 14e96d07 and exact bounded two-test plan; both fixture tests passed.",
     "supersededInfrastructureRetired": false,
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
-    "archiveModelControllerRetired": true
+    "archiveModelControllerRetired": true,
+    "producerDefinitionPreparation": "Original source facts, observed schemas and proof-schema evidence retained. Revision-C model refused current schema inference; selected recovery requirements are missing. Application precondition fixed and scoped fixture SQL verified; affected model/definition regeneration remains pending that choice."
   },
   "definitionImplementation": {
     "state": "Qualified dev6 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Actual retained application execution remains under acceptance.",
