@@ -690,6 +690,19 @@
         "failure": "Canary decoded-budget variant is pinned to a different accepted hand fixture byte hash; viewer owner is repairing the fixture boundary",
         "evidence": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-current-shapes-04",
         "inventory": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/fixture-native-source20-01/files.json"
+      },
+      "freshHandExplorerResolution": {
+        "status": "passed",
+        "passed": 124,
+        "failed": 0,
+        "scope": "Source20 selected synthetic hand fixture: full Node Explorer suite and exact decoded-budget regression test. No browser or native qualification.",
+        "nodeVersion": "v26.13.0",
+        "commit": "3ffe402ec12ac9b2504e1c31f18d1197eb7a080e",
+        "verification": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-consumer-dev6/source20-budget-repair-01/verification.json",
+        "verificationSha256": "191fe603f8f44495d5284a924d1e11f963b5d37766ce06bf0b1ae1b32763deff",
+        "log": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/reader-consumer-dev6/source20-budget-repair-01/explorer-source20.log",
+        "logSha256": "9185ad54b68427c3170b0f93244f4f27497ceb5036f7be244544ea45ac085192",
+        "review": "Independent greybeard and ETL reviews closed; fixed regression input remains explicitly unqualified and original inputs unchanged"
       }
     },
     "freshNativeSource20": {
