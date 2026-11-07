@@ -164,3 +164,11 @@ Keep open. The root rollup/shared model owner must integrate an inference/source
 Independent reviewer /root/four_skill_review read all four requested skills and APPROVED unchanged a020be98: no scoped defect or source repair requested. The static review confirmed checkpoint/input identities and retains explicit test/data/live limits; see merge-prune-20261106T180951Z/reviews/ct-gi01/REVIEW.md.
 
 Independent review: APPROVE for the scoped work; remaining ticket acceptance is unchanged. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-gi01/REVIEW.md).
+
+**2026-11-07T22:39:10Z**
+
+November 7 post-release owner update for archive `5d24699ad9fa` / Explorer `0.6.2`. Keep `ct-gi01` open. The native build, paired delivery, live switch and deployed retirement have retained acceptance evidence. This pass reconciled all 78 release change groups and 291 retained fields, recovered the exact October matcher input and two committee-review inputs, verified all 7,200 curated decisions, and found published document keys for 294 of 312 legacy Senate pages. Four installed-reader probes passed; no hosted requests or source changes were made.
+
+The remaining work is specific: publish historical matcher observations with their original meaning; resolve the 18 source-only Senate pages; reconcile 9,636 URL-unmatched material occurrences and retained field values; verify historical reference values; and establish the original dismissal-input/body custody or record a supported disposition. `ct-x78c` retains witness-ledger ownership and `ct-r4rd` retains meeting-field ownership. Reuse the shipped-release evidence for unchanged inputs. This update establishes no new closure or rebuild requirement.
+
+[Owner results](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-gi01/RESULTS.md) · [Owner status](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-gi01/STATUS.json).

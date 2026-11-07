@@ -87,3 +87,9 @@ The reviewed source reference is included in local main 1a5ae01c. Remaining: Coo
 November 7 post-release owner update for archive 5d24699ad9fa / Explorer 0.6.2. Current-release checks preserve all 429 removal notices and verify the twelve audited Wayback pairs have no scoped selected body or public attachment. A hosted batch confirms four notices and the separate current edition. DukeSpace publisher identity and matching bitstream size/checksum now support the Duke requested-content relationship.
 
 Keep open. ct-rie2 and root own the single USAID/ecoi capture/import and later selected attachment. Duke needs its own complete receipt; keep it outside that cohort. The twelve Wayback cases still need original bytes/custody evidence or explicit transfer; unknown prior acknowledgement is not a failed import. [Owner evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-umtm/STATUS.json).
+
+**2026-11-07T22:54:53Z**
+
+November 7 shared recovery update: the one USAID/ecoi target is now captured and accepted into shared raw storage under ct-rie2. The exact PDF matches the retained qualification; its new complete, timestamped source receipt and acknowledged import resolve this target's missing capture/import evidence. The original public target has not yet been attached in a new selected release.
+
+Keep open. Reuse the accepted operation for the maintained selected-input handoff; do not fetch it again. Duke and the twelve Wayback cases remain separate, and both retired homepage successors stay null. [Accepted operation and remaining publication boundary](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/writer-run/ROOT-RESULT.json).
