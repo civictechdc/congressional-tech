@@ -142,6 +142,14 @@ The latest focused application evidence includes:
   nomination view preserves unknown structured details. The 30-page build took
   2.3 seconds at 0.594 GiB peak RSS; browser checks took 3.9 seconds at 0.710 GiB.
   No page error, production archive read, source change or native run occurred.
+- The shared source07 snapshot-custody candidate passed six public DDK source
+  adapter cases at 128 MiB native memory and 64 MiB scratch. They cover original
+  values/nulls/field IDs, retained recovery, accepted replay/selection and wrong
+  metadata/UUID/schema/snapshot refusal. The native owner also reports five
+  snapshot cases and one FileIO ownership case; their focused stage receipts
+  passed verification. This is local development evidence, with no installed
+  profile claim. Shared custody between operations, remote inputs, original
+  producer prerequisites and publication intent remain open.
 
 These are focused results, not a full Python lane, product release or production
 cutover. Durable receipts are under the main checkout's

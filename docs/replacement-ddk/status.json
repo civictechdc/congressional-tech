@@ -26,6 +26,25 @@
       "closeout": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-retained-job/gate-closeout-25.json",
       "closeoutSha256": "2b5724cf8e8e94351013f6c50f4e101591477b5edf74f3c490a319bb1e8fe647",
       "productionRuntimePinChanged": false
+    },
+    "localNativeSnapshotDevelopment": {
+      "ddkSourceCommit": "f3551a38da5c7c43e5bcd5ae0be0e3d99206b088",
+      "ddkEvidenceCommit": "468e6515a041f3666c137c092d64e4d338d18262",
+      "scope": "Public DDK source adapter consumes exact native selected-snapshot custody through immutable source07. Fixture creation uses native public CLI; ordinary DDK calculation write guard stays intact.",
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/consumer-01/handoff.json",
+        "sha256": "2b984615cad19ba36bc55073663183624c63278cc47de4a80ee139f4aa7cdfeb",
+        "size": 3513
+      },
+      "qualification": "not_run",
+      "nativeProfilesClaimed": [],
+      "nativeBinary": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-snapshot-custody/runtime/docspec-snapshot-custody-source07",
+        "sha256": "594fc721412a91271283fdfd0bde7e8d0faa03f3e7c8e9f9661b40bfcc17a076",
+        "bytes": 349768832
+      },
+      "installedDependencyChanged": false,
+      "productionRuntimePinChanged": false
     }
   },
   "completed": [
@@ -91,11 +110,12 @@
     "Source25 fresh rich fixture passed at the original limits on its first attempt: 17 exports, five reports, 40 inventory files and the entity reader scenario. All 1,776 earlier source20/source22 and local-catalog custody records stayed unchanged. Reader implementation 81f4f00d and production runtime pin stayed unchanged.",
     "Hash-verified source25 closeout and its complete required native gate, installed dev6 consumer and fresh Congress receipts. Gate exit 0 in 849.80 seconds and installed consumer 4/4 passed. Scoped local-file retained-job repair closed; native package/profile qualification, original table custody, producer prerequisites and publication intent remain separate.",
     "Retained all eight selected native metadata objects and 18 original producer head/base records with 26 GETs totaling 31,906 bytes. Existing static proof and historical Git-source producer-version checks passed for all eight selected inputs without row reads. Captured 18 small model/anchor/schema originals for durable custody. Found 117 physical field/element-ID differences across seven authored schemas; all other schema meaning and logical identifier paths match. Native admission and observed-ID binding remain required.",
-    "Built the current 30-page Astro site and passed 12 real browser cases against original source25 files: six rich entity views and document filters on desktop and phone, including explicit unknown nomination details. Zero page errors or production archive requests. No source/native change or production activation; maintained reader still matches 81f4f00d."
+    "Built the current 30-page Astro site and passed 12 real browser cases against original source25 files: six rich entity views and document filters on desktop and phone, including explicit unknown nomination details. Zero page errors or production archive requests. No source/native change or production activation; maintained reader still matches 81f4f00d.",
+    "Verified shared source07 local native snapshot-custody handoff and its source/candidate/result/JUnit/resource/inventory references. All six public DDK source adapter cases passed at unchanged 128 MiB native memory and 64 MiB scratch; focused native snapshot and FileIO stages also passed. This is development evidence only; no application native run, dependency/pin change or guard replacement."
   ],
   "active": [
     "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
-    "Finish exact native source custody, original producer prerequisites and frozen publication intent, then qualify the maintained application entry end to end",
+    "Finish shared input-custody grants, original producer prerequisites, actual remote native inputs and frozen publication intent; qualify/install the profile and then admit the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
     "Replace actual acquisition and nonarchive callers with fresh native state; interface inventories and compatibility cleanup alone do not establish adoption",
     "Complete authentic data, consumer, incremental/recovery and measured efficiency acceptance before claiming the full replacement",
@@ -1109,6 +1129,92 @@
       "productionArchiveRequests": 0,
       "nativeRuns": 0,
       "publication": false
+    },
+    "localNativeSnapshotSource07": {
+      "status": "passed",
+      "scope": "Public DDK source adapter consumes exact native selected-snapshot custody through immutable source07. Fixture creation uses native public CLI; ordinary DDK calculation write guard stays intact.",
+      "qualification": "not_run",
+      "nativeProfilesClaimed": [],
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/consumer-01/handoff.json",
+        "sha256": "2b984615cad19ba36bc55073663183624c63278cc47de4a80ee139f4aa7cdfeb",
+        "size": 3513
+      },
+      "source": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/source-manifest.json",
+        "sha256": "16ec31b7080ca3c9781344ba155080a79c6a20d71fa9b349a01aa867576586df",
+        "bytes": 17096
+      },
+      "nativeCandidate": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-snapshot-custody/candidate-07.json",
+        "sha256": "46dda91818583b5985b921fe46fa626d7dbd71601d8ba5acfac9c1cdb430f0ee",
+        "bytes": 2724
+      },
+      "nativeBinary": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-snapshot-custody/runtime/docspec-snapshot-custody-source07",
+        "sha256": "594fc721412a91271283fdfd0bde7e8d0faa03f3e7c8e9f9661b40bfcc17a076",
+        "bytes": 349768832
+      },
+      "result": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/consumer-01/result.json",
+        "sha256": "7be818b4889de29bf5b975f352f1fe406c4d0fd8ea3c49a5fe14a8f1e0e0fa21",
+        "bytes": 5145
+      },
+      "junit": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/consumer-01/junit.xml",
+        "sha256": "df97c0e45691290db5683139eedf99d37c270a153fce54439c90c38e01a9e449",
+        "bytes": 1212
+      },
+      "resources": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/consumer-01-result.json",
+        "sha256": "0d889ab09eaecabf86bebae50833129547916ba12f1a3fe289a4a8127a3966e9",
+        "bytes": 229
+      },
+      "artifacts": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/consumer-01/files.json",
+        "sha256": "d9d449566d43a76e47fd8eeee6785cd9a6b481089fcb2e578ee4b65c82bb4def",
+        "bytes": 158160
+      },
+      "counts": {
+        "tests": 6,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0
+      },
+      "limits": {
+        "perCallSeconds": 30,
+        "outerSeconds": 180,
+        "sampledAggregateRssBytes": 2147483648,
+        "sampledAllocatedGrowthBytes": 1073741824,
+        "freeFloorBytes": 16106127360,
+        "nativeMemoryBytes": 134217728,
+        "nativeScratchBytes": 67108864,
+        "computeThreads": 1
+      },
+      "runnerSeconds": 71.93342287500855,
+      "observerSeconds": 75.67943104100414,
+      "peakSampledFamilyRssBytes": 181157888,
+      "capturedArtifactFiles": 420,
+      "capturedArtifactBytes": 2266175,
+      "focusedNativeStages": {
+        "reportedSnapshotCases": 5,
+        "reportedFileIoCases": 1,
+        "scope": "Counts reported by native owner; focused stage receipts hash-verified with exit 0",
+        "evidence": {
+          "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-snapshot-custody/focused-07-stages-result.json",
+          "sha256": "d7790a0e0b3257d5d1d81da877410f983da8272d89d898b2c476e12bef63a03b",
+          "size": 1295
+        }
+      },
+      "priorFixtureFailure": {
+        "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-01/consumer-01/result.json",
+        "sha256": "370009839f60c19f13e84cc8288d2ed81ff744c2b3cfd17c4f8e61253a9137cc",
+        "bytes": 4465
+      },
+      "remaining": "Cross-operation reuse, original producer prerequisites, native-table catalog binding, immutable publication intent, remote/deletes, full native gate for this successor and installed qualification remain separate.",
+      "fullLane": false,
+      "applicationNativeRuns": 0,
+      "productionRuntimePinChanged": false
     }
   },
   "commits": {
@@ -1249,6 +1355,11 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/rich-browser-source25-01/handoff.json",
       "sha256": "9a9aef49e06ded1f29b0f640285ed6c159a74d4dc687539de8ba621359a257d0",
       "size": 3258
+    },
+    "localNativeSnapshotSource07": {
+      "path": "/Users/mikewolfd/Work/artifacts/ddk-replacements-20261106/native-package-successor/snapshot-consumer-source-02/consumer-01/handoff.json",
+      "sha256": "2b984615cad19ba36bc55073663183624c63278cc47de4a80ee139f4aa7cdfeb",
+      "size": 3513
     }
   },
   "constraints": {
