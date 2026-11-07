@@ -25,6 +25,7 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import escape
 
 import pyarrow as pa
 import pytest
@@ -2055,6 +2056,45 @@ def test_mods_witness_affiliation_boundaries_keep_source_occurrences():
         ("mods:witness[4]", "Mansooreh Mollaghasemi", "President", "Atria Technologies, LLC", None),
         ("mods:witness[5]", "Jane Doe", None, None, None),
     ]
+
+
+@pytest.mark.parametrize("control", json.loads(
+    (Path(__file__).parent / "fixtures/source_models/mods-witness-affiliations.json").read_text()
+), ids=lambda control: control["package"] + ":" + control["locator"])
+def test_mods_affiliation_spans_match_independently_read_originals(control):
+    # Each excerpt records its original body and locator. Repeating the line
+    # also checks that field recovery preserves distinct source occurrences.
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+           + f'<witness>{escape(control["literal"])}</witness>' * 2
+           + '</extension></mods>')
+    row = appearance_records.build_appearance_record_row(_sha(xml), "mods", xml)
+    assert [item["source_locator"] for item in row["appearances"]] == [
+        "mods:witness[1]", "mods:witness[2]",
+    ]
+    for item in row["appearances"]:
+        assert {field: item[field] for field in control["expected"]} == control["expected"]
+
+
+@pytest.mark.parametrize("affiliation", [
+    "Chairman, President, and CEO, Example Company, and Director, Another Company",
+    "Director, Education, Workforce, and Income Security Team, accompanied by Jane Smith",
+    "Director, Division of Finance, Safety, and Operations; President, Example Works",
+    "Director for Finance, Safety, and Operations, Northeast Programs",
+    "Director, Education, and Health Division, Association of X, and Operations, Company Y Inc",
+    "Chairman, President, and CEO, Dr. Jane Smith",
+    "Chair of Association A, and President of Company B, Washington, DC",
+    "Under Secretary of Commerce for Intellectual Property, and Director, U.S. Patent and Trademark Office",
+    "Texas Transportation Commissioner, and Chairman, Transportation Transformation Group",
+    "immigration services manager, global mobility services team, Ingersoll Rand Co., "
+    "and on fehalf of the U.S. Chamber of Commerce",
+])
+def test_mods_affiliation_recovery_refuses_competing_or_unsupported_boundaries(affiliation):
+    row = appearance_records.build_appearance_record_row(
+        _sha(affiliation), "mods", {"witnesses": ["Ms. Jane Doe, " + affiliation]},
+    )
+    item, = row["appearances"]
+    assert item["name"] == "Jane Doe"
+    assert item["position"] is None and item["organization"] is None
 
 
 def test_mods_print_states_every_held_day_and_labels_statements():

@@ -1,0 +1,266 @@
+[
+  {
+    "body_sha": "dac8c389cd264255f0144f640f41e59da8de7cf5681219230ee149517752353e",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-112hhrg72238",
+    "literal": "Mr. John S. Pistole, Administrator, Transportation Security Administration, U.S. Department of Homeland Security:",
+    "expected": {
+      "position": "Administrator",
+      "organization": "Transportation Security Administration, U.S. Department of Homeland Security",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "dac8c389cd264255f0144f640f41e59da8de7cf5681219230ee149517752353e",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-112hhrg72238",
+    "literal": "Mr. Thomas L. Farmer, Assistant Vice President for Security, Safety, and Operations, Association of American Railroads:",
+    "expected": {
+      "position": "Assistant Vice President for Security, Safety, and Operations",
+      "organization": "Association of American Railroads",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "dac8c389cd264255f0144f640f41e59da8de7cf5681219230ee149517752353e",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-112hhrg72238",
+    "literal": "Mr. Martin Rojas, Vice President for Security and Operations, American Trucking Association:",
+    "expected": {
+      "position": "Vice President for Security and Operations",
+      "organization": "American Trucking Association",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "dac8c389cd264255f0144f640f41e59da8de7cf5681219230ee149517752353e",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-112hhrg72238",
+    "literal": "Mr. Raymond J. Reese, Corporate Health, Safety, and Security Leader, Colonial Pipeline Company, On Behalf of The Association of Oil Pipe Lines and the American Petroleum Institute:",
+    "expected": {
+      "position": "Corporate Health, Safety, and Security Leader",
+      "organization": "Colonial Pipeline Company",
+      "on_behalf_of": "The Association of Oil Pipe Lines and the American Petroleum Institute"
+    }
+  },
+  {
+    "body_sha": "dac8c389cd264255f0144f640f41e59da8de7cf5681219230ee149517752353e",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-112hhrg72238",
+    "literal": "Mr. Nicholas E. Calio, President and Chief Executive Officer, Air Transport Association of America, Inc.:",
+    "expected": {
+      "position": "President and Chief Executive Officer",
+      "organization": "Air Transport Association of America, Inc.",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "757c85b7261a6a92bc063759544b2728c5a08a39d57ca2852402e8163e2c9b1d",
+    "locator": "mods:witness[17]",
+    "package": "CHRG-110hhrg45731",
+    "literal": "Michael F. Martin, Analyst, Asian Trade and Finance Foreign Affairs, Defense, and Trade Division, Congressional Research Service, Library of Congress",
+    "expected": {
+      "position": "Analyst",
+      "organization": "Asian Trade and Finance Foreign Affairs, Defense, and Trade Division, Congressional Research Service, Library of Congress",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "4a96d8152bbefaac99d942ec0b35865c124c4401db856aaa5c4e015b97b743df",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-115hhrg27011",
+    "literal": "Michael F. Martin, Ph.D., specialist in Asian affairs, Foreign Affairs, Defense, and Trade Division, Congressional Research Service",
+    "expected": {
+      "position": "specialist in Asian affairs",
+      "organization": "Foreign Affairs, Defense, and Trade Division, Congressional Research Service",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "00cb3819174133b0b2588f1d877fe21a17d69fd05569b3054f45e928d8a0114b",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-112hhrg65695",
+    "literal": "Sherrill, Dr. Andrew, Director of Education, Workforce, and Income Security, U.S. Government Accountability Office",
+    "expected": {
+      "position": "Director of Education, Workforce, and Income Security",
+      "organization": "U.S. Government Accountability Office",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "af4b2fec4ad155fc8353e5d50a441e2f1ba6dcd60985fb8f5cfae706df378e4e",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-115hhrg35835",
+    "literal": "Ms. Elizabeth H. Curda, Director, Education, Workforce, and Income Security Team, U.S. Government Accountability Office",
+    "expected": {
+      "position": "Director",
+      "organization": "Education, Workforce, and Income Security Team, U.S. Government Accountability Office",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "2f50d86176b35e6e6009a93d2d8865f4e8e602e7a5560d363d7e688b7ed6503e",
+    "locator": "mods:witness[1]",
+    "package": "CHRG-115hhrg31491",
+    "literal": "Nevano, Gregory, Deputy Assistant Director, Illicit Trade, Travel, and Finance Division, Homeland Security Investigations",
+    "expected": {
+      "position": "Deputy Assistant Director",
+      "organization": "Illicit Trade, Travel, and Finance Division, Homeland Security Investigations",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "820f8769083a6f329c3bd9b9d77fcdab01530b8d12ebb63140655f95339fcfac",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-107shrg89956",
+    "literal": "Ostrove, Nancy, Ph.D., Deputy Director, Division of Drug Marketing, Advertising, and Communications, Food and Drug Administration",
+    "expected": {
+      "position": "Deputy Director",
+      "organization": "Division of Drug Marketing, Advertising, and Communications, Food and Drug Administration",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "9a8b23dc36d9e0563bb312d0ea9bb81bb6a9393648f1e5f4dbdc1cbade7ed0a1",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-116hhrg38483",
+    "literal": "Dr. Peter Blair, Executive Director, Division on Engineering and Physical Sciences, The National Academies of Sciences, Engineering, and Medicine",
+    "expected": {
+      "position": "Executive Director",
+      "organization": "Division on Engineering and Physical Sciences, The National Academies of Sciences, Engineering, and Medicine",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "052d0b671c1f08731aae67b526a16dc2fec89943a2ab851a3a236ca0f24ef498",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-109shrg49529",
+    "literal": "Jaxon White, Chairman, President, and CEO, Medmarc Insurance Group",
+    "expected": {
+      "position": "Chairman, President, and CEO",
+      "organization": "Medmarc Insurance Group",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "980ef100b86d049e4dd29d30eb7b0f75357c17296695467d680613d290ab0192",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-111hhrg50504",
+    "literal": "Ms. Shirley Kan, Foreign Affairs, Defense, and Trade Division, Congressional Research Service",
+    "expected": {
+      "position": null,
+      "organization": "Foreign Affairs, Defense, and Trade Division, Congressional Research Service",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "0170bdff5bf410d20fc771ffd587e218482294dd249e857f9f624dd80bf90ae4",
+    "locator": "mods:witness[7]",
+    "package": "CHRG-107hhrg78207",
+    "literal": "Shannon, John T., State Forester of Arkansas, on behalf of the National Association of State Foresters",
+    "expected": {
+      "position": "State Forester of Arkansas",
+      "organization": null,
+      "on_behalf_of": "the National Association of State Foresters"
+    }
+  },
+  {
+    "body_sha": "0588f33f18f9f80e586e7c9088bb5a3a3f93dc8f74461aa502bb0c6fc59053d6",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-107shrg73781",
+    "literal": "Anne Vitale, former Managing Director and Deputy General Counsel, Republic National Bank of New York, and Current Special Litigation Counsel, HSBC USA, Inc., New York, New York",
+    "expected": {
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "9e8687034d6704beb5df28176534abf093bc3139714e0e3e48331f7871aa3124",
+    "locator": "mods:witness[31]",
+    "package": "CHRG-107hhrg74524",
+    "literal": "Walker, J. Brent, Baptist Joint Committee on Public Affairs, and Georgetown University Law Center",
+    "expected": {
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "19b1cd54b72cd9daed3c2917d0e28550fcb2953706f59d45f5b0e25849741199",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-115shrg33409",
+    "literal": "Senators Warner, Cotton, Tillis, and Jones",
+    "expected": {
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "b0456b43ab20321071e494587ebb627945115eed1d4e2a830de16928bc933d18",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-110hhrg35234",
+    "literal": "H.R. 1933, the Department of Energy Carbon Capture and Storage Research, Development, and Demonstration Act",
+    "expected": {
+      "position": null,
+      "organization": null,
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "079566a7654f18782954734069c460ada4a355be6cdf0c6c48238cf09cdfda4f",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-109shrg63761",
+    "literal": "Withee, Gregory W., Assistant Administrator for Satellite and Information Services, National Environmental Satellite, Data, and Information Service, National Oceanic and Atmospheric Administration, Department of Commerce",
+    "expected": {
+      "position": "Assistant Administrator for Satellite and Information Services",
+      "organization": "National Environmental Satellite, Data, and Information Service, National Oceanic and Atmospheric Administration, Department of Commerce",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "5413a86b3ce9e48cf5f4db3490c3971288bd4e670cc14430e1d9fd24c6b70345",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-111hhrg48734",
+    "literal": "Ms. Mary E. Kicza, Assistant Administrator for Satellite and Information Services, National Environmental Satellite, Data, and Information Service, National Oceanic and Atmospheric Administration, U.S. Department of Commerce",
+    "expected": {
+      "position": "Assistant Administrator for Satellite and Information Services",
+      "organization": "National Environmental Satellite, Data, and Information Service, National Oceanic and Atmospheric Administration, U.S. Department of Commerce",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "627324aa78ccc39223dd5f3a001cd869968793ce673ce01aeca20dd59999d591",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-110hhrg51037",
+    "literal": "Minot, Ph.D., Nicholas W., Senior Research Fellow, Markets, Trade, and Institutions Division, International Food Policy Research Institute, Washington, D.C",
+    "expected": {
+      "position": "Senior Research Fellow",
+      "organization": "Markets, Trade, and Institutions Division, International Food Policy Research Institute, Washington, D.C",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "7baeafa342e9266de3ad54293a283cf18b6fb15dc77e3910b5ce897b5f4f33f6",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-110hhrg38339",
+    "literal": "Ms. Mary Ellen Kicza, Assistant Administrator for Satellite and Information Services, National Environmental Satellite, Data, and Information Service, National Oceanic and Atmospheric Administration (NOAA), U.S. Department of Commerce",
+    "expected": {
+      "position": "Assistant Administrator for Satellite and Information Services",
+      "organization": "National Environmental Satellite, Data, and Information Service, National Oceanic and Atmospheric Administration (NOAA), U.S. Department of Commerce",
+      "on_behalf_of": null
+    }
+  },
+  {
+    "body_sha": "fb30b28bcc9dce1a4e1acc159ff87eb68c14b0c0da8593e85aa7f0b5c4dba4aa",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-107shrg74107",
+    "literal": "Lawrence E. Maxwell, Postal Inspector In Charge, Fraud, Child Exploitation, and Asset Forfeiture Division, U.S. Postal Inspection Service, Washington, DC",
+    "expected": {
+      "position": "Postal Inspector In Charge",
+      "organization": "Fraud, Child Exploitation, and Asset Forfeiture Division, U.S. Postal Inspection Service, Washington, DC",
+      "on_behalf_of": null
+    }
+  }
+]
