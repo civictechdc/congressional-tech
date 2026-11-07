@@ -14,7 +14,7 @@ VERSIONS={name:name+'-1' for name in ['sniff','html','xml','json']}
 
 def test_profile_identity_versions_rules_and_runtime_without_physical_selectors():
     from viewer_publication.archive_model_profile import profile_record
-    args=dict(parser_versions=VERSIONS,catalog_version='catalog-1',engine_revision='a'*40,
+    args=dict(parser_versions=VERSIONS,readings_version='selected-readings-1',catalog_version='catalog-1',engine_revision='a'*40,
         runtime_pins=dict(runner_class='linux-4cpu-16gb',limits=dict(compute_threads=4,batch_rows=8192)),
         lake_versions=dict(captures='b'*64,readings='c'*64,filename_readings='d'*64),
         writer_settings=dict(row_group_rows=65536,compression='zstd3'),
@@ -26,8 +26,10 @@ def test_profile_identity_versions_rules_and_runtime_without_physical_selectors(
     assert first['snapshots']!=relocated['snapshots']
     assert first['profile']['engine_revision']=='a'*40
     assert first['profile']['parser_versions']==VERSIONS
+    assert first['profile']['readings_version']=='selected-readings-1'
     for changed in [dict(file_hashes={'model/sql/roles.sql':'0'*64,'model/registries/formats.json':'f'*64}),
                     dict(parser_versions=dict(VERSIONS,html='html-2')),
+                    dict(readings_version='selected-readings-2'),
                     dict(catalog_version='catalog-2'),
                     dict(writer_settings=dict(row_group_rows=32768,compression='zstd3')),
                     dict(runtime_pins=dict(runner_class='other',limits=dict(compute_threads=4,batch_rows=8192)))]:
@@ -39,7 +41,7 @@ def test_profile_identity_versions_rules_and_runtime_without_physical_selectors(
 def test_profile_record_refuses_unpinned_definitions():
     from viewer_publication.archive_model_profile import profile_record
     with pytest.raises(ValueError):
-        profile_record(parser_versions=VERSIONS,catalog_version='',engine_revision='a'*40,
+        profile_record(parser_versions=VERSIONS,readings_version='',catalog_version='',engine_revision='a'*40,
             runtime_pins={},lake_versions={},writer_settings={},snapshots={},file_hashes={})
 
 
@@ -116,7 +118,7 @@ def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,
 
 def test_profile_hashes_current_definition_files_and_reuses_capture_profile():
     from viewer_publication.archive_model_profile import profile_record,capture_profile_record
-    record=profile_record(parser_versions=VERSIONS,catalog_version='catalog-1',engine_revision='a'*40,
+    record=profile_record(parser_versions=VERSIONS,readings_version='selected-readings-1',catalog_version='catalog-1',engine_revision='a'*40,
         runtime_pins=dict(runner_class='local',limits=dict(compute_threads=4)),
         lake_versions=dict(captures='b'*64),writer_settings=dict(row_group_rows=65536),
         snapshots={'captures':dict(metadata_location='/pinned/metadata.json')})

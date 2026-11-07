@@ -48,7 +48,7 @@ def completed_daily_inputs(template,production,records):
     if (not isinstance(pins,dict) or set(pins)-set(DAILY_CAPTURE_RECORDS) not in (set(TABLES),set(ALL_TABLES))
             or not isinstance(keys,list) or any(not isinstance(key,str) for key in keys)
             or keys!=sorted(set(keys)) or not isinstance(versions,dict)
-            or not {'parsers','filename_readings'}<=versions.keys()):
+            or not {'parsers','filename_readings','readings'}<=versions.keys()):
         raise ValueError('Daily publication requires fresh pins, complete receipt keys and definitions')
     if not isinstance(versions.get('parsers'),dict):
         raise ValueError('Daily publication requires page parser versions')
@@ -81,7 +81,8 @@ def completed_daily_inputs(template,production,records):
         elif template.get(name) is not None and name not in merged_parsers:
             merged_parsers[name]=dict(template['parser_versions'][name])
     receipt_list(keys)
-    value=dict(template,parser_versions=merged_parsers,catalog_version=versions['filename_readings'])
+    value=dict(template,parser_versions=merged_parsers,catalog_version=versions['filename_readings'],
+               readings_version=versions['readings'])
     for name in pins:
         if (not isinstance(pins[name],dict)
                 or set(pins[name])!={'metadata_location','table_uuid','snapshot','schema_id'}):

@@ -32,7 +32,8 @@ def planned(tmp_path_factory):
         empty[name] = root / f'empty-{name}.parquet'
         pq.write_table(pq.read_schema(value[name]['path']).empty_table(), empty[name])
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
-        prepared = prepare_model_inputs(recovery_requirements=value['recovery_requirements'], **empty, parser_versions=dict(value['parser_versions'],
+        prepared = prepare_model_inputs(recovery_requirements=value['recovery_requirements'], readings_version=value['readings_version'],
+            **empty, parser_versions=dict(value['parser_versions'],
                 meeting_records=meeting_records.current_versions(), appearance_records=appearance_records.current_versions()),
             catalog_version=value['catalog_version'], engine=engine, scratch=root / 'prepared',
             meeting_records=[], appearance_records=[], spicy_regs=spicy_input(), include_entities=True)

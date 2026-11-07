@@ -142,7 +142,7 @@
     "Regenerated policy-dependent model profiles, full JobSpec, local-file inventory, report expectations and producer-definition draft: 52 inputs, 253 steps, 40 outputs, 23 reports, 225 counters in seven required reports. Eight native selectors, observed IDs, original producer facts and successful proof preserved. Metadata-only preparation passed in 3.3 seconds at 0.199 GiB RSS after a caller-directory correction; failed attempt retained. No successor native inference or model execution."
   ],
   "active": [
-    "Qualify exact producer admission, population proof and prerequisites, then infer and accept the policy-bound 52-input model. The reviewed 24,028-target requirements and complete successor definition now exist; a new bounded native handoff is required before model execution.",
+    "Qualify exact producer adoption, admission, population proof and prerequisites, then execute and accept the policy-bound 52-input model. All 293 named schemas were inferred; 225 required counters now use those native schemas. The 24,028-target requirements and complete successor definition remain pinned.",
     "Complete dev6 native package/profile qualification and broader application cold recovery after the passed source25 native gate and fresh fixture; preserve original source11/source20/source22 evidence and runtime identities",
     "Qualify/install local shared input reuse; implement original producer-definition adoption/prerequisites, actual remote native input admission and frozen publication intent; then qualify the maintained application entry end to end",
     "Adopt the parent-owned native multi-output capability for the full actual application after original input admission and package/profile qualification; bounded local-file selection and recovery evidence already exist",
@@ -1347,7 +1347,7 @@
         "rowsDecoded": 0,
         "smallPreparedArtifactBytesHashed": 119716
       },
-      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB→reviewedB fixed daily/direct classification; reviewedB→C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
+      "independentReviews": "Greybeard and ETL accepted unbound preparation and revisionC delta. OriginalB\u2192reviewedB fixed daily/direct classification; reviewedB\u2192C adds exact43member inventories. Native enforcement, schema/policy inference and lifecycle acceptance remain open. Later model inference refusal requires actual selected recovery requirements before regeneration.",
       "schemaAuthority": "Source09 proof inference matched original observed input schemas and decoded report schemas. Full staged model inference refused missing capture_disposition; no accepted current model policy.",
       "nativeAdoption": "not_run",
       "nativeJobs": "no_payload_execution; separate schema-only calls recorded below",
@@ -1498,6 +1498,17 @@
       "unchangedLocalInputs": 42,
       "unchangedLocalInputBytes": 49637103,
       "independentReviews": "Artifact identity, source authority, native schema declarations, input membership and reuse passed; report schemas remain authored expectations"
+    },
+    "applicationProofWiring": {
+      "distinctPassed": 179,
+      "fullLane": false,
+      "nativeCalls": 0,
+      "handoff": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/app-proof-wiring-01/metadata-closeout.json",
+        "sha256": "ee0b306b9a580489f684bfe3f075739e1fd530e1d9da4ea32788893ab45273a0",
+        "size": 3283
+      },
+      "scope": "Proof binding, original preparation reuse, selected version identity and kept-release refusal; actual native acceptance pending"
     }
   },
   "commits": {
@@ -1690,6 +1701,31 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-policy-02/final-handoff.json",
       "sha256": "03feb8fec4733dc6636dfb37ad18c31ee8fa24b0b8df85411f27fa4be40640fb",
       "size": 6234
+    },
+    "producerModelSchemaInference": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-policy-schema-03/model.stdout.json",
+      "sha256": "cf2e8796ee902ed1ff85265cf54e16b1cb501c21581ffe39e415db8692172d31",
+      "size": 449511
+    },
+    "producerAuthoredSchemaRefusal": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-policy-schema-03/model-schema-comparison.json",
+      "sha256": "9cef87ef56ec13b3ad761d60aa7c6f68f9c4c636aa7967b8572650f3e4318bfc",
+      "size": 85206
+    },
+    "producerInferredPolicySuccessor": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-inferred-03/handoff.json",
+      "sha256": "1ba71b000cf2f2d6545e2b316e5c31945102de16b407c68078bedc2053dadb15",
+      "size": 15188
+    },
+    "producerProofApplicationMetadata": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/app-proof-wiring-01/result.json",
+      "sha256": "ea6c89efe547ce88a6031b96a54957ac9fbdb6626a6d18f147159d3ade765d57",
+      "size": 3012
+    },
+    "applicationProofWiringCloseout": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/app-proof-wiring-01/metadata-closeout.json",
+      "sha256": "ee0b306b9a580489f684bfe3f075739e1fd530e1d9da4ea32788893ab45273a0",
+      "size": 3283
     }
   },
   "constraints": {
@@ -1702,7 +1738,7 @@
     "resourceNote": "Bounded local checks ran under the shared watchdog with measured peaks. Parent owns the successor build lane; complete replacement-native acceptance remains pending.",
     "boundedLocalChecksAdmitted": true,
     "replacementNativeAcceptanceAdmitted": false,
-    "currentProducerEntrypoint": "Current dev6 caller requires original producer prerequisites. The checked-in model parser/catalog versions also retain the known whole-lock fingerprint refusal. No row restamping, compatibility exception or production bypass."
+    "currentProducerEntrypoint": "Source now requires a pinned accepted v3 producer proof and its exact adopted definition. Shared DDK supplies original schemas and current custody; adopted input order is preserved. The model states its combined-readings version and records observed native schema hashes. Current producer hashes no longer replace historical authority; native admission binds the complete adopted job/policy and local input bytes. The required successor SDK and actual native application qualification remain pending."
   },
   "delivery": {
     "fullReplacementComplete": false,
@@ -1711,7 +1747,7 @@
     "remainingScope": "Complete native producer, acquisition and nonarchive workflow adoption; authentic retained-data, recovery and measured efficiency acceptance",
     "architectureReview": "Proceed with direct catalog consumption and shared native ownership; reverse bridge removed",
     "archiveModelControllerRetired": true,
-    "producerDefinitionPreparation": "Original source facts, observed schemas and successful unchanged proof-schema evidence are preserved. The human selected verified recovered originals with continuing updates (historical_exact + refresh_live). Exact release-relevant campaign inputs and matching provenance are being bound; dependent model/profile/policy/definition regeneration remains pending that evidence. The refused 51-input request remains preserved."
+    "producerDefinitionPreparation": "All 24,028 selected historical targets have explicit historical_exact and refresh_live requirements; qualification remains unresolved. Policy-bound model/profile/input definitions are retained. Schema-only inference succeeded for 52 inputs, 253 steps, 40 outputs and 23 reports; all eight observed native schemas match. The maintained policy builder bound all 225 unchanged counters to inferred schemas, correcting 217 nullable flags without permitting actual null/nonzero values. Original policies and comparison refusal remain retained. Native producer adoption, population proof and full model execution are pending."
   },
   "definitionImplementation": {
     "state": "Qualified dev6 typed rule/native metadata API installed. One captured DDK definition/profile set supplies native checks and public artifacts; old schema generator retired. Actual retained application execution remains under acceptance.",
@@ -1771,7 +1807,7 @@
         "size": 204427
       },
       "currentAcceptances": 0,
-      "successorModel": "Complete policy-bound 52-input/253-step definition regenerated; native inference, adoption and model acceptance not run"
+      "successorModel": "Complete policy-bound 52-input/253-step definition; native schema inference complete and counter policy corrected; adoption and model acceptance pending"
     }
   }
 }

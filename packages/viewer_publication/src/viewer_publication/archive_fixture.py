@@ -61,7 +61,7 @@ def prepare_fixture_release(fixture, *, output, scratch, adapter, workspace, ope
     """Prepare the authored reader fixture through the current DDK definitions."""
     from ddk.catalog import assemble_catalog
     from viewer_publication.archive_catalog import capture_definitions, captured_catalog_options
-    from viewer_publication.archive_format import native_release_job, prepare_native_release, native_input_declarations
+    from viewer_publication.archive_format import native_release_job, prepare_native_release
 
     fixture, output, scratch = Path(fixture), Path(output), Path(scratch)
     scratch.mkdir(parents=True, exist_ok=False)
@@ -138,11 +138,9 @@ def prepare_fixture_release(fixture, *, output, scratch, adapter, workspace, ope
     job, diagnostics = native_release_job(inputs, steps, catalog_result=catalog,
         output=output, scratch=scratch, auxiliary=auxiliary, origin=origin,
         metadata_queries=metadata_queries)
-    file_inputs, schemas = native_input_declarations(inputs, directory=scratch)
     return prepare_native_release(job, diagnostics, adapter=adapter, project=project,
         catalog_result=catalog, request_dir=scratch, workspace=workspace, dataset='archive-fixture',
-        operation=operation, policy_id='archive-required-v1', file_inputs=file_inputs, input_schemas=schemas,
-        prerequisites=[],
+        operation=operation, policy_id='archive-required-v1', file_pins={}, producer_proof=None, producer_definition=None,
         expected_epoch=0, expected_selection=None, controls_dir=output, private_outputs=(), origin=origin,
         capture_scope=None, content_files={'witness_map_expected.json': data['expected']['witnesses']},
         entity_digests=None)

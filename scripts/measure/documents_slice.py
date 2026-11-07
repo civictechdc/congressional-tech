@@ -1,10 +1,12 @@
-"""Measure the document model on a key-selected slice of frozen v21 inputs.
+"""Measure an originally prepared document-model slice through its native owner.
 
-    documents_slice.py --inputs V21_INPUTS --live LIVE_RELEASE --probes PROBES --work DIR
-        [--readings READINGS --html-version V]
+    documents_slice.py --prepared-request REQUEST --request-sha256 SHA256
+        --engine-config RUNTIME --live LIVE_RELEASE --packages PACKAGES --work DIR
 
-A measurement, not a publish: it calls build_release directly with the parser
-versions the inputs carry, which the job CLI refuses unless they are the code's.
+The maintained model command resumes the original admitted request. This tool
+does not rebuild inputs, choose new producer versions or publish a release.
+The separate select_slice helper prepares the original frozen v21 measurement
+population for authoring a model job through the ordinary adoption path.
 Keys: every GovInfo package whose direct HTML and ZIP member HTML share no body
 (PROBES/nosh_pkgs.csv), 300 that share one, CHRG-119hhrg64404, the six HTTP 206
 ZIP packages, 100 direct-only packages, every Files.Serve URL, and the URLs of
@@ -15,8 +17,8 @@ placeholder or same-body edge seen on full captures stays seen.
 
 It cannot see: recovery attachment, review merges and copy verification (no
 provenance inputs), links from pages outside the slice, corpus scale or memory.
-With --readings, html readings at --html-version replace the v21 html rows of
-the bodies they cover (Run B).
+The select_slice helper can replace v21 HTML rows with supplied readings for
+the bodies they cover. That changes the inputs and requires its own adopted job.
 """
 import argparse
 import json
@@ -79,18 +81,20 @@ def select_slice(db, inputs, live, probes, work, readings=None):
     return captures, slice_readings, counts
 
 
-def measure(db, release, live, work):
+def measure(db, release, live, packages):
     db.from_parquet(str(release['list.parquet'])).create_view('nl_rows')
     db.from_parquet(str(release['detail.parquet'])).create_view('nd_rows')
     db.from_parquet(str(release['sources.parquet'])).create_view('ns')
+    db.from_parquet(str(packages)).create_view('selected_packages')
+    db.from_parquet(str(Path(live)/'meetings.parquet')).create_view('live_meetings')
     db.execute('CREATE OR REPLACE VIEW nl AS SELECT row_number() OVER () - 1 AS list_row, * FROM nl_rows')
     db.execute('CREATE OR REPLACE VIEW nd AS SELECT row_number() OVER () - 1 AS list_row, * FROM nd_rows')
-    db.execute(f"""CREATE OR REPLACE TABLE pairs AS SELECT DISTINCT event_id, t.package_id
-        FROM read_parquet('{live}/meetings.parquet'), unnest(transcripts) u(t) WHERE t.package_id IS NOT NULL""")
+    db.execute("""CREATE OR REPLACE TABLE pairs AS SELECT DISTINCT event_id, t.package_id
+        FROM live_meetings, unnest(transcripts) u(t) WHERE t.package_id IS NOT NULL""")
     words = ','.join(f"'{w}'" for w in LINK_WORDS)
     q = lambda sql: db.sql(sql).fetchall()
-    per_pkg = q(f"""SELECT n, count(*) FROM (SELECT package_id, count(*) n FROM nd
-        WHERE package_id IN (SELECT pkg FROM read_parquet('{work}/packages.parquet')) GROUP BY 1) GROUP BY 1 ORDER BY 1""")
+    per_pkg = q("""SELECT n, count(*) FROM (SELECT package_id, count(*) n FROM nd
+        WHERE package_id IN (SELECT pkg FROM selected_packages) GROUP BY 1) GROUP BY 1 ORDER BY 1""")
     dup = q("""SELECT count(DISTINCT event_id), count(DISTINCT package_id), count(*) FROM pairs p
         JOIN (SELECT package_id, count(*) n FROM nd WHERE package_id IS NOT NULL GROUP BY 1) d USING (package_id) WHERE d.n > 1""")
     return dict(
@@ -106,40 +110,20 @@ def measure(db, release, live, work):
 
 
 def main(argv=None):
-    import os
-    from docspec_client.client import NativeDatasets
-    from congress_api.lake import filenames
-    from viewer_publication.archive_model import build_release, require_model_prerequisites
+    from viewer_publication.archive_model_job import resume_prepared
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    for name in ('inputs', 'live', 'probes', 'work'):
+    for name in ('prepared-request', 'engine-config', 'live', 'packages', 'work'):
         parser.add_argument('--' + name, type=Path, required=True)
-    parser.add_argument('--readings', type=Path)
-    parser.add_argument('--html-version')
-    parser.add_argument('--prerequisites', type=Path, required=True,
-                        help='Original native producer proof inventory for the exact selected slice')
+    parser.add_argument('--request-sha256', required=True)
     args = parser.parse_args(argv)
-    prerequisites=json.loads(args.prerequisites.read_text())
-    require_model_prerequisites(prerequisites)
     work = args.work.resolve()
+    packages = args.packages.resolve(strict=True)
     work.mkdir(parents=True, exist_ok=False)
-    with duckdb.connect(config=dict(memory_limit='4GB', threads=4, temp_directory=str(work / 'duckdb'))) as db:
-        captures, slice_readings, counts = select_slice(db, args.inputs, args.live, args.probes, work, args.readings)
-        versions = dict(db.sql(f"SELECT parser, any_value(parser_version) FROM read_parquet('{slice_readings}') GROUP BY 1").fetchall())
-        assert db.sql(f"SELECT count(DISTINCT (parser, parser_version)) = count(DISTINCT parser) FROM read_parquet('{slice_readings}')").fetchone()[0]
-    if args.html_version:
-        versions['html'] = args.html_version
-    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
-        names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=work / 'names',
-                                decided_at='2026-11-02T00:00:00Z')
-        _manifest,files=build_release(captures=captures, readings=slice_readings, filename_readings=names['readings'],
-                      parser_versions={p: versions[p] for p in ('sniff', 'html', 'xml', 'json')},
-                      native_scope=dict(workspace=str(work/'native-workspace'),dataset='archive-measurement',
-                          operation='slice',policy_id='archive-required-v1',expected_epoch=0,expected_selection=None),
-                      prerequisites=prerequisites,
-                      catalog_version=names['catalog_version'], engine=engine, output=work / 'release', scratch=work / 'model')
+    request = dict(path=str(args.prepared_request.resolve(strict=True)), sha256=args.request_sha256)
+    built = resume_prepared(request, engine_config=args.engine_config)
     with duckdb.connect(config=dict(memory_limit='2GB', threads=4)) as db:
-        result = dict(slice=counts, parser_versions=versions, catalog_version=names['catalog_version'],
-                      **measure(db, files, args.live, work))
+        result = dict(release_id=built['release_id'], prepared_request=request,
+                      **measure(db, built['files'], args.live, packages))
     (work / 'measure.json').write_text(json.dumps(result, indent=1, default=str) + '\n')
     print(json.dumps(result, indent=1, default=str))
 

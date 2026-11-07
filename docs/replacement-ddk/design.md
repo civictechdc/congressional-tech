@@ -1,6 +1,6 @@
 # DDK replacement: proposed design and delivery boundary
 
-Status: implementation in progress, November 6, 2026. Direct standard-catalog
+Status: implementation in progress, November 7, 2026. Direct standard-catalog
 consumers and a shared native request/finalization boundary are under acceptance.
 The full replacement remains incomplete. The release prerequisite is the
 parent-owned `implementationReady` value in
@@ -125,19 +125,23 @@ flowchart TB
     subgraph domain["Application — source and domain meaning"]
         acquire["3. Acquire and interpret through domain adapters"]
         logic["Parsers, correction rules and transformation SQL"]
+        observed["Read exact selected native metadata; preserve original schema and field IDs"]
         producer_definition["Freeze original Git/source/version facts, observed schemas, both JobSpecs and exact required policies"]
+        prepared_bytes["Retain original JobSpec, inferred schemas, runtime identity and exact counter policy"]
         local_pins["Pin all local file bytes separately from their JobSpec paths"]
         recovery_choice["Human choice: verified recovered originals and continuing official updates"]
         recovery_population["Bind all 24,028 selected historical targets, every candidate and unchanged provenance"]
         recovery_obligations["Maintained planner: 24,028 exact-original and live-refresh requirements bound; every qualification remains unresolved"]
         capture_policy["Require pinned recovery requirements and matching version-2 capture profile"]
-        request["Verify the pinned runtime; retain the original request and local input paths"]
+        request["Verify runtime, original preparation bytes, accepted proof and local input paths"]
         retry["Retry presents that same request and digest"]
     end
 
     subgraph native["DocSpec — execution, native evidence and data authority"]
+        acquisition_admit["Admit acquisition request and budgets before external effects — pending"]
         adopt["Trusted local owner adopts exact producer definition under existing dataset authority — pending"]
-        admit["Admit exact identity, active definition, role and budgets before effects"]
+        proof_admit["Admit the exact proof request, active definition and budgets before effects"]
+        admit["Admit the exact model request, active definition and budgets before effects"]
         retain["Seal originals, receipts and exact input versions"]
         native_custody["Own or reuse exact inputs and observed native schemas under the same owner — local development proof only"]
         static_proof["Check original record bytes, namespace/key, version facts and selected metadata lineage before payload work — pending"]
@@ -146,7 +150,8 @@ flowchart TB
         input_admission["Model admission resolves exact accepted proof, both policies and inherited input custody — pending"]
         file_binding["Compare every local input's bytes with the adopted definition, including selected recovery requirements — pending"]
         subgraph local_jobs["Local execution evidence — file jobs, snapshots and input reuse"]
-            prepare["4. Infer every named schema without executing data"]
+            prepare["4. Infer every named schema without executing data — all 52 inputs, 253 steps, 40 outputs and 23 reports checked"]
+            counter_policy["Bind all 225 original counters to inferred schemas; actual null or nonzero values still refuse"]
             compute["5. Execute the captured JobSpec over admitted exact inputs"]
             candidate["Retain candidate, required reports and useful checkpoints"]
             verify["Check the original SQL reports under their declared rules"]
@@ -156,13 +161,14 @@ flowchart TB
         first_intent["First intent admission requires the accepted candidate to be the current native selection — pending"]
         intent["Freeze result, qualification, inventory, destination and original authority; exact replay survives later selection — pending"]
         lifetime["Release transient admission and computation resources after their last consumer; protect retained data obligations"]
-        retain --> static_proof --> native_custody --> proof_counts --> proof_accept --> input_admission
+        retain --> static_proof --> native_custody --> proof_counts --> proof_accept
         input_admission --> file_binding --> compute --> candidate
-        native_custody -->|"Original observed input schema"| prepare
-        prepare --> compute
+        retain --> observed --> prepare --> counter_policy --> prepared_bytes
+        counter_policy --> producer_definition
     end
 
     subgraph catalog["DDK — generated metadata"]
+        proof_binding["Shared helper: exact proof inputs, schema bytes and current custody; adopted prerequisite order"]
         schema_binding["Bind observed native schemas to captured dataset definitions"]
         rule_binding["Match authored fields and keys to accepted export counters"]
         first_receipt["Retain exact accepted receipt bytes beside the request"]
@@ -196,11 +202,15 @@ flowchart TB
     end
 
     check --> capture_policy --> request --> admit
+    prepared_bytes --> request
     recovery_choice --> recovery_population --> recovery_obligations --> local_pins --> capture_policy
-    frozen --> producer_definition --> adopt --> admit
+    frozen --> producer_definition --> adopt --> proof_admit
     local_pins --> file_binding
     retry --> request
-    admit --> acquire
+    check --> acquisition_admit --> acquire
+    proof_admit --> static_proof
+    proof_accept --> proof_binding --> request
+    admit --> input_admission
     sources --> acquire
     acquire --> retain
     logic -.-> compute
@@ -228,7 +238,7 @@ flowchart TB
     lifetime -.-> retirement
     present -.->|"Reader protection and release"| lifetime
     classDef pending stroke-dasharray: 5 5
-    class adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
+    class acquisition_admit,adopt,static_proof,proof_counts,proof_accept,input_admission,file_binding,first_intent,intent,permission,retirement pending
 ```
 
 The producer path uses the existing native dataset authority and retained job
@@ -242,7 +252,17 @@ bound all 24,028 literal targets in the selected historical recovery cohort to
 `historical_exact` plus `refresh_live`, retaining unmatched candidates and all
 other relationships. Every target's history and qualification remain explicitly
 unresolved. The regenerated model has 225 authored counters, including the
-requirements check; native inference and acceptance remain pending.
+requirements check. Native schema inference completed in 8.25 seconds at
+0.175 GiB sampled RSS without admitting inputs or executing rows. All eight
+native schemas preserve their observed field IDs, types and nullability.
+Comparison refused the earlier authored report schemas because the optimized
+plan marks 217 of the 225 integer fields nullable. Names, order, types and
+metadata agree. The maintained policy builder now binds the retained inferred
+schemas; native qualification still requires exactly one complete row of
+non-null integer zeros. The original policy and refused comparison remain
+intact. This [inferred-policy successor](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-inferred-03/handoff.json)
+changes no SQL, input, job or required counter. Producer adoption, population
+proof and model execution remain pending.
 The adopted definition must pin
 both complete jobs and both exact policies; changing a policy requires a new
 adoption in this profile. An earlier development candidate's policy-only
@@ -271,7 +291,12 @@ enforcement or model acceptance.
 
 The application composition now captures one immutable release request, uses the
 maintained native `prepare`, `accept` and `select` calls, and requires a checked
-DDK result before finalization. It preserves the first accepted receipt for
+DDK result before finalization. Its source now reads the pinned accepted producer
+proof and exact adopted definition. The shared DDK helper supplies original
+native selectors, Arrow schemas and current custody references. The adopted
+definition supplies prerequisite order, which can differ from proof input order.
+The application retains the receiving model's own epoch and selection conditions.
+It preserves the first accepted receipt for
 catalog assembly so a later observation cannot change the release's catalog
 bytes. The catalog records that observation; it does not predict a later selection.
 The finalizer joins the accepted native candidate to that exact qualification,
@@ -279,6 +304,20 @@ writes controls in a separate directory and preserves the original data paths.
 Only then does the caller request native selection and return the complete file
 inventory. Pending and failed observations preserve their evidence and return no
 selected release.
+
+For retained work, the preparation owner reuses original JobSpec, inference and
+policy bytes after checking their hashes, runtime and native input schemas. It
+requires every original local-file pin and creates no new inference or payload
+read. Fresh model authoring includes the selected combined-readings version in
+the semantic profile and publication input digest. Kept-release validation uses
+recorded pins and refuses incomplete profiles before protection changes or
+deletion; the old entity-parser exception is removed. Today's producer hashes do
+not redefine historical rows. Native admission checks
+the exact adopted job, policy and local-file inventory before payload work.
+The 179 distinct focused checks cover proof metadata, request rendering, retained
+preparation, selected daily versions, profile identity and maintenance refusal.
+They are partial suites. The successor SDK and actual v3 application acceptance
+remain pending; these checks establish application metadata behavior only.
 
 Disclosure remains an explicit definition file. Native observations used for
 local qualification do not automatically become public catalog facts. The

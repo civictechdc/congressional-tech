@@ -141,7 +141,8 @@ def test_model_admission_refuses_bad_recovery_registry_selectors(tmp_path):
     cases=json.loads((root/'model/fixtures/s1-model-cases.json').read_text())['recovery_registry_admission']
     value,_,_=real_model_spec(tmp_path)
     engine=NativeDatasets.from_config(value['engine_config'])
-    prepared=prepare_model_inputs(recovery_requirements=value['recovery_requirements'], **{name:value[name]['path'] for name in ['captures','readings','filename_readings']},
+    prepared=prepare_model_inputs(recovery_requirements=value['recovery_requirements'], readings_version=value['readings_version'],
+        **{name:value[name]['path'] for name in ['captures','readings','filename_readings']},
         parser_versions=value['parser_versions'],catalog_version=value['catalog_version'],engine=engine,scratch=tmp_path/'prepared')
     canonical=json.loads((root/'model/registries/recovery-kinds.json').read_text())
     for case in cases:

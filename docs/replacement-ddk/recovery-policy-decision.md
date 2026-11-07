@@ -154,8 +154,14 @@ contains 52 inputs, 253 steps, 40 outputs and 23 reports, with 225 authored requ
 counters in seven reports. Its 44 local inputs include both original provenance
 files and the requirements. The eight native selectors, observed schemas,
 unchanged prepared inputs and successful proof-schema evidence are reused.
-The refused 51-input request remains intact. Native schema inference, producer
-adoption and model execution for this successor have not run.
+The refused 51-input request remains intact. Native schema inference for the
+successor completed without input admission or row execution. It preserved all
+eight observed native schemas and all 225 required counter names and types.
+The old authored nullability expectations differed for 217 fields. The
+[maintained policy successor](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ddk-replacement-20261106/producer-authority-inferred-03/handoff.json)
+binds the inferred schemas while preserving the rule that every actual counter
+must be a non-null integer zero. Producer adoption and model execution have not
+run.
 
 Metadata generation completed in 3.3 seconds at 0.199 GiB sampled RSS. Its first
 attempt stopped at a missing caller-created control directory; the failed log

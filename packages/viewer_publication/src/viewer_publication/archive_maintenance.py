@@ -17,9 +17,6 @@ from viewer_publication.client import require_publication_client
 from viewer_publication.receipt_pins import PREFIX
 
 ARCHIVE_RELEASE_PINS='viewer-publications/pins/archive-releases.json'
-PROFILE_SOURCE='packages/viewer_publication/src/viewer_publication/archive_model_profile.py'
-# Profile producer at 3f6548e6, before source-scoped pins for entity tables.
-LEGACY_PROFILE_SHA='cad3c0e5c498b495a4911ea9450d0c1ad992dec6eb31d498fcb5a2d52c2f3237'
 
 
 class ReadOnlyClient:
@@ -125,7 +122,7 @@ class _InventoryEvidence:
 
 def _validate_kept_model(record,receipt_keys):
     from viewer_publication.archive_model_job import TABLES,OPTIONAL_TABLES,_selector
-    from viewer_publication.archive_model_profile import ENTITY_SOURCES,PARSERS,profile_record
+    from viewer_publication.archive_model_profile import profile_record
     snapshots=record['snapshots']
     if (not isinstance(snapshots,dict) or not set(TABLES)<=set(snapshots)
             or not set(snapshots)<=(set(TABLES)|set(OPTIONAL_TABLES))):
@@ -142,21 +139,10 @@ def _validate_kept_model(record,receipt_keys):
     # validate recorded definitions, never read the current filesystem instead.
     if not isinstance(profile,dict) or not isinstance(profile.get('file_hashes'),dict):
         raise ValueError('Kept model profile requires explicit definition hashes')
-    validation=profile
-    parsers=profile.get('parser_versions')
-    lake_versions=profile.get('lake_versions')
-    if (profile['file_hashes'].get(PROFILE_SOURCE)==LEGACY_PROFILE_SHA
-            and isinstance(parsers,dict) and set(parsers)==set(PARSERS)
-            and isinstance(lake_versions,dict) and lake_versions.keys()==selected.keys()
-            and set(selected)==set(TABLES)|set(ENTITY_SOURCES)
-            and all(selected[name]['kind']=='parquet' for name in ENTITY_SOURCES)):
-        # This historical producer used pinned entity Parquet files. Its
-        # original profile has already been checked against the input digest.
-        # Apply the shared shape checks without requiring later parser fields.
-        validation=dict(profile,lake_versions={name:value for name,value in lake_versions.items()
-            if name not in ENTITY_SOURCES})
-    rebuilt=profile_record(**validation,snapshots=selected)
-    if rebuilt['profile']!=validation:
+    if not isinstance(profile.get('readings_version'),str) or not profile['readings_version']:
+        raise ValueError('Kept model profile requires a pinned readings_version')
+    rebuilt=profile_record(**profile,snapshots=selected)
+    if rebuilt['profile']!=profile:
         raise ValueError('Kept model profile has unsupported fields')
 
 

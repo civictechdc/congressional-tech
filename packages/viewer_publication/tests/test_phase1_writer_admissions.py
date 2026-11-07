@@ -46,8 +46,9 @@ def model_inputs(tmp_path,*,conflict=False):
     pages=readings.stage(captures=captures,body_inventory=inventory/'bodies.parquet',local_root=raw,engine=engine,
         work=tmp_path/'page-stage',decided_at='2026-10-27T12:00:00Z',parser='html')
     names=filenames.stage(captures=captures,recovery_files=(),engine=engine,work=tmp_path/'name-stage',decided_at='2026-10-27T12:00:00Z')
+    versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']}
     return dict(captures=captures,readings=pages['readings'],filename_readings=names['readings'],
-        parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},
+        parser_versions=versions,readings_version=readings.bundle_version(versions,policy=readings.worker_limits()),
         catalog_version=names['catalog_version'],engine=engine)
 
 

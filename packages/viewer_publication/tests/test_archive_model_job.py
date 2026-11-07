@@ -25,31 +25,45 @@ def test_plan_is_default_and_opens_no_runtime_or_inputs(tmp_path,capsys):
     assert not (tmp_path/'unopened-runtime.json').exists()
 
 
-@pytest.mark.parametrize('change', ['mutable','old_parser','old_catalog','unknown'])
-def test_mutable_selectors_or_noncurrent_definitions_refuse_before_runtime(tmp_path,capsys,change):
+def test_model_plan_preserves_selected_historical_versions(tmp_path):
+    from viewer_publication.archive_model_job import load_spec
+
+    value=spec(tmp_path)
+    value['parser_versions']['sniff']='1'*64
+    value['catalog_version']='2'*64
+    value['readings_version']='3'*64
+    selected=load_spec(write_spec(tmp_path,value))
+    assert selected['parser_versions']==value['parser_versions']
+    assert selected['catalog_version']==value['catalog_version']
+    assert selected['readings_version']==value['readings_version']
+    assert not Path(value['producer_proof']['path']).exists()
+
+
+@pytest.mark.parametrize('change', ['mutable','empty_parser','empty_catalog','unknown'])
+def test_mutable_selectors_or_missing_definitions_refuse_before_runtime(tmp_path,capsys,change):
     from viewer_publication.archive_model_job import main
     value=spec(tmp_path)
     if change=='mutable':value['captures']=dict(kind='native_table',catalog_root='/not-opened',table='captures')
-    elif change=='old_parser':value['parser_versions']['sniff']='old'
-    elif change=='old_catalog':value['catalog_version']='old'
+    elif change=='empty_parser':value['parser_versions']['sniff']=''
+    elif change=='empty_catalog':value['catalog_version']=''
     else:value['unexpected_option']=True
     with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
     assert error.value.code==2
     message=capsys.readouterr().err
-    expected={'mutable':'Native input selector requires exact metadata','old_parser':'Parser versions must match the current definitions',
-              'old_catalog':'Catalog version must match the current definition','unknown':'Model job has unknown fields'}
+    expected={'mutable':'Native input selector requires exact metadata','empty_parser':'Model profile requires pinned parsers',
+              'empty_catalog':'exact catalog and combined readings version selections','unknown':'Model job has unknown fields'}
     assert expected[change] in message
     assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
 
 
-def test_changed_local_pin_refuses_before_runtime_creation(tmp_path,capsys):
-    from viewer_publication.archive_model_job import main
+def test_changed_local_pin_refuses_before_retaining_inputs(tmp_path):
+    from viewer_publication.archive_model_job import load_spec,model_arguments
     value=spec(tmp_path)
-    value['prerequisites']=[dict(profile='unread-test-evidence')]
     for name in ['captures','readings','filename_readings']:
         path=Path(value[name]['path']);path.write_bytes(b'changed')
-    with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
-    assert error.value.code==2 and 'Pinned model input changed' in capsys.readouterr().err
+    with pytest.raises(ValueError,match='Pinned model input changed'):
+        with model_arguments(load_spec(write_spec(tmp_path,value))):
+            pytest.fail('Changed input reached model preparation')
     assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
 
 
@@ -83,7 +97,7 @@ def test_direct_preparation_refuses_absent_policy_before_creating_inputs(tmp_pat
     with pytest.raises(ValueError,match='pinned recovery requirements'):
         prepare_model_inputs(captures='unopened',readings='unopened',filename_readings='unopened',
             parser_versions={},catalog_version='unopened',engine=None,scratch=tmp_path/'scratch',
-            recovery_requirements=None)
+            recovery_requirements=None,readings_version='unopened')
     assert not (tmp_path/'scratch').exists()
 
 
@@ -115,12 +129,12 @@ def test_model_cli_executes_real_raw_lake_fixture(tmp_path,capsys):
     assert detail[0]['saved_body']==bytes.fromhex(digest) and detail[0]['saved_suffix']=='.gz'
 
 
-def test_existing_output_refuses_before_input_or_runtime_access(tmp_path,capsys):
-    from viewer_publication.archive_model_job import main
+def test_existing_output_refuses_before_input_retention(tmp_path):
+    from viewer_publication.archive_model_job import load_spec,model_arguments
     value=spec(tmp_path);Path(value['output']).mkdir()
-    value['prerequisites']=[dict(profile='unread-test-evidence')]
-    with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
-    assert error.value.code==2 and 'must be fresh' in capsys.readouterr().err
+    with pytest.raises(ValueError,match='must be fresh'):
+        with model_arguments(load_spec(write_spec(tmp_path,value))):
+            pytest.fail('Existing output reached model preparation')
     assert not Path(value['scratch']).exists()
 
 
@@ -246,7 +260,7 @@ def test_validate_spec_rejects_scalar_composite_entity_versions(tmp_path,table,k
     assert load_spec(write_spec(tmp_path,value))['parser_versions']['meeting_records']==meeting_records.current_versions()
     mod=meeting_records if table=='meeting_records' else appearance_records
     value['parser_versions'][table]=mod.current_version() if kind=='composite_scalar' else 'scalar-hash'
-    with pytest.raises(ValueError,match='Parser versions must match the current definitions'):
+    with pytest.raises(ValueError,match='exact source-scoped '+table+' parser_versions'):
         load_spec(write_spec(tmp_path,value))
 
 
@@ -267,17 +281,10 @@ def test_checked_in_policy_free_job_refuses_until_production_requirements_are_se
 
 def test_a_spec_pin_for_a_table_the_helper_omits_is_refused(tmp_path):
     from viewer_publication import archive_model_job
-    jobs = Path(__file__).resolve().parents[3] / 'model/jobs'
-    value = json.loads((jobs / 'publish-model.json').read_text())
-    value['recovery_requirements']=spec(tmp_path)['recovery_requirements']
+    value=spec(tmp_path)
     value['parser_versions']['video_records'] = dict(youtube_cache='0' * 64)
-    path = jobs / '.stale-pin-test.json'
-    try:
-        path.write_text(json.dumps(value))
-        with pytest.raises(ValueError, match='Parser versions must match'):
-            archive_model_job.load_spec(path)
-    finally:
-        path.unlink(missing_ok=True)
+    with pytest.raises(ValueError, match='exact source-scoped video_records parser_versions'):
+        archive_model_job.load_spec(write_spec(tmp_path,value))
 
 
 def entity_spec(tmp_path,*,spicy=True):
@@ -394,10 +401,11 @@ def test_explorer_inputs_come_together(tmp_path):
         validate_spec(value, base=tmp_path)
 
 
-def test_missing_producer_prerequisites_refuse_before_runtime_or_input_access(tmp_path):
+def test_missing_producer_proof_refuses_before_runtime_or_input_access(tmp_path):
     from viewer_publication.archive_model_job import execute
     value=spec(tmp_path)
-    with pytest.raises(ValueError,match='original native producer prerequisites'):
+    value['producer_proof']=None
+    with pytest.raises(ValueError,match='pinned native receipt'):
         execute(value)
     assert not Path(value['scratch']).exists()
     assert not (tmp_path/'model-inputs').exists()
@@ -430,7 +438,7 @@ def test_unapproved_runtime_refuses_before_capturing_a_new_model_request(tmp_pat
         build_prepared_release(dict(scratch=tmp_path/'scratch'),
             engine=SimpleNamespace(verify_runtime=changed_runtime,binary_sha256='a'*64,source_revision='b'*40,limits='unused'),
             native_scope=value['native_scope'],
-            prerequisites=[dict(profile='unread-test-evidence')],output=tmp_path/'release')
+            producer_proof=None,producer_definition=None,output=tmp_path/'release')
     assert not (tmp_path/'scratch').exists()
     assert not (tmp_path/'native-workspace').exists()
 
@@ -467,7 +475,7 @@ def test_original_model_request_cannot_resume_without_its_producer_requirements(
     path=tmp_path/'request.json';path.write_bytes(raw)
     def must_not_run(*args,**kwargs):
         pytest.fail('A model request without producer obligations reached native submission')
-    with pytest.raises(ValueError,match='original native producer prerequisites'):
+    with pytest.raises(ValueError,match='original native producer proof bindings'):
         execute_native_release(dict(path=str(path),sha256=sha256(raw).hexdigest()),
             adapter=SimpleNamespace(managed_job=must_not_run))
     assert not (tmp_path/'native').exists()

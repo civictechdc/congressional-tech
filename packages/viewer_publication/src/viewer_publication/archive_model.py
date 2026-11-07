@@ -863,9 +863,9 @@ def probe_selectors_query(*,root=ROOT):
 def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
                          unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
-                         spicy_regs=None,include_entities=False,recovery_requirements,
+                         spicy_regs=None,include_entities=False,recovery_requirements,readings_version,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
-                         prior_links=None,base_retired=None,root=ROOT,registry=None):
+                         prior_links=None,base_retired=None,root=ROOT,registry=None,observed_native_schemas=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
     `registry` names a compatible-versions file other than the checked-in one (tests only).
@@ -875,7 +875,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     from congress_api.lake import compatible_versions
     from viewer_publication.archive_format import _settings
     from viewer_publication.archive_model_profile import (expand_parser_version_rows,profile_record,
-        readings_bundle_version,validate_parser_versions)
+        validate_parser_versions)
     from congress_api.models.archive_profile import build_capture_profile,validate_recovery_policy
     if not isinstance(recovery_requirements,dict):
         raise ValueError('Archive model requires pinned recovery requirements and acceptance policy')
@@ -887,6 +887,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     if explorer_inputs and (video_records is None or committee_records is None or not recording_decision_files or not include_entities):
         raise ValueError('Explorer tables require entity inputs, video_records, committee_records and recording decisions together')
     validate_parser_versions(parser_versions,require_entities=include_entities,require_explorer=explorer_inputs)
+    if not isinstance(readings_version,str) or not readings_version:
+        raise ValueError('Model inputs require the selected combined readings version')
     if playlist_records is not None and (not include_entities or 'playlist_records' not in parser_versions):
         raise ValueError('Playlist records require entity inputs and a pinned playlist_records version')
     scratch=Path(scratch).resolve();scratch.mkdir(parents=True,exist_ok=False)
@@ -903,10 +905,14 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         raw_data_inputs.append(('playlist_records',playlist_records))
     data_inputs=[dict(value,name=name) if isinstance(value,dict) else
         dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in raw_data_inputs]
+    observed_native_schemas=dict(observed_native_schemas or {})
+    native_names={item['name'] for item in data_inputs if item['kind']=='native_table'}
+    if native_names!=set(observed_native_schemas):
+        raise ValueError('Model inputs require their complete observed native schema digests')
     inputs += data_inputs
     inputs.append(json_input(scratch,'parser_versions',expand_parser_version_rows(parser_versions),parser='Utf8',version='Utf8'))
     # Load the registry once; every readings reader goes through the one selection it renders.
-    pins={**{p:parser_versions[p] for p in compatible_versions.LEAF_PARSERS},'readings':readings_bundle_version(parser_versions),
+    pins={**{p:parser_versions[p] for p in compatible_versions.LEAF_PARSERS},'readings':readings_version,
           **{p:parser_versions[p] for p in compatible_versions.DERIVED_PARSERS if p in parser_versions}}
     entries=compatible_versions.load_registry(current=pins,path=registry or Path(root)/'model/registries/compatible-versions.json')
     inputs.append(compatible_versions.accepted_versions_input(scratch,entries,pins=pins))
@@ -965,10 +971,11 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
     lake_tables=['captures','readings','filename_readings']+(['meeting_records','appearance_records'] if include_entities else [])+(['video_records','committee_records'] if explorer_inputs else [])
     if playlist_records is not None:lake_tables.append('playlist_records')
-    model_profile=profile_record(parser_versions=parser_versions,catalog_version=catalog_version,
+    model_profile=profile_record(parser_versions=parser_versions,readings_version=readings_version,catalog_version=catalog_version,
         engine_revision=engine.source_revision,runtime_pins=dict(platform=engine.platform,build_features=list(engine.build_features),
             binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
-        lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in lake_tables},
+        lake_versions={name:dict(schema_sha256=observed_native_schemas[name] if name in native_names else
+            file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in lake_tables},
         snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key'])),root=root,
         recovery_policy=recovery_policy)
@@ -980,33 +987,26 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
-                  engine,native_scope,prerequisites,output,scratch,recovery_files=(),review_files=(),verification_files=(),
+                  engine,native_scope,producer_proof,producer_definition,readings_version,output,scratch,recovery_files=(),review_files=(),verification_files=(),
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                   spicy_regs=None,include_entities=False,recovery_requirements,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   prior_links=None,base_retired=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
-    require_model_prerequisites(prerequisites)
+    from viewer_publication.archive_model_proof import require_producer_proof
+    require_producer_proof(producer_proof)
     require_model_runtime(engine)
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
         recovery_files=recovery_files,review_files=review_files,verification_files=verification_files,
         unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
-        recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
+        recovery_requirements=recovery_requirements,readings_version=readings_version,
+        observed_native_schemas={item['name']:item['schema_sha256'] for item in producer_proof.manifest['inputs']},
+        video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,prior_links=prior_links,base_retired=base_retired,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,native_scope=native_scope,
-        prerequisites=prerequisites,output=output,root=root)
-
-
-def require_model_prerequisites(prerequisites):
-    """Model inputs require their original producer proofs, including file inputs.
-
-    The shared native owner validates the evidence profile and its complete input
-    binding. Missing evidence is never interpreted as an empty requirement set.
-    """
-    if not isinstance(prerequisites, list) or not prerequisites:
-        raise ValueError('Archive model requires original native producer prerequisites for its exact source inputs')
+        producer_proof=producer_proof,producer_definition=producer_definition,output=output,root=root)
 
 
 def require_model_runtime(engine):
@@ -1031,19 +1031,20 @@ def require_model_capture_policy(prepared):
     return recovery_policy
 
 
-def build_prepared_release(prepared,*,engine,native_scope,prerequisites,output,root=ROOT):
+def build_prepared_release(prepared,*,engine,native_scope,producer_proof,producer_definition,output,root=ROOT):
     """Retain, qualify and select the complete model; return its exact file inventory."""
     from ddk.adapters.docspec import DocSpecAdapter
     from ddk.catalog import assemble_catalog
     from viewer_publication.archive_catalog import capture_definitions, captured_catalog_options
-    from viewer_publication.archive_format import (native_release_job, native_input_declarations,
+    from viewer_publication.archive_format import (native_release_job,
         prepare_native_release, execute_native_release)
+    from viewer_publication.archive_model_proof import require_producer_proof
 
     fields = {'workspace', 'dataset', 'operation', 'policy_id', 'expected_epoch', 'expected_selection'}
     if not isinstance(native_scope, dict) or set(native_scope) != fields:
         raise ValueError('Model execution requires explicit native scope and selection authority')
-    require_model_prerequisites(prerequisites)
     require_model_runtime(engine)
+    require_producer_proof(producer_proof)
     require_model_capture_policy(prepared)
     workspace = Path(native_scope['workspace']).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
@@ -1056,17 +1057,11 @@ def build_prepared_release(prepared,*,engine,native_scope,prerequisites,output,r
 
     def prepare(inputs, steps, **options):
         job, diagnostics = native_release_job(inputs, steps, catalog_result=catalog, **options)
-        schemas = {item['name']: json.loads((Path(root)/'model/lake'/
-                   (item['name'].replace('_', '-')+'.schema.json')).read_text())
-                   for item in inputs if item['kind'] == 'native_table'}
         pins = {str(Path(pin['path']).resolve()): pin for pin in prepared['profile']['snapshots'].values()
                 if pin['kind'] == 'parquet'}
-        file_inputs, input_schemas = native_input_declarations(inputs, directory=directory,
-            native_schemas=schemas, file_pins=pins)
         return prepare_native_release(job, diagnostics, adapter=adapter, project=project,
             catalog_result=catalog, request_dir=directory, **dict(native_scope, workspace=workspace),
-            file_inputs=file_inputs, input_schemas=input_schemas, controls_dir=output,
-            prerequisites=prerequisites,
+            file_pins=pins, producer_proof=producer_proof, producer_definition=producer_definition, controls_dir=output,
             private_outputs=[item['name'] for item in options['extra_outputs']],
             **{key: options[key] for key in ('origin', 'capture_scope', 'content_files', 'entity_digests')})
 

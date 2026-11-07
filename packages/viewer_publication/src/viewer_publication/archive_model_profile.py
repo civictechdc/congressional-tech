@@ -169,14 +169,15 @@ def capture_profile_record(*,engine_revision,root=ROOT):
         url_rules=json.loads((root/'model/registries/url-rules.json').read_text()))
 
 
-def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pins,
+def profile_record(*,parser_versions,readings_version,catalog_version,engine_revision,runtime_pins,
                    lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
                    relationship_metadata_update=None,recovery_policy=None):
     """Pin semantic definitions; retain exact physical selectors outside their digest."""
     require_entities=(isinstance(lake_versions,dict)
         and ('meeting_records' in lake_versions or 'appearance_records' in lake_versions))
     validate_parser_versions(parser_versions,require_entities=require_entities)
-    if (not isinstance(catalog_version,str) or not catalog_version
+    if (not isinstance(readings_version,str) or not readings_version
+            or not isinstance(catalog_version,str) or not catalog_version
             or not isinstance(engine_revision,str) or re.fullmatch('[0-9a-f]{40}',engine_revision) is None
             or any(not isinstance(v,dict) or not v for v in (runtime_pins,lake_versions,writer_settings,snapshots))):
         raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
@@ -184,7 +185,7 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
     if (not isinstance(hashes,dict) or not hashes or any(not isinstance(name,str) or not name
             or not isinstance(value,str) or re.fullmatch('[0-9a-f]{64}',value) is None for name,value in hashes.items())):
         raise ValueError('Model definitions require named SHA-256 values')
-    profile=_copy(dict(parser_versions=parser_versions,catalog_version=catalog_version,
+    profile=_copy(dict(parser_versions=parser_versions,readings_version=readings_version,catalog_version=catalog_version,
         engine_revision=engine_revision,runtime_pins=runtime_pins,lake_versions=lake_versions,
         writer_settings=writer_settings,file_hashes=hashes))
     if recovery_policy is not None:profile['recovery_policy']=_copy(recovery_policy)

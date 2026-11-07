@@ -447,13 +447,14 @@ def _producers(run):
 
 
 def _model_value(run):
-    from viewer_publication.archive_model_profile import current_parser_versions
+    from viewer_publication.archive_model_profile import current_parser_versions,readings_bundle_version
     model=run.selective['model'];value=json.loads(Path(model['template']).read_text())
     versioned_tables=set(value.get('parser_versions',{}))|set(RECORD_TABLES)|(set(EXPLORER_TABLES)&set(run.state['pins']))
     versioned_tables.update(run.spec.get('derived_parsers',[]))
     value.update(engine_config=model['engine_config'],catalog_version=_versions()['filename_readings'],
         output=str(run.work/'model-output'),scratch=str(run.work/'model-scratch'),
         parser_versions=current_parser_versions(versioned_tables))
+    value['readings_version']=readings_bundle_version(value['parser_versions'])
     for name,pin in run.state['pins'].items():value[name]=dict(kind='native_table',**pin)
     if 'spicy_regs' in model:value['spicy_regs']=model['spicy_regs']
     for field,kind in PROVENANCE.items():

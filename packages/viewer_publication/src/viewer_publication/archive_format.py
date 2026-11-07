@@ -420,34 +420,37 @@ def _controls_directory(path, native_roots=()):
     return path
 
 
-def native_input_declarations(inputs, *, directory, native_schemas=None, file_pins=None):
+def native_input_declarations(inputs, *, directory, observed_schemas=None, file_pins=None):
     """Bind local bytes and declared physical schemas without converting native inputs.
 
     Existing file pins are reused by exact path; native admission checks those
-    bytes. Native table schemas are declarations, never snapshot custody proof.
+    bytes. Native schemas retain the accepted proof's original Arrow IPC bytes.
     """
     from base64 import b64encode
     from hashlib import file_digest
     from os import fstat
     import pyarrow.parquet as pq
 
-    native_schemas = native_schemas or {}
+    observed_schemas = observed_schemas or {}
     pins = dict(file_pins or {})
     files, schemas = [], []
     for index, item in enumerate(inputs):
         name, kind = item['name'], item['kind']
         if kind == 'native_table':
-            schema = native_schemas[name]
-            pin = _request_artifact(directory, f'input-schema-{index}.json', schema)
-            schemas.append(dict(name=name, schema_artifact=dict(pin, format='iceberg_schema_json')))
+            schemas.append(dict(name=name, schema_ipc_base64=observed_schemas[name]))
             continue
         if kind == 'parquet':
-            raw = pq.read_schema(item['path']).serialize().to_pybytes()
-            schemas.append(dict(name=name, schema_ipc_base64=b64encode(raw).decode()))
+            encoded = observed_schemas.get(name)
+            if encoded is None:
+                encoded = b64encode(pq.read_schema(item['path']).serialize().to_pybytes()).decode()
+            schemas.append(dict(name=name, schema_ipc_base64=encoded))
             members = [dict(key=None, path=item['path'])]
         elif kind == 'json_lines':
-            pin = _request_artifact(directory, f'input-schema-{index}.json', item['schema'])
-            schemas.append(dict(name=name, schema_artifact=dict(pin, format='arrow_serde_json')))
+            if name in observed_schemas:
+                schemas.append(dict(name=name, schema_ipc_base64=observed_schemas[name]))
+            else:
+                pin = _request_artifact(directory, f'input-schema-{index}.json', item['schema'])
+                schemas.append(dict(name=name, schema_artifact=dict(pin, format='arrow_serde_json')))
             members = item['files']
         else:
             raise ValueError('Unsupported release input kind: ' + kind)
@@ -464,14 +467,64 @@ def native_input_declarations(inputs, *, directory, native_schemas=None, file_pi
     return files, schemas
 
 
+def _read_preparation_artifact(pin):
+    """Read bounded retained control bytes without changing their serialization."""
+    from ddk.adapters.docspec import DEFAULT_CAPTURE_BYTES
+
+    if (not isinstance(pin, dict) or set(pin) != {'path', 'sha256', 'size'}
+            or type(pin['size']) is not int or not 0 < pin['size'] <= DEFAULT_CAPTURE_BYTES):
+        raise ValueError('Retained preparation requires exact bounded artifact pins')
+    with Path(pin['path']).open('rb') as stream:
+        raw = stream.read(pin['size'] + 1)
+    if len(raw) != pin['size'] or sha256(raw).hexdigest() != pin['sha256']:
+        raise ValueError('Retained preparation differs from its original artifact identity')
+    return raw
+
+
+def _retained_preparation(retained, job, native_schemas, runtime):
+    """Match prior inference to this exact job, native input schemas and runtime."""
+    from base64 import b64decode
+    import pyarrow as pa
+
+    if not isinstance(retained, dict) or set(retained) != {'job', 'result', 'policy', 'runtime'}:
+        raise ValueError('Retained preparation requires its job, inference, policy and runtime')
+    if (not all(runtime.get(key) for key in ('distributionSha256', 'commit'))
+            or retained['runtime'] != {key: runtime[key] for key in ('distributionSha256', 'commit')}):
+        raise ValueError('Retained schema inference belongs to a different native runtime')
+    job_bytes = _read_preparation_artifact(retained['job'])
+    if json.loads(job_bytes) != job:
+        raise ValueError('Retained preparation names a different job or original input paths')
+    inferred = json.loads(_read_preparation_artifact(retained['result']))
+    if (inferred.get('input_admission') != 'not_run' or inferred.get('execution') != 'not_run'
+            or inferred.get('job', {}).get('sha256') != retained['job']['sha256']
+            or inferred.get('job_size') != len(job_bytes)):
+        raise ValueError('Retained schema inference differs from the original unexecuted job')
+    if [item['name'] for item in inferred.get('inputs', ())] != [item['name'] for item in job['inputs']]:
+        raise ValueError('Retained schema inference changes complete ordered input membership')
+    schemas = {}
+    for item in inferred['inputs']:
+        encoded = inferred['schemas'][item['schema_sha256']]
+        raw = b64decode(encoded, validate=True)
+        if sha256(raw).hexdigest() != item['schema_sha256']:
+            raise ValueError('Retained input schema differs from its original digest')
+        name = item['name']
+        if name in native_schemas:
+            observed = pa.ipc.read_schema(pa.BufferReader(raw))
+            proved = pa.ipc.read_schema(pa.BufferReader(b64decode(native_schemas[name], validate=True)))
+            if not observed.equals(proved, check_metadata=True):
+                raise ValueError('Retained native schema differs from the accepted producer proof: ' + name)
+        schemas[name] = encoded
+    return job_bytes, inferred, schemas
+
+
 def prepare_native_release(job, diagnostics, *, adapter, project, catalog_result,
                            request_dir, workspace, dataset, operation, policy_id,
-                           file_inputs, input_schemas, prerequisites, expected_epoch, expected_selection,
+                           file_pins, producer_proof, producer_definition, expected_epoch, expected_selection,
                            controls_dir, private_outputs, origin, capture_scope,
-                           content_files, entity_digests):
+                           content_files, entity_digests, retained_preparation=None):
     """Capture a native request and publication inputs, without executing data.
 
-    The caller supplies exact file custody and native schema declarations.
+    The caller supplies exact file custody and the verified native producer proof.
     DocSpec infers the complete job; its report schemas bind the blocking policy.
     The returned artifact is the restart input. There is no application phase
     state, phase key, selection pointer or retry loop.
@@ -480,9 +533,12 @@ def prepare_native_release(job, diagnostics, *, adapter, project, catalog_result
     from ddk.catalog_native_rules import native_rule_artifact
     from viewer_publication.archive_catalog import captured_catalog_options, native_catalog_mapping
     from viewer_publication.archive_model_profile import native_report_policy
+    from viewer_publication.archive_model_proof import producer_proof_bindings, require_producer_proof
 
-    if not isinstance(prerequisites, list):
-        raise ValueError('Native preparation requires an explicit prerequisite inventory')
+    if origin.get('kind') == 'model' or any(item['kind'] == 'native_table' for item in job['inputs']):
+        require_producer_proof(producer_proof)
+    bindings, native_schemas = (producer_proof_bindings(producer_proof, producer_definition, job['inputs'],
+        dataset=dataset, operation=operation) if producer_proof is not None else ({}, {}))
     directory = Path(request_dir).resolve(strict=True)
     project = Path(project).resolve(strict=True)
     workspace = Path(workspace).resolve(strict=True)
@@ -491,21 +547,51 @@ def prepare_native_release(job, diagnostics, *, adapter, project, catalog_result
         raise ValueError('Captured release definitions must live beside their request')
     options = captured_catalog_options(project)
     mapping = native_catalog_mapping(catalog_result, job, private_outputs=private_outputs)
-    job_pin = _request_artifact(directory, 'job.json', job)
-    response = adapter.prepare_job(dict(job=job_pin, inputs=input_schemas))
-    if response['status'] != 'succeeded':
-        raise NativeReleaseNotReady('schema preparation', response)
-    job_bytes = Path(job_pin['path']).read_bytes()
+    if retained_preparation is None:
+        job_pin = _request_artifact(directory, 'job.json', job)
+        job_bytes = Path(job_pin['path']).read_bytes()
+        inferred = None
+        observed_schemas = native_schemas
+    else:
+        job_bytes, inferred, observed_schemas = _retained_preparation(
+            retained_preparation, job, native_schemas, adapter.tool)
+        job_pin = {key: retained_preparation['job'][key] for key in ('path', 'sha256')}
+        expected_paths = {str(Path(member['path']).resolve()) for item in job['inputs']
+            if item['kind'] != 'native_table'
+            for member in ([item] if item['kind'] == 'parquet' else item['files'])}
+        if not expected_paths <= file_pins.keys():
+            raise ValueError('Retained preparation requires every original local file pin')
+    if (producer_definition is not None
+            and sha256(job_bytes).hexdigest() != producer_definition['model']['job_sha256']):
+        raise ValueError('Model JobSpec differs from the exact adopted producer definition')
+    file_inputs, input_schemas = native_input_declarations(job['inputs'], directory=directory,
+        observed_schemas=observed_schemas, file_pins=file_pins)
+    if inferred is None:
+        response = adapter.prepare_job(dict(job=job_pin, inputs=input_schemas))
+        if response['status'] != 'succeeded':
+            raise NativeReleaseNotReady('schema preparation', response)
+        inferred = response['result']
     rules = native_rule_artifact(catalog_result, job_bytes,
         native_rule_profile=options['native_rule_profile'], **mapping)
     rules_pin = _request_artifact(directory, 'native-rules.json', rules)
     definition = managed_job_definition(catalog_result, native_rules=rules_pin,
         native_rule_profile=options['native_rule_profile'], **mapping)
-    policy = native_report_policy(job_bytes, diagnostics, response['result'], policy_id=policy_id)
-    policy_pin = _request_artifact(directory, 'policy.json', policy)
+    if producer_definition is not None and definition != producer_definition['definition']:
+        raise ValueError('Model dataset definition differs from the adopted producer definition')
+    policy = native_report_policy(job_bytes, diagnostics, inferred, policy_id=policy_id)
+    if retained_preparation is None:
+        policy_pin = _request_artifact(directory, 'policy.json', policy)
+    else:
+        if json.loads(_read_preparation_artifact(retained_preparation['policy'])) != policy:
+            raise ValueError('Retained policy differs from the original required reports or inferred schemas')
+        policy_pin = {key: retained_preparation['policy'][key] for key in ('path', 'sha256')}
+    if (producer_definition is not None
+            and (policy_id != producer_definition['model']['policy_id']
+                 or policy_pin['sha256'] != producer_definition['model']['policy_sha256'])):
+        raise ValueError('Model policy differs from the exact adopted producer definition')
     request = dict(action='prepare', dataset=dataset, operation=operation, definition=definition,
         job=job_pin, file_inputs=file_inputs, policy_id=policy_id, policy=policy_pin,
-        prerequisites=prerequisites,
+        **bindings,
         expected_epoch=expected_epoch, expected_selection=expected_selection)
     return _request_artifact(directory, 'release-request.json', dict(
         native=request, workspace=str(workspace),
@@ -533,8 +619,8 @@ def execute_native_release(prepared, *, adapter):
     saved = json.loads(raw)
     request, workspace = saved['native'], saved['workspace']
     if saved.get('origin', {}).get('kind') == 'model':
-        from viewer_publication.archive_model import require_model_prerequisites
-        require_model_prerequisites(request.get('prerequisites'))
+        from viewer_publication.archive_model_proof import require_model_proof_request
+        require_model_proof_request(request)
     _controls_directory(saved['controls_dir'], (workspace,))
     project = Path(saved['project'])
     options = captured_catalog_options(project)

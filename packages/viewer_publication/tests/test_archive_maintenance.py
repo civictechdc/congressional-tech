@@ -65,7 +65,7 @@ def add_input(store,release,identity):
         table_uuid=str(uuid5(NAMESPACE_URL,identity+'/'+name)),snapshot=1,schema_id=0)
         for name in ['captures','readings','filename_readings']}
     profile=profile_record(parser_versions={name:'fixture-'+identity for name in ['sniff','html','xml','json']},
-        catalog_version='fixture-catalog',engine_revision='a'*40,runtime_pins={'platform':'fixture'},
+        readings_version='fixture-readings-'+identity,catalog_version='fixture-catalog',engine_revision='a'*40,runtime_pins={'platform':'fixture'},
         lake_versions={name:{'schema_sha256':'b'*64} for name in snapshots},
         writer_settings={'whole':{'compression':'zstd'}},snapshots=snapshots,file_hashes={'fixture.sql':'c'*64})['profile']
     record=dict(profile=profile,provenance=[],entity_digests={},snapshots=snapshots)
@@ -221,7 +221,8 @@ def test_legacy_live_pointer_refuses_before_inventory_or_deletion():
 
 @pytest.mark.parametrize('failure',['missing_snapshots','empty_snapshots','incomplete_tables','unknown_tables',
     'native_uuid','native_schema','native_snapshot','native_metadata','wrong_name','parquet_digest',
-    'missing_profile','profile_field','profile_file_hashes','profile_null_file_hashes'])
+    'missing_profile','profile_field','profile_file_hashes','profile_null_file_hashes',
+    'missing_readings_version','empty_readings_version'])
 def test_unusable_kept_model_pins_refuse_before_deletes_or_purge_evidence(failure):
     from viewer_publication.archive_maintenance import maintain_releases
     store,_=fixture()
@@ -240,6 +241,8 @@ def test_unusable_kept_model_pins_refuse_before_deletes_or_purge_evidence(failur
     elif failure=='missing_profile':del record['profile']
     elif failure=='profile_field':del record['profile']['runtime_pins']
     elif failure=='profile_file_hashes':record['profile']['file_hashes']={}
+    elif failure=='missing_readings_version':del record['profile']['readings_version']
+    elif failure=='empty_readings_version':record['profile']['readings_version']=''
     else:record['profile']['file_hashes']=None
     if 'profile' in record:
         # Profiles are semantic: keep the mutated record's digest self-consistent,
@@ -281,8 +284,9 @@ def test_valid_kept_parquet_selectors_require_no_local_payload_reads():
     assert len(result['kept_inputs'])==4 and store.deleted==[]
 
 
-@pytest.mark.parametrize('historical',[True,False])
-def test_kept_entity_parquet_profile_uses_its_original_parser_fields(historical):
+@pytest.mark.parametrize('profile_source_sha',[
+    'cad3c0e5c498b495a4911ea9450d0c1ad992dec6eb31d498fcb5a2d52c2f3237','a'*64])
+def test_kept_entity_parquet_profile_requires_source_scoped_parser_pins(profile_source_sha):
     from viewer_publication import archive_maintenance
     from viewer_publication.receipt_pins import read_receipt_list
 
@@ -292,20 +296,15 @@ def test_kept_entity_parquet_profile_uses_its_original_parser_fields(historical)
     for name in ('meeting_records','appearance_records'):
         record['snapshots'][name]=dict(kind='parquet',path='/not-opened/'+name+'.parquet',sha256='a'*64,size=17)
         record['profile']['lake_versions'][name]=dict(schema_sha256='b'*64)
-    record['profile']['file_hashes'][archive_maintenance.PROFILE_SOURCE]=(
-        archive_maintenance.LEGACY_PROFILE_SHA if historical else 'a'*64)
+    record['profile']['file_hashes']['packages/viewer_publication/src/viewer_publication/archive_model_profile.py']=profile_source_sha
     prefix=PREFIX+PINNED+'/inputs/'
     keys=read_receipt_list(record['receipt_keys_sha256'],store.get(
         prefix+'receipts/'+record['receipt_keys_sha256']+'.json.gz'))
     record['input_digest']=input_digest(receipt_keys=keys,**{k:record[k] for k in ('profile','provenance','entity_digests')})
     del store.objects[prefix+old_digest+'.json']
     write_input_receipts(store,PINNED,record['input_digest'],record,keys)
-    if historical:
-        result=archive_maintenance.maintain_releases(store,now=NOW,external_pins=[PINNED])
-        assert result['kept_releases']==[LIVE,PREVIOUS,PINNED]
-    else:
-        with pytest.raises(ValueError,match='requires pinned meeting_records'):
-            archive_maintenance.maintain_releases(store,now=NOW,external_pins=[PINNED])
+    with pytest.raises(ValueError,match='requires pinned meeting_records'):
+        archive_maintenance.maintain_releases(store,now=NOW,external_pins=[PINNED])
     assert store.deleted==[]
 
 
@@ -341,7 +340,7 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys,mon
     assert archive_backfill_job.main(['--spec',str(root/'model/jobs/backfill.json'),'--plan'])==0
     backfill_plan=json.loads(capsys.readouterr().out)
     assert backfill_plan['status']=='planned' and backfill_plan['executed'] is False
-    assert set(backfill_plan['tables'])==set(ALL_TABLE_NAMES)
+    assert set(backfill_plan['tables'])==set(ALL_TABLE_NAMES)|{'committee_records','playlist_records'}
     committed=archive_backfill_job.load_spec(root/'model/jobs/backfill.json')
     publisher=json.loads((root/'model/jobs/publish.json').read_text())['producers']
     assert {name:(Path(pin['path']).name,pin['sha256']) for name,pin in committed['producers'].items()}=={

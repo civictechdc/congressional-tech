@@ -25,7 +25,7 @@ OPTIONAL={*OPTIONAL_TABLES,'spicy_regs'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
-REQUIRED={'version','engine_config','native_scope','prerequisites',*TABLES,'parser_versions','catalog_version','output','scratch','recovery_requirements'}
+REQUIRED={'version','engine_config','native_scope','producer_proof','producer_definition',*TABLES,'parser_versions','readings_version','catalog_version','output','scratch','recovery_requirements'}
 
 
 def provenance_record_kind(key):
@@ -87,9 +87,9 @@ def validate_spec(value,*,base):
         if not isinstance(value.get('reason'),str) or not value['reason']:
             raise ValueError('Blocked model job requires its reason')
         return dict(status='blocked',reason=value['reason'])
-    if set(value)-REQUIRED-PROVENANCE.keys()-OPTIONAL:raise ValueError('Model job has unknown fields')
     if value.get('recovery_requirements') is None:
         raise ValueError('Archive model requires pinned recovery requirements and acceptance policy')
+    if set(value)-REQUIRED-PROVENANCE.keys()-OPTIONAL:raise ValueError('Model job has unknown fields')
     if not REQUIRED<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Model job requires version 1 and all explicit inputs')
     result=dict(value,**{name:_selector(value[name],base) for name in TABLES})
@@ -97,8 +97,9 @@ def validate_spec(value,*,base):
     if not isinstance(scope,dict) or set(scope)!={'workspace','dataset','operation','policy_id','expected_epoch','expected_selection'}:
         raise ValueError('Model job requires explicit native scope and selection authority')
     result['native_scope']=dict(scope,workspace=_local(scope['workspace'],base))
-    if not isinstance(value['prerequisites'],list):
-        raise ValueError('Model job requires an explicit original producer prerequisite inventory')
+    for name in ('producer_proof','producer_definition'):
+        _pin(value[name],{'path','sha256','size'})
+        result[name]=dict(value[name],path=_local(value[name]['path'],base))
     requirement=value['recovery_requirements']
     _pin(requirement,{'path','sha256','size','acceptance_policy'})
     from congress_api.models.archive_profile import validate_recovery_policy
@@ -130,20 +131,19 @@ def validate_spec(value,*,base):
                 raise ValueError('Expected a provenance record of the declared object family')
             validate_key(key)
             result[name].append(dict(item,path=_local(item['path'],base)))
-    from congress_api.lake import compatible_versions,filenames
-    from viewer_publication.archive_model_profile import SELECTED_SOURCES,current_parser_versions
+    from viewer_publication.archive_model_profile import SELECTED_SOURCES,validate_parser_versions
     pv=value.get('parser_versions')
     if not isinstance(pv,dict):
-        raise ValueError('Parser versions must match the current definitions')
+        raise ValueError('Model job requires explicit parser version selections')
     for name in SELECTED_SOURCES:
         if value.get(name) is not None and name not in pv:
             raise ValueError(f'Model job with {name} requires pinned {name} parser_versions')
-    if pv!=current_parser_versions(pv.keys()):
-        raise ValueError('Parser versions must match the current definitions')
-    # A stale or unproved compatible entry refuses here, before any input is opened.
-    compatible_versions.load_registry()
-    if value['catalog_version']!=filenames.current_version():
-        raise ValueError('Catalog version must match the current definition')
+    validate_parser_versions(pv,require_entities=any(value.get(name) is not None for name in ENTITY_TABLES),
+                             require_explorer=any(value.get(name) is not None for name in EXPLORER_TABLES))
+    if not all(isinstance(value[key],str) and value[key] for key in ('catalog_version','readings_version')):
+        raise ValueError('Model job requires exact catalog and combined readings version selections')
+    # Native admission binds the complete model JobSpec and every local input to
+    # the adopted definition. Today's producer hashes do not describe old rows.
     return result
 
 
@@ -258,8 +258,13 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
 def execute(spec):
     """Verify inputs, then invoke the one maintained model producer."""
     from docspec_client.client import NativeDatasets
-    from viewer_publication.archive_model import build_release, require_model_prerequisites
-    require_model_prerequisites(spec['prerequisites'])
+    from viewer_publication.archive_model import build_release
+    from viewer_publication.archive_model_proof import read_producer_proof,read_producer_definition,producer_proof_bindings
+    producer_proof=read_producer_proof(spec['producer_proof'])
+    producer_definition=read_producer_definition(spec['producer_definition'],producer_proof)
+    producer_proof_bindings(producer_proof,producer_definition,
+        [dict(name=name,**spec[name]) for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None],
+        dataset=spec['native_scope']['dataset'],operation=spec['native_scope']['operation'])
     engine_config=spec['engine_config']
     if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
         engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
@@ -267,7 +272,7 @@ def execute(spec):
         with NativeDatasets.from_config(engine_config) as engine:
             manifest,files=build_release(**arguments,parser_versions=spec['parser_versions'],
                 catalog_version=spec['catalog_version'],engine=engine,native_scope=spec['native_scope'],
-                prerequisites=spec['prerequisites'],
+                producer_proof=producer_proof,producer_definition=producer_definition,readings_version=spec['readings_version'],
                 output=Path(spec['output']),scratch=Path(spec['scratch']))
     return dict(status='built',executed=True,release_id=manifest['release_id'],
         output=spec['output'],scratch=spec['scratch'],files={name:str(path) for name,path in files.items()},
@@ -316,7 +321,8 @@ def main(argv=None):
             result=(execute(spec) if args.execute else dict(status='planned',executed=False,
                 inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},
                 output=spec['output'],scratch=spec['scratch'],native_scope=spec['native_scope'],
-                prerequisites=spec['prerequisites'],parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version']))
+                producer_proof=spec['producer_proof'],producer_definition=spec['producer_definition'],
+                parser_versions=spec['parser_versions'],readings_version=spec['readings_version'],catalog_version=spec['catalog_version']))
     except (ValueError,OSError) as error:parser.error(str(error))
     print(json.dumps(result,sort_keys=True));return 0
 

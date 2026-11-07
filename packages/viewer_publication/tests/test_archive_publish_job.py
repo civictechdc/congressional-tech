@@ -31,13 +31,15 @@ def invoke(tmp_path,value,*args):
 
 def daily_report(tmp_path):
     from archive_job_fixture import versions
+    from viewer_publication.archive_model_profile import readings_bundle_version
     parsers,catalog=versions()
     pins={name:dict(metadata_location='s3://derived-fixture/lake/'+name+'/metadata/00001.json',
         table_uuid='00000000-0000-4000-8000-000000000001',snapshot=i+1,schema_id=0)
         for i,name in enumerate(['captures','readings','filename_readings'])}
     row=dict(key='provenance/unreadable/new.jsonl',etag='a'*32,path=str(tmp_path/'checked.jsonl'),sha256='b'*64,size=17)
     return dict(status='completed',pins=pins,receipt_keys=['receipts/a.jsonl.gz','receipts/old.jsonl.gz'],
-        new_receipt_keys=['receipts/a.jsonl.gz'],currentversions=dict(parsers=parsers,filename_readings=catalog),
+        new_receipt_keys=['receipts/a.jsonl.gz'],currentversions=dict(parsers=parsers,filename_readings=catalog,
+            readings=readings_bundle_version(parsers)),
         provenance=dict(recoveries=[],reviews=[],unreadable=[row])),[row]
 
 
@@ -96,12 +98,14 @@ def test_daily_handoff_uses_completed_heads_full_receipts_and_acknowledged_recor
     from viewer_publication.archive_model_job import load_spec
     template=model_spec(tmp_path);path=tmp_path/'template.json';path.write_text(json.dumps(template))
     report,records=daily_report(tmp_path)
+    report['currentversions']['readings']='d'*64
     selected,receipts=completed_daily_inputs(load_spec(path),report,records)
     assert receipts==report['receipt_keys'] and receipts!=report['new_receipt_keys']
     for name,pin in report['pins'].items():assert selected[name]==dict(kind='native_table',**pin)
     assert selected['unreadable_files']==[{k:v for k,v in records[0].items() if k!='etag'}]
     assert selected['parser_versions']==report['currentversions']['parsers']
     assert selected['catalog_version']==report['currentversions']['filename_readings']
+    assert selected['readings_version']==report['currentversions']['readings']
     assert template['captures']['kind']=='parquet' and not (tmp_path/'release').exists()
     assert not Path(records[0]['path']).exists()  # Handoff consumes metadata only.
 
@@ -139,7 +143,7 @@ def test_daily_handoff_refuses_an_invalid_derived_result(tmp_path):
         completed_daily_inputs(template, report, records)
 
 
-@pytest.mark.parametrize('change',['pending','backfill_required','missing_pin','old_parser',
+@pytest.mark.parametrize('change',['pending','backfill_required','missing_pin','invalid_parser','missing_readings_version',
                                   'receipt_delta','duplicate_record','backup','missing_ack'])
 def test_daily_handoff_refuses_incomplete_or_inconsistent_evidence(tmp_path,change):
     from viewer_publication.archive_publish_job import completed_daily_inputs
@@ -148,7 +152,8 @@ def test_daily_handoff_refuses_incomplete_or_inconsistent_evidence(tmp_path,chan
     report,records=daily_report(tmp_path)
     if change in {'pending','backfill_required'}:report['status']=change
     elif change=='missing_pin':del report['pins']['readings']
-    elif change=='old_parser':report['currentversions']['parsers']['html']='old'
+    elif change=='invalid_parser':report['currentversions']['parsers']['html']=''
+    elif change=='missing_readings_version':del report['currentversions']['readings']
     elif change=='receipt_delta':report['receipt_keys']=None
     elif change=='duplicate_record':records.append(dict(records[0]))
     elif change=='backup':records.append(dict(records[0],key='provenance/unreadable/accepted-backup.json'))
@@ -995,7 +1000,8 @@ def test_daily_handoff_keeps_the_checked_in_explorer_pins_and_their_parser_versi
     records=[dict(key=decision['key'],path=str(record_path),etag='"'+'0'*32+'"',sha256=decision['sha256'],size=decision['size'])]
     production=dict(status='completed',receipt_keys=['receipts/2026/11/03/a.jsonl.gz'],
         pins={name:{k:template[name][k] for k in ('metadata_location','table_uuid','snapshot','schema_id')} for name in ALL_TABLES},
-        currentversions=dict(parsers=page,filename_readings=template['catalog_version'],**entity),
+        currentversions=dict(parsers=page,filename_readings=template['catalog_version'],
+                             readings=template['readings_version'],**entity),
         provenance=dict(recoveries=[],reviews=[],unreadable=[]))
     selected,_=completed_daily_inputs(template,production,records)
     for name in EXPLORER_TABLES:
@@ -1107,6 +1113,7 @@ def test_daily_produce_to_publish_handoff_to_completeness_checks_end_to_end(tmp_
     with model_arguments(selected) as arguments:
         prepared=prepare_model_inputs(
             **arguments,
+            readings_version=selected['readings_version'],
             parser_versions=selected['parser_versions'],
             catalog_version=selected['catalog_version'],
             engine=engine,
