@@ -500,7 +500,7 @@ def test_cli_preview_uses_local_release_without_opening_raw_storage(tmp_path,cap
         '--as-of',ASOF,'--work',str(tmp_path/'preview'),'--cutoff-urls',str(cutoff_file)]
     main(args)
     result=json.loads(capsys.readouterr().out)
-    assert result['apply'] is False and result['counts']['queue']==1
+    assert result['apply'] is False and (result['counts']['queue'],result['counts']['cutoffs'])==(0,1)
     assert not (tmp_path/'preview/capture').exists()
     selection=json.loads((tmp_path/'preview/selection.json').read_text())
     assert selection['cutoff_urls']==result['reviewed_cutoff_urls']==[url]
@@ -555,8 +555,8 @@ def test_every_reviewed_cutoff_has_a_native_disposition(tmp_path):
         dict(requested_url=cutoffs[3],attempts=1),
         dict(requested_url=cutoffs[5],attempts=1,last_outcome='stored',last_status=200,next_attempt_at=future)],{
         'https://fixture.test/a':(200,b'queue',{}),'https://fixture.test/good':(200,b'complete cutoff',{})},
-        request_budget=2,cutoff_urls=cutoffs)
-    assert adapter.calls==['https://fixture.test/a','https://fixture.test/good']
+        request_budget=1,cutoff_urls=cutoffs)
+    assert adapter.calls==['https://fixture.test/good']
     rows={row['requested_url']:row for row in result['cutoffs']}
     assert set(rows)==set(cutoffs)
     assert rows[cutoffs[0]]['disposition']=='attempted' and rows[cutoffs[0]]['complete'] is True
@@ -1231,3 +1231,19 @@ def test_plan_materializes_shared_state_steps_and_skips_unkeyable_states(tmp_pat
         if any(reads(step['sql'],source) for source in from_states):from_states.add(name)
     shared=[name for name in from_states if sum(reads(sql,name) for sql in readers)>1]
     assert shared and all(steps[name].get('materialize') for name in shared),shared
+
+
+def test_reviewed_cutoff_runs_before_unattempted_urls(tmp_path):
+    """A reviewed, never-attempted target (the Ashley download) sorted alphabetically
+    behind 45,292 other unattempted URLs, outside a 2,000-request run."""
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0),
+        dict(requested_url='https://fixture.test/b',attempts=0),
+        dict(requested_url='https://fixture.test/size',attempts=1,last_outcome='size_limit'),
+        dict(requested_url='https://fixture.test/z-retry',attempts=2,last_outcome='failed'),
+        dict(requested_url='https://fixture.test/z-reviewed',attempts=0)])
+    result=plan_queue(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'plan',as_of=ASOF,
+        request_budget=10,cutoff_urls=['https://fixture.test/z-retry','https://fixture.test/z-reviewed'])
+    rows=[(r['requested_url'].rsplit('/',1)[1],r['priority']) for r in pq.read_table(result['queue']).to_pylist()]
+    assert rows==[('z-retry',-1),('z-reviewed',-1),('a',0),('b',0),('size',1)]
+    assert result['counts']['cutoffs']==3 and result['counts']['queue']==2
