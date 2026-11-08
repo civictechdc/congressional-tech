@@ -23,12 +23,8 @@ Carry the available release's exact input pins and processor selections through 
 
 ## Acceptance Criteria
 
-- Through the maintained CLI or service, every returned value and derived table belongs to the requested release. Preserve every required release member, historical snapshot and mapping, explicit empties, and processor selections. Reuse native capture, sealing and dependency checks.
-- Compare release A, then B, then A again in real fresh processes. Exercise overlapping builds that advance a shared bridge between selection and refresh. Verify exact source references and values or a supported safe refusal; never label another release's data as A. These source-traced cases have not yet been executed by the root-cause review.
-- Preserve the previous available release across partial ingestion, resume and lifecycle compaction; reject retired releases. Share changed-dependency, stale-seal and lost-publication-response checks with the write/recovery owner. Keep the original frozen input set on retry rather than rebuilding from mutable committed state.
-- Preserve the News Lake data rules C1–C9 and storage rules I1–I6. Record focused failure-path results and independent review. Credit the existing reader and unchanged evidence; retire superseded production routes only through `ct-d8cf` after parity. Keep unrelated UI and news work intact.
-
-[Final root-cause review](../docs/plans/production-mvp-root-causes-round4-20261105.md).
+- One fresh-process A/B/A read through the CLI returns A's exact values or refuses.
+- An available old release stays readable after compaction (the same scenario as ct-d8cf).
 
 ## Notes
 
@@ -67,3 +63,7 @@ Final root-cause review: credit the delivered release reader; focus remaining wo
 **2026-11-08T17:24:00Z**
 
 2026-11-08 sweep-d: KEEP OPEN (parked). Still in code: views.py _bridge_pin_for_refresh (~:229) swaps in client.try_latest when it differs from the selected pin, and :238 falls back to try_latest. A/B/A and old-release-after-compaction cases remain unexecuted. Recommended plainer A/C: one fresh-process A/B/A read through the CLI returns A's exact values or refuses, and an available old release stays readable after lifecycle compaction (shared with ct-d8cf).
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.

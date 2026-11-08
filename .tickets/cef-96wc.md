@@ -1,6 +1,6 @@
 ---
 id: cef-96wc
-status: open
+status: closed
 deps: [ct-itcg, ct-9gmr, ct-qg8e, ct-2c0w, ct-31e2, ct-kn6d, ct-r8jd]
 links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, ct-64el, ct-n2cy, ct-tk10, ct-qg8e, ct-d0o0, ct-8kl2, ct-082q]
 created: 2026-10-28T05:00:43Z
@@ -121,3 +121,7 @@ Keep open for the assigned operators to restore the disabled 05:30 America/New_Y
 **2026-11-08T17:33:44Z**
 
 2026-11-08: the B8 blocker is resolved. The 86 published reviews were staged (stage sha d758fbf2…, matching the B8 record) and imported to raw as provenance/reviews/20261027T141248+0000.jsonl (46,169 bytes, 86 records, read back) by writer commit 55be001b. Evidence: .cache/archive-release/implementation/b8-reviews-import-20261108/. The next release picks the review decisions up from raw.
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08 closed by owner decision: the switch to one Explorer release, the rollback pair (pointer previous = 5d24699ad9fa) and the B8 reviews import are verified.

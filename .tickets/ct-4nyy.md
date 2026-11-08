@@ -23,13 +23,10 @@ Resolve the available release once through `ct-jo8n`. Use its pinned captures to
 
 ## Acceptance Criteria
 
-- Export the exact selected release and authorized column allowlist through the maintained caller. Preserve nested values, permitted metadata and identifiers; strip private field metadata, credentials, restricted payloads and expired content, including derived copies. Public authorization comes from the policy decision. Resolve required policy evidence from the release even for subset reads, and refuse absent evidence rather than inferring permission.
-- Independently decode actual emitted output from both the callable versions-only path and the normal CLI. Cover restricted, metadata-only and redistributable records, expired referenced captures, missing capture evidence and permitted nested fields. Verify the approved authorized path. Compare the intended C5 behavior with the previous Python policy on valid inputs before removing duplicate production enforcement.
-- Verify expiry immediately before, at and after `retain_until`, including mixed fractional precision. Expiry begins only when `now` is later than `retain_until`. Compare UTC instants while preserving source values and precision; do not rely on timestamp string order.
-- An older export remains readable under its immutable reference after a later export to the same channel or destination. After a lost response, replay with the same release, policy inputs, fixed evaluation time and columns returns completed output without rewriting it. Reuse direct exports for unchanged allowed data without materializing the entire release in Python.
-- Preserve archive and viewer ownership of routed assets and review bindings. Keep whole-group export optional for incremental updates. Retain focused failure results and independent review here; share applicable runtime and comparison evidence with the existing owners.
-
-[Final root-cause review](../docs/plans/production-mvp-root-causes-round4-20261105.md).
+- Refuse a subset export when the release's capture evidence is missing.
+- Check expiry before, at and after `retain_until`, including mixed fractional seconds.
+- Write to a release-specific path.
+- The old-vs-new policy comparison and replay checks wait until export ships.
 
 ## Notes
 
@@ -72,3 +69,7 @@ Final root-cause review: bind subset export policy to pinned captures, use chron
 **2026-11-08T17:24:00Z**
 
 2026-11-08 sweep-d: KEEP OPEN (parked; nothing exports publicly). Still in code: storage/docspec/export.py derives expired_capture_ids only from release_read['tables']['news.captures'], so a versions-only read gets an empty expiry set, and falls back to try_latest when a pin is missing. Recommended plainer A/C: refuse a subset export when the release's capture evidence is absent; expiry checked before/at/after retain_until with mixed fractional precision; write to a release-specific path. Defer the differential comparison and replay ceremony until export ships.
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.

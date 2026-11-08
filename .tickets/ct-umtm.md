@@ -35,12 +35,9 @@ The release coordinator owns disposition of the two PDF candidates, the twelve h
 
 ## Acceptance Criteria
 
-- Pin the current release, capture snapshot and recovery inputs. Retain a disposition for all twelve audited pairs and every selected removal notice; report their intersection and keep targets outside the notice population visible. The initial twelve-pair ledger is `per-target-dispositions.json` under the evidence directory below.
-- For each audited pair, record the current body location or a scoped unavailable result, acquisition receipt, qualification digest/configuration, accepted/rejected/review-required decision, import operation acknowledgement and receipt key, selected capture/provenance membership, and published attachment or explicit reason it is absent. Unknown and not-performed remain distinct from rejected or failed. Do not close unresolved work by treating missing evidence as a negative decision.
-- If an acknowledged import exists, trace its receipt into the selected snapshot before attempting another import. Otherwise finish the maintained acceptance/import path only for candidates whose source relationship is established. Preserve original evidence and independently assess Congress, bill/version, document class, person and hearing date where applicable. Compare the `CHRG-110hhrg41994` lead by content before calling it equivalent.
-- Reuse valid completed scopes and qualifications. For applicable NARA failures, verify the fully serialized request line fits the observed route limit and preserve incomplete/access-limited outcomes separately from valid empty results. Record exactly which targets needed new acquisition or qualification and why.
-- Publish accepted additions through the maintained release path with Gate 1 cause records. Verify the exact target/body attachment, any changed notice, and the supported relationship through the selected reader and MCP. A non-published candidate needs an evidence-backed final disposition; a remaining pending candidate keeps this acceptance incomplete.
-- Reconcile cohort totals from target dispositions through qualified bodies, accepted relationships, acknowledged imports, attachments and additions relative to the base release. Count distinct bodies and semantic-document gains separately; retain alternate-version, unresolved, refused and excluded outcomes. Reuse the existing ledger and release comparison rather than adding another metrics system.
+- Each of the 429 removal notices shows either a recovery or the notice.
+- The Duke document gets one capture through the same path as the USAID recovery.
+- The twelve October 31 Wayback pairs are recorded as not in raw; any refetch is tracked in one follow-up ticket.
 
 ## Coordination and evidence
 
@@ -103,3 +100,7 @@ Keep open: public archive 5d24699ad9fa is unchanged. Candidate gates, public att
 **2026-11-08T17:28:24Z**
 
 2026-11-08: USAID/ecoi is published in 630164505301 (see ct-rie2). Remaining: the Duke receipt and the twelve Oct 31 Wayback pairs, whose bodies are not in raw. A simpler criterion is proposed for owner decision.
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.

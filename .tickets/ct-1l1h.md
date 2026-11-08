@@ -24,11 +24,9 @@ Exact keys, original/cleaned/live sizes and ETags, and timestamps are retained u
 
 ## Acceptance Criteria
 
-- Reconcile those exact B0 counterexamples, the existing cleanup/verification artifacts and the owner's historical-path decisions. Record the separate header disposition without inferring a current leak from metadata alone. Reuse suitable evidence before deciding whether any further read is needed.
-- Obtain management-plane or dashboard readback of active indefinite rules for `receipts/`, `bodies/` and `provenance/` in `congressional-tech-raw`. Apply any missing owner-approved rule at cutover, preserving unrelated rules. A create-only writer or successful object HEAD is not lock readback.
-- Reuse the switch plan's existing lock qualification evidence, rerun R2 check 4 after relevant infrastructure changes, and keep B9's weekly raw verification after locking. `ct-4jms` separately owns scheduled acquisition and first-run raw preservation.
-
-[Third-round root-cause analysis](../docs/plans/production-mvp-root-causes-round3-20261105.md).
+- Read back the raw bucket's lock rules.
+- Apply indefinite locks on `receipts/`, `bodies/` and `provenance/`, then read them back again.
+- The owner records one header decision.
 
 ## Notes
 
@@ -71,3 +69,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-08T17:28:24Z**
 
 2026-11-08: no change since the Nov 6 readback (rules: [] for congressional-tech-raw). Next step: apply the three indefinite prefix locks with a management token and read them back, ideally before capture is enabled. The header-pattern disposition is an owner decision.
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.

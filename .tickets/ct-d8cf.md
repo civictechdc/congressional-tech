@@ -17,15 +17,10 @@ assignee: mikewolfd
 
 ## Acceptance Criteria
 
-- Qualify the existing CLI on the verified runtime. Port the relevant release, replay, recovery and bridge cases in `test_releases.py`, `test_coordinator_replay.py`, `test_recovery.py` and `test_partitions_and_bridges.py` to `DocSpecLake` with expectations from the data rules. Credit the delivered CLI and native merge. After parity, retire PyIceberg production dispatch, duplicate state machines, obsolete shim and fallback flags. Keep a Python reference only in tests if the owner retains it.
-- Return the acquired writer epoch inside the claim transaction. Enforce that same lease at every native dataset selection and application publication transition, including a takeover between datasets or during an in-flight request. Entry/exit checks alone are insufficient. Preserve the engine's own exact-base protections. Reconcile a lost response from the recorded operation and selected pin before advancing another dataset.
-- A failed cycle restores the latest available release's exact baseline using native changes and a new update against the verified current head. Include partial durable commits absent from the local pin map. Preserve multiplicity, relationship data and physical delete keys. Invalidate or rebind both ID and upsert caches so an abandoned value cannot suppress its later retry. Cover failed validation, repeated abandon, staged-checkpoint discard, refusal without a baseline and refusal after release append.
-- Preserve monotonic upserts and release-pinned cross-table bridges. Qualify mixed fractional-second instants for merge ordering, minimum and maximum while retaining the original fields and precision. Coordinate strict expiry with `ct-4nyy`. Remove remaining full-corpus Python bridge/rollback scans, quadratic batch duplicate work and obsolete merge/export routes only when the replacement preserves behavior and the measured work improves. Reuse same-pin validation; qualify changed rows and required dependency context before replacing broad validation.
-- Keep periodic lifecycle compaction and protect available and retryable release dependencies. This ticket owns safe maintenance integration; `ct-jo8n` owns the old-release readback acceptance. Reuse one scenario across both. Prefer maintained tail coalescing when verified; keep the safe fallback until that capability works or a focused upstream gap is recorded.
-- Exercise native finite-number validation, the C6 identity-decision graph, C7 run-input acyclicity, unique checkpoint connector keys and credential redaction. Explicitly settle and test `ct-r33r`'s metadata-only version from a failed capture. Qualify public subset export and the expiry boundary through `ct-4nyy` before removing its duplicate policy.
-- Replace static receipt and test-local `_ArrowHttpStream` assertions with actual maintained behavior. Pin the schema to its Git digest, retain changed-path results and independent review, and update the README. Preserve provider refusals and `ct-3180`'s qualified R2 evidence. Apply the existing raw-writer check where the changed path writes raw storage. Keep unrelated news and UI work intact.
-
-[Final root-cause review](../docs/plans/production-mvp-root-causes-round4-20261105.md).
+- Before the first scheduled news run: a failed cycle leaves the last available release readable and unchanged.
+- A claim returns its own epoch.
+- Timestamps compare as instants.
+- PyIceberg retirement and cleanup items are notes, not criteria.
 
 ## Notes
 
@@ -52,3 +47,7 @@ Final root-cause review: credit the existing backend and focus on writer fencing
 **2026-11-08T17:23:55Z**
 
 2026-11-08 sweep-d: KEEP OPEN (parked). Rechecked on main 302dc5e6: nothing schedules or imports news_lake outside its own CLI/tests, and it writes no raw storage, so no source data is at risk. Defects still present in code: abandon_cycle never clears _known_upsert_records (lake.py); ControlStore.claim returns self.epoch() after its write transaction (control.py:116-123). Recommended plainer A/C for resumption: before the first scheduled news run, a failed cycle leaves the last available release readable and byte-identical, claims return their own epoch, and timestamps compare as instants; move PyIceberg retirement and cleanup items to notes.
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.

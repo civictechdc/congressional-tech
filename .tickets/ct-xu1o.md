@@ -1,6 +1,6 @@
 ---
 id: ct-xu1o
-status: open
+status: closed
 deps: []
 links: [ct-nloa, ct-pgxn, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v, ct-a3le, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-d8cf]
 created: 2026-10-21T15:27:19Z
@@ -24,12 +24,8 @@ Retained `output/news-poll-scale-20261021/` measurements cover a synthetic versi
 
 ## Acceptance Criteria
 
-- Document each append table's logical ID, physical key and replay-time source. Keep input-derived time pruning where unchanged replay reproduces that value; otherwise use a safe ID path. Preserve UUIDv7 capture behavior and use an exactly representable chronological value for time pruning.
-- As the first operation in a separate fresh process, submit an existing ID with a changed timestamp and conflicting values. Refuse it with stored rows and the selected native pin unchanged. Detect pre-existing duplicate logical IDs explicitly. Separately prove unchanged journaled poll replay after crash or restart is a no-op, with no additional row or version; do not warm the cache before the conflict case.
-- Compare ID-only lookup and the correct candidate using one fixed, production-shaped poll at 1× and 10× history, the 720-poll pilot tier, and a feasible larger measured point toward the 8,760-poll horizon. Reuse the release-build harness. Include items, versions and mentions at the retained modeled volumes of 2,000, 2,000 and 10,000 per poll, and report other affected phases. Label extrapolations.
-- Use equivalent compaction settings. Measure application lookups and native writes together: files scanned/reused, actual bytes read/written, elapsed time, peak memory, retained file counts/sizes, lifecycle metadata and workspace disk. Record truncation and remaining history-dependent costs. Treat the old roughly 55 GiB free-disk figure as historical; remeasure and admit the experiment against current capacity. Use the results to decide whether items or entities need `ss-wie5`; preserve the original measurement and review evidence.
-
-[Final root-cause review](../docs/plans/production-mvp-root-causes-round4-20261105.md).
+- A fresh process refuses a reused append ID, and replaying an append is a no-op; both are covered by tests.
+- Scale measurements (1x/10x/720/8,760 polls) wait until a scheduled news run exists.
 
 ## Notes
 
@@ -91,3 +87,11 @@ Final root-cause review: make the first fresh-process conflict check decisive, r
 **2026-11-08T17:30:42Z**
 
 2026-11-08 sweep-d: correctness slice fixed on branch claude/sweep-d. Reproduced first on the pinned runtime (fed9ea73): a fresh lake whose first operation reuses a stored version id with a changed recorded_at was NOT refused (test failed 'DID NOT RAISE'). Fix: _existing_for_append keeps the time-pruned read, then probes every still-unresolved ID by ID on the same write base; the process-local _known_ids cache is deleted; an ID stored more than once is refused (append_duplicate_id). The existing cold fresh-process replay stays a no-op with unchanged versions. news_lake tests: 334 passed. Cost: one ID-keyed read per append batch for new IDs (the old O(files) lookup); the write keeps time-key pruning. KEEP OPEN only for the 1x/10x/720/8,760-poll measurement bullets; recommend deferring them until a scheduled news run exists.
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08 closed: the fresh-process reused-ID refusal and replay tests landed in d4d53baa (merged 55be001b).

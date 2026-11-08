@@ -18,13 +18,8 @@ Compatibility proofs can now read qualified immutable mirrors in place with `--m
 
 ## Acceptance Criteria
 
-- Preserve the fetch exclusion. Before retrying owner-requested post-release Git maintenance, use a quiet window with measured memory and additional disk capacity for the operation. Record completion and actual footprint changes; do not infer savings from total pack size or repeat the failed unbounded attempt.
-- Try the exact proof sample against the custody-checked mirror in place and show identical results with no sample payload copies. Use a clone or hardlink only if an actual private-layout requirement remains and custody, immutability and volume checks permit it.
-- Give each job wrapper a known disposable spill root and retirement rule after its process exits. Reserve measured peak additional disk plus headroom before expensive work. The watchdog's post-start disk floor is not that reservation.
-- Extend the existing clean dry run only for known-owned completed or abandoned disposable scratch. Coordinate with `ct-ud0b` so cleanup preserves completed candidates and the artifacts their checkpoints reference. Verify that an interrupted retry retains expensive completed work while unused spill can retire.
-- Protect active jobs, the immutable mirror, archive-release inputs, runtimes, source history, rollback material, and the NARA and October recovery workspaces listed below. Older inventory figures are review leads, not deletion permission; preserve the owner's exceptions.
-
-[Third-round root-cause analysis](../docs/plans/production-mvp-root-causes-round3-20261105.md).
+- The nightly admits a run on the measured peak plus 15 GiB of headroom.
+- It refuses only when the engine, limits or lockfiles change.
 
 ## Notes
 
@@ -89,3 +84,7 @@ Keep `ct-9lxf` open for the release/nightly owner to qualify and supply per-file
 **2026-11-08T17:28:23Z**
 
 2026-11-08: a disk budget no longer breaks on every push (claude/sweep-c): admission accepts a budget for any descendant of its measured revision that leaves the engine pin, local limits, job bindings, uv.lock and site lockfile unchanged (RESOURCE_PATHS in scripts/archive_disk.py; test_archive_disk.py 23 passed, partial). Proposed budgets: publish-fresh 10 GiB (from the 7.9 GiB drawdown of the 630164505301 build at 3ebe6872), publish-resume 8 GiB, setup 4 GiB estimate, all with 15 GiB headroom, in the sweep-c worktree at .cache/sweep-c/proposed-disk-budgets.json; the admission check admits publish-fresh at 50.2 GB free. Backfill stays unbudgeted and refuses. The owner approves and installs the file. Repository maintenance and the other cleanup criteria remain open.
+
+**2026-11-08T17:42:58Z**
+
+2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.
