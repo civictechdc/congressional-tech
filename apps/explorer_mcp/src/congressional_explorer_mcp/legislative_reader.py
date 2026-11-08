@@ -98,7 +98,24 @@ class LegislativeReader:
         order = date_column+' ASC NULLS LAST,'
         if table == 'bill_actions': order += self.local_action_time('t.action_time')+' ASC NULLS LAST,'
         order += ','.join('t.'+key for key in identity)
-        result = self.page(query, 'SELECT t.* FROM '+source+(' WHERE '+' AND '.join(terms) if terms else ''), args,order=order)
+        sql = 'SELECT t.* FROM '+source+(' WHERE '+' AND '.join(terms) if terms else '')
+        expand = None
+        if table == 'member_votes' and not terms:
+            # Cast each distinct literal once, retaining TRY_CAST's exact meaning.
+            # Select narrow page keys before fetching the published primary-key rows.
+            sql = '''WITH ballot_dates AS MATERIALIZED (
+                SELECT vote_date,try_cast(vote_date AS DATE) AS parsed_date
+                FROM (SELECT DISTINCT vote_date FROM member_votes))
+                SELECT t.vote_id,t.member_key,d.parsed_date FROM member_votes t
+                JOIN ballot_dates d ON t.vote_date IS NOT DISTINCT FROM d.vote_date'''
+            order = 'd.parsed_date ASC NULLS LAST,t.vote_id,t.member_key'
+
+            def expand(selected):
+                return 'WITH ballot_page AS MATERIALIZED ('+selected+''')
+                    SELECT t.* FROM ballot_page p JOIN member_votes t USING(vote_id,member_key)
+                    ORDER BY p.parsed_date ASC NULLS LAST,t.vote_id,t.member_key'''
+
+        result = self.page(query, sql, args,order=order,expand=expand)
         if table == 'bill_actions':
             result['ordering'] = 'Calendar date, supplied local clock time ascending, then bill_id/action_index. Missing or unparseable clock values follow timed rows on the same date; their actual time remains unknown. No timezone is inferred.'
         result['coverage'] = coverage
