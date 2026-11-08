@@ -1449,7 +1449,22 @@ def test_append_time_keyed_pruning_replay_and_collision_refusal(tmp_path):
     }
     pins_replay_inproc = lake.commit_records(polls[1])
     assert {ds: p['dataset']['version'] for ds, p in pins_replay_inproc.items()} == versions_before
+    stored_versions_before = _records_of(lake, 'news_versions')
     client.close()
+
+    # Decisive cold case: the FIRST operation of a fresh lake reuses a stored id
+    # with a changed timestamp and conflicting values. Nothing warms a cache first.
+    cold_client = DocSpecClient(ws)
+    cold_lake = DocSpecLake(cold_client)
+    cold_original = next(r for r in polls[3] if r['kind'] == 'version')
+    cold_conflict = dict(
+        cold_original, recorded_at='2026-10-21T09:00:00.5Z', title='Changed In A Fresh Process'
+    )
+    with pytest.raises(AppendCollisionError, match='append-only news_versions'):
+        cold_lake.commit_records([cold_conflict])
+    assert cold_client.latest('news_versions')['dataset']['version'] == versions_before['news_versions']
+    assert _records_of(cold_lake, 'news_versions') == stored_versions_before
+    cold_client.close()
 
     client2 = DocSpecClient(ws)
     lake2 = DocSpecLake(client2)
@@ -1473,6 +1488,16 @@ def test_append_time_keyed_pruning_replay_and_collision_refusal(tmp_path):
         lake2.commit_records([bad_diff_ts])
     assert lake2.committed['news_versions']['dataset']['version'] == versions_before['news_versions']
     client2.close()
+
+
+def test_append_lookup_refuses_an_id_stored_more_than_once():
+    """ct-xu1o: pre-existing duplicate logical IDs are refused, never collapsed."""
+    from news_lake.storage.docspec.lake import _unique_rows_by_id
+
+    rows = [{'id': 'a', 'v': 1}, {'id': 'b', 'v': 2}, {'id': 'a', 'v': 1}]
+    assert _unique_rows_by_id('news_versions', rows[:2], {'a'}) == {'a': {'id': 'a', 'v': 1}}
+    with pytest.raises(AppendCollisionError, match='stored more than once'):
+        _unique_rows_by_id('news_versions', rows, {'a', 'b'})
 
 
 # -- ct-dzyf: Coordinator.abandon_cycle on DocSpecLake-backed publication ---------------

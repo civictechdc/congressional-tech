@@ -87,3 +87,7 @@ Source evidence and full original criteria remain in: .tickets/ct-xu1o.md:20; .t
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: make the first fresh-process conflict check decisive, retain execution timestamps on replay, and measure complete append cost only after correctness. Prior runtime and disk measurements remain historical evidence.
+
+**2026-11-08T17:30:42Z**
+
+2026-11-08 sweep-d: correctness slice fixed on branch claude/sweep-d. Reproduced first on the pinned runtime (fed9ea73): a fresh lake whose first operation reuses a stored version id with a changed recorded_at was NOT refused (test failed 'DID NOT RAISE'). Fix: _existing_for_append keeps the time-pruned read, then probes every still-unresolved ID by ID on the same write base; the process-local _known_ids cache is deleted; an ID stored more than once is refused (append_duplicate_id). The existing cold fresh-process replay stays a no-op with unchanged versions. news_lake tests: 334 passed. Cost: one ID-keyed read per append batch for new IDs (the old O(files) lookup); the write keeps time-key pruning. KEEP OPEN only for the 1x/10x/720/8,760-poll measurement bullets; recommend deferring them until a scheduled news run exists.
