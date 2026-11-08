@@ -13,3 +13,9 @@ tags: [capture, ct-gi01]
 
 Split from ct-gi01 (owner decision 2026-11-08). Owner-approved paid Zyte/Firecrawl retry of 445 out-of-scope legacy URLs plus 119 free-run failures, no cost cap. Selections, scripts and per-round evidence: .cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-gi01/20261108-claude/recapture-plan/ (cl-paid-loop.py). Firecrawl returned HTTP 500 on every call on 2026-11-08, so later rounds run Zyte-only; each round stops at the first uncertain provider result. Done when every URL has an outcome, the counts are recorded, and new receipts are picked up by the next capture append.
 
+
+## Notes
+
+**2026-11-08T17:43:24Z**
+
+2026-11-08: all 564 URLs have an outcome after 237 rounds (883 requests, $6.14 reserved at conservative bounds; Firecrawl returned 500 on every call, so most rounds ran Zyte-only). Stored 56 new bodies, 21 unchanged (77 covered: congress.gov 38, YouTube 37, judiciary.senate.gov 2); 278 request_failed, 194 failed (404/410/403), 3 retry_later, 12 without an outcome line. Receipts are in congressional-tech-raw. Remaining: the next capture append/nightly ingests them.
