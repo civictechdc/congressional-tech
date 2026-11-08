@@ -492,7 +492,7 @@ def fetch_page_through_raw(
     receipt_writer,
     url: str,
     *,
-    family: str = "senate/hearing-page",
+    family: str = "senate/pages",
     observations=(),
 ) -> dict:
     """Fetch a Senate hearing page and any explicit Drug Caucus attachment pages through

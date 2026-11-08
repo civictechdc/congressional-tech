@@ -335,7 +335,7 @@ def fetch_through_raw(
     previous_urls: tuple[str, ...] = (),
     meeting_family: str = "house/meeting-xml",
     witness_family: str = "house/witness-xml",
-    page_family: str = "house/event-page",
+    page_family: str = "house/pages",
 ) -> dict:
     """Fetch a House/joint meeting's `<committee-meeting>` XML, `<witness-list>` XML, or event page
     through the shared raw `Fetcher` and `ReceiptWriter`, with no separate state file.
