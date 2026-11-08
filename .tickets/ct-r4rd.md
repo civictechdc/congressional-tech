@@ -1,6 +1,6 @@
 ---
 id: ct-r4rd
-status: in_progress
+status: closed
 deps: []
 links: [ct-asdg, ct-n61r, ct-zhta, ct-cjwx, ct-mt0h, ct-db3w]
 created: 2026-10-31T07:22:48Z
@@ -88,3 +88,7 @@ The reviewed source reference is included in local main 1a5ae01c. Remaining: Ups
 November 7 deployed meeting-field acceptance passed on archive `5d24699ad9fa` and Explorer `0.6.2`. All 6,096 matched meetings agree on Congress and equivalent type. Retained House sources support 30 building and 17 room fills; five newer-source differences remain explicitly documented. Live reader controls returned the retained meeting and sitting values and no row for the 338764 404 control. `ct-tbrj` owns the separate observation comparison using the same pinned 99-row attempt journal.
 
 Keep `ct-r4rd` in progress only until the maintained SpicyRegs branch integrates reviewed comparator `519ffb308fd798d5d3c42c4d73a72b3248318a26` under `ss-ikn9`. The owner verified that SpicyRegs main and the Spicy Stack pin still lack it, while both touched file bases match the reviewed patch parent. The deployed comparison and reader checks need no repeat for this unchanged evidence. [Owner results](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-r4rd/RESULTS.md) · [Upstream readback](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-r4rd/UPSTREAM-PREFLIGHT.json).
+
+**2026-11-08T17:20:11Z**
+
+2026-11-08 close (sweep-b): A/C met. The deployed 5d24 comparison (6,096 matches, 30 building/17 room House fills, 5 newer-source updates) carries to live 630164505301: its release causes change only meetings.outcome_source_reference (516) and subject_keys (1), none of Congress/update/type/building/room. Hosted readback on 6301: 119583 = Congress 119, Hearing, 2026-10-15T10:41:10Z; 338794 kept. Retained raw and parser evidence unchanged. Upstreaming comparator 519ffb30 is SpicyRegs work tracked by external ss-ikn9; it is not in this ticket's A/C.
