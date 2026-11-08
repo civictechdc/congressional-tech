@@ -4403,6 +4403,7 @@ CHRG-108hhrg90400,108,house,hsgo00,2003-05-19,,hearing,before_channel,,,,,,,auto
 CHRG-108hhrg95778,108,house,hshm00,2003-05-19,,hearing,before_channel,,,,,,,auto,
 CHRG-108shrg88496,108,senate,spag00,2003-05-19,,hearing,before_channel,,,,,,,auto,
 CHRG-108shrg89197,108,senate,ssfr00,2003-05-19,,hearing,before_channel,,,,,,,auto,
+CHRG-108hhrg21115,108,house,hsgo00,2003-05-20,,hearing,before_channel,,,,,,,auto,
 CHRG-108hhrg87487,108,house,hsif00,2003-05-20,,hearing,before_channel,,,,,,,auto,
 CHRG-108hhrg87985,108,house,hsed00,2003-05-20,,hearing,before_channel,,,,,,,auto,
 CHRG-108hhrg91646,108,house,hsgo00,2003-05-20,,hearing,before_channel,,,,,,,auto,
@@ -22824,6 +22825,8 @@ CHRG-114shrg20336,114,senate,ssfi00,2015-06-18,,hearing,full_recording_offsite,h
 CHRG-114shrg95284,114,senate,sseg00,2015-06-18,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=energy&filename=energy061815,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording energy061815 exists on the Senate Recording Studio's player for this committee and day
 CHRG-114shrg96193,114,senate,ssga00,2015-06-18,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff061815,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording govtaff061815 exists on the Senate Recording Studio's player for this committee and day
 CHRG-114hhrg97400,114,house,hsgo00,2015-06-19,,hearing,full_recording,I_aT2zNgSec IzMbbERAm8U,@GrahamEditorial,research,99,,,research,"Local outlet Graham Editorial posted '""Operation Something Bruin"" Congressional Hearing 6/19/2015 - Part 1/2' (1:10:11) and 'Part 2/2' (1:23:50); nothing on committee channels."
+CHRG-114hhrg25637,114,house,hsvr00,2015-06-23,,errata,not_public,,,,,,,auto,"errata cover sheet, not a proceeding"
+CHRG-114hhrg98644,114,house,hsvr00,2015-06-23,,hearing,no_video_found,,,,,,,auto,
 CHRG-114shrg20564,114,senate,ssbu00,2015-06-23,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=budget&filename=budget062315,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording budget062315 exists on the Senate Recording Studio's player for this committee and day
 CHRG-114shrg25637,114,senate,ssva00,2015-06-23,,errata,not_public,,,,,,,auto,"errata cover sheet, not a proceeding"
 CHRG-114shrg28953,114,senate,ssfr00,2015-06-23,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=foreign&filename=foreign062315,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording foreign062315 exists on the Senate Recording Studio's player for this committee and day
@@ -30462,6 +30465,7 @@ CHRG-117hhrg48445,117,house,hsas00,2022-01-11,,hearing,full_recording,bASpXGgVQr
 CHRG-117shrg46844,117,senate,sseg00,2022-01-11,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=energy&filename=energy011122,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording energy011122 exists on the Senate Recording Studio's player for this committee and day
 CHRG-117shrg48289,117,senate,ssbk00,2022-01-11,,hearing,full_recording,9qoK35C0PuI,@senatebankinghousingandurbdems,date window + title,60,144,,auto,
 CHRG-117shrg48897,117,senate,sshr00,2022-01-11,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=help&filename=help011122,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording help011122 exists on the Senate Recording Studio's player for this committee and day
+CHRG-117shrg56249,117,senate,ssju00,2022-01-11,,hearing,before_channel,,,,,,,auto,
 CHRG-117hhrg46712,117,house,hssm00,2022-01-12,,hearing,full_recording,YNlQi7_8iO4,@HouseSmallBizCommitteeDems,date window + title,60,117,,auto,
 CHRG-117hhrg48790,117,house,hsap00,2022-01-12,2022-01-12;2022-03-09;2022-03-16;2022-03-17;2022-04-05;2022-04-06;2022-04-07;2022-04-27,hearing,full_recording,kNxGCitKVzI,@HouseAppropriationsCommittee,event ID in video,95,150,volume_days_with_video=1/8,auto,
 CHRG-117hhrg49767,117,house,hsag00,2022-01-12,,hearing,full_recording,2891wGootHg SvOmx9blPus,@AgRepublicans @HouseAgDems,congress.gov link; date window + title,100,475,,auto,
@@ -30643,6 +30647,7 @@ CHRG-117hhrg59695,117,house,hsif00,2022-03-08,,hearing,full_recording,VxICRklGH7
 CHRG-117shrg48350,117,senate,ssfr00,2022-03-08,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=foreign&filename=foreign030822,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording foreign030822 exists on the Senate Recording Studio's player for this committee and day
 CHRG-117shrg53631,117,senate,ssva00,2022-03-08,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff030822,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording vetaff030822 exists on the Senate Recording Studio's player for this committee and day
 CHRG-117shrg55670,117,senate,ssbk00,2022-03-08,,hearing,full_recording,qI_JZCNLGWY,@senatebankinghousingandurbdems,date window + title,60,77,,auto,
+CHRG-117shrg56565,117,senate,ssju00,2022-03-08,,hearing,before_channel,,,,,,,auto,
 CHRG-117shrg59798,117,senate,ssas00,2022-03-08,2022-03-08;2022-04-05;2022-04-07;2022-05-03;2022-05-05;2022-05-12;2022-05-19,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=armed&filename=armedA030822,senate.gov,research,0,,volume_days_with_video=0/7,research,senate.gov archive probe (Sept 2026): recording armedA030822 exists on the Senate Recording Studio's player for this committee and day
 CHRG-117hhrg47690,117,house,hlcn00,2022-03-09,,hearing,full_recording,bC4Vae6rBnE,@HouseClimateCrisis,date window + title,60,114,,auto,
 CHRG-117hhrg48961,117,house,hsas00,2022-03-09,,hearing,full_recording,yTVi0iG-JOQ,@HouseArmedServices,date in video + title,80,154,,auto,
@@ -32369,7 +32374,7 @@ CHRG-118hhrg53915,118,house,hspw00,2023-09-13,,hearing,full_recording,3z1ELruZrN
 CHRG-118hhrg54715,118,house,hshm00,2023-09-13,,hearing,full_recording,rPhbaOTSzHc,@HouseHomeland,congress.gov link,100,241,,auto,
 CHRG-118hhrg55773,118,house,hsed00,2023-09-13,,hearing,full_recording,FJgDQAofp70 MQJK8tMqSnU,@EdWorkforceCmte @EdWorkforceDemocrats,date window + title; event ID in video,95,298,,auto,
 CHRG-118hhrg62820,118,house,hsif00,2023-09-13,,hearing,full_recording,Rzp0Xc7q2Co B7GiblerTt8,@EnergyCommerce @energyandcommerce,congress.gov link; date in video + title,100,605,,auto,
-CHRG-118hhrg63377,118,house,hsif00,2023-09-13,,hearing,full_recording,sa8wplVa-tc 6TImumK-N1U 7PtKctfIEMo,@EnergyCommerce @energyandcommerce,congress.gov link; date in video + title,100,489,,auto,
+CHRG-118hhrg63377,118,house,hsif00,2023-09-13,,hearing,full_recording,6TImumK-N1U 7PtKctfIEMo,@EnergyCommerce @energyandcommerce,congress.gov link; date in video + title,100,397,,auto,
 CHRG-118shrg53703,118,senate,ssga00,2023-09-13,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff091323,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording govtaff091323 exists on the Senate Recording Studio's player for this committee and day
 CHRG-118shrg53785,118,senate,ssbu00,2023-09-13,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=budget&filename=budget091323,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording budget091323 exists on the Senate Recording Studio's player for this committee and day
 CHRG-118shrg55259,118,senate,ssev00,2023-09-13,,hearing,full_recording,n90izxayJ_0,@EPWCmte,date window + title,60,80,,auto,
@@ -33340,6 +33345,7 @@ CHRG-118shrg57243,118,senate,sshr00,2024-06-12,,hearing,full_recording_offsite,h
 CHRG-118shrg58678,118,senate,ssbk00,2024-06-12,,hearing,full_recording,EcBBd-90Wv4,@senatebankinghousingandurbdems,date window + title,60,114,,auto,
 CHRG-118shrg60512,118,senate,ssju00,2024-06-12,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary061224,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-118shrg61834,118,senate,ssev00,2024-06-12,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=epw&filename=epw061224,senate.gov,congress.gov link (senate.gov),100,,,auto,
+CHRG-118shrg64649,118,senate,ssfi00,2024-06-12,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=finance&filename=finance061224,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-118hhrg55919,118,house,hsfa00,2024-06-13,,hearing,full_recording,i5MAxZhQ1C0 3Qh3noh0ATU,@HouseForeignGOP @houseforeign,congress.gov link; date window + title,90,227,,auto,
 CHRG-118hhrg55973,118,house,hsii00,2024-06-13,,hearing,full_recording,v1q61FrH8sk,@NaturalResourcesGOP,congress.gov link,90,84,,auto,
 CHRG-118hhrg55974,118,house,hsii00,2024-06-13,,hearing,full_recording,UtlI1RMPSvM,@NaturalResourcesGOP,congress.gov link,90,102,,auto,
@@ -34025,6 +34031,7 @@ CHRG-119hhrg60863,119,house,hspw00,2025-05-06,,hearing,full_recording,JbYjnpDuyt
 CHRG-119hhrg61305,119,house,hshm00,2025-05-06,,hearing,full_recording,v0rULLTw7l8,@HouseHomeland,event ID in video,95,62,,auto,
 CHRG-119hhrg61538,119,house,hsed00,2025-05-06,,hearing,full_recording,m7bn_ftWzsg yRktD5Dcyp4,@EdWorkforceCmte @EdWorkforceDemocrats,congress.gov link; event ID in video,95,158,,auto,
 CHRG-119hhrg62243,119,house,hsap00,2025-05-06,2024-05-14;2025-05-06;2025-05-15,hearing,full_recording,fSpeNckDKL4 mKx2idjx_eM 0NZxkvYaVuk,@HouseAppropriationsCommittee,research,99,276,volume_days_with_video=2/3,research,"FSGG FY26 Part 2 volume: Treasury 5/6/2025, Federal Judiciary 5/14, FTC 5/15 each match an 'Oversight Hearing - ...' video."
+CHRG-119hhrg64626,119,house,hsas00,2025-05-06,,hearing,full_recording,wICHF3yuIU4,@HouseArmedServices,date in video + title,80,86,,auto,
 CHRG-119shrg60249,119,senate,ssap00,2025-05-06,2025-05-06;2025-05-22,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050625,senate.gov,research,0,,volume_days_with_video=0/2,research,senate.gov archive probe (Sept 2026): recording appropsA050625 exists on the Senate Recording Studio's player for this committee and day
 CHRG-119shrg60335,119,senate,ssva00,2025-05-06,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff050625,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg60341,119,senate,ssaf00,2025-05-06,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=ag&filename=ag050625,senate.gov,congress.gov link (senate.gov),100,,,auto,
@@ -34040,6 +34047,7 @@ CHRG-119hhrg61760,119,house,hsas00,2025-05-07,,hearing,full_recording,NTl33vsLI5
 CHRG-119hhrg61959,119,house,hsap00,2025-05-07,2025-05-07,hearing,full_recording,f10geMYJ0tw,@HouseAppropriationsCommittee,research,99,125,volume_days_with_video=1/1,research,Ag FY26 Part 2 single hearing Department of Agriculture (5/7/2025) = 'Budget Hearing - U.S. Department of Agriculture' video posted same day.
 CHRG-119hhrg61988,119,house,hsap00,2025-05-07,2025-05-07,hearing,full_recording,DW26fY2Tjmg,@HouseAppropriationsCommittee,research,99,182,volume_days_with_video=1/1,research,E&W FY26 Part 3 single hearing U.S. Department of Energy (5/7/2025) = 'Budget Hearing - U.S. Department of Energy' posted 5/8.
 CHRG-119hhrg60777,119,house,hsfa00,2025-05-08,,hearing,full_recording,sw1EQKnXagM NiEF_UYGQb4,@HouseForeignGOP @houseforeign,congress.gov link; date window + title,90,199,,auto,
+CHRG-119hhrg64590,119,house,hsas00,2025-05-08,,hearing,full_recording,fLMraghK_28,@HouseArmedServices,congress.gov link,90,89,,auto,
 CHRG-119shrg60599,119,senate,sshr00,2025-05-08,,hearing,full_recording,Va4StsRrGCQ,@gophelp,date window + title,60,89,,auto,
 CHRG-119shrg61235,119,senate,sseg00,2025-05-08,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=energy&filename=energy050825,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg61426,119,senate,sscm00,2025-05-08,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=commerce&filename=commerce050825,senate.gov,congress.gov link (senate.gov),100,,,auto,
@@ -34176,6 +34184,7 @@ CHRG-119hhrg60985,119,house,hsba00,2025-06-12,,hearing,full_recording,ZQbCPyXCPF
 CHRG-119hhrg60988,119,house,hsba00,2025-06-12,,hearing,full_recording,KA3SKZN5Xbc NjgI0k_irAU,@GOPFinancialServices @USHouseFSC,congress.gov link; event ID in video,95,161,,auto,
 CHRG-119hhrg61124,119,house,hsvr00,2025-06-12,,hearing,full_recording,liZ5jEkbrbc HF3M_XKkUc8,@HouseVeteransAffairs @VetAffairsDems,congress.gov link; date in video + title,100,349,,auto,
 CHRG-119hhrg61154,119,house,hsif00,2025-06-12,,hearing,full_recording,_N6V78Q8NGE A_mC2DIzg_A,@EnergyCommerce @energyandcommerce,congress.gov link; date in video + title,100,285,,auto,
+CHRG-119hhrg61403,119,house,hshm00,2025-06-12,,hearing,full_recording,tnmfsinO9sM,@HouseHomeland,event ID in video,95,88,,auto,
 CHRG-119hhrg62140,119,house,hsfa00,2025-06-12,,hearing,full_recording,nM8Yv4g7ikw H4IRMoYMfXA,@HouseForeignGOP @houseforeign,congress.gov link; date window + title,90,170,,auto,
 CHRG-119hhrg64330,119,house,hsas00,2025-06-12,,hearing,full_recording,PmB8OW_cbS8 IoAgJ-0OO5Q,@HouseArmedServices,congress.gov link; date window + title,90,568,,auto,
 CHRG-119shrg61519,119,senate,sscm00,2025-06-12,,hearing,full_recording,_qENd7MKWXM,@CommerceRepublicans,date in video + title,80,109,,auto,
@@ -34531,17 +34540,20 @@ CHRG-119shrg63309,119,senate,slia00,2026-01-28,,hearing,full_recording_offsite,h
 CHRG-119shrg63732,119,senate,ssev00,2026-01-28,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=epw&filename=epw012826,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg64113,119,senate,sscm00,2026-01-28,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=commerce&filename=commerce012826,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg64226,119,senate,sscm00,2026-01-28,,hearing,full_recording,8Vvg4X4Qq7c,@CommerceRepublicans,date in video + title,80,103,,auto,
+CHRG-119shrg65604,119,senate,ssas00,2026-01-28,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=armed&filename=armedA012826,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg62707,119,senate,slin00,2026-01-29,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=intel&filename=intel012926,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-119shrg63403,119,senate,spag00,2026-01-29,,hearing,full_recording,aP6HEHbNu_Y,@SenateAging,date window + title,60,69,,auto,
 CHRG-119shrg64227,119,senate,sscm00,2026-01-29,,hearing,full_recording,AQOp97zpMkE,@CommerceRepublicans,date in video + title,80,105,,auto,
 CHRG-119hhrg63303,119,house,hsvr00,2026-02-03,,hearing,full_recording,nhCCf3kFFLE bHKyIDvXtxE,@HouseVeteransAffairs @VetAffairsDems,congress.gov link; event ID in video,100,356,,auto,
 CHRG-119hhrg63776,119,house,hshm00,2026-02-03,,hearing,full_recording,MPxsQKyfm-A vcU_qG_w6PE,@HouseHomeland,date window + title; event ID in video,95,98,,auto,
+CHRG-119hhrg65540,119,house,hsed00,2026-02-03,,hearing,full_recording,lJlJH1K1aRg tuUWyrP9UIk,@EdWorkforceCmte @EdWorkforceDemocrats,congress.gov link; event ID in video,95,177,,auto,
 CHRG-119jhrg62752,119,joint,jcse00,2026-02-03,,hearing,full_recording,NR5BMLs5E7Q,@HelsinkiCommission,congress.gov link,90,67,,auto,
 CHRG-119shrg64059,119,senate,ssfr00,2026-02-03,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=foreign&filename=foreign020326,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119hhrg62734,119,house,hsju00,2026-02-04,,hearing,full_recording,vLHJJ_wjADU aAIzQQhn36Q,@JudiciaryDems @USHouseJudiciaryGOP,congress.gov link; event ID in video,100,384,,auto,
 CHRG-119hhrg63304,119,house,hsvr00,2026-02-04,,hearing,full_recording,9slGW9vNME4 LrHMDhN3BGM,@HouseVeteransAffairs @VetAffairsDems,congress.gov link; event ID in video,100,249,,auto,
 CHRG-119hhrg63862,119,house,hsba00,2026-02-04,,hearing,full_recording,vqowIudPed4 BnCbSl5Xl7U,@GOPFinancialServices @USHouseFSC,congress.gov link; event ID in video,95,195,,auto,
 CHRG-119hhrg63895,119,house,hsif00,2026-02-04,,hearing,full_recording,jjjAVTTwAMU EqzcNWh5iOY,@EnergyCommerce @energyandcommerce,congress.gov link; date in video + title,100,372,,auto,
+CHRG-119hhrg65541,119,house,hsed00,2026-02-04,,hearing,full_recording,O5gJLAcSzFQ AqWrBfk0Ofc,@EdWorkforceCmte @EdWorkforceDemocrats,congress.gov link; event ID in video,95,271,,auto,
 CHRG-119shrg62740,119,senate,ssva00,2026-02-04,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff020426,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-119shrg63622,119,senate,ssev00,2026-02-04,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=epw&filename=epw020426,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg63707,119,senate,ssfr00,2026-02-04,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=foreign&filename=foreign020426,senate.gov,congress.gov link (senate.gov),90,,,auto,
@@ -34572,6 +34584,7 @@ CHRG-119hhrg63057,119,house,hssm00,2026-02-24,,hearing,full_recording,UD17SLFGHk
 CHRG-119hhrg63779,119,house,hshm00,2026-02-24,,hearing,full_recording,5dQYL7raiCM,@HouseHomeland,event ID in video,95,150,,auto,
 CHRG-119hhrg64140,119,house,hspw00,2026-02-24,,hearing,full_recording,vkXY5xqriTI t_sc8hKXor4,@transport @transportdems,date window + title,60,305,,auto,
 CHRG-119shrg62986,119,senate,ssva00,2026-02-24,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff022426,senate.gov,congress.gov link (senate.gov),90,,,auto,
+CHRG-119shrg64416,119,senate,ssas00,2026-02-24,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=armed&filename=armedA022426,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg62945,119,senate,sseg00,2026-02-25,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=energy&filename=energy022526,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-119shrg63360,119,senate,sssb00,2026-02-25,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz022626,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg63623,119,senate,ssev00,2026-02-25,,hearing,full_recording,BmVcstoo75A,@EPWCmte,date window + title,60,124,,auto,
@@ -34669,6 +34682,8 @@ CHRG-119shrg63764,119,senate,ssaf00,2026-05-12,,hearing,full_recording_offsite,h
 CHRG-119hhrg63735,119,house,hsju00,2026-05-13,,hearing,full_recording,YtxxmZzuRl4 0YNFVMHTI_Y,@JudiciaryDems @USHouseJudiciaryGOP,congress.gov link; date window + title,100,276,,auto,
 CHRG-119hhrg63746,119,house,hsgo00,2026-05-13,,hearing,full_recording,FeYLwdwoZgc,@OversightandGovernmentReform,congress.gov link,100,192,,auto,
 CHRG-119hhrg64438,119,house,hsgo00,2026-05-13,,errata,full_recording,FeYLwdwoZgc,@OversightandGovernmentReform,congress.gov link,100,192,,auto,
+CHRG-119hhrg64562,119,house,hsvr00,2026-05-13,,hearing,full_recording,9HV_KTnxpZM byiXIo37Xbk,@HouseVeteransAffairs @VetAffairsDems,congress.gov link; event ID in video,100,307,,auto,
+CHRG-119shrg63848,119,senate,ssva00,2026-05-13,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff051326,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-119shrg63886,119,senate,sseg00,2026-05-13,,hearing,full_recording,UiuGoi6itrs,@SenateEnergy,date window + title,60,103,,auto,
 CHRG-119shrg63970,119,senate,sssb00,2026-05-13,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz051326,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-119shrg64010,119,senate,spag00,2026-05-13,,hearing,full_recording,zp774evsNAY,@SenateAging,date window + title,60,104,,auto,
@@ -34680,7 +34695,9 @@ CHRG-119hhrg63799,119,house,hsju00,2026-05-20,,hearing,full_recording,XvkGHbqzIZ
 CHRG-119hhrg63819,119,house,hsha00,2026-05-20,,hearing,full_recording,Z2pkYagkXY0,@CommitteeonHouseAdministration,congress.gov link,100,63,,auto,
 CHRG-119hhrg63839,119,house,hssm00,2026-05-20,,hearing,full_recording,-R4VUHMUbpE,@HouseSmallBiz,congress.gov link,100,157,,auto,
 CHRG-119hhrg64470,119,house,hsba00,2026-05-20,,hearing,full_recording,mNjYDxtXzqE N9pDYMkCois,@GOPFinancialServices @USHouseFSC,congress.gov link; event ID in video,95,220,,auto,
+CHRG-119hhrg64563,119,house,hsvr00,2026-05-20,,hearing,full_recording,owYhJoKP3dc nnVDvUL3Jis,@HouseVeteransAffairs @VetAffairsDems,congress.gov link; event ID in video,100,248,,auto,
 CHRG-119shrg63971,119,senate,sssb00,2026-05-20,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz052026,senate.gov,congress.gov link (senate.gov),100,,,auto,
+CHRG-119shrg64161,119,senate,ssev00,2026-05-20,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=epw&filename=epw052026,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-119shrg64194,119,senate,spag00,2026-05-20,,hearing,full_recording,SVzTpyyNJyw,@SenateAging,date window + title,60,70,,auto,
 CHRG-119shrg64426,119,senate,sscm00,2026-05-20,,hearing,full_recording,rRXqvplKXKU,@CommerceRepublicans,date in video + title,80,140,,auto,
 CHRG-119hhrg63809,119,house,hsju00,2026-05-21,,hearing,full_recording,7Hgo63HsgLo GCxmHuqfr6g,@JudiciaryDems @USHouseJudiciaryGOP,congress.gov link; date window + title,100,301,,auto,
@@ -34700,12 +34717,14 @@ CHRG-119hhrg64434,119,house,hsgo00,2026-06-04,,errata,full_recording,eKmKeReYbEg
 CHRG-119jhrg64049,119,joint,jcpk00,2026-06-04,,hearing,full_recording,uLRZsL4BV2Q,@ChinaCommission,date window + title,60,101,,auto,
 CHRG-119hhrg63956,119,house,hsgo00,2026-06-09,,hearing,full_recording,n1M1d9u9sDk,@OversightandGovernmentReform,date window + title,60,147,,auto,
 CHRG-119hhrg63957,119,house,hsju00,2026-06-09,,hearing,full_recording,1e51MBvBSRk VYHA0ESsF3k,@JudiciaryDems @USHouseJudiciaryGOP,congress.gov link; date window + title,100,473,,auto,
+CHRG-119shrg65595,119,senate,sscm00,2026-06-09,,hearing,full_recording,sQNM80iCK3Y,@CommerceRepublicans,date in video + title,80,113,,auto,
 CHRG-119hhrg63977,119,house,hsju00,2026-06-10,,hearing,full_recording,vXXWVDRfo6o cMmKRaiZiN8,@JudiciaryDems @USHouseJudiciaryGOP,congress.gov link; date window + title,100,299,,auto,
 CHRG-119hhrg63978,119,house,hsha00,2026-06-10,,hearing,full_recording,IDrEtGTWum8,@CommitteeonHouseAdministration,congress.gov link,90,71,,auto,
 CHRG-119hhrg64482,119,house,hsba00,2026-06-10,,hearing,full_recording,TOafR3d3YzY 2EsyZvU5XNs,@GOPFinancialServices @USHouseFSC,congress.gov link; event ID in video,95,271,,auto,
 CHRG-119hhrg65550,119,house,hsag00,2026-06-10,,hearing,full_recording,a56zdXhDvm4 MLuppR6Glj0,@AgRepublicans @HouseAgDems,congress.gov link; date in video + title,90,383,,auto,
 CHRG-119hhrg64483,119,house,hsba00,2026-06-12,,hearing,full_recording,uM7t-MBy9kA ZXUegTT31Bk,@GOPFinancialServices @USHouseFSC,congress.gov link; event ID in video,95,221,,auto,
 CHRG-119shrg64122,119,senate,ssga00,2026-06-17,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff061726,senate.gov,congress.gov link (senate.gov),100,,,auto,
+CHRG-119shrg64351,119,senate,spag00,2026-06-17,,hearing,full_recording,onwsSsmj6FM,@SenateAging,date window + title,60,85,,auto,
 CHRG-119shrg64123,119,senate,ssga00,2026-06-23,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff062326,senate.gov,congress.gov link (senate.gov),90,,,auto,
 CHRG-119shrg64163,119,senate,sseg00,2026-06-23,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=energy&filename=energy062326,senate.gov,congress.gov link (senate.gov),100,,,auto,
 CHRG-119shrg64617,119,senate,sscm00,2026-06-23,,hearing,full_recording,sLPXNObYsGc,@CommerceRepublicans,date in video + title,80,122,,auto,
