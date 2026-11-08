@@ -1,6 +1,6 @@
 ---
 id: ct-umtm
-status: open
+status: closed
 deps: []
 links: [ct-9lxf, ct-tk10, ct-rie2, ct-l7uh]
 created: 2026-11-02T17:20:05Z
@@ -108,3 +108,7 @@ Keep open: public archive 5d24699ad9fa is unchanged. Candidate gates, public att
 **2026-11-08T18:59:50Z**
 
 2026-11-08: (3) The twelve Oct 31 Wayback pairs are recorded as not in raw in .cache/archive-release/implementation/ct-umtm-20261108/wayback-not-in-raw.json (from the pinned Nov 7 selected reconciliation; no selected capture body, recovery, provenance or public row). Any refetch is tracked in ct-l7uh. (2) The Duke capture is staged through the same path as ct-rie2's USAID recovery: one-target campaign 86670c95 and local scheduler release bf1a9462 under ct-umtm-20261108/duke/. The capture_schedule dry run (no --apply) queued exactly one request, the DukeSpace publisher bitstream 81ac196c.../content, with the original sites.duke.edu observation preserved; body cap 390,356 bytes; 0.25 GiB peak; no network, raw write or import. The owner runs capture and import.
+
+**2026-11-08T19:04:09Z**
+
+2026-11-08 closed on the owner-simplified criteria: (1) all 429 notices show a recovery or the notice (unchanged); (2) the Duke document (notice 049f81fa1e0bf3a8) was captured from the Duke University Libraries repository copy (390,355 B, sha 518263c5…, matches the publisher-listed MD5) through the USAID recovery path and imported as an accepted recovery: provenance/recoveries/20261108T190129+0000-4bec5789….jsonl, receipt recovery-campaign-4bec5789…, re-qualified with main's validator and Poppler 26.10; it appears in the next release; (3) the twelve Oct 31 Wayback pairs are recorded as not in raw (.cache/archive-release/implementation/ct-umtm-20261108/wayback-not-in-raw.json); refetch tracked in ct-l7uh.
