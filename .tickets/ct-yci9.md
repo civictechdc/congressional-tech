@@ -1,6 +1,6 @@
 ---
 id: ct-yci9
-status: in_progress
+status: closed
 deps: []
 links: [ct-flg9, ct-j9o7, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:12Z
@@ -65,3 +65,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-08T15:26:16Z**
 
 2026-11-08: published in archive release 63016450530114d8ebc03d2936dc8293250ffd546bf00d5205909345216e5e78 (public pointer moved; browser contract and public canary passed; hosted Explorer re-pinned in aed605d1 and read back). Causes: model/jobs/release-causes/5d24699ad9fa-630164505301.json; note: docs/releases/2026-11-08-630164505301.md. 115732 subject_keys read back without 118-hr-4775. The original array_except failed on the lake's non-null list type; fixed with array_remove_all in 3ebe6872 with a lake-typed test.
+
+**2026-11-08T17:22:39Z**
+
+2026-11-08 closure check on live release 630164505301 (hosted MCP + Pages): body f984b8439d21b0ef (BILLS-118HR4775ih.pdf, list_row 57736) has measure_keys [118-hr-4755], package_id null; 0 list rows carry 118-hr-4775 and 0 detail rows a 118hr4775/4755 package; meeting 115732 subject_keys hold 4755 and no 4775; bill 118-hr-4755 resolves via document_bills to 2 documents including this one. Site search for BILLS-118HR4775ih returns 1 document labelled H.R. 4755. Focused runner on 302dc5e6: production-offline 17 passed (partial: 3 of 516 lane files). Earlier notes cover the planted-association controls and independent review. A/C met; closing.
