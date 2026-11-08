@@ -1,6 +1,6 @@
 ---
 id: ct-9s7b
-status: in_progress
+status: closed
 deps: []
 links: [ct-o2pr, ct-1i4q, ct-t915, ct-gi01, ct-sulv, ct-m104, ct-j78x]
 created: 2026-11-02T13:54:36Z
@@ -88,3 +88,11 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at bebf6e4e. The site distinguishes printed hearings, committee transcripts and captions while preserving retrieval actions and recording identity. Review also strengthened browser occurrence checks and original-backed named-event/ordered-playlist comparisons. The final source passed 36 focused site tests.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Actual two-way caption reconciliation and same-release installed MCP/site readback on the final native candidate. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-9s7b/REVIEW.md).
+
+**2026-11-08T10:50:01Z**
+
+Closed after final caption acceptance on archive 5d24699ad9fa and Explorer 0.6.2. The independent census reconciled all 730 recording-specific contexts with no missing, extra or duplicate labels; segment and conflicting-label controls passed. Every event with a retained eligible track has a discoverable caption entry.
+
+Pages, hosted MCP and the installed package all read the same live playlist and cue for event 338785. The 308 coverage-only events have no retained eligible linked track and are accounted for separately. Main 57fed991 adds report CSVs without changing the accepted caption code or archive.
+
+Evidence: .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-9s7b/final-5d24699a-ticket-update.json; reconciliation and receipt pins: .cache/archive-release/implementation/post-release-ticket-finish-20261107/dispatch/mcp-nov8-reconciliation.json.
