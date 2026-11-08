@@ -33,9 +33,9 @@ runs:
         POPPLER_CACHED: ${{ steps.poppler-cache.outputs.cache-hit }}
       run: |
         sudo apt-get update
-        libraries="libfreetype6 libfontconfig1 libjpeg-turbo8 libpng16-16t64 libtiff6 libopenjp2-7 liblcms2-2"
+        libraries="libfreetype6 libfontconfig1 libjpeg-turbo8 libpng16-16t64 libtiff6 libopenjp2-7 liblcms2-2 libbrotli1"
         if [ "$POPPLER_CACHED" != true ]; then
-          libraries="ninja-build pkg-config libfreetype-dev libfontconfig-dev libjpeg-dev libpng-dev libtiff-dev libopenjp2-7-dev liblcms2-dev zlib1g-dev"
+          libraries="ninja-build pkg-config libfreetype-dev libfontconfig-dev libjpeg-dev libpng-dev libtiff-dev libopenjp2-7-dev liblcms2-dev libbrotli-dev zlib1g-dev"
         fi
         sudo apt-get install -y --no-install-recommends procps poppler-data $libraries
         if [ "$POPPLER_CACHED" != true ]; then

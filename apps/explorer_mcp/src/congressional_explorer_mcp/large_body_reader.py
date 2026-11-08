@@ -31,7 +31,7 @@ from .models import ExplorerError
 from .release import atomic_json, encoded
 
 CHUNK_BYTES = 1 << 20
-EXPECTED_POPPLER = '26.06.0'
+EXPECTED_POPPLER = '26.10.0'
 LARGE_PDF_VERSION = 1
 
 
