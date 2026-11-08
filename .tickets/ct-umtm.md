@@ -99,3 +99,7 @@ Keep open. Reuse the accepted operation for the maintained selected-input handof
 The USAID/ecoi recovery is now included in the prepared shared-lake inputs for the next coordinated release. The reviewed append at 88e2deee added one capture and one filename row, preserved all 24,341 prior receipt keys and added exactly the acknowledged import, with body readings and unrelated input selections unchanged. Independent readback confirmed the accepted PDF/source binding and provenance.
 
 Keep open: public archive 5d24699ad9fa is unchanged. Candidate gates, public attachment and site/MCP readback remain pending, with both retired USAID homepage successors kept null. Duke and the twelve Wayback cases remain separate. [Owner status](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-umtm/STATUS.json) · [Selected inputs](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/selection-execution-20261107/work/model-spec.json).
+
+**2026-11-08T17:28:24Z**
+
+2026-11-08: USAID/ecoi is published in 630164505301 (see ct-rie2). Remaining: the Duke receipt and the twelve Oct 31 Wayback pairs, whose bodies are not in raw. A simpler criterion is proposed for owner decision.
