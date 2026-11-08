@@ -13,9 +13,10 @@ def assemble_catalog_fixture(repository, root, *, change_project=None, change_de
     product = json.loads((source / 'archive.odps.json').read_text())
     # A declared future table exercises reader extensibility without changing MCP code.
     contract['schema'].append(dict(id='future_data', name='future_data', physicalName='future_data.parquet',
-        logicalType='object', businessName='Future reader fixture', dataGranularityDescription='One future fixture row',
-        properties=[dict(name='future_field', logicalType='string', physicalType='string', required=True),
-                    dict(name='amount', logicalType='number', physicalType='decimal128(38,18)', required=True)]))
+        logicalType='object', businessName='Future reader example (fixture)', dataGranularityDescription='One future fixture row',
+        description='Synthetic reader example for testing future fields and exact decimals; not observed congressional data.',
+        properties=[dict(name='future_field', logicalType='string', physicalType='string', required=True, description='Synthetic example text for reader extensibility.'),
+                    dict(name='amount', logicalType='number', physicalType='decimal128(38,18)', required=True, description='Synthetic exact decimal used to check numeric precision.')]))
     project['artifacts']['future-data'] = dict(kind='dataset', path='archive.odcs.json', object='future_data',
         catalogId='urn:congressional-tech:archive:dataset:future-data', role='application')
     product['outputPorts'].append(dict(name='future-data', contractId=contract['id'], version=contract['version']))

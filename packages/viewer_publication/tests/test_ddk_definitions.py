@@ -555,7 +555,8 @@ def test_authored_odcs_preserves_all_frozen_physical_fields_and_table_meaning():
     for table in baseline['files']:
         name = table['name'].removesuffix('.parquet')
         definition = definitions[name]
-        assert definition['businessName'] == table['purpose']
+        assert definition['businessName'] == {'detail': 'Document details',
+            'meeting_coverage': 'Available materials for each meeting'}.get(name, table['purpose'])
         assert definition['dataGranularityDescription'] == table['row_meaning']
         assert table['nullability'] in definition['description']
         assert all(gap in definition['description'] for gap in table['gaps'])

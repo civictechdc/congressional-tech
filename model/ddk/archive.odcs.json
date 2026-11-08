@@ -60,7 +60,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "dict"
+            "physicalType": "dict",
+            "description": "Congress.gov committee system code associated with this document."
           }
         },
         {
@@ -132,7 +133,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "dict"
+            "physicalType": "dict",
+            "description": "Decimal event identifier associated with this document."
           }
         },
         {
@@ -143,7 +145,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "dict"
+            "physicalType": "dict",
+            "description": "Referenced bill or nomination identifier."
           }
         },
         {
@@ -154,7 +157,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "dict"
+            "physicalType": "dict",
+            "description": "Referenced member Bioguide identifier."
           }
         },
         {
@@ -165,7 +169,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "dict"
+            "physicalType": "dict",
+            "description": "Referenced witness appearance identifier."
           }
         },
         {
@@ -181,7 +186,7 @@
           }
         }
       ],
-      "description": "Coverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list.parquet bullet): a type without \"nullable\" there is required.",
+      "description": "Browse and search document editions included in this release.\n\nCoverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list.parquet bullet): a type without \"nullable\" there is required.",
       "customProperties": [
         {
           "property": "coverageLimits",
@@ -196,7 +201,7 @@
       "name": "detail",
       "physicalName": "detail.parquet",
       "logicalType": "object",
-      "businessName": "The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection",
+      "businessName": "Document details",
       "dataGranularityDescription": "One document edition, in exactly the same order as list",
       "properties": [
         {
@@ -323,7 +328,8 @@
               {
                 "name": "format",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Format of this alternate document file."
               },
               {
                 "name": "body",
@@ -331,17 +337,20 @@
                 "physicalType": "fixed[32]",
                 "logicalTypeOptions": {
                   "format": "binary"
-                }
+                },
+                "description": "SHA-256 digest of the alternate file body, stored as 32 bytes."
               },
               {
                 "name": "suffix",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Stored file suffix for this alternate body."
               },
               {
                 "name": "size",
                 "logicalType": "integer",
-                "physicalType": "int64"
+                "physicalType": "int64",
+                "description": "Size of the alternate file body in bytes."
               }
             ],
             "description": "Other formats of the same document; each has its own body and suffix."
@@ -367,12 +376,14 @@
               {
                 "name": "field",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Name of the extracted fact."
               },
               {
                 "name": "value",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Literal value of the extracted fact."
               }
             ],
             "description": "Embedded selected filename field/value observations; not a generic entity join."
@@ -424,47 +435,56 @@
               {
                 "name": "field",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Kind of publisher-declared page metadata."
               },
               {
                 "name": "value",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Literal publisher-declared value."
               },
               {
                 "name": "format",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Metadata syntax or format used by the publisher."
               },
               {
                 "name": "path",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Source pointer for this metadata declaration."
               },
               {
                 "name": "date",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "Parsed calendar date, when the declaration provides a recognized date."
               },
               {
                 "name": "precision",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Precision of the parsed publisher date."
               },
               {
                 "name": "resolved",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Declared address resolved against its capture context and base address, when available."
               },
               {
                 "name": "selected",
                 "logicalType": "boolean",
-                "physicalType": "boolean"
+                "physicalType": "boolean",
+                "description": "Whether this declaration supplies a selected description, publication date, modification date or publisher label."
               },
               {
                 "name": "context_url",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Captured page address used to resolve this declaration."
               }
             ],
             "description": "Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin."
@@ -480,62 +500,74 @@
             {
               "name": "outcome",
               "logicalType": "string",
-              "physicalType": "dict"
+              "physicalType": "dict",
+              "description": "Recorded main-content result: marked, marked_no_content, fallback, failed, none, unreadable or unread."
             },
             {
               "name": "selector",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "XPath or JSON Pointer identifying the selected content, when supplied by the reader."
             },
             {
               "name": "text_sha256",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "SHA-256 digest of the selected text encoded as UTF-8, when supplied."
             },
             {
               "name": "text_bytes",
               "logicalType": "integer",
-              "physicalType": "int32"
+              "physicalType": "int32",
+              "description": "Text byte count supplied by the HTML metadata reading."
             },
             {
               "name": "snippet",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "Bounded text head retained for marked or marked_no_content readings."
             },
             {
               "name": "reader_version",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "Parser version of the selected HTML metadata reading or unreadable decision."
             },
             {
               "name": "reading_status",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "Status of the selected reading, or unreadable when supported by an unreadable decision."
             },
             {
               "name": "reason",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "Reader result reason or qualified unreadable decision reason."
             },
             {
               "name": "facts_limited",
               "logicalType": "boolean",
-              "physicalType": "boolean"
+              "physicalType": "boolean",
+              "description": "Whether the reading recorded a detail-facts limit."
             },
             {
               "name": "text_available",
               "logicalType": "boolean",
-              "physicalType": "boolean"
+              "physicalType": "boolean",
+              "description": "Whether selected text was retained in the reading."
             },
             {
               "name": "decision_id",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "Qualified unreadable decision identifier when there is no selected reading."
             },
             {
               "name": "evidence_limited",
               "logicalType": "boolean",
-              "physicalType": "boolean"
+              "physicalType": "boolean",
+              "description": "Whether metadata declarations or address contexts exceeded the retained evidence budget."
             }
           ]
         },
@@ -718,7 +750,7 @@
           }
         }
       ],
-      "description": "Coverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list and detail bullets).",
+      "description": "Explore document details, associated files and repeated information for each document edition. Stable link keys identify document entries.\n\nCoverage limits:\nDate bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage\nNullability basis:\nNullability transcribes data model §8.1 (list and detail bullets).",
       "customProperties": [
         {
           "property": "coverageLimits",
@@ -754,7 +786,7 @@
           "required": true
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nBoth columns are required by data model §8.1."
+      "description": "Resolve a stable public document link key to a document entry in this release.\n\nCoverage limits:\n\nNullability basis:\nBoth columns are required by data model §8.1."
     },
     {
       "id": "retired_links",
@@ -809,11 +841,12 @@
             "physicalType": "fixed[8]",
             "logicalTypeOptions": {
               "format": "binary"
-            }
+            },
+            "description": "Eight-byte endpoint key associated with the retired document address."
           }
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (retired_links.parquet row)."
+      "description": "Find a successor link or removal notice for a document link key no longer published.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (retired_links.parquet row)."
     },
     {
       "id": "urls",
@@ -841,7 +874,7 @@
           "required": true
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nBoth columns are required by data model §8.1."
+      "description": "Find document entries through normalized source-address lookup keys. One address can identify several document editions.\n\nCoverage limits:\n\nNullability basis:\nBoth columns are required by data model §8.1."
     },
     {
       "id": "sources",
@@ -922,7 +955,7 @@
           "required": false
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (sources.parquet row)."
+      "description": "Inspect source addresses and listing context captured for each document. Each source occurrence remains separate.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (sources.parquet row)."
     },
     {
       "id": "recoveries",
@@ -999,7 +1032,7 @@
           "required": false
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (recoveries.parquet row)."
+      "description": "Inspect recovered files associated with document editions. Repeated file occurrences remain separate records.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (recoveries.parquet row)."
     },
     {
       "id": "meetings",
@@ -1078,32 +1111,38 @@
               {
                 "name": "start",
                 "logicalType": "timestamp",
-                "physicalType": "timestamp<microsecond,UTC>"
+                "physicalType": "timestamp<microsecond,UTC>",
+                "description": "Start instant of this sitting, when stated."
               },
               {
                 "name": "end",
                 "logicalType": "timestamp",
-                "physicalType": "timestamp<microsecond,UTC>"
+                "physicalType": "timestamp<microsecond,UTC>",
+                "description": "End instant of this sitting, when stated."
               },
               {
                 "name": "place",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Room, building and address joined with commas, when supplied."
               },
               {
                 "name": "room",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Room stated for this sitting."
               },
               {
                 "name": "building",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Building stated for this sitting."
               },
               {
                 "name": "address",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Address stated for this sitting."
               }
             ],
             "description": "Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number."
@@ -1122,12 +1161,14 @@
               {
                 "name": "system_code",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Congress.gov system code of the participating committee."
               },
               {
                 "name": "role",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Recorded role of this committee in the meeting."
               }
             ],
             "description": "Host/participant roles belong to this meeting-committee association."
@@ -1141,7 +1182,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "dict"
+            "physicalType": "dict",
+            "description": "Bill or nomination identifier associated with this meeting."
           }
         },
         {
@@ -1157,17 +1199,20 @@
               {
                 "name": "source",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Transcript source: printed_hearing, committee_transcript or captions."
               },
               {
                 "name": "package_id",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "GovInfo package identifier for a printed transcript, when applicable."
               },
               {
                 "name": "list_row",
                 "logicalType": "integer",
-                "physicalType": "int32"
+                "physicalType": "int32",
+                "description": "Release-local document row for this transcript, when applicable."
               },
               {
                 "name": "formats",
@@ -1175,24 +1220,28 @@
                 "physicalType": "list<string>",
                 "items": {
                   "logicalType": "string",
-                  "physicalType": "string"
+                  "physicalType": "string",
+                  "description": "Available format label for this transcript."
                 },
                 "description": "Format names (pdf, html, ...) the package is retained in, in format-preference order; values, not keys."
               },
               {
                 "name": "video_key",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Provider-prefixed recording key for caption transcripts, when applicable."
               },
               {
                 "name": "language",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Language of this transcript or caption track, when stated."
               },
               {
                 "name": "production",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Recorded production label for this transcript or caption track."
               }
             ],
             "description": "One entry per GovInfo package. list_row is the package's listed document whose saved format ranks first (then lowest row); formats are the distinct saved and alternate formats over all the package's listed documents, in format-preference order. A package listed as several documents (editions) keeps one entry."
@@ -1211,17 +1260,20 @@
               {
                 "name": "name",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Recorded name of this meeting video."
               },
               {
                 "name": "url",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Recorded address of this meeting video."
               },
               {
                 "name": "video_key",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Provider-prefixed recording identifier, when resolved."
               }
             ],
             "description": "Publisher recording links; video_key joins retained recordings when available."
@@ -1333,18 +1385,21 @@
               {
                 "name": "description",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Description stated for this document reference."
               },
               {
                 "name": "name",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Name stated for this document reference."
               }
-            ]
+            ],
+            "description": "One document reference stated in the meeting record."
           }
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references."
+      "description": "Explore congressional meetings and hearings. Each record describes one event using the shared House and Senate event identifier system.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references."
     },
     {
       "id": "witnesses",
@@ -1505,7 +1560,7 @@
           "required": false
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "description": "Explore witness observations from meetings, packages and pages. Each record is a source occurrence, so repeated appearances do not identify a deduplicated person.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "id": "witness_key_map",
@@ -1551,7 +1606,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "string"
+            "physicalType": "string",
+            "description": "Possible current witness key for an ambiguous earlier key."
           }
         },
         {
@@ -1569,7 +1625,7 @@
           "required": true
         }
       ],
-      "description": "Coverage limits:\nDerived from earlier bodies the lake still holds, not from earlier releases: a key published only from a body no longer held has no row\nNullability basis:\nwitness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w).",
+      "description": "Look up earlier witness keys and their recorded successors or candidates. Some earlier keys remain unresolved.\n\nCoverage limits:\nDerived from earlier bodies the lake still holds, not from earlier releases: a key published only from a body no longer held has no row\nNullability basis:\nwitness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w).",
       "customProperties": [
         {
           "property": "coverageLimits",
@@ -1602,7 +1658,8 @@
           "required": true,
           "items": {
             "logicalType": "integer",
-            "physicalType": "int64"
+            "physicalType": "int64",
+            "description": "Meeting event identifier associated with this recording."
           }
         },
         {
@@ -1621,34 +1678,39 @@
                 "physicalType": "fixed[32]",
                 "logicalTypeOptions": {
                   "format": "binary"
-                }
+                },
+                "description": "SHA-256 digest of this captured track body, stored as 32 bytes."
               },
               {
                 "name": "suffix",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Stored file suffix of this track body."
               },
               {
                 "name": "format",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Format label of this track."
               },
               {
                 "name": "language",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Language of this track, when stated."
               },
               {
                 "name": "production",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Production label of this track, when stated."
               }
             ],
             "description": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows."
           }
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "description": "Explore meeting recordings and captured tracks, identified by recording provider.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "id": "committees",
@@ -1706,17 +1768,20 @@
               {
                 "name": "name",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Committee name during this recorded period."
               },
               {
                 "name": "start",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "Start date of this committee-name period."
               },
               {
                 "name": "end",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "End date of this committee-name period."
               }
             ],
             "description": "Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended."
@@ -1737,7 +1802,7 @@
           "required": false
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "description": "Look up current and historical congressional committees by their Congress.gov system codes.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "id": "members",
@@ -1774,32 +1839,38 @@
               {
                 "name": "chamber",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Chamber of service for this term."
               },
               {
                 "name": "state",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "State represented during this term."
               },
               {
                 "name": "district",
                 "logicalType": "integer",
-                "physicalType": "int16"
+                "physicalType": "int16",
+                "description": "District represented during this term, when applicable."
               },
               {
                 "name": "party",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Party recorded for this term."
               },
               {
                 "name": "start",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "Start date of this term."
               },
               {
                 "name": "end",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "End date of this term."
               }
             ],
             "description": "Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats."
@@ -1815,27 +1886,32 @@
             {
               "name": "lis",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "Legislative Information System member identifier."
             },
             {
               "name": "opensecrets",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "OpenSecrets member identifier."
             },
             {
               "name": "govtrack",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "GovTrack member identifier."
             },
             {
               "name": "icpsr",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "Inter-university Consortium for Political and Social Research member identifier."
             },
             {
               "name": "wikidata",
               "logicalType": "string",
-              "physicalType": "string"
+              "physicalType": "string",
+              "description": "Wikidata entity identifier."
             },
             {
               "name": "fec",
@@ -1843,13 +1919,15 @@
               "physicalType": "list<string>",
               "items": {
                 "logicalType": "string",
-                "physicalType": "string"
-              }
+                "physicalType": "string",
+                "description": "One Federal Election Commission identifier retained for this member."
+              },
+              "description": "Federal Election Commission identifiers retained for this member."
             }
           ]
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "description": "Look up current and historical congressional members by their Bioguide identifiers.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "id": "rosters",
@@ -1902,7 +1980,7 @@
           "required": false
         }
       ],
-      "description": "Coverage limits:\nCommittee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "description": "Explore member assignments to congressional committees and subcommittees for the Congresses included in the retained source snapshot.\n\nCoverage limits:\nCommittee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
       "customProperties": [
         {
           "property": "coverageLimits",
@@ -2010,12 +2088,14 @@
               {
                 "name": "bill_id",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Identifier of the related bill."
               },
               {
                 "name": "title",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Title of the related bill."
               },
               {
                 "name": "relationship_types",
@@ -2025,7 +2105,8 @@
                   "logicalType": "string",
                   "physicalType": "dict",
                   "description": "Embedded Congress.gov relationship labels, not foreign keys."
-                }
+                },
+                "description": "Recorded relationship types between this bill and the related bill."
               }
             ],
             "description": "Embedded related, companion, and omnibus vehicle measures with canonical bill_id, title, and relationship_types."
@@ -2039,7 +2120,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "dict"
+            "physicalType": "dict",
+            "description": "Congress.gov system code of a committee associated with this measure."
           }
         },
         {
@@ -2055,17 +2137,20 @@
               {
                 "name": "publication_id",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Congressional Budget Office publication identifier for this estimate."
               },
               {
                 "name": "date",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "Publication date of this estimate."
               },
               {
                 "name": "description",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Recorded description of this estimate."
               }
             ],
             "description": "Embedded publication IDs, dates and descriptions, not full CBO estimate text."
@@ -2084,42 +2169,50 @@
               {
                 "name": "vote_id",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Identifier of this floor vote."
               },
               {
                 "name": "basis",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Recorded basis for associating this floor vote with the bill."
               },
               {
                 "name": "chamber",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Chamber that held this vote."
               },
               {
                 "name": "date",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "Calendar date of this vote."
               },
               {
                 "name": "question",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Question put to this vote."
               },
               {
                 "name": "result",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Recorded result of this vote."
               },
               {
                 "name": "yea",
                 "logicalType": "integer",
-                "physicalType": "int16"
+                "physicalType": "int16",
+                "description": "Recorded number of yea votes."
               },
               {
                 "name": "nay",
                 "logicalType": "integer",
-                "physicalType": "int16"
+                "physicalType": "int16",
+                "description": "Recorded number of nay votes."
               }
             ],
             "description": "One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions."
@@ -2138,27 +2231,32 @@
               {
                 "name": "amendment_id",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Identifier of this amendment."
               },
               {
                 "name": "purpose",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Stated purpose of this amendment."
               },
               {
                 "name": "sponsor_bioguide_id",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Bioguide identifier of this amendment sponsor."
               },
               {
                 "name": "latest_action_date",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "Date of the latest recorded amendment action."
               },
               {
                 "name": "latest_action_text",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Text of the latest recorded amendment action."
               }
             ],
             "description": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill."
@@ -2177,24 +2275,27 @@
               {
                 "name": "system_code",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Congress.gov system code of the committee performing this activity."
               },
               {
                 "name": "activity",
                 "logicalType": "string",
-                "physicalType": "dict"
+                "physicalType": "dict",
+                "description": "Recorded committee activity on this bill."
               },
               {
                 "name": "date",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "Calendar date of this committee activity."
               }
             ],
             "description": "Embedded committee events; several activities can refer to the same committee."
           }
         }
       ],
-      "description": "Coverage limits:\nAmendments cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "description": "Explore bills referenced by documents, meetings and committee activities, plus substantive or enacted bills from the 113th Congress onward and directly related bills. The collection is limited to data retained by the upstream source.\n\nCoverage limits:\nAmendments cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
       "customProperties": [
         {
           "property": "coverageLimits",
@@ -2262,7 +2363,8 @@
           "required": true,
           "items": {
             "logicalType": "string",
-            "physicalType": "dict"
+            "physicalType": "dict",
+            "description": "Congress.gov system code of a committee associated with this measure."
           }
         },
         {
@@ -2278,7 +2380,8 @@
               {
                 "name": "system_code",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Congress.gov system code of the committee in this activity group."
               },
               {
                 "name": "activities",
@@ -2291,7 +2394,8 @@
                     {
                       "name": "name",
                       "logicalType": "string",
-                      "physicalType": "string"
+                      "physicalType": "string",
+                      "description": "Name of this committee activity."
                     },
                     {
                       "name": "date",
@@ -2299,11 +2403,13 @@
                       "physicalType": "string",
                       "description": "Exact source date or timestamp string, including offset and precision. Null when missing."
                     }
-                  ]
+                  ],
+                  "description": "One activity stated for this committee in the retained source order."
                 },
                 "description": "Null when not supplied or unreadable, empty when the source supplied an empty list."
               }
-            ]
+            ],
+            "description": "One committee activity group in the retained nomination source order."
           }
         },
         {
@@ -2331,39 +2437,45 @@
               {
                 "name": "vote_id",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Identifier of this floor vote."
               },
               {
                 "name": "date",
                 "logicalType": "date",
-                "physicalType": "date32"
+                "physicalType": "date32",
+                "description": "Calendar date of this vote."
               },
               {
                 "name": "question",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Question put to this vote."
               },
               {
                 "name": "result",
                 "logicalType": "string",
-                "physicalType": "string"
+                "physicalType": "string",
+                "description": "Recorded result of this vote."
               },
               {
                 "name": "yea",
                 "logicalType": "integer",
-                "physicalType": "int16"
+                "physicalType": "int16",
+                "description": "Recorded number of yea votes."
               },
               {
                 "name": "nay",
                 "logicalType": "integer",
-                "physicalType": "int16"
+                "physicalType": "int16",
+                "description": "Recorded number of nay votes."
               }
             ],
             "description": "Embedded Senate roll-call summaries; no individual member positions."
           }
         }
       ],
-      "description": "Coverage limits:\nNominations cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss.",
+      "description": "Explore referenced nominations and their legislative facts. Each record includes the nomination part when one is supplied; coverage is limited to retained upstream data.\n\nCoverage limits:\nNominations cover the 119th Congress only until spicy-regs backfills\nNullability basis:\nNullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss.",
       "customProperties": [
         {
           "property": "coverageLimits",
@@ -2452,7 +2564,7 @@
           "required": false
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nNullability transcribes data model §7.7.\nCurrent publication requires a policy-bound capture_profile version 2. capture_disposition and capture_reason are required; capture_decision_id is nullable."
+      "description": "Inspect the recorded capture state for each requested web address, including requests without a successful capture.\n\nCoverage limits:\n\nNullability basis:\nNullability transcribes data model §7.7.\nCurrent publication requires a policy-bound capture_profile version 2. capture_disposition and capture_reason are required; capture_decision_id is nullable."
     },
     {
       "id": "url_variants",
@@ -2477,7 +2589,7 @@
           "required": true
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "description": "Inspect canonical and alternate web-address pairs used by the capture policy.\n\nCoverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "id": "videos",
@@ -2594,7 +2706,7 @@
           }
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "description": "Explore uploads listed in the retained committee YouTube cache, including uploads that have not been matched to a meeting.\n\nCoverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "id": "channels",
@@ -2678,7 +2790,7 @@
           }
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "description": "Find the curated YouTube channel handles for congressional committees.\n\nCoverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "id": "recording_matches",
@@ -2799,7 +2911,8 @@
               {
                 "name": "event_id",
                 "logicalType": "integer",
-                "physicalType": "int64"
+                "physicalType": "int64",
+                "description": "Event identifier of the supported meeting."
               },
               {
                 "name": "basis",
@@ -2813,11 +2926,12 @@
                 "physicalType": "dict",
                 "description": "event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting."
               }
-            ]
+            ],
+            "description": "One supported meeting link for this recording observation."
           }
         }
       ],
-      "description": "Coverage limits:\nScored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null.",
+      "description": "Inspect recorded decisions about whether a subject has a recording, together with the basis for each decision.\n\nCoverage limits:\nScored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null.",
       "customProperties": [
         {
           "property": "coverageLimits",
@@ -2923,14 +3037,14 @@
           "required": true
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "description": "Find amendment and vote document links listed in House meeting records. A vote document link is not a ballot or a vote tally.\n\nCoverage limits:\n\nNullability basis:\nThe documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "id": "meeting_coverage",
       "name": "meeting_coverage",
       "physicalName": "meeting_coverage.parquet",
       "logicalType": "object",
-      "businessName": "Typed coverage facts per meeting",
+      "businessName": "Available materials for each meeting",
       "dataGranularityDescription": "One aspect of one meeting: recording, transcript, documents, witnesses or captions",
       "properties": [
         {
@@ -2976,7 +3090,7 @@
           "required": false
         }
       ],
-      "description": "Coverage limits:\n\nNullability basis:\nThe documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known."
+      "description": "See what the catalog records about recordings, transcripts, documents, witnesses and captions for each meeting. Unknown and not-stated values do not mean that materials do not exist.\n\nCoverage limits:\n\nNullability basis:\nThe documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known."
     }
   ]
 }
