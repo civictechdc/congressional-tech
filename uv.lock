@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -580,9 +580,13 @@ archive = [
     { name = "house-naming-guide" },
     { name = "ijson" },
     { name = "pyarrow" },
+    { name = "pymupdf" },
     { name = "pytz" },
+    { name = "rulespec-artifacts", marker = "python_full_version < '3.13'" },
+    { name = "spicy-docs", marker = "python_full_version < '3.13'" },
     { name = "surt" },
     { name = "trafilatura" },
+    { name = "warcio" },
 ]
 test = [
     { name = "pytest" },
@@ -604,12 +608,16 @@ requires-dist = [
     { name = "pillow", specifier = ">=13,<14" },
     { name = "pyarrow", marker = "extra == 'archive'", specifier = "==25.0.1" },
     { name = "pydantic", specifier = ">=2.11,<3" },
+    { name = "pymupdf", marker = "extra == 'archive'", specifier = ">=1.28,<2" },
     { name = "pypdf", extras = ["fonts"], specifier = ">=6.21.4,<7" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=9,<10" },
     { name = "pytz", marker = "extra == 'archive'", specifier = "==2026.5" },
     { name = "requests" },
+    { name = "rulespec-artifacts", marker = "python_full_version < '3.13' and extra == 'archive'", path = "vendor/rulespec_artifacts-1.1.2-py3-none-any.whl" },
+    { name = "spicy-docs", marker = "python_full_version < '3.13' and extra == 'archive'", path = "vendor/spicy_docs-0.78.0-py3-none-any.whl" },
     { name = "surt", marker = "extra == 'archive'", specifier = ">=0.3.1,<0.4" },
     { name = "trafilatura", marker = "extra == 'archive'", specifier = "==2.0.0" },
+    { name = "warcio", marker = "extra == 'archive'", specifier = "==1.7.5" },
     { name = "yt-dlp" },
 ]
 provides-extras = ["archive", "test"]
@@ -2502,6 +2510,24 @@ sql-sqlite = [
 ]
 
 [[package]]
+name = "pymupdf"
+version = "1.28.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/fb/b6761fa2d5266f2cdb24c3b91f4023070ab7848381417678e7a289a1d52a/pymupdf-1.28.2.tar.gz", hash = "sha256:5e0be7908a715aa20333caddd73f1d6f01e4cd0c26e869fa2dd0b7f344da2249", size = 87903557, upload-time = "2026-08-06T21:43:23.321Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b4/51/550c9a75c4ff3245cb4ecb7bb95cbe2ab7374230b8e2b7a1f7259444150b/pymupdf-1.28.2-cp310-abi3-macosx_10_15_x86_64.whl", hash = "sha256:5fc315b425ff1f7afdd1ea2f348205cb19b806767daae7ce4d64115799c2bae1", size = 24645079, upload-time = "2026-08-06T21:37:25.001Z" },
+    { url = "https://files.pythonhosted.org/packages/fa/01/3591f781b417b382a8487a2356e927acfe858b1043bab0ec47f6805bb109/pymupdf-1.28.2-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:7113846b35dbf0a033f088e4f4fb543dabeb4b0b12c112966a1ca1ee2d5eacae", size = 23875605, upload-time = "2026-08-06T21:37:40.369Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/86/4a68f080b71b46802178346af46486e1697508e760855ff5f3b218a6dff7/pymupdf-1.28.2-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:3050a233dde1211efe89ada74e2add6238436434159f46097a1423aad2842545", size = 25095554, upload-time = "2026-08-06T21:37:58.485Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/06/dace3e27af26690cb20bead80dbac42941b0841eb689b8aabbd67dde16f0/pymupdf-1.28.2-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:397d6715c1f0df7548a92d0afd8ce370fc48fa47aeefac16be2bc04a16a8227f", size = 25762500, upload-time = "2026-08-06T21:38:17.438Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/61/4146dfa1d8172a1ce8d59f0eed94896ddefb8deb2274534d0522fbb8abf5/pymupdf-1.28.2-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:f89fb2d86d07d643a269f17a093105057e20c79c1d06c103b53600067b6d2b01", size = 25986309, upload-time = "2026-08-06T21:38:35.472Z" },
+    { url = "https://files.pythonhosted.org/packages/52/60/1fb6e64676f7500ebe89054b9e5bbbe14d3101c92d5f1a40ac9a35227673/pymupdf-1.28.2-cp310-abi3-win32.whl", hash = "sha256:530ef543a3885b3b81cb72a854e7c5a625a9233201221132bb6c31698c6a2bdb", size = 18525353, upload-time = "2026-08-06T21:38:47.697Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/61/d563bbccba262f9dd6d2d35ccb72593648184d886188efb12d9ce8f34dd6/pymupdf-1.28.2-cp310-abi3-win_amd64.whl", hash = "sha256:ebd244918798502d7b4504c90410d1711a4d7675a32584ca30f1bab419ecbffe", size = 19826532, upload-time = "2026-08-06T21:39:00.213Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/93/08f404a1f0155fe24137cf2d3aabd3e2b4b08c62053ed89c60f2611be3e9/pymupdf-1.28.2-cp310-abi3-win_arm64.whl", hash = "sha256:ffe91a24edc75c80da2a4b62f50fc0f54632d34fc8fe4cbc48e5c7ff07cf8fb4", size = 19759252, upload-time = "2026-08-06T21:39:12.937Z" },
+    { url = "https://files.pythonhosted.org/packages/58/8c/d897dcd32a25b58186c968b15ce4324ca029e9d96460de12325314e390be/pymupdf-1.28.2-cp313-abi3-pyemscripten_2025_0_wasm32.whl", hash = "sha256:2e1b574c0fd2cb238021033fd3c0f9c4388816638df064e4bfb56d9d81736dc8", size = 18399403, upload-time = "2026-08-06T21:39:25.008Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/f1/de34a1c53fe2bf8c6e71db84b0ced782d408970c9810d2b456a2ae96814c/pymupdf-1.28.2-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:fd481ed48bef56305c41fb7e05a055c03345c899c7b101dad086258b438f8168", size = 25802333, upload-time = "2026-08-06T21:39:41.426Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.2.5"
 source = { registry = "https://pypi.org/simple" }
@@ -3015,6 +3041,14 @@ wheels = [
 ]
 
 [[package]]
+name = "rulespec-artifacts"
+version = "1.1.2"
+source = { path = "vendor/rulespec_artifacts-1.1.2-py3-none-any.whl" }
+wheels = [
+    { filename = "rulespec_artifacts-1.1.2-py3-none-any.whl", hash = "sha256:7d547cd432b1d533b93dcfd3802e4a0e179de6e89301fd6faa8bb917b99830ef" },
+]
+
+[[package]]
 name = "s3transfer"
 version = "0.19.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3061,6 +3095,51 @@ sdist = { url = "https://files.pythonhosted.org/packages/19/63/0b6bae54546aed98d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/07/66/473f7ca0be0b06e38ee8c85ee2db184e3981bd769fac2e7c19c8a8865211/soupsieve-3.0.4-py3-none-any.whl", hash = "sha256:8412826614f9c632227067d0985aeb9f584bd15efc852955430e097a9fe7afbf", size = 42458, upload-time = "2026-10-22T00:45:24.843Z" },
 ]
+
+[[package]]
+name = "spicy-docs"
+version = "0.78.0"
+source = { path = "vendor/spicy_docs-0.78.0-py3-none-any.whl" }
+dependencies = [
+    { name = "jsonschema" },
+    { name = "rulespec-artifacts" },
+]
+wheels = [
+    { filename = "spicy_docs-0.78.0-py3-none-any.whl", hash = "sha256:b91c8faa2a0fe9b16dd7882e55c549a888ab810ecd0a04d6789f631544d952d2" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "beautifulsoup4", marker = "extra == 'html'", specifier = "==4.14.3" },
+    { name = "beautifulsoup4", marker = "extra == 'record-speeches'", specifier = "==4.14.3" },
+    { name = "boto3", marker = "extra == 'acquisition'" },
+    { name = "congressionalrecord", marker = "extra == 'record-speeches'", specifier = "==2.3.0" },
+    { name = "deltatrack", marker = "extra == 'bill-diff'", specifier = "==0.1.0" },
+    { name = "docling", extras = ["ocrmac", "rapidocr"], marker = "extra == 'pdf-docling'", specifier = "==2.131.0" },
+    { name = "duckdb", marker = "extra == 'courtlistener-local'", specifier = ">=1.5.5,<2" },
+    { name = "httpx", marker = "extra == 'acquisition'" },
+    { name = "httpx", marker = "extra == 'pdf-gemini'", specifier = ">=0.28,<1" },
+    { name = "httpx", marker = "extra == 'pdf-openai'", specifier = ">=0.28,<1" },
+    { name = "indexed-bzip2", marker = "extra == 'courtlistener-local'", specifier = ">=1.7,<2" },
+    { name = "jsonschema", specifier = ">=4.23" },
+    { name = "loguru", marker = "extra == 'acquisition'" },
+    { name = "lxml", marker = "extra == 'courtlistener-local'", specifier = ">=6,<7" },
+    { name = "lxml", marker = "extra == 'reconstruct'", specifier = ">=6,<7" },
+    { name = "mlx-vlm", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'pdf-mlx'", specifier = "==0.7.0" },
+    { name = "ocrmac", marker = "sys_platform == 'darwin' and extra == 'pdf-apple'", specifier = ">=1.0.1,<2" },
+    { name = "pillow", marker = "extra == 'pdf'", specifier = ">=12,<13" },
+    { name = "polars", marker = "extra == 'public-table'" },
+    { name = "pyarrow", marker = "extra == 'courtlistener-local'" },
+    { name = "pyarrow", marker = "extra == 'public-table'" },
+    { name = "pymupdf", marker = "extra == 'pdf'", specifier = ">=1.28,<2" },
+    { name = "pypdf", marker = "extra == 'pdf-pypdf'", specifier = ">=6,<7" },
+    { name = "pyyaml", marker = "extra == 'yaml'", specifier = ">=6,<7" },
+    { name = "rapidocr-onnxruntime", marker = "extra == 'pdf-rapidocr'", specifier = ">=1.4.4,<2" },
+    { name = "rulespec-artifacts", specifier = "==1.1.2" },
+    { name = "tqdm", marker = "extra == 'acquisition'" },
+    { name = "warcio", marker = "extra == 'acquisition'", specifier = "==1.7.5" },
+]
+provides-extras = ["acquisition", "bill-diff", "courtlistener-local", "html", "pdf", "pdf-apple", "pdf-docling", "pdf-gemini", "pdf-mlx", "pdf-openai", "pdf-pypdf", "pdf-rapidocr", "public-table", "reconstruct", "record-speeches", "yaml"]
 
 [[package]]
 name = "sqlalchemy"
@@ -3298,6 +3377,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/be/77/5138921cc21adf763e941671b4cc6bbf00813663c983aa3fb8dac273f081/w3lib-2.5.0.tar.gz", hash = "sha256:a7ddf714508ddc1b8563bd19ace2feb28080bbaca39326cbc964359f6754f615", size = 385035, upload-time = "2026-09-30T10:10:54.571Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/bb/e977329315ba4e14f6f6ca0fee7de816a80d161c115a181405bbab92aecf/w3lib-2.5.0-py3-none-any.whl", hash = "sha256:136fd5edfe64b53b8579838e2a7e803495bbbe6b69ddfaeed3c29a794b44f6ba", size = 37047, upload-time = "2026-09-30T10:10:53.179Z" },
+]
+
+[[package]]
+name = "warcio"
+version = "1.7.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f2/2b/d825506924cb4508c90cd950dbda2a4dbfa9f5609e2ae76b53deaba656db/warcio-1.7.5.tar.gz", hash = "sha256:7247b57e68074cfd9433cb6dc226f8567d6777052abec2d3c78346cffa4d19b9", size = 61691, upload-time = "2024-12-10T21:31:48.939Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5c/f0/3f19085980f8a4485f4265cc9dba1099b2fa35ef7552390a8446e149c293/warcio-1.7.5-py2.py3-none-any.whl", hash = "sha256:ca96130bde7747e49da714097d144c6ff939458d4f93e1beb1e42455db4326d4", size = 40568, upload-time = "2024-12-10T21:31:46.291Z" },
 ]
 
 [[package]]

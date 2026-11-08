@@ -30,6 +30,14 @@ archive = [
     "trafilatura==2.0.0",
     "pytz==2026.5",
     "extruct==0.18.0",
+    # body_text (data model §6.6): spicy-docs' body-text derivation and WARC reader. Its
+    # pdf and acquisition extras are not requested: pdf pins Pillow<13 against ours, so
+    # PyMuPDF and warcio are named directly at the versions those extras allow.
+    "spicy-docs==0.78.0; python_version < '3.13'",
+    # spicy-docs' own dependency, vendored beside it; named so its path source binds.
+    "rulespec-artifacts==1.1.2; python_version < '3.13'",
+    "pymupdf>=1.28,<2",
+    "warcio==1.7.5",
 ]
 test = ["pytest>=9,<10"]
 
