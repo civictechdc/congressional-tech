@@ -2,7 +2,7 @@
 id: ct-umtm
 status: open
 deps: []
-links: [ct-9lxf, ct-tk10, ct-rie2]
+links: [ct-9lxf, ct-tk10, ct-rie2, ct-l7uh]
 created: 2026-11-02T17:20:05Z
 type: feature
 priority: 2
@@ -104,3 +104,7 @@ Keep open: public archive 5d24699ad9fa is unchanged. Candidate gates, public att
 **2026-11-08T17:42:58Z**
 
 2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.
+
+**2026-11-08T18:59:50Z**
+
+2026-11-08: (3) The twelve Oct 31 Wayback pairs are recorded as not in raw in .cache/archive-release/implementation/ct-umtm-20261108/wayback-not-in-raw.json (from the pinned Nov 7 selected reconciliation; no selected capture body, recovery, provenance or public row). Any refetch is tracked in ct-l7uh. (2) The Duke capture is staged through the same path as ct-rie2's USAID recovery: one-target campaign 86670c95 and local scheduler release bf1a9462 under ct-umtm-20261108/duke/. The capture_schedule dry run (no --apply) queued exactly one request, the DukeSpace publisher bitstream 81ac196c.../content, with the original sites.duke.edu observation preserved; body cap 390,356 bytes; 0.25 GiB peak; no network, raw write or import. The owner runs capture and import.
