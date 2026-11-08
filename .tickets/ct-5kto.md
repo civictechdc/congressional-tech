@@ -1,8 +1,8 @@
 ---
 id: ct-5kto
-status: in_progress
-deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz, ct-4jms, ct-gi01, ct-m104, cef-96wc, ct-x78c]
-links: [cefr-vnw8, cef-jh7i, cef-96wc, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-gi01, ct-8kl2, ct-a3le, ct-082q]
+status: closed
+deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz]
+links: [cefr-vnw8, cef-jh7i, cef-96wc, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-gi01, ct-8kl2, ct-a3le, ct-082q, ct-4jms, ct-x78c]
 created: 2026-10-30T14:32:31Z
 type: task
 priority: 1
@@ -117,3 +117,14 @@ Implementation and live retirement checks are complete. This ticket remains open
 November 7 post-release owner update for archive 5d24699ad9fa / Explorer 0.6.2. Retirement from 58c138d8 is deployed and accepted: current event bookmarks, old UUID notices, zero legacy-data requests, YouTube and hosted MCP all passed. The owner verified current GitHub run history; the latest Pages run was push-triggered.
 
 Keep in_progress only for the first normal weekly collector completion to trigger Pages. The next eligible scheduled start is November 7 at 7:00 p.m. EST. Close after the actual scheduled collector and successful downstream Pages run are recorded and their deployed YouTube report is verified. A manual run does not establish this criterion. [Owner evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-5kto/STATUS.json).
+
+**2026-11-08T11:12:39Z**
+
+The final operating check for Explorer retirement passed. Scheduled collector run `42447651209` succeeded from `b52a88b79af43cff739f8a432dbcb26520eec6fd`. It committed the YouTube report at `a0b8e831215f7b392d621a834990e69488369b66` and the GPO CSVs at `57fed9911e4e4eea0efdc5d51f7392eeba85cbb9`. Completion triggered Pages run `42452162799` via `workflow_run`. Deployment `7632031734` succeeded and the public CSV matched the deployed revision. [Collector run](https://github.com/civictechdc/congressional-tech/actions/runs/42447651209) · [Scheduled Pages run](https://github.com/civictechdc/congressional-tech/actions/runs/42452162799)
+
+Explorer 0.6.3 Pages run `42473419368` succeeded on `bf6455bf0be8489cb0f1192e0b36f5fcc37ec686` in deployment `7634880517`. The served YouTube CSV still matches the collector output byte for byte. The completed retirement checks and this scheduled delivery satisfy the ticket. Recommend closing `ct-5kto`. [0.6.3 Pages run](https://github.com/civictechdc/congressional-tech/actions/runs/42473419368) · [Current readback](/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-5kto/release-0.6.3-readback.json)
+
+
+Closeout also corrected apps/committee_youtube/README.md: current collector-to-Pages delivery and three locked collector jobs are explicit; the retired publication and meetings job are historical, with local replay instructions preserved. Independent Greybeard/ETL review confirmed the five broad open dependencies supplied the accepted cutover/preservation evidence needed here. They remain linked for their separate capture, broader data quality, publication-operation and witness followups; the five closed historical prerequisites remain dependencies.
+
+Decision evidence: .cache/archive-release/implementation/post-release-ticket-finish-20261107/nov8-reconciliation/NON-MCP-HANDOFF.md, Retirement dependency review.

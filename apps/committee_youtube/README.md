@@ -2,13 +2,22 @@
 
 This pipeline tracks every official House, Senate and joint committee YouTube channel. It also tracks every official GPO hearing transcript, and works out which video records which hearing. Findings from the first full analysis are in [`docs/youtube-coverage/findings.md`](../../docs/youtube-coverage/findings.md).
 
-## Committee Explorer publication
+## Current delivery
+
+The weekly collector maintains the independent YouTube reports and retained
+source state. Its completion triggers Pages, which builds the current site and
+runs reader and browser checks. The shared archive publisher supplies the
+immutable release used by Explorer and MCP. See the [current workflow
+instructions](../../.github/workflows/raw-source-tables.md#pages-and-retired-committee-explorer-delivery)
+and [accepted archive release](../../docs/releases/2026-11-07-5d24699ad9fa.md).
+
+## Historical Committee Explorer export and local replay
 
 `committee-explorer-export` assembles retained source records into the shared
 `committee_meeting` model. Source packages still own collection, parsing and
-matching. This command reads local files only. The publication workflow runs
-after the collection workflow settles and when relevant code changes reach
-main. The existing reports continue through their current commands.
+matching. This command reads local files only. The old publication workflow was
+retired in November 2026 after the shared archive cutover. The commands below
+retain the local replay interface for historical publications and recovery.
 
 ```bash
 .venv/bin/committee-explorer-export \
@@ -37,8 +46,9 @@ input bytes, supplied source families, export options, Python/dependency version
 source-adapter code, schema code, and bundled lookup tables. If these and the
 retained identity/history state match, it verifies and reuses the existing
 Parquet tables before constructing model records. The first run creates the
-receipt; older publications without one receive a normal rebuild. CI retains
-the receipt with state and passes its existing browser publication to this option.
+receipt; older publications without one receive a normal rebuild. The retired
+CI workflow retained that receipt with state and supplied its previous browser
+publication to this option.
 
 Changed source data, collection-job receipts, issue decisions, `--limit`, an
 explicit `--as-of` value, or relevant code trigger a full refresh. An unchanged
@@ -72,20 +82,22 @@ publication failures. Issues overlap and are counted separately.
 
 See [integration execution and measured limits](../../packages/committee_meeting/INTEGRATION_EXECUTION.md)
 for the complete retained-data rehearsal, source repairs and remaining release
-work. Large generated artifacts remain outside the code branch. IDs, current
-issue history, job receipts and the browser publication live on `pipeline-data`.
+work. Large generated artifacts remain outside the code branch. Historical IDs,
+issue history, job receipts and browser publications remain on `pipeline-data`.
 State archives split into checked 50 MiB chunks; expanded state never enters Git.
-Publication and collection share a concurrency group. After a verified snapshot
-is saved, Pages receives exact code and pipeline commit IDs, verifies the files
-again and enforces GitHub's 1 GB site limit before deployment. A failed export or
-verification leaves the prior public site in place.
+The former publication workflow shared collection's concurrency group and sent
+paired code and pipeline revisions to Pages. Current Pages delivery follows the
+collector completion trigger above and reads the shared archive.
 
 See [publication reuse checks and measured limits](../../docs/youtube-coverage/publication-reuse.md)
 for validation and the remaining work on changed-input updates.
 
 ## What runs every week
 
-`.github/workflows/update-data.yml` runs every Sunday. It has four jobs, each run after the one before even when that one failed.
+`.github/workflows/update-data.yml` is scheduled for Sunday at 00:00 UTC. It has
+three jobs: `youtube`, `congress` and `committees`. Each follows the previous job,
+including after a failure, unless the workflow is cancelled. They install the
+locked workspace before collecting data.
 
 **`youtube` job:**
 
@@ -102,29 +114,29 @@ for validation and the remaining work on changed-input updates.
 | Keep Congress.gov committee meeting records | `congress-meetings` | raw cache, `pipeline-data` branch |
 | Match each hearing to its recording(s) | `gpo-match` | `data/gpo_hearing_videos.csv`, `data/gpo_hearing_video_coverage.csv` |
 
-**`meetings` job.** A job of its own: its readers depend on docs.house.gov and 21 committee sites, and a failure there must not hold back the GPO and video outputs above.
-
-| Step | Command | Output |
-|---|---|---|
-| Test the parsers and refresh decisions | `pytest` | none |
-| Fill House repository gaps | `house-meeting-records` | `data/house_documents_found.csv`, `data/house_witnesses_found.csv`, `data/house_amendments_found.csv` |
-| Read Senate and joint committee pages | `senate-meeting-records` | `data/senate_hearing_pages_found.csv`, `data/senate_witnesses_found.csv`, `data/senate_documents_found.csv` |
-| Join meeting records, text, recordings and witnesses | `meeting-inventory` | `data/hearing_text_sources.csv`, `data/meetings_without_records.csv`, `data/meeting_completeness.csv`, `data/meeting_witnesses.csv` |
-
 **`committees` job.** `congress-committees` retains the official Congress-scoped committee lists in `congress_committees.jsonl.gz` on `pipeline-data`. It refreshes the latest two Congresses and fills missing historical Congresses. The Explorer uses exact source categories and parent committee links; it does not guess committee type from names. This job saves independently so a metadata request failure cannot prevent the other collectors from saving their results.
 
 - **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`), meeting records (`congress_meetings.jsonl.gz`), committee metadata (`congress_committees.jsonl.gz`) and parsed meeting-source state (`meeting-inventory/*.json.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
 - **Initial state and recovery:** `pipeline-data/meeting-inventory/*.json.gz` supplies the parsed records and availability observations. The initial seed was added directly to that branch; no seed blobs are kept in the code branch. See [meeting-state setup and recovery](../../docs/youtube-coverage/meeting-state.md).
-- **Failures:** every command exits non-zero on any failure. Derived CSV commits require the whole job to succeed. Once committee readers have started, their raw-state snapshot still saves the last usable records and failed-refresh receipts; setup/test failures do not create a snapshot. The publication records the failed job separately, and incremental fetching catches up on the next run.
+- **Failures:** commands exit non-zero on failure. Derived CSV commits require the job to succeed. Each collector preserves its source snapshot after a fetch attempt; setup failures do not create one. Pages can deploy an already committed report after a later collector fails, subject to its reader, browser and build checks.
 
 The workflow needs two repository secrets:
 
 - `YOUTUBE_DATA_API_KEY`;
 - `DATA_GOV_API_KEY`, which serves both GovInfo and Congress.gov.
 
-## Meeting inventory
+## Historical meeting inventory and local replay
 
-The source readers run after `gpo-match`, then the inventory joins them once. Neither reader reads the inventory. Every path is explicit, so a rehearsal can use a copy of `pipeline-data` and a separate output directory.
+The former `meetings` job ran the House and Senate readers after `gpo-match`,
+then joined their results into the inventory. That job has been removed from
+the weekly workflow. The retained commands support local replay with explicit
+input paths and a separate output directory; neither reader reads the inventory.
+
+| Historical step | Local command | Output |
+|---|---|---|
+| Fill House repository gaps | `house-meeting-records` | `data/house_documents_found.csv`, `data/house_witnesses_found.csv`, `data/house_amendments_found.csv` |
+| Read Senate and joint committee pages | `senate-meeting-records` | `data/senate_hearing_pages_found.csv`, `data/senate_witnesses_found.csv`, `data/senate_documents_found.csv` |
+| Join meeting records, text, recordings and witnesses | `meeting-inventory` | `data/hearing_text_sources.csv`, `data/meetings_without_records.csv`, `data/meeting_completeness.csv`, `data/meeting_witnesses.csv` |
 
 ```bash
 .venv/bin/house-meeting-records --meetings ../pipeline-data/congress_meetings.jsonl.gz \
@@ -153,9 +165,9 @@ The Senate recording probe saves each committee-day's positive or negative answe
 
 For an offline rebuild, copy `meeting-inventory/*.json.gz` from the latest `pipeline-data` snapshot into your chosen state directory and pass `--offline` to the three commands. A new backfill uses the same commands with an empty state directory. `--seed-cache ~/hearing-text` imports the old research caches read-only, when available; it is never needed in CI. `house-meeting-records --zyte --threads 16` is an optional metered backfill and requires `ZYTE_TOKEN` in the environment. **No additional weekly secret is needed.** `--limit N` bounds live House meetings or Senate hearing pages; it does not include Senate listing requests. An incomplete initial backfill exits non-zero instead of publishing partial outputs. `--site` restricts live Senate fetching for a bounded check while retaining other saved sites.
 
-The parser, refresh and offline-export tests run first in the `meetings` job.
-Install the local packages using the command below, adding the `test` extra to
-`packages/congress_api`, and run `.venv/bin/python -m pytest`.
+The retired `meetings` job ran parser, refresh and offline-export tests first.
+For current local checks, use the checkout's test runner and runtime setup in
+[the development guide](../../docs/development.md).
 
 ## Channels: `youtube-accounts.csv`
 
@@ -262,8 +274,8 @@ Window size is set by the model's recitation filter, not its context: a verbatim
 ## Running locally
 
 ```bash
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e 'packages/congress_api[test]' -e apps/committee_youtube
+uv sync --frozen
+source .venv/bin/activate
 git worktree add ../pipeline-data pipeline-data   # raw caches
 
 youtube-fetch   --tinydb_dir ../pipeline-data/youtube
