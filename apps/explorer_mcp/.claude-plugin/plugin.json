@@ -1,6 +1,6 @@
 {
   "name": "congress-explorer",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
   "author": {
     "name": "Civic Tech DC"
