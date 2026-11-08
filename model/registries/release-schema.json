@@ -2049,7 +2049,7 @@
         }
       ],
       "gaps": [
-        "Scored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then"
+        "Historical package matcher scores are available separately when historical_recording_matches is published"
       ],
       "purpose": "Recording links and decisions with their basis",
       "row_meaning": "One observation that a subject has, or lacks, a recording",
@@ -2066,6 +2066,134 @@
         "meeting_links[].scope": "event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting."
       },
       "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+    },
+    {
+      "name": "historical_recording_matches.parquet",
+      "columns": [
+        {
+          "name": "package_id",
+          "type": "string",
+          "meaning": "Government Publishing Office package identifier as supplied",
+          "nullable": false
+        },
+        {
+          "name": "congress",
+          "type": "string",
+          "meaning": "Congress as supplied",
+          "nullable": false
+        },
+        {
+          "name": "chamber",
+          "type": "string",
+          "meaning": "Chamber as supplied",
+          "nullable": false
+        },
+        {
+          "name": "committee_code",
+          "type": "string",
+          "meaning": "Committee code as supplied",
+          "nullable": false
+        },
+        {
+          "name": "held_date",
+          "type": "string",
+          "meaning": "Held date as supplied",
+          "nullable": false
+        },
+        {
+          "name": "hearing_dates",
+          "type": "string",
+          "meaning": "Additional hearing dates as supplied",
+          "nullable": false
+        },
+        {
+          "name": "record_type",
+          "type": "string",
+          "meaning": "Publication record type as supplied",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "meaning": "Original matcher status; a negative status does not establish checked absence",
+          "nullable": false
+        },
+        {
+          "name": "video_ids",
+          "type": "string",
+          "meaning": "Original video identifiers or URLs in their supplied order and spacing",
+          "nullable": false
+        },
+        {
+          "name": "channels",
+          "type": "string",
+          "meaning": "Original channel text",
+          "nullable": false
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "meaning": "Original package-level method text, which can name several methods",
+          "nullable": false
+        },
+        {
+          "name": "score",
+          "type": "int16",
+          "meaning": "Original aggregate package score; null means blank. Zero is a supplied score",
+          "nullable": true
+        },
+        {
+          "name": "video_minutes",
+          "type": "string",
+          "meaning": "Original duration text",
+          "nullable": false
+        },
+        {
+          "name": "flags",
+          "type": "string",
+          "meaning": "Original flags text",
+          "nullable": false
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "meaning": "Original matcher or research source label",
+          "nullable": false
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "meaning": "Original note text",
+          "nullable": false
+        },
+        {
+          "name": "source_snapshot_sha256",
+          "type": "string",
+          "meaning": "SHA-256 of the exact input CSV",
+          "nullable": false
+        },
+        {
+          "name": "source_record_ordinal",
+          "type": "int64",
+          "meaning": "One-based CSV data record ordinal, excluding the header",
+          "nullable": false
+        }
+      ],
+      "gaps": [
+        "Historical package observations do not assign recordings to individual hearings or update meeting coverage."
+      ],
+      "purpose": "Retained package-level scores, methods and observations from the historical recording matcher",
+      "row_meaning": "One original CSV record from one exact historical matcher snapshot",
+      "identity": {
+        "fields": [
+          "source_snapshot_sha256",
+          "source_record_ordinal"
+        ],
+        "scope": "input snapshot and physical data record",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "nullability": "A blank score becomes null. Other empty CSV fields remain empty strings."
     },
     {
       "name": "committee_records.parquet",

@@ -91,7 +91,7 @@ def _definition_hashes(root):
     package=root/'packages/viewer_publication/src/viewer_publication'
     files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py','archive_schema.py','archive_model_lifetimes.py','legislative_data.py',
         'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py','archive_text_index.py',
-        'lookup_aliases.py','meeting_detail_observations.py')]
+        'lookup_aliases.py','meeting_detail_observations.py','historical_recording_matcher.py')]
     files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
     files += [root/'packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv']
     files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/reading_versions.py',
@@ -111,7 +111,7 @@ def capture_profile_record(*,engine_revision,root=ROOT):
 
 def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pins,
                    lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
-                   relationship_metadata_update=None,recovery_policy=None):
+                   relationship_metadata_update=None,recovery_policy=None,historical_recording_matcher=None):
     """Pin semantic definitions; retain exact physical selectors outside their digest."""
     require_entities=(isinstance(lake_versions,dict)
         and ('meeting_records' in lake_versions or 'appearance_records' in lake_versions))
@@ -128,6 +128,8 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
         engine_revision=engine_revision,runtime_pins=runtime_pins,lake_versions=lake_versions,
         writer_settings=writer_settings,file_hashes=hashes))
     if recovery_policy is not None:profile['recovery_policy']=_copy(recovery_policy)
+    if historical_recording_matcher is not None:
+        profile['historical_recording_matcher']={key:historical_recording_matcher[key] for key in ('sha256','size')}
     if relationship_metadata_update is not None:
         update=relationship_metadata_update
         digests={'base_release_id','registry_sha256','schema_sha256'}

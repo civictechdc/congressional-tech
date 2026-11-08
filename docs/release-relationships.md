@@ -685,7 +685,7 @@ One observation that a subject has, or lacks, a recording.
 
 Identity: `match_id` (primary_key; published identifier).
 
-Coverage: Scored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then.
+Coverage: Historical package matcher scores are available separately when historical_recording_matches is published.
 
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
@@ -711,6 +711,42 @@ Nullability: The documents are silent; decided from the row meaning: the key and
 - `meeting_links[].scope`: event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting.
 
 Outgoing: `match_meeting`, `match_meeting_associations`, `match_recording`.
+
+Incoming: none.
+
+## `historical_recording_matches` — Retained package-level scores, methods and observations from the historical recording matcher
+
+One original CSV record from one exact historical matcher snapshot.
+
+Identity: `source_snapshot_sha256, source_record_ordinal` (primary_key; input snapshot and physical data record).
+
+Coverage: Historical package observations do not assign recordings to individual hearings or update meeting coverage..
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `package_id` | `string` | no | Government Publishing Office package identifier as supplied |
+| `congress` | `string` | no | Congress as supplied |
+| `chamber` | `string` | no | Chamber as supplied |
+| `committee_code` | `string` | no | Committee code as supplied |
+| `held_date` | `string` | no | Held date as supplied |
+| `hearing_dates` | `string` | no | Additional hearing dates as supplied |
+| `record_type` | `string` | no | Publication record type as supplied |
+| `status` | `string` | no | Original matcher status; a negative status does not establish checked absence |
+| `video_ids` | `string` | no | Original video identifiers or URLs in their supplied order and spacing |
+| `channels` | `string` | no | Original channel text |
+| `method` | `string` | no | Original package-level method text, which can name several methods |
+| `score` | `int16` | yes | Original aggregate package score; null means blank. Zero is a supplied score |
+| `video_minutes` | `string` | no | Original duration text |
+| `flags` | `string` | no | Original flags text |
+| `source` | `string` | no | Original matcher or research source label |
+| `note` | `string` | no | Original note text |
+| `source_snapshot_sha256` | `string` | no | SHA-256 of the exact input CSV |
+| `source_record_ordinal` | `int64` | no | One-based CSV data record ordinal, excluding the header |
+
+Nullability: A blank score becomes null. Other empty CSV fields remain empty strings. A required column is refused at write time.
+
+
+Outgoing: none.
 
 Incoming: none.
 
