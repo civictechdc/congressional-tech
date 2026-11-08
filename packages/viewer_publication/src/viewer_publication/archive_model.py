@@ -948,7 +948,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
-                         prior_links=None,base_retired=None,root=ROOT,registry=None):
+                         historical_recording_matcher=None,prior_links=None,base_retired=None,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
     `registry` names a compatible-versions file other than the checked-in one (tests only).
@@ -970,6 +970,9 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     scratch=Path(scratch).resolve();scratch.mkdir(parents=True,exist_ok=False)
     evidence=scratch/'evidence';evidence.mkdir()
     inputs=registry_inputs(scratch/'registries',root=root)
+    if historical_recording_matcher is not None:
+        from viewer_publication.historical_recording_matcher import matcher_input
+        inputs.append(matcher_input(scratch,historical_recording_matcher))
     raw_data_inputs=[('captures',captures),('readings',readings),('filename_readings',filename_readings)]
     if meeting_records is not None and not isinstance(meeting_records,(list,tuple)):
         raw_data_inputs.append(('meeting_records',meeting_records))
@@ -1088,13 +1091,14 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),
             auxiliary_row_group_rows=AUXILIARY_ROW_GROUP_ROWS),root=root,
-        recovery_policy=recovery_policy)
+        recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
         parser_versions=dict(parser_versions),catalog_version=catalog_version,
         include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs,
-        has_document_references=has_document_references)
+        has_document_references=has_document_references,
+        historical_recording_matcher=historical_recording_matcher is not None)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
@@ -1102,7 +1106,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
-                  prior_links=None,base_retired=None,root=ROOT,registry=None):
+                  historical_recording_matcher=None,prior_links=None,base_retired=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
@@ -1110,7 +1114,8 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
-        recording_decision_files=recording_decision_files,playlist_records=playlist_records,prior_links=prior_links,base_retired=base_retired,root=root,registry=registry)
+        recording_decision_files=recording_decision_files,playlist_records=playlist_records,
+        historical_recording_matcher=historical_recording_matcher,prior_links=prior_links,base_retired=base_retired,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -1311,6 +1316,11 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM (SELECT record_sha FROM youtube_cache_bodies UNION SELECT record_sha FROM youtube_api_bodies) b WHERE b.record_sha NOT IN ({explorer_settled_sql('video_records')})) AS unsettled_video_records,
             (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records""")]
         meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha WHERE r.source='youtube_cache') GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
+    if prepared.get('historical_recording_matcher'):
+        from viewer_publication.historical_recording_matcher import SOURCE_FIELDS
+        keys=['source_snapshot_sha256','source_record_ordinal']
+        columns=','.join((*SOURCE_FIELDS,*keys))
+        auxiliary.append(('historical_recording_matches',f'SELECT {columns} FROM historical_recording_matcher_input',keys,[]))
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[]),
         ('retired_links',(Path(root)/'model/sql/retired-links.sql').read_text(),['link_key'],[])]

@@ -354,3 +354,43 @@ def test_explorer_inputs_come_together(tmp_path):
     value['video_records'] = dict(kind='parquet', path=str(tmp_path / 'video.parquet'), sha256='a' * 64, size=17)
     with pytest.raises(ValueError, match='Explorer tables require'):
         validate_spec(value, base=tmp_path)
+
+
+def test_model_job_publishes_pinned_historical_matcher_rows(tmp_path):
+    import csv
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_model_job import execute, validate_spec
+    from viewer_publication.historical_recording_matcher import SOURCE_FIELDS
+
+    value, _, _ = real_model_spec(tmp_path)
+    source = tmp_path / 'historical.csv'
+    with source.open('w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=SOURCE_FIELDS, restval='')
+        writer.writeheader()
+        writer.writerow(dict(package_id='CHRG-111hhrg54388', status='full_recording',
+                             method='date window + title', score='60', video_ids='-AxBVdmECic'))
+        writer.writerow(dict(package_id='CHRG-114hhrg93915', status='no_video_found', score=''))
+        writer.writerow(dict(package_id='CHRG-114hhrg93915', status='not_public', score='0'))
+    pin = file_pin(source)
+    value['historical_recording_matcher'] = dict(path=str(source), **pin)
+    pinned = validate_spec(value, base=tmp_path)
+    bad = dict(pinned, historical_recording_matcher=dict(pinned['historical_recording_matcher'], sha256='0' * 64))
+    with pytest.raises(ValueError, match='Pinned model input changed'):
+        execute(bad)
+    built = execute(pinned)
+    output = Path(built['output'])
+    artifact = pq.read_table(output / 'historical_recording_matches.parquet')
+    assert artifact.column_names==[*SOURCE_FIELDS,'source_snapshot_sha256','source_record_ordinal']
+    rows = artifact.to_pylist()
+    assert [(row['source_record_ordinal'],row['package_id'],row['status'],row['score']) for row in rows] == [
+        (1,'CHRG-111hhrg54388','full_recording',60),
+        (2,'CHRG-114hhrg93915','no_video_found',None),
+        (3,'CHRG-114hhrg93915','not_public',0),
+    ]
+    assert all(row['source_snapshot_sha256'] == pin['sha256'] for row in rows)
+    assert rows[0]['method'] == 'date window + title' and rows[1]['method'] == ''
+    schema = json.loads((output/'schema.json').read_text())
+    table, = [entry for entry in schema['files'] if entry['name']=='historical_recording_matches.parquet']
+    assert table['available'] and table['identity']['fields']==['source_snapshot_sha256','source_record_ordinal']
+    assert json.loads((Path(built['scratch'])/'profile.json').read_text())['profile']['historical_recording_matcher']==pin
