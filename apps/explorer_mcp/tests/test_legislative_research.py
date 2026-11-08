@@ -1,4 +1,5 @@
 """Consumer checks exercise source occurrence keys, ambiguity, coverage and paging."""
+from copy import deepcopy
 import shutil
 import pytest
 from conftest import CURRENT, manifest
@@ -26,6 +27,7 @@ def test_actions_ballots_and_votes_are_actual_queryable_rows(reader):
 
 @pytest.mark.parametrize('limit,wide', [(3,False),(100,True)])
 def test_unfiltered_ballots_preserve_date_order_old_cursors_and_byte_pages(reader,limit,wide):
+    assert reader.entity_keys['member_votes']==['vote_id','member_key']
     reader.db.execute('CREATE TEMP TABLE ballot_base AS SELECT * FROM member_votes')
     reader.db.execute(f'''CREATE OR REPLACE TEMP VIEW member_votes AS
         SELECT b.* REPLACE(member_key||':'||i AS member_key,
@@ -53,6 +55,42 @@ def test_unfiltered_ballots_preserve_date_order_old_cursors_and_byte_pages(reade
         observed += original['rows']
     assert observed == expected
     assert 'next_cursor' not in original
+
+
+@pytest.mark.parametrize('identity', [None, {
+    'kind':'primary_key','scope':'published identifier','fields':['vote_id'],
+}])
+def test_unfiltered_ballots_without_exact_declared_key_preserve_rows(reader,identity):
+    selection = deepcopy(reader.selection)
+    metadata = next(item for item in selection['controls']['schema']['files'] if item['name']=='member_votes.parquet')
+    if identity is None:
+        metadata.pop('identity',None)
+    else:
+        metadata['identity'] = identity
+    fallback = Reader(selection)
+    try:
+        fallback.db.execute('''CREATE OR REPLACE TEMP VIEW member_votes AS
+            SELECT * FROM (VALUES
+                ('vote','same','2025-01-01','Yea'),
+                ('vote','same','2025-01-02','Nay'),
+                ('vote',NULL,'2025-01-03','Present')) t(vote_id,member_key,vote_date,position)''')
+        expected = fallback.page(MemberBallots(limit=100),'SELECT t.* FROM member_votes t',[],
+            order='try_cast(t.vote_date AS DATE) ASC NULLS LAST,t.vote_id,t.member_key')['rows']
+        assert len(expected)==3
+        assert fallback.get_member_ballots({'limit':100})['rows']==expected
+        query = dict(limit=1)
+        observed = []
+        for _ in range(4):
+            page = fallback.get_member_ballots(query)
+            observed += page['rows']
+            if not page['has_more']:
+                break
+            query['cursor'] = page['next_cursor']
+        else:
+            pytest.fail('Ballot pagination did not terminate')
+        assert observed==expected
+    finally:
+        fallback.close()
 
 
 def test_activity_retains_events_and_resolves_supported_associations(reader):
