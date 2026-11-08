@@ -100,7 +100,7 @@ class LegislativeReader:
         order += ','.join('t.'+key for key in identity)
         sql = 'SELECT t.* FROM '+source+(' WHERE '+' AND '.join(terms) if terms else '')
         expand = None
-        if table == 'member_votes' and not terms:
+        if table == 'member_votes' and not terms and self.entity_keys.get(table) == identity:
             # Cast each distinct literal once, retaining TRY_CAST's exact meaning.
             # Select narrow page keys before fetching the published primary-key rows.
             sql = '''WITH ballot_dates AS MATERIALIZED (
