@@ -117,3 +117,7 @@ Keep open for the assigned operators to restore the disabled 05:30 America/New_Y
 **2026-11-08T17:23:01Z**
 
 2026-11-08 sweep. Live switch verified: public pointer selects 630164505301 with previous_release_id 5d24699ad9fa; both release manifests serve 200 (rollback pair intact); Pages archive and hosted MCP report the same release; ct-5kto retirement closed. Blocker found for B7/B8 (raw safety): the 86 published reviews (reviews.json, 292,002 bytes, sha256 322869766390…) exist only as a gitignored file in the primary checkout (apps/site/public/data/document-reviews/). Raw R2 has no provenance/reviews/ prefix and no copy anywhere under viewer-publications/; Pages serves 404 for it; the live release has 0 review_note rows. Smallest next step: owner runs the documented B8 inspect + '--apply' import (docs/measurements/engine-first-20261027/b8/README.md) from a clean checkout, then reads back the one provenance/reviews/ object. Raw locks (ct-1l1h) and scheduled capture (ct-4jms) stay with their owners.
+
+**2026-11-08T17:33:44Z**
+
+2026-11-08: the B8 blocker is resolved. The 86 published reviews were staged (stage sha d758fbf2…, matching the B8 record) and imported to raw as provenance/reviews/20261027T141248+0000.jsonl (46,169 bytes, 86 records, read back) by writer commit 55be001b. Evidence: .cache/archive-release/implementation/b8-reviews-import-20261108/. The next release picks the review decisions up from raw.

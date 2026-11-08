@@ -1,8 +1,8 @@
 ---
 id: ct-gi01
-status: open
+status: closed
 deps: [ct-sh4j, ct-30fp, ct-kw9b, ct-wx65, ct-h1nd, ct-v51p]
-links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a, ct-64el, ct-asdg, ct-n61r, ct-66ns, ct-n6fz, ct-o2pr, ct-1i4q, ct-9s7b, ct-7uit, ct-082q, ct-6r1i, ct-oh9y]
+links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a, ct-64el, ct-asdg, ct-n61r, ct-66ns, ct-n6fz, ct-o2pr, ct-1i4q, ct-9s7b, ct-7uit, ct-082q, ct-6r1i, ct-oh9y, ct-lft6]
 created: 2026-10-21T20:53:31Z
 type: feature
 priority: 1
@@ -204,3 +204,7 @@ The remaining work is specific: publish historical matcher observations with the
 **2026-11-08T17:20:21Z**
 
 2026-11-08 (sweep-b): reconciliation, producer and publication A/C are met: historical_recording_matches live (34,641), 18 Senate pages have raw custody, all 9,636 occurrences have dispositions, both committee-review inputs retained by sha (issue-and-reference-custody.json), publish-explorer.yml (swap path) gone. Left: (a) record final H/I counts when the paid recapture loop ends; (b) owner to accept the issue-decision disposition: all 7,200 rows verified, original file bytes a18a56e5 not located.
+
+**2026-11-08T17:33:44Z**
+
+2026-11-08 closed: owner accepted the disposition (all 7,200 curated decisions verified; the original issue input file, sha256 a18a56e5…, not found) and split the paid recapture into ct-lft6. Published: historical_recording_matches (34,641 rows, release 630164505301); 18 Senate pages in raw custody; all 9,636 material occurrences dispositioned (D/F preserved, G raw-only, H/I in ct-lft6).

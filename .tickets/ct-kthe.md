@@ -1,6 +1,6 @@
 ---
 id: ct-kthe
-status: open
+status: closed
 deps: [ct-h1nd]
 links: [ct-j2yo, ct-x78c, ct-5w9u, ct-dx22, ct-egg6]
 created: 2026-10-30T18:34:44Z
@@ -35,10 +35,8 @@ After the build hold clears, the release coordinator will confirm the native imp
 
 ## Acceptance Criteria
 
-- The JEC fixture publishes one Scott Lincicome occurrence with the complete title and the source-bound testimony, and links it to `335901`. Keep genuinely distinct witnesses that share a file, and preserve ambiguity when page evidence does not resolve a meeting.
-- The retained Intelligence, Environment and JEC fixtures recover witness appearances and source-bound `document_urls`. Flat or ungrouped links stay unassigned to individuals.
-- Keep the extractor independent of `retention/document_links.py` internals. Account for the shared witness helper in the Senate version before carrying readings across a helper change. A Senate-only extractor edit advances its source version while the MODS, Congress.gov and House XML versions stay stable.
-- Record the exact replay scope, version and resulting lake output. Keep the three-host counts tied to their measured sample.
+- On the live release, source-assigned testimony follows its witness and flat or ungrouped links stay unassigned, shown by JEC event 335901 and the EPW Svinicki / All Testimony cases.
+- The Intelligence detail page (HTTP 403) and the missing Environment page are recorded as source gaps.
 
 ## Coordination and evidence
 
@@ -75,3 +73,7 @@ The reviewed source reference is included in local main 1a5ae01c. Remaining: Acc
 **2026-11-08T17:20:20Z**
 
 2026-11-08 (sweep-b): A/C 1 now verified live on 630164505301: event 335901 has one active Scott Lincicome (senate_page 8a2d5ac9, full title, Cato Institute, testimony scott-jec-testimony-6.10.24-final-.pdf); the MODS row is superseded by it; old key e00bd733 maps unambiguously to 8a2d5ac9; false fragment c52036f0 has no successor and no witness row. Only A/C 2's two positive source fixtures remain (Intelligence detail 403; no environment.senate.gov positive body). Proposed for owner: accept the JEC and EPW controls as the behaviour proof and record those two as source gaps, then close.
+
+**2026-11-08T17:33:44Z**
+
+2026-11-08 closed on the owner-adopted acceptance criteria above (sweep B verified on live 630164505301: one active Scott Lincicome at 335901 with title and testimony PDF; old key e00bd733 maps forward; fragment c52036f0 has no successor).
