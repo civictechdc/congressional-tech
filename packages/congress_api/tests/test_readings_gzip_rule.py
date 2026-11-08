@@ -36,33 +36,40 @@ def test_different_sizes_recorded_gzip_and_pinned_isize_settle_storage(tmp_path)
     assert {r['IfMatch'] for r in client.reads}=={'"'+hashlib.md5(stored).hexdigest()+'"'}
 
 
-def test_equal_size_storage_counterexample_remains_ambiguous(tmp_path):
+def test_equal_size_storage_counterexample_settles_by_hash(tmp_path):
     entity=b'%PDF-1.7\n'+random.Random(20261028).randbytes(16384)+b'\0'*61+b'\n%%EOF\n'
     stored=gzip.compress(entity,mtime=0)
     assert len(entity)==len(stored)==16461 and int.from_bytes(stored[-4:],'little')==16461
     client=Client(stored,None)
     with phase(tmp_path):result=readings.parse_once_payload(request(tmp_path,entity,stored),body_store=R2Store(client,'bucket'))
-    assert result['gzip_rule']==4 and result['ambiguous_gzip'] and result['rows']==[]
-    assert result['read_bytes']==8196 and len(client.reads)==2
+    assert result['gzip_rule']==4 and not result.get('ambiguous_gzip') and result['rows'][0]['format']=='pdf'
+    assert result['read_bytes']==len(stored)
 
 
-def test_original_multimember_warc_has_no_historical_single_member_proof(tmp_path):
+def test_original_multimember_warc_settles_as_its_own_bytes(tmp_path):
     entity=gzip.compress(b'WARC/1.1\r\nWARC-Type: response\r\n\r\n',mtime=0)+gzip.compress(
         random.Random(20261028).randbytes(16384),mtime=0)
     assert len(entity)>8192 and int.from_bytes(entity[-4:],'little')!=len(entity)
     client=Client(entity,None)
     with phase(tmp_path):result=readings.parse_once_payload(request(tmp_path,entity,entity),body_store=R2Store(client,'bucket'))
-    assert result['gzip_rule']==4 and result['ambiguous_gzip'] and result['rows']==[]
-    assert result['read_bytes']==8196
+    assert result['gzip_rule']==4 and not result.get('read_error') and result['rows'][0]['status']=='completed'
+    assert result['read_bytes']==len(entity)
 
 
 @pytest.mark.parametrize('suffix,delta',[('.gz',1),('',0)])
-def test_unconfirmed_storage_gzip_stays_pending(tmp_path,suffix,delta):
+def test_unconfirmed_storage_gzip_settles_by_hash(tmp_path,suffix,delta):
     entity=random_pdf();stored=gzip.compress(entity,mtime=0);client=Client(stored,None)
     with phase(tmp_path):result=readings.parse_once_payload(request(tmp_path,entity,stored,
         original_bytes=len(entity)+delta,suffix=suffix),body_store=R2Store(client,'bucket'))
-    assert result['gzip_rule']==4 and result['rows']==[] and result['ambiguous_gzip']
-    assert result['read_bytes']==(8196 if suffix=='.gz' else 8192)
+    assert result['gzip_rule']==4 and result['rows'][0]['format']=='pdf' and not result.get('ambiguous_gzip')
+    assert result['read_bytes']==len(stored)
+
+
+def test_ambiguous_object_above_the_stored_bound_stays_pending(tmp_path,monkeypatch):
+    entity=random_pdf();stored=gzip.compress(entity,mtime=0);client=Client(stored,None)
+    monkeypatch.setattr(readings,'MAX_STORED_BYTES',len(stored)-1)
+    with phase(tmp_path):result=readings.parse_once_payload(request(tmp_path,entity,stored,suffix=''),body_store=R2Store(client,'bucket'))
+    assert result['gzip_rule']==4 and result['ambiguous_gzip'] and result['rows']==[] and result['read_bytes']==8192
 
 
 def test_non_gzip_prefix_sets_raw_rule_and_preserves_pdf_tail(tmp_path):
@@ -134,13 +141,30 @@ def test_native_staging_and_run_report_rule_and_pending_counters(tmp_path,equal,
             unreadable_store=BodyStore(LocalAdapter(tmp_path/'durable')))
         staged=result['batches'][0]
         assert len(result['batches'])==2
-        assert result['status']==('pending' if equal else 'completed') and result['applied']==(not equal)
+        assert result['status']=='completed' and result['applied']  # equal sizes settle by hash
     else:
         result=staged=readings.stage_once(**args,work=work,body_store=store,worker_factory=Worker)
     count=len(samples)
     assert result['gzip_rule4' if equal else 'gzip_rule2']==count
-    assert result['pending_reads']==int(equal)*count and result['ambiguous_gzip']==int(equal)*count
-    assert result['unreadable']==0 and result['read_bytes']==8196*count
+    assert result['pending_reads']==0 and result['ambiguous_gzip']==0 and result['unreadable']==0
+    assert result['read_bytes']==(sum(len(stored) for _,stored in samples) if equal else 8196*count)
     rows=pq.read_table(staged['readings']).to_pylist()
-    assert [r['format'] for r in rows]==([] if equal else ['pdf'])
-    assert len(client.reads)==2*count
+    assert [r['format'] for r in rows] in ([['pdf'],['warc']] if equal and execute else [['pdf']])
+    assert len(client.reads)==(3 if equal else 2)*count  # prefix, trailer, then the hash read
+
+
+def test_original_gzip_entity_settles_by_hash_instead_of_pending_forever(tmp_path):
+    """Nov 8 nightly: five pipeline-data snapshot bodies (e.g. congress_meetings.jsonl.gz)
+    are .gz files stored as-is, with no Content-Encoding and no .gz key. The prefix
+    rules cannot tell them from storage gzip, so they stayed pending every run."""
+    rows=b''.join(json.dumps(dict(_url=f'https://api.congress.gov/v3/committee-meeting/{n}',
+        n=n,noise=random.Random(n).randbytes(48).hex())).encode()+b'\n' for n in range(400))
+    entity=gzip.compress(rows,mtime=0)
+    assert len(entity)>8192
+    client=Client(entity,None)
+    with phase(tmp_path):
+        result=readings.parse_once_payload(request(tmp_path,entity,entity,suffix=''),body_store=R2Store(client,'bucket'))
+        retry=readings.parse_once_payload(request(tmp_path,entity,entity,suffix=''),body_store=R2Store(client,'bucket'))
+    assert not result.get('read_error') and result['gzip_rule']==4 and not result.get('ambiguous_gzip')
+    assert [(r['parser'],r['status']) for r in result['rows']][:1]==[('sniff','completed')]
+    assert retry==result and result['read_bytes']==len(entity)

@@ -984,8 +984,13 @@ def parse_once_payload(payload,*,body_store=None):
                             if original!=source.size and isize==original%(1<<32):
                                 source.stored_gzip=True;gzip_rule=2
                         # Rule3 needs historical single-member writer proof,
-                        # which these inputs do not establish. Equality is ambiguous.
-                        if gzip_rule==4:raise OSError('ambiguous_storage_gzip')
+                        # which these inputs do not establish. Equality is ambiguous,
+                        # so the one hash rule decides over one whole-object read
+                        # (cached, within this worker's byte quota). Left pending, an
+                        # original .gz entity (a pipeline-data snapshot) never resolves.
+                        if gzip_rule==4:
+                            if source.size>MAX_STORED_BYTES:raise OSError('ambiguous_storage_gzip')
+                            data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
         sniff=(dict(status='completed',format=known) if known is not None else
             read_sniff(source.read,stored_size=source.size,stored_gzip=source.stored_gzip))
         if 'sniff' not in skip:
