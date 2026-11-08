@@ -1,6 +1,6 @@
 ---
 id: ct-tbrj
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-31T07:22:48Z
@@ -61,3 +61,11 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 89851988. Event-specific detail-read observations distinguish qualified success, failure, listing-only evidence and unknown. Review caught HTTP 304 unchanged responses being classified as failures; the repair preserves prior qualified success. All six focused observation/export checks passed after the failing regression.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Actual pinned detail-attempt journal comparison with ct-r4rd/ss-ikn9 and final combined/native, deployment and selected readback checks. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-tbrj/REVIEW.md).
+
+**2026-11-08T11:00:52Z**
+
+Closed after verifying the published detail-read observations and the exact ss-ikn9 comparison. All 99 attempt-journal rows were assessed: 98 match 97 event identities, 90 have equal response bytes, seven differ, and two remain explicitly unassessed. Publisher update, retrieval and journal times remain distinct; different bytes do not establish which source is newer.
+
+Hosted success, failure and unknown controls match archive 5d24699ad9fa. Retained fixtures cover 304 and listing-only states absent from the release. The wrong-Congress plant is rejected. Upstream comparator landing remains with ct-r4rd/ss-ikn9.
+
+Evidence: .cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-tbrj/RESULTS.md and STATUS.json.
