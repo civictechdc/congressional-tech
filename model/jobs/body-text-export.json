@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "parsers": ["pdf_text", "html_text", "xml_text", "warc"],
+  "settings": {
+    "profile": "ranged",
+    "row_group_rows": 256,
+    "order_by": ["saved_body"],
+    "columns": ["saved_body", "text", "page_offsets", "text_sha256"],
+    "footer_limit": 4194304,
+    "created_by": "docspec body text export v1"
+  },
+  "max_text_json_bytes": 15728640,
+  "bucket": "congressional-tech-raw",
+  "prefix": "derived/body_text/",
+  "pointer": "derived/body_text/current.json"
+}
