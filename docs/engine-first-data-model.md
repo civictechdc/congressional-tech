@@ -262,7 +262,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
 | Column | Type | Notes |
 |---|---|---|
 | `body_sha` | fixed[32] | — |
-| `parser` | string | `sniff`, `html`, `xml`, `json`; later `pdf_text` (§6.6). |
+| `parser` | string | `sniff`, `html`, `xml`, `json`; the body-text parsers `pdf_text`, `html_text`, `xml_text`, `warc` (§6.6). |
 | `parser_version` | string | — |
 | `status`, `error_type` | string | §6; the byte bound is read against `stored_bytes`. |
 | `format` | string, nullable | On `sniff` rows only, the sniffed format: `pdf`, `zip`, `xml`, `html`, `json`, `vtt`, `m3u8`, `docx`, `doc`, `text`, `image`, `warc`, `other`, `empty`. |
@@ -290,12 +290,14 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
   - ZIP package detection shares the archive reader's bounds (64 MiB archive, 1 MiB directory, 1,024 entries). It currently reads the bounded archive to inspect root `[Content_Types].xml` or a bounded `mimetype` member naming an OpenDocument type; these packages sniff as `docx`, never from a URL or media type. An unsupported or over-limit ZIP is a failed reading, not an assumed generic archive. Stored gzip ZIPs obey the same decompressed limit.
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links. No parser reads embedded PDF titles.
+- The body-text parsers read every body of their format once per version and fill only `status`, `error_type`, `text_bytes`, `text_head`, `fingerprint` and `content_date`, with `page_count` in `fields`; the text goes to `body_text` (§6.6). `html_text` and `xml_text` re-read pages so `html` and `xml` stay pinned.
 - **Page populations**, nested, on one snapshot: the bodies the server labels HTML or XML (287,765); those of them with a 2xx good fetch (214,041), over which links resolve (§7.2); and the page readings' candidates, which add JSON and pages served under other labels (289,179). Links: *est.* 4.2M, from an 80-body sample, once per page body.
 - **Fingerprints** come from what is already read; no parser runs for them:
   - the `html`, `xml` and `json` readings record each page's: the SHA-256 of its text, NFKC-normalized, whitespace runs collapsed to one space, trimmed (an HTML page's main content; the visible text of XML and other text); empty text gives none;
   - an HTML reading with no main-content fingerprint, or with a link to Cloudflare's `/cdn-cgi/l/email-protection`, is read again from the body a browser shows: each `data-cfemail` element becomes its decoded address as text and each protected `href` a `mailto:` (Cloudflare's own decoder: the first byte is the XOR key; a malformed token stays as written), and C0 controls other than tab, LF and CR are removed (one `\x1a` makes the pinned trafilatura return nothing). If main content is still empty, the fingerprint is the visible text's. These readings record `fingerprint_basis` (`main` or `visible`) and `cloudflare_emails` in `fields`. Every other reading is byte for byte the plain reader's, so a new reader version re-reads only this set (`HTML_REREAD_SQL`). The rule exists because a direct GovInfo transcript and its ZIP member differ only by Cloudflare's per-fetch obfuscation, and 30,139 of 192,191 v21 HTML readings had no fingerprint (ct-o2pr);
   - a ZIP's is the SHA-256 of its members' hex SHA-256s, sorted and newline-joined, which the model computes from `captures` when `expansion` is `expanded`;
-  - no other body is a fingerprint candidate on the 2026-10-19 snapshot (an endpoint's other PDF or ZIP bodies are all cut-off attempts, size-limit bodies or recoveries). A candidate without a fingerprint stays apart as an edition (§7.5); a `fingerprint` parser (the pinned PDF text extractor, a streaming walk of an unexpanded ZIP) is added only when one appears.
+  - a `pdf_text` reading records the same hash over a PDF's native text layer, where one exists;
+  - no other body is a fingerprint candidate on the 2026-10-19 snapshot (an endpoint's other PDF or ZIP bodies are all cut-off attempts, size-limit bodies or recoveries). A candidate without a fingerprint stays apart as an edition (§7.5); a streaming walk of an unexpanded ZIP is added only when one appears.
 - **Size:** 491,710 rows fold to 16.5 MB, before links and `text_head` (*est.* 100 MB per HTML and XML parser version).
 
 ### 6.3 `filename_readings`
@@ -332,9 +334,26 @@ Phase 2: [[PHASE-2]] §1.1.
 
 Phase 2: [[PHASE-2]] §1.2.
 
-### 6.6 `pdf_text` (deferred)
+### 6.6 `body_text`
 
-`body_sha` fixed[32], `parser_version` string, `page_count` int, `text_fingerprint` fixed[32], `text` string; PK `(body_sha, parser_version)`. One read of about 403 GB when scheduled; *est.* 1–5 GB compressed. Its text MUST stay off hash-join build sides.
+The full text of each completed body-text reading (§6.2), never truncated. `pdf_text` reads native page text, with Apple Vision OCR only where a page's layer is missing or garbled; `html_text` and `xml_text` use spicy-docs' markup reader; `warc` unwraps a WARC envelope, checks its payload digest and reads the payload by its sniffed format. A ZIP document has no row: its members are captured as their own bodies (`expansion = 'expanded'`), so its text arrives through theirs. Measurements and decisions: [[BODY-TEXT]].
+
+| Column | Type | Notes |
+|---|---|---|
+| `body_sha`, `parser`, `parser_version` | fixed[32], string, string | The reading's key. |
+| `text` | string | Plain text, no markup. |
+| `page_offsets` | list<int32> | UTF-8 byte offset of each page's start; one page for HTML, XML and a WARC page payload. |
+| `ocr_pages` | list<int32> | Pages read by OCR. |
+| `text_sha256` | fixed[32] | Of `text`. |
+| `macos_build` | string, nullable | The build that ran OCR; null when no page was OCR'd. |
+
+- **PK:** `(body_sha, parser, parser_version)`; partitioned like `readings`.
+- **One read per body** writes both tables. `body_text` commits first, the work list anti-joins both and the append anti-joins the PK, so a crash between the commits re-reads one body, never losing or duplicating one.
+- **Version:** a declared constant (`reading_versions.py`) over the page rule, thresholds and OCR settings; it names its OCR engine, so a host without Vision leaves bodies needing OCR on the work list. PyMuPDF, spicy-docs and the macOS build are drift evidence (`reading-version-diagnostics.json`). Failed pages are recorded, never passed as complete text.
+- **Export:** one docspec-rs SQL-job export per release, one row per `body_sha` the release's `detail.saved_body` shows, at each parser's declared version: `saved_body, text, page_offsets, text_sha256`, ordered by `body_sha AS saved_body`, `Ranged` profile, 128–256 rows per row group. Only the export SQL truncates text, to SpicyEngine's row bound. No fingerprint deduplication: `same_text` groups only within one endpoint (§7.5), so a same-text copy on another site keeps its own `saved_body` and its own row. *est.* 4–6 GB.
+  - Written create-only to `derived/body_text/<sha256>.parquet` and pinned by its own pointer, `derived/body_text/current.json` (`sha256`, `bytes`, `rows`, footer digest, `body_text` snapshot, parser versions, coverage counts), never by the release manifest, since §8.1 publishes nothing else and the release ID hashes `files[]` (§8.3). SpicyEngine pins the Parquet; the Explorer MCP reads the pointer. Only the export the pointer names is kept.
+- **Not pinned:** neither `body_text` nor its parsers enter the model profile (`publish-model.json`) until a model rule reads them (`content_date`, `same_text`), since a pinned version needs an empty work list (§10, invariant 4) and the backfill runs newest Congress first.
+- **Size:** 295,544 PDFs (426 GB) read once per version; *est.* 8.9M pages, 16 GB of text. Its text MUST stay off hash-join build sides.
 
 ### 6.7 `appearance_records`
 
@@ -1010,3 +1029,6 @@ A conforming implementation MUST satisfy, and SHOULD test, each of the following
 
 **[IMPLEMENTATION-PLAN]**
 : *Congressional Document Archive: Implementation Plan.* Note, 2026-10-24. `docs/plans/simplification-plan-20261024.md`.
+
+**[BODY-TEXT]**
+: *Body text: one read, one lake table, one engine export, indexed by SpicyEngine.* Plan, 2026-11-08. `docs/plans/pdf-text-20261108.md`.
