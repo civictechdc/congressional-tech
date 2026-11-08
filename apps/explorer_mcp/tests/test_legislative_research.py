@@ -3,8 +3,8 @@ import shutil
 import pytest
 from conftest import CURRENT, manifest
 from congressional_explorer_mcp.reader import Reader
-from congressional_explorer_mcp.release import prepare
-from congressional_explorer_mcp.models import ExplorerError
+from congressional_explorer_mcp.release import encoded, prepare
+from congressional_explorer_mcp.models import ExplorerError, MAX_BYTES, MemberBallots
 
 
 def test_actions_ballots_and_votes_are_actual_queryable_rows(reader):
@@ -22,6 +22,37 @@ def test_actions_ballots_and_votes_are_actual_queryable_rows(reader):
     assert reader.get_bill_actions(dict(since='2025-02-02',until='2025-02-03'))['rows'] == []
     with pytest.raises(ExplorerError, match='until must be later'):
         reader.get_activity(dict(since='2025-02-02',until='2025-02-01'))
+
+
+@pytest.mark.parametrize('limit,wide', [(3,False),(100,True)])
+def test_unfiltered_ballots_preserve_date_order_old_cursors_and_byte_pages(reader,limit,wide):
+    reader.db.execute('CREATE TEMP TABLE ballot_base AS SELECT * FROM member_votes')
+    reader.db.execute(f'''CREATE OR REPLACE TEMP VIEW member_votes AS
+        SELECT b.* REPLACE(member_key||':'||i AS member_key,
+            literal AS vote_date,CASE WHEN {str(wide).lower()} THEN repeat('é',9000) ELSE member_name END AS member_name)
+        FROM ballot_base b CROSS JOIN (VALUES
+            (0,NULL),(1,'23-Jan-1990'),(2,'2025-02-01'),(3,'2025-02-01'),
+            (4,'epoch'),(5,'infinity'),(6,'2025-1-1'),(7,'not a date')) d(i,literal)''')
+    sql = 'SELECT t.* FROM member_votes t'
+    order = 'try_cast(t.vote_date AS DATE) ASC NULLS LAST,t.vote_id,t.member_key'
+    cursor = reader.db.execute(sql+' ORDER BY '+order)
+    columns = [item[0] for item in cursor.description]
+    expected = [dict(zip(columns,row)) for row in cursor.fetchall()]
+    query = dict(limit=limit)
+    original = reader.page(MemberBallots.model_validate(query),sql,[],order=order)
+    current = reader.get_member_ballots(query)
+    assert current['rows'] == original['rows']
+    assert current['next_cursor'] == original['next_cursor']
+    if wide:
+        assert len(current['rows']) < limit
+    observed = original['rows']
+    while original['has_more']:
+        query['cursor'] = original['next_cursor']
+        original = reader.get_member_ballots(query)
+        assert original['rows'] and len(encoded(original)) <= MAX_BYTES
+        observed += original['rows']
+    assert observed == expected
+    assert 'next_cursor' not in original
 
 
 def test_activity_retains_events_and_resolves_supported_associations(reader):

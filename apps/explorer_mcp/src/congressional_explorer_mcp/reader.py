@@ -272,7 +272,7 @@ class Reader(HearingReader, LegislativeReader):
         result.update(release_id=self.release_id, truncated=result['has_more'])
         return result
 
-    def page(self, query, sql, args, *, order):
+    def page(self, query, sql, args, *, order, expand=None):
         binding = sha256(encoded([self.release_id, query.model_dump(exclude={'cursor'})])).hexdigest()
         position = 0
         if query.cursor:
@@ -285,7 +285,9 @@ class Reader(HearingReader, LegislativeReader):
                 raise ExplorerError('Cursor belongs to another release or query') from error
         # Keep the lookahead limit beside ORDER BY so DuckDB can use Top N.
         # An outer relation limit after OFFSET leaves a full wide-row sort.
-        result = self.rows(sql + f' ORDER BY {order} LIMIT ? OFFSET ?',
+        selected = sql + f' ORDER BY {order} LIMIT ? OFFSET ?'
+        # A caller may fetch full rows after selecting its ordered page keys.
+        result = self.rows(expand(selected) if expand else selected,
                            [*args, query.limit+1, position], limit=query.limit)
         result.pop('columns')
         if result['has_more']:
