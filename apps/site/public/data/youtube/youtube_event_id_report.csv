@@ -166,7 +166,7 @@ Education & Workforce,@EdWorkforceCmte,118,118,115,Republican,house,1
 Education & Workforce,@EdWorkforceCmte,82,82,116,Democratic,house,0
 Education & Workforce,@EdWorkforceCmte,90,90,117,Democratic,house,1
 Education & Workforce,@EdWorkforceCmte,152,151,118,Republican,house,0
-Education & Workforce,@EdWorkforceCmte,133,133,119,Republican,house,0
+Education & Workforce,@EdWorkforceCmte,134,134,119,Republican,house,0
 Education & Workforce,@EdWorkforceDemocrats,0,0,106,Republican,house,0
 Education & Workforce,@EdWorkforceDemocrats,0,0,107,Republican,house,0
 Education & Workforce,@EdWorkforceDemocrats,0,0,108,Republican,house,0
@@ -292,7 +292,7 @@ Foreign Affairs,@houseforeign,275,275,115,Republican,house,69
 Foreign Affairs,@houseforeign,279,227,116,Democratic,house,27
 Foreign Affairs,@houseforeign,178,178,117,Democratic,house,5
 Foreign Affairs,@houseforeign,135,135,118,Republican,house,0
-Foreign Affairs,@houseforeign,186,186,119,Republican,house,1
+Foreign Affairs,@houseforeign,187,187,119,Republican,house,1
 Foreign Affairs,@HouseForeignGOP,0,0,106,Republican,house,0
 Foreign Affairs,@HouseForeignGOP,0,0,107,Republican,house,0
 Foreign Affairs,@HouseForeignGOP,0,0,108,Republican,house,0
@@ -334,7 +334,7 @@ Homeland Security,@HomelandDems,30,30,115,Republican,house,1
 Homeland Security,@HomelandDems,49,49,116,Democratic,house,1
 Homeland Security,@HomelandDems,15,15,117,Democratic,house,5
 Homeland Security,@HomelandDems,4,4,118,Republican,house,1
-Homeland Security,@HomelandDems,47,47,119,Republican,house,0
+Homeland Security,@HomelandDems,48,48,119,Republican,house,0
 Homeland Security,@HomelandSecurityCommitteeGOP,0,0,106,Republican,house,0
 Homeland Security,@HomelandSecurityCommitteeGOP,0,0,107,Republican,house,0
 Homeland Security,@HomelandSecurityCommitteeGOP,0,0,108,Republican,house,0
@@ -432,7 +432,7 @@ Judiciary,@JudiciaryDems,156,127,115,Republican,house,0
 Judiciary,@JudiciaryDems,138,20,116,Democratic,house,0
 Judiciary,@JudiciaryDems,131,27,117,Democratic,house,1
 Judiciary,@JudiciaryDems,215,92,118,Republican,house,28
-Judiciary,@JudiciaryDems,337,249,119,Republican,house,92
+Judiciary,@JudiciaryDems,338,250,119,Republican,house,92
 Judiciary,@housejudiciarydemocrats8939,0,0,106,Republican,house,0
 Judiciary,@housejudiciarydemocrats8939,0,0,107,Republican,house,0
 Judiciary,@housejudiciarydemocrats8939,0,0,108,Republican,house,0
@@ -488,7 +488,7 @@ Natural Resources,@NaturalResourcesGOP,210,209,115,Republican,house,0
 Natural Resources,@NaturalResourcesGOP,22,22,116,Democratic,house,0
 Natural Resources,@NaturalResourcesGOP,166,152,117,Democratic,house,1
 Natural Resources,@NaturalResourcesGOP,190,57,118,Republican,house,0
-Natural Resources,@NaturalResourcesGOP,139,139,119,Republican,house,37
+Natural Resources,@NaturalResourcesGOP,142,142,119,Republican,house,37
 Natural Resources,@NRDems,0,0,106,Republican,house,0
 Natural Resources,@NRDems,0,0,107,Republican,house,0
 Natural Resources,@NRDems,0,0,108,Republican,house,0
@@ -530,7 +530,7 @@ Oversight and Government Reform,@OversightDems,54,54,115,Republican,house,0
 Oversight and Government Reform,@OversightDems,673,673,116,Democratic,house,1
 Oversight and Government Reform,@OversightDems,369,369,117,Democratic,house,0
 Oversight and Government Reform,@OversightDems,142,142,118,Republican,house,1
-Oversight and Government Reform,@OversightDems,416,416,119,Republican,house,5
+Oversight and Government Reform,@OversightDems,420,420,119,Republican,house,5
 Oversight and Government Reform,@COVIDOversight,0,0,106,Republican,house,0
 Oversight and Government Reform,@COVIDOversight,0,0,107,Republican,house,0
 Oversight and Government Reform,@COVIDOversight,0,0,108,Republican,house,0
@@ -754,7 +754,7 @@ Veterans' Affairs,@VetAffairsDems,0,0,115,Republican,house,0
 Veterans' Affairs,@VetAffairsDems,25,25,116,Democratic,house,0
 Veterans' Affairs,@VetAffairsDems,47,47,117,Democratic,house,5
 Veterans' Affairs,@VetAffairsDems,126,103,118,Republican,house,2
-Veterans' Affairs,@VetAffairsDems,152,67,119,Republican,house,30
+Veterans' Affairs,@VetAffairsDems,153,68,119,Republican,house,30
 Ways and Means,@WaysandMeansCommittee,0,0,106,Republican,house,0
 Ways and Means,@WaysandMeansCommittee,0,0,107,Republican,house,0
 Ways and Means,@WaysandMeansCommittee,0,0,108,Republican,house,0
@@ -782,7 +782,7 @@ Ways and Means,@waysmeanscmte,0,0,115,Republican,house,0
 Ways and Means,@waysmeanscmte,497,124,116,Democratic,house,0
 Ways and Means,@waysmeanscmte,326,260,117,Democratic,house,0
 Ways and Means,@waysmeanscmte,3,3,118,Republican,house,0
-Ways and Means,@waysmeanscmte,153,153,119,Republican,house,8
+Ways and Means,@waysmeanscmte,154,154,119,Republican,house,9
 Ways and Means,@waysandmeansdems,0,0,106,Republican,house,0
 Ways and Means,@waysandmeansdems,0,0,107,Republican,house,0
 Ways and Means,@waysandmeansdems,0,0,108,Republican,house,0
@@ -810,7 +810,7 @@ Transportation and Infrastructure,@transport,114,114,115,Republican,house,0
 Transportation and Infrastructure,@transport,79,79,116,Democratic,house,0
 Transportation and Infrastructure,@transport,150,150,117,Democratic,house,2
 Transportation and Infrastructure,@transport,140,140,118,Republican,house,4
-Transportation and Infrastructure,@transport,144,144,119,Republican,house,3
+Transportation and Infrastructure,@transport,145,145,119,Republican,house,3
 Transportation and Infrastructure,@transportdems,0,0,106,Republican,house,0
 Transportation and Infrastructure,@transportdems,0,0,107,Republican,house,0
 Transportation and Infrastructure,@transportdems,0,0,108,Republican,house,0
@@ -1132,7 +1132,7 @@ Helsinki Commission,@HelsinkiCommission,19,19,115,,joint,0
 Helsinki Commission,@HelsinkiCommission,29,29,116,,joint,0
 Helsinki Commission,@HelsinkiCommission,62,62,117,,joint,3
 Helsinki Commission,@HelsinkiCommission,522,521,118,,joint,0
-Helsinki Commission,@HelsinkiCommission,136,135,119,,joint,21
+Helsinki Commission,@HelsinkiCommission,137,136,119,,joint,22
 Congressional-Executive Commission on China,@ChinaCommission,0,0,106,,joint,0
 Congressional-Executive Commission on China,@ChinaCommission,0,0,107,,joint,0
 Congressional-Executive Commission on China,@ChinaCommission,0,0,108,,joint,0
@@ -1482,7 +1482,7 @@ Senate Homeland Security and Governmental Affairs,@HSGACDems,91,91,119,Republica
 "Senate Health, Education, Labor, and Pensions",@gophelp,0,0,116,Republican,senate,0
 "Senate Health, Education, Labor, and Pensions",@gophelp,0,0,117,Democratic,senate,0
 "Senate Health, Education, Labor, and Pensions",@gophelp,121,121,118,Democratic,senate,2
-"Senate Health, Education, Labor, and Pensions",@gophelp,160,160,119,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,161,161,119,Republican,senate,0
 "Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,106,Republican,senate,0
 "Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,107,Democratic / Republican / Democratic,senate,0
 "Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,108,Republican,senate,0
