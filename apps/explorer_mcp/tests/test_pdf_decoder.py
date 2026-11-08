@@ -1,6 +1,7 @@
 """Exercise real stalled decoder processes, rather than mocked timeout errors."""
 import asyncio
 from functools import partial
+from io import BytesIO
 import json
 import os
 import signal
@@ -83,6 +84,31 @@ def assert_stopped(marker, processes, *, reaped=False):
     # A killed grandchild can briefly remain as a zombie awaiting init's reap.
     status = subprocess.run(['ps', '-o', 'stat=', '-p', str(pid)], capture_output=True, text=True).stdout.strip()
     assert not status or status.startswith('Z'), (pid, status)
+
+
+def test_slow_decoder_start_receives_full_pdf(monkeypatch):
+    from pypdf import PdfWriter
+
+    writer = PdfWriter(clone_from=BytesIO(make_pdf_bytes(['Complete PDF input'])))
+    writer.add_attachment('padding.bin', bytes(2 << 20))
+    stream = BytesIO()
+    writer.write(stream)
+    original = subprocess.Popen
+    slow_start = """
+import runpy, sys, time
+time.sleep(.15)
+sys.argv = ['pdf_decoder', sys.argv[1]]
+runpy.run_module('congressional_explorer_mcp.pdf_decoder', run_name='__main__')
+"""
+
+    def launch(command, **kwargs):
+        if command[1:4] == ['-I', '-c', pdf_decoder._OWNER]:
+            command = command[:6] + [sys.executable, '-I', '-c', slow_start, command[5]]
+        return original(command, **kwargs)
+
+    monkeypatch.setattr(subprocess, 'Popen', launch)
+    pages = body_reader._extract_pdf_pages(stream.getvalue(), deadline=time.monotonic() + 3)
+    assert pages == ['Complete PDF input']
 
 
 @pytest.mark.parametrize('stage', ['constructor', 'page', 'poppler'])
