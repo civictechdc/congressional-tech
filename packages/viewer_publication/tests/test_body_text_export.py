@@ -164,3 +164,19 @@ def test_publish_is_create_only_for_the_export_and_conditional_for_the_pointer(t
     with pytest.raises(ValueError, match='differ from the pointer'):
         export.publish(bucket, bucket='archive', export_path=output, pointer=dict(pointer, bytes=1),
                        expected_pointer_etag=None, journal=stages.append)
+
+
+def test_row_groups_hold_the_declared_row_count(tmp_path):
+    names = [f'body-{i}' for i in range(300)]
+    rows = [dict(body_sha=digest(n), parser='html_text', parser_version=VERSIONS['html_text'], text=n,
+                 page_offsets=[0], ocr_pages=[], text_sha256=sha256(n.encode()).digest(), macos_build=None)
+            for n in names]
+    path, detail = tmp_path / 'body-text.parquet', tmp_path / 'detail.parquet'
+    pq.write_table(pa.Table.from_pylist(rows, schema=body_text._text_schema()), path)
+    pq.write_table(pa.table({'saved_body': pa.array([digest(n) for n in names], pa.binary(32))}), detail)
+    pointer = export.export(engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), work=tmp_path / 'export',
+                            body_text=path, detail=detail, versions=VERSIONS)
+    metadata = pq.ParquetFile(tmp_path / 'export/export.parquet').metadata
+    assert [metadata.row_group(i).num_rows for i in range(metadata.num_row_groups)] == [256, 44]
+    saved = pq.read_table(tmp_path / 'export/export.parquet', columns=['saved_body']).column(0).to_pylist()
+    assert saved == sorted(saved) and pointer['rows'] == 300
