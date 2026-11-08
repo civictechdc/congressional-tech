@@ -7,8 +7,8 @@ row settles a body too. Per batch, `body_text` commits first and `readings` seco
 through `append_rows`' PK anti-join, so a crash between the commits leaves the body on the
 list and its retry appends no second text row.
 
-Reads use the capture-recorded copy of each body in a local raw root (§6.2 `captured_copies`);
-R2 ranged reads are not wired here yet. A worker returns its text as a file (path, bytes,
+Reads use the copy each capture recorded (as `readings.plan(captured_copies=True)` picks it) in a
+local raw root; R2 ranged reads are not wired here yet. A worker returns its text as a file (path, bytes,
 SHA-256), so no text crosses the supervisor's 8 MiB pipe; the supervisor's timeout is a fixed
 document deadline and each page has its own deadline inside the worker. Batches are sized by
 an upper bound on their text bytes against ``max_cache_bytes``.
@@ -16,6 +16,7 @@ an upper bound on their text bytes against ``max_cache_bytes``.
 Cost: one native plan (two narrow scans of captures and one of readings, all joined to the
 candidate set); O(B) worker time per body in its bytes; O(T) disk per batch in its text.
 """
+import gzip
 from hashlib import sha256
 import json
 import os
@@ -176,7 +177,6 @@ def _read_decoded(request):
         if not stat.S_ISREG(observed.st_mode) or observed.st_size != request['stored_bytes']:
             raise OSError('changed_input')
         stored_gzip = readings._storage_gzip(stream, request['body_sha'], verify_plain=bool(request.get('unpinned')))
-        import gzip
         with reading_input():
             stream.seek(0)
             entity = gzip.GzipFile(fileobj=stream) if stored_gzip else stream
