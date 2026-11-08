@@ -1668,7 +1668,18 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
     )
 
 
-def _resolved_meetings(tmp_path, records, pins=(), conflicts=()):
+def _lake_subject_lists(steps):
+    """Give ranked records the lake's non-null subject_keys elements, which JSON fixtures cannot declare."""
+    for step in steps:
+        if step['name'] == 'meeting_records_ranked':
+            yield dict(step, name='meeting_records_ranked_json')
+            yield dict(name='meeting_records_ranked', materialize=True, sql="SELECT * REPLACE "
+                       "(arrow_cast(subject_keys,'List(non-null Utf8)') AS subject_keys) FROM meeting_records_ranked_json")
+        else:
+            yield step
+
+
+def _resolved_meetings(tmp_path, records, pins=(), conflicts=(), lake_lists=False):
     """Run only the maintained meeting SQL over stated records, with no capture history."""
     from congress_api.retention.provenance import json_input, run_job
     from docspec_client.client import NativeDatasets
@@ -1687,7 +1698,8 @@ def _resolved_meetings(tmp_path, records, pins=(), conflicts=()):
     captures = """SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,
         cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false"""
     result = run_job(tmp_path, engine, inputs=inputs, outputs=[],
-        steps=[dict(name='captures', sql=captures), selected_record_step('meeting_records', 'meeting_records_input'), *meeting_steps()],
+        steps=[dict(name='captures', sql=captures), selected_record_step('meeting_records', 'meeting_records_input'),
+               *(_lake_subject_lists(meeting_steps()) if lake_lists else meeting_steps())],
         queries=[dict(name='rows', sql=f"""SELECT event_id,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,
             sittings[1]['start'] AS s_start,sittings[1]['end'] AS s_end,sittings[1]['place'] AS place,sittings[1]['room'] AS room,
             coalesce(array_length(sittings),0) AS sitting_count,status,not_held,
@@ -1705,6 +1717,7 @@ CONGRESS_SITTING = dict(start='2019-11-13T19:00:00Z', room='1300', building='Lon
 HOUSE_SITTING = dict(start='2019-11-13T14:00:00-05:00', end='2019-11-13T16:30:00-05:00', room='9', building='LHOB', address='DC 20515')
 
 
+@pytest.mark.parametrize('lake_lists', [False, True])
 @pytest.mark.parametrize('event_id,matching_body,independent_subject,expected', [
     ('115732', True, False, ['118-hr-4755']),
     ('115732', True, True, ['118-hr-4755', '118-hr-4775']),
@@ -1712,7 +1725,7 @@ HOUSE_SITTING = dict(start='2019-11-13T14:00:00-05:00', end='2019-11-13T16:30:00
     ('115733', True, False, ['118-hr-4755', '118-hr-4775']),
 ])
 def test_conflicting_house_attachment_filename_does_not_supply_a_meeting_subject(
-        tmp_path, event_id, matching_body, independent_subject, expected):
+        tmp_path, event_id, matching_body, independent_subject, expected, lake_lists):
     # A current observation can omit the collection and inherit it from a
     # record of the same update time. The correction follows the chosen list.
     stamp = '2023-07-27T17:42:41.120'
@@ -1723,7 +1736,7 @@ def test_conflicting_house_attachment_filename_does_not_supply_a_meeting_subject
     records = [_record('00', 'house_xml', event_id=event_id, updated=stamp), house]
     if independent_subject:
         records.append(_record('11', 'congress_gov', event_id=event_id, subject_keys=['118-hr-4775']))
-    row, = _resolved_meetings(tmp_path, records)
+    row, = _resolved_meetings(tmp_path, records, lake_lists=lake_lists)
     assert row['subject_keys'] == expected
 
 

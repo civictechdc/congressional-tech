@@ -8,7 +8,7 @@ SELECT w.record_sha_hex,w.source,w.priority,w.retrieved_at,w.event_id,w.chamber,
  -- House subject collection before merging it with independent evidence.
  CASE WHEN k.source='house_xml' AND k.event_id=115732
        AND k.record_sha_hex='b342348e26e8a37a2f4f0a5be44d2fc9bccdaac195305a122cedb534dad6916a'
-      THEN array_except(k.subject_keys,make_array('118-hr-4775'))
+      THEN array_remove_all(k.subject_keys,'118-hr-4775')
       ELSE k.subject_keys END AS subject_keys,
  j.transcript_jackets,v.videos,d.document_urls,d.document_references,
  w.collection_states,w.access,w.access_basis,w.not_held,w.title_key,w.reschedule_candidate,w.rn,
