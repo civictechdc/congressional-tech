@@ -6,10 +6,10 @@ python_version_file = ".python-version"
 # PDF outcomes depend on the native reader. Every machine runs this exact
 # Poppler release, and reading-version diagnostics record the reader versions.
 # CI builds it from source (.github/scripts/install-poppler.sh): no maintained
-# Linux distribution ships 26.06.0.
+# Linux distribution ships 26.10.0.
 [environment.poppler]
-version = "26.06.0"
-source_sha256 = "4cb4e5a3dc8cb5eec751c8a23c8ba19f61f96dedc0cd07d2aee6b0c8e2cf6ba4"
+version = "26.10.0"
+source_sha256 = "6792cb7c69205007ad87d2e936cecc5b3a31fac29ab54ffc3175fdb6b2a6ce35"
 
 [environment.native.pdfinfo]
 arguments = ["-v"]

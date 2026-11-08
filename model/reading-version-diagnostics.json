@@ -67,8 +67,8 @@
   "sniff": {
     "locked_sha256": "4712044f1e68920433b7352425e350d3e301037e7ddf2b0943378193d7d35dec",
     "readers": {
-      "pdfinfo": "pdfinfo version 26.06.0",
-      "pdftotext": "pdftotext version 26.06.0",
+      "pdfinfo": "pdfinfo version 26.10.0",
+      "pdftotext": "pdftotext version 26.10.0",
       "pypdf": "6.21.4"
     },
     "sample_sha256": "a65c8c35474262329806ea3ebcc90e962c6df3aecf509ab9246f599253bb8357",
