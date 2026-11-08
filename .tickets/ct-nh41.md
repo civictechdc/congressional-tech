@@ -1,6 +1,6 @@
 ---
 id: ct-nh41
-status: open
+status: closed
 deps: []
 links: [ct-zkzt, ct-rie2]
 created: 2026-11-04T02:45:03Z
@@ -89,3 +89,7 @@ Keep `ct-nh41` open only for its existing requirement to see a supported non-nul
 The accepted USAID/ecoi recovery and exact authored explanation are now included in the prepared inputs for the next coordinated release. Independent readback approved the one-receipt selection and preserved source/body identity, complete receipt membership, unreadable records and unrelated selectors. The frozen explanation check remains unchanged.
 
 Keep open until hosted MCP and Pages return the exact authored explanation on the same newly selected release. Archive 5d24699ad9fa is still public; the shared input update does not establish public note acceptance. [Owner status](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-nh41/STATUS.json) · [Next-release check](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-nh41/NEXT-RELEASE.md).
+
+**2026-11-08T17:28:03Z**
+
+2026-11-08: closed against release 630164505301. The ticket's own checker passed on hosted MCP 0.6.4 and the site for the same release: the USAID/ecoi recovery shows the exact authored catalog-attribution note, kind recovered_document, 361,013 bytes, zero body requests. Producer uses authored_note (reconcile.py:112); the legacy sentinel filter stays in model/sql/provenance-remaining-recovery-decisions.sql; test_identity_notes.py 17 passed (partial). Report: .cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-nh41/published-note-20261108T172559144837Z.json (sha256 fd7d5a94...).

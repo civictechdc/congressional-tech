@@ -14,6 +14,12 @@ from urllib.parse import unquote, urlsplit
 
 METADATA_LIMIT = 8 * 1024 * 1024
 DISK_FLOOR = 15 * 2**30
+# A budget measured at one revision stays valid for a descendant that leaves
+# these untouched: the engine, its limits, the job bindings and the installed
+# dependencies. Ticket, doc and model commits keep it; the 15 GiB headroom and
+# the runtime disk floor cover model drift.
+RESOURCE_PATHS = ('model/docspec-runtime-pin.json', '.github/docspec-local-limits.json',
+                  '.github/archive-jobs.json', 'uv.lock', 'apps/site/package-lock.json')
 
 
 def metadata(path):
@@ -42,7 +48,14 @@ def existing_parent(path):
     return path
 
 
-def admit(budgets, operation, roots, *, commit, floor=DISK_FLOOR):
+def resource_pins_unchanged(root, measured, commit):
+    def ok(*args):
+        return subprocess.run(['git', *args], cwd=root, capture_output=True, timeout=15).returncode == 0
+    return (ok('merge-base', '--is-ancestor', measured, commit)
+            and ok('diff', '--quiet', measured, commit, '--', *RESOURCE_PATHS))
+
+
+def admit(budgets, operation, roots, *, commit, floor=DISK_FLOOR, root=None):
     """Check each writing filesystem once, before the operation has side effects."""
     try:
         value = metadata(budgets)
@@ -51,8 +64,10 @@ def admit(budgets, operation, roots, *, commit, floor=DISK_FLOOR):
     budget = value.get('operations', {}).get(operation)
     if value.get('version') != 1 or not isinstance(budget, dict):
         raise ValueError(f'Disk budget unavailable for {operation}: {budgets}')
-    if budget.get('revision') != commit:
-        raise ValueError(f'Disk budget revision differs for {operation}')
+    measured = budget.get('revision')
+    if measured != commit and not (root is not None and isinstance(measured, str)
+                                   and resource_pins_unchanged(root, measured, commit)):
+        raise ValueError(f'Disk budget revision differs for {operation} in {", ".join(RESOURCE_PATHS)}')
     for field in ('measurement', 'workload'):
         if not isinstance(budget.get(field), str) or not budget[field].strip():
             raise ValueError(f'Disk budget needs {field} for {operation}')
@@ -81,7 +96,7 @@ def admit(budgets, operation, roots, *, commit, floor=DISK_FLOOR):
         devices.add(device)
     if covered != paths.keys():
         raise ValueError('Disk budget does not cover every writing root: ' + ', '.join(sorted(paths.keys() - covered)))
-    report = dict(operation=operation, revision=commit, measurement=budget['measurement'],
+    report = dict(operation=operation, revision=commit, budget_revision=measured, measurement=budget['measurement'],
                   workload=budget['workload'], filesystems=observations)
     report['status'] = 'admitted' if all(row['free_bytes'] >= row['required_bytes'] for row in observations) else 'refused'
     return report
@@ -143,7 +158,7 @@ def job_admission(root, operation, spec, *, temp, nightly_work=None, env=None, c
     try:
         selected, roots = job_roots(operation, spec, temp=temp, nightly_work=nightly_work, env=env)
         budgets = Path(env.get('ARCHIVE_DISK_BUDGETS', Path(root) / '.cache/archive-release/disk-budgets.json'))
-        return admit(budgets, mode or selected, roots, commit=commit or revision(root))
+        return admit(budgets, mode or selected, roots, commit=commit or revision(root), root=root)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         return dict(status='refused', operation=mode or operation, reason=str(error),
                     roots={name: str(path) for name, path in roots.items()})

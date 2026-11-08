@@ -249,7 +249,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
             try:
                 roots = setup_roots(worktree, evidence, env)
                 admission = DISK['admit'](env.get('ARCHIVE_DISK_BUDGETS', main / '.cache/archive-release/disk-budgets.json'),
-                    'setup', roots, commit=head)
+                    'setup', roots, commit=head, root=worktree)
             except (OSError, ValueError, subprocess.SubprocessError) as error:
                 admission = dict(status='refused', operation='setup', reason=str(error),
                                  roots={name: str(path) for name, path in roots.items()})

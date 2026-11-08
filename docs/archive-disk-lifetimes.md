@@ -1,7 +1,7 @@
 # Archive disk admission and recovery artifacts
 
 Archive wrappers require an explicit measured disk budget before launching setup,
-publication or backfill. Missing budgets, a different Git revision, missing writing
+publication or backfill. Missing budgets, changed resource pins (below), missing writing
 roots or insufficient free space refuse the operation. The publisher's binding
 check remains a separate read-only check.
 
@@ -63,48 +63,24 @@ Group both roots together only when they are on the same filesystem. Requalify
 the budget when the revision, workload bounds, runtime, layout or cache conditions change.
 Do not convert a sampled shared-volume drawdown into an isolated allocation claim.
 
-## Qualifying a new revision from retained measurements
+## Which revisions a budget covers
 
-Exact-revision admission is deliberate: the scheduled wrapper selects current
-`origin/main`, and a budget for another revision refuses until an operator
-qualifies the selected revision. A ticket or documentation commit can therefore
-require operator review. **Requalification does not automatically mean another
-whole-operation measurement.** Reuse a retained measurement only when its resource
-guarantees still apply; a metadata-only label is not that evidence.
+A record's `revision` is the measured revision. Admission accepts it for that
+revision and for any descendant that leaves `RESOURCE_PATHS` in
+`scripts/archive_disk.py` unchanged: the engine pin, its local limits, the job
+bindings, `uv.lock` and the site lockfile. Ticket, documentation and model commits
+therefore keep the nightly admitted; the 15 GiB headroom and the runtime disk floor
+cover model drift. The admission report records both `revision` and
+`budget_revision`.
 
-The release owner can qualify retained measurements for a new revision as follows:
+When a resource path changes, admission refuses until the release owner writes a
+new record: either a bounded measurement at the new revision, or a reviewed
+statement under the main checkout's archive-release directory that the change stays
+within the measured case, keeping the original peaks and headroom and naming both
+in `measurement`. Keep separate setup, fresh, retry and backfill records; a
+carried-forward disk budget never authorizes cross-revision candidate reuse. Run
+`--check-disk` before launch; a qualification never reserves current space.
 
-1. Preserve the original measurement report and budget record with their content
-   identities. Record the measured revision, selected revision, reviewed Git delta,
-   operation, reviewer and decision in a durable qualification record under the
-   main checkout's archive-release directory.
-2. Check the actual changed files and operation's inputs. Establish that
-   resource-relevant code and dependencies, native binary and limits, runtime
-   configuration, workload bounds, writing roots/layout and cache conditions
-   remain within the measured case. Documentation can be an input to an operation;
-   do not assume that every change under `docs/` or every merge is irrelevant.
-3. Match the operation the wrapper will actually run. Its candidate-commit guard
-   currently chooses fresh work after any selected Git revision mismatch, including a
-   ticket-only commit. Carrying a disk measurement forward does not authorize
-   cross-revision candidate reuse or justify applying a smaller retry allowance
-   to fresh work. Preserve that distinction and the publisher's continuation checks.
-4. If equivalence is supported, prepare a new exact-revision budget record. Keep
-   the original measured additional peaks and headroom; have `measurement` identify
-   the original report and the new qualification record. Have `workload` describe
-   the qualified population/bounds and conditions. This is an explicit reviewed
-   qualification, not an automatic revision edit. If equivalence is unsupported,
-   retain refusal and qualify the changed operation with a bounded measurement.
-5. Have the release owner supply that reviewed budget through the existing
-   `ARCHIVE_DISK_BUDGETS` deployment path, then use `--check-disk` before launch.
-   Recheck every writing filesystem, including `python_temp`; current free space
-   must still cover additional peak plus headroom. Keep separate setup, fresh,
-   retry and backfill records. A prior qualification never reserves current space.
-
-No command automatically carries a budget forward, excludes ticket/docs paths or
-restamps it from a success flag. Unattended execution remains refused until the
-selected revision has its own qualified record. The release owner can use this
-procedure after a verified irrelevant delta without repeating expensive work.
-No production qualification decision or carried-forward budget is supplied here.
 
 ## Retiring native temporary files
 

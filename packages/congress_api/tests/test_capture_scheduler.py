@@ -1206,3 +1206,28 @@ def test_failed_first_campaign_candidate_falls_through_to_untried_second_candida
     assert [row['requested_url'] for row in rows]==[cand_b]
     assert _observed(rows[0])==[[WSTATE,'campaign']]
 
+
+
+def test_plan_materializes_shared_state_steps_and_skips_unkeyable_states(tmp_path):
+    """Planning the live release ran out of engine memory: the pinned engine
+    re-plans every view per reference, so url_state-sized views read more than
+    once were recomputed inside one plan. It then refused the whole run for two
+    historical addresses the shared definition cannot key ('' and a CMS label)."""
+    import re
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    root=release(tmp_path,[
+        dict(requested_url='https://fixture.test/queue',attempts=0),
+        dict(requested_url='',attempts=28,last_outcome='failed'),
+        dict(requested_url='http://File URL path: /sites/default/files/a.pdf',attempts=5,last_outcome='request_failed')])
+    result=plan_queue(load(root,tmp_path/'download'),engine=engine(),work=tmp_path/'plan',as_of=ASOF,request_budget=20)
+    assert [r['requested_url'] for r in pq.read_table(result['queue']).to_pylist()]==['https://fixture.test/queue']
+    assert result['counts']['unkeyable_states']==2 and result['counts']['due']==1
+    job=json.loads((tmp_path/'plan/job.json').read_text())
+    steps={step['name']:step for step in job['steps']}
+    readers=[step['sql'] for step in job['steps']]+[o['sql'] for o in job['outputs']]+[q['sql'] for q in job['queries']]
+    def reads(sql,name):return re.search(rf'\b(?:FROM|JOIN)\s+{name}\b',sql) is not None
+    from_states={'keyed_states'}
+    for name,step in steps.items():
+        if any(reads(step['sql'],source) for source in from_states):from_states.add(name)
+    shared=[name for name in from_states if sum(reads(sql,name) for sql in readers)>1]
+    assert shared and all(steps[name].get('materialize') for name in shared),shared

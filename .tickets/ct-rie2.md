@@ -1,6 +1,6 @@
 ---
 id: ct-rie2
-status: in_progress
+status: closed
 deps: []
 links: [ct-umtm, ct-4jms, ct-nh41, ct-aapl, ct-tk10]
 created: 2026-11-05T20:08:13Z
@@ -110,3 +110,7 @@ Merged follow-up 394fb9dd separates native append and validation result director
 **2026-11-08T15:26:16Z**
 
 2026-11-08: published in archive release 63016450530114d8ebc03d2936dc8293250ffd546bf00d5205909345216e5e78 (public pointer moved; browser contract and public canary passed; hosted Explorer re-pinned in aed605d1 and read back). Causes: model/jobs/release-causes/5d24699ad9fa-630164505301.json; note: docs/releases/2026-11-08-630164505301.md. The USAID recovery (decision 21ebd7b7, body dd7d7f35, 361,013 bytes) is published with url_state capture_* columns.
+
+**2026-11-08T17:28:03Z**
+
+2026-11-08: closed. Release 630164505301 publishes the one-target cohort: Gate 1 cause row adds exactly 1 document/link/lookup key (decision 21ebd7b7, body dd7d7f35, 361,013 bytes), none removed; hosted MCP and site return the attachment with its authored note (ct-nh41 checker passed); hosted get_document still returns removal notices for retired homepage keys 5c1767950ecb2bdc and 0bf90c57369641ee (null successors kept). Resource use is in the Nov 7 notes. For a one-target cohort the release comparison is the final count reconciliation; semantic equivalence to the historical original stays unknown, as the note says.

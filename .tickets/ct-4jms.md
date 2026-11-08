@@ -92,3 +92,7 @@ Independent read-only work is complete; ticket-evidence commit `f9aa5828aa4fffe0
 Keep open: the missing invocation-to-attempt boundary is documented, not resolved. Original root owns integration; ct-m104 and the coordinated production operator own final release and admitted scheduler cutover. Once an actual scheduled event exists, ct-4jms must verify Ashley dispositions, receipts, body pins/existence and first-run preservation; ct-1l1h retains separate raw-lock evidence. The proposed cutoff list alone does not prove an admitted attempt.
 
 Independent review: APPROVE for the scoped work; remaining ticket acceptance is unchanged. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-4jms/REVIEW.md).
+
+**2026-11-08T17:28:23Z**
+
+2026-11-08: the planner could not plan the live release (Resources exhausted on 1.2M url_state rows, then a refusal for two unkeyable historical addresses). Fixed on claude/sweep-c (b3ababac): url_state-sized steps read more than once are materialized; '' and 'http://File URL path: ...' are counted as unkeyable_states and never scheduled. Dry run on 630164505301 under the standard limits: exit 0, 629,541 due, 2,000 queued, 11 s, 3.3 GiB peak RSS; identical queue to the old code on a 300k-row subset. Still open: the first scheduled run and its receipt checks. Ashley's &download=1 target is due (attempts 0) but sorts alphabetically outside the first 2,000; a --cutoff-urls entry does not move an unattempted URL ahead.

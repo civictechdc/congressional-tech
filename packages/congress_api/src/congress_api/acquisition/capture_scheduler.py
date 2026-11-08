@@ -183,9 +183,15 @@ def _key_steps(binding,sources):
 
 
 def _key_queries():
+    # A historical state address the shared definition cannot key (e.g. '' or
+    # 'http://File URL path: ...') is unfetchable: it is counted and never
+    # scheduled. Any other missing, empty or duplicate key is a definition fault.
     return [dict(name='invalid_url_keys',sql='''SELECT count(*) AS violations FROM url_inputs i
         FULL JOIN url_keys k ON i.input_id=k.input_id WHERE i.input_id IS NULL OR k.input_id IS NULL
-        OR (k.url IS DISTINCT FROM i.url) OR k.url_key IS NULL OR k.url_key='' '''),
+        OR (k.url IS DISTINCT FROM i.url)
+        OR ((k.url_key IS NULL OR k.url_key='') AND k.input_id NOT LIKE 'state:%')'''),
+        dict(name='unkeyable_states',sql='''SELECT count(*) AS states FROM url_keys
+            WHERE input_id LIKE 'state:%' AND (url_key IS NULL OR url_key='')'''),
         dict(name='duplicate_url_keys',sql='''SELECT count(*) AS violations FROM
             (SELECT input_id FROM url_keys GROUP BY input_id HAVING count(*)>1)''')]
 
@@ -279,7 +285,7 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
             arrow_cast(url,'Utf8') AS candidate_url FROM ({repairs_sql})""",materialize=True)]
     steps.extend(_key_steps(binding,key_sources))
     state_key, state_source = ('s.url_key', 'keyed_states s') if reuse_keyed_states else (
-        'k.url_key', "states s JOIN url_keys k ON k.input_id='state:' || s.requested_url")
+        'k.url_key', "states s JOIN url_keys k ON k.input_id='state:' || s.requested_url AND k.url_key IS NOT NULL")
     state_fields=', '.join(f'cast(s.{name} AS VARCHAR) AS {name}' if name in state_columns and
         (profile['version']==2 or not name.startswith('capture_')) else f'cast(NULL AS VARCHAR) AS {name}'
         for name in ('last_outcome','capture_disposition','capture_reason'))
@@ -441,20 +447,23 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     steps.extend(_key_steps(binding,key_sources))
     if not reuse_keyed_states:
         steps.append(dict(name='keyed_states',sql="""SELECT s.*,k.url_key FROM states s JOIN url_keys k
-            ON k.input_id='state:' || s.requested_url"""))
+            ON k.input_id='state:' || s.requested_url AND k.url_key IS NOT NULL""",materialize=True))
     disposition = 's.capture_disposition' if recovery_eligibility else 'cast(NULL AS VARCHAR)'
     outcome = "coalesce(cast(s.last_outcome AS VARCHAR),'')"
     campaign_filter = " AND (capture_disposition IS NULL OR capture_disposition='eligible')" if recovery_eligibility else ''
     if campaign is not None:
         campaign_filter += " AND EXISTS (SELECT 1 FROM campaign_allowed ca WHERE ca.url=scoped.requested_url)"
-    repair_sources = """SELECT url,url_key FROM keyed_seeds WHERE url_key IS NOT NULL
-        UNION SELECT requested_url AS url,url_key FROM keyed_states WHERE url_key IS NOT NULL"""
     explicit_candidates = (" UNION ALL SELECT url,url_key,'campaign' AS tier FROM ("
         + _campaign_candidates_sql('SELECT url,url_key FROM keyed_seeds') + ")") if campaign is not None else ''
     bad_spelling = _literal(_repair_spelling(binding['rules']))
     steps.extend([
         dict(name='keyed_seeds',sql="""SELECT s.*,k.url_key FROM seed_rows s JOIN url_keys k
             ON k.input_id='seed:' || s.url"""),
+        # Seed keys and a reused keyed_states cache arrive as different string
+        # types; a materialized union needs one declared type.
+        dict(name='repair_sources',sql="""SELECT arrow_cast(url,'Utf8') AS url,arrow_cast(url_key,'Utf8') AS url_key FROM (
+            SELECT url,url_key FROM keyed_seeds WHERE url_key IS NOT NULL
+            UNION SELECT requested_url AS url,url_key FROM keyed_states WHERE url_key IS NOT NULL)""",materialize=True),
         dict(name='keyed_cutoffs',sql="""SELECT DISTINCT k.url_key FROM cutoffs c JOIN url_keys k
             ON k.input_id='cutoff:' || c.url"""),
         dict(name='observations',sql="""SELECT url_key,min(url) AS url,array_agg(DISTINCT json_array(url,source,pointer)
@@ -463,16 +472,16 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
         # seeds/states, and explicit campaign candidates (bound to the target key).
         dict(name='candidate_urls',sql=f"""SELECT DISTINCT url,url_key,tier FROM (
             SELECT url,url_key,'seed' AS tier FROM keyed_seeds WHERE url_key IS NOT NULL
-            UNION ALL SELECT url,url_key,'repair' AS tier FROM ({_address_repairs_sql(repair_sources)}){explicit_candidates})
-            WHERE url IS NOT NULL"""),
+            UNION ALL SELECT url,url_key,'repair' AS tier FROM ({_address_repairs_sql('SELECT url,url_key FROM repair_sources')}){explicit_candidates})
+            WHERE url IS NOT NULL""",materialize=True),
         # An attempted candidate suppresses its own key and every target key it serves.
         dict(name='keyed_attempts',sql="""SELECT k.url_key FROM attempted a JOIN url_keys k
                 ON k.input_id='attempted:' || a.url
             UNION SELECT c.url_key FROM attempted a JOIN candidate_urls c ON c.url=a.url"""),
-        dict(name='state_urls',sql="SELECT DISTINCT requested_url AS url FROM keyed_states"),
+        dict(name='state_urls',sql="SELECT DISTINCT requested_url AS url FROM keyed_states",materialize=True),
         # A key is done when any of its rows is satisfied/excluded; its candidates
         # are done unless they also serve another open key.
-        dict(name='done_keys',sql=f"SELECT DISTINCT url_key FROM keyed_states s WHERE {disposition} IN ('satisfied','excluded')"),
+        dict(name='done_keys',sql=f"SELECT DISTINCT url_key FROM keyed_states s WHERE {disposition} IN ('satisfied','excluded')",materialize=True),
         dict(name='done_urls',sql="""SELECT c.url FROM candidate_urls c JOIN done_keys d ON c.url_key=d.url_key
             EXCEPT SELECT c.url FROM candidate_urls c LEFT ANTI JOIN done_keys d ON c.url_key=d.url_key"""),
         # The observed target address has failed or yielded only an unsatisfying body.
@@ -492,7 +501,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                     regexp_like(c.url,{bad_spelling}) AS bad,u.url_key IS NOT NULL AS unusable,
                     su.url IS NOT NULL AS has_state
                 FROM candidate_urls c LEFT JOIN unusable_keys u ON c.url_key=u.url_key
-                LEFT JOIN state_urls su ON su.url=c.url)) WHERE ordinal=1""")]
+                LEFT JOIN state_urls su ON su.url=c.url)) WHERE ordinal=1""",materialize=True)]
         + ([dict(name='campaign_allowed',sql="""SELECT target_url AS url FROM campaign_targets
             UNION SELECT c.candidate_url AS url FROM campaign_candidates c JOIN campaign_targets t ON c.target_url=t.target_url
             UNION SELECT o.url FROM seed_urls o JOIN keyed_seeds ks ON o.url_key=ks.url_key JOIN campaign_targets t ON ks.url=t.target_url""")] if campaign is not None else [])
@@ -534,7 +543,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
         # A repaired address can serve more than one key; request it once.
         dict(name='due',sql="""SELECT requested_url,observed_url,family,priority,next_attempt_at,url_key FROM (
             SELECT *,row_number() OVER(PARTITION BY requested_url ORDER BY priority,next_attempt_at NULLS FIRST,url_key) AS url_ordinal
-            FROM due_keys) WHERE url_ordinal=1"""),
+            FROM due_keys) WHERE url_ordinal=1""",materialize=True),
         dict(name='top_due',sql=f"""SELECT requested_url,observed_url,family,priority,next_attempt_at,url_key FROM due
             ORDER BY priority,next_attempt_at NULLS FIRST,requested_url LIMIT {request_budget}""")])
     outputs=[parquet_output(work,'queue',
@@ -574,7 +583,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             raise ValueError('Invalid campaign membership or eligibility')
     if any(values[name][0]['violations'] for name in ('bad_states','duplicates','large_observations')):
         raise ValueError('Invalid or duplicate url_state rows')
-    return dict(queue=str(work/'queue.parquet'),counts=values['counts'][0],release_id=release['release_id'],
+    return dict(queue=str(work/'queue.parquet'),counts=dict(values['counts'][0],unkeyable_states=values['unkeyable_states'][0]['states']),release_id=release['release_id'],
                 as_of=as_of,seed_files=files,url_key_definition_sha256=definition_sha256)
 
 
