@@ -1,6 +1,7 @@
 -- Link present Senate committee hearing pages (senate_page) to canonical meetings (ct-j2yo).
--- Pages resolve by parent committee (.senate.gov host) and hearing date (page_facts.content_date,
--- bracketed [YYYY-MM-DD] in title, URL date tokens, or written Month DD, YYYY in text_head),
+-- Pages resolve by parent committee (.senate.gov host) and hearing date (a labeled
+-- Banking hearing date, page_facts.content_date, bracketed [YYYY-MM-DD] in title,
+-- URL date tokens, or written Month DD, YYYY in text_head),
 -- disambiguated across same-day committee meetings by witness surname overlap (with MODS / Congress.gov)
 -- and substantive title/slug word overlap.
 -- Empty or absent senate_page containers are excluded so they never suppress MODS witnesses.
@@ -70,38 +71,52 @@ WITH stopwords AS (
   try_cast((regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{4}-[0-9]{2}-[0-9]{2})(?:[^0-9]|$)'))[1] AS DATE) AS url_iso_date,
   regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{2})[/-]([0-9]{2})[/-]([0-9]{4})(?:[^0-9]|$)') AS url_mdy,
   regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{2})-([0-9]{2})-([0-9]{2})-[a-zA-Z]') AS url_mdy2,
-  regexp_match(coalesce(pf.text_head,''),'(?i)\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),\s*([0-9]{4})\b') AS th_mdy
+  coalesce(pf.text_head,'') AS text_head,
+  CASE WHEN regexp_like(coalesce(cu.source_url,sc.context_url,''),'(?i)^https?://(?:www[.])?banking[.]senate[.]gov/hearings/')
+   THEN coalesce(cu.source_url,sc.context_url) END AS banking_hearing_url
  FROM senate_candidates sc
  LEFT JOIN capture_urls cu ON cu.record_sha_hex=sc.record_sha_hex
  LEFT JOIN page_facts pf ON pf.body_sha=sc.sha256 AND pf.status='completed'
  JOIN senate_hosts sh ON sh.host=lower((regexp_match(coalesce(cu.source_url,sc.context_url,''),'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]senate[.]gov'))[1])
+), senate_text_dates AS (
+ SELECT r.*,
+  try_cast(text_mdy[3]||'-'||lpad(cast(array_position(months,lower(text_mdy[1])) AS VARCHAR),2,'0')
+   ||'-'||lpad(text_mdy[2],2,'0') AS DATE) AS text_date,
+  try_cast(labeled_mdy[3]||'-'||lpad(cast(array_position(months,lower(labeled_mdy[1])) AS VARCHAR),2,'0')
+   ||'-'||lpad(labeled_mdy[2],2,'0') AS DATE) AS labeled_date
+ FROM (
+  SELECT *,
+   make_array('january','february','march','april','may','june','july','august','september','october','november','december') AS months,
+   regexp_match(text_head,'(?i)\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),\s*([0-9]{4})\b') AS text_mdy,
+   CASE WHEN banking_hearing_url IS NOT NULL
+    THEN regexp_match(text_head,'(?i)\bDate:\s*(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s*)?(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),\s*([0-9]{4})\s+Time:')
+   END AS labeled_mdy
+  FROM senate_pages_raw
+ ) r
 ), senate_pages_grouped AS (
  SELECT
   r.record_sha_hex,
   min(r.source_url) AS source_url,
+  min(r.banking_hearing_url) AS banking_hearing_url,
   r.parent_committee,
-  min(coalesce(
+  -- The displayed date is a body fact. Select it across the whole group
+  -- before considering dates from individual addresses.
+  coalesce(min(r.labeled_date),min(coalesce(
    r.pf_date,
    r.title_bracket_date,
    r.url_iso_date,
    CASE WHEN r.url_mdy IS NOT NULL THEN try_cast(r.url_mdy[3]||'-'||r.url_mdy[1]||'-'||r.url_mdy[2] AS DATE) END,
    CASE WHEN r.url_mdy2 IS NOT NULL THEN try_cast('20'||r.url_mdy2[3]||'-'||r.url_mdy2[1]||'-'||r.url_mdy2[2] AS DATE) END,
-   CASE WHEN r.th_mdy IS NOT NULL THEN try_cast(
-    r.th_mdy[3]||'-'||
-    CASE lower(r.th_mdy[1])
-     WHEN 'january' THEN '01' WHEN 'february' THEN '02' WHEN 'march' THEN '03'
-     WHEN 'april' THEN '04' WHEN 'may' THEN '05' WHEN 'june' THEN '06'
-     WHEN 'july' THEN '07' WHEN 'august' THEN '08' WHEN 'september' THEN '09'
-     WHEN 'october' THEN '10' WHEN 'november' THEN '11' WHEN 'december' THEN '12'
-    END||'-'||lpad(r.th_mdy[2],2,'0') AS DATE) END
-  )) AS page_date,
+   r.text_date
+  ))) AS page_date,
   min(r.page_text) AS page_text
- FROM senate_pages_raw r
+ FROM senate_text_dates r
  GROUP BY r.record_sha_hex,r.parent_committee
 ), senate_pages AS (
  SELECT
   g.record_sha_hex,
   g.source_url,
+  g.banking_hearing_url,
   g.parent_committee,
   g.page_date,
   array_distinct(array_except(
@@ -171,6 +186,7 @@ WITH stopwords AS (
  SELECT
   s.record_sha_hex,
   s.source_url,
+  s.banking_hearing_url,
   m.event_id,
   s.single_url_on_date,
   m.single_event_on_date,
@@ -186,6 +202,7 @@ WITH stopwords AS (
  SELECT
   record_sha_hex,
   source_url,
+  banking_hearing_url,
   event_id,
   shared_surnames,
   shared_surnames*cast(100 AS BIGINT)+shared_words AS score
@@ -197,6 +214,7 @@ WITH stopwords AS (
  SELECT
   record_sha_hex,
   source_url,
+  banking_hearing_url,
   event_id,
   shared_surnames,
   score,
@@ -204,13 +222,14 @@ WITH stopwords AS (
   lead(score) OVER (PARTITION BY record_sha_hex ORDER BY score DESC,event_id ASC) AS next_sha_score
  FROM dated_scored
 ), unique_sha_winners AS (
- SELECT record_sha_hex,source_url,event_id,shared_surnames,score
+ SELECT record_sha_hex,source_url,banking_hearing_url,event_id,shared_surnames,score
  FROM sha_ranked
  WHERE sha_rn=1 AND (next_sha_score IS NULL OR next_sha_score<score)
 ), event_ranked AS (
  SELECT
   record_sha_hex,
   source_url,
+  banking_hearing_url,
   event_id,
   shared_surnames,
   score,
@@ -220,12 +239,13 @@ WITH stopwords AS (
  SELECT
   record_sha_hex,
   event_id,
+  banking_hearing_url,
   first_value(source_url) OVER (PARTITION BY event_id ORDER BY source_url ASC,record_sha_hex ASC)=
    first_value(source_url) OVER (PARTITION BY event_id ORDER BY source_url DESC,record_sha_hex ASC)
    OR first_value(shared_surnames) OVER (PARTITION BY event_id ORDER BY shared_surnames DESC,record_sha_hex ASC)>0 AS keep_event
  FROM event_ranked
  WHERE score=max_event_score
 )
-SELECT record_sha_hex,event_id
+SELECT record_sha_hex,event_id,banking_hearing_url
 FROM event_top_winners
 WHERE keep_event
