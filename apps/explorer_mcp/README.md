@@ -18,7 +18,11 @@ published column, and native nested lists/structs. DuckDB **2.0.0** and FastMCP
 This is a replacement implementation. It has no pre-v6/v6 readers, separate
 committee catalog, legacy parser imports, review overlays, copied DuckDB database,
 or custom SQL language. The producer owns data assembly and SpicyRegs imports;
-the MCP queries the published result. It stays a separate Congress server.
+the MCP queries the published result. It stays a separate Congress server:
+neither it nor the SpicyRegs server calls the other, so each runs on its own data.
+Imported SpicyRegs tables keep their producer and pinned generation, so they never
+collide with or pass as congressional-tech tables, and a table the release does
+not publish is reported as unavailable, never as zero rows.
 
 ## Quick setup
 

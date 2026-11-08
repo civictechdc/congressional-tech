@@ -2,7 +2,7 @@
 id: ct-xt19
 status: closed
 deps: []
-links: [ct-zpbl]
+links: [ct-zpbl, ct-ri0x]
 created: 2026-11-02T19:55:03Z
 type: task
 priority: 1

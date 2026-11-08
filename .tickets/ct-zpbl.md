@@ -2,7 +2,7 @@
 id: ct-zpbl
 status: closed
 deps: []
-links: [ct-deh9, ct-xt19, ct-6v77]
+links: [ct-deh9, ct-xt19, ct-6v77, ct-ri0x]
 created: 2026-11-02T17:45:21Z
 type: feature
 priority: 1

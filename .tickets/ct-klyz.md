@@ -2,7 +2,7 @@
 id: ct-klyz
 status: closed
 deps: [ct-4jms]
-links: [cef-96wc]
+links: [cef-96wc, ct-0mqc]
 created: 2026-10-30T14:32:31Z
 type: task
 priority: 1
