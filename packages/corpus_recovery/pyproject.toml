@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "congress-api[archive]",
     "congress-shared",
-    "pypdf[fonts]>=6.19,<7",
+    "pypdf[fonts]>=6.21.4,<7",
     "lxml",
 ]
 
