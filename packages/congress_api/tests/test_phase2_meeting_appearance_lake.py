@@ -2153,6 +2153,37 @@ def test_mods_person_qualification_requires_package_position_and_original_line()
         )["name"] != expected
 
 
+def test_mods_reviewed_joined_line_yields_both_printed_entries():
+    """ct-79j1: CHRG-113shrg89525's sixth contents line repeats Victor Joseph's entry and runs it into
+    Michael K. Abbott's. The retained MODS bytes give Abbott his own occurrence after Joseph's."""
+    xml = (ROOT / "packages/congress_api/tests/fixtures/gpo_metadata/CHRG-113shrg89525.xml").read_bytes()
+    assert hashlib.sha256(xml).hexdigest() == "83dbe14fa901ff9af106119cfa1da71e896381bb92d12cafdfca1a7ce0a8deaa"
+    row = appearance_records.build_appearance_record_row(_sha("mods-89525"), "mods", xml)
+    assert row["package_id"] == "CHRG-113shrg89525" and row["event_id"] is None
+    people = [(a["source_locator"], a["name"], a["position"], a["organization"], a["display_order"])
+              for a in row["appearances"]]
+    joseph = ("Victor Joseph", "President and Chairman", "Tanana Chiefs Conference")
+    assert people[3:] == [
+        ("mods:witness[4]", *joseph, 4),
+        ("mods:witness[5]", "Danita Koehler", "Chair",
+         "Rural Committee, National Association of Emergency Medical Services Physicians", 5),
+        ("mods:witness[6]", *joseph, 6),
+        ("mods:witness[6]/part[2]", "Michael K. Abbott", "Assistant Superintendent", "Anchorage School District", 7),
+    ]
+    assert [a["source_locator"] for a in row["appearances"][:3]] == [f"mods:witness[{i}]" for i in (1, 2, 3)]
+    abbott = row["appearances"][-1]
+    assert abbott["name_key"] == "michael k abbott" and abbott["witness_type"] is None
+    assert abbott["on_behalf_of"] is None and abbott["document_links"] == []
+
+    # The split needs the reviewed package, position and exact original line.
+    for package, before in [("CHRG-113shrg89526", 5), ("CHRG-113shrg89525", 4)]:
+        line = xml.decode().split("<witness>")[6].split("</witness>")[0]
+        lines = "".join("<witness/>" for _ in range(before)) + f"<witness>{line}</witness>"
+        other = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>' + lines + "</extension></mods>")
+        found = appearance_records.extract_mods_appearances(other, package_id=package)
+        assert [a["name"] for a in found if a["name"]] == ["Victor Joseph"]
+
+
 def test_mods_print_states_every_held_day_and_labels_statements():
     """A multi-day print states later days in constituent items (Haaland 328803), and its <witness> list
     carries letters for the record and Members' statements, which are not witnesses (red-f2)."""

@@ -7,7 +7,8 @@ from pathlib import Path
 # ct-680z: the f05ca4cc and 8ad5cfa2 lock updates changed these full input
 # digests without changing extraction. Match all source, schema, parameter
 # and lock inputs before retaining a reviewed ID. Future lock changes need
-# their own review. The MODS target includes the ct-x78c extraction change.
+# their own review. ct-79j1 changed MODS extraction, so appearance_records.mods
+# now uses its full input digest and its ct-x78c entry was removed.
 _REVIEWED_PRODUCER_VERSIONS = {
     # appearance_records.congress_gov
     "d7f881602c2810f82f977d9dfd577aea9c51c6ce2e4a8c36cd600f84cac72d45":
@@ -15,9 +16,6 @@ _REVIEWED_PRODUCER_VERSIONS = {
     # appearance_records.house_xml
     "59193c0a90c40bf4950ae5662152ec6a68a43de80dc74f6b20e9bfeeb7d55b2b":
         "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
-    # appearance_records.mods
-    "2b94824aa7a1faecf07b81077a3d2df4cbd3efb680856edbe909a2fcf5311091":
-        "1d57eb4426f67b84116bdb4a66774d0e401668b277586939b5c014db8547e32e",
     # appearance_records.senate_page
     "5e420ab3c0d5f9bc1031f5110eef58b52f4a648d021e02093b7e531144424603":
         "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb",
