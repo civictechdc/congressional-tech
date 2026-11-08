@@ -530,8 +530,10 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                 cast(NULL AS TIMESTAMP) AS next_attempt_at,o.url_key,cast(NULL AS VARCHAR) AS capture_disposition
             FROM seed_urls o LEFT ANTI JOIN keyed_states s ON o.url_key=s.url_key
             LEFT ANTI JOIN state_urls own ON own.url=o.url"""),
+        # Owner-reviewed cutoffs (-1) run before everything, so a reviewed target is
+        # attempted within one run's budget; the other classes keep their numbers.
         dict(name='scoped',sql=f"""SELECT c.*,{policy.sql('requested_url')} AS family,
-            CASE WHEN attempts=0 THEN 0 WHEN last_outcome='size_limit' OR k.url_key IS NOT NULL
+            CASE WHEN k.url_key IS NOT NULL THEN -1 WHEN attempts=0 THEN 0 WHEN last_outcome='size_limit'
             THEN 1 WHEN last_outcome IN ('stored','unchanged') AND next_attempt_at IS NULL THEN 3 ELSE 2 END AS priority
             FROM candidates c LEFT JOIN keyed_cutoffs k ON c.url_key=k.url_key
             LEFT ANTI JOIN keyed_attempts a ON c.url_key=a.url_key
@@ -572,7 +574,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             dict(name='bad_campaign_state',sql=f"SELECT count(*) AS violations FROM {states_table} WHERE capture_disposition IS NULL OR capture_disposition NOT IN ('eligible','satisfied','excluded')")]
     values=run_job(work,engine,inputs=inputs,steps=steps,outputs=outputs,queries=[
         *campaign_queries,
-        *_key_queries(),dict(name='counts',sql="SELECT count(*) AS due,count(*) FILTER(WHERE priority=0) AS queue,count(*) FILTER(WHERE priority=1) AS cutoffs FROM due"),
+        *_key_queries(),dict(name='counts',sql="SELECT count(*) AS due,count(*) FILTER(WHERE priority=0) AS queue,count(*) FILTER(WHERE priority IN (-1,1)) AS cutoffs FROM due"),
         dict(name='bad_states',sql=f"SELECT count(*) AS violations FROM {states_table} WHERE requested_url IS NULL OR attempts IS NULL OR attempts<0 OR octet_length(requested_url)>16384{eligibility_invalid}"),
         dict(name='large_observations',sql='SELECT count(*) AS violations FROM observations WHERE array_length(observations)>256'),
         dict(name='duplicates',sql=f'SELECT count(*) AS violations FROM (SELECT requested_url FROM {states_table} GROUP BY requested_url HAVING count(*)>1)')])
@@ -896,7 +898,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
             return []
         _record_attempt(attempted,**acknowledged[key])
         stats['receipts'].append(key);stats['captures']+=1
-        if row['priority']==1:
+        if row['priority'] in (-1,1):
             stats['cutoff_attempts'].append(dict(url=url,outcome=line['outcome'],complete=result.final.complete,
                 reason=result.final.error))
         stats['discovery_errors'].extend(disc_errors)

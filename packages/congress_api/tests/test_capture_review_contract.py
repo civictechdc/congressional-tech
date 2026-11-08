@@ -251,15 +251,13 @@ def test_discovery_bound_drains_existing_queue_and_reports_real_resource_stop(tm
         cutoff: (200, b'%PDF-1.7\ncutoff\n%%EOF', {}),
         old: (200, b'old due evidence', {}),
     }, max_discovery_jobs=1, request_budget=budget, cutoff_urls=[cutoff])
-    assert adapter.calls == ([a,b,queued,cutoff,old] if budget == 100 else [a,b,queued])
+    assert adapter.calls == ([cutoff,a,b,queued,old] if budget == 100 else [cutoff,a,b])
     assert late not in adapter.calls and adapter.calls.count(a) == 1
     assert result['discovery_jobs'] == 1 and not (tmp_path/'capture/plan-2').exists()
     assert result['stop_reason'] == ('queue_empty' if budget == 100 else 'request_budget')
     assert (raw/body_key(b'<html><a href="/a">cycle</a><a href="/deferred.pdf">later</a></html>')).is_file()
     [disposition] = result['cutoffs']
-    assert disposition['disposition'] == ('attempted' if budget == 100 else 'deferred')
-    if budget == 3:
-        assert disposition['reason'] == 'request_budget'
+    assert disposition['disposition'] == 'attempted'  # reviewed cutoffs run first
 
 
 @pytest.mark.parametrize('source', ['local', 'public'])
