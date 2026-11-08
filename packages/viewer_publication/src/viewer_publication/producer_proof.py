@@ -112,7 +112,13 @@ PRODUCERS = {
     'committee_records': {DAILY, BACKFILL, IMPORT},
     'playlist_records': {DAILY, BACKFILL, IMPORT},
 }
-VERSIONS_AT_COMMIT = """import importlib, json
+# Older producers hashed installed library versions (sniff: pypdf, lxml), so report the versions
+# the commit's own uv.lock pins rather than today's environment.
+VERSIONS_AT_COMMIT = """import importlib, importlib.metadata, json, tomllib
+with open('uv.lock', 'rb') as stream:
+    locked = {p['name']: p['version'] for p in tomllib.load(stream)['package'] if 'version' in p}
+installed = importlib.metadata.version
+importlib.metadata.version = lambda name: locked.get(name.lower().replace('_', '-')) or installed(name)
 def version(module, call):
     try:
         return call(importlib.import_module('congress_api.lake.' + module))
