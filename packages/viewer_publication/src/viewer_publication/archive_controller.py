@@ -111,14 +111,13 @@ def _stage_paths(value,*,model_spec,work):
 
 
 def _require_model_definition(saved,engine):
-    from viewer_publication.archive_model_profile import _definition_hashes
+    from viewer_publication.archive_model_profile import _definition_hashes,runtime_pins
     try:
-        profile=saved['profile']['profile'];runtime=profile['runtime_pins']
+        profile=saved['profile']['profile']
         if profile['file_hashes']!=_definition_hashes(Path(__file__).parents[4]):
             raise PublicationInputsChanged('Model definitions changed since the retained intent')
-        if (profile['engine_revision']!=engine.source_revision or
-                runtime['binary_sha256']!=engine.binary_sha256 or runtime['platform']!=engine.platform or
-                runtime['build_features']!=list(engine.build_features) or runtime['limits']!=json.loads(engine.limits.read_text())):
+        # Limits are physical (C3): a resume with a different pool continues the same model.
+        if profile['engine_revision']!=engine.source_revision or profile['runtime_pins']!=runtime_pins(engine):
             raise PublicationInputsChanged('Native runtime changed since the retained intent')
         expected=['invariants','model_invariants','url_state_invariants','profile_completeness']
         if saved['entity_digests']:expected.append('entity_profile_completeness')
@@ -361,7 +360,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             status.update(status='input_unchanged',release_id=pointer['release_id'])
             return dict(status)
         record=dict(input_digest=digest,profile=profile['profile'],snapshots=profile['snapshots'],
-            provenance=provenance,entity_digests=entity_digests,run=run)
+            provenance=provenance,entity_digests=entity_digests,run=run,
+            # Engine limits sit beside the run, outside the semantic profile and digest (C3).
+            engine_limits=json.loads(engine.limits.read_text()))
         candidate_id=json.loads(Path(stage['output'],'manifest.json').read_text())['release_id']
         # A resume after the flip finds its own candidate live: publish_candidate records it as
         # unchanged and runs no gate, so the old base (now superseded) is not fetched.

@@ -1,4 +1,5 @@
 """Pinned profile identity and native completeness precede release acceptance."""
+import json
 import os
 
 import pytest
@@ -15,7 +16,7 @@ VERSIONS={name:name+'-1' for name in ['sniff','html','xml','json']}
 def test_profile_identity_versions_rules_and_runtime_without_physical_selectors():
     from viewer_publication.archive_model_profile import profile_record
     args=dict(parser_versions=VERSIONS,catalog_version='catalog-1',engine_revision='a'*40,
-        runtime_pins=dict(runner_class='linux-4cpu-16gb',limits=dict(compute_threads=4,batch_rows=8192)),
+        runtime_pins=dict(platform='linux-x86_64',binary_sha256='e'*64),
         lake_versions=dict(captures='b'*64,readings='c'*64,filename_readings='d'*64),
         writer_settings=dict(row_group_rows=65536,compression='zstd3'),
         file_hashes={'model/sql/roles.sql':'e'*64,'model/registries/formats.json':'f'*64},
@@ -30,10 +31,61 @@ def test_profile_identity_versions_rules_and_runtime_without_physical_selectors(
                     dict(parser_versions=dict(VERSIONS,html='html-2')),
                     dict(catalog_version='catalog-2'),
                     dict(writer_settings=dict(row_group_rows=32768,compression='zstd3')),
-                    dict(runtime_pins=dict(runner_class='other',limits=dict(compute_threads=4,batch_rows=8192)))]:
+                    dict(runtime_pins=dict(platform='linux-x86_64',binary_sha256='f'*64))]:
         assert profile_record(**dict(args,**changed))['profile_sha256']!=first['profile_sha256']
-    args['runtime_pins']['limits']['batch_rows']=1
-    assert first['profile']['runtime_pins']['limits']['batch_rows']==8192
+    args['runtime_pins']['binary_sha256']='0'*64
+    assert first['profile']['runtime_pins']['binary_sha256']=='e'*64
+
+
+def _engine(tmp_path,name,limits,binary_sha256='e'*64):
+    from types import SimpleNamespace
+    path=tmp_path/(name+'-limits.json');path.write_text(json.dumps(limits))
+    return SimpleNamespace(source_revision='a'*40,platform='darwin-arm64',build_features=['remote'],
+                           binary_sha256=binary_sha256,limits=path)
+
+
+def test_engine_limits_stay_out_of_the_semantic_profile_and_input_identity(tmp_path):
+    """C3: a CI run and a Mac run of the same inputs share one profile and input digest.
+
+    Byte identity across threads, batch sizes and a forced spill is proven by
+    test_model_determinism; the limits used are recorded beside the run instead.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.lake import filenames,readings
+    from viewer_publication.archive_controller import PublicationInputsChanged,_require_model_definition
+    from viewer_publication.archive_model import prepare_model_inputs
+    from viewer_publication.archive_publish import input_digest
+    tables={}
+    for name in ['captures','readings','filename_readings']:
+        tables[name]=tmp_path/(name+'.parquet');pq.write_table(pa.table(dict(value=[1])),tables[name])
+    versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']}
+    mac=dict(compute_threads=2,memory_bytes=36507222016,scratch_bytes=6<<30,batch_rows=8192,
+             max_batch_bytes=64<<20,max_metadata_bytes=32<<20)
+    ci=dict(mac,compute_threads=4,memory_bytes=15032385536,batch_rows=512)
+    def profile(name,engine):
+        return prepare_model_inputs(**tables,parser_versions=versions,catalog_version=filenames.current_version(),
+            engine=engine,scratch=tmp_path/name)['profile']
+    digest=lambda value:input_digest(receipt_keys=['receipts/documents/a.jsonl.gz'],provenance=[],
+                                     profile=value['profile'],entity_digests={})
+    first=profile('mac',_engine(tmp_path,'mac',mac))
+    second=profile('ci',_engine(tmp_path,'ci',ci))
+    assert 'limits' not in first['profile']['runtime_pins']
+    assert first['profile_sha256']==second['profile_sha256'] and digest(first)==digest(second)
+    # A resume under the other memory pool continues the same retained model.
+    saved=dict(profile=first,entity_digests={},
+        admitted_names=['invariants','model_invariants','url_state_invariants','profile_completeness'])
+    _require_model_definition(saved,_engine(tmp_path,'resume',ci))
+    # The native build and real inputs still define semantics.
+    other=profile('binary',_engine(tmp_path,'binary',mac,binary_sha256='f'*64))
+    assert other['profile_sha256']!=first['profile_sha256'] and digest(other)!=digest(first)
+    with pytest.raises(PublicationInputsChanged,match='Native runtime changed'):
+        _require_model_definition(saved,_engine(tmp_path,'rebuilt',mac,binary_sha256='f'*64))
+    changed=prepare_model_inputs(**tables,parser_versions=versions,catalog_version='catalog-other',
+        engine=_engine(tmp_path,'input',mac),scratch=tmp_path/'input')['profile']
+    assert changed['profile_sha256']!=first['profile_sha256'] and digest(changed)!=digest(first)
+    assert input_digest(receipt_keys=['receipts/documents/b.jsonl.gz'],provenance=[],
+                        profile=first['profile'],entity_digests={})!=digest(first)
 
 
 def test_profile_record_refuses_unpinned_definitions():
@@ -117,7 +169,7 @@ def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,
 def test_profile_hashes_current_definition_files_and_reuses_capture_profile():
     from viewer_publication.archive_model_profile import profile_record,capture_profile_record
     record=profile_record(parser_versions=VERSIONS,catalog_version='catalog-1',engine_revision='a'*40,
-        runtime_pins=dict(runner_class='local',limits=dict(compute_threads=4)),
+        runtime_pins=dict(platform='local',binary_sha256='e'*64),
         lake_versions=dict(captures='b'*64),writer_settings=dict(row_group_rows=65536),
         snapshots={'captures':dict(metadata_location='/pinned/metadata.json')})
     hashes=record['profile']['file_hashes']
@@ -158,7 +210,7 @@ def test_retained_model_refuses_changed_publication_helper(tmp_path,monkeypatch,
     engine=SimpleNamespace(source_revision='a'*40,binary_sha256='b'*64,
         platform='test',build_features=[],limits=limits)
     args=dict(parser_versions=VERSIONS,catalog_version='catalog-1',engine_revision=engine.source_revision,
-        runtime_pins=dict(binary_sha256=engine.binary_sha256,platform=engine.platform,build_features=[],limits={}),
+        runtime_pins=model_profile.runtime_pins(engine),
         lake_versions=dict(captures='c'*64),writer_settings=dict(row_group_rows=65536),
         snapshots={'captures':dict(metadata_location='/pinned/metadata.json')},root=tmp_path)
     original=model_profile.profile_record(**args)

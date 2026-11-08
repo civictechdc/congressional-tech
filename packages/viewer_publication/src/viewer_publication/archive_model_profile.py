@@ -109,6 +109,17 @@ def capture_profile_record(*,engine_revision,root=ROOT):
         url_rules=json.loads((root/'model/registries/url-rules.json').read_text()))
 
 
+def runtime_pins(engine):
+    """Pin the native build that defines results, never its physical limits.
+
+    C3 (ss-iwqu): exports are byte-identical across threads, batch sizes and a
+    forced spill (test_model_determinism), so limits would only split one model
+    into a Mac and a CI identity. The input record keeps them as `engine_limits`.
+    """
+    return dict(platform=engine.platform,build_features=list(engine.build_features),
+                binary_sha256=engine.binary_sha256)
+
+
 def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pins,
                    lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
                    relationship_metadata_update=None,recovery_policy=None,historical_recording_matcher=None):
