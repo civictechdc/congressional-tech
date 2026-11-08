@@ -107,7 +107,6 @@ def test_meeting_read_keeps_rows_inventory_scope_drops(tmp_path):
 def test_scoped_reader_preserves_each_caller_population(tmp_path, caplog):
     import logging
 
-    from congress_api.cli.gpo_match import load_meetings
     from congress_api.matching.meetings import scheduled_or_rescheduled
     from congress_api.retention.meetings import all_meetings
     from congress_api.retention.meetings import read_meetings as read_scoped
@@ -130,8 +129,6 @@ def test_scoped_reader_preserves_each_caller_population(tmp_path, caplog):
     assert {row["eventId"] for row in read_scoped(path)} == {"sched119"}
     assert ids(scheduled_or_rescheduled) == {"sched112", "sched119"}
     assert ids(all_meetings) == {"held112", "sched112", "sched119", "cancel"}
-    loaded = load_meetings(path)
-    assert {record["eventId"] for dates in loaded.values() for records in dates.values() for record in records} == {"sched112", "sched119"}
 
     previous = dict(metadata.PATHS)
     try:
@@ -141,9 +138,7 @@ def test_scoped_reader_preserves_each_caller_population(tmp_path, caplog):
         metadata.set_paths(previous["gpo"], str(missing))
         with caplog.at_level(logging.WARNING):
             assert metadata.meetings() == {}
-            assert load_meetings(missing) == {}
         assert "no meetings file" in caplog.text
-        assert "No meetings file" in caplog.text
     finally:
         metadata.set_paths(previous["gpo"], previous["meetings"])
 

@@ -98,6 +98,58 @@ def read_meetings(
     return list(iter_meetings(path, scope=scope, tables=tables))
 
 
+RELEASE_MEETING_COLUMNS = ("event_id", "congress", "title", "meeting_date", "status", "congress_gov_updated",
+                           "committees", "videos")
+
+
+def _dated_name(committee, day):
+    """The committee's name in force on ``day``, else its current name."""
+    if committee is None:
+        return ""
+    for entry in sorted(committee["names"] or (), key=lambda entry: entry["start"] or day, reverse=True):
+        if day and (entry["start"] is None or entry["start"] <= day) and (entry["end"] is None or day <= entry["end"]):
+            return entry["name"]
+    return committee["name"] or ""
+
+
+def read_release_meetings(
+    meetings_path: Path,
+    committees_path: Path,
+    *,
+    scope: Callable[[dict], bool] = all_meetings,
+) -> Iterator[dict]:
+    """Stream an archive release's ``meetings.parquet`` in the weekly file's field names.
+
+    The release is the lake's current meeting per event, so it replaces the weekly
+    Congress.gov snapshot that nothing refreshes since ct-klyz. Committee names come
+    from the same release's ``committees.parquet`` (the name in force on the meeting
+    date). ``date`` is the meeting's own calendar date, not a UTC timestamp. Only the
+    fields ``gpo-match`` and ``congress-committees`` read are mapped. A file without
+    the expected columns raises ``ValueError``.
+    """
+    import pyarrow.parquet as pq
+
+    committees = {row["system_code"]: row for row in pq.read_table(
+        committees_path, columns=["system_code", "name", "names"]).to_pylist()}
+    with pq.ParquetFile(meetings_path) as source:
+        missing = set(RELEASE_MEETING_COLUMNS) - set(source.schema_arrow.names)
+        if missing:
+            raise ValueError(f"{meetings_path} is not a release meetings table; lacks {sorted(missing)}")
+        for batch in source.iter_batches(batch_size=4096, columns=list(RELEASE_MEETING_COLUMNS)):
+            for row in batch.to_pylist():
+                day = row["meeting_date"]
+                meeting = {
+                    "eventId": str(row["event_id"]), "congress": row["congress"], "title": row["title"],
+                    "meetingStatus": row["status"], "date": day.isoformat() if day else None,
+                    "updateDate": row["congress_gov_updated"].isoformat() if row["congress_gov_updated"] else None,
+                    "committees": [{"systemCode": c["system_code"], "name": _dated_name(committees.get(c["system_code"]), day)}
+                                   for c in row["committees"] or ()],
+                    "videos": [{"name": v["name"], "url": v["url"]} for v in row["videos"] or ()],
+                }
+                if scope(meeting):
+                    yield meeting
+
+
 def read_by_urls(
     urls: Sequence[str],
     *,

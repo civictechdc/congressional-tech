@@ -15,7 +15,6 @@ from congress_api.models.congress import (
 )
 from congress_api.retention.committees import read as read_committees
 from congress_api.retention.committees import write as write_committees
-from congress_api.retention.meetings import read as read_meetings
 from congress_api.retention.rejected_pages import retain_rejected_page
 from congress_api.transport.congress import API, get
 
@@ -29,8 +28,9 @@ def detail_url(committee):
     return f'https://api.congress.gov{url.path}'
 
 
-def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None):
-    congresses = {int(row['congress']) for row in read_meetings(meetings_path).values()}
+def collect(meetings, output_path, *, api_key, session=None, gpo_path=None):
+    """``meetings`` are meeting rows (``public_release.release_meetings``); their Congresses set the refresh."""
+    congresses = {int(row['congress']) for row in meetings if row.get('congress') is not None}
     if gpo_path:
         with Path(gpo_path).open(newline='') as stream:
             congresses.update(int(row['congress']) for row in csv.DictReader(stream) if row.get('congress'))

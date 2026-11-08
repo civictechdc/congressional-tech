@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from congress_api.acquisition import committees as collector
+from congress_api.retention.meetings import read as read_meetings
 from congress_api.acquisition.meetings import API as collector_API
 from test_committee_metadata import metadata, save
 from test_explorer_export import NOW, native, write_meetings
@@ -33,7 +34,7 @@ def test_full_details_fetched_once_and_preserved_through_normalization(tmp_path,
         return {'committee': detail}
 
     monkeypatch.setattr(collector, 'get', get)
-    rows = collector.collect(meetings, output, api_key='secret')
+    rows = collector.collect(read_meetings(meetings).values(), output, api_key='secret')
     assert detail_calls == [endpoint]
     assert rows[f'113|{code}']['committee'] == historical['committee']
     assert rows[f'113|{code}']['retrieved_at'] == historical['retrieved_at']
@@ -66,7 +67,7 @@ def test_reuse_historical_detail_and_refresh_current_detail(tmp_path, monkeypatc
         calls.append(url)
         return {'committee': {'systemCode': 'hsru00', 'history': [{'officialName': 'New name'}]}}
     monkeypatch.setattr(collector, 'get', get)
-    rows = collector.collect(meetings, output, api_key='secret')
+    rows = collector.collect(read_meetings(meetings).values(), output, api_key='secret')
     assert calls == [current['detail_url']]
     assert rows['113|hszz00'] == old
     assert rows['115|hsru00']['detail']['history'] == [{'officialName': 'New name'}]
@@ -90,14 +91,14 @@ def test_failed_detail_preserves_snapshot_and_can_be_retried(tmp_path, monkeypat
         return bad
     monkeypatch.setattr(collector, 'get', get)
     with pytest.raises((RuntimeError, ValueError, KeyError)):
-        collector.collect(meetings, output, api_key='secret')
+        collector.collect(read_meetings(meetings).values(), output, api_key='secret')
     assert output.read_bytes() == before
     if bad is not None:
         rejected = json.loads(output.with_suffix(output.suffix + '.rejected.json').read_text())
         assert rejected[0]['response'] == bad
         assert rejected[0]['url'] == collector.detail_url(metadata()['committee'])
     retry = True
-    rows = collector.collect(meetings, output, api_key='secret')
+    rows = collector.collect(read_meetings(meetings).values(), output, api_key='secret')
     assert rows['115|hsru00']['detail'] == {'systemCode': 'hsru00', 'history': []}
 
 

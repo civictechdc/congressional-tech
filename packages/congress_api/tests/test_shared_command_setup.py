@@ -184,12 +184,13 @@ def test_gpo_match_default_paths_and_coverage_selection(monkeypatch, tmp_path):
     from congress_shared import paths, resources
     calls = []
     monkeypatch.setattr(cli, 'main', lambda *args, **kwargs: calls.append((args, kwargs)))
+    monkeypatch.setattr(cli, 'load_meetings', lambda release, **_: {'release': release})
     monkeypatch.setattr(cli, 'configure_logging', lambda: None)
     monkeypatch.setattr(sys, 'argv', ['gpo-match'])
     assert cli.parse_args_and_run() is None
     assert calls == [((
         paths.DEFAULT_HEARING_VIDEOS_FILE, paths.DEFAULT_TINYDB_DIR, resources.DEFAULT_CHANNELS_CSV,
-        paths.DEFAULT_GPO_HEARINGS_FILE, paths.DEFAULT_MEETINGS_FILE, paths.DEFAULT_OVERRIDES_FILE,
+        paths.DEFAULT_GPO_HEARINGS_FILE, {'release': cli.PUBLIC_POINTER}, paths.DEFAULT_OVERRIDES_FILE,
         paths.DEFAULT_OUTPUT_DIR / 'gpo_hearing_video_coverage.csv',
     ), {'no_overrides': False})]
     monkeypatch.setattr(sys, 'argv', ['gpo-match', '--output-path', str(tmp_path / 'matches.csv'), '--no-overrides'])

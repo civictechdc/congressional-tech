@@ -697,7 +697,7 @@ def test_missing_release_profile_has_no_workspace_fallback(tmp_path):
     manifest['release_id']=hashlib.sha256(json.dumps([1,[[row[k] for k in ('name','sha256','size','rows')]
         for row in manifest['files']]],separators=(',',':')).encode()).hexdigest()
     (root/'manifest.json').write_text(json.dumps(manifest))
-    with pytest.raises(ValueError,match='scheduler input'):
+    with pytest.raises(ValueError,match='omits a bounded capture_profile.json'):
         load_release(release_root=root,work=tmp_path/'read')
 
 

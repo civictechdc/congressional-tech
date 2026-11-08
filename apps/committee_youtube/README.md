@@ -183,7 +183,7 @@ For current local checks, use the checkout's test runner and runtime setup in
 ## Matching: `gpo-match`
 
 Each GPO hearing is matched to a recording using this evidence, strongest first:
-1. a Congress.gov video link from the hearing's meeting record (a YouTube video, or for the Senate a link to the Senate's own player at senate.gov, which gives `full_recording_offsite`);
+1. a Congress.gov video link from the hearing's meeting record (`meetings.parquet` of the current public archive release, or `--release <local release dir>`; the command fails if it cannot read one) (a YouTube video, or for the Senate a link to the Senate's own player at senate.gov, which gives `full_recording_offsite`);
 2. the hearing's event ID in the video's title or description, whenever it was uploaded;
 3. the hearing date in the title or description ("031815 -", "7/23/2013. EMR.");
 4. title or subcommittee similarity within a few days.
@@ -281,8 +281,7 @@ git worktree add ../pipeline-data pipeline-data   # raw caches
 youtube-fetch   --tinydb_dir ../pipeline-data/youtube
 youtube-analyze --tinydb_dir ../pipeline-data/youtube --output-path apps/committee_youtube/data/youtube_event_id_report.csv
 gpo-fetch --output-path apps/committee_youtube/data/gpo_hearings.csv
-congress-meetings --output-path ../pipeline-data/congress_meetings.jsonl.gz
-gpo-match --tinydb_dir ../pipeline-data/youtube --meetings ../pipeline-data/congress_meetings.jsonl.gz \
+gpo-match --tinydb_dir ../pipeline-data/youtube \
   --gpo-path apps/committee_youtube/data/gpo_hearings.csv --output-path apps/committee_youtube/data/gpo_hearing_videos.csv
 ```
 

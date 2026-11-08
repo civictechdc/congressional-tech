@@ -13,7 +13,7 @@ from pathlib import Path
 import re
 import socket
 import threading
-from urllib.parse import parse_qsl, urljoin, urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -22,6 +22,7 @@ from congress_api.acquisition.admission import AdmissionDenied
 from congress_api.acquisition.capture_seeds import inventories
 from congress_api.models.archive_profile import RULE_FIELDS, validate_capture_profile
 from congress_api.acquisition.fetcher import CaptureScope, Fetcher, HostPacer
+from congress_api.acquisition.public_release import file_identity, open_release
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import validate_record
 from congress_api.retention.pipeline_raw import new_run_id
@@ -30,9 +31,7 @@ from congress_api.retention.provenance import field, json_input, parquet_output,
 from congress_api.retention.receipt_writer import ReceiptWriter
 from congress_api.retention.receipt_privacy import credential_parameters
 
-HEX = re.compile('[0-9a-f]{64}')
 PAGE_BYTES = 8 << 20
-RELEASE_FILE_BYTES = 128 << 20
 PACING = dict(default_gap_seconds=0.2,provider_gap_seconds=0,
               hosts={'docs.house.gov':dict(gap_seconds=1.2,backoffs={'403':60})})
 
@@ -134,74 +133,17 @@ def _require_capture_authority(release):
         raise ValueError('A display-only release cannot authorize capture')
 
 
-def _identity(path,entry):
-    with Path(path).open('rb') as source:
-        digest=hashlib.file_digest(source,'sha256').hexdigest()
-        size=source.tell()
-    if (digest,size)!=(entry['sha256'],entry['size']):
-        raise ValueError('Release file identity or size differs from the manifest')
-
-
-def _download(session,url,path,limit):
-    if urlsplit(url).scheme!='https':
-        raise ValueError('Capture release URLs must use HTTPS')
-    validate_record(url)
-    with session.get(url,stream=True,allow_redirects=False,timeout=(15,120),headers={'Cache-Control':'no-cache'}) as response:
-        response.raise_for_status()
-        size=0
-        with Path(path).open('xb') as out:
-            for chunk in response.iter_content(chunk_size=1<<20):
-                size+=len(chunk)
-                if size>limit:raise ValueError('Release download exceeds its byte allowance')
-                out.write(chunk)
-    return Path(path)
-
-
 def load_release(*,work,release_root=None,pointer=None,session=None):
     """Select one public release once; verify all release-pinned scheduler inputs."""
-    if (release_root is None)==(pointer is None):
-        raise ValueError('Select a public pointer or a local release root')
-    work=Path(work);work.mkdir(parents=True,exist_ok=True)
-    if pointer:
-        if session is None:
-            import requests
-            session=requests.Session()
-        selected=json.loads(_download(session,pointer,work/'pointer.json',1<<20).read_text())
-        release_id=selected.get('release_id')
-        if not isinstance(release_id,str) or not HEX.fullmatch(release_id):
-            raise ValueError('Invalid public release pointer')
-        base=urljoin(pointer,f'releases/{release_id}/')
-        manifest=json.loads(_download(session,urljoin(base,'manifest.json'),work/'manifest.json',2<<20).read_text())
-    else:
-        release_root=Path(release_root).resolve()
-        manifest=json.loads((release_root/'manifest.json').read_text())
-        release_id=manifest.get('release_id')
-    if not isinstance(manifest,dict) or manifest.get('schema_version')!=1 or manifest.get('release_id')!=release_id or not HEX.fullmatch(release_id or ''):
-        raise ValueError('Unsupported release manifest or identity')
+    release_id,manifest,fetch=open_release(work=work,release_root=release_root,pointer=pointer,session=session)
     _require_capture_authority(manifest)
-    files=manifest.get('files')
-    if not isinstance(files,list) or any(not isinstance(row,dict) or not all(key in row for key in ('name','sha256','size','rows')) for row in files):
-        raise ValueError('Invalid release file manifest')
-    if len({row['name'] for row in files})!=len(files):raise ValueError('Duplicate release file name')
-    actual=hashlib.sha256(json.dumps([1,[[row[k] for k in ('name','sha256','size','rows')] for row in files]],ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
-    if actual!=release_id:raise ValueError('Release manifest content identity differs')
-    selected={}
-    for name in ('url_state.parquet','capture_scope.json','capture_profile.json','url_variants.parquet'):
-        entry=next((row for row in files if row['name']==name),None)
-        if (entry is None or not isinstance(entry['sha256'],str) or not HEX.fullmatch(entry['sha256'])
-                or type(entry['size']) is not int or not 0<=entry['size']<=RELEASE_FILE_BYTES):
-            raise ValueError('Release omits a bounded scheduler input')
-        if pointer:
-            path=_download(session,urljoin(base,name),work/name,entry['size'])
-        else:
-            path=(release_root/name).resolve()
-            if not path.is_relative_to(release_root):raise ValueError('Release input escapes its root')
-        _identity(path,entry);selected[name]=path
+    selected={name:fetch(name) for name in ('url_state.parquet','capture_scope.json','capture_profile.json','url_variants.parquet')}
     CapturePolicy(selected['capture_scope.json'])
+    files={row['name']:row for row in manifest['files']}
     return dict(release_id=release_id,state=selected['url_state.parquet'],scope=selected['capture_scope.json'],
         profile=selected['capture_profile.json'],variants=selected['url_variants.parquet'],
         origin='public' if pointer else 'local',manifest_origin=manifest.get('origin'),
-        identities={name:next(row for row in files if row['name']==name) for name in selected})
+        identities={name:files[name] for name in selected})
 
 
 def _records(path):
@@ -215,7 +157,7 @@ def _url_binding(release,engine):
     _require_capture_authority(release)
     for key,name in [('state','url_state.parquet'),('scope','capture_scope.json'),
                      ('profile','capture_profile.json'),('variants','url_variants.parquet')]:
-        _identity(release[key],release['identities'][name])
+        file_identity(release[key],release['identities'][name])
     profile=validate_capture_profile(json.loads(Path(release['profile']).read_text()),
         engine_revision=engine.source_revision)
     definitions={name:profile['sql'][name]['text'] for name in ('url_normalized','url_keys')}

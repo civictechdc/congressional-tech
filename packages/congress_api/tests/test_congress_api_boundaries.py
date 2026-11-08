@@ -67,7 +67,9 @@ def test_weekly_workflow_keeps_explore_tools_out_of_production():
     assert not re.search(r'\bcongress-(?:fetch|analyze)\b', workflow)
     assert re.findall(r'^  (\w+):\n', workflow.split('\njobs:\n', 1)[1], re.M) == ['youtube', 'congress', 'committees']
     assert not re.search(r'\bcongress-meetings\b', workflow)
-    assert '--meetings pipeline-data/congress_meetings.jsonl.gz' in workflow
+    # Nothing refreshes the saved weekly meeting file since ct-klyz; read the release (ct-0mqc).
+    assert 'congress_meetings.jsonl.gz' not in workflow
+    assert not re.search(r'--meetings(?:-path)?\b', workflow)
     assert 'continue-on-error' not in workflow
 
 

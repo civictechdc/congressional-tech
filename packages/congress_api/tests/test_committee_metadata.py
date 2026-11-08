@@ -5,6 +5,7 @@ import json
 import pytest
 from committee_explorer.export import export
 from congress_api.acquisition import committees as collector
+from congress_api.retention.meetings import read as read_meetings
 from congress_api.acquisition.meetings import API as collector_API
 from test_explorer_export import NOW, native, write_meetings
 
@@ -39,7 +40,7 @@ def test_collector_paginates_and_keeps_historical_snapshot(tmp_path, monkeypatch
                 'pagination': {'next': 'next-page'} if not offset else {}}
 
     monkeypatch.setattr(collector, 'get', get)
-    rows = collector.collect(meetings, output, api_key='test-key')
+    rows = collector.collect(read_meetings(meetings).values(), output, api_key='test-key')
     assert {key: rows['113|hsru00'][key] for key in historical} == historical
     assert rows['113|hsru00']['detail']['systemCode'] == 'hsru00'
     assert len(rows) == 5
@@ -62,7 +63,7 @@ def test_failed_refresh_preserves_previous_bytes(tmp_path, monkeypatch, failure)
 
     monkeypatch.setattr(collector, 'get', get)
     with pytest.raises((ValueError, RuntimeError)):
-        collector.collect(meetings, output, api_key='test-key')
+        collector.collect(read_meetings(meetings).values(), output, api_key='test-key')
     assert output.read_bytes() == before
 
 
@@ -73,7 +74,7 @@ def test_rejected_committee_page_is_retained_without_replacing_snapshot(tmp_path
     response = {'committees': [{'systemCode': 123, 'futureField': ['unchanged', None]}]}
     monkeypatch.setattr(collector, 'get', lambda *args: response)
     with pytest.raises(ValueError):
-        collector.collect(meetings, output, api_key='test-key')
+        collector.collect(read_meetings(meetings).values(), output, api_key='test-key')
     assert output.read_bytes() == before
     rejected = json.loads(output.with_suffix(output.suffix + '.rejected.json').read_text())
     assert rejected[0]['response'] == response
@@ -135,7 +136,7 @@ def test_duplicate_committee_pages_do_not_silently_overwrite_source(tmp_path, mo
     before = output.read_bytes()
     monkeypatch.setattr(collector, 'get', lambda *args: {'committees': [metadata()['committee']], 'pagination': {'next': 'next-page'}})
     with pytest.raises(ValueError, match='Duplicate committee'):
-        collector.collect(meetings, output, api_key='test-key')
+        collector.collect(read_meetings(meetings).values(), output, api_key='test-key')
     assert output.read_bytes() == before
 
 
