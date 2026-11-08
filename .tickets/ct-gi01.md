@@ -176,3 +176,7 @@ The remaining work is specific: publish historical matcher observations with the
 **2026-11-08T13:44:49Z**
 
 2026-11-08: the 2026-11-02 impl-u2 note's 'F4 holds once this merges' no longer waits on r4-u2 (925036be), which will not merge. Main reached the same goal: model/jobs/publish-model.json declares a spicy_regs input pinned by path, sha256 and size, and archive_model._prepare_spicy_inputs refuses entity files without pinned generations, so no digest is invented. Judge F4 against main.
+
+**2026-11-08T13:49:24Z**
+
+2026-11-08: merged Codex's reviewed historical matcher producer 4ef4344e into main as 7d64cb18 (local; not yet pushed). Focused production-offline run on the merge: 80 passed (2 of 514 lane files, partial). The historical_recording_matches input pin is not activated: that waits for the next coordinated release build and its published readback. Remaining preservation work is unchanged: dispositions for the 18 source-only Senate pages and the 9,636 material occurrences without a literal URL match (start with the 9,501 with URL-state evidence and the 151 document-lookup hits), plus the issue-body custody and historical-reference gaps. Codex handoff: .cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-gi01/RESULTS.md
