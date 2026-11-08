@@ -958,7 +958,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     from congress_api.lake import compatible_versions
     from viewer_publication.archive_format import AUXILIARY_ROW_GROUP_ROWS, _settings
     from viewer_publication.archive_model_profile import (expand_parser_version_rows,profile_record,
-        readings_bundle_version,validate_parser_versions)
+        readings_bundle_version,runtime_pins,validate_parser_versions)
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
     # All or none: an omitted table means unavailable, never empty (DM8).
     explorer_inputs=video_records is not None or committee_records is not None or bool(recording_decision_files)
@@ -1085,8 +1085,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     lake_tables=['captures','readings','filename_readings']+(['meeting_records','appearance_records'] if include_entities else [])+(['video_records','committee_records'] if explorer_inputs else [])
     if playlist_records is not None:lake_tables.append('playlist_records')
     model_profile=profile_record(parser_versions=parser_versions,catalog_version=catalog_version,
-        engine_revision=engine.source_revision,runtime_pins=dict(platform=engine.platform,build_features=list(engine.build_features),
-            binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
+        engine_revision=engine.source_revision,runtime_pins=runtime_pins(engine),
         lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in lake_tables},
         snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),

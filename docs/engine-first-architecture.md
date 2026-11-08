@@ -476,7 +476,7 @@ The engine (docspec-rs) MUST provide these capabilities; what its paths may not 
    - Partition and column filters reach Iceberg scan planning.
    - A named step can be materialized once, its batches reserved in the memory pool or written to scratch Parquet when the pool refuses.
 2. **Table operations** through the REST catalog: append, each commit asserting its table UUID and base snapshot, with the conflict retry of §8.1; create; and drop with purge.
-3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards once §10.1's growth rule calls for them; in phase 2 the bytes depend on no runner limit (spicy-stack ss-iwqu), and until then the model profile pins the runner class and limits ([[DATA-MODEL]] §7.1).
+3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards once §10.1's growth rule calls for them; the bytes depend on no runner limit (spicy-stack ss-iwqu; model-level proof in `test_model_determinism.py`), so the model profile pins the native build but not its limits ([[DATA-MODEL]] §7.1).
 4. **Connected components** over a relation of the same job, returning a deterministic component label and no ID, in memory over interned dense integer IDs, refusing above a configured node count and reserving its true heap (spicy-stack ss-6jg6; today's string-keyed tables need *est.* 1.65 GiB at 1.7M rows).
 5. **Streaming I/O:** no re-read of a just-written object and no HEAD of an immutable file, except as §7.1 allows. File and row-group sizes come from writer settings ([[DATA-MODEL]] §6, §8.1).
 6. **Bounded resources** set by configuration per runner class: compute threads, a memory pool no larger than the machine, and scratch space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds do not spill, and join selection builds the smaller input by the row counts scans report, so plans keep wide columns off both join inputs: join on keys first, reduce, then attach the wide column.
@@ -500,7 +500,7 @@ Raw isolation in one bucket rests on create-only writers plus the bucket lock (�
 1. **Data-model invariants:** the invariants of [[DATA-MODEL]] §10, as tests over the raw log, the lake, the model's relations and each release.
 2. **Rule accuracy:** a hand-labeled sample of a few hundred files measures how often the file-shape, record-role, placeholder and rendition rules wrongly include, exclude or join a file.
 3. **Registry samples:** every registry entry's sample passes its test.
-4. **Determinism:** byte-identical exports across reruns and input orders on the pinned runner class and limits (§10.2); in phase 2, also across thread counts, batch sizes and a forced spill (§13, item 3).
+4. **Determinism:** byte-identical exports across reruns, input orders, thread counts, batch sizes and a forced spill (§10.2; §13, item 3).
 5. **Contract:** CI builds a release from a fixed sample of real receipts and loads it through the real site in a headless browser, within the heap budget.
 6. **Canary** (§10.3.5) on every candidate; it and the contract test both check the 404 reload of §11.3.
 7. **Ratchets:** no test-only branches or input substitutions in production code, application or engine; no engine fast paths keyed on dataset names; no application identifiers (committee codes, family names, registry values) in the engine crate.

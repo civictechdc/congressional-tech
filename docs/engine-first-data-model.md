@@ -362,7 +362,7 @@ physical row order. Reuse the maintained producer candidate definitions and
 admission path rather than adding an independent validation pipeline (`ct-kw9b`,
 daily handoff `ct-yymr`, source-scoped version work `ct-h1nd`).
 
-- It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6) with its table's exact metadata location, each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1); until the engine's export meets [[ARCHITECTURE]] §10.2 by itself (spicy-stack ss-iwqu), also the runner class and the engine's limits (threads, batch rows, batch bytes).
+- It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6) with its table's exact metadata location, each parser, the catalog, each registry the model or a producer reads, the release writer settings (§8.1), and the native build (platform, build features, binary SHA-256). It does not pin the engine's limits (threads, memory, batch rows, batch bytes): the export is byte-identical across them and a forced spill (spicy-stack ss-iwqu; `test_model_determinism.py`), so a CI run and a Mac run of the same inputs share one profile. The input record keeps the limits used as `engine_limits`, beside `run`.
 - Readings use declared versions for row semantics. Source and locked
   dependency fingerprints, tool versions, and worker policy are recorded
   separately. The combined unreadable-decision version also depends on the

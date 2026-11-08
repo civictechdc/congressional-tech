@@ -40,7 +40,7 @@ class Store:
     def delete(self,key):self.deleted.append(key)
 
 
-def add_input(store,release,identity):
+def add_input(store,release,identity,runtime_pins=None):
     keys=['receipts/documents/'+identity+'.jsonl.gz']
     from viewer_publication.archive_model_profile import profile_record
     snapshots={name:dict(kind='native_table',name=name,
@@ -48,7 +48,7 @@ def add_input(store,release,identity):
         table_uuid=str(uuid5(NAMESPACE_URL,identity+'/'+name)),snapshot=1,schema_id=0)
         for name in ['captures','readings','filename_readings']}
     profile=profile_record(parser_versions={name:'fixture-'+identity for name in ['sniff','html','xml','json']},
-        catalog_version='fixture-catalog',engine_revision='a'*40,runtime_pins={'platform':'fixture'},
+        catalog_version='fixture-catalog',engine_revision='a'*40,runtime_pins=runtime_pins or {'platform':'fixture'},
         lake_versions={name:{'schema_sha256':'b'*64} for name in snapshots},
         writer_settings={'whole':{'compression':'zstd'}},snapshots=snapshots,file_hashes={'fixture.sql':'c'*64})['profile']
     record=dict(profile=profile,provenance=[],entity_digests={},snapshots=snapshots)
@@ -193,6 +193,19 @@ def test_legacy_release_objects_are_preserved_without_reading_or_deleting():
     assert legacy not in store.deleted and legacy not in store.reads
     assert result['ignored_legacy_objects']==1
     assert all(key.startswith(PREFIX+OLD+'/') for key in store.deleted)
+
+
+def test_kept_records_with_engine_limits_in_their_profile_still_validate():
+    # Records before C3 pinned limits in runtime_pins (34 GiB, 2 threads on a Mac).
+    # They keep their own profile and still validate to their own digest; the new
+    # record shape carries limits as `engine_limits`, outside input_digest.
+    from viewer_publication.archive_maintenance import maintain_releases
+    store,_=fixture()
+    legacy=add_input(store,LIVE,'legacy',runtime_pins=dict(platform='darwin-arm64',build_features=['remote'],
+        binary_sha256='8'*64,limits=dict(compute_threads=2,memory_bytes=36507222016,scratch_bytes=6<<30,
+        batch_rows=8192,max_batch_bytes=64<<20,max_metadata_bytes=32<<20)))
+    result=maintain_releases(store,now=NOW,external_pins=[PINNED])
+    assert legacy['input_digest'] in {record['input_digest'] for record in result['kept_inputs']}
 
 
 def test_legacy_live_pointer_refuses_before_inventory_or_deletion():
