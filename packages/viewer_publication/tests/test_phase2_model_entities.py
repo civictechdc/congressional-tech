@@ -1692,7 +1692,7 @@ def _resolved_meetings(tmp_path, records, pins=(), conflicts=()):
             sittings[1]['start'] AS s_start,sittings[1]['end'] AS s_end,sittings[1]['place'] AS place,sittings[1]['room'] AS room,
             coalesce(array_length(sittings),0) AS sitting_count,status,not_held,
             coalesce(array_length(videos),0) AS video_count,videos[1]['url'] AS video_url,
-            array_to_string(transcript_jackets,' ') AS jackets FROM meetings_resolved ORDER BY event_id""")])
+            array_to_string(transcript_jackets,' ') AS jackets,subject_keys FROM meetings_resolved ORDER BY event_id""")])
     return result['rows']
 
 
@@ -1703,6 +1703,28 @@ def _record(sha, source, *, states=None, sittings=(), **fields):
 
 CONGRESS_SITTING = dict(start='2019-11-13T19:00:00Z', room='1300', building='Longworth House Office Building')
 HOUSE_SITTING = dict(start='2019-11-13T14:00:00-05:00', end='2019-11-13T16:30:00-05:00', room='9', building='LHOB', address='DC 20515')
+
+
+@pytest.mark.parametrize('event_id,matching_body,independent_subject,expected', [
+    ('115732', True, False, ['118-hr-4755']),
+    ('115732', True, True, ['118-hr-4755', '118-hr-4775']),
+    ('115732', False, False, ['118-hr-4755', '118-hr-4775']),
+    ('115733', True, False, ['118-hr-4755', '118-hr-4775']),
+])
+def test_conflicting_house_attachment_filename_does_not_supply_a_meeting_subject(
+        tmp_path, event_id, matching_body, independent_subject, expected):
+    # A current observation can omit the collection and inherit it from a
+    # record of the same update time. The correction follows the chosen list.
+    stamp = '2023-07-27T17:42:41.120'
+    house = _record('aa', 'house_xml', event_id=event_id, updated=stamp,
+                    subject_keys=['118-hr-4755', '118-hr-4775'])
+    if matching_body:
+        house['record_sha'] = 'b342348e26e8a37a2f4f0a5be44d2fc9bccdaac195305a122cedb534dad6916a'
+    records = [_record('00', 'house_xml', event_id=event_id, updated=stamp), house]
+    if independent_subject:
+        records.append(_record('11', 'congress_gov', event_id=event_id, subject_keys=['118-hr-4775']))
+    row, = _resolved_meetings(tmp_path, records)
+    assert row['subject_keys'] == expected
 
 
 def test_congress_gov_leads_and_house_fills_only_what_it_lacks(tmp_path):
