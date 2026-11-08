@@ -1,18 +1,13 @@
 """Advisory source and dependency fingerprints for declared reading versions."""
 import argparse
-import ast
-from collections import defaultdict
 from hashlib import sha256
 from importlib.metadata import packages_distributions
 import json
 import os
 from pathlib import Path
-import re
-import sys
 from tempfile import TemporaryDirectory
-import tomllib
 
-from congress_api.lake.versions import version_digest
+from congress_api.lake.versions import ImportClosure, version_digest
 
 ROOT = Path(__file__).resolve().parents[5]
 SOURCE = Path('packages/congress_api/src/congress_api')
@@ -25,127 +20,20 @@ SHARED_READING_FILES = (DRIVER, SOURCE / 'retention/parser_worker.py',
 BUNDLE_SQL = ('pinned-readings', 'sniff-observations', 'sniff-conflicts', 'sniff-facts', 'body-admissions')
 
 
-def _normalized(name):
-    return re.sub(r'[-_.]+', '-', name).lower()
-
-
-class ImportClosure:
-    """Follow static imports across this checkout and lock dependencies.
-
-    This adapts the locked-package walk from 1f6effdf. Workspace resolution
-    uses the checkout's source roots and never imports a module to inspect it.
-    """
-
-    def __init__(self, root):
-        self.root = Path(root).resolve()
-        self.entries = defaultdict(list)
-        self.sources = []
-        self.requested_extras = defaultdict(set)
-        self.distributions = packages_distributions()
-        for entry in tomllib.loads((self.root / 'uv.lock').read_text())['package']:
-            self.entries[_normalized(entry['name'])].append(entry)
-            source = entry['source']
-            location = source.get('editable', source.get('directory'))
-            if location is not None:
-                self.sources.append(self.root / location / 'src')
-            if location is not None or 'virtual' in source:
-                for edge in entry.get('dependencies', []):
-                    self.requested_extras[_normalized(edge['name'])].update(edge.get('extra', []))
-
-    def _workspace_path(self, parts):
-        for source in self.sources:
-            module = source.joinpath(*parts)
-            for path in (module / '__init__.py', module.with_suffix('.py')):
-                if path.is_file():
-                    return path
-        return None
-
-    def _imports(self, path):
-        # Include imports inside functions, plus package initializers and possible
-        # submodules named by "from package import name".
-        parts, directory = [], path.parent
-        while (directory / '__init__.py').is_file():
-            parts.insert(0, directory.name)
-            directory = directory.parent
-        for node in ast.walk(ast.parse(path.read_bytes(), filename=str(path))):
-            if isinstance(node, ast.Import):
-                yield from (alias.name for alias in node.names)
-            if isinstance(node, ast.ImportFrom):
-                module = node.module
-                if node.level:
-                    module = '.'.join([*parts[:len(parts) - node.level + 1], *([module] if module else [])])
-                if module:
-                    yield module
-                    yield from (f'{module}.{alias.name}' for alias in node.names)
-
-    def _reachable(self, files):
-        seen, external = set(), set()
-        pending = [self.root / file for file in files]
-        while pending:
-            path = pending.pop()
-            if path in seen:
-                continue
-            seen.add(path)
-            if path.suffix != '.py':
-                continue
-            for module in self._imports(path):
-                parts = module.split('.')
-                if parts[0] in sys.stdlib_module_names:
-                    continue
-                if self._workspace_path(parts[:1]) is None:
-                    external.add(parts[0])
-                    continue
-                for depth in range(1, len(parts) + 1):
-                    if (source := self._workspace_path(parts[:depth])) is not None and source not in seen:
-                        pending.append(source)
-        return seen, external
-
-    def _locked(self, modules):
-        names, unresolved = set(), set()
-        for module in modules:
-            names_for_module = {_normalized(name) for name in self.distributions.get(module, [module])}
-            names_for_module.intersection_update(self.entries)
-            names.update(names_for_module)
-            if not names_for_module:
-                unresolved.add(module)
-        seen = {}
-        pending = [(name, self.requested_extras[name]) for name in names]
-        while pending:
-            name, extras = pending.pop()
-            for i, entry in enumerate(self.entries[name]):
-                key = name, i
-                edges = [] if key in seen else list(entry.get('dependencies', []))
-                followed = seen.setdefault(key, set())
-                for extra in set(extras) - followed:
-                    followed.add(extra)
-                    edges.extend(entry.get('optional-dependencies', {}).get(extra, []))
-                pending.extend((_normalized(edge['name']), edge.get('extra', [])) for edge in edges)
-        packages = []
-        for (name, i), extras in seen.items():
-            entry = self.entries[name][i]
-            packages.append(dict(
-                name=name, version=entry['version'], source=entry['source'],
-                marker=entry.get('resolution-markers', []), dependencies=entry.get('dependencies', []),
-                extras={extra: entry.get('optional-dependencies', {}).get(extra, []) for extra in extras},
-                sdist=entry.get('sdist'), wheels=entry.get('wheels', []),
-            ))
-        return dict(packages=sorted(packages, key=lambda item: json.dumps(item, sort_keys=True)),
-                    unresolved=sorted(unresolved))
-
-    def fingerprints(self, files, *, shared_files=()):
-        workspace, modules = self._reachable(files)
-        # The common dispatcher imports all readers. Include its bytes in each
-        # leaf without attributing one parser's imports to every other parser.
-        workspace.update(self.root / file for file in shared_files)
-        return dict(
-            workspace_sha256=version_digest(packages={}, files={
-                path.relative_to(self.root).as_posix(): path for path in workspace
-                # Declared IDs already appear in the snapshot. A bump for a
-                # separate parser does not change this parser's source evidence.
-                if path != self.root / DECLARATIONS
-            }),
-            locked_sha256=version_digest(packages={}, files={}, values=self._locked(modules)),
-        )
+def _fingerprints(closure, files, *, shared_files=()):
+    workspace, modules = closure.reachable(files)
+    # The common dispatcher imports all readers. Include its bytes in each
+    # leaf without attributing one parser's imports to every other parser.
+    workspace.update(closure.root / file for file in shared_files)
+    return dict(
+        workspace_sha256=version_digest(packages={}, files={
+            path.relative_to(closure.root).as_posix(): path for path in workspace
+            # Declared IDs already appear in the snapshot. A bump for a
+            # separate parser does not change this parser's source evidence.
+            if path != closure.root / DECLARATIONS
+        }),
+        locked_sha256=version_digest(packages={}, files={}, values=closure.locked(modules)),
+    )
 
 
 def snapshot(root=ROOT):
@@ -154,13 +42,13 @@ def snapshot(root=ROOT):
     from congress_api.parsers.html_metadata import FORMATS, FORMAT_TIMEOUT_SECONDS
     from congress_api.retention.pdf_tools import reader_versions
 
-    closure = ImportClosure(root)
+    closure = ImportClosure(root, distributions=packages_distributions())
     limits = dict(stored_bytes=readings.MAX_STORED_BYTES, decoded_bytes=readings.MAX_DECODED_BYTES,
                   page_parse_bytes=readings.PAGE_PARSE_MAX_BYTES)
-    sniff = closure.fingerprints((SOURCE / 'retention/sniff.py', SCHEMA), shared_files=SHARED_READING_FILES)
-    page = closure.fingerprints((SOURCE / 'parsers/archive_readings.py', SCHEMA), shared_files=SHARED_READING_FILES)
-    metadata = closure.fingerprints((SOURCE / 'parsers/html_metadata.py', SCHEMA), shared_files=SHARED_READING_FILES)
-    bundle = closure.fingerprints((DRIVER, SCHEMA, *(
+    sniff = _fingerprints(closure, (SOURCE / 'retention/sniff.py', SCHEMA), shared_files=SHARED_READING_FILES)
+    page = _fingerprints(closure, (SOURCE / 'parsers/archive_readings.py', SCHEMA), shared_files=SHARED_READING_FILES)
+    metadata = _fingerprints(closure, (SOURCE / 'parsers/html_metadata.py', SCHEMA), shared_files=SHARED_READING_FILES)
+    bundle = _fingerprints(closure, (DRIVER, SCHEMA, *(
         Path('model/sql') / f'{name}.sql' for name in BUNDLE_SQL
     )))
     pins = compatible_versions.current_pins()

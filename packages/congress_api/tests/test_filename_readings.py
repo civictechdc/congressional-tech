@@ -470,8 +470,9 @@ def test_actual_worker_startup_failure_propagates_without_unreadable_decision(tm
     assert not (tmp_path/'stage/raw').exists()
 
 
+# uv.lock is read for imported package versions; unrelated lock lines leave the version (ct-an6o).
 VERSION_INPUTS = (
-    'uv.lock', 'model/sql/effective-filenames.sql', 'model/sql/filename-inputs.sql',
+    'model/sql/effective-filenames.sql', 'model/sql/filename-inputs.sql',
     'model/registries/filename-parameters.json', 'model/lake/filename-readings.schema.json',
     'packages/congress_api/src/congress_api/retention/parser_worker.py',
     'packages/congress_api/src/congress_api/retention/process_resources.py',
@@ -487,7 +488,7 @@ def version_fixture(tmp_path):
     relative=original.relative_to(module.ROOT)
     destination=fixture/relative
     shutil.copytree(original.parent,destination.parent,ignore=shutil.ignore_patterns('__pycache__'))
-    for relative_input in VERSION_INPUTS:
+    for relative_input in ('uv.lock', *VERSION_INPUTS):
         target=fixture/relative_input; target.parent.mkdir(parents=True,exist_ok=True)
         shutil.copyfile(module.ROOT/relative_input,target)
     spec=importlib.util.spec_from_file_location('filename_version_fixture',destination)

@@ -80,6 +80,15 @@ Several producers compute `parser_version` by hashing their own source bytes:
 - `packages/congress_api/src/congress_api/lake/filenames/__init__.py` (`parser_version` hashes the `house_naming` package)
 - `meeting_records.py` and `appearance_records.py` (`house_xml`, `congress_gov`, `senate_page`, `mods`)
 
+The record and filename producers hash, instead of the whole `uv.lock`, the
+locked name, version and source of each package their parser code imports
+(`congress_api.lake.versions.producer_version`; body custody, table I/O and
+worker transport are excluded). An unrelated dependency patch leaves them
+unchanged; a bump to an imported package (lxml, pydantic, jsonschema, pyarrow
+and their locked dependencies) moves the producers that import it.
+`_REVIEWED_PRODUCER_VERSIONS` maps reviewed fingerprints to published IDs; add
+an entry only with a recorded equivalence decision.
+
 Never reformat or touch byte-hashed parser files unless intentionally changing
 extraction semantics. When a parser change is intentional, update
 `model/jobs/publish-model.json` (`parser_versions`), recompute the `model_spec`

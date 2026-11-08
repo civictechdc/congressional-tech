@@ -63,7 +63,7 @@ from ._record_producer import (
     stage_record_table,
     unwrap_congress_gov_payload,
 )
-from .versions import version_digest
+from .versions import producer_version, version_digest
 
 ROOT = Path(__file__).resolve().parents[5]
 TABLE_SCHEMA = ROOT / "model/lake/appearance-records.schema.json"
@@ -222,8 +222,9 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             values={"sources": current_versions(root=root)},
         )
     if source == "mods":
-        return version_digest(
-            packages={},
+        return producer_version(
+            root=root,
+            module=this_file,
             files={
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "models_gpo": pkg_dir / "models/gpo.py",
@@ -233,7 +234,6 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
                 "reviewed_mods_person_fields": pkg_dir / "lake/mods_person_fields.py",
                 "reviewed_mods_record_entries": pkg_dir / "lake/mods_record_entries.py",
-                "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
             values={
@@ -242,13 +242,13 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             },
         )
     if source == "congress_gov":
-        return version_digest(
-            packages={},
+        return producer_version(
+            root=root,
+            module=this_file,
             files={
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "models_congress": pkg_dir / "models/congress.py",
                 "parsers_congress": pkg_dir / "parsers/congress.py",
-                "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
             values={
@@ -257,14 +257,14 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             },
         )
     if source == "house_xml":
-        return version_digest(
-            packages={},
+        return producer_version(
+            root=root,
+            module=this_file,
             files={
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
                 "parsers_xml_repair": pkg_dir / "parsers/xml_repair.py",
                 "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
-                "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
             values={
@@ -275,13 +275,13 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             },
         )
     if source == "senate_page":
-        return version_digest(
-            packages={},
+        return producer_version(
+            root=root,
+            module=this_file,
             files={
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "parsers_senate_page": pkg_dir / "parsers/senate_page.py",
                 "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
-                "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
             values={
