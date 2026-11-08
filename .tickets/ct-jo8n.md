@@ -63,3 +63,7 @@ Implemented and verified: wired DocSpecLake.publish_release / read_release / fin
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: credit the delivered release reader; focus remaining work on exact derived inputs, A/B/A reads and old-release readback. Share maintenance evidence with ct-d8cf.
+
+**2026-11-08T17:24:00Z**
+
+2026-11-08 sweep-d: KEEP OPEN (parked). Still in code: views.py _bridge_pin_for_refresh (~:229) swaps in client.try_latest when it differs from the selected pin, and :238 falls back to try_latest. A/B/A and old-release-after-compaction cases remain unexecuted. Recommended plainer A/C: one fresh-process A/B/A read through the CLI returns A's exact values or refuses, and an available old release stays readable after lifecycle compaction (shared with ct-d8cf).

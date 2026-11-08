@@ -48,3 +48,7 @@ Source evidence and full original criteria remain in: .tickets/ct-d8cf.md:14; .t
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: credit the existing backend and focus on writer fencing, partial durable commits, rollback, abandoned caches and timestamp comparisons. Keep append, exact-read and export ownership in their existing tickets.
+
+**2026-11-08T17:23:55Z**
+
+2026-11-08 sweep-d: KEEP OPEN (parked). Rechecked on main 302dc5e6: nothing schedules or imports news_lake outside its own CLI/tests, and it writes no raw storage, so no source data is at risk. Defects still present in code: abandon_cycle never clears _known_upsert_records (lake.py); ControlStore.claim returns self.epoch() after its write transaction (control.py:116-123). Recommended plainer A/C for resumption: before the first scheduled news run, a failed cycle leaves the last available release readable and byte-identical, claims return their own epoch, and timestamps compare as instants; move PyIceberg retirement and cleanup items to notes.

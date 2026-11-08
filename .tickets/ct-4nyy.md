@@ -68,3 +68,7 @@ Current ownership after ct-mi03/ct-a1aa retirement: one News Lake rights/expiry 
 **2026-11-05T20:56:46Z**
 
 Final root-cause review: bind subset export policy to pinned captures, use chronological expiry, and retain immutable export references. Removed closed ct-f11a from hard dependencies while preserving its evidence link.
+
+**2026-11-08T17:24:00Z**
+
+2026-11-08 sweep-d: KEEP OPEN (parked; nothing exports publicly). Still in code: storage/docspec/export.py derives expired_capture_ids only from release_read['tables']['news.captures'], so a versions-only read gets an empty expiry set, and falls back to try_latest when a pin is missing. Recommended plainer A/C: refuse a subset export when the release's capture evidence is absent; expiry checked before/at/after retain_until with mixed fractional precision; write to a release-specific path. Defer the differential comparison and replay ceremony until export ships.
