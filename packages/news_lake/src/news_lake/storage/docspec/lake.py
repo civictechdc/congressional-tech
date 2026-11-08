@@ -47,6 +47,25 @@ from news_lake.storage.docspec.schema import (
 )
 
 
+def _unique_rows_by_id(
+    dataset: str, rows: list[dict[str, Any]], ids: set[str]
+) -> dict[str, dict[str, Any]]:
+    """Index stored rows for ``ids`` by logical ID; refuse an ID stored more than once."""
+    found: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        row_id = row['id']
+        if row_id not in ids:
+            continue
+        if row_id in found:
+            raise AppendCollisionError(
+                'append_duplicate_id',
+                f'id {row_id} is stored more than once on append-only {dataset}',
+                record_id=row_id,
+            )
+        found[row_id] = row
+    return found
+
+
 class DocSpecLake(_DocSpecDatasetManager):
     """Route news_lake records into native datasets, one per contract table.
 
@@ -85,7 +104,6 @@ class DocSpecLake(_DocSpecDatasetManager):
         self._compact_target_file_bytes = compact_target_file_bytes
         self.stream_ipc = bool(stream_ipc)
         self.native_upsert_merge = bool(native_upsert_merge)
-        self._known_ids: dict[str, set[str]] = {}
         self._known_upsert_records: dict[str, dict[str, Any]] = {}
         self.last_lookup_stats: dict[str, dict[str, Any]] = {}
         self._committed = self._load_committed_state()
@@ -292,23 +310,25 @@ class DocSpecLake(_DocSpecDatasetManager):
             'rows_transferred': table.num_rows,
             'total_rows': pin_rows(pin) or table.num_rows,
         }
-        return {row['id']: row for row in rows}
+        return _unique_rows_by_id(dataset, rows, set(id_list))
 
     def _existing_for_append(self, pin: Mapping[str, Any], kind: str, records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-        """Fetch existing rows for an append batch using physical update key point pruning."""
+        """Fetch stored rows for an append batch's logical IDs from the exact write base.
+
+        The physical key may lead with a time column, but logical identity is the
+        ID alone. A time-pruned read finds unchanged replays; every ID it does not
+        find is then probed by ID on the same pin, so a fresh process cannot miss a
+        stored ID whose timestamp changed (ct-xu1o).
+        """
         keys = self._update_keys_for(kind)
         if len(keys) <= 1:
-            found = self._existing_by_ids(pin, kind, (record['id'] for record in records))
-            dataset = pin['dataset']['dataset']
-            self._known_ids.setdefault(dataset, set()).update(found.keys())
-            return found
+            return self._existing_by_ids(pin, kind, (record['id'] for record in records))
 
         time_col = keys[0]
-        id_list = sorted({record['id'] for record in records})
-        id_set = set(id_list)
+        id_set = {record['id'] for record in records}
         dataset = pin['dataset']['dataset']
         total_rows = pin_rows(pin)
-        if not id_list:
+        if not id_set:
             self.last_lookup_stats[dataset] = {
                 'requested_ids': 0,
                 'requested_keys': 0,
@@ -322,22 +342,18 @@ class DocSpecLake(_DocSpecDatasetManager):
             pin, time_col, time_values, schema=kind_arrow_schema(kind)
         )
         rows = table_records(table)
-        found = {row['id']: row for row in rows if row['id'] in id_set}
         rows_transferred = int(table.num_rows)
-        known = self._known_ids.setdefault(dataset, set())
-        known.update(found.keys())
-        missing_known = (id_set & known) - set(found)
-        if missing_known:
+        unresolved = id_set - {row['id'] for row in rows}
+        if unresolved:
             fallback_table = self.client.read_keys(
-                pin, 'id', sorted(missing_known), schema=kind_arrow_schema(kind)
+                pin, 'id', sorted(unresolved), schema=kind_arrow_schema(kind)
             )
-            for row in table_records(fallback_table):
-                if row['id'] in id_set:
-                    found[row['id']] = row
+            rows.extend(table_records(fallback_table))
             rows_transferred += int(fallback_table.num_rows)
+        found = _unique_rows_by_id(dataset, rows, id_set)
         self.last_lookup_stats[dataset] = {
-            'requested_ids': len(id_list),
-            'requested_keys': len(id_list),
+            'requested_ids': len(id_set),
+            'requested_keys': len(id_set),
             'matched_rows': len(found),
             'rows_transferred': rows_transferred,
             'total_rows': total_rows,
@@ -378,7 +394,6 @@ class DocSpecLake(_DocSpecDatasetManager):
                 relationship=relationship,
                 stream_ipc=stream_ipc,
             )
-            self._known_ids.setdefault(dataset, set()).update(r['id'] for r in records)
             return pin
         existing = self._existing_for_append(prior, kind, records)
         new_records = []
@@ -410,7 +425,6 @@ class DocSpecLake(_DocSpecDatasetManager):
             relationship=relationship,
             stream_ipc=stream_ipc,
         )
-        self._known_ids.setdefault(dataset, set()).update(r['id'] for r in new_records)
         return pin
 
     def _commit_upsert(
@@ -836,7 +850,6 @@ class DocSpecLake(_DocSpecDatasetManager):
             baseline_version = baseline_pin['dataset']['version']
             if current_version == baseline_version:
                 new_committed[dataset] = baseline_pin
-                self._known_ids.pop(dataset, None)
                 continue
             current_source = pin_group(current_pin, 'source')
             baseline_source = pin_group(baseline_pin, 'source')
@@ -858,7 +871,6 @@ class DocSpecLake(_DocSpecDatasetManager):
             )
             if same_data and current_rel == relationship:
                 new_committed[dataset] = current_pin
-                self._known_ids.pop(dataset, None)
                 continue
             schema = kind_arrow_schema(kind)
             keys = self._update_keys_for(kind)
@@ -894,7 +906,6 @@ class DocSpecLake(_DocSpecDatasetManager):
                 stream_ipc=self.stream_ipc,
             )
             new_committed[dataset] = reverted_pin
-            self._known_ids.pop(dataset, None)
 
         self.committed = new_committed
         self._save_committed_state()
