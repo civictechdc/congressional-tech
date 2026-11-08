@@ -329,6 +329,38 @@ def test_scheduler_cli_has_no_replay_or_raw_index_mode(tmp_path):
     with pytest.raises(SystemExit):main(['--seed-inventory','pipeline-data/meeting-inventory/house.json.gz'])
 
 
+def test_b14_meeting_fetchers_write_only_families_the_nightly_ingests(tmp_path):
+    """The nightly lists receipts/<family>/ for publish-daily.json families only (ct-q4e2)."""
+    from congress_api.cli.fetch_meetings import run_meeting_fetchers
+
+    class Missing(Adapter):
+        def hop(self, url, destination, *, limit, headers):
+            if url not in self.responses:
+                self.responses[url] = (404, b'not found', {'content-type': 'text/html'})
+            return super().hop(url, destination, limit=limit, headers=headers)
+
+    page = b'<html><head><title>Hearing</title></head><body><h1>Hearing</h1></body></html>'
+    adapter = Missing({
+        'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=118002': (200, page, {'content-type': 'text/html'}),
+        'https://www.banking.senate.gov/hearings/test-hearing': (200, page, {'content-type': 'text/html'}),
+    })
+    summary = run_meeting_fetchers(
+        store=BodyStore(LocalAdapter(tmp_path / 'raw')),
+        identity=IDENTITY,
+        direct=adapter,
+        resolve=lambda _: ['8.8.8.8'],
+        pace=lambda *_: None,
+        house_meetings=[{'eventId': '118002', 'congress': 118, 'chamber': 'House',
+                         'date': '2026-10-10T14:00:00Z', 'committees': [{'systemCode': 'hsif00'}]}],
+        senate_urls=['https://www.banking.senate.gov/hearings/test-hearing'],
+    )
+    project = Path(__file__).resolve().parents[3]
+    ingested = set(json.loads((project / 'model/jobs/publish-daily.json').read_text())['receipt_families'])
+    written = {key.split('/')[1] + '/' + key.split('/')[2] for key in summary['receipt_keys']}
+    assert {'house/pages', 'senate/pages'} <= written
+    assert written <= ingested
+
+
 def test_b14_meeting_fetchers_and_url_state_capture_emit_stored_md5_and_suffix(tmp_path):
     from congress_api.cli.fetch_meetings import run_meeting_fetchers
     from congress_api.acquisition.capture_scheduler import run_capture

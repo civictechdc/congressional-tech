@@ -63,6 +63,7 @@ def run_meeting_fetchers(
     house_xml_targets=(),
     senate_urls=(),
     api_key=None,
+    user_agent=None,
     spool_limit=64 << 20,
     write_date=None,
 ):
@@ -82,12 +83,13 @@ def run_meeting_fetchers(
     pace = pace or HostPacer(PACING)
     if headers is None:
         def headers(url):
+            fixed = {'User-Agent': user_agent} if user_agent else {}
             if urlsplit(url).hostname in {'api.congress.gov', 'api.govinfo.gov'}:
                 key = api_key or os.environ.get('DATA_GOV_API_KEY') or os.environ.get('CONGRESS_GOV_API_KEY')
                 if not key:
                     raise ValueError('DATA_GOV_API_KEY is required for API meeting fetches')
-                return {'X-Api-Key': key}
-            return {}
+                return {**fixed, 'X-Api-Key': key}
+            return fixed
 
     summary = {
         'run_id': run_id,
@@ -202,6 +204,7 @@ def main(argv=None):
     parser.add_argument('--senate-url', action='append', default=[])
     parser.add_argument('--congress-detail-url', action='append', default=[])
     parser.add_argument('--fetcher-binary', type=Path, default=_default_fetcher_binary())
+    parser.add_argument('--user-agent', help='Fixed User-Agent header for every source request')
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args(argv)
 
@@ -273,6 +276,7 @@ def main(argv=None):
             house_meetings=spec_data.get('house_meetings', ()),
             house_xml_targets=spec_data.get('house_xml_targets', ()),
             senate_urls=list(spec_data.get('senate_urls', ())) + list(args.senate_url),
+            user_agent=args.user_agent,
         )
     print(json.dumps(result, indent=2, sort_keys=True))
     return result
