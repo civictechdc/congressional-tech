@@ -149,3 +149,7 @@ The reviewed source reference is included in local main 1a5ae01c. Remaining: Sou
 November 7 post-release owner update for archive 5d24699ad9fa / Explorer 0.6.2. The current shared release, 78 reviewed comparison groups, 31 installed checks and deployed retirement supersede the old candidate/cutover holds. Credit the closed House transition, hosted CI, legislative and activity scopes, and preserve the existing rollback pair.
 
 Keep open for the already-owned preservation/reader dispositions, B8/Basin decisions, raw locks, scheduled capture, unattended Mac additions-only publication and the weekly collector-to-Pages event. The site retirement itself is accepted; deferred indexing and News Lake are not new gates. [Owner evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-77zb/STATUS.json).
+
+**2026-11-08T17:23:01Z**
+
+2026-11-08 sweep: ct-m104 and ct-yci9 closed against live 630164505301. Open dependencies: ct-gi01 (paid retry of 445 URLs, waiting on keys), cef-96wc (B8 reviews exist only as a gitignored local file; not in raw R2), ct-1l1h (last readback 2026-11-06 found no raw lock rules on congressional-tech-raw), ct-4jms (scheduled capture workflow disabled, no run). ct-082q remains linked for HTML A/C cleanup.
