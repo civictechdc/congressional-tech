@@ -190,8 +190,8 @@ def body_text_evidence(closure):
                   spicy_docs=dict(version=version('spicy-docs'), derivation=BODY_TEXT_DERIVATION_VERSION,
                                   digest=derivation_code_digest()))
     pdf = dict(pymupdf=version('pymupdf'), ocr_rule=dict(min_chars=derivation.OCR_MIN_CHARS,
-               garbled=derivation.GARBLED_ISSUE, default_strategy=derivation.DEFAULT_STRATEGY),
-               macos_build=derivation.macos_build())
+               garble=derivation.GARBLE, dpi=derivation.OCR_DPI, default_strategy=derivation.DEFAULT_STRATEGY,
+               engine_strategy=derivation.VISION_STRATEGY), macos_build=derivation.macos_build())
     return {parser: dict(version=version_, **common, **(pdf if parser in ('pdf_text', 'warc') else {}))
             for parser, version_ in body_text.current_versions().items()}
 
@@ -244,7 +244,7 @@ def sample_digest(parser, *, root=ROOT):
     if parser in BODY_TEXT_SAMPLES:
         from congress_api.lake.body_text import _sniff_format
         from congress_api.parsers import body_text as derivation
-        reading = derivation.derive(BODY_TEXT_SAMPLES[parser](root), parser, strategy=derivation.NativeOnly(),
+        reading = derivation.derive(BODY_TEXT_SAMPLES[parser](root), parser, strategy=derivation.native_only(),
             page_deadline_seconds=0, sniff_format=_sniff_format, max_bytes=64 << 20)
         values = dict(reading.row(), page_offsets=list(reading.page_offsets), ocr_pages=list(reading.ocr_pages))
     elif parser == 'html_metadata':

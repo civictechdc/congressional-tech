@@ -213,7 +213,7 @@ def parse_payload(payload):
         return dict(row=dict(status='error', error_type='decoded_size_limit'))
     spec = request['strategy']
     if spec not in _STRATEGIES:  # one strategy object per worker process, reused across bodies
-        _STRATEGIES[spec] = derivation.load_strategy(spec)
+        _STRATEGIES[spec] = derivation.load_page_rule(spec)
     try:
         reading = derivation.derive(data, request['parser'], strategy=_STRATEGIES[spec],
             page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
@@ -279,8 +279,10 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
           parser_workers=1, parser_memory_bytes=readings.PARSER_MEMORY_BYTES,
           strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS):
     """Read one batch with bounded workers; stage its texts, readings rows and decisions."""
-    from congress_api.parsers.body_text import DEFAULT_STRATEGY
+    from congress_api.parsers.body_text import DEFAULT_STRATEGY, load_page_rule
     ParserWorkerPool.validate_budget(parser_workers, parser_memory_bytes, WORKER_MEMORY_BYTES)
+    strategy = strategy or DEFAULT_STRATEGY
+    load_page_rule(strategy)  # an engine this host lacks refuses here, before any body is read
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
     texts_dir = work / 'texts'
@@ -302,7 +304,7 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
                 raise ValueError('Body copy path or key does not name its body')
             request = dict(path=str(raw / relative), body_sha=body_hex, parser=item['parser'],
                            stored_bytes=item['stored_bytes'], texts=str(texts_dir),
-                           strategy=strategy or DEFAULT_STRATEGY, page_deadline_seconds=page_deadline_seconds)
+                           strategy=strategy, page_deadline_seconds=page_deadline_seconds)
             if item['stored_bytes'] is None:  # no pinned size: a local copy sized now and verified by hash
                 try:
                     request.update(stored_bytes=(raw / relative).stat().st_size, unpinned=True)

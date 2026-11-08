@@ -19,7 +19,7 @@ def sniff(payload):
 
 
 def derive(data, parser, strategy=None, deadline=30.0):
-    return bt.derive(data, parser, strategy=strategy or bt.NativeOnly(), page_deadline_seconds=deadline,
+    return bt.derive(data, parser, strategy=strategy or bt.native_only(), page_deadline_seconds=deadline,
                      sniff_format=sniff, max_bytes=64 << 20)
 
 
@@ -41,14 +41,17 @@ def test_native_only_leaves_a_textless_image_page_for_ocr():
 
 
 class FakeOcr:
-    """Native text, except a page the declared rule sends to OCR reads as a fixed recognition."""
+    """NativeOrOcr's output shape: a replaced page keeps its native observation first and adds the
+    recognized one, marked ``native-text-replaced``, its configuration naming the macOS build."""
     def extract(self, page):
-        from spicy_docs.extraction import NativeText, Observation, PageContent, TextBlock
+        from spicy_docs.extraction import NativeText, Observation, PageContent, ProcessingIssue, TextBlock
         content = NativeText().extract(page)
         if not bt.needs_ocr(page, content.observations[0]):
             return content
-        block = TextBlock('RECOGNIZED PAGE TEXT', observation='ocr')
-        return PageContent((block,), (Observation('ocr', block.text, {'backend': 'fake'}, None, (block,)),))
+        block = TextBlock('RECOGNIZED PAGE TEXT', observation='full')
+        recognized = Observation('full', block.text, {'backend': 'fake', 'macos_build': '25X999'}, None, (block,),
+                                 issues=(ProcessingIssue(bt.REPLACED_ISSUE, 'no text, draws an image'),))
+        return PageContent((block,), (content.observations[0], recognized))
 
 
 def test_an_injected_strategy_reads_the_textless_page_and_records_it():
@@ -56,8 +59,53 @@ def test_an_injected_strategy_reads_the_textless_page_and_records_it():
     assert reading.status == 'completed' and reading.ocr_pages == (2,)
     assert reading.text == PAGE_ONE + '\nRECOGNIZED PAGE TEXT'
     assert reading.row()['fingerprint'] is None  # OCR output is not a native layer
-    import platform
-    assert (reading.macos_build is not None) == (platform.system() == 'Darwin')
+    assert reading.macos_build == '25X999'  # the backend's stated build, not a guess
+
+
+class FixedBackend:
+    """An ImageBackend standing in for Apple Vision."""
+    def __init__(self):
+        self.pages = 0
+
+    def recognize(self, image):
+        from spicy_docs.extraction import Recognition
+        self.pages += 1
+        return Recognition('VISION TEXT', {'backend': 'fixed', 'macos_build': '25Y111'}, None)
+
+
+NATIVE_OR_OCR = __import__('importlib').util.find_spec('spicy_docs') and hasattr(
+    __import__('spicy_docs.extraction', fromlist=['x']), 'NativeOrOcr')
+
+
+@pytest.mark.skipif(not NATIVE_OR_OCR, reason='the pinned spicy-docs predates NativeOrOcr (spicy-docs body-text-ocr-path)')
+def test_native_or_ocr_with_a_fake_backend_recognizes_only_the_textless_page():
+    from spicy_docs.extraction import NativeOrOcr
+    backend = FixedBackend()
+    reading = derive(scanned_pdf(), 'pdf_text', strategy=bt.PageRule(NativeOrOcr(backend, min_chars=bt.OCR_MIN_CHARS)))
+    assert backend.pages == 1 and reading.ocr_pages == (2,) and reading.macos_build == '25Y111'
+    assert reading.text == PAGE_ONE + '\nVISION TEXT'
+    with pytest.raises(bt.OcrRequired):  # the default rule on a host without the engine
+        derive(scanned_pdf(), 'pdf_text', strategy=bt.PageRule(NativeOrOcr(bt.NoEngine())))
+
+
+def test_the_rule_keeps_short_pages_without_images_and_flags_garbled_text():
+    from types import SimpleNamespace
+    page = lambda images: SimpleNamespace(image_count=lambda: images)
+    native = lambda text: SimpleNamespace(text=text, issues=())
+    assert not bt.needs_ocr(page(0), native('')) and bt.needs_ocr(page(1), native(''))
+    assert not bt.needs_ocr(page(1), native('x' * bt.OCR_MIN_CHARS))
+    assert bt.needs_ocr(page(0), native('Caesar shifted\x03 text ' * 10))
+    assert bt.needs_ocr(page(0), native('replacement \ufffd character ' * 10))
+    assert not bt.needs_ocr(page(0), native('tabs\tand\nline breaks\r are fine ' * 5))
+
+
+def test_a_blank_page_without_an_image_stays_native():
+    import pymupdf
+    document = pymupdf.open()
+    document.new_page().insert_text((72, 72), PAGE_ONE, fontsize=9)
+    document.new_page()
+    reading = derive(document.tobytes(), 'pdf_text')
+    assert reading.status == 'completed' and reading.ocr_pages == () and reading.text == PAGE_ONE + '\n'
 
 
 class FailsPageTwo:
@@ -143,7 +191,7 @@ def test_body_text_ids_are_their_declarations_and_name_the_page_rule():
         assert READING_VERSIONS[parser] == hashlib.sha256(declaration.encode()).hexdigest()
     # A threshold the code uses must be the one its ID declares; moving it needs a new ID.
     assert f'under {bt.OCR_MIN_CHARS} non-whitespace' in BODY_TEXT_DECLARATIONS['pdf_text']
-    assert bt.GARBLED_ISSUE in BODY_TEXT_DECLARATIONS['pdf_text']
+    assert 'U+FFFD' in BODY_TEXT_DECLARATIONS['pdf_text'] and f'raw RGB at {bt.OCR_DPI} dpi' in BODY_TEXT_DECLARATIONS['pdf_text']
 
 
 FIXTURES = __import__('pathlib').Path(__file__).parent / 'fixtures'

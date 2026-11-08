@@ -168,3 +168,15 @@ def test_batches_are_sized_by_an_upper_bound_on_their_text():
     assert [len(b) for b in body_text.batches(iter(items), max_cache_bytes=10 * budget, max_items=2)] == [2, 2, 1]
     with pytest.raises(ValueError):
         list(body_text.batches(iter(items), max_cache_bytes=11 << 30))
+
+
+def test_a_page_rule_this_host_cannot_build_refuses_before_any_body_is_read(tmp_path):
+    args, _ = lake(tmp_path, dict(a=(two_page_pdf(), 'pdf')))
+    planned = body_text.plan(captures=args['captures'], engine=args['engine'], work=tmp_path / 'plan',
+                             decided_at=STAMP, local_root=args['local_root'])
+    Scripted.script, Scripted.calls = [], []
+    with pytest.raises(AttributeError):
+        body_text.stage(planned, pq.read_table(planned['work_list']).to_pylist(), engine=args['engine'],
+                        work=tmp_path / 'stage', worker_factory=Scripted,
+                        strategy='congress_api.parsers.body_text:no_such_engine')
+    assert Scripted.calls == []

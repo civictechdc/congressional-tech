@@ -6,10 +6,12 @@ rules are spicy-docs': its markup reader for ``html_text`` and ``xml_text``, its
 ``warc``, whose payload the caller sniffs and routes back here. What this module adds is the
 page rule's injection point and the bounds around it:
 
-- **Page rule.** ``pdf_text`` takes a spicy-docs ``PageStrategy`` (``extract(page) ->
-  PageContent``). A page is OCR'd when the strategy returns an observation other than
-  ``native``. The default, :class:`NativeOnly`, reads the native layer and raises
-  :class:`OcrRequired` for a page the declared rule sends to OCR, so a host without Vision
+- **Page rule.** ``pdf_text`` takes a :class:`PageRule`: a spicy-docs ``PageStrategy``
+  (``extract(page) -> PageContent``) and the reader that renders for it. The declared rule is
+  spicy-docs' ``NativeOrOcr``: keep a sane native layer, else recognize the page whole. A page is
+  OCR'd when its content carries a ``native-text-replaced`` issue (or any observation but
+  ``native``). :func:`apple_vision` is the declared engine; the default, :func:`native_only`,
+  has none: a page the rule sends to OCR raises :class:`OcrRequired`, so a host without Vision
   leaves that body on the work list (§6.6: the version names its OCR engine).
 - **Failed pages.** A page whose extraction fails is recorded in ``failed_pages`` and the
   reading is an ``error`` with no text: a partial text is never passed as complete.
@@ -27,6 +29,7 @@ import hashlib
 import importlib
 import io
 import platform
+import re
 import signal
 import subprocess
 import threading
@@ -35,14 +38,18 @@ import zlib
 from congress_api.parsers.archive_readings import fingerprint
 
 TEXT_HEAD_BYTES = 2048
-# The declared OCR page rule (reading_versions.BODY_TEXT_RULE names the same values): a page
-# needs OCR when its native layer has fewer than this many non-whitespace characters and the
-# page draws an image, or when a line carries a glyph code its font's Unicode map omits.
+# The declared page rule, spicy-docs NativeOrOcr's defaults (reading_versions declares the same):
+# recognize a page with no text layer, with a control character other than tab and line breaks or
+# U+FFFD in its native text, or with fewer than OCR_MIN_CHARS non-whitespace characters that draws
+# an image. GARBLE restates NativeOrOcr's control_characters only for a spicy-docs without it.
 OCR_MIN_CHARS = 50
-GARBLED_ISSUE = 'unmapped-glyph-code'
+GARBLE = r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ufffd]'
+REPLACED_ISSUE = 'native-text-replaced'
+OCR_DPI = 200
 MARKUP_RENDITIONS = {'html_text': 'htm', 'xml_text': 'xml'}
 PAYLOAD_PARSERS = {'pdf': 'pdf_text', 'html': 'html_text', 'xml': 'xml_text'}
-DEFAULT_STRATEGY = 'congress_api.parsers.body_text:NativeOnly'
+DEFAULT_STRATEGY = 'congress_api.parsers.body_text:native_only'
+VISION_STRATEGY = 'congress_api.parsers.body_text:apple_vision'
 
 
 class OcrRequired(Exception):
@@ -96,22 +103,36 @@ def markup_text(data, parser):
     return Reading('completed', text=text, page_offsets=(0,), fields=dict(page_count=1))
 
 
-def _has_image(page):
-    """Whether a spicy-docs PDF page draws an image; unknown page kinds count as yes."""
-    source = getattr(page, 'page', None)
-    return True if source is None or not hasattr(source, 'get_images') else bool(source.get_images(full=False))
+@dataclass(frozen=True)
+class PageRule:
+    """The page strategy and the reader that renders for it (None: DocumentExtractor's default)."""
+    strategy: object
+    reader: object = None
+
+
+class NoEngine:
+    """The image backend of a host without the declared OCR engine: any page sent to it waits."""
+
+    def recognize(self, image):
+        raise OcrRequired('page needs OCR and this host has no engine')
+
+
+def _images_drawn(page):
+    """Raster images the page draws (spicy-docs ``Page.image_count``, where the reader has it)."""
+    count = getattr(page, 'image_count', None)
+    return count() if count is not None else len(page.page.get_image_info())
 
 
 def needs_ocr(page, native):
-    """The declared page rule over one native observation (module constants)."""
-    if any(issue.code == GARBLED_ISSUE for issue in native.issues):
+    """The declared rule over one native observation, for a spicy-docs without ``NativeOrOcr``."""
+    if re.search(GARBLE, native.text):
         return True
-    return len(''.join(native.text.split())) < OCR_MIN_CHARS and _has_image(page)
+    return len(''.join(native.text.split())) < OCR_MIN_CHARS and _images_drawn(page) > 0
 
 
 @dataclass(frozen=True)
-class NativeOnly:
-    """Native text layer only; a page the rule sends to OCR raises :class:`OcrRequired`."""
+class _InterimNativeOnly:
+    """Native text, refusing a page the rule sends to OCR: the rule NativeOrOcr(NoEngine()) applies."""
 
     def extract(self, page):
         from spicy_docs.extraction import NativeText
@@ -121,10 +142,33 @@ class NativeOnly:
         return content
 
 
-def load_strategy(spec):
-    """Construct the page strategy a payload names as ``module:callable``, with no arguments."""
+def native_only():
+    """The default page rule: the declared routing with no OCR engine."""
+    try:
+        from spicy_docs.extraction import NativeOrOcr
+    except ImportError:  # spicy-docs 0.78.0, which predates NativeOrOcr
+        return PageRule(_InterimNativeOnly())
+    return PageRule(NativeOrOcr(NoEngine(), min_chars=OCR_MIN_CHARS))
+
+
+def apple_vision():
+    """The declared engine: NativeOrOcr over Apple Vision, accurate, correction off, raw RGB at 200 dpi.
+
+    Builds Vision's request now, so a host without it refuses here, before any body is read,
+    rather than failing every OCR page.
+    """
+    from spicy_docs.extraction import DefaultReader, NativeOrOcr
+    from spicy_docs.extraction.ocr import AppleVision
+    backend = AppleVision(recognition_level='accurate', language_correction=False)
+    backend.require_reproducible_identity()
+    return PageRule(NativeOrOcr(backend, min_chars=OCR_MIN_CHARS), DefaultReader(dpi=OCR_DPI, raw_rgb=True))
+
+
+def load_page_rule(spec):
+    """Construct the page rule a payload names as ``module:callable`` (no arguments)."""
     module, name = spec.split(':', 1)
-    return getattr(importlib.import_module(module), name)()
+    made = getattr(importlib.import_module(module), name)()
+    return made if isinstance(made, PageRule) else PageRule(made)
 
 
 @contextmanager
@@ -149,11 +193,15 @@ def page_deadline(seconds, page_number):
 
 
 class _PageRun:
-    """Wrap a strategy: time each page, record OCR'd and failed pages, keep going after a failure."""
+    """Wrap a strategy: time each page, record OCR'd and failed pages, keep going after a failure.
+
+    Keeps page numbers and the OCR build only; each page's content (a raw-RGB raster is about
+    11 MB) goes straight back to the extractor and is not held.
+    """
 
     def __init__(self, strategy, deadline_seconds):
         self.strategy, self.deadline = strategy, deadline_seconds
-        self.ocr, self.failed, self.errors = [], [], {}
+        self.ocr, self.failed, self.errors, self.builds = [], [], {}, set()
 
     def extract(self, page):
         from spicy_docs.extraction import PageContent
@@ -166,22 +214,28 @@ class _PageRun:
             self.failed.append(page.number)
             self.errors[page.number] = type(error).__name__
             return PageContent((), ())
-        if any(observation.id != 'native' for observation in content.observations):
+        replaced = [o for o in content.observations if o.id != 'native'
+                    or any(issue.code == REPLACED_ISSUE for issue in o.issues)]
+        if replaced:
             self.ocr.append(page.number)
+            self.builds.update(o.configuration.get('macos_build') for o in replaced
+                               if isinstance(o.configuration, dict) and o.configuration.get('macos_build'))
         return content
 
 
 def pdf_text(data, *, strategy, page_deadline_seconds):
-    """``pdf_text``: one open of the PDF, each page through ``strategy``, then GPO normalization.
+    """``pdf_text``: one open of the PDF, each page through the rule, then GPO normalization.
 
+    ``strategy`` is a :class:`PageRule` or a bare page strategy (rendered by the default reader).
     Raises :class:`OcrRequired` or :class:`PageDeadline`; every other failure is a reading.
     """
     from spicy_docs.extraction import DocumentExtractor
     from spicy_docs.extraction.body_text import rendition_text
-    run = _PageRun(strategy, page_deadline_seconds)
+    rule = strategy if isinstance(strategy, PageRule) else PageRule(strategy)
+    run = _PageRun(rule.strategy, page_deadline_seconds)
     try:
-        body = rendition_text(data, rendition='pdf',
-                              extractor=DocumentExtractor(run, max_input_bytes=max(1, len(data))))
+        body = rendition_text(data, rendition='pdf', extractor=DocumentExtractor(
+            run, reader=rule.reader, max_input_bytes=max(1, len(data))))
     except (OcrRequired, PageDeadline, MemoryError):
         raise
     except Exception as error:  # an unopenable, encrypted or pageless document
@@ -191,8 +245,12 @@ def pdf_text(data, *, strategy, page_deadline_seconds):
         return Reading('error', 'failed_pages', fields=dict(
             page_count=pages, failed_pages=run.failed,
             failed_page_errors=sorted(set(run.errors.values()))))
+    if len(run.builds) > 1:
+        raise ValueError('OCR in one document ran on more than one macOS build')
+    # The build the OCR backend states (AppleVision's configuration), else this host's.
+    build = (next(iter(run.builds)) if run.builds else macos_build()) if run.ocr else None
     return Reading('completed', text=body.text, page_offsets=page_offsets(body.pages),
-                   ocr_pages=tuple(run.ocr), macos_build=macos_build() if run.ocr else None,
+                   ocr_pages=tuple(run.ocr), macos_build=build,
                    fields=dict(page_count=pages, **({'ocr_pages': len(run.ocr)} if run.ocr else {})))
 
 

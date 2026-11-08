@@ -56,7 +56,7 @@
       "version": "0.78.0"
     },
     "version": "00994d3df2a6f0fba27827ed098c7b17204132e45a19c77b1b10260c2321bdf4",
-    "workspace_sha256": "8e7032c89aea447bda885fa2343970b4fcd530a020a7d69d70e73b0f0a2aeee8"
+    "workspace_sha256": "3138cf5bcd10cf0a7841b6b3d4aedc4acbcf5b4151c2b8040910c7ab2657504b"
   },
   "json": {
     "limits": {
@@ -77,8 +77,10 @@
     "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
     "macos_build": "25G5057c",
     "ocr_rule": {
-      "default_strategy": "congress_api.parsers.body_text:NativeOnly",
-      "garbled": "unmapped-glyph-code",
+      "default_strategy": "congress_api.parsers.body_text:native_only",
+      "dpi": 200,
+      "engine_strategy": "congress_api.parsers.body_text:apple_vision",
+      "garble": "[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f-\\x9f\\ufffd]",
       "min_chars": 50
     },
     "page_deadline_seconds": 60,
@@ -95,8 +97,8 @@
       "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
       "version": "0.78.0"
     },
-    "version": "b01e6b94cd41159b0b1f1de3c3d326f7485f23594337b3b5cad59d0eb2c71b4b",
-    "workspace_sha256": "8e7032c89aea447bda885fa2343970b4fcd530a020a7d69d70e73b0f0a2aeee8"
+    "version": "875d3362d6a460d181c510b99701e19fc34dacd751cb306280e66d13e4c7ed7f",
+    "workspace_sha256": "3138cf5bcd10cf0a7841b6b3d4aedc4acbcf5b4151c2b8040910c7ab2657504b"
   },
   "readings": {
     "limits": {
@@ -134,8 +136,10 @@
     "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
     "macos_build": "25G5057c",
     "ocr_rule": {
-      "default_strategy": "congress_api.parsers.body_text:NativeOnly",
-      "garbled": "unmapped-glyph-code",
+      "default_strategy": "congress_api.parsers.body_text:native_only",
+      "dpi": 200,
+      "engine_strategy": "congress_api.parsers.body_text:apple_vision",
+      "garble": "[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f-\\x9f\\ufffd]",
       "min_chars": 50
     },
     "page_deadline_seconds": 60,
@@ -152,8 +156,8 @@
       "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
       "version": "0.78.0"
     },
-    "version": "cfb84b11b8809305f94bb7306286cc84dd33f2c353910942cc51d17466e81485",
-    "workspace_sha256": "8e7032c89aea447bda885fa2343970b4fcd530a020a7d69d70e73b0f0a2aeee8"
+    "version": "c1e2164947ebcd6cde3eb4fe55e7c4409e791a32c5a89f9a6fa85d67f83b7a81",
+    "workspace_sha256": "3138cf5bcd10cf0a7841b6b3d4aedc4acbcf5b4151c2b8040910c7ab2657504b"
   },
   "xml": {
     "limits": {
@@ -186,6 +190,6 @@
       "version": "0.78.0"
     },
     "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
-    "workspace_sha256": "8e7032c89aea447bda885fa2343970b4fcd530a020a7d69d70e73b0f0a2aeee8"
+    "workspace_sha256": "3138cf5bcd10cf0a7841b6b3d4aedc4acbcf5b4151c2b8040910c7ab2657504b"
   }
 }
