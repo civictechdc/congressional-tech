@@ -1,6 +1,19 @@
 Document-kind classification: next steps
 =======================================
 
+Status: closed, never evaluated (2026-11-08)
+--------------------------------------------
+The 200 held-out records were never evaluated, and this plan is not to be
+resumed. Two of the nine inputs that content_rule_freeze.json froze are no
+longer in the tree: tests/test_explicit_document_forms.py (last touched by
+a5000046, Oct 23) and .github/workflows/capture-raw-sources.yml (deleted by
+9b387f85, Oct 30). The other seven still match their frozen hashes. The
+filename viewer this fed was retired in 2d110f0e (Oct 27). Filename readings
+now come from congress_api.lake.filenames, keyed by a version digest of the
+house_naming package, so a rule change produces new readings. The freeze
+record stays unchanged as history; test-lane prepare-baseline still reads its
+baseline commit. Everything below is the plan as it stood in October.
+
 Current checkpoint
 ------------------
 Filename version 3.2.0 is committed in 20114c8. The frozen PDF pilot and its
