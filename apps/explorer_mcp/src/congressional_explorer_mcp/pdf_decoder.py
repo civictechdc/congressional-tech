@@ -3,6 +3,7 @@
 Only decoding runs in the child. Verified-body fetches, cache publication and
 response slicing keep their existing owners and never run in a killed process.
 """
+from concurrent.futures import ThreadPoolExecutor, wait
 from contextlib import contextmanager
 from contextvars import ContextVar
 import json
@@ -120,16 +121,15 @@ def extract_pdf_pages(payload, *, deadline=None, backend_info=None):
          sys.executable, '-m', __name__, str(deadline)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         start_new_session=True,
-    ) as process:
+    ) as process, ThreadPoolExecutor(max_workers=1) as transfer_worker:
         try:
-            pending_input = payload
-            while True:
+            # Keep one transfer alive. A retry without input can leave the
+            # unwritten bytes stranded while the decoder waits for stdin EOF.
+            transfer = transfer_worker.submit(process.communicate, payload)
+            while not transfer.done():
                 check()
-                try:
-                    output, _ = process.communicate(input=pending_input, timeout=.02)
-                    break
-                except subprocess.TimeoutExpired:
-                    pending_input = None
+                wait((transfer,), timeout=.02)
+            output, _ = transfer.result()
             check()
             if process.returncode:
                 raise ExplorerError('PDF decoder exited before completing the read')
