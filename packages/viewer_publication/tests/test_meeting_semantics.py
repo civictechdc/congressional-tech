@@ -321,7 +321,8 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
     if details:
         queries += [dict(name='resolved', sql='SELECT * FROM appearance_records_resolved ORDER BY ordinal'),
                     dict(name='observations', sql='SELECT * FROM appearance_observations ORDER BY record_sha_hex'),
-                    dict(name='capture_contexts', sql='SELECT * FROM appearance_capture_contexts ORDER BY receipt_key,receipt_line,capture_index')]
+                    dict(name='capture_contexts', sql='SELECT * FROM appearance_capture_contexts ORDER BY receipt_key,receipt_line,capture_index'),
+                    dict(name='senate_links', sql='SELECT * FROM senate_page_meeting_links ORDER BY record_sha_hex')]
     if print_links:
         queries.append(dict(name='print_links', sql='SELECT package_id,event_id FROM package_meeting_links ORDER BY package_id,event_id'))
     result = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
@@ -791,6 +792,38 @@ def test_senate_page_links_to_meeting_and_outranks_mods_while_preserving_stateme
     assert by_src_name[('mods', 'American Bankers Association')] == ('meeting:9001', None)
 
 
+@pytest.mark.parametrize('text_head,date_in_url,with_alias,expected', [
+    ('Date: Wednesday, February 12, 2020 Time: 09:30 AM', True, True, 327161),
+    ('Notice dated February 13, 2020. Date: February 30, 2020 Time: 09:30 AM', False, False, 327102),
+    ('Notice dated February 13, 2020.', True, True, 327100),
+], ids=['valid-label-with-alias', 'invalid-label-keeps-text-date', 'no-label-keeps-url-date'])
+def test_banking_hearing_date_survives_same_body_aliases(tmp_path, text_head, date_in_url, with_alias, expected):
+    title = 'The Semiannual Monetary Policy Report to the Congress'
+    origin = 'https://www.banking.senate.gov'
+    path = ('/02/03/2020' if date_in_url else '') + '/the-semiannual-monetary-policy-report-to-the-congress'
+    url = origin + '/hearings' + path
+    alias = origin + path
+    page = record('powell', 'senate_page', [witness('Jerome H. Powell')], context_url=url)
+    captures = [
+        dict(mode='fetch', complete=True, outcome='stored', http_status=200, sha_hex=page['record_sha_hex'],
+             family='senate/pages', url=address, requested_url=address, sniffed_format='html',
+             media_type='text/html', retrieved_at=f'2020-02-12T15:0{index}:00Z')
+        for index, address in enumerate([url, alias] if with_alias else [url])
+    ]
+    result = resolve(tmp_path, [page], [], {}, details=True, capture_rows=captures,
+        meetings=((327100, '2020-02-03', title, False, 'senate', 'ssbk00'),
+                  (327161, '2020-02-12', title, False, 'senate', 'ssbk00'),
+                  (327102, '2020-02-13', title, False, 'senate', 'ssbk00')),
+        pages=[dict(body_hex=page['record_sha_hex'], status='completed', title='hearing | Hearings',
+                    heading=title, text_head=text_head, content_date=None)])
+    assert [(row['name'], row['event_id'], row['page_url']) for row in result['resolved']] == [
+        ('Jerome H. Powell', expected, alias if with_alias else url)
+    ]
+    assert result['senate_links'] == [
+        dict(record_sha_hex=page['record_sha_hex'], event_id=expected, banking_hearing_url=url)
+    ]
+
+
 @pytest.mark.parametrize('second_title,expected', [
     ('Unrelated testimony concerning tax revenue', 335901),
     ('Made in America: The Boom in U.S. Manufacturing Investment', None),
@@ -919,6 +952,7 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
     # and matches HMTG- and <sha256>.hhrg- witness filenames.
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     sha_prefix = 'a' * 64
+    banking = 'https://www.banking.senate.gov/hearings/02/03/2020/monetary-policy'
     inputs = [
         json_input(tmp_path, 'appearance_records_resolved', [
             dict(witness_key='wk_house_smith', occasion='meeting:9001', source='house_xml',
@@ -929,8 +963,14 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
                  record_sha_hex='33' * 32, ordinal=0, event_id=9001, name='Smith, Jane', document_urls=[]),
             dict(witness_key='wk_house_doe', occasion='meeting:9001', source='house_xml',
                  record_sha_hex='11' * 32, ordinal=1, event_id=9001, name='Hon. Robert Doe', document_urls=[]),
+            dict(witness_key='wk_powell', occasion='meeting:327161', source='senate_page',
+                 record_sha_hex='44' * 32, ordinal=0, event_id=327161, name='Jerome H. Powell',
+                 page_url=banking.replace('/hearings/', '/'), document_urls=[banking + '/testimony']),
         ], witness_key='Utf8', occasion='Utf8', source='Utf8', record_sha_hex='Utf8',
-           ordinal='Int64', event_id='Int64', name='Utf8', document_urls=list_of('Utf8')),
+           ordinal='Int64', event_id='Int64', name='Utf8', page_url='Utf8', document_urls=list_of('Utf8')),
+        json_input(tmp_path, 'senate_page_meeting_links', [
+            dict(record_sha_hex='44' * 32, event_id=327161, banking_hearing_url=banking),
+        ], record_sha_hex='Utf8', event_id='Int64', banking_hearing_url='Utf8'),
         json_input(tmp_path, 'witness_precedence', [
             dict(witness_key='wk_cgov_smith', superseded_by='wk_house_smith'),
             dict(witness_key='wk_mods_smith', superseded_by='wk_house_smith'),
@@ -956,12 +996,18 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
         json_input(tmp_path, 'document_members', [
             dict(component='comp_hmtg', source_id='src_hmtg'),
             dict(component='comp_sha_hhrg', source_id='src_sha_hhrg'),
+            dict(component='comp_banking', source_id='src_banking'),
+            dict(component='comp_changed_body', source_id='src_changed_body'),
+            dict(component='comp_changed_url', source_id='src_changed_url'),
         ], component='Utf8', source_id='Utf8'),
         json_input(tmp_path, 'source_files', [
             dict(source_id='src_hmtg', body_sha='aa' * 32, source_url='https://docs.house.gov/1.pdf',
                  filename='HMTG-118-AG00-Wstate-SmithJ-20230510.pdf'),
             dict(source_id='src_sha_hhrg', body_sha='bb' * 32, source_url='https://docs.house.gov/2.pdf',
                  filename=f'{sha_prefix}.hhrg-118-ag00-bio-doer-20230510.pdf'),
+            dict(source_id='src_banking', body_sha='44' * 32, source_url=banking, filename='hearing.htm'),
+            dict(source_id='src_changed_body', body_sha='55' * 32, source_url=banking, filename='hearing.htm'),
+            dict(source_id='src_changed_url', body_sha='44' * 32, source_url=banking + '/other', filename='hearing.htm'),
         ], source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8'),
     ]
     steps = witness_key_steps(root=ROOT)
@@ -969,6 +1015,7 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
         dict(name='dwk', sql='SELECT component, witness_keys, witness_name FROM document_witness_keys ORDER BY component')
     ])['dwk']
     assert res == [
+        dict(component='comp_banking', witness_keys=['wk_powell'], witness_name='Jerome H. Powell'),
         dict(component='comp_hmtg',
              witness_keys=['wk_cgov_smith', 'wk_house_smith', 'wk_mods_smith'],
              witness_name='Dr. Jane Smith'),
