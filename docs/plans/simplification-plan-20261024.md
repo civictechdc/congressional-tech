@@ -300,7 +300,7 @@ The first engine-era release may be seeded by an engine SQL conversion of the pi
   The candidates are nested, mixed-type readings such as Congress.gov API JSON and MODS or meeting XML trees.
 - **Structured transcripts:** the captions and subtitles are held in raw and, in phase 2, listed per recording (99% of Senate meeting videos in the 118th–119th Congresses have them); turning them and the printed transcripts (`pdf_text`) into timed speaker turns is full-text work. Such a reading can also name witnesses a source left unnamed, as attributes that never move a `witness_key` ([[PHASE-2]] §2).
 - **New committee markup-vote acquisition or reconstruction:** remains deferred. Existing retained committee amendment/vote records must be inventoried and preserved by `ct-gi01`; exposing recorded facts does not imply individual ballots or complete tallies ([[PHASE-2]] §4.6).
-- **Full-text extraction of every PDF:** one later read of about 403 GB into `pdf_text` ([[DATA-MODEL]] §6.6). It gives page counts and text fingerprints for every PDF, which makes dedupe across sites cheap to revisit.
+- **Full-text extraction of every PDF:** one later read of about 403 GB into `body_text` ([[DATA-MODEL]] §6.6, `docs/plans/pdf-text-20261108.md`). It gives page counts and text fingerprints for every PDF, which makes dedupe across sites cheap to revisit.
 
 ## 8. Uncertainties and Tests
 
