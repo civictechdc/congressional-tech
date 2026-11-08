@@ -1,6 +1,6 @@
 ---
 id: ct-oun5
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-30T14:32:31Z
@@ -36,3 +36,7 @@ Completed and 3-hat reviewed in /Users/mikewolfd/Work/wt/ds-engine-first (impl/e
 **2026-11-08T13:44:49Z**
 
 2026-11-08 reopened: the congressional-tech half of C3 never reached main. origin/main archive_model.py:1085-1086 still records limits=json.loads(engine.limits.read_text()) inside runtime_pins, so the same inputs get different model input digests on a 34 GiB Mac and a 14 GiB CI runner, and a resume with a different memory pool is refused. The repo-side change is c6284e80 'Keep engine limits out of the semantic model profile (C3)' on branch r4-a (kept; worktree .claude/worktrees/impl-r4-a). Port: rebase onto current archive_model.py (8 files plus test_model_determinism.py) and re-run the three-limit-set determinism proof.
+
+**2026-11-08T17:16:49Z**
+
+2026-11-08 closed: the repo-side C3 change merged in 4468343c (from f33d957d). runtime_pins pins platform, build features and binary only; limits go to the input record as engine_limits. test_model_determinism builds identical releases under four limit sets including a forced spill; Mac vs CI limits give the same profile and input digest, and a resume across pools passes. GitHub validate-explorer green on bee5fd97 (run 42502108566).
