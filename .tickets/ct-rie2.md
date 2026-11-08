@@ -106,3 +106,7 @@ Keep in_progress. Public archive 5d24699ad9fa is unchanged. The next coordinated
 Independent readback approved the completed shared selection: exact accepted source/body binding, one capture and one filename addition, complete prior receipt retention, unchanged unrelated selectors and unreadable records, and matching producer acknowledgments. The selected inputs remain reusable.
 
 Merged follow-up 394fb9dd separates native append and validation result directories. The baseline reproduced the overwritten result; focused private native normal/retry controls preserved both results and remained idempotent. The one-line change passed independent review. No shared append, acquisition, default suite or full build was repeated. Keep in_progress for candidate/public acceptance. [Focused evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/append-artifact-path-394fb9dd/EVIDENCE.json).
+
+**2026-11-08T15:26:16Z**
+
+2026-11-08: published in archive release 63016450530114d8ebc03d2936dc8293250ffd546bf00d5205909345216e5e78 (public pointer moved; browser contract and public canary passed; hosted Explorer re-pinned in aed605d1 and read back). Causes: model/jobs/release-causes/5d24699ad9fa-630164505301.json; note: docs/releases/2026-11-08-630164505301.md. The USAID recovery (decision 21ebd7b7, body dd7d7f35, 361,013 bytes) is published with url_state capture_* columns.

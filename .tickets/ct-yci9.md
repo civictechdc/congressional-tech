@@ -61,3 +61,7 @@ Completed the isolated correction for exact PDF f984b8439d21b0ef: direct bill id
 Keep in_progress. Root 01a1aa05 owns the consolidated source rollup and combined plan/lifetime reconciliation; ct-m104 (01a1b1b0-7f7b-7b50-8b00-6f5a05eed772) owns final native production qualification, selected release/deployment and matching MCP detail, bill-document lookup and actual site search. Any residual 4775 meeting context still needs its source basis attributed before removal or closure. Local completion is not live delivery; no further independent source work or competing build is needed.
 
 Independent review: APPROVE for the scoped work; remaining ticket acceptance is unchanged. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-yci9/REVIEW.md).
+
+**2026-11-08T15:26:16Z**
+
+2026-11-08: published in archive release 63016450530114d8ebc03d2936dc8293250ffd546bf00d5205909345216e5e78 (public pointer moved; browser contract and public canary passed; hosted Explorer re-pinned in aed605d1 and read back). Causes: model/jobs/release-causes/5d24699ad9fa-630164505301.json; note: docs/releases/2026-11-08-630164505301.md. 115732 subject_keys read back without 118-hr-4775. The original array_except failed on the lake's non-null list type; fixed with array_remove_all in 3ebe6872 with a lake-typed test.

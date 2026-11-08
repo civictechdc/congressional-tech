@@ -1,0 +1,953 @@
+{
+  "base_release_id": "5d24699ad9fa076e3e10c894a1cb3310ab35b12e8025adcca87feca7978080c1",
+  "candidate_release_id": "63016450530114d8ebc03d2936dc8293250ffd546bf00d5205909345216e5e78",
+  "groups": [
+    {
+      "cause": "ct-rie2: capture profile v2 records the pinned recovery policy recovery-identity-v1 and requirements digest 7bdd3b99; no other field changed.",
+      "count": 0,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/model-output/capture_profile.json",
+          "sha256": "4af24b18e54cdddb6ec60f80e384130df25b24cf2ba02afd0327bdd5e2f2c1f9",
+          "size": 6963
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/post-import-inputs/20261107T224950+0000-21ebd7b7c5c6726d42f4de69ba0065ea3a565b5992eaeafce15fb6f3b27480db.jsonl",
+          "sha256": "1ec3c8426ea7fc7cc73ec2f9aa29c994f0c1df4bcb79ad491a6ec38db0110b3f",
+          "size": 1283
+        }
+      ],
+      "id": "capture_profile.json|changed file without a comparison|unexplained",
+      "tickets": [
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "ct-rie2: one accepted USAID recovery (decision 21ebd7b7, recovered_document via ecoi.net record 2074278). Raw body dd7d7f35 (361,013 bytes, PDF) matches the published digest and size; it is the only added document, link and lookup key, with none removed.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/usaid-raw-check.json",
+          "sha256": "d1aa4d049e694dbb78805983b1e67927228e23294c8992cba4ed24a9f2abfceb",
+          "size": 1095
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/post-import-inputs/20261107T224950+0000-21ebd7b7c5c6726d42f4de69ba0065ea3a565b5992eaeafce15fb6f3b27480db.jsonl",
+          "sha256": "1ec3c8426ea7fc7cc73ec2f9aa29c994f0c1df4bcb79ad491a6ec38db0110b3f",
+          "size": 1283
+        }
+      ],
+      "id": "detail.parquet|added rows|no surviving link key",
+      "tickets": [
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 49 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 49,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "detail.parquet|changed committee_keys|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 440 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 440,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "detail.parquet|changed congress|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 462 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 462,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "detail.parquet|changed document_date|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 437 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 437,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "detail.parquet|changed document_date_source|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 437 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 437,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "detail.parquet|changed document_date_status|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 465 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. Independent review: the raw check cannot tell a wrong meeting on the same day as the right one (21/28 same-day plants flagged); all 28 same-day Banking pages were read by hand and are correct; PDF URL-slug dates match the new meeting for 201/213 (7 publisher slug typos, 5 undated).",
+      "count": 465,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/second-review-20261108/VERDICT.md",
+          "sha256": "c075ff388f94c702f89eff6b135443d4a081f8aedbef6e762d2fde7f3fdb3276",
+          "size": 1772
+        }
+      ],
+      "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 339 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 339,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "detail.parquet|changed witness_keys|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-gi01: pinned historical matcher CSV (blob 93cf5e4a, sha256 77d6119a). Independent pyarrow CSV read equals all 34,641 rows in both directions; 18,500 blank scores are null and 5,016 zero scores stay 0; planted blank-to-zero and dropped row are flagged.",
+      "count": 34641,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/matcher-raw-check.json",
+          "sha256": "cdca27fdae0ff5df7617a4299ca0c06d01097577c2cf609aabbf4497ca24aea9",
+          "size": 610
+        }
+      ],
+      "id": "historical_recording_matches.parquet|file added|file absent from the base release",
+      "tickets": [
+        "ct-gi01"
+      ]
+    },
+    {
+      "cause": "ct-rie2: one accepted USAID recovery (decision 21ebd7b7, recovered_document via ecoi.net record 2074278). Raw body dd7d7f35 (361,013 bytes, PDF) matches the published digest and size; it is the only added document, link and lookup key, with none removed.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/usaid-raw-check.json",
+          "sha256": "d1aa4d049e694dbb78805983b1e67927228e23294c8992cba4ed24a9f2abfceb",
+          "size": 1095
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/post-import-inputs/20261107T224950+0000-21ebd7b7c5c6726d42f4de69ba0065ea3a565b5992eaeafce15fb6f3b27480db.jsonl",
+          "sha256": "1ec3c8426ea7fc7cc73ec2f9aa29c994f0c1df4bcb79ad491a6ec38db0110b3f",
+          "size": 1283
+        }
+      ],
+      "id": "links.parquet|added keys|no evidence given",
+      "tickets": [
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "ct-rie2: one accepted USAID recovery (decision 21ebd7b7, recovered_document via ecoi.net record 2074278). Raw body dd7d7f35 (361,013 bytes, PDF) matches the published digest and size; it is the only added document, link and lookup key, with none removed.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/usaid-raw-check.json",
+          "sha256": "d1aa4d049e694dbb78805983b1e67927228e23294c8992cba4ed24a9f2abfceb",
+          "size": 1095
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/post-import-inputs/20261107T224950+0000-21ebd7b7c5c6726d42f4de69ba0065ea3a565b5992eaeafce15fb6f3b27480db.jsonl",
+          "sha256": "1ec3c8426ea7fc7cc73ec2f9aa29c994f0c1df4bcb79ad491a6ec38db0110b3f",
+          "size": 1283
+        }
+      ],
+      "id": "list.parquet|added rows|no surviving link key",
+      "tickets": [
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 49 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 49,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "list.parquet|changed committee_keys|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 440 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 440,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "list.parquet|changed congress|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 462 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 462,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "list.parquet|changed document_date|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 465 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 465,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "list.parquet|changed meeting_keys|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 339 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged.",
+      "count": 339,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "list.parquet|changed witness_keys|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 299 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. Every changed coverage row is on a Banking event that gained or lost a document or witness.",
+      "count": 299,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 2 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. Every changed coverage row is on a Banking event that gained or lost a document or witness.",
+      "count": 2,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 60 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. Every changed coverage row is on a Banking event that gained or lost a document or witness.",
+      "count": 60,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "List-row renumbering after the inserted USAID row (ct-rie2): all 516 committee_transcript references point to the same document link key in both releases; a planted off-by-one is flagged.",
+      "count": 516,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+      "tickets": [
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "ct-yci9 (c00ae30c, fixed by 3ebe6872): meeting 115732 drops 118-hr-4775. The raw House XML (b342348e) lists HR 1069, 3915, 4755, 4824, 4866, 4877 in legis-num; 4775 appears only in an attachment filename. Candidate equals the raw set; base had the extra key.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        }
+      ],
+      "id": "meetings.parquet|changed subject_keys|value differs on matched key",
+      "tickets": [
+        "ct-yci9"
+      ]
+    },
+    {
+      "cause": "ct-rie2: one accepted USAID recovery (decision 21ebd7b7, recovered_document via ecoi.net record 2074278). Raw body dd7d7f35 (361,013 bytes, PDF) matches the published digest and size; it is the only added document, link and lookup key, with none removed.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/usaid-raw-check.json",
+          "sha256": "d1aa4d049e694dbb78805983b1e67927228e23294c8992cba4ed24a9f2abfceb",
+          "size": 1095
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/post-import-inputs/20261107T224950+0000-21ebd7b7c5c6726d42f4de69ba0065ea3a565b5992eaeafce15fb6f3b27480db.jsonl",
+          "sha256": "1ec3c8426ea7fc7cc73ec2f9aa29c994f0c1df4bcb79ad491a6ec38db0110b3f",
+          "size": 1283
+        }
+      ],
+      "id": "recoveries.parquet|added keys|unexplained",
+      "tickets": [
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "Adds historical_recording_matches.parquet (ct-gi01), the recording_matches gap note, and url_state capture_disposition/capture_reason/capture_decision_id from the pinned recovery policy (ct-rie2). No existing column changed or was removed. New url_state capture_* values (not comparable, gate cannot see them): 1,198,626 eligible/no_satisfying_recovery, 62 excluded/scope_exclusion (docs.house.gov images, senate.gov media), 1 satisfied (the USAID recovery).",
+      "count": 0,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/model-output/schema.json",
+          "sha256": "e71e18224eeffa52871a68422659c8339497063384b00f36db7e8539fb129103",
+          "size": 129793
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/second-review-20261108/VERDICT.md",
+          "sha256": "c075ff388f94c702f89eff6b135443d4a081f8aedbef6e762d2fde7f3fdb3276",
+          "size": 1772
+        }
+      ],
+      "id": "schema.json|changed file without a comparison|unexplained",
+      "tickets": [
+        "ct-gi01",
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "Row renumbering after the one inserted USAID list row (ct-rie2). After translating list_row to link keys, sources has zero added, removed or changed rows in both directions.",
+      "count": 0,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        }
+      ],
+      "id": "sources.parquet|changed bytes, no key or value difference found|unexplained",
+      "tickets": [
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 622 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. The recheck interval follows the newly linked meeting date; last_attempt is unchanged; 619 banking.senate.gov URLs and 3 Federal Reserve MPR reports that are members of re-dated Banking documents.",
+      "count": 622,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-rie2: one accepted USAID recovery (decision 21ebd7b7, recovered_document via ecoi.net record 2074278). Raw body dd7d7f35 (361,013 bytes, PDF) matches the published digest and size; it is the only added document, link and lookup key, with none removed.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/usaid-raw-check.json",
+          "sha256": "d1aa4d049e694dbb78805983b1e67927228e23294c8992cba4ed24a9f2abfceb",
+          "size": 1095
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-rie2/post-import-inputs/20261107T224950+0000-21ebd7b7c5c6726d42f4de69ba0065ea3a565b5992eaeafce15fb6f3b27480db.jsonl",
+          "sha256": "1ec3c8426ea7fc7cc73ec2f9aa29c994f0c1df4bcb79ad491a6ec38db0110b3f",
+          "size": 1283
+        }
+      ],
+      "id": "urls.parquet|keys new|key absent from the previous release",
+      "tickets": [
+        "ct-rie2"
+      ]
+    },
+    {
+      "cause": "ct-082q side effect: 44 historical keys that resolved in 5d24 to the 20 wrongly attached Banking rows no longer resolve. 64 formerly resolvable witness keys vanish in total (20 + 44). Owner accepted on 2026-11-08 (chat): these keys pointed at the wrong hearings and the archive has no outside users yet; the release note records it.",
+      "count": -44,
+      "disposition": "accepted_defect",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/second-review-20261108/VERDICT.md",
+          "sha256": "c075ff388f94c702f89eff6b135443d4a081f8aedbef6e762d2fde7f3fdb3276",
+          "size": 1772
+        }
+      ],
+      "id": "witness_key_map.parquet|removed keys|no longer resolves",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 405 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. The 157 former page keys and 385 older keys map to the attached rows.",
+      "count": 405,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "witness_key_map.parquet|changed occasion|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 64 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. The 157 former page keys and 385 older keys map to the attached rows. These 64 are map entries whose old target no longer resolves onward through the new map; all 405 changed entries still resolve to the same witness occurrence. They are not the 64 accepted vanishing keys (20 + 44).",
+      "count": 64,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/second-review-20261108/VERDICT.md",
+          "sha256": "c075ff388f94c702f89eff6b135443d4a081f8aedbef6e762d2fde7f3fdb3276",
+          "size": 1772
+        }
+      ],
+      "id": "witness_key_map.parquet|changed witness_key|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q side effect: the 20 Banking page rows that moved from a wrong event to the right one get new witness keys, and their 5d24 keys no longer resolve (no map entry). Raw check shows all 20 old events were unsupported. Owner accepted on 2026-11-08 (chat): these keys pointed at the wrong hearings and the archive has no outside users yet; the release note records it.",
+      "count": -20,
+      "disposition": "accepted_defect",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/second-review-20261108/VERDICT.md",
+          "sha256": "c075ff388f94c702f89eff6b135443d4a081f8aedbef6e762d2fde7f3fdb3276",
+          "size": 1772
+        }
+      ],
+      "id": "witnesses.parquet|removed keys|no evidence given",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 20 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. 157 page-only rows gained their event and 20 moved from a wrong event; 55 MODS rows are now superseded by the attached page rows (existing precedence); 1 superseded row is ct-x78c Joseph.",
+      "count": 20,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "witnesses.parquet|added keys|no evidence given",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 157 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. 157 page-only rows gained their event and 20 moved from a wrong event; 55 MODS rows are now superseded by the attached page rows (existing precedence); 1 superseded row is ct-x78c Joseph.",
+      "count": 157,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "witnesses.parquet|changed event_id|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-x78c (fcbab673, appearance head 2797270525889091387): exactly four MODS occurrences change (Senator Smith index entry, Wong-Ruskinko letter, McKim and Joseph organizations). Independent raw MODS read: base values carry another person or misread a record entry; candidate values do not; planted base organization is flagged. No other MODS value changed.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/x78c-raw-check.json",
+          "sha256": "e416b6c8e3b499327d1f669cec1cb415752c6edbfad05d7c62dbd5182b25fb47",
+          "size": 2644
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-x78c/selected-generation-integrated-df2d2c307773/activation-qualification.json",
+          "sha256": "5bf16fe3d417884c3487c41777f5cf97b59224900f6d8f659190dd8ec89887ad",
+          "size": 6306
+        }
+      ],
+      "id": "witnesses.parquet|changed name|value differs on matched key",
+      "tickets": [
+        "ct-x78c"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 157 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. 157 page-only rows gained their event and 20 moved from a wrong event; 55 MODS rows are now superseded by the attached page rows (existing precedence); 1 superseded row is ct-x78c Joseph.",
+      "count": 157,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "witnesses.parquet|changed occasion|value differs on matched key",
+      "tickets": [
+        "ct-082q"
+      ]
+    },
+    {
+      "cause": "ct-x78c (fcbab673, appearance head 2797270525889091387): exactly four MODS occurrences change (Senator Smith index entry, Wong-Ruskinko letter, McKim and Joseph organizations). Independent raw MODS read: base values carry another person or misread a record entry; candidate values do not; planted base organization is flagged. No other MODS value changed.",
+      "count": 2,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/x78c-raw-check.json",
+          "sha256": "e416b6c8e3b499327d1f669cec1cb415752c6edbfad05d7c62dbd5182b25fb47",
+          "size": 2644
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-x78c/selected-generation-integrated-df2d2c307773/activation-qualification.json",
+          "sha256": "5bf16fe3d417884c3487c41777f5cf97b59224900f6d8f659190dd8ec89887ad",
+          "size": 6306
+        }
+      ],
+      "id": "witnesses.parquet|changed organization|value differs on matched key",
+      "tickets": [
+        "ct-x78c"
+      ]
+    },
+    {
+      "cause": "ct-x78c (fcbab673, appearance head 2797270525889091387): exactly four MODS occurrences change (Senator Smith index entry, Wong-Ruskinko letter, McKim and Joseph organizations). Independent raw MODS read: base values carry another person or misread a record entry; candidate values do not; planted base organization is flagged. No other MODS value changed.",
+      "count": 1,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/x78c-raw-check.json",
+          "sha256": "e416b6c8e3b499327d1f669cec1cb415752c6edbfad05d7c62dbd5182b25fb47",
+          "size": 2644
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-x78c/selected-generation-integrated-df2d2c307773/activation-qualification.json",
+          "sha256": "5bf16fe3d417884c3487c41777f5cf97b59224900f6d8f659190dd8ec89887ad",
+          "size": 6306
+        }
+      ],
+      "id": "witnesses.parquet|changed position|value differs on matched key",
+      "tickets": [
+        "ct-x78c"
+      ]
+    },
+    {
+      "cause": "ct-082q (c6d4b35b): Banking hearing pages now keep the publisher-labelled hearing date across capture aliases and attach the page roster through the exact saved body and hearing address. All 56 rows are Banking documents/events. Independent raw check (page text vs Congress.gov/House meeting date and other-source witness surnames; PDFs via the hearing page that links them): 460 of 465 changed documents supported, 4 PDFs not linked from a changed page (named), 1 page (Barr/Lizarraga/Uyeda nominations, event 332550) supported by date and meeting title (other-source witnesses are introducers); all 25 replaced and all 20 moved-witness base events fail the same check; planted wrong events are flagged. 157 page-only rows gained their event and 20 moved from a wrong event; 55 MODS rows are now superseded by the attached page rows (existing precedence); 1 superseded row is ct-x78c Joseph.",
+      "count": 56,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/banking-raw-check.json",
+          "sha256": "39d5ba7fa0bcac5f3f1011a47da4cf2fbc3a7988f588782aece5010c81556d8f",
+          "size": 223944
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/attribution-check.json",
+          "sha256": "edce8071de8623cd5c72f556fabdd46ede478914c70605e00f4abf33473b95d3",
+          "size": 1482
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/diffs/normalized.json",
+          "sha256": "5339371af474473218b8523c58ab0c89785c972dfcb811a8234c6d6c63896820",
+          "size": 1027997
+        }
+      ],
+      "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+      "tickets": [
+        "ct-082q",
+        "ct-x78c"
+      ]
+    },
+    {
+      "cause": "ct-x78c (fcbab673, appearance head 2797270525889091387): exactly four MODS occurrences change (Senator Smith index entry, Wong-Ruskinko letter, McKim and Joseph organizations). Independent raw MODS read: base values carry another person or misread a record entry; candidate values do not; planted base organization is flagged. No other MODS value changed.",
+      "count": 2,
+      "disposition": "explained",
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/production-mvp-20261105T190929Z/combined-release-prep/next-20261108-3ebe6872/review/x78c-raw-check.json",
+          "sha256": "e416b6c8e3b499327d1f669cec1cb415752c6edbfad05d7c62dbd5182b25fb47",
+          "size": 2644
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-x78c/selected-generation-integrated-df2d2c307773/activation-qualification.json",
+          "sha256": "5bf16fe3d417884c3487c41777f5cf97b59224900f6d8f659190dd8ec89887ad",
+          "size": 6306
+        }
+      ],
+      "id": "witnesses.parquet|changed witness_type|value differs on matched key",
+      "tickets": [
+        "ct-x78c"
+      ]
+    }
+  ],
+  "version": 1
+}
