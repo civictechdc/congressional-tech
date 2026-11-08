@@ -2,7 +2,7 @@
 id: ct-4jms
 status: open
 deps: []
-links: [cefr-xjsp, cef-96wc, ct-tk10, ct-ud0b, ct-1l1h, ct-98sm, ct-v967, ct-rie2, ct-5kto, ct-082q, ct-hiec]
+links: [cefr-xjsp, cef-96wc, ct-tk10, ct-ud0b, ct-1l1h, ct-98sm, ct-v967, ct-rie2, ct-5kto, ct-082q, ct-hiec, ct-q4e2, ct-0mqc]
 created: 2026-10-30T14:32:31Z
 type: task
 priority: 1
@@ -96,3 +96,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-08T17:28:23Z**
 
 2026-11-08: the planner could not plan the live release (Resources exhausted on 1.2M url_state rows, then a refusal for two unkeyable historical addresses). Fixed on claude/sweep-c (b3ababac): url_state-sized steps read more than once are materialized; '' and 'http://File URL path: ...' are counted as unkeyable_states and never scheduled. Dry run on 630164505301 under the standard limits: exit 0, 629,541 due, 2,000 queued, 11 s, 3.3 GiB peak RSS; identical queue to the old code on a 300k-row subset. Still open: the first scheduled run and its receipt checks. Ashley's &download=1 target is due (attempts 0) but sorts alphabetically outside the first 2,000; a --cutoff-urls entry does not move an unattempted URL ahead.
+
+**2026-11-08T18:04:36Z**
+
+2026-11-08 supervised capture (owner-approved) from release 630164505301 at commit 491177f3, with the fixed planner (b3ababac) and reviewed-cutoffs-first ordering (4a632e11): dry run due 629,541, queue 45,291, cutoffs 21, unkeyable_states 2. Applied run: 2,000 requests (budget-stopped), 377 MB, 1,041 attempts: 990 unchanged, 41 stored new (budget.house.gov 27, appropriations.house.gov 14), 8 failed, 2 size_limit; 1 refusal outside scope (admin-intelligence.house.gov). Ashley: the reviewed target was attempted first as https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1; it redirects (302) to an HTML page, so the outcome is failed/complete. No Congress.gov committee-meeting URL was attempted: capture has no meeting seed list, and 45k never-tried legacy URLs sort ahead of rechecks, so scheduled capture as configured does not discover new hearings (see ct-q4e2). Evidence: .cache/archive-release/implementation/capture-supervised-20261108/.
