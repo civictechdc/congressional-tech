@@ -13,7 +13,7 @@ import pyarrow as pa
 from ..parsers.house_documents import active, read_xml
 from ..parsers.house_xml import parse_house_meeting, strip_house_meeting_prefix
 from ._record_producer import append_record_table, create_record_table, GOOD_FETCH_CAPTURE_SQL, HOUSE_XML_CAPTURE_SQL, PK, build_record_table, normalize_record_sha, stage_record_table
-from .versions import version_digest
+from .versions import producer_version
 from .video_records import NO_INLINE_SQL
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -49,13 +49,12 @@ FROM captures c WHERE {GOOD_FETCH_CAPTURE_SQL} AND {HOUSE_XML_CAPTURE_SQL} GROUP
 
 def current_versions(*, root: Path = ROOT) -> dict[str, str]:
     package = Path(__file__).resolve().parents[1]
-    return {SOURCE: version_digest(packages={}, files={
+    return {SOURCE: producer_version(root=root, module=__file__, files={
         "producer": Path(__file__),
         "shared_producer": package / "lake/_record_producer.py",
         "documents": package / "parsers/house_documents.py",
         "house_xml": package / "parsers/house_xml.py",
         "xml_repair": package / "parsers/xml_repair.py",
-        "lock": Path(root) / "uv.lock",
         "schema": Path(root) / "model/lake/committee-records.schema.json",
     }, values={"source": SOURCE})}
 

@@ -50,7 +50,7 @@ from ._record_producer import (
     stage_record_table,
     unwrap_congress_gov_payload,
 )
-from .versions import version_digest
+from .versions import producer_version, version_digest
 
 ROOT = Path(__file__).resolve().parents[5]
 TABLE_SCHEMA = ROOT / "model/lake/meeting-records.schema.json"
@@ -213,8 +213,9 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
     producer_path = Path(__file__)
     ast_hash = source_ast_digest(producer_path, _SOURCE_SYMBOLS[source])
     if source == "congress_gov":
-        return version_digest(
-            packages={},
+        return producer_version(
+            root=root,
+            module=producer_path,
             files={
                 "shared_producer": pkg_dir / "lake/_record_producer.py",
                 "models_congress": pkg_dir / "models/congress.py",
@@ -223,12 +224,13 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "parsers_senate_player": pkg_dir / "parsers/senate_player.py",
                 "parsers_meeting_facts": pkg_dir / "parsers/meeting_facts.py",
                 "parsers_text": pkg_dir / "parsers/text.py",
-                "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/meeting-records.schema.json",
             },
             values={"source": "congress_gov", "ast": ast_hash},
         )
-    return version_digest(
+    return producer_version(
+        root=root,
+        module=producer_path,
         packages={"house-naming": root / "packages/house-naming/src/house_naming"},
         files={
             "shared_producer": pkg_dir / "lake/_record_producer.py",
@@ -237,7 +239,6 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
             "parsers_meeting_facts": pkg_dir / "parsers/meeting_facts.py",
             "parsers_text": pkg_dir / "parsers/text.py",
-            "lock": root / "uv.lock",
             "lake_schema": root / "model/lake/meeting-records.schema.json",
         },
         values={

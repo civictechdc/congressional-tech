@@ -13,7 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.lake.tables import table_input
-from congress_api.lake.versions import version_digest
+from congress_api.lake.versions import producer_version
 from congress_api.retention.body_store import BodyStore, LocalAdapter
 from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage, imported_unreadable_provenance
 
@@ -43,9 +43,8 @@ SCHEMA = pa.schema([
 
 def current_version(*, vocabularies=None, root=ROOT):
     root = Path(root)
-    return version_digest(packages={'filename_parser': Path(house_naming.__file__).parent,
-        'producer': Path(__file__).parent}, files={'lock': root/'uv.lock',
-        'effective_filename': root/'model/sql/effective-filenames.sql',
+    return producer_version(root=root, module=__file__, packages={'filename_parser': Path(house_naming.__file__).parent,
+        'producer': Path(__file__).parent}, files={'effective_filename': root/'model/sql/effective-filenames.sql',
         'filename_inputs': root/'model/sql/filename-inputs.sql',
         'parser_worker': root/'packages/congress_api/src/congress_api/retention/parser_worker.py',
         'process_resources': root/'packages/congress_api/src/congress_api/retention/process_resources.py',
