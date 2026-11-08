@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
 import {startArchiveServer} from './archive-server.mjs';
-import {ARCHIVE_ORIGIN,browserDependency,heapSampler,routeArchiveOrigin} from './archive-browser.mjs';
+import {ARCHIVE_ORIGIN,browserDependency,heapSampler,routeArchiveOrigin,routeWhileOpen} from './archive-browser.mjs';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw new Error('Supply --next-release for the required browser stale-tab check.');const targets=await readTargets(args.targets);const targetsStatus=args.targets?JSON.parse(await readFile(args.targets)).status:undefined;
 const {chromium}=browserDependency('playwright');
@@ -16,7 +16,7 @@ async function fixtureContext(options={}){
   const context=await browser.newContext(options);
   // The built artifact keeps its real raw origin. This test adapter redirects
   // only body reads to the explicit fixture store, including deliberate 404s.
-  await context.route(/^https?:\/\/[^/]+\/bodies\/sha256\//,async route=>{
+  await routeWhileOpen(context,/^https?:\/\/[^/]+\/bodies\/sha256\//,async route=>{
     if(!['GET','HEAD'].includes(route.request().method()))return route.abort();
     const url=new URL(route.request().url());
     const response=await route.fetch({url:server.rawBase+url.pathname.slice(1)+url.search});

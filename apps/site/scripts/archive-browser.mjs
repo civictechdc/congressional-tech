@@ -13,8 +13,23 @@ export function browserDependency(name){
  * to the fixture server, which serves the same layout under /data/archive/. */
 export const ARCHIVE_ORIGIN='https://congressional-data.spicygov.ai';
 const archivePath=/^\/viewer-publications\/(manifest\.json|releases\/[a-f0-9]{64}\/[a-z_0-9.-]+)$/;
+/** Route `matcher` on a page or context. A handler can still be running when
+ * its page or context closes (a harness finishing while the worker prefetches);
+ * Playwright then disposes the fetched response and fulfill rejects ("Fetch
+ * response has been disposed"). Only that teardown race is ignored: a failure
+ * while the owner is still open is rethrown. */
+export async function routeWhileOpen(target,matcher,handler){
+  let closed=false;target.once('close',()=>{closed=true;});
+  const tornDown=route=>{
+    if(closed)return true;
+    try{return route.request().frame().page().isClosed();}catch{return false;}
+  };
+  await target.route(matcher,async route=>{
+    try{await handler(route);}catch(error){if(!tornDown(route))throw error;}
+  });
+}
 export async function routeArchiveOrigin(target,server){
-  await target.route(url=>url.origin===ARCHIVE_ORIGIN&&archivePath.test(url.pathname),async route=>{
+  await routeWhileOpen(target,url=>url.origin===ARCHIVE_ORIGIN&&archivePath.test(url.pathname),async route=>{
     const url=new URL(route.request().url());
     const fixture=server.origin+'/congressional-tech/data/archive/'+archivePath.exec(url.pathname)[1]+url.search;
     await route.fulfill({response:await route.fetch({url:fixture})});
