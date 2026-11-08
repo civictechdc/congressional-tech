@@ -5,6 +5,7 @@ import pytest
 from committee_meeting import Catalog
 from committee_meeting.common import Ref
 from congress_api.acquisition import committees as collector
+from congress_api.retention.meetings import read as read_meetings
 from congress_api.adapters import committee_metadata, gpo
 from congress_api.adapters.committees import committee_lookup, ensure_committee_term
 from test_committee_metadata import metadata, save
@@ -142,6 +143,6 @@ def test_collector_includes_document_only_historical_congresses(tmp_path, monkey
         return {'committees': [metadata(congress)['committee']], 'pagination': {}}
 
     monkeypatch.setattr(collector, 'get', get)
-    rows = collector.collect(meetings, output, api_key='test', gpo_path=gpo_path)
+    rows = collector.collect(read_meetings(meetings).values(), output, api_key='test', gpo_path=gpo_path)
     assert calls == [106, 111, 115]
     assert {row['congress'] for row in rows.values()} == {106, 111, 115}

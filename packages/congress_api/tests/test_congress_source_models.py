@@ -177,11 +177,10 @@ def test_envelope_validation_rejects_bad_page_without_dropping_it(tmp_path, monk
     assert retained[0]['response'] == bad_meeting_page
 
     bad_committee_page = {'committees': 'not-a-list', 'pagination': {'count': 1}}
-    monkeypatch.setattr(committees, 'read_meetings', lambda path: {'1': {'congress': 119}})
     monkeypatch.setattr(committees, 'get', lambda session, url, api_key, params=None: bad_committee_page)
     comm_rejected = tmp_path / 'committees.json.gz'
     with pytest.raises(ValidationError):
-        committees.collect(rejected_file, comm_rejected, api_key='test-key')
+        committees.collect([{'congress': 119}], comm_rejected, api_key='test-key')
     retained_comm = json.loads(Path(str(comm_rejected) + '.rejected.json').read_text())
     assert retained_comm[0]['response'] == bad_committee_page
 

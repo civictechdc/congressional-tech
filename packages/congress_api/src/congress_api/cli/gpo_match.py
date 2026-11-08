@@ -5,6 +5,7 @@ import collections
 import csv
 import json
 import logging
+import tempfile
 from pathlib import Path
 
 from congress_shared.youtube_cache import decode_cache
@@ -14,14 +15,13 @@ from congress_shared.paths import (
     DEFAULT_OVERRIDES_FILE,
     DEFAULT_GPO_HEARINGS_FILE,
     DEFAULT_HEARING_VIDEOS_FILE,
-    DEFAULT_MEETINGS_FILE,
 )
 
 from congress_api.matching.committees import codes_of
 from congress_api.matching.gpo_decisions import COLUMNS, decide
 from congress_api.matching.gpo_videos import EVENT_ID, dates_in_text, words
 from congress_api.matching.meetings import scheduled_or_rescheduled
-from congress_api.retention.meetings import read_meetings
+from congress_api.acquisition.public_release import PUBLIC_POINTER, release_meetings
 from congress_api.parsers.media import youtube_video_id, senate_player_reference
 
 
@@ -45,13 +45,15 @@ def load_videos(tinydb_dir, channels):
     return by_code
 
 
-def load_meetings(path):
-    """Parent committee code -> date -> meeting records."""
+def load_meetings(release, *, work):
+    """Parent committee code -> date -> meeting records, from an archive release.
+
+    ``release`` is the public pointer or a local release directory. A missing,
+    altered or meeting-less release raises ``ValueError``: without it every
+    Congress.gov link and event-ID match silently disappears from the output.
+    """
     out = collections.defaultdict(lambda: collections.defaultdict(list))
-    if not Path(path).exists():
-        logging.warning(f"No meetings file at {path}; Congress.gov evidence skipped")
-        return out
-    for meeting in read_meetings(path, scope=scheduled_or_rescheduled):
+    for meeting in release_meetings(release, work=work, scope=scheduled_or_rescheduled):
         urls = [video.get("url", "") for video in (meeting.get("videos") or [])]
         record = {"eventId": meeting["eventId"], "title": meeting.get("title") or "", "words": words(meeting.get("title")),
                   "subcommittees": [c.get("name", "") for c in meeting.get("committees", []) if not c["systemCode"].endswith("00")],
@@ -73,11 +75,11 @@ def write_coverage(rows, channels, path):
             writer.writerow([congress, code, names.get(code, ""), status, count])
 
 
-def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, overrides_path, coverage_path, no_overrides=False):
+def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings, overrides_path, coverage_path, no_overrides=False):
+    """``meetings`` is ``load_meetings``'s index."""
     with open(channels_csv_path) as stream:
         channels = list(csv.DictReader(stream))
     videos = load_videos(tinydb_dir, channels)
-    meetings = load_meetings(meetings_path)
     with open(gpo_path) as stream:
         hearings = list(csv.DictReader(stream))
     overrides = {}
@@ -103,12 +105,18 @@ def parse_args_and_run():
                         help="Per congress x committee summary (default: next to --output-path).")
     parser.add_argument("--channels-csv-path", type=Path, default=DEFAULT_CHANNELS_CSV)
     parser.add_argument("--gpo-path", type=Path, default=DEFAULT_GPO_HEARINGS_FILE)
-    parser.add_argument("--meetings", type=Path, default=DEFAULT_MEETINGS_FILE)
+    parser.add_argument("--release", default=PUBLIC_POINTER,
+                        help="Archive release pointer URL or local release directory holding meetings.parquet.")
     parser.add_argument("--overrides", type=Path, default=DEFAULT_OVERRIDES_FILE)
     parser.add_argument("--no-overrides", action="store_true", help="Automatic evidence only (for evaluating the matcher).")
     args = parser.parse_known_args()[0]
     coverage = args.coverage_path or Path(args.output_path).with_name("gpo_hearing_video_coverage.csv")
-    main(args.output_path, args.tinydb_dir, args.channels_csv_path, args.gpo_path, args.meetings,
+    with tempfile.TemporaryDirectory(prefix="gpo-match-release-") as work:
+        try:
+            meetings = load_meetings(args.release, work=Path(work) / "release")
+        except ValueError as error:
+            parser.exit(2, f"gpo-match: {error}\n")
+    main(args.output_path, args.tinydb_dir, args.channels_csv_path, args.gpo_path, meetings,
          args.overrides, coverage, no_overrides=args.no_overrides)
 
 

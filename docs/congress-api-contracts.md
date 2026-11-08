@@ -137,9 +137,9 @@ Paths marked required have no default. CLI `--help` is safe without credentials.
 | Command | Primary artifacts and paths | Invocation family |
 | --- | --- | --- |
 | `congress-meetings` | `congress_meetings.jsonl.gz`: meeting JSONL (XML recoveries include `_source_xml`); sibling `.pending.json` retry state and `.gz.rejected.json` rejected listing pages | Custom; `--output-path`, `--nthreads` (5) |
-| `congress-committees` | Required `--output-path`: gzip JSONL Congress-specific lists plus full committee details/history with separate capture times; adjacent `.rejected.json` when listing/detail validation fails | Custom; required `--meetings-path`, optional `--gpo-path` |
+| `congress-committees` | Required `--output-path`: gzip JSONL Congress-specific lists plus full committee details/history with separate capture times; adjacent `.rejected.json` when listing/detail validation fails | Custom; `--release` (archive release pointer or local release directory; default the public pointer; exits 2 when its meetings cannot be read), optional `--gpo-path` |
 | `gpo-fetch` | `gpo_hearings.csv`; optional `--evidence-path`: gzip JSONL of retained MODS/HTML and acquisition receipts | Custom; `--output-path`, `--chambers` (`hsj`), `--min-congress`, `--full-relist`, `--nthreads` (4), `--refresh-limit` (100) |
-| `gpo-match` | `gpo_hearing_videos.csv`; default coverage file beside it, named `gpo_hearing_video_coverage.csv` | Global `--tinydb_dir`; `--gpo-path`, `--meetings`, `--channels-csv-path`, `--overrides`, `--no-overrides`, `--output-path`, `--coverage-path` |
+| `gpo-match` | `gpo_hearing_videos.csv`; default coverage file beside it, named `gpo_hearing_video_coverage.csv` | Global `--tinydb_dir`; `--gpo-path`, `--release` (as `congress-committees`), `--channels-csv-path`, `--overrides`, `--no-overrides`, `--output-path`, `--coverage-path` |
 | `house-committee-sites` | Required `--state-dir/house-sites.json.gz`; `--output-dir/{house_site_events,house_site_documents,house_site_coverage}.csv` | Custom; required `--committees`; `--refresh-limit` (450), `--limit`, repeatable `--site`, `--retry-requests`, `--workers` (8), `--requests-per-second`, `--as-of`, `--offline`, `--reparse`, `--zyte`, `--zyte-fallback` |
 | `house-meeting-records` | Required `--state-dir/house.json.gz`; `--output-dir/{house_documents_found,house_witnesses_found,house_amendments_found}.csv` | Source flags; required `--gpo-path`; `--refresh-limit` (400), `--limit`, `--zyte`, `--threads` |
 | `senate-meeting-records` | `--state-dir/senate.json.gz`; `--output-dir/{senate_hearing_pages_found,senate_witnesses_found,senate_documents_found}.csv` | Source flags; `--refresh-limit` (450), repeatable `--site`, `--since`, `--limit` |
@@ -166,7 +166,7 @@ are relative to the checkout; `DATA_DIR` is `apps/committee_youtube/data`.
 | Job | `needs` | Commands in order | Retained and derived paths |
 | --- | --- | --- | --- |
 | `youtube` | none | `youtube-fetch`, `youtube-analyze` | `pipeline-data/youtube`; `DATA_DIR/youtube_event_id_report.csv` and its site copy |
-| `congress` | `youtube` | `gpo-fetch`, `congress-meetings`, `gpo-match` | `pipeline-data/gpo-evidence.jsonl.gz`, `pipeline-data/congress_meetings.jsonl.gz` and sidecars; GPO hearings, video matches and coverage CSVs in `DATA_DIR` |
+| `congress` | `youtube` | `gpo-fetch`, `gpo-match` (meetings from the public release's `meetings.parquet`) | `pipeline-data/gpo-evidence.jsonl.gz`; GPO hearings, video matches and coverage CSVs in `DATA_DIR` |
 | `meetings` | `congress` | `python -m pytest -q`, `house-meeting-records`, `senate-meeting-records`, `meeting-inventory` | `pipeline-data/meeting-inventory/{house,senate,inventory}.json.gz`; six source CSVs and four inventory CSVs in `DATA_DIR` |
 | `committees` | `meetings` | `congress-committees` | `pipeline-data/congress_committees.jsonl.gz` |
 

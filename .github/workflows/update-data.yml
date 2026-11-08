@@ -1,7 +1,7 @@
 name: Update committee data
 
-# Weekly pipeline. Raw caches (YouTube TinyDBs, the last saved Congress.gov
-# meeting records) and compact parsed committee-source state
+# Weekly pipeline. Raw caches (YouTube TinyDBs, GPO evidence) and compact
+# parsed committee-source state
 # live on the bot-owned `pipeline-data` branch, replaced by a single snapshot
 # commit each run so history doesn't grow; each save also keeps that snapshot in
 # the raw bucket (create-only bodies and a receipt). main only gets the small derived
@@ -108,12 +108,13 @@ jobs:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
         run: gpo-fetch --output-path "$DATA_DIR/gpo_hearings.csv" --evidence-path pipeline-data/gpo-evidence.jsonl.gz --refresh-limit 100
 
-      # Meeting records are no longer fetched here (ct-klyz); the archive's meeting
-      # fetchers own them, and these steps read the last saved inventory.
+      # Meeting records are no longer fetched here (ct-klyz); the archive lake owns
+      # them. gpo-match and congress-committees read meetings.parquet from the
+      # current public archive release by default (ct-0mqc) and fail without it.
       - name: Match hearings to videos
         run: |
           gpo-match --tinydb_dir pipeline-data/youtube --channels-csv-path "$CHANNELS_CSV" \
-            --gpo-path "$DATA_DIR/gpo_hearings.csv" --meetings pipeline-data/congress_meetings.jsonl.gz \
+            --gpo-path "$DATA_DIR/gpo_hearings.csv" \
             --overrides "$DATA_DIR/hearing_video_overrides.csv" \
             --output-path "$DATA_DIR/gpo_hearing_videos.csv"
 
@@ -163,8 +164,8 @@ jobs:
         env:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
         run: |
-          congress-committees --meetings-path pipeline-data/congress_meetings.jsonl.gz \
-            --gpo-path "$DATA_DIR/gpo_hearings.csv" --output-path pipeline-data/congress_committees.jsonl.gz
+          congress-committees --gpo-path "$DATA_DIR/gpo_hearings.csv" \
+            --output-path pipeline-data/congress_committees.jsonl.gz
       - name: Save committee metadata
         env:
           CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"

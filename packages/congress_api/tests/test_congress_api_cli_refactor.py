@@ -47,14 +47,16 @@ def test_committees_accepts_key_flag_without_forwarding_it(monkeypatch):
 
     from congress_api.cli import committees
     workflow = Mock()
+    releases = []
     monkeypatch.setattr(committees, 'collect', workflow)
+    monkeypatch.setattr(committees, 'release_meetings', lambda release, **_: releases.append(release) or [{'congress': 119}])
     monkeypatch.setattr(committees, 'load_congress_api_key', lambda: 'mock-key')
     monkeypatch.setattr(sys, 'argv', [
-        'congress-committees', '--meetings-path', 'meetings.jsonl.gz',
-        '--output-path', 'committees.jsonl.gz', '--congress-api-key', 'mock-key',
+        'congress-committees', '--output-path', 'committees.jsonl.gz', '--congress-api-key', 'mock-key',
     ])
     committees.parse_args_and_run()
-    assert workflow.call_args.kwargs['meetings_path'] == Path('meetings.jsonl.gz')
+    assert releases == [committees.PUBLIC_POINTER]
+    assert workflow.call_args.args[0] == [{'congress': 119}]
     assert workflow.call_args.kwargs['output_path'] == Path('committees.jsonl.gz')
     assert workflow.call_args.kwargs['api_key'] == 'mock-key'
     assert 'congress_api_key' not in workflow.call_args.kwargs
