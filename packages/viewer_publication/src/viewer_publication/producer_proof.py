@@ -34,6 +34,7 @@ summary properties); raw receipts and spicy-regs generations, whose producers ar
 """
 import json
 import os
+import shutil
 from pathlib import Path
 
 from congress_api.lake.producer_records import PIN_FIELDS
@@ -135,6 +136,16 @@ print(json.dumps(out))
 """
 
 
+def _poppler_pin_at(commit, root):
+    """The Poppler release `commit` pinned in test-suites.toml, or None before the pin existed."""
+    import subprocess
+    import tomllib
+    shown = subprocess.run(['git', '-C', str(root), 'show', f'{commit}:test-suites.toml'], capture_output=True)
+    if shown.returncode:
+        return None
+    return tomllib.loads(shown.stdout.decode()).get('environment', {}).get('poppler', {}).get('version')
+
+
 def versions_at(commit, *, root=ROOT, cache={}):
     """Each table's byte-hashed producer version computed from the code at `commit`.
 
@@ -156,8 +167,21 @@ def versions_at(commit, *, root=ROOT, cache={}):
             tar.extractall(directory, filter='data')
         src = os.pathsep.join(str(Path(directory) / path) for path in
                              ('packages/congress_api/src', 'packages/house-naming/src'))
+        env = dict(os.environ, PYTHONPATH=src)
+        pinned = _poppler_pin_at(commit, root)
+        if pinned:
+            # Older sniff versions hash `pdfinfo -v`/`pdftotext -v`; answer with the commit's own pin.
+            shims = Path(directory) / '.poppler-pin'
+            shims.mkdir()
+            for tool in ('pdfinfo', 'pdftotext'):
+                real = shutil.which(tool)
+                script = shims / tool
+                script.write_text(f'#!/bin/sh\nif [ "$1" = "-v" ]; then echo "{tool} version {pinned}" >&2; exit 0; fi\n'
+                                  + (f'exec "{real}" "$@"\n' if real else 'exit 127\n'))
+                script.chmod(0o755)
+            env['PATH'] = os.pathsep.join([str(shims), env.get('PATH', '')])
         result = subprocess.run([sys.executable, '-c', VERSIONS_AT_COMMIT], cwd=directory, capture_output=True, text=True,
-                                env=dict(os.environ, PYTHONPATH=src))
+                                env=env)
         if result.returncode:
             raise ValueError(f'producer proof: versions could not be computed at {commit[:12]}: {result.stderr.strip()[-300:]}')
         value = json.loads(result.stdout)
