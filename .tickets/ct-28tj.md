@@ -1,6 +1,6 @@
 ---
 id: ct-28tj
-status: in_progress
+status: closed
 deps: [ct-4kuo]
 links: [ct-m704, ct-krdp, ct-082q]
 created: 2026-11-05T23:51:58Z
@@ -38,3 +38,9 @@ Independent review is in progress. No final review approval or completed release
 Post-review update, November 6, 2026: independent GPT-6.1 Sol/xhigh review loaded all four requested skills and APPROVED the scoped source/evidence at 51909188. Caption citations now validate witness membership and optional attribution through the same checks in generation and both resolver paths. A normal MCP stdio control reproduced the unsupported-occurrence bug; 25 focused checks passed after repair.
 
 The reviewed source reference is included in local main 1a5ae01c. Remaining: Final combined-source qualification, fresh software artifacts, actual shared native citation/witness round trips and selected public readback. Keep the ticket open for those acceptance criteria. This review does not establish a deployed release. [Review](../.cache/archive-release/implementation/merge-prune-20261106T180951Z/reviews/ct-28tj/REVIEW.md).
+
+**2026-11-08T11:02:40Z**
+
+Hosted Explorer 0.6.3 is deployed on both replicas against archive 5d24699ad9fa. PDF first/continued citations and the event 338785 caption citation round-trip to the same original passages. The Higgins statement preserves its exact witness occurrence, source-association attribution and text digest. Retained changed-body, ambiguous-witness and missing-source refusal controls remain valid; ct-4kuo is closed.
+
+Evidence: .cache/archive-release/releases/congress-mcp-0.6.3-20261107/hosted-acceptance-01/ and .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-28tj/live-5d24699-witness-01/.

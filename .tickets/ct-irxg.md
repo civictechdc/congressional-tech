@@ -1,6 +1,6 @@
 ---
 id: ct-irxg
-status: in_progress
+status: closed
 deps: [ct-4kuo, ct-j78x]
 links: [ct-oh9y]
 created: 2026-11-05T23:51:57Z
@@ -44,3 +44,9 @@ The changed witness roster on 110001 returned seven current appearances over two
 The shared ct-9s7b result for 338785 confirmed the `live` caption source for `senate:govtaff093026`, a readable cue and the selected Pages view. The dossier links and coverage passed. Keep `in_progress` for the formal ct-4kuo dependency. The official print `ea05e8b42b6eeadd` still times out in the live transcript and document readers. The committee control `f66588510a021760` read and reopened its citation on the same release. The dossier work has no remaining reader check.
 
 [Live dossier acceptance](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-irxg/live-5d24699ad9fa/acceptance.json) · [Altman page snapshot](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-irxg/live-5d24699ad9fa/browser/hearing-snapshot.md) · [Shared caption result](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-9s7b/live-5d24699a/result.json) · [Transcript dependency](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-4kuo/live-5d24699a-20261107/hosted-result.json)
+
+**2026-11-08T11:02:40Z**
+
+Hosted Explorer 0.6.3 is deployed on both replicas against archive 5d24699ad9fa. The retained nine-section dossier acceptance remains valid on this unchanged archive, including rich and sparse hearings, package-scoped event 334136, optional includes and coverage states. The hosted transcript and caption references now read and reopen successfully. Both dependencies ct-j78x and ct-4kuo are closed.
+
+Evidence: .cache/archive-release/mcp-research-20261106/parallel-sessions/ct-irxg/live-5d24699ad9fa/acceptance.json and releases/congress-mcp-0.6.3-20261107/hosted-acceptance-01/ under .cache/archive-release/.

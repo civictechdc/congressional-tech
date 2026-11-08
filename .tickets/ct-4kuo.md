@@ -1,6 +1,6 @@
 ---
 id: ct-4kuo
-status: in_progress
+status: closed
 deps: [ct-9s7b]
 links: []
 created: 2026-11-05T23:51:57Z
@@ -44,3 +44,9 @@ November 7: integrated the independently reviewed PDF input-transfer repair 2288
 The delayed-start regression reproduced the failure before the repair and passed afterward. The retained focused run passed 30 tests; its two environment-dependent Poppler failures passed with pinned Poppler 26.06.0. Those logs predate the source commit and are not a combined-lane or package acceptance claim. Independent review approved source integration. [Review](../.cache/archive-release/mcp-research-20261106/parallel-sessions/ct-m104/reader-release-0.6.3/DECODER-REVIEW.md).
 
 Keep in_progress. The corrected normal-reader check against the two authentic public PDFs is awaiting its current sandbox approval. It must reopen citations and compare source release, body, location and text. Run the exact combined MCP lane after the reader dependency boundary is settled, then build and qualify one 0.6.3 reader release with the ballot repair. Public Explorer 0.6.2 and archive 5d24699ad9fa remain unchanged. No archive rebuild is required for these reader changes.
+
+**2026-11-08T11:02:40Z**
+
+Hosted Explorer 0.6.3 is deployed on both replicas against archive 5d24699ad9fa. Official event 330080 and committee event 100925 returned the exact original first and continued page windows, agreed with direct document reads, and reopened all four citations to the same source, body, location and text digest. Caption event 338785 also reopened correctly. The full reader suite passed 217 tests; earlier multiple-source and unavailable/partial controls remain valid. ct-9s7b is closed.
+
+Evidence: .cache/archive-release/releases/congress-mcp-0.6.3-20261107/hosted-acceptance-01/ and the pinned ct-4kuo v3 handoff. The separate unfiltered ballot deadline failure remains open under ct-m104.
