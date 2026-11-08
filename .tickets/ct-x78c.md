@@ -1,6 +1,6 @@
 ---
 id: ct-x78c
-status: open
+status: closed
 deps: []
 links: [ct-kthe, ct-j2yo, ct-5w9u, ct-dx22, ct-egg6, ct-m104, ct-t915, ct-5kto]
 created: 2026-11-02T00:40:43Z
@@ -110,3 +110,7 @@ The three package entries have no assigned hearing event. The original `Senator 
 **2026-11-08T15:26:16Z**
 
 2026-11-08: published in archive release 63016450530114d8ebc03d2936dc8293250ffd546bf00d5205909345216e5e78 (public pointer moved; browser contract and public canary passed; hosted Explorer re-pinned in aed605d1 and read back). Causes: model/jobs/release-causes/5d24699ad9fa-630164505301.json; note: docs/releases/2026-11-08-630164505301.md. Hosted readback: Ella Wong-Ruskinko is record_material; McKim organization corrected. Independent second review confirmed exactly 4 value changes plus the Joseph supersession.
+
+**2026-11-08T17:20:10Z**
+
+2026-11-08 close (sweep-b): A/C met on live 630164505301 (hosted MCP query_sql). (1) Event 100520: both W. Ron Allen house_xml keys active (db779668 Jamestown S'Klallam; 2a020824 Pacific Salmon), shared Bio PDF on both, each Wstate PDF on its own role. (2) Ledger ledger-720c-final/records.jsonl: 36,301/36,301 records carry a status and owner (ct-x78c 21,733; ct-kthe 14,568); legacy CSVs pinned by digest, their sources stay in raw. (3) Ayers e0ca0e73 active at 100346; site check on 5d24 (owners/ct-x78c/live-site.json) still holds, since the 5d24->6301 causes change only the 4 MODS corrections + Joseph supersession here. Abbott (CHRG-113shrg89525, merged into Joseph's compound MODS line) is not a legacy row (0 ledger records for the package); raw print is retained and the evidence is owners/ct-x78c/ABBOTT-SOURCE-DISPOSITION.json; it needs its own parser ticket, not this one.

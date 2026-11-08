@@ -106,3 +106,7 @@ Keep open for accepted historical data from ss-ehci, coherent snapshot selection
 November 7 post-release owner update for archive 5d24699ad9fa / Explorer 0.6.2. The deployed roster preserves source-supplied party, and the final SQL matches the retained missing-party regression. Hosted readback returned the supplied Congress 119 value and no historical rows for the checked committee in 116–118. The current upstream index has no historical roster generation.
 
 Keep open for ss-ehci to supply accepted source-dated House and Senate rosters for 113–118. Then pin the coherent generation and verify historical keys, leadership, source periods and installed reader results. The delivered party repair needs no further implementation. [Owner evidence](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-8cno/STATUS.json).
+
+**2026-11-08T17:20:20Z**
+
+2026-11-08 (sweep-b): still blocked upstream. Live 6301 rosters and SpicyRegs committee_assignments (generation 5f031073, published 2026-10-22) both hold Congress 119 only (2,973 rows). Next step for ss-ehci: name a source that actually holds 113-118 (the House/Senate member XMLs are current-only; GovInfo Congressional Directory or dated Wayback captures are candidates) before any CT work.

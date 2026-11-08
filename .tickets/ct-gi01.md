@@ -200,3 +200,7 @@ The remaining work is specific: publish historical matcher observations with the
 **2026-11-08T15:26:16Z**
 
 2026-11-08: published in archive release 63016450530114d8ebc03d2936dc8293250ffd546bf00d5205909345216e5e78 (public pointer moved; browser contract and public canary passed; hosted Explorer re-pinned in aed605d1 and read back). Causes: model/jobs/release-causes/5d24699ad9fa-630164505301.json; note: docs/releases/2026-11-08-630164505301.md. Hosted readback: historical_recording_matches 34,641 rows (18,500 blank, 5,016 zero); CHRG-111hhrg54388 score 60, date window + title, full_recording. Remaining: owner-approved paid retry of 445 out-of-scope URLs (waiting for local Zyte/Firecrawl keys).
+
+**2026-11-08T17:20:21Z**
+
+2026-11-08 (sweep-b): reconciliation, producer and publication A/C are met: historical_recording_matches live (34,641), 18 Senate pages have raw custody, all 9,636 occurrences have dispositions, both committee-review inputs retained by sha (issue-and-reference-custody.json), publish-explorer.yml (swap path) gone. Left: (a) record final H/I counts when the paid recapture loop ends; (b) owner to accept the issue-decision disposition: all 7,200 rows verified, original file bytes a18a56e5 not located.
