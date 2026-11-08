@@ -5,4 +5,6 @@
 
 Congress Explorer continues to use archive `5d24699ad9fa`. Archive-wide full-text search remains deferred.
 
+**Remaining ballot limit.** The first unfiltered request still reached the hosted ten-second deadline during final acceptance. Filtered queries, existing cursors and empty results passed. `ct-m104` remains open for the unfiltered performance repair.
+
 **Upcoming archive input.** The team selected one USAID document recovered through ecoi.net for a future archive update. Public availability depends on verifying the attachment and its source explanation and publishing the updated archive.
