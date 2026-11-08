@@ -3,10 +3,11 @@ WITH packages AS (
  WHERE package_id IS NOT NULL AND NOT publisher GROUP BY source_id
 )
 SELECT s.source_id,
+ -- Keep the published document_kind.list.item type for the filename branch.
  CASE
   WHEN regexp_like(coalesce(s.filename,''),'(?i)^bills-\s*[0-9]+.*-rcp\s*[0-9]') THEN make_array('committee-print')
   WHEN f.document_kind_status='completed' AND coalesce(array_length(f.document_kind),0)>0
-   THEN array_sort(array_distinct(f.document_kind))
+   THEN arrow_cast(array_sort(array_distinct(f.document_kind)),'List(Utf8)')
   ELSE coalesce(k.document_kind,{{EMPTY_STRINGS}})
  END AS document_kind,
  CASE
