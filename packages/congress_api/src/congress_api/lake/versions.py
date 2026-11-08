@@ -234,6 +234,13 @@ class ImportClosure:
         Refuses an import it cannot attribute to a locked package, rather than
         leaving it out of an identity.
         """
+        # The seeds' own package roots are source even outside this tree's workspace.
+        for path in map(Path, files):
+            while (path.parent / '__init__.py').is_file():
+                path = path.parent
+            if path.parent not in self.sources:
+                self.sources.append(path.parent)
+        self._paths.clear()
         _, modules = self.reachable(files, stop=stop)
         # A workspace member absent from this tree is source, hashed through
         # declared files where it matters, never a locked release.
