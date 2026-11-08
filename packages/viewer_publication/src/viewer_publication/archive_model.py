@@ -143,6 +143,9 @@ SPICY_SCHEMAS={
         parent_system_code='Utf8',committee_name='Utf8',system_code='Utf8',
         bioguide_id='Utf8',name_last='Utf8',name_first='Utf8',
         position='Utf8',rank='Int32',party='Utf8',
+        # Source labels of the 113th-118th directory seats (ss-ehci); empty on chamber-file rows.
+        congress_basis='Utf8',edition_date='Utf8',source_granule='Utf8',source_line='Utf8',
+        position_basis='Utf8',printed_entry='Utf8',entry_label='Utf8',
     ),
     'spicy_congress_bills':dict(
         bill_id='Utf8',title='Utf8',short_title='Utf8',

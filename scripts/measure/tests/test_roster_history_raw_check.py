@@ -89,3 +89,18 @@ def test_a_file_stating_another_congress_is_refused(tmp_path):
         assert 'states Congress 117' in str(stop)
     else:
         raise AssertionError('a Congress 117 file judged Congress 116 seats')
+
+
+def test_the_position_column_is_read_from_either_shape(tmp_path):
+    """The archive's rosters say ``title``; SpicyRegs committee_assignments say ``position``, as text."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    archive = tmp_path / 'rosters.parquet'
+    pq.write_table(pa.Table.from_pylist(SEATS), archive)
+    upstream = tmp_path / 'committee_assignments.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(congress=str(r['congress']), system_code=r['system_code'],
+                                              bioguide_id=r['bioguide_id'], position=r['title']) for r in SEATS]), upstream)
+    (tmp_path / 'seats.json').write_text(json.dumps([dict(r, position=r.pop('title')) for r in map(dict, SEATS)]))
+    expected = check.load_seats(archive, 117)
+    assert expected[1] == {'h:ag00': 'S001157', 'h:ag14': 'P000610', 's:af00': 'S000770'}
+    assert check.load_seats(upstream, 117) == expected == check.load_seats(tmp_path / 'seats.json', 117)

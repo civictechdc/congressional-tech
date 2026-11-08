@@ -751,10 +751,10 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert files_by_name['members.parquet']['coverage']['date_end'] == '2025-01-03'
     assert files_by_name['rosters.parquet']['coverage']['congress_start'] == 118
     assert files_by_name['rosters.parquet']['coverage']['congress_end'] == 118
-    assert files_by_name['rosters.parquet']['coverage']['gaps'] == [
+    assert files_by_name['rosters.parquet']['coverage']['gaps'][0] == (
         'Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; '
         'congress_start and congress_end bound the published Congresses, and any Congress without roster rows, '
-        'including every Congress when both are null, is unavailable, not zero seats']
+        'including every Congress when both are null, is unavailable, not zero seats')
     assert roster_coverage_disagreements(*read_roster_release(release_dir)) == []
     assert files_by_name['bills.parquet']['generations'] == {'bill-family': '3' * 64, 'roll-call-votes': '5' * 64, 'amendments': '6' * 64}
     assert files_by_name['bills.parquet']['coverage']['gaps'] == ['Amendments cover the 119th Congress only until spicy-regs backfills']
@@ -931,6 +931,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         title='Chair',
         rank=1,
         party='Democrat',
+        # A chamber-file seat carries no directory source labels.
+        **dict.fromkeys(('congress_basis', 'edition_date', 'source_granule', 'source_line', 'position_basis',
+                         'printed_entry', 'entry_label')),
     )]
 
     # 6. Verify bills.parquet (referenced + related_bills vehicles, chained amendments, deduplicated votes, ordered activities)
@@ -2899,14 +2902,17 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     assert '118-s-1' not in bills
 
     rosters = pq.read_table(release_dir / 'rosters.parquet').to_pylist()
-    assert rosters == [
+    # The fixture's assignments carry no directory source labels, so every label column is empty.
+    labels = dict.fromkeys(('congress_basis', 'edition_date', 'source_granule', 'source_line', 'position_basis',
+                            'printed_entry', 'entry_label'))
+    assert rosters == [dict(row, **labels) for row in (
         dict(congress=113, system_code='hlig00', bioguide_id='A000001', title='Chair', rank=1, party='Democrat'),
         dict(congress=113, system_code='hlig01', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),
         dict(congress=115, system_code='ssbk00', bioguide_id='C000003', title='Member', rank=1, party=None),
         dict(congress=117, system_code='hsvr09', bioguide_id='C000003', title='Chair', rank=1, party='Republican'),
         dict(congress=117, system_code='hsvr09', bioguide_id='B000002', title='Ranking Member', rank=2, party='Republican'),
         dict(congress=119, system_code='ssbk00', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),
-    ]
+    )]
     files_by_name = {f['name']: f for f in manifest['files']}
     assert files_by_name['rosters.parquet']['coverage']['congress_start'] == 113
     assert files_by_name['rosters.parquet']['coverage']['congress_end'] == 119

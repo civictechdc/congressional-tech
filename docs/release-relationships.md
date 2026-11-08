@@ -475,11 +475,17 @@ Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`,
 
 ## `rosters` — Committee and subcommittee seats across published Congresses
 
-One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id; only Congresses populated in the pinned upstream committee_assignments snapshot appear).
+One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id; only Congresses populated in the pinned upstream committee_assignments snapshot appear; congress_basis and edition_date say which source and date state it).
 
 Identity: `congress, system_code, bioguide_id` (primary_key; published identifier).
 
 Coverage: Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats.
+
+Coverage: A seat from a Congressional Directory edition (congress_basis directory or directory-manual) is one dated printed snapshot (edition_date): changes during that Congress are invisible, ex officio members appear only where printed, and a list printed after a member left keeps that member (entry_label after_departure).
+
+Coverage: A Ranking Member with position_basis inferred is the first minority-column entry of a list printing no minority leader, not a stated title.
+
+Coverage: Printed directory entries that are not seats (vacancies, party organizations, unread lines) are not in this release; they are SpicyRegs committee_directory_entries rows.
 
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
@@ -489,11 +495,21 @@ Coverage: Committee seats cover only the Congresses populated in the pinned upst
 | `title` | `dict` | yes | Committee leadership or seat position title |
 | `rank` | `int16` | yes | Numeric party rank on the committee |
 | `party` | `dict` | yes | Party caucus for the committee assignment |
+| `congress_basis` | `dict` | yes | Where the seat's Congress comes from: file (the House roster file states it), caller (the Senate file states none), directory (a Congressional Directory edition's package metadata) or directory-manual (a reviewed one-off reading of an edition's PDF) |
+| `edition_date` | `date32` | yes | For a directory seat, the edition's dateIssued: the date the printed roster describes |
+| `source_granule` | `string` | yes | The GovInfo directory granule (or, for a manual reading, package; for an archived chamber file, its Internet Archive URL) that states the seat |
+| `source_line` | `string` | yes | The granule text line where the printed entry starts; for a manual reading, PDF page:line |
+| `position_basis` | `dict` | yes | For a directory seat with a title: printed, or inferred for a Ranking Member taken from print position (the first minority-column entry) |
+| `printed_entry` | `string` | yes | For a directory seat, the entry as printed (name and state), kept when a value was corrected |
+| `entry_label` | `dict` | yes | For a directory seat: corrected (a printed name, state or column was corrected; printed_entry keeps it), after_departure (printed after the member left) or no_congress_gov_code (the body has no Congress.gov code) |
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `congress`: Keyed by (congress, system_code, bioguide_id); populated from the pinned upstream committee_assignments snapshot, whose populated Congresses the coverage congress_start and congress_end bound. Earlier Congresses appear only after an upstream backfill is pinned.
 - `party`: Preserves the supplied assignment party; missing or blank values stay null. Service-term party assertions do not establish party or caucus at a roster observation, and the input does not supply qualified dated affiliation history.
+- `congress_basis`: Earlier Congresses' seats come from one Congressional Directory edition per Congress (directory). A Congress whose edition serves no committee granules combines a reviewed reading of the edition's PDF (directory-manual) with Internet Archive captures of the House file (file) and the Senate file (caller); a seat both list is the chamber file's. The current Congress comes from the current chamber files.
+- `title`: Chamber-file titles are verbatim (Chairman, Ranking Member); directory titles are normalized (Chair, Vice Chair, Ranking Member).
+- `system_code`: hsba00-tf-terrorism-financing is directory-defined: that House Financial Services task force has no Congress.gov code; its committees row is synthesized with parent hsba00.
 
 Outgoing: `roster_committee`, `roster_member`.
 
@@ -1391,7 +1407,7 @@ These are upstream source relations. A release names a relation’s generation a
 | `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | This release publishes all selected upstream rows in roll_call_votes.parquet when that local table is available; generation metadata alone does not establish local availability. |
 | `amendments` | `amendments/amendments` | `amendment_id` | `bills.amendments[].amendment_id` | One floor amendment | Coverage is limited by upstream; committee_records holds different, committee-stage documents. |
 | `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | This pin describes the retained upstream source. The local nominations table includes only nominations referenced by published archive documents or meetings, so upstream rows can lack a local profile. |
-| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Schema supports 113th–119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound. |
+| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Schema supports 113th–119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound. Directory seats are dated snapshots (edition_date). |
 
 ## Query recipes (DuckDB)
 

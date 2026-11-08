@@ -74,13 +74,17 @@ WITH history_rows AS (
     ELSE 'house'
    END
   ) AS chamber,
+  -- A directory-defined body has no Congress.gov code (upstream entry_label no_congress_gov_code), e.g. the 114th
+  -- House Financial Services task force hsba00-tf-terrorism-financing: its type and parent come from the seat.
   CASE
+   WHEN r.norm_code LIKE '%-tf-%' THEN 'task force'
    WHEN bool_or(coalesce(r.is_subcommittee,substr(r.norm_code,5,2)<>'00')) THEN 'subcommittee'
    WHEN r.norm_code LIKE 'j%' THEN 'joint'
    ELSE 'standing'
   END AS committee_type,
   CASE
    WHEN substr(r.norm_code,5,2)<>'00' THEN coalesce(max(r.parent_system_code),substr(r.norm_code,1,4)||'00')
+   WHEN r.norm_code LIKE '%-tf-%' THEN max(r.parent_system_code)
    ELSE cast(NULL AS VARCHAR)
   END AS parent_system_code,
   cast(NULL AS VARCHAR) AS website,

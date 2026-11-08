@@ -23,7 +23,16 @@ WITH committee_code_map AS (
   try_cast(nullif(trim(cast(a.rank AS VARCHAR)),'') AS INT) AS parsed_rank,
   nullif(trim(a.party),'') AS raw_party,
   nullif(trim(a.name_last),'') AS name_last,
-  nullif(trim(a.name_first),'') AS name_first
+  nullif(trim(a.name_first),'') AS name_first,
+  -- Source labels (ss-ehci): which source a seat comes from, its directory edition date and printed line, whether
+  -- its position is printed or inferred, and the printed entry when a value was corrected. Empty on chamber files.
+  nullif(trim(a.congress_basis),'') AS congress_basis,
+  try_cast(nullif(trim(a.edition_date),'') AS DATE) AS edition_date,
+  nullif(trim(a.source_granule),'') AS source_granule,
+  nullif(trim(a.source_line),'') AS source_line,
+  nullif(trim(a.position_basis),'') AS position_basis,
+  nullif(trim(a.printed_entry),'') AS printed_entry,
+  nullif(trim(a.entry_label),'') AS entry_label
  FROM spicy_committee_assignments a
  LEFT JOIN committee_code_map ccm ON ccm.raw_key=upper(trim(a.system_code))
  WHERE a.congress IS NOT NULL
@@ -48,7 +57,8 @@ WITH committee_code_map AS (
   d.name_last,
   d.name_first,
   -- Service-term party is not dated roster-party evidence.
-  d.raw_party AS party
+  d.raw_party AS party,
+  d.congress_basis,d.edition_date,d.source_granule,d.source_line,d.position_basis,d.printed_entry,d.entry_label
  FROM dedup_assignments d
  WHERE d.rn=1
 ), ranked_rosters AS (
@@ -58,6 +68,7 @@ WITH committee_code_map AS (
   bioguide_id,
   title,
   party,
+  congress_basis,edition_date,source_granule,source_line,position_basis,printed_entry,entry_label,
   parsed_rank,
   coalesce(max(parsed_rank) OVER (PARTITION BY congress,system_code,party),0) AS max_explicit_rank,
   row_number() OVER (
@@ -72,5 +83,12 @@ SELECT
  bioguide_id,
  title,
  cast(coalesce(parsed_rank,max_explicit_rank + missing_rank_seq) AS SMALLINT) AS rank,
- party
+ party,
+ congress_basis,
+ edition_date,
+ source_granule,
+ source_line,
+ position_basis,
+ printed_entry,
+ entry_label
 FROM ranked_rosters

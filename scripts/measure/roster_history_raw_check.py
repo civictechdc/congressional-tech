@@ -4,7 +4,8 @@
         [--house-memberdata MemberData.xml[.gz]] [--senate-cvc cvc_member_data.xml]
         [--legislators-yaml committee-membership-current.yaml] --output OUT.json
 
-The seats under test (archive ``rosters`` shape: congress, system_code, bioguide_id, title) come from
+The seats under test (archive ``rosters`` shape: congress, system_code, bioguide_id, title; or SpicyRegs
+``committee_assignments``, whose title is ``position``) come from
 one publisher (for 113-118, the GovInfo Congressional Directory). Each independent file is another
 publisher's own record, read here with ElementTree or YAML and nothing from the producer:
 
@@ -95,13 +96,17 @@ def legislators(path):
 
 
 def load_seats(path, congress):
+    """Seats from the archive ``rosters`` (position in ``title``) or SpicyRegs ``committee_assignments``
+    (``position``), parquet or JSON; whichever position column the file has is read."""
     path = Path(path)
     if path.suffix == '.parquet':
         import duckdb
-        rows = duckdb.sql(f"SELECT congress, system_code, bioguide_id, title FROM read_parquet('{path}')").fetchall()
+        names = {row[0] for row in duckdb.sql(f"DESCRIBE SELECT * FROM read_parquet('{path}')").fetchall()}
+        position = 'title' if 'title' in names else 'position'
+        rows = duckdb.sql(f"SELECT congress, system_code, bioguide_id, {position} FROM read_parquet('{path}')").fetchall()
         rows = [dict(zip(('congress', 'system_code', 'bioguide_id', 'title'), r)) for r in rows]
     else:
-        rows = json.loads(path.read_text())
+        rows = [dict(row, title=row.get('title', row.get('position'))) for row in json.loads(path.read_text())]
     seats, chairs = defaultdict(set), {}
     for row in rows:
         if int(row['congress']) != congress:

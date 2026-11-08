@@ -12,6 +12,10 @@ from viewer_publication.archive_model import SPICY_SCHEMAS, registry_inputs
 
 ROOT = Path(__file__).parents[3]
 HISTORY = tuple(range(113, 119))
+#: The directory source labels committee_assignments carries for 113th-118th seats (ss-ehci).
+LABELS = dict(congress_basis='directory', edition_date='2014-02-18', source_granule='CDIR-2014-02-18-HOUSECOMMITTEES',
+              source_line='12', position_basis='printed', printed_entry='Fixture (TX)', entry_label=None)
+EXPECTED_LABELS = dict(LABELS, edition_date=__import__('datetime').date(2014, 2, 18))
 
 
 def _inputs(directory, assignments):
@@ -62,7 +66,7 @@ def historical(tmp_path_factory):
     assignments = [dict(congress=congress, session='2', system_code=code, bioguide_id=member,
                         position=title, rank=1, party=party, chamber=chamber,
                         is_subcommittee=parent is not None, parent_system_code=parent,
-                        committee_name='Fixture ' + code)
+                        committee_name='Fixture ' + code, **LABELS)
                    for congress in HISTORY
                    for code, member, title, party, chamber, parent in (
                        ('HSIG00', 'A000001', 'Chair', None, 'House', None),
@@ -78,7 +82,7 @@ def historical(tmp_path_factory):
 def test_historical_seats_preserve_congress_leadership_and_supplied_party(historical):
     rows = pq.read_table(historical / 'rosters.parquet').to_pylist()
     expected = [dict(congress=congress, system_code=code, bioguide_id=member, title=title,
-                     rank=1, party=party)
+                     rank=1, party=party, **EXPECTED_LABELS)
                 for congress in HISTORY
                 for code, member, title, party in (
                     ('hlig00', 'A000001', 'Chair', None),
@@ -144,3 +148,23 @@ def test_missing_source_party_is_not_inferred_from_service_terms(tmp_path):
         (118, 'E000005', None), (118, 'F000006', None), (118, 'G000007', None),
         (118, 'H000008', None), (118, 'I000009', None), (118, 'J000010', None),
     ]
+
+
+def test_a_directory_defined_task_force_resolves_under_its_committee(tmp_path):
+    # The 114th House Financial Services task force has no Congress.gov code; its seats name a directory code.
+    seats = [dict(congress=114, system_code=code, bioguide_id='D000004', position=None, rank=1, party=None,
+                  chamber='house', is_subcommittee=parent is not None, parent_system_code=parent,
+                  committee_name=name, **dict(LABELS, entry_label=label))
+             for code, parent, name, label in (
+                 ('hsba00', None, 'Financial Services', None),
+                 ('hsba00-tf-terrorism-financing', 'hsba00', 'Task Force to Investigate Terrorism Financing',
+                  'no_congress_gov_code'))]
+    directory = _build(tmp_path / 'task-force', seats)
+    committees = {r['system_code']: r for r in pq.read_table(directory / 'committees.parquet').to_pylist()}
+    force = committees['hsba00-tf-terrorism-financing']
+    assert (force['committee_type'], force['parent_system_code'], force['name']) == (
+        'task force', 'hsba00', 'Task Force to Investigate Terrorism Financing')
+    rosters = pq.read_table(directory / 'rosters.parquet').to_pylist()
+    assert {r['system_code'] for r in rosters} <= committees.keys()
+    assert {r['system_code']: r['entry_label'] for r in rosters} == {
+        'hsba00': None, 'hsba00-tf-terrorism-financing': 'no_congress_gov_code'}

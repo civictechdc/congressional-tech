@@ -17,10 +17,10 @@ def test_discovery_uses_producer_definitions_and_stays_bounded(reader):
     assert table['identity']['fields'] == ['witness_key']
     assert 'witness_submitted_documents' in table['incoming']
     assert 'witness_transcript_documents' in table['outgoing']
-    assert reader.dataset_info({'table': 'rosters'})['scope'] == [
+    assert reader.dataset_info({'table': 'rosters'})['scope'][0] == (
         'Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; '
         'congress_start and congress_end bound the published Congresses, and any Congress without roster rows, '
-        'including every Congress when both are null, is unavailable, not zero seats']
+        'including every Congress when both are null, is unavailable, not zero seats')
     assert reader.dataset_info({'relationship': 'roster_committee'})['scope'] == \
         'rosters.congress (Congresses populated in the pinned committee_assignments snapshot)'
     relation = reader.dataset_info({'relationship': 'witness_submitted_documents'})
