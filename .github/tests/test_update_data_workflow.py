@@ -65,6 +65,17 @@ def test_b14_cutover_removes_legacy_weekly_meeting_inventory_job():
     assert not any('--seed-inventory' in step.get('run', '') for step in capture['jobs']['capture']['steps'])
 
 
+def test_weekly_collectors_use_the_locked_workspace_before_fetching():
+    workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
+    entrypoints = {'youtube': 'youtube-fetch', 'congress': 'gpo-fetch', 'committees': 'congress-committees'}
+    for name, entrypoint in entrypoints.items():
+        commands = [step.get('run', '') for step in workflow['jobs'][name]['steps']]
+        setup = next(i for i, command in enumerate(commands) if 'uv sync --locked' in command)
+        fetch = next(i for i, command in enumerate(commands) if entrypoint in command)
+        assert setup < fetch
+        assert '.venv/bin' in commands[setup] and 'GITHUB_PATH' in commands[setup]
+
+
 @pytest.mark.parametrize('filename,count', [('update-data.yml', 3)])
 def test_every_snapshot_save_also_keeps_the_snapshot_in_raw(filename, count):
     workflow = yaml.load((ROOT / '.github/workflows' / filename).read_text(), Loader=yaml.BaseLoader)

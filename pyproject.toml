@@ -24,6 +24,11 @@ dev = [
 
 [tool.uv]
 package = false
+constraint-dependencies = [
+    "certifi>=2026.10.23",
+    "httplib2>=0.32.0",
+    "urllib3>=2.8.0",
+]
 
 
 [tool.uv.workspace]
