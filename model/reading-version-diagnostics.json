@@ -36,6 +36,28 @@
     "version": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
     "workspace_sha256": "8667bd50020a7dce38b6b0fc8f5218b4fc64ca51b4d64b637cdc1f4cfa5978e8"
   },
+  "html_text": {
+    "limits": {
+      "decoded_bytes": 67108864,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
+    "page_deadline_seconds": 60,
+    "policy": {
+      "max_input_bytes": 65536,
+      "max_output_bytes": 8388608,
+      "memory_bytes": 1073741824,
+      "timeout_seconds": 1800
+    },
+    "sample_sha256": "b60e6a549af0d96615d78f8a076d8f71862b79f37b4f18167406613da66d124f",
+    "spicy_docs": {
+      "derivation": "003",
+      "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
+      "version": "0.78.0"
+    },
+    "version": "00994d3df2a6f0fba27827ed098c7b17204132e45a19c77b1b10260c2321bdf4",
+    "workspace_sha256": "8e7032c89aea447bda885fa2343970b4fcd530a020a7d69d70e73b0f0a2aeee8"
+  },
   "json": {
     "limits": {
       "decoded_bytes": 67108864,
@@ -46,6 +68,35 @@
     "sample_sha256": "29b6bd375201fffc4d4aa59db3b1e661d36ad63b94889649396b21b18af92f7c",
     "version": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
     "workspace_sha256": "7454602c18c9fb9b5bd1a8df10a6a593a417950749760040e6fe73c8650e1289"
+  },
+  "pdf_text": {
+    "limits": {
+      "decoded_bytes": 67108864,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
+    "macos_build": "25G5057c",
+    "ocr_rule": {
+      "default_strategy": "congress_api.parsers.body_text:NativeOnly",
+      "garbled": "unmapped-glyph-code",
+      "min_chars": 50
+    },
+    "page_deadline_seconds": 60,
+    "policy": {
+      "max_input_bytes": 65536,
+      "max_output_bytes": 8388608,
+      "memory_bytes": 1073741824,
+      "timeout_seconds": 1800
+    },
+    "pymupdf": "1.28.2",
+    "sample_sha256": "7f791be470e94b701aa4412bfd995b9257803eee33262bc8634251aea5ff25cc",
+    "spicy_docs": {
+      "derivation": "003",
+      "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
+      "version": "0.78.0"
+    },
+    "version": "b01e6b94cd41159b0b1f1de3c3d326f7485f23594337b3b5cad59d0eb2c71b4b",
+    "workspace_sha256": "8e7032c89aea447bda885fa2343970b4fcd530a020a7d69d70e73b0f0a2aeee8"
   },
   "readings": {
     "limits": {
@@ -75,6 +126,35 @@
     "version": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
     "workspace_sha256": "3b2f98d54446c891041f1bbaa5c5faae65474ae89f4d59d731efc6e4b2429de9"
   },
+  "warc": {
+    "limits": {
+      "decoded_bytes": 67108864,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
+    "macos_build": "25G5057c",
+    "ocr_rule": {
+      "default_strategy": "congress_api.parsers.body_text:NativeOnly",
+      "garbled": "unmapped-glyph-code",
+      "min_chars": 50
+    },
+    "page_deadline_seconds": 60,
+    "policy": {
+      "max_input_bytes": 65536,
+      "max_output_bytes": 8388608,
+      "memory_bytes": 1073741824,
+      "timeout_seconds": 1800
+    },
+    "pymupdf": "1.28.2",
+    "sample_sha256": "5e5334e9e4f88a1bce6d31860199894fa12f83d65b7f167dc9dbd389c9f9423a",
+    "spicy_docs": {
+      "derivation": "003",
+      "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
+      "version": "0.78.0"
+    },
+    "version": "cfb84b11b8809305f94bb7306286cc84dd33f2c353910942cc51d17466e81485",
+    "workspace_sha256": "8e7032c89aea447bda885fa2343970b4fcd530a020a7d69d70e73b0f0a2aeee8"
+  },
   "xml": {
     "limits": {
       "decoded_bytes": 67108864,
@@ -85,5 +165,27 @@
     "sample_sha256": "25f05b499749df71b38a9edb58dd249a89e5cf9e85dfb93d1f0e82778ab88c4e",
     "version": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f",
     "workspace_sha256": "7454602c18c9fb9b5bd1a8df10a6a593a417950749760040e6fe73c8650e1289"
+  },
+  "xml_text": {
+    "limits": {
+      "decoded_bytes": 67108864,
+      "stored_bytes": 67108864
+    },
+    "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
+    "page_deadline_seconds": 60,
+    "policy": {
+      "max_input_bytes": 65536,
+      "max_output_bytes": 8388608,
+      "memory_bytes": 1073741824,
+      "timeout_seconds": 1800
+    },
+    "sample_sha256": "c97558482f050dcc25737267a2e0053310bd8e477646335934420c5694b924b7",
+    "spicy_docs": {
+      "derivation": "003",
+      "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
+      "version": "0.78.0"
+    },
+    "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
+    "workspace_sha256": "8e7032c89aea447bda885fa2343970b4fcd530a020a7d69d70e73b0f0a2aeee8"
   }
 }

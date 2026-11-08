@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[5]
 SOURCE = Path('packages/congress_api/src/congress_api')
 BASELINE = Path('model/reading-version-diagnostics.json')
 SCHEMA = Path('model/lake/readings.schema.json')
+BODY_TEXT_SCHEMA = Path('model/lake/body-text.schema.json')
 DECLARATIONS = SOURCE / 'lake/reading_versions.py'
 DRIVER = SOURCE / 'lake/readings.py'
 SHARED_READING_FILES = (DRIVER, SOURCE / 'retention/parser_worker.py',
@@ -171,17 +172,68 @@ def snapshot(root=ROOT):
                               policy=readings.worker_limits('html_metadata'),
                               formats=list(FORMATS), format_timeout_seconds=FORMAT_TIMEOUT_SECONDS),
         'readings': dict(version=pins['readings'], **bundle, limits=limits, policy=readings.worker_limits()),
+        **body_text_evidence(closure),
     }
+
+
+def body_text_evidence(closure):
+    """The body-text parsers' evidence (data model §6.6): source and lock closure, PyMuPDF,
+    the spicy-docs derivation digest, the OCR page rule and bounds, and for PDF-reading parsers
+    the macOS build OCR would run on (null on a host without Vision)."""
+    from importlib.metadata import version
+    from spicy_docs.extraction import BODY_TEXT_DERIVATION_VERSION, derivation_code_digest
+    from congress_api.lake import body_text
+    from congress_api.parsers import body_text as derivation
+    code = closure.fingerprints((SOURCE / 'lake/body_text.py', SOURCE / 'parsers/body_text.py', BODY_TEXT_SCHEMA))
+    common = dict(**code, limits=dict(stored_bytes=body_text.MAX_STORED_BYTES, decoded_bytes=body_text.MAX_DECODED_BYTES),
+                  policy=body_text.worker_limits(), page_deadline_seconds=body_text.PAGE_DEADLINE_SECONDS,
+                  spicy_docs=dict(version=version('spicy-docs'), derivation=BODY_TEXT_DERIVATION_VERSION,
+                                  digest=derivation_code_digest()))
+    pdf = dict(pymupdf=version('pymupdf'), ocr_rule=dict(min_chars=derivation.OCR_MIN_CHARS,
+               garbled=derivation.GARBLED_ISSUE, default_strategy=derivation.DEFAULT_STRATEGY),
+               macos_build=derivation.macos_build())
+    return {parser: dict(version=version_, **common, **(pdf if parser in ('pdf_text', 'warc') else {}))
+            for parser, version_ in body_text.current_versions().items()}
 
 
 def drift_messages(previous, current):
     """Name the changed evidence and preserve the declared selection."""
     for parser, new in current.items():
         old = previous.get(parser, {})
-        fields = sorted(name for name in (set(old) | set(new)) - {'sample_sha256'} if old.get(name) != new.get(name))
+        # A host without Vision (macos_build null) cannot OCR, so its build is no evidence.
+        ignored = {'sample_sha256'} | ({'macos_build'} if 'macos_build' in new and new['macos_build'] is None else set())
+        fields = sorted(name for name in (set(old) | set(new)) - ignored if old.get(name) != new.get(name))
         if fields:
             yield parser, (f'{parser} reading version evidence changed ({", ".join(fields)}); '
                            f'using {new["version"]}. Record equivalence or a deliberate bump.')
+
+
+def _case(parser):
+    def body(root):
+        cases = json.loads((root / 'model/fixtures/parser-cases.json').read_text())
+        return next(case['body'] for case in cases if case['parser'] == parser).encode()
+    return body
+
+
+def _warc_case(root):
+    """The html case inside a WARC response member; the record's date and ID reach no value."""
+    import io
+    from warcio.statusandheaders import StatusAndHeaders
+    from warcio.warcwriter import WARCWriter
+    out = io.BytesIO()
+    writer = WARCWriter(out, gzip=True)
+    writer.write_record(writer.create_warc_record('https://example.house.gov/', 'response',
+        payload=io.BytesIO(_case('html')(root)), http_headers=StatusAndHeaders(
+            '200 OK', [('Content-Type', 'text/html')], protocol='HTTP/1.1')))
+    return out.getvalue()
+
+
+BODY_TEXT_SAMPLES = {
+    'pdf_text': lambda root: (root / 'packages/congress_api/tests/fixtures/document-covers/house-hearing.pdf').read_bytes(),
+    'html_text': _case('html'),
+    'xml_text': _case('xml'),
+    'warc': _warc_case,
+}
 
 
 def sample_digest(parser, *, root=ROOT):
@@ -189,7 +241,13 @@ def sample_digest(parser, *, root=ROOT):
     from congress_api.lake import compatible_versions, readings
     from congress_api.retention.sniff import read_sniff
 
-    if parser == 'html_metadata':
+    if parser in BODY_TEXT_SAMPLES:
+        from congress_api.lake.body_text import _sniff_format
+        from congress_api.parsers import body_text as derivation
+        reading = derivation.derive(BODY_TEXT_SAMPLES[parser](root), parser, strategy=derivation.NativeOnly(),
+            page_deadline_seconds=0, sniff_format=_sniff_format, max_bytes=64 << 20)
+        values = dict(reading.row(), page_offsets=list(reading.page_offsets), ocr_pages=list(reading.ocr_pages))
+    elif parser == 'html_metadata':
         fixture = root / 'packages/congress_api/tests/fixtures/html_metadata/marked-no-statement.html'
         values = readings.read_body(fixture.read_bytes(), parser)
     else:

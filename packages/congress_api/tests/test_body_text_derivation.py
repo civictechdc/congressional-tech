@@ -144,3 +144,30 @@ def test_body_text_ids_are_their_declarations_and_name_the_page_rule():
     # A threshold the code uses must be the one its ID declares; moving it needs a new ID.
     assert f'under {bt.OCR_MIN_CHARS} non-whitespace' in BODY_TEXT_DECLARATIONS['pdf_text']
     assert bt.GARBLED_ISSUE in BODY_TEXT_DECLARATIONS['pdf_text']
+
+
+FIXTURES = __import__('pathlib').Path(__file__).parent / 'fixtures'
+
+
+def test_real_gpo_cover_reads_natively_and_a_real_scan_waits_for_ocr():
+    cover = derive((FIXTURES / 'document-covers/house-hearing.pdf').read_bytes(), 'pdf_text')
+    assert cover.status == 'completed' and cover.fields == {'page_count': 1}
+    assert 'U.S. GOVERNMENT PRINTING OFFICE' in cover.text and 'Superintendent of Documents' in cover.text
+    with pytest.raises(bt.OcrRequired):  # a scanned witness statement: no native layer on page 1
+        derive((FIXTURES / 'meeting_inventory/witness-scan-judiciary.pdf').read_bytes(), 'pdf_text')
+
+
+def test_body_text_evidence_is_recorded_and_its_drift_is_named():
+    import json
+    from congress_api.lake import reading_version_diagnostics as diagnostics
+    recorded = json.loads((diagnostics.ROOT / diagnostics.BASELINE).read_text())
+    current = diagnostics.body_text_evidence(diagnostics.ImportClosure(diagnostics.ROOT))
+    for parser in ('pdf_text', 'html_text', 'xml_text', 'warc'):
+        assert recorded[parser]['version'] == current[parser]['version']
+        assert recorded[parser]['sample_sha256'] == diagnostics.sample_digest(parser)
+    moved = dict(current['pdf_text'], pymupdf='0.0.0')
+    [(parser, message)] = diagnostics.drift_messages({'pdf_text': current['pdf_text']}, {'pdf_text': moved})
+    assert parser == 'pdf_text' and '(pymupdf)' in message
+    # A host without Vision has no OCR build to compare.
+    assert not list(diagnostics.drift_messages({'pdf_text': current['pdf_text']},
+                                               {'pdf_text': dict(current['pdf_text'], macos_build=None)}))
