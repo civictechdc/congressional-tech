@@ -2,7 +2,7 @@
 id: ct-wsu7
 status: closed
 deps: []
-links: [ct-deg8, ct-r8jd]
+links: [ct-deg8, ct-r8jd, ct-7t5p]
 created: 2026-11-02T16:35:07Z
 type: task
 priority: 1

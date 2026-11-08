@@ -172,3 +172,7 @@ November 7 post-release owner update for archive `5d24699ad9fa` / Explorer `0.6.
 The remaining work is specific: publish historical matcher observations with their original meaning; resolve the 18 source-only Senate pages; reconcile 9,636 URL-unmatched material occurrences and retained field values; verify historical reference values; and establish the original dismissal-input/body custody or record a supported disposition. `ct-x78c` retains witness-ledger ownership and `ct-r4rd` retains meeting-field ownership. Reuse the shipped-release evidence for unchanged inputs. This update establishes no new closure or rebuild requirement.
 
 [Owner results](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-gi01/RESULTS.md) · [Owner status](../.cache/archive-release/implementation/post-release-ticket-finish-20261107/owners/ct-gi01/STATUS.json).
+
+**2026-11-08T13:44:49Z**
+
+2026-11-08: the 2026-11-02 impl-u2 note's 'F4 holds once this merges' no longer waits on r4-u2 (925036be), which will not merge. Main reached the same goal: model/jobs/publish-model.json declares a spicy_regs input pinned by path, sha256 and size, and archive_model._prepare_spicy_inputs refuses entity files without pinned generations, so no digest is invented. Judge F4 against main.

@@ -1,6 +1,6 @@
 ---
 id: ct-oun5
-status: closed
+status: open
 deps: []
 links: []
 created: 2026-10-30T14:32:31Z
@@ -32,3 +32,7 @@ Completed ss-vfgz (C0), ss-iwqu (C3), and ss-6jg6 (C4) in /Users/mikewolfd/Work/
 **2026-10-30T16:16:46Z**
 
 Completed and 3-hat reviewed in /Users/mikewolfd/Work/wt/ds-engine-first (impl/engine-first-20261027 @ b368968384c914a6621d43d1ba754d04d4c70a1d; darwin-arm64 release binary SHA-256: c27077db7a8b60fde569bddcf7b9948032bcd4baec5253d5490e31a3c4687401): C0 (ss-vfgz: gc.enabled=true default & drop 2MiB/2048-row remote write caps), C3 (ss-iwqu: byte-deterministic Parquet export across threads/batches/permutations/spills), and C4 (ss-6jg6: ConnectedComponents binary keys, smallest-member component_id, and 4M-node/2M-edge 256MiB budget).
+
+**2026-11-08T13:44:49Z**
+
+2026-11-08 reopened: the congressional-tech half of C3 never reached main. origin/main archive_model.py:1085-1086 still records limits=json.loads(engine.limits.read_text()) inside runtime_pins, so the same inputs get different model input digests on a 34 GiB Mac and a 14 GiB CI runner, and a resume with a different memory pool is refused. The repo-side change is c6284e80 'Keep engine limits out of the semantic model profile (C3)' on branch r4-a (kept; worktree .claude/worktrees/impl-r4-a). Port: rebase onto current archive_model.py (8 files plus test_model_determinism.py) and re-run the three-limit-set determinism proof.
