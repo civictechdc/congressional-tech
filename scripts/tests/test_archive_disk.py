@@ -54,6 +54,36 @@ def test_unknown_stale_or_unbounded_budget_refuses(tmp_path, change, match):
         disk.admit(budget(tmp_path, **change), 'fixture', dict(work=tmp_path), commit='a' * 40, floor=20)
 
 
+def test_budget_carries_to_descendants_that_keep_resource_pins(tmp_path, monkeypatch):
+    """Every ticket push used to refuse the nightly; only resource pins should."""
+    repo = tmp_path / 'repo'; repo.mkdir()
+    def git(*args):
+        return subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *args], cwd=repo,
+                              check=True, capture_output=True, text=True).stdout.strip()
+    def commit(path, text):
+        (repo / path).parent.mkdir(parents=True, exist_ok=True); (repo / path).write_text(text)
+        git('add', '-A'); git('commit', '-qm', path)
+        return git('rev-parse', 'HEAD')
+    git('init', '-q')
+    measured = commit('uv.lock', 'v1')
+    ticket = commit('.tickets/t.md', 'note')
+    lock = commit('uv.lock', 'v2')
+    git('checkout', '-q', '-b', 'side', measured)
+    side = commit('docs/x.md', 'side')
+    monkeypatch.setattr(disk.shutil, 'disk_usage', lambda _: SimpleNamespace(free=60))
+    path = budget(tmp_path, revision=measured)
+    roots = dict(work=tmp_path)
+    result = disk.admit(path, 'fixture', roots, commit=ticket, floor=20, root=repo)
+    assert result['status'] == 'admitted' and result['budget_revision'] == measured
+    assert disk.admit(path, 'fixture', roots, commit=side, floor=20, root=repo)['status'] == 'admitted'
+    with pytest.raises(ValueError, match='revision differs'):
+        disk.admit(path, 'fixture', roots, commit=lock, floor=20, root=repo)
+    with pytest.raises(ValueError, match='revision differs'):  # no checkout to compare
+        disk.admit(path, 'fixture', roots, commit=ticket, floor=20)
+    with pytest.raises(ValueError, match='revision differs'):  # not a descendant
+        disk.admit(budget(tmp_path, revision=ticket), 'fixture', roots, commit=side, floor=20, root=repo)
+
+
 def test_missing_operation_or_writing_root_refuses(tmp_path):
     path = budget(tmp_path)
     with pytest.raises(ValueError, match='unavailable'):
