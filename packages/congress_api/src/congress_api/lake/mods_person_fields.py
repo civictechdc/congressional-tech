@@ -7,6 +7,15 @@ representation by itself. Original bytes retain that listing context, separate
 companions, and printed headings.
 """
 
+# Reviewed lines that join two people's contents entries, bound the same way to
+# the printed separator between them. The first entry keeps the line's locator;
+# the second reads at `<locator>/part[2]`. CHRG-113shrg89525 (ct-79j1): the
+# contents repeat Victor Joseph's entry without a page and run it into Michael K.
+# Abbott's, whose testimony (p. 24) and prepared statement (p. 54) are printed.
+MODS_JOINED_LINES: dict[str, dict[int, tuple[str, str]]] = {
+    'CHRG-113shrg89525': {6: ('7fc2f30fbfe6c95cf115fcb4543b1327cf4d9b331087062880bfdcee89cb4f38', '.. ')},
+}
+
 MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'CHRG-106hhrg57366': {9: ('7409e3e059e4a34a44b1d0051d29d0b52acbcdda5994016eb97ea4000ce610cc',
                             {'honorific': None,
                              'name': 'Barbara D. Bovbjerg',
@@ -949,8 +958,6 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
  'CHRG-113shrg87033': {1: ('098abe58c403448ae3a331b7eb0b342fa0c2c181b34c2b9b2431c267a2c6c55e',
                            {'organization': 'U.S. Accountability Office, Boston, MA',
                             'position': 'Director of Education, Workforce, and Income Security Issues'})},
- 'CHRG-113shrg89525': {6: ('7fc2f30fbfe6c95cf115fcb4543b1327cf4d9b331087062880bfdcee89cb4f38',
-                           {'organization': 'Tanana Chiefs Conference'})},
  'CHRG-113shrg89684': {4: ('2026f4eeefa6c01f411cc48a1e272e74bb2f7e25fb83570d267f4f0be1ffbb69',
                            {'organization': 'Resources, Science, and Industry Division, Congressional '
                                             'Research Service, Library of Congress',

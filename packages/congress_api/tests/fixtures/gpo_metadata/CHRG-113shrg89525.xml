@@ -1,0 +1,455 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee18afc35e4">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>113_senate_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2015-02-06</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>FIFTY YEARS SINCE THE GREAT ALASKA EARTHQUAKE: THE ROLE OF FIRST RESPONDERS IN CATASTROPHIC DISASTER PLANNING</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-113shrg89525</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-113shrg89525/html/CHRG-113shrg89525.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-113shrg89525/pdf/CHRG-113shrg89525.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Printing Office</publisher>
+         <dateIssued encoding="w3cdtf">2014-04-04</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>59 p.</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.G 74/9:S.HRG.113-533</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-113shrg89525</identifier>
+    <identifier type="local">P0b002ee18afc35e4</identifier>
+    <identifier type="ILS system id">000942533</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2015-02-06</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2023-02-08</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-113shrg89525</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>SHRG</docClass>
+         <accessId>CHRG-113shrg89525</accessId>
+         <type>G</type>
+         <chamber>SENATE</chamber>
+         <congress>113</congress>
+         <session>2</session>
+         <number>533</number>
+         <heldDate>2014-04-04</heldDate>
+         <preferredCitation>S. Hrg. 113-533</preferredCitation>
+    </extension>
+    <extension>
+         <searchTitle>FIFTY YEARS SINCE THE GREAT ALASKA EARTHQUAKE: THE ROLE OF FIRST RESPONDERS IN CATASTROPHIC DISASTER PLANNING</searchTitle>
+         <granuleClass>OTHERPART</granuleClass>
+         <accessId>CHRG-113shrg89525</accessId>
+         <graphicsInPDF>true</graphicsInPDF>
+         <witness>Hon. W. Craig Fugate, Administrator, Federal Emergency Management Agency</witness>
+         <witness>John W. Madden, Director, Alaska Division of Homeland Security and Emergency Management</witness>
+         <witness>George Keeney, Fire Chief, Valdez Fire Department</witness>
+         <witness>Victor Joseph, President and Chairman, Tanana Chiefs Conference</witness>
+         <witness>Danita Koehler, MD, Chair, Rural Committee, National Association of Emergency Medical Services Physicians</witness>
+         <witness>Victor Joseph, President and Chairman, Tanana Chiefs Conference.. Michael K. Abbott, Assistant Superintendent, Anchorage School District</witness>
+         <isAppropriation>false</isAppropriation>
+         <jacketId>89-525</jacketId>
+         <congCommittee authorityId="ssga00" chamber="S" congress="113" type="S">
+                                    
+              <name type="authority-standard">Committee on Homeland Security and Governmental Affairs</name>
+                                    
+              <name type="authority-short">Homeland Security and Governmental Affairs</name>
+                                    
+              <subCommittee>
+                                            
+                   <name type="parsed">Subcommittee on Emergency Management, Intergovernmental Relations, and the District of Columbia</name>
+                                        
+            </subCommittee>
+                                
+        </congCommittee>
+         <congMember bioGuideId="A000368" chamber="S" congress="113" party="R" role="COMMMEMBER" state="NH">
+                                    
+              <name type="parsed">KELLY AYOTTE of New Hampshire</name>
+                                    
+              <name type="authority-fnf">Kelly Ayotte</name>
+                                    
+              <name type="authority-lnf">Ayotte, Kelly</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001230" chamber="S" congress="113" party="D" role="COMMMEMBER" state="WI">
+                                    
+              <name type="parsed">TAMMY BALDWIN of Wisconsin</name>
+                                    
+              <name type="authority-fnf">Tammy Baldwin</name>
+                                    
+              <name type="authority-lnf">Baldwin, Tammy</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001265" chamber="S" congress="113" party="D" role="COMMMEMBER" state="AK">
+                                    
+              <name type="parsed">MARK BEGICH of Alaska</name>
+                                    
+              <name type="authority-fnf">Mark  Begich</name>
+                                    
+              <name type="authority-lnf">Begich, Mark</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C000174" chamber="S" congress="113" party="D" role="COMMMEMBER" state="DE">
+                                    
+              <name type="parsed">THOMAS R. CARPER of Delaware</name>
+                                    
+              <name type="authority-fnf">Thomas R. Carper</name>
+                                    
+              <name type="authority-lnf">Carper, Thomas R.</name>
+                                    
+              <name type="authority-other">Mr. Thomas Carper</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C000560" chamber="S" congress="113" party="R" role="COMMMEMBER" state="OK">
+                                    
+              <name type="parsed">TOM COBURN of Oklahoma</name>
+                                    
+              <name type="authority-fnf">Tom Coburn</name>
+                                    
+              <name type="authority-lnf">Coburn, Tom</name>
+                                
+        </congMember>
+         <congMember bioGuideId="E000285" chamber="S" congress="113" party="R" role="COMMMEMBER" state="WY">
+                                    
+              <name type="parsed">MICHAEL B. ENZI of Wyoming</name>
+                                    
+              <name type="authority-fnf">Michael B. Enzi</name>
+                                    
+              <name type="authority-lnf">Enzi, Michael B.</name>
+                                    
+              <name type="authority-other">Michael Enzi</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H001069" chamber="S" congress="113" party="D" role="COMMMEMBER" state="ND">
+                                    
+              <name type="parsed">HEIDI HEITKAMP of North Dakota</name>
+                                    
+              <name type="authority-fnf">Heidi  Heitkamp</name>
+                                    
+              <name type="authority-lnf">Heitkamp, Heidi</name>
+                                
+        </congMember>
+         <congMember bioGuideId="J000293" chamber="S" congress="113" party="R" role="COMMMEMBER" state="WI">
+                                    
+              <name type="parsed">RON JOHNSON of Wisconsin</name>
+                                    
+              <name type="authority-fnf">Ron Johnson</name>
+                                    
+              <name type="authority-lnf">Johnson, Ron</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000261" chamber="S" congress="113" party="D" role="COMMMEMBER" state="MI">
+                                    
+              <name type="parsed">CARL LEVIN of Michigan</name>
+                                    
+              <name type="authority-fnf">Carl Levin</name>
+                                    
+              <name type="authority-lnf">Levin, Carl</name>
+                                    
+              <name type="authority-other">Carl Milton Levin</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000550" chamber="S" congress="113" party="D" role="COMMMEMBER" state="LA">
+                                    
+              <name type="parsed">MARY L. LANDRIEU of Louisiana</name>
+                                    
+              <name type="authority-fnf">Mary L. Landrieu</name>
+                                    
+              <name type="authority-lnf">Landrieu, Mary L.</name>
+                                    
+              <name type="authority-other">Mrs. Mary Landrieu</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M000303" chamber="S" congress="113" party="R" role="COMMMEMBER" state="AZ">
+                                    
+              <name type="parsed">JOHN McCAIN of Arizona</name>
+                                    
+              <name type="authority-fnf">John McCain</name>
+                                    
+              <name type="authority-lnf">McCain, John</name>
+                                    
+              <name type="authority-other">John Sidney Mccain</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M001170" chamber="S" congress="113" party="D" role="COMMMEMBER" state="MO">
+                                    
+              <name type="parsed">CLAIRE McCASKILL of Missouri</name>
+                                    
+              <name type="authority-fnf">Claire McCaskill</name>
+                                    
+              <name type="authority-lnf">McCaskill, Claire</name>
+                                
+        </congMember>
+         <congMember bioGuideId="P000449" chamber="S" congress="113" party="R" role="COMMMEMBER" state="OH">
+                                    
+              <name type="parsed">ROB PORTMAN of Ohio</name>
+                                    
+              <name type="authority-fnf">Rob Portman</name>
+                                    
+              <name type="authority-lnf">Portman, Rob</name>
+                                
+        </congMember>
+         <congMember bioGuideId="P000590" chamber="S" congress="113" party="D" role="COMMMEMBER" state="AR">
+                                    
+              <name type="parsed">MARK L. PRYOR of Arkansas</name>
+                                    
+              <name type="authority-fnf">Mark L. Pryor</name>
+                                    
+              <name type="authority-lnf">Pryor, Mark L.</name>
+                                    
+              <name type="authority-other">Mr. Mark Lunsford Pryor</name>
+                                
+        </congMember>
+         <congMember bioGuideId="P000603" chamber="S" congress="113" party="R" role="COMMMEMBER" state="KY">
+                                    
+              <name type="parsed">RAND PAUL of Kentucky</name>
+                                    
+              <name type="authority-fnf">Rand Paul</name>
+                                    
+              <name type="authority-lnf">Paul, Rand</name>
+                                
+        </congMember>
+         <congMember bioGuideId="T000464" chamber="S" congress="113" party="D" role="COMMMEMBER" state="MT">
+                                    
+              <name type="parsed">JON TESTER of Montana</name>
+                                    
+              <name type="authority-fnf">Jon Tester</name>
+                                    
+              <name type="authority-lnf">Tester, Jon</name>
+                                
+        </congMember>
+         <isNomination>false</isNomination>
+         <isErrata>false</isErrata>
+    </extension>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <namePart>Committee on Homeland Security and Governmental Affairs</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+              <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <name type="personal">
+         <namePart>Kelly Ayotte</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Tammy Baldwin</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mark  Begich</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Thomas R. Carper</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Tom Coburn</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Michael B. Enzi</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Heidi  Heitkamp</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ron Johnson</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Carl Levin</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mary L. Landrieu</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John McCain</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Claire McCaskill</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Rob Portman</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mark L. Pryor</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Rand Paul</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jon Tester</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. W. Craig Fugate, Administrator, Federal Emergency Management Agency</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>John W. Madden, Director, Alaska Division of Homeland Security and Emergency Management</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>George Keeney, Fire Chief, Valdez Fire Department</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Victor Joseph, President and Chairman, Tanana Chiefs Conference</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Danita Koehler, MD, Chair, Rural Committee, National Association of Emergency Medical Services Physicians</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Victor Joseph, President and Chairman, Tanana Chiefs Conference.. Michael K. Abbott, Assistant Superintendent, Anchorage School District</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+</mods>

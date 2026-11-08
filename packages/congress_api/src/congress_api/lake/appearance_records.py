@@ -48,7 +48,7 @@ from ..parsers.senate_page import plain_testimony_address, plain_witness_links
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
-from .mods_person_fields import MODS_PERSON_FIELDS
+from .mods_person_fields import MODS_JOINED_LINES, MODS_PERSON_FIELDS
 from .mods_record_entries import MODS_MIXED_RECORD_ENTRIES, MODS_RECORD_ENTRIES
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
@@ -1249,42 +1249,48 @@ def extract_mods_observation(
                 continue
             cleaned_line = re.split(r"\.{4,}", cleaned_line, maxsplit=1)[1].strip()
             source_locator += "/part[2]"
-        if not cleaned_line:
+        segments = [(source_locator, cleaned_line)]
+        joined = MODS_JOINED_LINES.get(resolved_pkg or "", {}).get(idx)
+        if joined and sha256(cleaned_line.encode()).hexdigest() == joined[0]:
+            first, second = cleaned_line.split(joined[1], 1)
+            segments = [(source_locator, first.strip()), (source_locator + "/part[2]", second.strip())]
+        for source_locator, cleaned_line in segments:
+            if not cleaned_line:
+                raw_rows.append(
+                    {
+                        "source_locator": source_locator,
+                        "name": None,
+                        "display_order": len(raw_rows) + 1,
+                        "document_links": [],
+                    }
+                )
+                continue
+            parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
+            w_name = _opt_str(parsed.get("name"))
+            # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
+            if w_name and LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name):
+                continue
+            if w_name and not is_name(w_name) and any(
+                phrase in cleaned_line.lower()
+                for phrase in ("answers to questions", "printed hearing record", "submitted for the record")
+            ):
+                continue
+            nk = normalize_name_key(w_name)
+            bg = member_bioguides.get(nk) if nk else None
             raw_rows.append(
                 {
                     "source_locator": source_locator,
-                    "name": None,
+                    "name": w_name,
+                    "honorific": _opt_str(parsed.get("honorific")),
+                    "position": _opt_str(parsed.get("position")),
+                    "organization": _opt_str(parsed.get("organization")),
+                    "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
+                    "bioguide_id": bg,
+                    "witness_type": mods_entry_kind(cleaned_line, w_name),
                     "display_order": len(raw_rows) + 1,
                     "document_links": [],
                 }
             )
-            continue
-        parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
-        w_name = _opt_str(parsed.get("name"))
-        # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
-        if w_name and LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name):
-            continue
-        if w_name and not is_name(w_name) and any(
-            phrase in cleaned_line.lower()
-            for phrase in ("answers to questions", "printed hearing record", "submitted for the record")
-        ):
-            continue
-        nk = normalize_name_key(w_name)
-        bg = member_bioguides.get(nk) if nk else None
-        raw_rows.append(
-            {
-                "source_locator": source_locator,
-                "name": w_name,
-                "honorific": _opt_str(parsed.get("honorific")),
-                "position": _opt_str(parsed.get("position")),
-                "organization": _opt_str(parsed.get("organization")),
-                "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
-                "bioguide_id": bg,
-                "witness_type": mods_entry_kind(cleaned_line, w_name),
-                "display_order": len(raw_rows) + 1,
-                "document_links": [],
-            }
-        )
 
     appearances = preserve_appearances(raw_rows, default_source="mods")
     return {
