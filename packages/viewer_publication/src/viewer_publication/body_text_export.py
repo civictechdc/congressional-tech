@@ -15,7 +15,7 @@ Joins keep text off build sides (§6.6, AGENTS.md): the saved-body set and the n
 keys build, the text rows probe. Cost: one pass over the selected text, materialized once to
 scratch and sorted by the writer with spill; the counts read narrow steps.
 """
-from hashlib import file_digest, sha256
+from hashlib import md5, sha256
 import json
 from pathlib import Path
 
@@ -114,6 +114,17 @@ def coverage_queries(versions, *, with_readings, with_unreadable):
     return queries
 
 
+def file_facts(path):
+    """SHA-256, MD5 and size of one file in a single read, as archive_multipart takes them."""
+    whole, checksum, size = sha256(), md5(), 0
+    with Path(path).open('rb') as source:
+        while block := source.read(8 << 20):
+            whole.update(block)
+            checksum.update(block)
+            size += len(block)
+    return {'sha256': whole.hexdigest(), 'md5': checksum.hexdigest(), 'size': size}
+
+
 def footer_sha256(path):
     """SHA-256 of the Parquet footer: its metadata, 4-byte length and closing magic."""
     with Path(path).open('rb') as source:
@@ -155,9 +166,8 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
                                  with_unreadable=bool(unreadable_files)))
     if counts['parser_conflicts'][0]['n']:
         raise ValueError('A saved body has body text under more than one parser')
-    with output.open('rb') as source:
-        digest = file_digest(source, 'sha256').hexdigest()
-        size = source.tell()
+    facts = file_facts(output)
+    digest, size = facts['sha256'], facts['size']
     by_parser = {row['parser']: row for row in counts['rows']}
     pointer = dict(version=1, key=definition['prefix'] + digest + '.parquet', sha256=digest, bytes=size,
         rows=sum(row['rows'] for row in by_parser.values()), footer_sha256=footer_sha256(output),
@@ -185,16 +195,12 @@ def publish(client, *, bucket, export_path, pointer, expected_pointer_etag, jour
     these bytes. The pointer is a compare-and-swap: ``If-Match`` its current ETag, or
     ``If-None-Match: *`` when none exists. ``journal`` receives each upload stage.
     """
-    from hashlib import md5
     from viewer_publication import archive_multipart
     from viewer_publication.archive_publish import IMMUTABLE
     from viewer_publication.client import publish_manifest_pointer
     definition = load_definition()
     export_path = Path(export_path)
-    with export_path.open('rb') as source:
-        facts = dict(sha256=file_digest(source, 'sha256').hexdigest())
-    with export_path.open('rb') as source:
-        facts.update(md5=file_digest(source, md5).hexdigest(), size=export_path.stat().st_size)
+    facts = file_facts(export_path)
     if facts['sha256'] != pointer['sha256'] or facts['size'] != pointer['bytes'] \
             or pointer['key'] != definition['prefix'] + facts['sha256'] + '.parquet':
         raise ValueError('Export bytes differ from the pointer that names them')

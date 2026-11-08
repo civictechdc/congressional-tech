@@ -18,7 +18,7 @@ def sniff(payload):
     return read_sniff(lambda start, length: payload[start:start + length], stored_size=len(payload))['format']
 
 
-def derive(data, parser, strategy=None, deadline=30):
+def derive(data, parser, strategy=None, deadline=30.0):
     return bt.derive(data, parser, strategy=strategy or bt.NativeOnly(), page_deadline_seconds=deadline,
                      sniff_format=sniff, max_bytes=64 << 20)
 
