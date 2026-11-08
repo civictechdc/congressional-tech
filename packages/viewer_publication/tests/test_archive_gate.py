@@ -89,28 +89,16 @@ def test_local_contract_precedes_upload_canary_and_contract_failure_stops_it():
                       expected_etag=None, contract=refuse, canary=lambda: pytest.fail('upload reached'))
 
 
-def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
+def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path, request):
     """Hand rows with genuine declarations lack saved bodies; real reader must refuse."""
-    import os
-    from docspec_client.client import NativeDatasets
-    from viewer_publication.archive_fixture import build_fixture_release
-    from viewer_publication.archive_format import release_identity
-    from test_release_comparison import current_catalog, descriptor
-    release = tmp_path / 'release'
-    manifest = build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
-        scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
-    # These declarations admit the reader's metadata, not this hand fixture's data.
-    manifest['files']=[item for item in manifest['files'] if item['name']!='schema.json']
-    for name, data in current_catalog().artifacts.items():
-        path=release/name
-        path.parent.mkdir(parents=True,exist_ok=True)
-        path.write_bytes(data)
-        manifest['files'].append(descriptor(name,data))
-    manifest['release_id']=release_identity(1,manifest['files'])
-    (release/'manifest.json').write_text(json.dumps(manifest))
+    from test_archive_reader import reader_release
+
+    manifest, files = reader_release(request)
+    inventory = tmp_path/'canary-files.json'
+    inventory.write_text(json.dumps({name: str(path) for name, path in files.items()}))
     store = Pointer({'release_id': 'a' * 64, 'previous_release_id': None})
     def canary():
-        result = subprocess.run(['npm', 'run', 'canary:archive-local', '--workspaces=false', '--', '--release', str(release)],
+        result = subprocess.run(['npm', 'run', 'canary:archive-local', '--workspaces=false', '--', '--release-files', str(inventory)],
             cwd=ROOT / 'apps/site', text=True, capture_output=True, timeout=70)
         assert result.returncode != 0
         assert 'Saved copy not found' in result.stderr

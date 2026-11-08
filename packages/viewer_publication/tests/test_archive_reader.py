@@ -1,65 +1,118 @@
-"""Run the shipped reader against release bytes written by the native engine."""
+"""Exercise the shipped reader using explicit inventories of retained release files.
+
+The baseline comes from the accepted native fixture. Deliberate reader variants
+write only their changed, bounded tables; they do not qualify a native candidate.
+"""
+from copy import deepcopy
+from hashlib import md5, sha256
+import json
 import os
 from pathlib import Path
 import subprocess
+
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
-from docspec_client.client import NativeDatasets
-from viewer_publication.archive_fixture import build_fixture_release
+from viewer_publication.archive_format import release_identity
 
 ROOT = Path(__file__).parents[3]
 
 
-@pytest.mark.parametrize('missing', ['none', 'document_date_status', 'address_versions'])
-def test_current_reader_requires_current_fields_and_preserves_nulls(tmp_path, missing):
-    """Real public metadata and hand-worked seven-row Parquet; no native build."""
-    import json
-    import shutil
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from test_release_comparison import current_catalog, descriptor
-    from viewer_publication.archive_format import release_identity
+def reader_release(request):
+    """Consume a caller-qualified retained inventory without starting a native job.
 
-    release = tmp_path/'release'
-    shutil.copytree(ROOT/'model/fixtures/archive-contract/current', release)
-    (release/'schema.json').unlink()
-    detail = pq.read_table(release/'detail.parquet')
-    if 'document_date_status' in detail.column_names:
-        detail = detail.drop(['document_date_status'])
-    if missing != 'document_date_status':
-        detail = detail.append_column('document_date_status', pa.nulls(detail.num_rows, pa.string()))
-    pq.write_table(detail, release/'detail.parquet')
-    retired = pa.table({'link_key': [b'\xaa'*8, b'\xbb'*8], 'successor_key': [None, None], 'last_release_id': ['d'*64]*2,
-        'last_filename': ['removed.pdf']*2, 'address_versions': [None, []]}, schema=pa.schema([
-            ('link_key', pa.binary(8)), ('successor_key', pa.binary(8)), ('last_release_id', pa.string()),
-            ('last_filename', pa.string()), ('address_versions', pa.list_(pa.binary(8)))]))
+    With no retained inventory, ordinary producer/consumer tests build their own
+    baseline. Rich fixture authoring remains a separate test and never uses this
+    override.
+    """
+    inventory = os.environ.get('ARCHIVE_RETAINED_FIXTURE_FILES')
+    if inventory is None:
+        return request.getfixturevalue('build_native_fixture')()
+    files = {name: Path(path) for name, path in json.loads(Path(inventory).read_text()).items()}
+    assert all(path.is_absolute() for path in files.values()), 'Retained inventory requires absolute paths'
+    manifest = json.loads(files['manifest.json'].read_text())
+    assert files.keys() == {'manifest.json', *(item['name'] for item in manifest['files'])}
+    assert manifest['release_id'] == release_identity(manifest['schema_version'], manifest['files'])
+    return manifest, files
+
+
+def test_reader_fixture_inventory_transport():
+    """Keep exact membership, nested names and invalid-range checks in the lane."""
+    result = subprocess.run(['node', '--test', str(ROOT/'apps/site/scripts/archive-test-fixture.test.mjs')],
+        cwd=ROOT/'apps/site', env=os.environ.copy(), capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout+result.stderr
+
+
+def reader_environment(directory, files, **extra):
+    """Keep expectation sidecars separate from the exact release inventory."""
+    assert all(Path(path).is_absolute() for path in files.values())
+    inventory = directory/'reader-files.json'
+    inventory.write_text(json.dumps({name: str(path) for name, path in files.items()}))
+    return dict(os.environ, ARCHIVE_FIXTURE_FILES=str(inventory), **extra)
+
+
+def reader_variant(directory, manifest, files, tables, *, remove=()):
+    """Retain genuine controls and original native bytes beside test-only changes.
+
+    An outer delivery identity describes these exact bytes. Native catalog
+    acceptance still belongs to the original candidate, never to this variant.
+    """
+    directory.mkdir()
+    result = dict(files)
+    changed = set(tables) | set(remove)
+    catalog = json.loads(Path(files['catalog.ddk.json']).read_text())
+    assert not changed.intersection(item['path'] for item in catalog['files']), (
+        'A reader variant cannot replace a catalog companion without new genuine metadata')
+    descriptors = {item['name']: deepcopy(item) for item in manifest['files']}
+    for name in remove:
+        result.pop(name)
+        descriptors.pop(name)
+    for name, (table, shard, row_range) in tables.items():
+        path = directory/name
+        pq.write_table(table, path)
+        data = path.read_bytes()
+        descriptors[name] = dict(name=name, size=len(data), sha256=sha256(data).hexdigest(),
+            md5=md5(data).hexdigest(), rows=table.num_rows, producer='archive', coverage={},
+            shard=shard, row_range=row_range)
+        result[name] = path
+    variant = dict(deepcopy(manifest), files=list(descriptors.values()))
+    variant['release_id'] = release_identity(variant['schema_version'], variant['files'])
+    path = directory/'manifest.json'
+    path.write_text(json.dumps(variant))
+    result['manifest.json'] = path
+    (directory/'reader-variant.json').write_text(json.dumps({
+        'purpose': 'Bounded reader behavior test; not native candidate qualification',
+        'baseline_release_id': manifest['release_id'], 'release_id': variant['release_id'],
+        'changed_files': sorted(changed)}))
+    assert result.keys() == {'manifest.json', *(item['name'] for item in variant['files'])}
+    return variant, result
+
+
+@pytest.mark.parametrize('missing', ['none', 'document_date_status', 'address_versions'])
+def test_current_reader_requires_current_fields_and_preserves_nulls(tmp_path, request, missing):
+    manifest, files = reader_release(request)
+    detail = pq.read_table(files['detail.parquet'])
+    index = detail.schema.get_field_index('document_date_status')
+    assert index >= 0, 'The native baseline must include the current date-status field'
+    detail = detail.drop(['document_date_status']) if missing == 'document_date_status' else detail.set_column(
+        index, detail.schema.field(index), pa.nulls(detail.num_rows, pa.string()))
+    retired = pa.table({'link_key': [b'\xaa'*8, b'\xbb'*8], 'successor_key': [None, None],
+        'last_release_id': ['d'*64]*2, 'last_filename': ['removed.pdf']*2,
+        'address_versions': [None, []]}, schema=pa.schema([
+            ('link_key', pa.binary(8)), ('successor_key', pa.binary(8)),
+            ('last_release_id', pa.string()), ('last_filename', pa.string()),
+            ('address_versions', pa.list_(pa.binary(8)))]))
     if missing == 'address_versions':
         retired = retired.drop(['address_versions'])
-    pq.write_table(retired, release/'retired_links.parquet')
-    for name, data in current_catalog().artifacts.items():
-        path = release/name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
-    files = [descriptor(path.relative_to(release).as_posix(), path.read_bytes(),
-        pq.read_metadata(path).num_rows if path.suffix == '.parquet' else 0)
-        for path in sorted(release.rglob('*')) if path.is_file() and path.name != 'manifest.json']
-    manifest = dict(schema_version=1, release_id=release_identity(1, files), files=files)
-    (release/'manifest.json').write_text(json.dumps(manifest))
+    _, variant = reader_variant(tmp_path/'variant', manifest, files, {
+        'detail.parquet': (detail, None, None), 'retired_links.parquet': (retired, None, None)})
     script = """
       import assert from 'node:assert/strict';
-      import {readFile} from 'node:fs/promises';
-      import {join} from 'node:path';
+      import {loadArchiveFixture} from './scripts/archive-test-fixture.mjs';
       import {openArchive} from './src/components/explorer/reader/archive.ts';
-      const root=process.env.ARCHIVE_FIXTURE, missing=process.env.ARCHIVE_MISSING_FIELD;
-      const manifest=JSON.parse(await readFile(join(root,'manifest.json')));
-      const fetcher=async(url,options={})=>{
-        const path=new URL(url).pathname;
-        if(path==='/manifest.json')return Response.json({release_id:manifest.release_id});
-        const bytes=await readFile(join(root,path.split('/').slice(3).join('/')));
-        if(!options.headers?.Range)return new Response(bytes);
-        const [start,end]=options.headers.Range.slice(6).split('-').map(Number);
-        return new Response(bytes.subarray(start,end+1),{status:206,headers:{'Content-Range':`bytes ${start}-${end}/${bytes.length}`}});
-      };
+      const {fetcher}=await loadArchiveFixture();
+      const missing=process.env.ARCHIVE_MISSING_FIELD;
       const reader=await openArchive('https://fixture.test/manifest.json',{fetcher});
       if(missing==='none'){
         assert.equal((await reader.entry(0)).detail.document_date_status,null);
@@ -70,101 +123,89 @@ def test_current_reader_requires_current_fields_and_preserves_nulls(tmp_path, mi
       }
     """
     result = subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT/'apps/site',
-        env=dict(os.environ, ARCHIVE_FIXTURE=str(release), ARCHIVE_MISSING_FIELD=missing),
+        env=reader_environment(tmp_path, variant, ARCHIVE_MISSING_FIELD=missing),
         capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout+result.stderr
 
 
-def test_shared_reader_contract(tmp_path):
-    release = tmp_path / 'release'
-    build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
-        scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
-    result = subprocess.run(['node', '--test', str(ROOT / 'apps/site/scripts/archive-reader.test.mjs')],
-        cwd=ROOT / 'apps/site', env=dict(os.environ, ARCHIVE_FIXTURE=str(release)),
+def test_shared_reader_contract(tmp_path, request):
+    _, files = reader_release(request)
+    # The producer deliberately separates native outputs from application controls.
+    assert Path(files['list.parquet']).parent != Path(files['manifest.json']).parent
+    result = subprocess.run(['node', '--test', str(ROOT/'apps/site/scripts/archive-reader.test.mjs')],
+        cwd=ROOT/'apps/site', env=reader_environment(tmp_path, files),
         capture_output=True, text=True, timeout=90)
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.returncode == 0, result.stdout+result.stderr
 
 
-def test_native_shards_cross_absolute_row_ranges(tmp_path):
-    """Expected: detail row4 in shard2; row1's two sources straddle sources row3."""
-    import json
-    from hashlib import sha256
+def test_rich_entity_reader_contract(tmp_path, build_native_fixture):
+    """Run the full entity scenario through authored inputs and the native writer."""
+    from archive_entity_fixture import author_entity_inputs
 
-    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    release = tmp_path / 'release'
-    manifest = build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
-        scratch=tmp_path / 'job', engine=engine)
-    original = json.loads((tmp_path / 'job/job.json').read_text())
-    settings = {item['name']: item['settings'] for item in original['outputs']}
-    detail_fields = settings['detail.parquet']['columns']
-    source_fields = settings['sources.parquet']['columns']
-    detail_select = ','.join(f'cast({name}*2 AS INT) AS {name}' if name in {'src_start', 'src_len'} else name for name in detail_fields)
-    source_select = ','.join('cast(s.ordinal*2+copy AS INT) AS ordinal' if name == 'ordinal' else f's.{name}' for name in source_fields)
-    steps = [dict(name='d', sql=f'SELECT {detail_select},cast(row_number() OVER()-1 AS INT) AS _row FROM old_detail'),
-             dict(name='s', sql=f'SELECT {source_select} FROM old_sources s CROSS JOIN unnest(make_array(0,1)) AS copies(copy)')]
-    outputs = []
-    for name, relation, ranges, keys in [('detail', 'd', [(0,3),(3,7)], ['_row']),
-                                        ('sources', 's', [(0,3),(3,14)], ['list_row','ordinal'])]:
-        for index, (start, end) in enumerate(ranges):
-            writer = dict(settings[name+'.parquet'], order_by=[dict(field=key) for key in keys])
-            predicate = f'_row>={start} AND _row<{end}' if name == 'detail' else f'list_row*2+ordinal>={start} AND list_row*2+ordinal<{end}'
-            # Each source fixture has exactly one original source, ordinal0.
-            outputs.append(dict(name=f'{name}-{index:05}.parquet', path=str(release/f'{name}-{index:05}.parquet'),
-                sql=f'SELECT * FROM {relation} WHERE {predicate}', settings=writer))
-    spec = dict(scratch=str(tmp_path/'shard-native'), inputs=[dict(name='old_detail',kind='parquet',path=str(release/'detail.parquet')),
-        dict(name='old_sources',kind='parquet',path=str(release/'sources.parquet'))], steps=steps, outputs=outputs)
-    path=tmp_path/'shard-job.json';path.write_text(json.dumps(spec));result=engine.run_job(path)
-    files=[item for item in manifest['files'] if item['name'] not in {'detail.parquet','sources.parquet'}]
-    for output in result['outputs']:
-        item=dict(output);item.pop('footer_bytes',None);name,index=item['name'].removesuffix('.parquet').rsplit('-',1)
-        ranges=[(0,3),(3,7 if name=='detail' else 14)]
-        item.update(shard=name,row_range=list(ranges[int(index)]),producer='archive',coverage={});files.append(item)
-    identity=[manifest['schema_version'],[[f['name'],f['sha256'],f['size'],f['rows']] for f in files]]
-    manifest.update(files=files,release_id=sha256(json.dumps(identity,separators=(',',':')).encode()).hexdigest())
-    (release/'manifest.json').write_text(json.dumps(manifest))
-    result=subprocess.run(['npm','run','test:archive-shards','--workspaces=false'],cwd=ROOT/'apps/site',
-        env=dict(os.environ,ARCHIVE_FIXTURE=str(release)),capture_output=True,text=True,timeout=90)
-    assert result.returncode==0,result.stdout+result.stderr
+    documents, entity_files = author_entity_inputs(tmp_path/'entity-inputs')
+    _, files = build_native_fixture(documents, name='rich-fixture', entity_files=entity_files)
+    env = reader_environment(tmp_path, files)
+    env['ARCHIVE_ENTITY_FIXTURE_FILES'] = env['ARCHIVE_FIXTURE_FILES']
+    result = subprocess.run(['node', '--test', str(ROOT/'apps/site/scripts/archive-entities.test.mjs')],
+        cwd=ROOT/'apps/site', env=env, capture_output=True, text=True, timeout=90)
+    assert result.returncode == 0, result.stdout+result.stderr
 
 
-def test_reader_redirects_retired_keys_and_shows_removal_notices(tmp_path):
-    """Gate 2 in the site reader: live, redirected, removed and never-published keys."""
-    import json
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from congress_api.retention.provenance import file_pin
-    from viewer_publication.archive_format import release_identity
+def test_reader_shards_cross_absolute_row_ranges(tmp_path, request):
+    """Reader-only reshaping: detail row 4 in shard 2; row 1 spans source row 3."""
+    manifest, files = reader_release(request)
+    detail = pq.read_table(files['detail.parquet'])
+    sources = pq.read_table(files['sources.parquet'])
+    assert detail.num_rows == sources.num_rows == 7
+    assert sources.column('ordinal').to_pylist() == [0]*7
+    for name in ('src_start', 'src_len'):
+        index = detail.schema.get_field_index(name)
+        field = detail.schema.field(index)
+        detail = detail.set_column(index, field,
+            pa.array([value*2 for value in detail.column(name).to_pylist()], type=field.type))
+    sources = sources.take(pa.array([index for index in range(7) for _ in range(2)]))
+    ordinal = sources.schema.get_field_index('ordinal')
+    field = sources.schema.field(ordinal)
+    sources = sources.set_column(ordinal, field, pa.array([0, 1]*7, type=field.type))
+    tables = {}
+    for name, table in [('detail', detail), ('sources', sources)]:
+        for index, (start, end) in enumerate([(0, 3), (3, table.num_rows)]):
+            tables[f'{name}-{index:05}.parquet'] = (table.slice(start, end-start), name, [start, end])
+    _, variant = reader_variant(tmp_path/'shards', manifest, files, tables,
+        remove=('detail.parquet', 'sources.parquet'))
+    result = subprocess.run(['node', '--test', str(ROOT/'apps/site/scripts/archive-shards.test.mjs')],
+        cwd=ROOT/'apps/site', env=reader_environment(tmp_path, variant),
+        capture_output=True, text=True, timeout=90)
+    assert result.returncode == 0, result.stdout+result.stderr
+
+
+def test_reader_redirects_retired_keys_and_shows_removal_notices(tmp_path, request):
+    """Gate 2 in the reader: live, redirected, removed and never-published keys."""
     from viewer_publication.release_gate import RETIRED
-    release = tmp_path / 'release'
-    manifest = build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
-        scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
-    links = pq.read_table(release / 'links.parquet').to_pylist()
-    live = links[0]
-    rows = [dict(link_key=b'\xaa' * 8, successor_key=live['link_key'], last_release_id='d' * 64, last_filename='old.pdf'),
-            dict(link_key=b'\xbb' * 8, successor_key=None, last_release_id='e' * 64, last_filename='gone.pdf',
-                 address_versions=[live['link_key']])]
-    pq.write_table(pa.Table.from_pylist(rows, schema=RETIRED), release / 'retired_links.parquet')
-    pin = file_pin(release / 'retired_links.parquet')
-    manifest['files'] = [f for f in manifest['files'] if f['name'] != 'retired_links.parquet'] + [
-        dict(name='retired_links.parquet', sha256=pin['sha256'], size=pin['size'], rows=2, md5='0' * 32,
-             row_range=None, shard=None, producer='archive', coverage={})]
-    manifest['release_id'] = release_identity(1, manifest['files'])
-    (release / 'manifest.json').write_text(json.dumps(manifest))
-    (release / 'retired-expected.json').write_text(json.dumps(dict(
-        live=dict(key=live['link_key'].hex(), index=live['list_row']), redirect=dict(key='aa' * 8),
-        removed=dict(key='bb' * 8, last_release_id='e' * 64, last_filename='gone.pdf', versions=[live['link_key'].hex()]))))
-    result = subprocess.run(['node', '--test', str(ROOT / 'apps/site/scripts/archive-retired.test.mjs')],
-        cwd=ROOT / 'apps/site', env=dict(os.environ, ARCHIVE_FIXTURE=str(release)),
+
+    manifest, files = reader_release(request)
+    live = pq.read_table(files['links.parquet']).to_pylist()[0]
+    rows = [dict(link_key=b'\xaa'*8, successor_key=live['link_key'],
+                 last_release_id='d'*64, last_filename='old.pdf'),
+            dict(link_key=b'\xbb'*8, successor_key=None, last_release_id='e'*64,
+                 last_filename='gone.pdf', address_versions=[live['link_key']])]
+    _, variant = reader_variant(tmp_path/'retired', manifest, files, {
+        'retired_links.parquet': (pa.Table.from_pylist(rows, schema=RETIRED), None, None)})
+    expected = tmp_path/'retired-expected.json'
+    expected.write_text(json.dumps(dict(
+        live=dict(key=live['link_key'].hex(), index=live['list_row']), redirect=dict(key='aa'*8),
+        removed=dict(key='bb'*8, last_release_id='e'*64, last_filename='gone.pdf',
+                     versions=[live['link_key'].hex()]))))
+    result = subprocess.run(['node', '--test', str(ROOT/'apps/site/scripts/archive-retired.test.mjs')],
+        cwd=ROOT/'apps/site', env=reader_environment(tmp_path, variant, ARCHIVE_EXPECTED_FILE=str(expected)),
         capture_output=True, text=True, timeout=90)
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.returncode == 0, result.stdout+result.stderr
 
 
-def test_reader_opens_earlier_witness_keys_through_the_key_map(tmp_path):
-    """ct-kb4w in the site reader: an unambiguous earlier key opens its successor; the others say why not."""
-    release = tmp_path / 'release'
-    build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
-        scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
-    result = subprocess.run(['node', '--test', str(ROOT / 'apps/site/scripts/archive-witness-map.test.mjs')],
-        cwd=ROOT / 'apps/site', env=dict(os.environ, ARCHIVE_FIXTURE=str(release)),
+def test_reader_opens_earlier_witness_keys_through_the_key_map(tmp_path, request):
+    """Earlier keys resolve only when unambiguous; other outcomes explain why."""
+    _, files = reader_release(request)
+    result = subprocess.run(['node', '--test', str(ROOT/'apps/site/scripts/archive-witness-map.test.mjs')],
+        cwd=ROOT/'apps/site', env=reader_environment(tmp_path, files),
         capture_output=True, text=True, timeout=90)
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.returncode == 0, result.stdout+result.stderr

@@ -5,28 +5,19 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
-import {startArchiveServer,directoryFiles} from './archive-server.mjs';
+import {startArchiveServer} from './archive-server.mjs';
+import {loadArchiveFixture} from './archive-test-fixture.mjs';
 
 // Run this separately with a retained, genuinely assembled public DDK fixture.
 // It is not a substitute for the full archive's native qualification.
-const folder=process.env.ARCHIVE_FIXTURE;
-assert.ok(folder,'ARCHIVE_FIXTURE must name the retained public-catalog release');
-const manifest=JSON.parse(await readFile(join(folder,'manifest.json')));
-const expected=JSON.parse(await readFile(join(folder,'catalog.ddk.json')));
+const fixture=await loadArchiveFixture();
+const {manifest,remapRelease}=fixture;
+const expected=JSON.parse(await readFile(fixture.files['catalog.ddk.json']));
 const requested=[];
-async function localFetch(url,options={}){
-  const pathname=new URL(url).pathname;requested.push(pathname);
-  if(pathname==='/manifest.json')return Response.json({release_id:manifest.release_id});
-  const relative=pathname.split('/').slice(3).join('/');
-  const data=await readFile(join(folder,relative));
-  const range=options.headers?.Range;
-  if(!range)return new Response(data);
-  const [start,end]=range.slice(6).split('-').map(Number);
-  return new Response(data.subarray(start,end+1),{status:206,headers:{'Content-Range':`bytes ${start}-${end}/${data.length}`}});
-}
+const localFetch=async(url,options)=>{requested.push(new URL(url).pathname);return fixture.fetcher(url,options);};
 
 test('local origin serves exact catalog companions and current reader rows',async()=>{
-  const server=await startArchiveServer({release:await directoryFiles(folder)});
+  const server=await startArchiveServer({release:{...fixture.files}});
   try{
     const reader=await openArchive(server.pointerUrl,{fetcher:fetch});
     assert.deepEqual(await reader.catalog(),expected);
@@ -43,7 +34,7 @@ test('local origin serves exact catalog companions and current reader rows',asyn
 });
 
 test('local origin serves retained exports with controls in a separate directory',async()=>{
-  const files=await directoryFiles(folder),controls=await realpath(await mkdtemp(join(tmpdir(),'archive-controls-')));
+  const files={...fixture.files},controls=await realpath(await mkdtemp(join(tmpdir(),'archive-controls-')));
   const path=join(controls,'manifest.bin');
   await writeFile(path,await readFile(files['manifest.json']));
   files['manifest.json']=path;
@@ -65,7 +56,7 @@ test('local origin serves retained exports with controls in a separate directory
 });
 
 test('local origin refuses inventory files outside manifest membership',async()=>{
-  const files=await directoryFiles(folder);
+  const files={...fixture.files};
   files['unlisted.parquet']=files['list.parquet'];
   await assert.rejects(startArchiveServer({release:files}),/inventory differs/);
 });
@@ -85,7 +76,7 @@ test('browser reads admitted public definitions and rows with cached metadata',a
   for(const recipe of expected.recipes){
     assert.ok(Array.isArray(recipe.parameterOrder));
     const descriptor=manifest.files.find(item=>item.name===recipe.sql);
-    const sql=await readFile(join(folder,recipe.sql));
+    const sql=await readFile(fixture.files[recipe.sql]);
     assert.equal(createHash('sha256').update(sql).digest('hex'),descriptor.sha256);
   }
   assert.ok((await reader.search({})).total>0);
@@ -100,7 +91,7 @@ for(const [fault,message] of [
   ['definition',/effective field definitions/],
 ])test(`browser refuses genuine public fixture with ${fault} metadata`,async()=>{
   const catalog=structuredClone(expected);
-  const report=JSON.parse(await readFile(join(folder,'catalog.report.json')));
+  const report=JSON.parse(await readFile(fixture.files['catalog.report.json']));
   if(fault==='nonpublic')catalog.audience='local';
   else if(fault==='failed'||fault==='incomplete')report.decision=fault;
   else if(fault==='companion')catalog.files.find(item=>item.path!=='catalog.report.json').sha256='0'.repeat(64);
@@ -117,7 +108,7 @@ for(const [fault,message] of [
     if(path==='/manifest.json')return Response.json({release_id:releaseId});
     if(path.endsWith('/manifest.json'))return Response.json({...manifest,files,release_id:releaseId});
     const relative=path.split('/').slice(3).join('/');
-    return changed.has(relative)?new Response(changed.get(relative)):localFetch(url,options);
+    return changed.has(relative)?new Response(changed.get(relative)):localFetch(remapRelease(url),options);
   };
   await assert.rejects(openArchive('https://fixture.test/manifest.json',{fetcher}),message);
   assert.ok(!accesses.some(name=>name.endsWith('.parquet')),'metadata refusal must precede data reads');

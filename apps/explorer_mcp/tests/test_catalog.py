@@ -153,7 +153,7 @@ def test_actual_archive_keys_keep_document_addresses_separate_while_qualificatio
     assert admitted['report']['decision'] == 'incomplete'
     assert admitted['catalog'] is not None
     keys, links = published_entities(admitted['catalog'])
-    baseline = json.loads((REPO / 'model/registries/release-schema.json').read_text())
+    baseline = json.loads((REPO / 'model/fixtures/release-schema-baseline.json').read_text())
     expected = {item['name'].removesuffix('.parquet'): item['identity']['fields'] for item in baseline['files']
                 if item['identity']['scope'] == 'published identifier'
                 and item['name'] not in ('links.parquet', 'retired_links.parquet')}

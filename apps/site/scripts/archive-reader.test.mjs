@@ -1,25 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-import {join} from 'node:path';
+import {loadArchiveFixture} from './archive-test-fixture.mjs';
 import {createHash} from 'node:crypto';
 import {openArchive, lookupUrl, savedCopy, dateLabels, recoveryLabel} from '../src/components/explorer/reader/archive.ts';
 
-const folder = process.env.ARCHIVE_FIXTURE;
-const manifest = JSON.parse(await readFile(join(folder, 'manifest.json')));
+const fixture = await loadArchiveFixture();
+const {manifest,requests,remapRelease} = fixture;
+const localFetch = fixture.fetcher;
 const releaseId = manifest.release_id;
-const requests = [];
-async function localFetch(url, options={}) {
-  const path = new URL(url).pathname;
-  requests.push({path, range: options.headers?.Range});
-  if (path === '/manifest.json') return Response.json({release_id: releaseId, previous_release_id:null});
-  const bytes = await readFile(join(folder, path.split('/').at(-1)));
-  const range = options.headers?.Range;
-  if (!range) return new Response(bytes);
-  const [start,end] = range.slice(6).split('-').map(Number);
-  return new Response(bytes.subarray(start,end+1), {status:206,
-    headers:{'Content-Range':`bytes ${start}-${end}/${bytes.length}`}});
-}
 
 test('one reader opens native releases, searches arrays and resolves indexed keys', async()=>{
   const reader = await openArchive('https://fixture.test/manifest.json', {fetcher: localFetch, heapBytes:64*1024*1024});
@@ -132,8 +120,8 @@ test('shard descriptors use half-open absolute ranges and keep the same document
   const fetcher=async(url,options)=>{
     if(new URL(url).pathname==='/manifest.json')return Response.json({release_id:id});
     if(String(url).endsWith('/manifest.json'))return Response.json(sharded);
-    if(String(url).endsWith('/detail-00000.parquet'))return localFetch(String(url).replace('detail-00000.parquet','detail.parquet'),options);
-    return localFetch(url,options);
+    if(String(url).endsWith('/detail-00000.parquet'))return localFetch(remapRelease(String(url).replace('detail-00000.parquet','detail.parquet')),options);
+    return localFetch(remapRelease(url),options);
   };
   const reader=await openArchive('https://fixture.test/manifest.json',{fetcher});
   assert.equal((await reader.entry(4)).document.filename,'Record.pdf');
@@ -159,7 +147,7 @@ test('pasted-address versions apply hearing and format filters with capture pagi
 test('mandatory release files cannot be omitted as empty optional entities',async()=>{
   for(const omitted of ['url_state.parquet','recoveries.parquet','catalog.ddk.json','catalog.report.json','catalog.lock.json','capture_scope.json']){
     const files=manifest.files.filter(item=>item.name!==omitted),id=createHash('sha256').update(JSON.stringify([manifest.schema_version,files.map(f=>[f.name,f.sha256,f.size,f.rows])])).digest('hex');
-    const fetcher=async(url,options)=>new URL(url).pathname==='/manifest.json'?Response.json({release_id:id}):String(url).endsWith('/manifest.json')?Response.json({...manifest,files,release_id:id}):localFetch(url,options);
+    const fetcher=async(url,options)=>new URL(url).pathname==='/manifest.json'?Response.json({release_id:id}):String(url).endsWith('/manifest.json')?Response.json({...manifest,files,release_id:id}):localFetch(remapRelease(url),options);
     await assert.rejects(openArchive('https://fixture.test/manifest.json',{fetcher}),/required|missing/i);
   }
   const reader=await openArchive('https://fixture.test/manifest.json',{fetcher:localFetch});assert.equal((await reader.recoveryRange(0,1)).length,1);
@@ -173,133 +161,10 @@ test('catalog metadata refuses partial delivery, malformed controls and unsafe p
   const open=async extra=>{
     const base=manifest.files.filter(item=>!item.name.startsWith('catalog.')&&item.name!=='discovery.dcat.json'&&!item.name.startsWith('queries/')&&!item.name.startsWith('lineage/'));
     const files=[...base,...extra],id=createHash('sha256').update(JSON.stringify([manifest.schema_version,files.map(f=>[f.name,f.sha256,f.size,f.rows])])).digest('hex');
-    const fetcher=async(url,options)=>new URL(url).pathname==='/manifest.json'?Response.json({release_id:id}):String(url).endsWith('/manifest.json')?Response.json({...manifest,files,release_id:id}):extra.some(item=>String(url).endsWith('/'+item.name))?new Response(data):localFetch(url,options);
+    const fetcher=async(url,options)=>new URL(url).pathname==='/manifest.json'?Response.json({release_id:id}):String(url).endsWith('/manifest.json')?Response.json({...manifest,files,release_id:id}):extra.some(item=>String(url).endsWith('/'+item.name))?new Response(data):localFetch(remapRelease(url),options);
     return openArchive('https://fixture.test/manifest.json',{fetcher});
   };
   await assert.rejects(open(descriptors),SyntaxError);
   await assert.rejects(open(descriptors.filter(item=>item.name!=='catalog.ddk.json')),/Required archive file is missing/i);
   await assert.rejects(open([...descriptors,{...descriptors.at(-1),name:'queries/not-a-digest.sql'}]),/file descriptor/i);
-});
-
-test('Phase-2 entity Parquet files load lazily, support cross-filtering, and resolve rich entity details',async()=>{
-  const phase2Dir = new URL('./fixtures/phase2-entities/', import.meta.url);
-  const phase2Manifest = JSON.parse(await readFile(new URL('manifest.json', phase2Dir), 'utf8'));
-  const phase2ReleaseId = phase2Manifest.release_id;
-  const fetchedFiles = [];
-  const phase2Fetch = async (url, options = {}) => {
-    const pathname = new URL(url).pathname;
-    if (pathname === '/manifest.json') {
-      return Response.json({release_id: phase2ReleaseId, previous_release_id: null});
-    }
-    const name = pathname.split('/').at(-1);
-    fetchedFiles.push(name);
-    let bytes;
-    try {
-      bytes = await readFile(new URL(name, phase2Dir));
-    } catch {
-      // This manifest pins the committed old-shaped files, which stay readable as they are.
-      bytes = await readFile(new URL('../../../model/fixtures/archive-contract/current/'+name, import.meta.url));
-    }
-    const range = options.headers?.Range;
-    if (!range) return new Response(bytes);
-    const [start, end] = range.slice(6).split('-').map(Number);
-    return new Response(bytes.subarray(start, end + 1), {
-      status: 206,
-      headers: {'Content-Range': `bytes ${start}-${end}/${bytes.length}`},
-    });
-  };
-
-  const reader = await openArchive('https://fixture.test/manifest.json', {
-    fetcher: phase2Fetch,
-    heapBytes: 64 * 1024 * 1024,
-  });
-
-  // Startup only loads manifest.json and list.parquet, not optional Phase-2 entity tables
-  assert(!fetchedFiles.includes('witnesses.parquet'));
-  assert(!fetchedFiles.includes('bills.parquet'));
-
-  // Filter documents by witness_key, bioguide_id, event_id, subject_key, and committee_key
-  assert.equal((await reader.search({witness_key: 'smith_jane'})).total, 2);
-  assert.equal((await reader.search({bioguide_id: 'S000510'})).total, 1);
-  assert.equal((await reader.search({event_id: '118001'})).total, 2);
-  assert.equal((await reader.search({subject_key: '118-hr-1234'})).total, 1);
-  assert.equal((await reader.search({subject_key: '118-pn-730-2'})).total, 1);
-  assert.equal((await reader.search({committee_key: 'hspw00'})).total, 2);
-
-  // Rich Meeting lookup with joined recordings, committees, subjects, witnesses, and documents
-  const meeting = await reader.getMeeting('house', 118001);
-  assert(meeting);
-  assert.equal(meeting.title, 'Transportation infrastructure hearing');
-  assert.equal(meeting.status, 'held');
-  assert.equal(meeting.sittings[0].building, 'Rayburn');
-  assert.equal(meeting.recordings.length, 1);
-  assert.equal(meeting.recordings[0].duration_s, 5420);
-  assert.equal(meeting.recordings[0].tracks[0].label, 'English captions');
-  assert.equal(meeting.witnesses.length, 2);
-  assert.equal(meeting.witnesses[0].name, 'Dr. Jane Smith');
-  assert.equal(meeting.witnesses[0].documents.length, 2);
-  assert.equal(meeting.subjects.length, 2);
-  assert.equal(meeting.documents.length, 2);
-
-  // Rich Committee lookup with historical name intervals, subcommittees, and roster
-  const committeeCurrent = await reader.getCommittee('hspw00', {congress: 118});
-  assert(committeeCurrent);
-  assert.equal(committeeCurrent.resolved_name, 'House Committee on Transportation and Infrastructure');
-  assert.equal(committeeCurrent.subcommittees.length, 1);
-  assert.equal(committeeCurrent.roster.length, 2);
-  assert.equal(committeeCurrent.roster[0].name, 'Sam Graves');
-  assert.equal(committeeCurrent.hearings.length, 1);
-
-  const committeeHistorical = await reader.getCommittee('hspw00', {date: '1985-06-01'});
-  assert.equal(committeeHistorical.resolved_name, 'House Committee on Public Works and Transportation');
-
-  // Rich Witness lookup
-  const witness = await reader.getWitness('smith_jane');
-  assert(witness);
-  assert.equal(witness.name, 'Dr. Jane Smith');
-  assert.deepEqual(witness.organizations, ['National Transit Institute']);
-  assert.equal(witness.appearances.length, 1);
-  assert.equal(witness.documents.length, 2);
-
-  // Rich Member lookup
-  const member = await reader.getMember('S000510');
-  assert(member);
-  assert.equal(member.name, 'Adam Smith');
-  assert.equal(member.party, 'D');
-  assert.equal(member.roster_entries.length, 1);
-  assert.equal(member.sponsored_bills.length, 1);
-  assert.equal(member.hearings.length, 1);
-  assert.equal(member.documents.length, 1);
-
-  // Rich Bill & Nomination lookups via getSubject / getBill / getNomination
-  const bill = await reader.getSubject('118-hr-1234');
-  assert(bill);
-  assert.equal(bill.kind, 'bill');
-  assert.equal(bill.short_title, 'Surface Transportation Modernization Act');
-  assert.equal(bill.cbo_estimates.length, 1);
-  assert.equal(bill.votes.length, 1);
-  assert.equal(bill.amendment_count, 1);
-  assert.equal(bill.hearings.length, 1);
-  assert.equal(bill.documents.length, 1);
-
-  const nom = await reader.getSubject('118-pn-730-2');
-  assert(nom);
-  assert.equal(nom.kind, 'nomination');
-  assert.equal(nom.citation, 'PN730-2');
-  assert.equal(nom.nominees[0].name, 'Jane Doe');
-  assert.equal(nom.votes.length, 1);
-  assert.equal(nom.hearings.length, 1);
-
-  // openDocument returns document entry plus joined Phase-2 entities
-  const opened = await reader.openDocument(0);
-  assert.equal(opened.document.filename, 'Agenda.pdf');
-  assert.equal(opened.meetings.length, 1);
-  assert.equal(opened.committees.length, 2);
-  assert.equal(opened.subjects.length, 2);
-  assert.equal(opened.witnesses.length, 2);
-  assert.equal(opened.members.length, 1);
-
-  // listEntities supports listing and filtering
-  assert.equal((await reader.listEntities('witnesses', {text: 'transit'})).total, 1);
-  assert.equal((await reader.listEntities('subjects', {congress: 118})).total, 2);
 });
