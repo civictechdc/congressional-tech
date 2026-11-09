@@ -2,7 +2,7 @@
 id: ct-3aap
 status: in_progress
 deps: []
-links: [ct-rg34]
+links: [ct-rg34, ct-zs48]
 created: 2026-11-09T03:09:09Z
 type: task
 priority: 3
@@ -16,6 +16,10 @@ Found by the ct-rg34 review (2026-11-08). Most MODS lines that ct-rg34 reads as 
 
 
 ## Notes
+
+**2026-11-09T18:52:18Z**
+
+Decision: an organization-only line (no name read, organization set) ending in ', [prepared|submitted] statement|letter|memorandum|article|paper|report[s][ and attachment(s)][, dated ...]' is statement_for_record (the type mods_entry_kind gives other organizations' letters and statements; the model already treats all three record types alike). Only organization-only lines: a person's line ending the same way stays the witness (D4 gate). Built on claude/ct-mods-zs48-3aap with ct-zs48. Measured on all 35,020 MODS originals: 37 witness_type changes None -> statement_for_record, nothing else. The live generation has 60 organization-only rows, not 79; the other 23 stay untyped: 10 are document titles without an ending document word (raw check lists them as untyped_record, e.g. 'Summary of Goals and Projects, December 20, 2010', 'Department of Veterans Affairs, example of letter sent to Veterans', 'Prepared Statement of the National Park Service, on H.R. 586'), the rest organizations or headings (e.g. 'Blinded Veterans Association, New York, Inc', 'Gyres Institute, Leap Lab'). Raw check type judgment and typed-organization plant added.
 
 **2026-11-10T13:27:10Z**
 

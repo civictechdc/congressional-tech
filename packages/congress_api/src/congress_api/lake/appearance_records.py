@@ -196,6 +196,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_WITNESS_HEADING",
         "_TESTIFIED_WORDS",
         "mods_entry_kind",
+        "_MODS_ORGANIZATION_DOCUMENT",
         "_MODS_REPRESENTATIVE",
         "_MODS_REP_PRINT",
         "_MODS_REP_COMPANION",
@@ -1028,6 +1029,16 @@ def mods_entry_kind(line: str, name: str | None) -> str | None:
     return "statement_for_record" if _RECORD_ENTRY.search(text) else None
 
 
+# A line read as an organization alone that ends in a document of its own ("Paralyzed Veterans of America,
+# statement", "National Restaurant Association, letter, dated Sept. 8, 2014", "Federalist Society, Washington,
+# D.C., paper") is that organization's submission for the record (ct-3aap). A person's line ending the same way
+# ("Coston, James E., Attorney, Chicago, IL, prepared statement") is their own entry, so this reads only lines
+# with no name.
+_MODS_ORGANIZATION_DOCUMENT = re.compile(
+    r",\s*(?:prepared |submitted )?(?:statement|letter|memorandum|article|paper|report)s?(?: and attachments?)?"
+    r"(?:,\s*dated\b[^,]*(?:,\s*\d{4})?)?\s*$", re.I)
+
+
 def mods_held_dates(doc: ModsDocument) -> list[str]:
     """Every heldDate the print states, root and constituent items, as distinct sorted ISO dates."""
     found = set()
@@ -1444,7 +1455,9 @@ def extract_mods_observation(
                     "organization": _opt_str(parsed.get("organization")),
                     "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
                     "bioguide_id": bg,
-                    "witness_type": mods_entry_kind(cleaned_line, w_name),
+                    "witness_type": mods_entry_kind(cleaned_line, w_name) or (
+                        "statement_for_record" if not w_name and parsed.get("organization")
+                        and _MODS_ORGANIZATION_DOCUMENT.search(cleaned_line) else None),
                     "display_order": len(raw_rows) + 1,
                     "document_links": [],
                 }

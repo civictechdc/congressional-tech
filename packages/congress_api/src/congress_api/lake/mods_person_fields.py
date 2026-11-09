@@ -13,8 +13,12 @@ that listing context, separate companions, and printed headings.
 # the second reads at `<locator>/part[2]`. CHRG-113shrg89525 (ct-79j1): the
 # contents repeat Victor Joseph's entry without a page and run it into Michael K.
 # Abbott's, whose testimony (p. 24) and prepared statement (p. 54) are printed.
+# CHRG-114hhrg93258 (ct-zs48): under "Responses to questions for the record from
+# the following Representatives and Delegate", Delegate Eleanor Holmes Norton's
+# entry runs into Representative Daniel Lipinski's.
 MODS_JOINED_LINES: dict[str, dict[int, tuple[str, str]]] = {
     'CHRG-113shrg89525': {6: ('7fc2f30fbfe6c95cf115fcb4543b1327cf4d9b331087062880bfdcee89cb4f38', '.. ')},
+    'CHRG-114hhrg93258': {10: ('150246912b937bae92fc14755c6e33403516411a11a97367dbdf3441a92e56e8', '.. ')},
 }
 
 MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'CHRG-106hhrg57366': {9: ('7409e3e059e4a34a44b1d0051d29d0b52acbcdda5994016eb97ea4000ce610cc',

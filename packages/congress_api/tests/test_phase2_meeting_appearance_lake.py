@@ -2285,6 +2285,51 @@ def test_mods_reviewed_joined_line_yields_both_printed_entries():
         assert [a["name"] for a in found if a["name"]] == ["Victor Joseph"]
 
 
+def test_mods_reviewed_joined_line_splits_norton_from_lipinski():
+    """ct-zs48: CHRG-114hhrg93258's tenth contents line, under "Responses to questions for the record from the
+    following Representatives and Delegate", runs Delegate Eleanor Holmes Norton's entry into Representative
+    Daniel Lipinski's. The retained MODS bytes give each their own occurrence; neither is a WITNESS congMember,
+    so neither links to a bioguide, like the Members listed above them."""
+    xml = (ROOT / "packages/congress_api/tests/fixtures/gpo_metadata/CHRG-114hhrg93258.xml").read_bytes()
+    assert hashlib.sha256(xml).hexdigest() == "b7222c476e68a944d4bf0c57890400287a153988e2a02b66ef985893fd4f9f6e"
+    row = appearance_records.build_appearance_record_row(_sha("mods-93258"), "mods", xml)
+    assert row["package_id"] == "CHRG-114hhrg93258"
+    people = [(a["source_locator"], a["name"], a["position"], a["organization"], a["bioguide_id"], a["witness_type"],
+               a["display_order"]) for a in row["appearances"]]
+    assert people[-3:] == [
+        ("mods:witness[9]", "Peter A. DeFazio", "of Oregon", None, None, None, 8),
+        ("mods:witness[10]", "Eleanor Holmes Norton", "of the District of Columbia", None, None, None, 9),
+        ("mods:witness[10]/part[2]", "Daniel Lipinski", "of Illinois", None, None, None, 10),
+    ]
+
+    # The split needs the reviewed package, position and exact original line.
+    line = xml.decode().split("<witness>")[10].split("</witness>")[0]
+    for package, before, text in [("CHRG-114hhrg93259", 9, line), ("CHRG-114hhrg93258", 8, line),
+                                  ("CHRG-114hhrg93258", 9, line.replace("Illinois", "Indiana"))]:
+        lines = "".join("<witness/>" for _ in range(before)) + f"<witness>{text}</witness>"
+        other = '<mods xmlns="http://www.loc.gov/mods/v3"><extension>' + lines + "</extension></mods>"
+        found = appearance_records.extract_mods_appearances(other, package_id=package)
+        assert [a["name"] for a in found if a["name"]] == ["Eleanor Holmes Norton"]
+
+
+def test_mods_organization_only_lines_ending_in_a_document_are_statements_for_the_record():
+    """ct-3aap: a line read as an organization alone that ends in its own document is a submission for the
+    record; one without a document word, or a person's line ending the same way, keeps its reading."""
+    lines = ["Paralyzed Veterans of America, statement",
+             "National Restaurant Association, letter, dated Sept. 8, 2014",
+             "American Council of Chief Defenders, Washington, D.C., statement and attachment",
+             "The Mortgage Bankers Association, prepared statement",
+             "Heritage Foundation, Washington, D.C., November 5, 2001, memorandum",
+             "Blinded Veterans Association, New York, Inc",
+             "Coston, James E., Attorney, Chicago, IL, prepared statement"]
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+           + "".join(f"<witness>{line}</witness>" for line in lines) + "</extension></mods>")
+    found = appearance_records.extract_mods_appearances(xml, package_id="CHRG-000hhrg00000")
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        (None, "statement_for_record")] * 5 + [(None, None), ("James E. Coston", None)]
+    assert found[1]["organization"] == "National Restaurant Association, letter, dated Sept. 8, 2014"
+
+
 def test_mods_print_states_every_held_day_and_labels_statements():
     """A multi-day print states later days in constituent items (Haaland 328803), and its <witness> list
     carries letters for the record and Members' statements, which are not witnesses (red-f2)."""

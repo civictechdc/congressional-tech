@@ -2,7 +2,7 @@
 
     mods_name_fields_raw_check.py --before GEN.parquet --after GEN.parquet --raw-root BODIES
         --people WITNESSES.parquet --output OUT.json [--accept REVIEWED.json]
-        [--plant person-moved|reversed-name|previous-segment]
+        [--plant person-moved|reversed-name|previous-segment|split-untrimmed|typed-organization]
 
 The re-read under test moves an organization out of a witness name ("American Legion" alone, or before
 the person: "Vietnam Veterans of America, Richard F. Weidman, ...") and joins a surname written first to its
@@ -27,15 +27,25 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``reorder_unsupported``: a new name whose words are not in the raw line in that order (a surname joined to
   its given name) and that does not open with a known given name and end with a known family name;
 - ``name_not_person``: a new name that is a place (a U.S. state, or a segment the raw line follows with a
-  state), or that opens with no known given name while a later segment of its raw line opens with one.
+  state), or that opens with no known given name while a later segment of its raw line opens with one;
+- ``split_unsupported``: an added ``<locator>/part[2]`` (a joined line read as two people, ct-zs48) unless its
+  parent occurrence is on both sides with the same name, the words the parent loses are exactly the words the
+  new occurrence holds, and the new name is in the raw line in order, opening with a known given name and ending
+  with a known family name. Any other added occurrence fails as ``added``. A passing split is listed under
+  ``split`` and its parent's moved words are not counted as lost;
+- ``type_unsupported``: a changed ``witness_type`` unless it goes from none to ``statement_for_record`` on an
+  occurrence with no name, an organization, and a raw line that names a document anywhere (any of
+  ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap).
 
 ``--accept`` names flagged occurrences a person has read and accepted, each as ``{"body", "locator",
 "flag", "after", "reason"}``, where ``after`` holds the four new fields the person read (name, position,
 organization, on_behalf_of); they are reported under ``accepted`` instead of failing. An accept covers only
-those values: any other new value under the same flag (a dropped position or organization included) fails,
-and an accepted entry the run no longer flags fails as ``stale_accept``. Listed for a person to read, without
-failing: ``unconfirmed`` new names that open with no known given name; ``residual`` unchanged names that open
-with no known given name on a raw line with a later segment that does. Bodies that are missing or do not
+those values and the occurrence's honorific, witness_type, bioguide_id and display_order (``KEYED``): any
+other new value under the same flag (a dropped position or organization included) fails, and an accepted entry
+the run no longer flags fails as ``stale_accept``. Listed for a person to read, without failing: ``unconfirmed``
+new names that open with no known given name; ``residual`` unchanged names that open with no known given name
+on a raw line with a later segment that does; ``untyped_record`` occurrences left with no name and no type
+whose raw line names a document and no person (what the typing rule leaves). Bodies that are missing or do not
 parse are listed in ``not_read`` and still compared without a line.
 
 What it cannot see: it cannot tell an organization from a person whose given name other publishers do not
@@ -43,13 +53,18 @@ state twice. Such new names land in ``unconfirmed`` (132 on the 2026-11-08 run),
 an organization for a rare-named person ("Nancy-Ann DeParle", "Ikeita Cantu Hinojosa", "Yasmina S. Vinci")
 passes unseen. Its "segment the raw line follows with a state" test for ``name_not_person`` restates the rule's
 own place heuristic, more strictly (the rule exempts MD, MA, MS and PA as credentials; this check does not), so
-it is not an independent measure of places.
+it is not an independent measure of places. It reads a document word anywhere in the line, where the typing rule
+reads one ending the line, so a line naming a document inside an organization's name and ending in one passes on
+either reading. It does not judge honorific, bioguide_id or display_order changes, nor a split whose second person
+has a given name other publishers do not state twice (that split fails, for a person to accept).
 
 ``--plant`` writes one wrong value the rule could produce on the after side, and the check must flag it,
 accepted or not: ``person-moved`` moves an unchanged person's name into the organization
 (``person_moved``); ``reversed-name`` writes a joined name surname first (``reorder_unsupported``);
 ``previous-segment`` replaces a person read after an organization with the raw segment before them
-(``name_not_person``).
+(``name_not_person``); ``split-untrimmed`` leaves a split's parent holding the second person's words
+(``split_unsupported``); ``typed-organization`` types an organization alone whose line names no document
+(``type_unsupported``).
 """
 import argparse
 from collections import Counter
@@ -66,9 +81,18 @@ TITLES = set('the hon honorable mr mrs ms miss dr prof professor rev reverend se
              'general gen admiral adm colonel col lieutenant lt major maj captain capt sergeant sgt commander brigadier vice rear '
              'master rabbi sister pastor esq'.split())
 SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'iv'}
+KEYED = (*FIELDS, 'honorific', 'witness_type', 'bioguide_id', 'display_order')
 FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'words_lost', 'words_gained',
-         'person_left_in_organization', 'reorder_unsupported', 'name_not_person')
-PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported', 'previous-segment': 'name_not_person'}
+         'person_left_in_organization', 'reorder_unsupported', 'name_not_person', 'split_unsupported',
+         'type_unsupported')
+PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported', 'previous-segment': 'name_not_person',
+          'split-untrimmed': 'split_unsupported', 'typed-organization': 'type_unsupported'}
+# Words that name a document submitted for the record, read anywhere in a line.
+DOCUMENTS = set('statement statements letter letters memorandum memo article articles paper papers report reports '
+                'attachment attachments testimony comments submission summary excerpt study analysis editorial '
+                'resolution petition exhibit packet'.split())
+CIVIL = {'hon', 'honorable', 'mr', 'mrs', 'ms', 'dr'}
+SPLIT = re.compile(r"(mods:witness\[\d+\])/part\[2\]")
 # U.S. states and the District, by name and postal code, as places a name can never be.
 STATES = {s.lower() for s in (
     'Alabama Alaska Arizona Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho Illinois '
@@ -142,9 +166,18 @@ def line_segments(line):
     return [part.strip() for part in re.split(r'[,;:]', line) if part.strip()]
 
 
+def bag(occurrence):
+    """The words of an occurrence's four fields, without credentials and titles."""
+    return Counter(plain(w) for f in FIELDS for w in words((occurrence or {}).get(f)) if not credential(w))
+
+
 def judge(before, after, raw_root, given, family):
     def person(text):
         return opening(text) in given
+
+    def names_document_only(line):
+        found = {plain(w) for w in words(line)}
+        return bool(DOCUMENTS & found) and not CIVIL & found and not any(person(s) for s in line_segments(line))
 
     def not_person(name, line):
         parts = line_segments(line)
@@ -156,7 +189,8 @@ def judge(before, after, raw_root, given, family):
                 return True
         return not person(name) and any(person(part) for part in parts[1:])
 
-    out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'not_read', 'bodies_only_before', 'bodies_only_after')}
+    out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'untyped_record', 'split', 'not_read',
+                               'bodies_only_before', 'bodies_only_after')}
     counts = Counter()
     out['bodies_only_before'] = sorted(before.keys() - after.keys())
     out['bodies_only_after'] = sorted(after.keys() - before.keys())
@@ -170,16 +204,46 @@ def judge(before, after, raw_root, given, family):
             out['not_read'].append(dict(body=digest, package=package, error=type(error).__name__))
             lines = []
         counts['bodies'] += 1
+
+        def line_of(locator):
+            index = re.match(r"mods:witness\[(\d+)\]", locator)
+            return lines[int(index.group(1)) - 1] if index and int(index.group(1)) <= len(lines) else ''
+
+        moved = {}  # a split parent's locator -> the words its second person took
+        for locator in sorted(new.keys() - old.keys()):
+            item = dict(package=package, body=digest, locator=locator)
+            parent = SPLIT.fullmatch(locator)
+            if not parent:
+                out['added'].append(item)
+                continue
+            parent, b, line = parent.group(1), new[locator], line_of(locator)
+            item.update(line=line, after={f: b.get(f) for f in KEYED})
+            took = bag(b)
+            if (parent in old and parent in new and old[parent].get('name') == new[parent].get('name')
+                    and b.get('name') and in_order(b['name'], line) and person(b['name'])
+                    and name_words(b['name'])[-1] in family and took and took == bag(old[parent]) - bag(new[parent])):
+                moved[parent] = took
+                out['split'].append(item)
+            else:
+                out['split_unsupported'].append(item)
         for locator in sorted(old.keys() | new.keys()):
             item = dict(package=package, body=digest, locator=locator)
-            if locator not in old or locator not in new:
-                out['added' if locator not in old else 'removed'].append(item)
+            if locator not in new:
+                out['removed'].append(item)
+                continue
+            if locator not in old:
                 continue
             counts['occurrences'] += 1
-            index = re.match(r"mods:witness\[(\d+)\]", locator)
-            line = lines[int(index.group(1)) - 1] if index and int(index.group(1)) <= len(lines) else ''
+            line = line_of(locator)
             a, b = old[locator], new[locator]
-            item.update(line=line, before={f: a.get(f) for f in FIELDS}, after={f: b.get(f) for f in FIELDS})
+            item.update(line=line, before={f: a.get(f) for f in KEYED}, after={f: b.get(f) for f in KEYED})
+            if a.get('witness_type') != b.get('witness_type'):
+                counts['typed'] += 1
+                if not (a.get('witness_type') is None and b.get('witness_type') == 'statement_for_record'
+                        and not b.get('name') and b.get('organization') and names_document_only(line)):
+                    out['type_unsupported'].append(item)
+            elif not b.get('name') and not b.get('witness_type') and names_document_only(line):
+                out['untyped_record'].append(item)
             if all(a.get(f) == b.get(f) for f in FIELDS):
                 segments = [s for s in line.split(',')[1:] if s.strip()]
                 if a.get('name') and not person(a['name']) and any(person(s) for s in segments):
@@ -199,8 +263,7 @@ def judge(before, after, raw_root, given, family):
                 out['name_not_person'].append(item)
             if new_name and not person(new_name):
                 out['unconfirmed'].append(item)
-            old_words = Counter(plain(w) for f in FIELDS for w in words(a.get(f)) if not credential(w))
-            new_words = Counter(plain(w) for f in FIELDS for w in words(b.get(f)) if not credential(w))
+            old_words, new_words = bag(a), bag(b) + moved.get(locator, Counter())
             if old_words - new_words:
                 out['words_lost'].append(dict(item, words=sorted((old_words - new_words).elements())))
             # A gained word must come from the raw line; a re-read may restore line text the old one dropped.
@@ -223,8 +286,24 @@ def plant(kind, before, after, given, family, raw_root):
         return found[int(index.group(1)) - 1] if index and int(index.group(1)) <= len(found) else ''
 
     for digest in sorted(before.keys() & after.keys()):
+        if kind == 'split-untrimmed':
+            for locator in sorted(after[digest][1].keys() - before[digest][1].keys()):
+                parent = SPLIT.fullmatch(locator)
+                if parent and parent.group(1) in before[digest][1]:
+                    wrong = dict(before[digest][1][parent.group(1)])
+                    after[digest][1][parent.group(1)] = wrong
+                    return dict(kind=kind, body=digest, locator=locator, name=after[digest][1][locator]['name'],
+                                planted=wrong.get('position'))
+            continue
         for locator, a in sorted(before[digest][1].items()):
             b = after[digest][1].get(locator)
+            if kind == 'typed-organization':
+                if (b == a and not b.get('name') and b.get('organization') and not b.get('witness_type')
+                        and not DOCUMENTS & {plain(w) for w in words(lines(digest, locator))}):
+                    after[digest][1][locator] = dict(b, witness_type='statement_for_record')
+                    return dict(kind=kind, body=digest, locator=locator, name=b['organization'],
+                                planted='statement_for_record')
+                continue
             parts = name_words(b.get('name') if b else None)
             line_parts = line_segments(lines(digest, locator)) if kind == 'previous-segment' and b and b != a and b.get('name') else []
             at = next((k for k, part in enumerate(line_parts) if k and plain(part) and b['name'] in part), None)
@@ -244,8 +323,8 @@ def plant(kind, before, after, given, family, raw_root):
 
 
 def accept_key(body, locator, flag, after):
-    """An accept is bound to the occurrence, the flag and all four new fields the reviewer read."""
-    return (body, locator, flag, *((after or {}).get(f) for f in FIELDS))
+    """An accept is bound to the occurrence, the flag and every new field the reviewer read (``KEYED``)."""
+    return (body, locator, flag, *((after or {}).get(f) for f in KEYED))
 
 
 def main(argv=None):

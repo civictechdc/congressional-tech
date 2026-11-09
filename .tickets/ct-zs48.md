@@ -2,7 +2,7 @@
 id: ct-zs48
 status: in_progress
 deps: []
-links: [ct-79j1]
+links: [ct-79j1, ct-3aap]
 created: 2026-11-08T20:05:51Z
 type: bug
 priority: 3
@@ -16,6 +16,10 @@ Found by the ct-79j1 survey (2026-11-08): witness 10 of CHRG-114hhrg93258 joins 
 
 
 ## Notes
+
+**2026-11-09T18:52:18Z**
+
+Built on claude/ct-mods-zs48-3aap with ct-3aap (one MODS bump 8a0023a9 -> 94752714; not regenerated or activated). MODS_JOINED_LINES binds CHRG-114hhrg93258 witness 10 (line sha256 150246912b93..., separator '.. '). Raw body b7222c47...: the line sits under 'Responses to questions for the record from the following Representatives and Delegate'; Norton (Delegate, DC) keeps mods:witness[10] with position 'of the District of Columbia' and no organization; Lipinski (Representative, IL) reads at mods:witness[10]/part[2], display order 10. Neither is a WITNESS congMember (Lipinski is COMMMEMBER L000563; Norton absent), so neither links to a bioguide, like Graves..DeFazio above them. Measured on all 35,020 MODS originals against requalify-525d20ba/appearance-generations.parquet: 1 added, Norton's position/organization trimmed, nothing else for this ticket. Raw check split judgment and split-untrimmed plant: mods-zs48-3aap-20261109 scratch (worktree .cache).
 
 **2026-11-10T13:27:10Z**
 

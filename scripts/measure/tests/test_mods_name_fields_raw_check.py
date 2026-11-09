@@ -36,9 +36,9 @@ AFTER = [occurrence('mods:witness[1]', None, None, 'American Legion'),
          occurrence('mods:witness[4]', 'Jaime Herrera Beutler', WASHINGTON)]
 
 
-def write(tmp_path, before=BEFORE, after=AFTER):
+def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES):
     body = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
-            + ''.join(f'<witness>{line}</witness>' for line in LINES) + '</extension></mods>').encode()
+            + ''.join(f'<witness>{line}</witness>' for line in lines) + '</extension></mods>').encode()
     (tmp_path / 'raw' / DIGEST[:2]).mkdir(parents=True)
     (tmp_path / 'raw' / DIGEST[:2] / f'{DIGEST}.gz').write_bytes(gzip.compress(body))
     for name, appearances in (('before', before), ('after', after)):
@@ -141,3 +141,63 @@ def test_an_accepted_lost_word_does_not_cover_a_dropped_position_or_organization
     write(tmp_path, after=[AFTER[0], dropped_row, *AFTER[2:]])
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 1 and out['failed'] == {'words_lost': 1, 'stale_accept': 1}
+
+
+# ct-zs48 and ct-3aap: a joined line read as two people, and organizations' own documents typed as statements.
+RECORD_LINES = ['Hon. Eleanor Smith, of the District of Columbia.. Hon. Richard Roe, of Illinois',
+                'Paralyzed Veterans of America, statement', 'Blinded Veterans Association, New York, Inc']
+
+
+def typed(item, witness_type):
+    return dict(item, witness_type=witness_type)
+
+
+RECORD_BEFORE = [occurrence('mods:witness[1]', 'Eleanor Smith', 'of the District of Columbia.. Hon. Richard Roe', 'of Illinois'),
+                 typed(occurrence('mods:witness[2]', None, None, RECORD_LINES[1]), None),
+                 typed(occurrence('mods:witness[3]', None, None, RECORD_LINES[2]), None)]
+RECORD_AFTER = [occurrence('mods:witness[1]', 'Eleanor Smith', 'of the District of Columbia'),
+                occurrence('mods:witness[1]/part[2]', 'Richard Roe', 'of Illinois'),
+                typed(RECORD_BEFORE[1], 'statement_for_record'), RECORD_BEFORE[2]]
+
+
+def test_a_split_that_moves_the_second_persons_words_and_a_typed_document_pass(tmp_path):
+    write(tmp_path, before=RECORD_BEFORE, after=RECORD_AFTER, lines=RECORD_LINES)
+    code, out = run(tmp_path)
+    assert code == 0 and out['status'] == 'passed'
+    assert [i['locator'] for i in out['split']] == ['mods:witness[1]/part[2]']
+    assert out['counts']['typed'] == 1 and not out['words_lost'] and not out['untyped_record']
+
+
+@pytest.mark.parametrize('kind, flag, locator', [
+    ('split-untrimmed', 'split_unsupported', 'mods:witness[1]/part[2]'),
+    ('typed-organization', 'type_unsupported', 'mods:witness[3]'),
+])
+def test_each_planted_split_or_type_is_flagged(tmp_path, kind, flag, locator):
+    write(tmp_path, before=RECORD_BEFORE, after=RECORD_AFTER, lines=RECORD_LINES)
+    code, out = run(tmp_path, '--plant', kind)
+    assert code == 1 and out['planted']['flagged'] and out['failed'] == {flag: 1}
+    assert [i['locator'] for i in out[flag]] == [locator]
+
+
+def test_an_added_row_that_is_not_a_split_a_person_typed_and_an_untyped_document_are_seen(tmp_path):
+    after = [typed(RECORD_AFTER[0], 'statement_for_record'), dict(RECORD_AFTER[1], source_locator='mods:witness[4]'),
+             RECORD_BEFORE[1], RECORD_AFTER[3]]
+    write(tmp_path, before=RECORD_BEFORE, after=after, lines=RECORD_LINES)
+    code, out = run(tmp_path)
+    assert code == 1 and out['failed'] == {'added': 1, 'type_unsupported': 1, 'words_lost': 1}
+    assert [i['locator'] for i in out['untyped_record']] == ['mods:witness[2]']
+
+
+def test_an_accept_is_bound_to_the_type(tmp_path):
+    """An accept read on one witness_type does not cover another."""
+    after = [*RECORD_AFTER[:3], typed(RECORD_BEFORE[2], 'statement_for_record')]
+    write(tmp_path, before=RECORD_BEFORE, after=after, lines=RECORD_LINES)
+    read = {f: after[3].get(f) for f in check.KEYED}
+    accept = [dict(body=DIGEST, locator='mods:witness[3]', flag='type_unsupported', after=read, reason='read')]
+    (tmp_path / 'accept.json').write_text(json.dumps(accept))
+    code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
+    assert code == 0 and [i['flag'] for i in out['accepted']] == ['type_unsupported']
+    accept[0]['after'] = dict(read, witness_type='record_material')
+    (tmp_path / 'accept.json').write_text(json.dumps(accept))
+    code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
+    assert code == 1 and out['failed'] == {'type_unsupported': 1, 'stale_accept': 1}
