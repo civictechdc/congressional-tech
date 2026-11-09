@@ -153,3 +153,7 @@ Keep open for the already-owned preservation/reader dispositions, B8/Basin decis
 **2026-11-08T17:23:01Z**
 
 2026-11-08 sweep: ct-m104 and ct-yci9 closed against live 630164505301. Open dependencies: ct-gi01 (paid retry of 445 URLs, waiting on keys), cef-96wc (B8 reviews exist only as a gitignored local file; not in raw R2), ct-1l1h (last readback 2026-11-06 found no raw lock rules on congressional-tech-raw), ct-4jms (scheduled capture workflow disabled, no run). ct-082q remains linked for HTML A/C cleanup.
+
+**2026-11-09T15:55:45Z**
+
+2026-11-09: ct-1l1h closed as won't do by owner decision (no bucket lock); it is no longer a dependency of this ticket.

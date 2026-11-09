@@ -1,6 +1,6 @@
 ---
 id: ct-9lxf
-status: open
+status: closed
 deps: []
 links: [ct-tk10, ct-umtm, ct-ud0b]
 created: 2026-11-02T16:23:34Z
@@ -88,3 +88,7 @@ Keep `ct-9lxf` open for the release/nightly owner to qualify and supply per-file
 **2026-11-08T17:42:58Z**
 
 2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.
+
+**2026-11-09T15:55:45Z**
+
+2026-11-09 owner decision: closed. Disk is managed per job (watchdog low-disk stop, scoped caps) rather than by a standing ticket; 31 GiB free today.

@@ -1,6 +1,6 @@
 ---
 id: ct-1l1h
-status: open
+status: closed
 deps: []
 links: [ct-syx8, ct-4jms, ct-98sm, ct-v967, cef-sqyq]
 created: 2026-10-24T18:15:53Z
@@ -73,3 +73,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-08T17:42:58Z**
 
 2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.
+
+**2026-11-09T15:55:45Z**
+
+2026-11-09 owner decision: the raw bucket will not be locked. Closed as won't do. Raw prefixes stay create-only by convention and by the engine-first rule; no bucket lock rules are applied.
