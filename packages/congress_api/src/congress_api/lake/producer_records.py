@@ -10,8 +10,14 @@ Records are written once under lake/producers/<table_uuid>/<snapshot>.json in th
 bucket: outside provenance/, which the publisher pins exactly, and outside the public
 viewer-publications/. A local root holds the same keys for local catalogs.
 
+Before its first append a run writes the records it may owe (writer, bases, initial heads)
+to producer-owed.json in its work directory and deletes the file once they are written.
+If the final head read keeps failing, the file stays; daily.complete_owed_records writes
+the records later (ct-8unc).
+
 Cannot see: rows appended between a base and its head by a writer that bypassed the
 shared R2 lock; the lineage check only proves the base is an ancestor reached by appends.
+A late completion widens that window to the time between the run and its completion.
 """
 import gzip
 import hashlib

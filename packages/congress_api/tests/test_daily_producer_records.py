@@ -107,6 +107,76 @@ def test_a_run_that_stops_after_appending_still_records_its_heads(tmp_path, clea
     assert result['status'] == 'pending' and set(result['producers']) == {'captures'}
 
 
+def _failing_final_reads(monkeypatch, failures):
+    """The final head read fails `failures` times as nightly 20261108T193702Z's did; earlier reads work."""
+    from types import SimpleNamespace
+    from docspec_client.models import DocSpecFailure
+    real, waits = tables.resolve_tables, []
+
+    def resolve(*, work, **kwargs):
+        if work.name.startswith('producer-heads') and failures:
+            failures.pop()
+            raise DocSpecFailure(['docspec'], SimpleNamespace(returncode=1, stdout='',
+                stderr='iceberg: Unexpected => client error (Connect): operation timed out'))
+        return real(work=work, **kwargs)
+    monkeypatch.setattr(tables, 'resolve_tables', resolve)
+    monkeypatch.setattr(daily.time, 'sleep', waits.append)
+    return waits
+
+
+def test_a_transient_final_head_failure_is_retried_and_the_records_written(tmp_path, clean_tree, monkeypatch):
+    value, engine, store = native_fixture(tmp_path)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    waits = _failing_final_reads(monkeypatch, [1])
+    result = daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    assert result['status'] == 'completed' and waits == [daily.FINAL_HEAD_DELAYS[0]]
+    assert set(result['producers']) == set(result['pins'])
+    assert all(records.find(name, pin)[1] == result['producers'][name] for name, pin in result['pins'].items())
+    assert not (tmp_path / 'work' / daily.OWED_RECORDS).exists()
+
+
+def test_a_persistent_final_head_failure_leaves_owed_records_an_operator_completes(tmp_path, clean_tree, monkeypatch):
+    value, engine, store = native_fixture(tmp_path, 2)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    failures = [1] * (len(daily.FINAL_HEAD_DELAYS) + 1)
+    waits = _failing_final_reads(monkeypatch, failures)
+    with pytest.raises(OSError, match='operation timed out') as stopped:
+        daily.produce_daily(dict(value, receipt_inventory=value['receipt_inventory'][:1]), engine=engine,
+                            raw_store=store, producer_records=records)
+    owed = tmp_path / 'work' / daily.OWED_RECORDS
+    assert waits == list(daily.FINAL_HEAD_DELAYS) and not failures
+    assert owed.is_file() and str(owed) in '\n'.join(stopped.value.__notes__)
+    heads = tables.resolve_tables(engine=engine, work=tmp_path / 'heads', catalog_root=value['catalog_root'],
+                                  tables=value['tables'])
+    assert all(records.find(name, pin) is None for name, pin in heads.items())
+    refused = daily.produce_daily(dict(value, work=str(tmp_path / 'refused')), engine=engine, raw_store=store,
+                                  producer_records=records)
+    assert refused['status'] == 'producer_unrecorded' and refused['producers'] == dict(
+        missing=['captures', 'filename_readings', 'readings'])
+
+    # Planted: an owed base the head was not appended from refuses and writes nothing.
+    planted = json.loads(owed.read_text())
+    saved = owed.read_bytes()
+    planted['initial']['captures']['snapshot'] = 1
+    owed.write_text(json.dumps(planted))
+    with pytest.raises(ValueError, match='Owed captures head is not reached from its base by appends only'):
+        daily.complete_owed_records(owed, engine=engine, producer_records=records)
+    assert all(records.find(name, pin) is None for name, pin in heads.items())
+
+    owed.write_bytes(saved)
+    written = daily.complete_owed_records(owed, engine=engine, producer_records=records)
+    assert set(written) == set(heads) and not owed.exists()
+    for name, pin in heads.items():
+        record, reference = records.find(name, pin)
+        assert reference == written[name] and record['commit'] == HEAD and record['base']['record'] is None
+    owed.write_bytes(saved)  # Repeating a completion rewrites identical bytes.
+    assert daily.complete_owed_records(owed, engine=engine, producer_records=records) == written
+    second = daily.produce_daily(dict(value, work=str(tmp_path / 'second')), engine=engine, raw_store=store,
+                                 producer_records=records)
+    assert second['status'] == 'completed' and 'captures' in second['producers']
+    assert records.find('captures', second['pins']['captures'])[0]['base']['record'] == written['captures']
+
+
 def test_gate_five_accepts_the_chain_a_daily_run_wrote(tmp_path, clean_tree):
     from viewer_publication.producer_proof import find_records, snapshot_reasons
     value, engine, store = native_fixture(tmp_path, 2)

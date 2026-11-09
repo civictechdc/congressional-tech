@@ -12,7 +12,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,readings,tables,video_records
-from congress_api.lake.producer_records import DAILY_JOB
+from congress_api.lake.producer_records import DAILY_JOB,appended_from
 from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStore,copy_receipts,
     discover_receipts,select_receipts)
 from congress_api.retention.writer_identity import writer_identity
@@ -34,6 +34,10 @@ LISTING_SCHEMA=pa.schema([('key',pa.string()),('size',pa.int64()),('etag',pa.str
 HEAD_WORKERS=16
 HEAD_ATTEMPTS=5
 HEAD_RETRY_STATUS={429,500,502,503,504}
+# Waits between final head reads. That read is idempotent and follows appends, so a catalog
+# blip (nightly 20261108T193702Z: a /v1/config connect timeout) must not cost the records.
+FINAL_HEAD_DELAYS=(10,30,90)
+OWED_RECORDS='producer-owed.json'
 
 
 def _qualified(row,kind,*,check_file=True):
@@ -431,6 +435,12 @@ def _record_moved(records,chain,initial,final,*,decided_at,transition_inputs=Non
     """One record per table whose head moved during this run, written before returning."""
     if writer_identity(ROOT,DAILY_JOB)['commit']!=chain['writer']['commit']:
         raise ValueError('Application commit changed during daily production')
+    return _write_moved(records,chain,initial,final,decided_at=decided_at,
+                        transition_inputs=transition_inputs,transition_field=transition_field)
+
+
+def _write_moved(records,chain,initial,final,*,decided_at,transition_inputs=None,
+                 transition_field="house_xml_transition"):
     written={}
     for name,pin in sorted(final.items()):
         if pin==initial[name]:continue
@@ -440,6 +450,65 @@ def _record_moved(records,chain,initial,final,*,decided_at,transition_inputs=Non
         if transition_inputs is not None:
             record[transition_field]=transition_inputs[name]
         written[name]=records.write(record)
+    return written
+
+
+def _final_heads(authority,work,tables_spec):
+    """Heads after appends: a failed read is retried in a sibling dir, then raised."""
+    for attempt,delay in enumerate((*FINAL_HEAD_DELAYS,None)):
+        try:
+            return tables.resolve_tables(**authority,tables=tables_spec,
+                work=work if not attempt else work.with_name(f'{work.name}-retry-{attempt}'))
+        except (OSError,subprocess.TimeoutExpired):  # DocSpecFailure is an OSError
+            if delay is None:raise
+            time.sleep(delay)
+
+
+def _owe_records(work,*,catalog_root,tables_spec,chain,initial,decided_at):
+    """Durably name, before the first append, every record this run may owe.
+
+    The file goes once the records are written. If it outlives the run,
+    complete_owed_records finishes the job; later runs refuse until then.
+    """
+    path=Path(work)/OWED_RECORDS
+    durable_json(path,dict(job=DAILY_JOB,catalog_root=catalog_root,tables={n:tables_spec[n] for n in initial},
+                           chain=chain,initial=initial,decided_at=decided_at))
+    return path
+
+
+def _record_final(owed,records,chain,initial,*,authority,work,tables_spec,decided_at):
+    """(final heads, written records) after appends; on failure the owed file stays and is named."""
+    try:
+        final=_final_heads(authority,work,tables_spec)
+        written=_record_moved(records,chain,initial,{n:final[n] for n in initial},decided_at=decided_at)
+    except Exception as error:
+        error.add_note(f'Producer records may be owed for {sorted(initial)}; once the catalog answers, run '
+                       f'congress_api.lake.daily.complete_owed_records({str(owed)!r}, engine=..., producer_records=...)')
+        raise
+    owed.unlink()
+    return final,written
+
+
+def complete_owed_records(owed,*,engine,producer_records):
+    """Write the records a stopped run owes, then delete its owed file. Safe to repeat.
+
+    The caller holds the archive writer lock. Each moved head must be the same table,
+    reached from the owed base by appends only. Every gate-5 writer refuses a head
+    without a record, so only a writer bypassing the lock could have appended since.
+    """
+    owed=Path(owed)
+    value=json.loads(owed.read_text())
+    initial=value['initial']
+    work=owed.parent/f'owed-completion-{len(list(owed.parent.glob("owed-completion-*")))+1}'
+    final=_final_heads(dict(engine=engine,catalog_root=value['catalog_root']),work,value['tables'])
+    for name,head in final.items():
+        base=initial[name]
+        if head==base:continue
+        if (head['table_uuid']!=base['table_uuid'] or not appended_from(
+                producer_records.lineage(head['metadata_location']),head['snapshot'],base['snapshot'])):
+            raise ValueError(f'Owed {name} head is not reached from its base by appends only')
+    written=_write_moved(producer_records,value['chain'],initial,final,decided_at=value['decided_at'])
+    owed.unlink()
     return written
 
 
@@ -632,6 +701,8 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
     if current != heads:
         raise ValueError('HTML metadata expected captures or readings head changed during scoping')
 
+    owed = _owe_records(work, catalog_root=catalog_root, tables_spec=tables_spec, chain=chain,
+                        initial=base, decided_at=decided_at)
     try:
         result = readings.run(engine=engine, work=reading_work, mode='backfill', execute=True,
             table=tables_spec['readings'], catalog_root=catalog_root, parser='html_metadata',
@@ -643,9 +714,8 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
     except readings.RawCustodyRequired as error:
         report.update(status='raw_custody_required', readings=error.as_dict())
     finally:
-        final = tables.resolve_tables(**authority, work=work/'producer-heads', tables=tables_spec)
-        report['producers'] = _record_moved(producer_records, chain, base,
-            {'readings': final['readings']}, decided_at=decided_at)
+        final, report['producers'] = _record_final(owed, producer_records, chain, base, authority=authority,
+            work=work/'producer-heads', tables_spec=tables_spec, decided_at=decided_at)
     if final['captures'] != heads['captures']:
         raise ValueError('HTML metadata captures head changed during production')
     return dict(report, pins=final, unreadable=unreadable_snapshot.rows())
@@ -668,7 +738,9 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
     unread captures behind.
 
     With `producer_records` (gate 5), every head must already have a record and every
-    head this run moves gets one, whether the run completes, stops or fails.
+    head this run moves gets one, whether the run completes, stops or fails. If the
+    catalog cannot name the final heads, work/producer-owed.json stays for
+    complete_owed_records.
     """
     work,provenance,identities=_validate(spec,engine,raw_store)
     work.mkdir(parents=True,exist_ok=False)
@@ -688,11 +760,13 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
         report.update(status='producer_unrecorded',producers=refusal)
         return report
     initial=dict(heads)
+    owed=_owe_records(work,catalog_root=spec['catalog_root'],tables_spec=spec['tables'],chain=chain,
+                      initial=initial,decided_at=spec['decided_at'])
     try:
         _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapshot,authority,heads,versions,report)
     finally:
-        final=tables.resolve_tables(**authority,work=work/'producer-heads',tables=spec['tables'])
-        report['producers']=_record_moved(producer_records,chain,initial,final,decided_at=spec['decided_at'])
+        _,report['producers']=_record_final(owed,producer_records,chain,initial,authority=authority,
+            work=work/'producer-heads',tables_spec=spec['tables'],decided_at=spec['decided_at'])
     return report
 
 
@@ -1186,7 +1260,7 @@ def _activate_record_transition(prepared,*,engine,raw_store,producer_records,cat
             chain,refusal=_producer_bases(producer_records,heads)
             if chain is None:raise ValueError(f'{label} activation new head lacks its producer: '+str(refusal))
     finally:
-        final=tables.resolve_tables(**authority,work=attempt/'final-heads',tables=targets)
+        final=_final_heads(authority,attempt/'final-heads',targets)
         for name,head in final.items():
             if head==initial[name]:continue
             if name not in state['intent']:raise ValueError(f'{label} activation observed an unexplained advanced head')
