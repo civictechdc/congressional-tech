@@ -33,3 +33,9 @@ Log: `.cache/archive-release/investigations/body-text-lane-ead26e7c-20261108.log
 Fix candidates: give both tests a start budget that scales with load (or a
 pre-warmed worker), rather than fixed 0.5 s and 5 s deadlines. Until then,
 treat these two as load timeouts when they fail together under load > 8.
+
+## Notes
+
+**2026-11-09T14:38:21Z**
+
+2026-11-09: both tests passed in two later full lanes on quieter machines (ct-8unc lane at 1ae30211, load 9-14, 12258 passed; MODS lane at 525d20ba, load 3-4, 12312 passed). Confirms load-only. Fixed 0.5 s / 5 s deadlines remain the cause; still open for the deadline fix.
