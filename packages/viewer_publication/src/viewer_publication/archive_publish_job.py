@@ -133,7 +133,7 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
     if selected.get('body_inventory') is not None and not Path(selected['body_inventory']).exists():
         raise ValueError('The pinned daily body inventory is absent: '+str(selected['body_inventory']))
     production=produce_daily(selected,engine=engine,raw_store=raw_store,producer_records=producer_records)
-    summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions','producers']}
+    summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions','producers','carried']}
     summary_path=work/'daily-summary.json'
     if retain:
         from viewer_publication.archive_controller import _save_continuation
