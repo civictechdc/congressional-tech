@@ -18,11 +18,11 @@ from docspec_client.client import NativeDatasets
 STAMP='2026-10-28T12:00:00Z'
 
 
-def inputs(root,count=3):
+def inputs(root,count=3,padding=lambda i:100):
     root.mkdir();raw=root/'raw';raw.mkdir()
     captures=[];inventory=[]
     for i in range(count):
-        data=json.dumps(dict(url='https://fixture.test/'+str(i),padding='x'*100)).encode()
+        data=json.dumps(dict(url='https://fixture.test/'+str(i),padding='x'*padding(i))).encode()
         digest=hashlib.sha256(data).digest();key='bodies/sha256/'+digest.hex()[:2]+'/'+digest.hex()
         path=raw/key;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
         captures.append(dict(sha256=digest,bytes=len(data),media_type='application/json',fidelity='exact-bytes'))
@@ -117,6 +117,33 @@ def test_backfill_streams_one_plan_and_closes_workers_for_each_durable_batch(tmp
     assert [sum(f['rows'] for f in b['append']['files']) for b in result['batches']]==[4,4,2]
     assert len(list((tmp_path/'backfill').rglob('work-list.parquet')))==1
     assert len(list((tmp_path/'backfill').rglob('body-admissions.parquet')))==1
+
+
+@pytest.mark.parametrize('bound',[1,600,1500,10**9])
+def test_backfill_commits_scale_with_stored_bytes_not_rows(tmp_path,bound):
+    # ct-z4i9: one commit per body made a nightly 362 catalog commits for 3.7 MB of rows.
+    args=inputs(tmp_path/'source',9,padding=lambda i:100+150*i);target=local_table(args,tmp_path)
+    result=readings.run(**args,**target,work=tmp_path/'backfill',mode='backfill',execute=True,
+        batch_size=1000,batch_bytes=bound,read_current=lambda **kwargs:None,
+        unreadable_store=BodyStore(LocalAdapter(tmp_path/'durable')))
+    work=pq.read_table(result['work_list'],columns=['stored_bytes']).column('stored_bytes').to_pylist()
+    start=0;held=[]
+    for batch in result['batches']:
+        held.append(sum(work[start:start+batch['work_items']]));start+=batch['work_items']
+    commits=[b['append'] for b in result['batches'] if b['append'] is not None]
+    assert result['status']=='completed' and sum(b['work_items'] for b in result['batches'])==9
+    assert len(commits)==len(result['batches'])<=-(-sum(work)//bound)
+    assert all(size>=bound for size in held[:-1])  # every batch but the last reaches the bound
+    assert sum(f['rows'] for c in commits for f in c['files'])==18  # sniff + json readings per body
+    if bound==10**9:assert len(commits)==1
+
+
+def test_batch_bytes_is_backfill_only_and_positive(tmp_path):
+    for mode,extra in [('daily',dict(max_work_items=10,batch_bytes=10)),('backfill',dict(batch_size=2,batch_bytes=0))]:
+        with pytest.raises(ValueError,match='batch_bytes'):
+            readings.run(captures='missing',body_inventory='missing',local_root='missing',engine=object(),
+                work=tmp_path/'work',decided_at=STAMP,mode=mode,**extra)
+    assert not (tmp_path/'work').exists()
 
 
 @pytest.mark.parametrize('mode,extra',[('daily',dict(max_work_items=10)),('backfill',dict(batch_size=2))])

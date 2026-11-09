@@ -233,14 +233,13 @@ def derived_scopes(spec):
     if not isinstance(scopes,dict) or set(scopes)!=set(requested):
         raise ValueError('Derived daily parsers require matching explicit derived_scopes')
     for name,scope in scopes.items():
-        if (not isinstance(scope,dict) or set(scope)!={'captures','versions','max_stored_bytes','batch_size'}
+        if (not isinstance(scope,dict) or set(scope)!={'captures','versions','max_stored_bytes'}
                 or not isinstance(scope['captures'],dict)):
             raise ValueError('Derived scopes require a qualified captures baseline, versions and budgets')
         tables.table_input('derived_baseline',scope['captures'])
         if scope['versions']!=current_pins():
             raise ValueError('Derived scope reading versions changed; qualify a new baseline')
         readings._positive(scope['max_stored_bytes'],'max_stored_bytes')
-        readings._positive(scope['batch_size'],'batch_size')
     return scopes
 
 
@@ -684,6 +683,8 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     A fresh attempt uses the same baseline, so committed receipts cannot hide an
     interrupted derived pass. The maintained scoped producer selection settles accepted
     older readings and active unreadable decisions before either budget is evaluated.
+    Admitted work fits both budgets, so it is read in one batch and appended in one
+    catalog commit (ct-z4i9: one commit per body made the step 93% catalog round-trips).
     """
     scope=derived_scopes(spec)['html_metadata']
     baseline=scope['captures']
@@ -759,7 +760,8 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     source=_body_source(spec,raw_store,work/'readings',listing)
     if _listed_reads(spec,raw_store):source['captured_copies']=listing is None
     result=readings.run(engine=engine,work=work/'readings',mode='backfill',execute=True,
-        batch_size=scope['batch_size'],table=spec['tables']['readings'],catalog_root=spec['catalog_root'],
+        batch_size=spec['max_work_items'],batch_bytes=scope['max_stored_bytes'],
+        table=spec['tables']['readings'],catalog_root=spec['catalog_root'],
         read_current=lambda **_:scoped/'readings.parquet',captures=scoped/'captures.parquet',
         parser='html_metadata',decided_at=spec['decided_at'],unreadable_store=raw_store,
         unreadable_snapshot=unreadable_snapshot,**source)

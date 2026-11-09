@@ -655,19 +655,22 @@ def test_invalid_derived_parsers_refuse_before_any_effect(tmp_path,derived):
 def test_native_daily_derived_pass_reads_html_after_the_combined_pass(tmp_path):
     from congress_api.lake import compatible_versions,readings,tables
     from congress_api.lake.daily import produce_daily
-    page=b'<html><head><title>Hearing</title><meta property="og:description" content="About it"></head><body><p>x</p></body></html>'
-    value,engine,store=native_fixture(tmp_path,2,payloads=[page,json.dumps(dict(url='https://x.test/a')).encode()],
+    pages=[f'<html><head><title>Hearing {i}</title><meta property="og:description" content="About it"></head><body><p>x</p></body></html>'.encode()
+        for i in range(3)]
+    value,engine,store=native_fixture(tmp_path,4,payloads=[*pages,json.dumps(dict(url='https://x.test/a')).encode()],
         url_suffix='.htm')
     value['derived_parsers']=['html_metadata']
     baseline=tables.resolve_tables(engine=engine,catalog_root=value['catalog_root'],work=tmp_path/'baseline',
         tables={'captures':value['tables']['captures']})['captures']
     value['derived_scopes']={'html_metadata':dict(captures=baseline,versions=compatible_versions.current_pins(),
-        max_stored_bytes=1<<20,batch_size=1)}
+        max_stored_bytes=1<<20)}
     first=produce_daily(value,engine=engine,raw_store=store)
     assert first['status']=='completed'
-    assert first['producerreports']['readings']['work_items']==2
+    assert first['producerreports']['readings']['work_items']==4
     derived=first['producerreports']['html_metadata']
-    assert derived['work_items']==1 and derived['parser_version']==readings.current_version('html_metadata')
+    assert derived['work_items']==3 and derived['parser_version']==readings.current_version('html_metadata')
+    # ct-z4i9: the admitted pass is one parser batch and one catalog commit, not one per page.
+    assert [sum(f['rows'] for f in b['append']['files']) for b in derived['batches']]==[3]
     assert first['currentversions']['html_metadata']==derived['parser_version']
     second=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
     assert second['producerreports']['html_metadata']['work_items']==0
@@ -681,12 +684,12 @@ def test_native_daily_derived_pass_reads_html_after_the_combined_pass(tmp_path):
 def test_daily_derived_scope_refuses_before_effects(tmp_path,change):
     from congress_api.lake import compatible_versions,daily
     baseline=dict(metadata_location='/qualified.metadata.json',table_uuid='a'*32,snapshot=7,schema_id=0)
-    scope=dict(captures=baseline,versions=compatible_versions.current_pins(),max_stored_bytes=1024,batch_size=1)
+    scope=dict(captures=baseline,versions=compatible_versions.current_pins(),max_stored_bytes=1024)
     value=dict(spec(tmp_path),derived_parsers=['html_metadata'],derived_scopes={'html_metadata':scope})
     if change=='absent':value.pop('derived_scopes')
     elif change=='versions':scope['versions']=dict(scope['versions'],html_metadata='old')
     elif change=='bytes':scope['max_stored_bytes']=True
-    elif change=='batch':scope['batch_size']=0
+    elif change=='batch':scope['batch_size']=1  # retired (ct-z4i9): one commit per pass
     else:scope['extra']='unrecognized'
     with pytest.raises(ValueError,match='scope|stored_bytes|batch_size'):
         daily.produce_daily(value,engine=NeverNative(),raw_store=BodyStore(LocalAdapter(tmp_path/'durable')))

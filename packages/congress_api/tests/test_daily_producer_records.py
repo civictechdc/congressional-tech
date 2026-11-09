@@ -562,7 +562,7 @@ def test_daily_html_delta_recovers_after_receipt_commit_and_respects_both_budget
         decided_at=value['decided_at'],supersedes=None))+'\n')
     imported=import_unreadable(store,decision,decided_at=value['decided_at'])
     policy=dict(captures=first['pins']['captures'],versions=compatible_versions.current_pins(),
-        max_stored_bytes=1<<20,batch_size=1)
+        max_stored_bytes=1<<20)
     enabled=dict(value,derived_parsers=['html_metadata'],derived_scopes={'html_metadata':policy})
     def invoke(name,**changes):
         return daily.produce_daily(dict(enabled,work=str(tmp_path/name),**changes),
@@ -580,6 +580,7 @@ def test_daily_html_delta_recovers_after_receipt_commit_and_respects_both_budget
     bodies={row['body_sha'].hex():row for row in pq.read_table(value['body_inventory']).to_pylist()}
     missing_path=store.adapter.root/bodies[new[-2]]['relative_path']
     retained=missing_path.read_bytes();missing_path.unlink()
+    # The derived pass appends once (ct-z4i9), so the missing body is the work it leaves.
     real_append=readings.append
     def stop_after_first(staged,**kwargs):
         assert staged['parser']=='html_metadata'
@@ -596,7 +597,7 @@ def test_daily_html_delta_recovers_after_receipt_commit_and_respects_both_budget
     partial=invoke('resumed-with-missing-body')
     assert partial['status']=='pending' and partial['new_receipt_keys']==[]
     derived=partial['producerreports']['html_metadata']
-    assert derived['work_items']==2 and derived['pending_reads']==1
+    assert derived['work_items']==1 and derived['pending_reads']==1
     assert derived['scope']['bodies_since_baseline']==4
     missing_path.write_bytes(retained)
     complete=invoke('resumed-complete')
@@ -631,7 +632,7 @@ def test_daily_html_reconsiders_superseded_baseline_refusals(tmp_path,clean_tree
             decided_at=value['decided_at'],supersedes=supersedes)
     original=save('baseline-refusals',[decision('a',keys[0]),decision('b',keys[1])])
     policy=dict(captures=base['pins']['captures'],versions=compatible_versions.current_pins(),
-        max_stored_bytes=1<<20,batch_size=1)
+        max_stored_bytes=1<<20)
     enabled=dict(value,derived_parsers=['html_metadata'],derived_scopes={'html_metadata':policy})
     def invoke(name):
         return daily.produce_daily(dict(enabled,work=str(tmp_path/name)),

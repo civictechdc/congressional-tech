@@ -138,16 +138,18 @@ committed compatibility entries retain their evidence and selection behavior.
 
 ## Scoped daily HTML metadata
 
-The checked-in nightly job keeps HTML metadata derivation disabled. Enabling
-`derived_parsers: ["html_metadata"]` also requires an explicit
-`derived_scopes.html_metadata` object with four fields:
+Enabling `derived_parsers: ["html_metadata"]` (the checked-in nightly job does)
+requires an explicit `derived_scopes.html_metadata` object with three fields:
 
 - `captures`: the exact immutable native captures pin of a qualified baseline.
 - `versions`: all reading pins from `compatible_versions.current_pins()` at
   qualification, including the derived and combined versions.
 - `max_stored_bytes`: a positive limit for the pending derived work's stored
   body bytes, separate from the existing `max_work_items` count limit.
-- `batch_size`: the positive number of derived items per maintained parser batch.
+
+Admitted work fits both limits, so the pass reads it in one parser batch and
+appends it in one catalog commit. Keep `2 × max_stored_bytes` plus the per-item
+range reserve within the ranged cache (`readings.RAW_CACHE_BYTES`).
 
 Before selecting a baseline, prove every applicable HTML pair in that captures
 snapshot has a selected reading or an active qualified unreadable decision.

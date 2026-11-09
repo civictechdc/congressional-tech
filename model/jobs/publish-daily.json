@@ -96,8 +96,7 @@
         "sniff": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
         "xml": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f"
       },
-      "max_stored_bytes": 67108864,
-      "batch_size": 1
+      "max_stored_bytes": 67108864
     }
   }
 }

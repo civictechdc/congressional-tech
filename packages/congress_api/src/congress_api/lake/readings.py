@@ -11,7 +11,6 @@ import threading
 import time
 from contextlib import nullcontext
 from queue import Empty
-from itertools import islice
 from functools import lru_cache
 
 from congress_api.lake import reading_versions
@@ -736,7 +735,22 @@ def append(staged,**kwargs):
         definition='readings:'+staged['parser']+':'+staged['parser_version'])
 
 
-def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,parser=None,
+def _batches(items,size,max_bytes):
+    """Consecutive work items; a batch closes at `size` items or once it holds `max_bytes` stored bytes.
+
+    Every batch but the last reaches one of the two bounds, so k batches over B stored
+    bytes and N items number at most ceil(B/max_bytes) when `size` does not close one
+    first. A batch may pass `max_bytes` by its last body (at most MAX_STORED_BYTES read).
+    """
+    batch=[];held=0
+    for item in items:
+        batch.append(item);held+=item['stored_bytes'] or 0
+        if len(batch)==size or (max_bytes is not None and held>=max_bytes):
+            yield batch;batch=[];held=0
+    if batch:yield batch
+
+
+def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,batch_bytes=None,parser=None,
         table=None,catalog_root=None,read_current=None,existing=None,
         unreadable_store=None,read_unreadable=None,unreadable_snapshot=None,worker_factory=ParserWorker,
         body_store=None,raw_ranges=False,max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,
@@ -744,7 +758,9 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
     """Admit one plan; execute daily once, or stream bounded backfill batches.
 
     The native anti-join runs once per invocation. The sorted metadata work list
-    is consumed once, O(N), with bounded persistent workers per batch. Resuming means a fresh
+    is consumed once, O(N), with bounded persistent workers per batch. Each batch makes at most one
+    catalog commit: `batch_size` bounds its items and the optional `batch_bytes` its stored
+    bytes, so commits scale with bytes read rather than rows. Resuming means a fresh
     current-table read and anti-join, never a local journal or stale saved plan.
     """
     if mode not in {'daily','backfill'}:raise ValueError('mode must be daily or backfill')
@@ -757,9 +773,10 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
     if execute and raw_ranges and body_store is None:raise ValueError('Ranged execution requires the maintained raw store')
     if mode=='daily':
         _positive(max_work_items,'max_work_items')
-        if batch_size is not None:raise ValueError('batch_size is only for backfill')
+        if batch_size is not None or batch_bytes is not None:raise ValueError('batch_size and batch_bytes are only for backfill')
     else:
         _positive(batch_size,'batch_size')
+        if batch_bytes is not None:_positive(batch_bytes,'batch_bytes')
         if max_work_items is not None:raise ValueError('max_work_items is only for daily')
     if existing is not None and (mode=='backfill' or execute):
         raise ValueError('Execution and backfill require current lake readings, not existing pins')
@@ -805,13 +822,11 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
     report.update(status='completed',pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0,**dict.fromkeys(GZIP_RULE_FIELDS,0))
     if planned['work_items']==0:return report
     size=planned['work_items'] if mode=='daily' else batch_size
-    items=iter(parquet_records(planned['work_list']))
     retained_cache=0
-    for number,start in enumerate(range(0,planned['work_items'],size)):
-        count=min(size,planned['work_items']-start)
+    for number,batch in enumerate(_batches(parquet_records(planned['work_list']),size,batch_bytes)):
         batch_work=work/('batch-'+str(number).zfill(6))
         staged=_execute_plan(planned,engine=engine,work=batch_work,
-            items=islice(items,count),worker_factory=worker_factory,work_items=count,
+            items=batch,worker_factory=worker_factory,work_items=len(batch),
             unreadable_store=unreadable_store,body_store=body_store,cache_root=work,
             max_cache_bytes=max_cache_bytes-retained_cache,max_get_workers=max_get_workers,
             parser_workers=parser_workers,parser_memory_bytes=parser_memory_bytes,request_timings=request_timings)

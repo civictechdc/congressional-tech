@@ -366,7 +366,7 @@ def test_backfill_derived_opt_in_refuses_at_entry_before_effects(tmp_path,entry,
     value=dict(derived_parsers=['html_metadata'],work=str(tmp_path/'must-not-exist'))
     if with_scope:
         value['derived_scopes']={'html_metadata':dict(captures=dict(metadata_location='/qualified.metadata.json',
-            table_uuid='a'*32,snapshot=7,schema_id=0),versions=current_pins(),max_stored_bytes=1024,batch_size=1)}
+            table_uuid='a'*32,snapshot=7,schema_id=0),versions=current_pins(),max_stored_bytes=1024)}
     def forbidden(*args,**kwargs):raise AssertionError('Runtime/storage/producer opened before derived mode refusal')
     with pytest.raises(ValueError,match='Backfill derived passes are unsupported'):
         if entry=='load':
