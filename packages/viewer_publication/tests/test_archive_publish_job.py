@@ -871,6 +871,23 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
         assert set(pending['receipt_keys'])>set(daily['receipt_keys'])
 
 
+def test_nightly_summary_carries_the_daily_status_and_html_backlog(tmp_path):
+    # ct-hiec: a carried html_metadata backlog is visible beside daily_status, not only in the candidate.
+    import runpy
+    record_daily=runpy.run_path(str(Path(__file__).resolve().parents[3]/'scripts/nightly_publish.py'))['record_daily']
+    report=tmp_path/'archive-daily/daily-summary.json'
+    report.parent.mkdir()
+    carried={'html_metadata':dict(bodies=3,stored_bytes=10,unknown_sizes=0,oldest_day='2026-11-08')}
+    report.write_text(json.dumps(dict(status='completed',carried=carried)))
+    summary={}
+    record_daily(summary,tmp_path)
+    assert summary=={'daily_status':'completed','daily_carried':carried}
+    report.write_text(json.dumps(dict(status='completed',carried=None)))
+    summary={}
+    record_daily(summary,tmp_path)
+    assert summary=={'daily_status':'completed'}
+
+
 def test_nightly_interrupted_retirement_cannot_leave_an_active_checkpoint(tmp_path,monkeypatch):
     import runpy
     import shutil

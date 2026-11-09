@@ -130,14 +130,26 @@ def keep_small_json(output, evidence):
             shutil.copy2(path, target)
 
 
-def daily_status(candidate):
+def daily_summary(candidate):
     report = candidate / 'archive-daily/daily-summary.json'
     if not report.is_file():
-        return None
+        return {}
     value = json.loads(report.read_text())
     if not isinstance(value, dict):
         raise ValueError('Invalid nightly daily summary')
-    return value.get('status')
+    return value
+
+
+def daily_status(candidate):
+    return daily_summary(candidate).get('status')
+
+
+def record_daily(summary, candidate):
+    """The daily status, and any html_metadata backlog carried to the next night (ct-hiec)."""
+    value = daily_summary(candidate)
+    summary['daily_status'] = value.get('status')
+    if value.get('carried'):
+        summary['daily_carried'] = value['carried']
 
 
 def recoverable(candidate):
@@ -343,7 +355,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
                     publish_step('publish after backfill')
                     if daily_status(candidate) == 'backfill_required':
                         raise StepFailed('publish after backfill', 2)
-                summary['daily_status'] = daily_status(candidate)
+                record_daily(summary, candidate)
                 archive_candidate(candidate, evidence / 'candidate')
             summary.update(status='prepared' if prepare_only else 'ok', exit=0)
         except StepFailed as failure:
@@ -355,7 +367,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
             if not prepare_only and candidate.exists():
                 summary['retained_candidate'] = str(candidate)
                 try:
-                    summary['daily_status'] = daily_status(candidate)
+                    record_daily(summary, candidate)
                 except (OSError, ValueError) as error:
                     summary['daily_summary_error'] = str(error)
             summary['finished'] = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
