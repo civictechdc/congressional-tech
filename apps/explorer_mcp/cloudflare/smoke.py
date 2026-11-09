@@ -3,7 +3,7 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from fastmcp import Client
 
@@ -14,7 +14,8 @@ from congressional_explorer_mcp.validation import check_client
 async def check(url, release_id, *, plan=None, require_research=False):
     readiness_url = url.removesuffix('/mcp').rstrip('/') + '/ready'
     def readiness():
-        with urlopen(readiness_url, timeout=120) as response:
+        request = Request(readiness_url, headers={'User-Agent': f'congress-explorer-smoke/{__version__}'})
+        with urlopen(request, timeout=120) as response:
             assert response.status == 200
             return json.load(response)
     ready = await asyncio.to_thread(readiness)

@@ -1,6 +1,6 @@
 ---
 id: ct-7jv1
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-09T15:50:38Z
@@ -18,3 +18,7 @@ From the 2026-11-09 hosted MCP audit: 195 meetings report publisher caption avai
 **2026-11-09T16:35:16Z**
 
 2026-11-09 (branch claude/ct-thread3-mcp-polish, unpublished): meeting records (get_entity detail, search_entities, run_research_query hearings_by_committee), the get_hearing_bundle meeting row and the get_transcript inventory now carry captions {advertised, archived, basis}. advertised = published meeting_coverage captions state 'present' (videos.has_caption or a recording track); archived = the meeting's own meetings.transcripts entries with source='captions'; basis = retained_track, advertised_not_archived, else the coverage reason/state (e.g. recording_without_video_record), or coverage_unavailable. Computed in the page SQL (one correlated subquery, no new capture), so the existing 128 KiB row budgeting still covers it. Hosted 0.6.4 readback of the same expression over all 18,692 meetings of release 63016450: retained_track 705, advertised_not_archived 308, recording_without_video_record 3, recording_link_pending 8,291, unknown 9,385; it costs no measurable time beside a plain 200-row page. The audit's 195 is lower than the 308 measured over every meeting; the 705 retained tracks equal the reader's event-scope caption sources exactly. Tool descriptions for get_entity, get_hearing_bundle and get_transcript and HEARING_RESEARCH.md name the field.
+
+**2026-11-09T18:07:39Z**
+
+2026-11-09 hosted readback on 0.6.5: get_entity(meetings, 338785) and get_transcript inventory both carry captions {advertised:true, archived:1, basis:retained_track}. Closed.
