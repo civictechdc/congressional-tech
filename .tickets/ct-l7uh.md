@@ -53,3 +53,21 @@ Runbook (clean writer checkout W, uv sync --frozen, hold the shared writer slot;
 4. Import (the only shared writes, R2 congressional-tech-raw, create-only): import-r2 --campaign $I/execution-inputs/campaign.json --request ... --operations $run/operations --runtime $run/runtime.json --bucket congressional-tech-raw --apply. Writes the body (if absent), receipts/documents/<date>/recovery-campaign-<op>.jsonl.gz and provenance/recoveries/<ts>-<op>.jsonl.
 
 Identity gate before any R2 write: freeze-request and import_candidate require receipt_binding (HTTP 200, literal replay URL, one complete capture whose sha256 and bytes equal the ledger value), verify_local_file of the body against the ledger sha256, qualification 'qualified' (application/pdf for .pdf), campaign membership of the exact target/replay pair, and decide() accepted. Any mismatch stops before import and is kept as evidence. Expected: 12 accepted imports, each body sha256 equal to wayback-not-in-raw.json; then the release owner selects the receipts/provenance in the next coordinated release.
+
+**2026-11-09T21:55:30Z**
+
+2026-11-09 identity measurement (offline; .cache/archive-release/investigations/ct-l7uh-wayback-campaign-20261109/l7uh_identity.py, identity-results.json, identity/). Runs the maintained acceptance.decide() unchanged on records read by identity_source(), one record per side; only body custody, receipt_binding and qualification are stubbed because they need a captured body.
+
+Correction: a literal compare finds 8 of 12 replays differ from their target, not 4. Scheme only: hcfa, legion, developingchild, cssp. Port :80: napawash; crr (also http vs https). Double slash: FEMA. Case and scheme: VA (PTSD-full...PDF). Exact: irs, piie, samhsa, clairemontialoux. The Oct 31 discovery deliberately relaxed the maintained 'row original == target' rule to SURT equality (wayback.py), and that is how these 8 were found.
+
+decide() results by document basis:
+- literal (target: requested_url in our Oct 12/15 capture receipt row; candidate: the CDX original, i.e. the replay suffix): 4 accepted, 8 rejected conflicting_document.
+- engine url_key (derived): 10 accepted; FEMA and VA rejected.
+- SURT/Wayback urlkey (derived on our side; case-folds): 12 accepted, VA included.
+- one shared record (Duke pattern): 12 accepted. A wrong value planted in that record is still accepted, so it checks nothing.
+Plant: a wrong candidate document on an accepted literal row (clairemontialoux) gives rejected conflicting_document.
+Release 630164505301 holds no native ID for any of the 12 (no source, document or recovery row; url_state only), so a meeting/document/package basis cannot be built. Only literal is source-native under the acceptance docstring, and its candidate side is reconstructed from the replay URL because the CDX JSON rows were not retained.
+
+Label: recovery rows look the same with or without requirements. Only the url_state row changes, and it is readable through the Explorer MCP SQL view and the site reader's urlState(). In the unfinished Nov 9 nightly candidate, USAID shows satisfied/qualified_recovery/21ebd7b7, while Duke (recovery published, row 288704, no requirement) shows eligible/no_satisfying_recovery.
+
+Recommendation (owner to confirm): literal basis. Run the campaign on the 4 exact targets: no code change, re-run l7uh_prepare.py on the filtered pairs, 4 requests. Keep the 8 variants as not_in_raw with the spelling reason recorded. Admitting the 6 scheme/port variants would need a named, reviewed match rule in acceptance.py (a code change, separate ticket); putting engine keys into the records needs no code but would present a derived key as a source-native ID. SURT would also admit VA by case-folding, against the module's explicit rule. FEMA and VA stay out under every source-native basis. Fold the requirements rows for the imported targets (and Duke) into the MODS regeneration so their url_state reads satisfied.
