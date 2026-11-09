@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 import pytest
 from pypdf import PdfWriter
@@ -153,24 +154,40 @@ def worker_override(monkeypatch, path):
                         lambda args, **kwargs: original([sys.executable, str(path)] if '--worker' in args else args, **kwargs))
 
 
+class _ExpiredClock:
+    """Real time for the budget's start, then far past any deadline."""
+    def __init__(self):
+        self.reads = 0
+
+    def monotonic(self):
+        self.reads += 1
+        return time.monotonic() + (0 if self.reads == 1 else 10**6)
+
+    def __getattr__(self, name):
+        return getattr(time, name)
+
+
 def test_timeout_preserves_evidence_and_next_invocation_retries(tmp_path, monkeypatch):
+    # Both calls share one config, hence one cache key, so the retry proves the timeout
+    # was not cached. The default budget is robust under load (ct-cpd8: 0.5 s was ~1.6x a
+    # quiet qualify); the first call's clock expires it while the sleeper still runs.
     body = pdf(tmp_path / 'body.pdf')
     script = tmp_path / 'sleeper.py'
     script.write_text('import time\ntime.sleep(30)\n')
     cache = tmp_path / 'cache'
     with monkeypatch.context() as patch:
         worker_override(patch, script)
-        result = q.qualify(body, cache, config=q.QualificationConfig(timeout_seconds=0.5))
+        patch.setattr(q, 'time', _ExpiredClock())
+        result = q.qualify(body, cache)
     assert result.reason == 'worker_timeout'
     assert len(list((cache / 'attempts').glob('*.json'))) == 1
     assert not list(cache.glob('*.json'))
-    assert q.qualify(body, cache, config=q.QualificationConfig(timeout_seconds=0.5)).status == 'qualified'
+    assert q.qualify(body, cache).status == 'qualified'
     assert len(list(cache.glob('*.json'))) == 1
 
 
 @pytest.mark.parametrize('output', ['[]', '{"status":"qualified","reason":"pretend"}', 'bad json'])
 def test_malformed_worker_output_is_unresolved_and_cleans_descendants(tmp_path, monkeypatch, output):
-    import time
     body = pdf(tmp_path / 'body.pdf')
     child_pid = tmp_path / 'child.pid'
     script = tmp_path / 'bad_worker.py'

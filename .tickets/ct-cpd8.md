@@ -1,6 +1,6 @@
 ---
 id: ct-cpd8
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-09T04:47:42Z
@@ -39,3 +39,18 @@ treat these two as load timeouts when they fail together under load > 8.
 **2026-11-09T14:38:21Z**
 
 2026-11-09: both tests passed in two later full lanes on quieter machines (ct-8unc lane at 1ae30211, load 9-14, 12258 passed; MODS lane at 525d20ba, load 3-4, 12312 passed). Confirms load-only. Fixed 0.5 s / 5 s deadlines remain the cause; still open for the deadline fix.
+
+**2026-11-09T16:40:37Z**
+
+2026-11-09: fixed on claude/ct-thread1-unattended; the orchestrator closes it after the lane.
+
+Measured quiet on this Mac (load 5, 14 CPUs): a real qualify of the 2-page fixture takes 0.30-0.33 s against the old 0.5 s budget (1.6x headroom). A parser-worker import takes 0.18 s against a 5 s startup deadline, which the 11-08 lane still missed at load 15-19.
+
+- test_qualification.py::test_timeout_preserves_evidence_and_next_invocation_retries: both calls use the default config (180 s), which keeps one cache key, so the retry still proves the timeout was not cached. The first call's q.time is a clock that reads real time for the budget's start and then far past it, while the real sleeper subprocess still runs and is killed through the real path. The test no longer depends on wall time.
+- ParserWorker startup: the deadline is now max(STARTUP_SECONDS=30, timeout) instead of max(5, timeout). The child reads no input at startup, so this only outlasts a busy host. Per-input timeouts and startup crash errors are unchanged (test_parser_worker.py passes). The nightly gets the same protection. parser_worker.py is a shared reading file, so reading-version evidence was re-snapshotted (only workspace_sha256 moved; the change is equivalent).
+
+Results: test_qualification.py 22 passed in 6.95 s; test_page_metadata_model.py 11 passed in 19.57 s; test_parser_worker.py 14 passed (all partial, exit 0).
+
+**2026-11-09T20:20:35Z**
+
+2026-11-09: the parser-worker startup wait (max(5, timeout)) is hashed into the filename producer identity (lake/filenames/__init__.py current_version names retention/parser_worker.py), so raising it moved filenames.current_version and failed the three checked-in job-spec pin tests. Reverted that hunk; only the qualification test's budget change remains. The startup wait stays 5 s and is scheduled as an identity bump with the next intentional filename version change. Evidence: the test passed twice on quiet machines (ct-8unc and MODS lanes).
