@@ -72,7 +72,7 @@ def body_text_evidence(closure):
     from spicy_docs.extraction import BODY_TEXT_DERIVATION_VERSION, derivation_code_digest
     from congress_api.lake import body_text
     from congress_api.parsers import body_text as derivation
-    code = closure.fingerprints((SOURCE / 'lake/body_text.py', SOURCE / 'parsers/body_text.py', BODY_TEXT_SCHEMA))
+    code = _fingerprints(closure, (SOURCE / 'lake/body_text.py', SOURCE / 'parsers/body_text.py', BODY_TEXT_SCHEMA))
     common = dict(**code, limits=dict(stored_bytes=body_text.MAX_STORED_BYTES, decoded_bytes=body_text.MAX_DECODED_BYTES),
                   policy=body_text.worker_limits(), page_deadline_seconds=body_text.PAGE_DEADLINE_SECONDS,
                   spicy_docs=dict(version=version('spicy-docs'), derivation=BODY_TEXT_DERIVATION_VERSION,
