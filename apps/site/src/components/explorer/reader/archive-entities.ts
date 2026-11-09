@@ -9,6 +9,10 @@ const RECORD_ENTRY_LABELS = new Map([
 ]);
 
 export const witnessRecordEntryLabel = (kind: string) => RECORD_ENTRY_LABELS.get(kind);
+// A witness row's label: its name, else its record-entry kind, else the organization its line lists (a line that
+// names only an organization keeps its row with no name, ct-rg34), and the key only when nothing else is stated.
+export const witnessLabel = (w: any): string =>
+  String(w?.name || witnessRecordEntryLabel(w?.witness_type) || w?.organization || w?.witness_key || w?.name_key || '');
 
 const hex = (value: Uint8Array) => [...value].map(v => v.toString(16).padStart(2, '0')).join('');
 const date = (value: any) => value instanceof Date ? value.toISOString().slice(0, 10) : value == null ? null : String(value).slice(0, 10);

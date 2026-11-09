@@ -10,6 +10,7 @@ import {
 } from './archive-metadata.ts';
 import {day} from './ArchiveRows.tsx';
 import {integer} from '../view/request-state.tsx';
+import {witnessLabel} from '../reader/archive-entities.ts';
 
 export type ArchiveTab = 'documents' | 'hearings' | 'committees' | 'witnesses' | 'members' | 'subjects';
 
@@ -170,7 +171,7 @@ export function ArchiveEntityRows({
         <div className="archive-row-main">
           {orgs.length > 0 && <span className="archive-row-context">{orgs.slice(0, 2).join(' · ')}</span>}
           <button type="button" className="archive-document" onClick={() => onInspectWitness(wk)}>
-            <strong>{item.name || wk}</strong>
+            <strong>{witnessLabel(item) || wk}</strong>
             {positions.length > 0 && <span className="archive-document-subtitle">{positions.slice(0, 2).join(' · ')}</span>}
           </button>
         </div>

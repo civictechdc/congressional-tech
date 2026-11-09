@@ -67,16 +67,25 @@ def test_a_faithful_reread_passes_and_names_the_unreadable_body(tmp_path):
     assert [i['body'] for i in out['not_read']] == ['cd' * 32]
 
 
-@pytest.mark.parametrize('kind, flag, locator, planted', [
-    ('person-moved', 'person_moved', 'mods:witness[3]', None),
-    ('reversed-name', 'reorder_unsupported', 'mods:witness[4]', 'Beutler Jaime Herrera'),
+@pytest.mark.parametrize('kind, flags, locator, planted', [
+    ('person-moved', {'person_moved': 1}, 'mods:witness[3]', None),
+    ('reversed-name', {'reorder_unsupported': 1, 'name_not_person': 1}, 'mods:witness[4]', 'Beutler Jaime Herrera'),
+    # The organization before the person read as the name: it also loses the person's words.
+    ('previous-segment', {'name_not_person': 1, 'words_lost': 1}, 'mods:witness[2]', 'Vietnam Veterans of America'),
 ])
-def test_each_planted_wrong_value_is_flagged(tmp_path, kind, flag, locator, planted):
+def test_each_planted_wrong_value_is_flagged(tmp_path, kind, flags, locator, planted):
     write(tmp_path)
     code, out = run(tmp_path, '--plant', kind)
     assert code == 1 and out['planted']['flagged'] and out['planted']['planted'] == planted
-    assert out['failed'] == {flag: 1}
-    assert [i['locator'] for i in out[flag]] == [locator]
+    assert out['failed'] == flags
+    assert all([i['locator'] for i in out[flag]] == [locator] for flag in flags)
+
+
+def test_a_place_read_as_the_name_is_flagged(tmp_path):
+    after = [*AFTER[:3], occurrence('mods:witness[4]', 'Washington', WASHINGTON)]
+    write(tmp_path, after=after)
+    code, out = run(tmp_path)
+    assert code == 1 and [i['locator'] for i in out['name_not_person']] == ['mods:witness[4]']
 
 
 def test_a_person_left_in_the_organization_a_lost_word_and_a_dropped_row_are_flagged(tmp_path):
@@ -92,13 +101,23 @@ def test_a_person_left_in_the_organization_a_lost_word_and_a_dropped_row_are_fla
 def test_a_reviewed_flag_is_accepted_and_an_accept_the_run_no_longer_flags_fails(tmp_path):
     after = [AFTER[0], occurrence('mods:witness[2]', None, None, 'Vietnam Veterans of America, Richard F. Weidman'), *AFTER[2:]]
     write(tmp_path, after=after)
-    accept = [dict(body=DIGEST, locator='mods:witness[2]', flag=flag, reason='read')
+    accept = [dict(body=DIGEST, locator='mods:witness[2]', flag=flag, after=None, reason='read')
               for flag in ('words_lost', 'person_left_in_organization')]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 0 and [(i['locator'], i['flag']) for i in out['accepted']] == [
         ('mods:witness[2]', 'words_lost'), ('mods:witness[2]', 'person_left_in_organization')]
-    stale = accept + [dict(body=DIGEST, locator='mods:witness[1]', flag='person_moved', reason='read')]
+    stale = accept + [dict(body=DIGEST, locator='mods:witness[1]', flag='person_moved', after=None, reason='read')]
     (tmp_path / 'accept.json').write_text(json.dumps(stale))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 1 and out['failed'] == {'stale_accept': 1}
+
+
+def test_an_accept_covers_only_the_value_read(tmp_path):
+    """A later wrong value under the same flag and occurrence is not covered by an earlier accept."""
+    after = [*AFTER[:3], occurrence('mods:witness[4]', 'Washington', WASHINGTON)]
+    write(tmp_path, after=after)
+    accept = [dict(body=DIGEST, locator='mods:witness[4]', flag='name_not_person', after='Jaime Herrera Beutler', reason='read')]
+    (tmp_path / 'accept.json').write_text(json.dumps(accept))
+    code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
+    assert code == 1 and out['failed'] == {'name_not_person': 1, 'words_lost': 1, 'stale_accept': 1}

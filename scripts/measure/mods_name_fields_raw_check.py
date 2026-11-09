@@ -1,7 +1,8 @@
 """Judge a MODS re-read of witness name fields against the raw lines and other publishers' names (ct-rg34).
 
     mods_name_fields_raw_check.py --before GEN.parquet --after GEN.parquet --raw-root BODIES
-        --people WITNESSES.parquet --output OUT.json [--accept REVIEWED.json] [--plant person-moved|reversed-name]
+        --people WITNESSES.parquet --output OUT.json [--accept REVIEWED.json]
+        [--plant person-moved|reversed-name|previous-segment]
 
 The re-read under test moves an organization out of a witness name ("American Legion" alone, or before
 the person: "Vietnam Veterans of America, Richard F. Weidman, ...") and joins a surname written first to its
@@ -24,18 +25,23 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``person_left_in_organization``: a changed occurrence left without a name whose raw line still has a
   later segment opening with a known given name;
 - ``reorder_unsupported``: a new name whose words are not in the raw line in that order (a surname joined to
-  its given name) and that does not open with a known given name and end with a known family name.
+  its given name) and that does not open with a known given name and end with a known family name;
+- ``name_not_person``: a new name that is a place (a U.S. state, or a segment the raw line follows with a
+  state), or that opens with no known given name while a later segment of its raw line opens with one.
 
 ``--accept`` names flagged occurrences a person has read and accepted, each as ``{"body", "locator",
-"flag", "reason"}``; they are reported under ``accepted`` instead of failing, and an accepted entry the run
-no longer flags fails as ``stale_accept``. Listed for a person to read, without failing: ``unconfirmed`` new
+"flag", "after", "reason"}``, where ``after`` is the new name the person read; they are reported under
+``accepted`` instead of failing. An accept covers only that value: a different new name under the same flag
+fails, and an accepted entry the run no longer flags fails as ``stale_accept``. Listed for a person to read, without failing: ``unconfirmed`` new
 names that open with no known given name; ``residual`` unchanged names that open with no known given name
 on a raw line with a later segment that does. Bodies that are missing or do not parse are listed in
 ``not_read`` and still compared without a line.
 
 ``--plant`` writes one wrong value the rule could produce on the after side, and the check must flag it,
 accepted or not: ``person-moved`` moves an unchanged person's name into the organization
-(``person_moved``); ``reversed-name`` writes a joined name surname first (``reorder_unsupported``).
+(``person_moved``); ``reversed-name`` writes a joined name surname first (``reorder_unsupported``);
+``previous-segment`` replaces a person read after an organization with the raw segment before them
+(``name_not_person``).
 """
 import argparse
 from collections import Counter
@@ -53,8 +59,18 @@ TITLES = set('the hon honorable mr mrs ms miss dr prof professor rev reverend se
              'master rabbi sister pastor esq'.split())
 SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'iv'}
 FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'words_lost', 'words_gained',
-         'person_left_in_organization', 'reorder_unsupported')
-PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported'}
+         'person_left_in_organization', 'reorder_unsupported', 'name_not_person')
+PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported', 'previous-segment': 'name_not_person'}
+# U.S. states and the District, by name and postal code, as places a name can never be.
+STATES = {s.lower() for s in (
+    'Alabama Alaska Arizona Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho Illinois '
+    'Indiana Iowa Kansas Kentucky Louisiana Maine Maryland Massachusetts Michigan Minnesota Mississippi Missouri '
+    'Montana Nebraska Nevada Ohio Oklahoma Oregon Pennsylvania Tennessee Texas Utah Vermont Virginia Washington '
+    'Wisconsin Wyoming').split()} | {
+    'new hampshire', 'new jersey', 'new mexico', 'new york', 'north carolina', 'north dakota', 'rhode island',
+    'south carolina', 'south dakota', 'west virginia', 'district of columbia', 'puerto rico', 'dc', 'd.c.'} | {
+    c.lower() for c in ('AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM '
+                        'NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY').split()}
 
 
 def words(text):
@@ -114,9 +130,23 @@ def in_order(name, line):
     return any(text[i:i + len(sequence)] == sequence for i in range(len(text) - len(sequence) + 1))
 
 
+def line_segments(line):
+    return [part.strip() for part in re.split(r'[,;:]', line) if part.strip()]
+
+
 def judge(before, after, raw_root, given, family):
     def person(text):
         return opening(text) in given
+
+    def not_person(name, line):
+        parts = line_segments(line)
+        key = name.strip().lower()
+        if key in STATES:
+            return True
+        for i, part in enumerate(parts[:-1]):
+            if part.lower() == key and parts[i + 1].lower() in STATES:
+                return True
+        return not person(name) and any(person(part) for part in parts[1:])
 
     out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'not_read', 'bodies_only_before', 'bodies_only_after')}
     counts = Counter()
@@ -157,6 +187,8 @@ def judge(before, after, raw_root, given, family):
                 out['name_not_in_line'].append(item)
             if reordered and not (person(new_name) and name_words(new_name)[-1] in family):
                 out['reorder_unsupported'].append(item)
+            if new_name and not_person(new_name, line):
+                out['name_not_person'].append(item)
             if new_name and not person(new_name):
                 out['unconfirmed'].append(item)
             old_words = Counter(plain(w) for f in FIELDS for w in words(a.get(f)) if not credential(w))
@@ -172,14 +204,26 @@ def judge(before, after, raw_root, given, family):
     return dict(counts), out
 
 
-def plant(kind, before, after, given, family):
+def plant(kind, before, after, given, family, raw_root):
     """Write one wrong value the rule could produce on the after side."""
+    def lines(digest, locator):
+        index = re.match(r"mods:witness\[(\d+)\]", locator)
+        try:
+            found = raw_lines(raw_root, digest)
+        except (OSError, ET.ParseError, EOFError):
+            return ''
+        return found[int(index.group(1)) - 1] if index and int(index.group(1)) <= len(found) else ''
+
     for digest in sorted(before.keys() & after.keys()):
         for locator, a in sorted(before[digest][1].items()):
             b = after[digest][1].get(locator)
             parts = name_words(b.get('name') if b else None)
+            line_parts = line_segments(lines(digest, locator)) if kind == 'previous-segment' and b and b != a and b.get('name') else []
+            at = next((k for k, part in enumerate(line_parts) if k and plain(part) and b['name'] in part), None)
             if kind == 'person-moved' and b == a and parts and parts[0] in given:
                 wrong = dict(b, name=None, organization=', '.join(filter(None, (b['name'], b.get('organization')))))
+            elif kind == 'previous-segment' and at and opening(line_parts[at - 1]) not in given and parts and parts[0] in given:
+                wrong = dict(b, name=line_parts[at - 1])
             elif (kind == 'reversed-name' and b and b != a and len(parts) > 1 and parts[0] in given
                   and parts[-1] in family and parts[-1] not in given):
                 given_part, surname = b['name'].rsplit(' ', 1)
@@ -203,15 +247,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     given, family = known_names(args.people)
     before, after = generation(args.before), generation(args.after)
-    planted = plant(args.plant, before, after, given, family) if args.plant else None
+    planted = plant(args.plant, before, after, given, family, args.raw_root) if args.plant else None
     counts, out = judge(before, after, args.raw_root, given, family)
     accepts = json.loads(args.accept.read_text()) if args.accept else []
-    reviewed = {(a['body'], a['locator'], a['flag']): a for a in accepts}
+    reviewed = {(a['body'], a['locator'], a['flag'], a['after']): a for a in accepts}
     out['accepted'], seen = [], set()
     for flag in FLAGS:
         kept = []
         for item in out[flag]:
-            key = (item['body'], item['locator'], flag)
+            key = (item['body'], item['locator'], flag, item.get('after', {}).get('name'))
             if key in reviewed and not (planted and (item['body'], item['locator']) == (planted['body'], planted['locator'])):
                 seen.add(key)
                 out['accepted'].append(dict(item, flag=flag, reason=reviewed[key]['reason']))

@@ -10,7 +10,7 @@ import {
 } from './archive-metadata.ts';
 import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
 import {savedCopy} from '../reader/archive.ts';
-import {transcriptSourceLabel, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
+import {transcriptSourceLabel, witnessLabel, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
 
 function savedCaptionUrl(track: any, rawBase?: string) {
   if (rawBase && track?.sha256) {
@@ -265,8 +265,8 @@ export function HearingDetail({
         {shownWitnesses.map((w:any,i:number)=>{
           const wKey=w.witness_key||w.name_key||'';
           const recordLabel=witnessRecordEntryLabel(w.witness_type);
-          const label=w.name||recordLabel||wKey;
-          const roleParts=[w.position,w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
+          const label=witnessLabel(w)||wKey;
+          const roleParts=[w.position,label===w.organization?null:w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];
           return <li key={`${wKey}-${i}`} className="archive-witness-item">
             <div className="archive-witness-header">

@@ -43,6 +43,7 @@ from congress_api.parsers.house_xml import (
     parse_house_meeting,
     strip_house_meeting_prefix,
 )
+from congress_api.parsers.witness_names import witness as parse_gpo_witness
 from congress_api.retention.body_store import BodyStore, LocalAdapter
 from congress_api.retention.receipt_writer import ReceiptWriter
 from congress_api.transport import congress as congress_transport
@@ -2180,6 +2181,15 @@ def test_mods_person_qualification_requires_package_position_and_original_line()
     ("Letter from the nominee to the Office of General Counsel, U.S. Department of Veterans Affairs",
      ("Letter from the nominee to the Office of General Counsel", "U.S. Department of Veterans Affairs", None)),
     ("LaVerne Council, Chief Executive Officer, Emerald One, LLC", ("LaVerne Council", "Chief Executive Officer", "Emerald One, LLC")),
+    ("Gyres Institute, Leap Lab", (None, None, "Gyres Institute, Leap Lab")),
+    # A state is never the person ("Blinded Veterans Association, New York, Inc").
+    ("Blinded Veterans Association, New York, Inc, Thomas Zampieri",
+     ("Thomas Zampieri", None, "Blinded Veterans Association, New York, Inc")),
+    # A marked person is read past a division that opens with a rank word ("General Government Division").
+    ("U.S. General Accounting Office, Tax Policy and Administration Issues, General Government Division, James R. "
+     "White, Director",
+     ("James R. White", "Director",
+      "U.S. General Accounting Office, Tax Policy and Administration Issues, General Government Division")),
     ("Committee on Agriculture The Honorable Bob Goodlatte, a Representative in Congress From the State of Virginia",
      ("Committee on Agriculture The Honorable Bob Goodlatte", "a Representative in Congress From the State of Virginia", None)),
     ("Mr. Sterling Thomas, Chief Scientist, U.S. Government Accountability Office",
@@ -2191,18 +2201,57 @@ def test_mods_person_qualification_requires_package_position_and_original_line()
      ("Larry J. Echo Hawk", "Assistant Secretary for Indian Affairs", "U.S. Department of the Interior")),
     ("Page Robinson, Mr. Alfred, Deputy Administrator, Wage and Hour Division, U.S. Department of Labor",
      ("Alfred Robinson", "Deputy Administrator", "Wage and Hour Division, U.S. Department of Labor")),
-    # Two full words after a title name a whole person: left as written.
-    ("Jon Tester, Hon. Mark Begich", ("Jon Tester", "Hon. Mark Begich", None)),
 ])
 def test_mods_name_fields_read_the_person_the_line_names(line, expected):
     """ct-rg34: an organization written first is never the name, a surname written first joins its given name,
     and no text is dropped."""
-    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension><witness>'
-           + escape(line) + '</witness></extension></mods>')
-    item, = appearance_records.build_appearance_record_row(_sha(xml), "mods", xml)["appearances"]
+    item = _mods_line_reading(line)
     assert (item["name"], item["position"], item["organization"]) == expected
     assert item["source_locator"] == "mods:witness[1]"
     assert item["name_key"] == (appearance_records.normalize_name_key(expected[0]) or None)
+
+
+def _mods_line_reading(line):
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension><witness>'
+           + escape(line) + '</witness></extension></mods>')
+    item, = appearance_records.build_appearance_record_row(_sha(xml), "mods", xml)["appearances"]
+    return item
+
+
+@pytest.mark.parametrize("line", [
+    # More than one segment could be the person: a chapter, a place, a firm or a section of the organization.
+    "Vietnam Veterans of America, Maine State Council, John Wallace, President",
+    "Paralyzed Veterans of America, Florida Gulf Coast Chapter, Davis Celestine, President",
+    "National Cattlemen's Beef Association, Hafenfeld Ranch, Bruce Hafenfeld",
+    "National Confectioners Association, Ferrara Pan Candy Co., Sal Ferrara",
+    "American Bar Association, Tax Section, Richard Shaw",
+    "U.S. General Accounting Office, Government Division, James R White",
+    "National Disease Clusters Alliance, Putting Children Above Politics",
+    "Reading First Program, Final Audit Report''",
+    "Page Blunt, The Honorable Roy Blunt, a U.S. Senator from the State of Missouri",
+    # A marked person the rule cannot read ("and" joins two people): it would miss them, so it abstains.
+    "Social Security and Medicare Board of Trustees, Stephen G. Kellison and Marilyn Moon, Public Trustees",
+    # No person read and a later segment could open a name: not an organization alone.
+    "U.S. Department of Health and Human Services, Office of the National Coordinator for Health Information "
+    "Technology, David Brailer National Coordinator for Health Information Technology",
+    "A Panel, consisting of: Sligh, Jr., Albert B., Associate Administrator, Mission Support Bureau",
+    "American College of Cardiology, Bethesda, MD, statement",
+    # Already read as a person: "Blunt, Lisa" printed first is not a surname of two words.
+    "Blunt, Lisa, Hon. Rochester, U.S. Representative in Congress from the State of Delaware",
+    # Known misses, left as they were: organizations without the words the rule reads, a surname with a
+    # particle printed first without a title, and "Page" before a given name the reading cannot place.
+    "Fraternal Order of Police, Chuck Canterbury",
+    "Nature Conservancy, Steven J. McCormick",
+    "Del Raso, Joseph V., Partner, Pepper Hamilton LLP",
+    "Page Sullivan, Tom, Chief Counsel for Advocacy",
+    # Known wrong, as ct-zs48: two people's entries run together; reading them is a reviewed split, not this rule.
+    "Jon Tester, Hon. Mark Begich",
+])
+def test_mods_name_fields_abstain_when_unsure(line):
+    """ct-rg34: when the rule is unsure the line reads as the name parser always read it."""
+    item, plain = _mods_line_reading(line), parse_gpo_witness(line)
+    assert (item["name"], item["position"] or "", item["organization"] or "") == (
+        plain["name"], plain["position"], plain["organization"])
 
 
 def test_mods_reviewed_joined_line_yields_both_printed_entries():

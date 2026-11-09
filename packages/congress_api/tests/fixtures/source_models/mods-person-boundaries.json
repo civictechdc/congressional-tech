@@ -24,7 +24,7 @@
       "name": "Richard P. Morris",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "National Organization of Social Security Claimants' Representatives",
       "on_behalf_of": null
     },
     "line_sha256": "3f44aa33a1a97948e276d770aa43d4c50feebe5b727e2b348c8810da443ada5d"
@@ -69,7 +69,7 @@
       "name": "Richard F. Corlin",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Medical Association",
       "on_behalf_of": null
     },
     "line_sha256": "f7f99f9ee2b8e61f70dc0011475132803541c9c9bd203b3b41f62e890f8aeefd"
@@ -99,7 +99,7 @@
       "name": "John H. Tiencken",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Public Power Association, Large Public Power Council, and South Carolina Public Service Authority",
       "on_behalf_of": null
     },
     "line_sha256": "8d066060a4730475c79875475c8a1428bd2a6a4b204c45087c7cb2b413d85b4c"
@@ -114,7 +114,7 @@
       "name": "Al Christopherson",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "Minnesota Farm Bureau Association",
       "on_behalf_of": null
     },
     "line_sha256": "8628050168ff5eba892ac3eb3a962566d01f79ce7d8668709b34b5e5c13af5bc"
@@ -129,7 +129,7 @@
       "name": "Norman E. D'Amours",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "National Credit Union Administration",
       "on_behalf_of": null
     },
     "line_sha256": "c4f559799af578cce1540f894e4dca2a84d481127a79eb847505dc9942d66003"
@@ -144,7 +144,7 @@
       "name": "Joan Entmacher",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "National Women's Law Center",
       "on_behalf_of": null
     },
     "line_sha256": "e2cfadbffcc3963c6c3327d2776800f935715c5c9065b95d7657e3b1a9530966"
@@ -204,7 +204,7 @@
       "name": "James G. Huse Jr.",
       "honorific": null,
       "position": "Inspector General",
-      "organization": null,
+      "organization": "Social Security Administration",
       "on_behalf_of": null
     },
     "line_sha256": "e4e980d165800202ca3f6ce4747d76661aa4eb99fc557833d3e9fa5defff9e53"
@@ -219,7 +219,7 @@
       "name": "Dennis Barry",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Hospital Association, and Moses Cone Health System",
       "on_behalf_of": null
     },
     "line_sha256": "dc35af27d9e28d034083ea9ff112b3d65e3e980ecc507762ea2ab4a6c613505f"
@@ -234,7 +234,7 @@
       "name": "Jerry D. Williams",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "National Rural Electric Cooperative Association, and Claiborne Electric Co-op, Inc.",
       "on_behalf_of": null
     },
     "line_sha256": "ccff5990cb00f95ffee2d85096824a5f191e9962747b68b3fd0173afe0971dc7"
@@ -249,7 +249,7 @@
       "name": "Richard F. Corlin",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Medical Association",
       "on_behalf_of": null
     },
     "line_sha256": "f7f99f9ee2b8e61f70dc0011475132803541c9c9bd203b3b41f62e890f8aeefd"
@@ -264,7 +264,7 @@
       "name": "Sheldon S. Cohen",
       "honorific": null,
       "position": "Commissioner, 1965-1969",
-      "organization": null,
+      "organization": "Internal Revenue Service",
       "on_behalf_of": null
     },
     "line_sha256": "36db80b51c299e5736483771c17480c4b56b1b2249e6e10c2481d28198218648"
@@ -279,7 +279,7 @@
       "name": "Mary Foley",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Nurses Association",
       "on_behalf_of": null
     },
     "line_sha256": "a22d1162147ca892cb94cb0d50fb52e69792d9f1c202d93f2cb7cc2ccfa71d05"
@@ -294,7 +294,7 @@
       "name": "Elliot P. Lewis",
       "honorific": null,
       "position": "Assistant Inspector General for Audit",
-      "organization": null,
+      "organization": "U.S. Department of Labor, Office of Inspector General",
       "on_behalf_of": null
     },
     "line_sha256": "6f273091c75cd4ea50843297e99f18de6a94162747616fab1e49f2a99949f331"
@@ -324,7 +324,7 @@
       "name": "Jim H. Conner",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Yarn Spinners Association",
       "on_behalf_of": null
     },
     "line_sha256": "4380c4eb68af6271aa834fa54d75b7e5e1a082f7cb3fc5664fcc355255937876"
@@ -339,7 +339,7 @@
       "name": "Fred T. Goldberg Jr.",
       "honorific": null,
       "position": "Commissioner, 1989-1992",
-      "organization": null,
+      "organization": "Internal Revenue Service",
       "on_behalf_of": null
     },
     "line_sha256": "fc0390d1bf2c36e8043ab6649fb0e5058aa981d519dc3e5ac72968a5f8de8e85"
@@ -354,7 +354,7 @@
       "name": "Michael Langberg",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Hospital Association, and Cedars-Sinai Health System",
       "on_behalf_of": null
     },
     "line_sha256": "65a5b82a46d0a6909ac634dfb8a07cfe5088f71929d493d24ef682e465a9d24b"
@@ -369,7 +369,7 @@
       "name": "Gary Mecklenburg",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Hospital Association, and Northwestern Memorial Healthcare",
       "on_behalf_of": null
     },
     "line_sha256": "4227398a74d51e7b798659abfbb95b6dd2d62b1986e7ec4e69dae8ec63540e8a"
@@ -384,7 +384,7 @@
       "name": "Sarah Wiggins Mitchell",
       "honorific": null,
       "position": "Chair",
-      "organization": null,
+      "organization": "Social Security Administration, Ticket to Work and Work Incentives Advisory Panel",
       "on_behalf_of": null
     },
     "line_sha256": "9d3220e09be102b0c327aefcd8e4ad437a9bf3f187554c6c6d7ff917911a0fbe"
@@ -399,7 +399,7 @@
       "name": "Robert A. Vito",
       "honorific": null,
       "position": "Regional Inspector General for Evaluations and Inspections",
-      "organization": null,
+      "organization": "U.S. Department of Health and Human Services",
       "on_behalf_of": null
     },
     "line_sha256": "9f6c88b04f4e2ca4d9e8ad1f71f0e66eef0d99b663629872e9d86e3abf536dd0"
@@ -414,7 +414,7 @@
       "name": "Mortimer M. Caplin",
       "honorific": null,
       "position": "Commissioner, 1961-1964",
-      "organization": null,
+      "organization": "Internal Revenue Service",
       "on_behalf_of": null
     },
     "line_sha256": "b355eac11098b7f55ceac9ffc324a9d9282909db9799dde2c4e24fbf8d1b1ee6"
@@ -429,7 +429,7 @@
       "name": "Gregory A. Timberlake",
       "honorific": null,
       "position": "Acting Director",
-      "organization": null,
+      "organization": "U.S. Department of Defense/U.S. Department of Veterans Affairs Interagency Program Office",
       "on_behalf_of": null
     },
     "line_sha256": "0c7dcfdedb56b003d0e97b473d6de7aee2a2ed9643264259f7e8e6c05ba6dd77"
@@ -444,7 +444,7 @@
       "name": "Troy Bryant Yopp Jr",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "Shriners Hospitals for Children",
       "on_behalf_of": null
     },
     "line_sha256": "e80b559749bd7b78f69f813ced46abd343a2c1cb9403af9f753c3a436c415321"
@@ -459,7 +459,7 @@
       "name": "Don Richey",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Hospital Association, and Guadalupe Valley Hospital",
       "on_behalf_of": null
     },
     "line_sha256": "a1de2f4f0133812491ab8ab8635f83e1eebcc26ba9ab3084274f16e37f01a614"
@@ -474,7 +474,7 @@
       "name": "Gerben DeJong",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "National Rehabilitation Hospital",
       "on_behalf_of": null
     },
     "line_sha256": "85ca7b84195cac4a57485cd0bc3f6df491b8197775ae5baa81eb96e045027eef"
@@ -489,7 +489,7 @@
       "name": "Thomas R. Reardon",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Medical Association",
       "on_behalf_of": null
     },
     "line_sha256": "0b79f0187661b8868da0ae4d9b33221e6ffd90e0c3b0c38b7654d8cca161692e"
@@ -519,7 +519,7 @@
       "name": "Allen Johnson",
       "honorific": null,
       "position": "Chief Agricultural Negotiator",
-      "organization": null,
+      "organization": "Office of the U.S. Trade Representative",
       "on_behalf_of": null
     },
     "line_sha256": "d44fc61139740a7238ab92a47855f4c8031e3b62563c8d5daf869981c575f5c2"
@@ -549,7 +549,7 @@
       "name": "William G. Plested III",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Medical Association",
       "on_behalf_of": null
     },
     "line_sha256": "1f3a7e21a62ee9b96803116a70436c60d1ad04754e027b42876a28a6c10abace"
@@ -564,7 +564,7 @@
       "name": "J. Edward Hill",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Medical Association",
       "on_behalf_of": null
     },
     "line_sha256": "1160ab32b6c1c5de5a5d96dfd3e1212ada7e4fdba7dcec99603f5d4ee6771a07"
@@ -579,7 +579,7 @@
       "name": "Barbara Cohoon",
       "honorific": null,
       "position": "Government Relations Deputy Director",
-      "organization": null,
+      "organization": "National Military Family Association",
       "on_behalf_of": null
     },
     "line_sha256": "4de1d6d2a9351a96effa9a3eccce992a9901db1c11bc1a6838e3f04bb6104511"
@@ -609,7 +609,7 @@
       "name": "John H. Makin",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Enterprise Institute",
       "on_behalf_of": null
     },
     "line_sha256": "729ea3e64391021a6f5ea1e0aa63d1c5fe04d50265508d5116cbdee660ea7739"
@@ -639,7 +639,7 @@
       "name": "Michael J. Garcia",
       "honorific": null,
       "position": "Assistant Secretary for U.S. Immigration and Customs Enforcement",
-      "organization": null,
+      "organization": "U.S. Department of Homeland Security",
       "on_behalf_of": null
     },
     "line_sha256": "74716408f11fe852cc0a73460969afbf6e24192808ab624981fd8880a3964607"
@@ -654,7 +654,7 @@
       "name": "Michael E. Baroody",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "National Association of Manufacturers",
       "on_behalf_of": null
     },
     "line_sha256": "4204b184fcbbe7a1d0164410f497b1d1e5e01c41f4e736c82f4dd52a4836482e"
@@ -669,7 +669,7 @@
       "name": "Charles Lake",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Insurance Association",
       "on_behalf_of": null
     },
     "line_sha256": "542971c3df8bd50790cd41fdd881ae44542e20b4edf8c00e069521a67232438a"
@@ -684,7 +684,7 @@
       "name": "Thomas R. Saving",
       "honorific": null,
       "position": "Public Trustee",
-      "organization": null,
+      "organization": "Social Security and Medicare Trust Funds",
       "on_behalf_of": null
     },
     "line_sha256": "12a22aebd9f36f27f9c909f8360ad3f9a089ce3113681044ab69671c5ecbcfd5"
@@ -714,7 +714,7 @@
       "name": "Leslie V. Norwalk",
       "honorific": null,
       "position": "Acting Deputy Administrator and Chief Operating Officer",
-      "organization": null,
+      "organization": "Centers for Medicare and Medicaid Services",
       "on_behalf_of": null
     },
     "line_sha256": "cd7970bf14e9e574761710a3ea153441e7dfbb7b7523ea41fdc6fc96092ef414"
@@ -729,7 +729,7 @@
       "name": "Linda D. Koontz",
       "honorific": null,
       "position": "Director, Information Management Issues",
-      "organization": null,
+      "organization": "U.S. General Accounting Office",
       "on_behalf_of": null
     },
     "line_sha256": "813c0db14c5c69e28375bccbfd9a170995406157bda2f7bd29cfeb4501677ca8"
@@ -744,7 +744,7 @@
       "name": "William F. Gee",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Urological Association",
       "on_behalf_of": null
     },
     "line_sha256": "088184e66f7e3cecb430f91e7bcd5f009c785e5f2783b2b729de634bd49f4cc9"
@@ -759,7 +759,7 @@
       "name": "W. Henson Moore",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Forest and Paper Association",
       "on_behalf_of": null
     },
     "line_sha256": "e7e90da6a9e608f7337c45627c91b6278f25bc50a0898e830e4f94c43264026e"
@@ -773,8 +773,8 @@
     "fields": {
       "name": "William Tower",
       "honorific": null,
-      "position": null,
-      "organization": null,
+      "position": "Fair Oaks",
+      "organization": "California, American Family Rights Association",
       "on_behalf_of": null
     },
     "line_sha256": "31d93bd253aa826f28c8e3204e4cac85d2fcc267aa14eefa8028686e7f274329"
@@ -789,7 +789,7 @@
       "name": "Robin Arnold-Williams",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Public Human Services Association, and Utah Department of Human Services",
       "on_behalf_of": null
     },
     "line_sha256": "aa59eafdcb99e1798edb7ff9d68e97e8037447bbe010f99743a65e648780c1ee"
@@ -804,7 +804,7 @@
       "name": "Stephen M. Levine",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Physical Therapy Association, and Spine and Sports Rehabilitation Center",
       "on_behalf_of": null
     },
     "line_sha256": "2d39ca982d3c35dcf05f72a514b8007d5f89126042cb1162918d1a3d922f4cac"
@@ -819,7 +819,7 @@
       "name": "Don E. Detmer",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Medical Informatics Association",
       "on_behalf_of": null
     },
     "line_sha256": "0d5eb28b34336a43517d34ad071d7c266265418818f23e3019dffd48af6cdb19"
@@ -834,7 +834,7 @@
       "name": "Jeff Flick",
       "honorific": null,
       "position": "San Francisco Regional Administrator",
-      "organization": null,
+      "organization": "Centers for Medicare and Medicaid Services",
       "on_behalf_of": null
     },
     "line_sha256": "a1d4a2853f55804a344013378231015d52e1300008f62473cf0b98f1f14a82eb"
@@ -864,7 +864,7 @@
       "name": "Nina Olson",
       "honorific": null,
       "position": "National Taxpayer Advocate",
-      "organization": null,
+      "organization": "Internal Revenue Service",
       "on_behalf_of": null
     },
     "line_sha256": "e2982f2de9378b3411816e00d8dc85b9dc395e2b1b7f1b70a9623457a09ff4b6"
@@ -879,7 +879,7 @@
       "name": "Carol B. Hallett",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "Air Transport Association of America",
       "on_behalf_of": null
     },
     "line_sha256": "2b524e8b9dbd0ec5eda9d68d41845f02bda667222aaffa9e51d44dd993d8725a"
@@ -894,7 +894,7 @@
       "name": "Patrick P. O'Carroll",
       "honorific": null,
       "position": "Acting Inspector General",
-      "organization": null,
+      "organization": "Social Security Administration",
       "on_behalf_of": null
     },
     "line_sha256": "36ef35166e0ff34eaa92a16db618741487a85aa3e3774d57f33ffc18a68bc863"
@@ -909,7 +909,7 @@
       "name": "Frances R. Hill",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "University of Miami School of Law, Miami, Florida",
       "on_behalf_of": null
     },
     "line_sha256": "08b589eb39848486d6253fbf569bed0200949adbce00c2c41b2c2eb82ee79126"
@@ -924,7 +924,7 @@
       "name": "Patrick P. O'Carroll",
       "honorific": null,
       "position": "Inspector General",
-      "organization": null,
+      "organization": "Social Security Administration",
       "on_behalf_of": null
     },
     "line_sha256": "9dda70ff2439a4f729e56681e202e07f738a417c73366a4b32ce44701fbdb4a0"
@@ -939,7 +939,7 @@
       "name": "Nancy B. Swigert",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Speech-Language-Hearing Association, and Swigert and Associates",
       "on_behalf_of": null
     },
     "line_sha256": "2ce6ac7cdda3049b0162dbe7f89497b6e1bbbdb7753facdb874d0712657edd0e"
@@ -954,7 +954,7 @@
       "name": "Thomas P. Golden",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "Ticket to Work and Work Incentives Advisory Panel",
       "on_behalf_of": null
     },
     "line_sha256": "07bfa6512f2eb89d328a5fc45fea45745110e5e4c2ee3bcf12376e3604096dc8"
@@ -969,7 +969,7 @@
       "name": "Carol Keehan",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Hospital Association, and Providence Hospital",
       "on_behalf_of": null
     },
     "line_sha256": "ac3468fc9adffe2582b0c9aee132aae5269abc7919fb5f27d0995cc679366181"
@@ -999,7 +999,7 @@
       "name": "Michael A. Wolyn",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "National Alliance of Sales Representatives Associations",
       "on_behalf_of": null
     },
     "line_sha256": "5d111d7bd22bd139902719633e5726a11cd3f080f8e6b548d89a5b245acfd463"
@@ -1014,7 +1014,7 @@
       "name": "Arthur Greenberg",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "National Multi-Housing Council/National Apartment Association",
       "on_behalf_of": null
     },
     "line_sha256": "f3d9da11648683a11d61a72047b719846d6869dd4aaf8c9c768f2f3a213eda46"
@@ -1029,7 +1029,7 @@
       "name": "Lee Cohen",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "Florida Office of the Attorney General, 17th Judicial Circuit",
       "on_behalf_of": null
     },
     "line_sha256": "0ec8f775cc52684bdd738093c7b29eab7d29f4542a924d4752e4dcd77aff0b95"
@@ -1059,7 +1059,7 @@
       "name": "Tony Fay",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Hospital Association, and Province Healthcare Company",
       "on_behalf_of": null
     },
     "line_sha256": "d490021b83fb61437736fb4d2b8cd1bd13e616ec45f6bd0b6f0e06cb3fb24aad"
@@ -1074,7 +1074,7 @@
       "name": "Scott D. Miller",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Society of Pension Actuaries, and Actuarial Consulting Group, Inc.",
       "on_behalf_of": null
     },
     "line_sha256": "6418b72173c1adb8632e068ac2bcd19636363812fc685956e00a27752483e3a7"
@@ -1089,7 +1089,7 @@
       "name": "Larry McCants",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Bankers Association",
       "on_behalf_of": null
     },
     "line_sha256": "f49c359e8b17171e6210209b5791459e302fe7556de0468cee06c7c40a59e955"
@@ -1104,7 +1104,7 @@
       "name": "James G. Huse Jr.",
       "honorific": null,
       "position": "Inspector General",
-      "organization": null,
+      "organization": "Social Security Administration, Office of the Inspector General",
       "on_behalf_of": null
     },
     "line_sha256": "1f7f8db2c41f89e255a09b6cedab4ddeb6a14f84158c50534f437b4316eb07fa"
@@ -1119,7 +1119,7 @@
       "name": "Nina E. Olson",
       "honorific": null,
       "position": "National Taxpayer Advocate",
-      "organization": null,
+      "organization": "Internal Revenue Service",
       "on_behalf_of": null
     },
     "line_sha256": "0f4cb9623c7a6a1ddfae5a953a5110014a6e41eb61aa248eee8019b934112760"
@@ -1134,7 +1134,7 @@
       "name": "Nina E. Olson",
       "honorific": null,
       "position": "National Taxpayer Advocate",
-      "organization": null,
+      "organization": "Internal Revenue Service",
       "on_behalf_of": null
     },
     "line_sha256": "0f4cb9623c7a6a1ddfae5a953a5110014a6e41eb61aa248eee8019b934112760"
@@ -1149,7 +1149,7 @@
       "name": "James G. Huse Jr.",
       "honorific": null,
       "position": "Inspector General",
-      "organization": null,
+      "organization": "Social Security Administration, Office of the Inspector General",
       "on_behalf_of": null
     },
     "line_sha256": "1f7f8db2c41f89e255a09b6cedab4ddeb6a14f84158c50534f437b4316eb07fa"
@@ -1164,7 +1164,7 @@
       "name": "Lewis Morris",
       "honorific": null,
       "position": "Chief Counsel to the Inspector General",
-      "organization": null,
+      "organization": "U.S. Department of Health and Human Services",
       "on_behalf_of": null
     },
     "line_sha256": "c6e1ba2b5e27048248007f544c45f9f9e440815ae973be84e2fd8e64dc952a4e"
@@ -1179,7 +1179,7 @@
       "name": "Fred Brown",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Hospital Association, and BJC Health Systems",
       "on_behalf_of": null
     },
     "line_sha256": "8d526c4fb95dab20317b076509dc47c8bede8a6c10d07f5a838f39dbad513c33"
@@ -1194,7 +1194,7 @@
       "name": "Hans Riemer",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "2030 Center",
       "on_behalf_of": null
     },
     "line_sha256": "851df5877529c26d2c4d9fbbf3fd5c840712c7f0e0533bf9f893eed206e8721e"
@@ -1224,7 +1224,7 @@
       "name": "Don Winstead",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "Florida Department of Children and Families",
       "on_behalf_of": null
     },
     "line_sha256": "942a8b673ed607e752b1a0a24aa0e41ed6ebc95c58ba8128c358e998b944fc90"
@@ -1239,7 +1239,7 @@
       "name": "Donald J. Palmisano",
       "honorific": null,
       "position": null,
-      "organization": null,
+      "organization": "American Medical Association, and National Patient Safety Foundation",
       "on_behalf_of": null
     },
     "line_sha256": "566bb71e158a5f61246700fa66503d3b9470f2632fe57b74121ced9a944eae98"
@@ -1254,7 +1254,7 @@
       "name": "S.W. Hall Jr.",
       "honorific": null,
       "position": "Assistant Commissioner and Chief Information Officer",
-      "organization": null,
+      "organization": "U.S. Customs Service",
       "on_behalf_of": null
     },
     "line_sha256": "fd77761b17817da3b20fc799f44d3bb5d1a3c9797e394cfb00386462207464c7"
@@ -1269,7 +1269,7 @@
       "name": "Nina E. Olson",
       "honorific": "Ms.",
       "position": "National Taxpayer Advocate",
-      "organization": null,
+      "organization": "Internal Revenue Service",
       "on_behalf_of": null
     },
     "line_sha256": "178286746e98fbb9ca6c388016027d4f67ea5d258afdc34e9e59f85772c115e3"

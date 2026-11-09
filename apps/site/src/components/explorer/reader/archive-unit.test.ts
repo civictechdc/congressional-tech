@@ -295,3 +295,11 @@ test('a nomination keeps its own data when optional hearings fail',async()=>{
   controller.abort();
   await assert.rejects(pending,{name:'AbortError'});
 });
+
+test('a witness row with no name is labelled by its organization, never by its key (ct-rg34)',async()=>{
+  const {witnessLabel}=await import('./archive-entities.ts');
+  assert.equal(witnessLabel({witness_key:'865fc801b9f493de',name:null,organization:'American Legion'}),'American Legion');
+  assert.equal(witnessLabel({witness_key:'k',name:'Richard F. Weidman',organization:'Vietnam Veterans of America'}),'Richard F. Weidman');
+  assert.equal(witnessLabel({witness_key:'k',name:null,organization:'American Legion',witness_type:'statement_for_record'}),'Statement for the record');
+  assert.equal(witnessLabel({witness_key:'k',name:null,organization:null}),'k');
+});

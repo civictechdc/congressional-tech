@@ -4,7 +4,7 @@ import {
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
 import {day} from './ArchiveRows.tsx';
-import {witnessRecordEntryLabel} from '../reader/archive-entities.ts';
+import {witnessLabel, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
 
 export function WitnessDetail({
   witness,
@@ -49,7 +49,7 @@ export function WitnessDetail({
           {onClose&&<button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel||'Clear witness filter'}</button>}
         </div>
       </div>
-      <h2>{witness.name||recordLabel||witness.witness_key}</h2>
+      <h2>{witnessLabel(witness)}</h2>
       {organizations.length>0&&<p className="archive-entity-meta"><strong>Organizations:</strong> {organizations.join(' · ')}</p>}
       {positions.length>0&&<p className="archive-entity-meta"><strong>Positions:</strong> {positions.join(' · ')}</p>}
       {witness.bioguide_id&&<p className="archive-entity-meta">

@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {RequestMessage, useRequest} from '../view/request-state.tsx';
 import type {RelationState} from '../reader/archive-entities.ts';
+import {witnessLabel} from '../reader/archive-entities.ts';
 import {RelationNotice} from './ArchiveRows.tsx';
 import {dateLabels, recoveryLabel, savedCopy} from '../reader/archive.ts';
 import {formatLabel} from './ArchiveFormats.tsx';
@@ -237,7 +238,7 @@ export function ArchiveDetail({
         <span className="archive-measure-list">
           {witnessItems.map((w:any)=>{
             const wk=String(w.witness_key??w.name_key??w.name??'');
-            const label=w.organization?`${w.name||wk} (${w.organization})`:(w.name||wk);
+            const label=w.name&&w.organization?`${w.name} (${w.organization})`:(witnessLabel(w)||wk);
             return onWitness
               ?<button key={wk} type="button" className="archive-measure-pill" onClick={()=>onWitness(wk)}>{label}</button>
               :<span key={wk} className="archive-measure-pill">{label}</span>;

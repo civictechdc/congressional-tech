@@ -1095,7 +1095,7 @@ _MODS_ORGANIZATION_WORD = re.compile(
     r"\b(?:Department|Office|Administration|Agency|Bureau|Service|Commission|Association|Institute|Foundation"
     r"|Federation|Union|League|Society|Coalition|Committee|Center|Legion|Veterans|Project|Fund|Group|Corporation"
     r"|Company|Inc|Clinic|Hospital|University|College|Organization|Alliance|Network|Program|Conference|Authority"
-    r"|Partnership|Corps|Panel|Initiative|Institution|Laboratory|Museum|Library|School|Academy)s?\b")
+    r"|Partnership|Corps|Panel|Initiative|Institution|Lab|Laboratory|Museum|Library|School|Academy)s?\b")
 # A name that is a sentence ("American Council of Life Insurers given by Stephen E. Rahn", "Testimony before House
 # Small Business Committee") or a person run into their post, rank or title ("Robert K. Stumberg Professor of Law
 # and Director of Harrison Institute ...", "First Class Cadet Kyra Grace Holmstrup ...", "Committee on Agriculture
@@ -1139,16 +1139,20 @@ def _mods_organization_first(line: str, parsed: dict[str, Any]) -> tuple[dict[st
         return None
 
     def place_follows(i: int) -> bool:
-        return i + 1 < len(parts) and bool(_MODS_STATE.fullmatch(parts[i + 1]))
+        # A two-letter state that is also a credential ("MD", "MA", "MS", "PA") may end a person's entry.
+        nxt = parts[i + 1] if i + 1 < len(parts) else ""
+        return bool(_MODS_STATE.fullmatch(nxt)) and nxt not in ("MD", "MA", "MS", "PA")
 
     def person_at(i: int) -> dict[str, Any] | None:
         candidate = WITNESS_TITLE.sub("", parts[i] + " ").strip()
         # A surname alone opens a surname-first entry that ends the line ("..., Hill, James A"); a firm's
         # names ("Akin, Gump, Strauss, Hauer & Feld") run on past theirs.
-        surname = (re.fullmatch(r"[A-Z][a-z]+(?:-[A-Z][a-z]+)?", candidate) and not _MODS_STATE.fullmatch(candidate)
+        surname = (re.fullmatch(r"[A-Z][a-z]+(?:-[A-Z][a-z]+)?", candidate)
                    and i + 2 == len(parts) and bool(re.fullmatch(r"[A-Z][a-z]+(?: [A-Z]\.?)?", parts[i + 1]))
                    and not _MODS_STATE.fullmatch(parts[i + 1]))
-        if not (is_name(candidate) or surname) or _MODS_ORGANIZATION_WORD.search(candidate) or "&" in candidate:
+        if (not (is_name(candidate) or surname) or _MODS_ORGANIZATION_WORD.search(candidate) or "&" in candidate
+                or re.search(r"[`'\"’]$", candidate)
+                or _MODS_STATE.fullmatch(candidate) or place_follows(i)):
             return None
         person = parse_gpo_witness(", ".join(parts[i:]))
         last = ([word for word in person["name"].split() if not re.fullmatch(r"(?:Jr|Sr|II|III|IV)\.?", word)] or [""])[-1]
@@ -1158,15 +1162,34 @@ def _mods_organization_first(line: str, parsed: dict[str, Any]) -> tuple[dict[st
             return None
         return person
 
-    # A name with an initial or a title is read first: an organization's name without one of the words above
-    # can look like a person's ("VR Services, Richmond Area Arc, Quintin M. Mitchell"). A state can also be a
-    # credential ("MD"), so a name before one is read when no other name follows.
-    for marked, skip_places in ((True, True), (False, True), (False, False)):
-        for i in range(1, len(parts)):
-            if marked and not (WITNESS_TITLE.match(parts[i] + " ") or re.search(r"\b[A-Z]\.", parts[i])):
-                continue
-            if not (skip_places and place_follows(i)) and (person := person_at(i)):
-                return person, ", ".join(parts[:i])
+    # The rule abstains (the line reads as before) whenever it is unsure. A segment marked as a person's, by a
+    # civil title or an initial between names ("Hon. Allen Johnson", "James R. White", "C. Anderson Hedberg"),
+    # is read first; a marked segment the rule cannot read ("Stephen G. Kellison and Marilyn Moon") means the
+    # line names someone it would miss, so it abstains. Without a mark, a segment can be a place, a chapter or
+    # another organization whose name lacks the words above ("Vietnam Veterans of America, Maine State Council,
+    # John Wallace, President"), so the line is read only when exactly one segment could be the person, in at
+    # most three words ("National Disease Clusters Alliance, Putting Children Above Politics" stays). Known
+    # misses, left as they were: "Fraternal Order of Police, Chuck Canterbury", "Nature Conservancy, Steven J.
+    # McCormick".
+    def marked(part: str) -> bool:
+        return bool(_MODS_CIVIL_TITLE.match(part + " ")
+                    or re.search(r"(?:^|[A-Z][a-z]+ )[A-Z]\. (?:[A-Z]\. )?[A-Z][a-z'’]", part))
+
+    people = {i: person for i in range(1, len(parts)) if (person := person_at(i))}
+    read = [i for i in people if marked(parts[i])]
+    unmarked = [i for i in people if i not in read
+                and len([w for w in people[i]["name"].split() if not re.fullmatch(r"(?:Jr|Sr|II|III|IV)\.?", w)]) <= 3]
+    if read or (len(people) == len(unmarked) == 1 and not any(marked(part) for part in parts[1:])):
+        i = (read or list(people))[0]
+        return people[i], ", ".join(parts[:i])
+    # With no person read, the line is an organization alone, its whole reading the organization, only when no
+    # later segment could open a person's name; otherwise ("..., David Brailer National Coordinator ...",
+    # "A Panel, consisting of: Sligh, Jr., Albert B., ...") it reads as before.
+    if people or any((re.match(r"(?:[A-Z][a-z'’-]+|[A-Z]\.) (?:[A-Z]\. )?[A-Z][a-z'’-]+", part)
+                      or re.fullmatch(r"[A-Z][a-z'’-]+", part))
+                     and not _MODS_STATE.fullmatch(part) and not _MODS_ORGANIZATION_WORD.search(part)
+                     for part in parts[1:]):
+        return None
     whole = ", ".join(filter(None, (name, parsed["position"], parsed["organization"])))
     return dict(parsed, name="", honorific="", position="", organization=whole), None
 
@@ -1190,11 +1213,15 @@ def _mods_surname_first(line: str, parsed: dict[str, Any]) -> dict[str, Any] | N
     name, position = parsed["name"] or "", parsed["position"] or ""
     title = _MODS_CIVIL_TITLE.match(position)
     surname = _MODS_SURNAME.fullmatch(name)
+    text = strip_contents_markers(line)
+    # The surname must open the line as printed: "Blunt, Lisa, Hon. Rochester" already reads "Lisa Blunt".
     if (not title or not surname or _MODS_ORGANIZATION_WORD.search(name) or LABEL_NAME.match(name)
-            or WITNESS_TITLE.match(strip_contents_markers(line))):
+            or WITNESS_TITLE.match(text) or not re.sub(r"^Page ", "", text).startswith(surname["surname"] + ",")):
         return None
     given = position[title.end():].strip()
     if not (surname["page"] and _MODS_PAGE_GIVEN.fullmatch(given) or _MODS_GIVEN.fullmatch(given)):
+        return None
+    if given.split()[-1] == surname["surname"].split()[-1]:
         return None
     person = f"{position[:title.end()]}{given} {surname['surname']}"
     if not is_name(WITNESS_TITLE.sub("", person + " ").strip()):
