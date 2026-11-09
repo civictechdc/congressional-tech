@@ -604,51 +604,160 @@ def test_daily_html_delta_recovers_after_receipt_commit(tmp_path,clean_tree,monk
     assert result==dict(rows=[dict(sha=key,status='completed') for key in sorted([old,*new[:-1]])],duplicates=[dict(n=0)])
 
 
+def html(name,pad=0):
+    """An HTML page; `pad` hash-chained hex characters keep its stored (gzip) size apart."""
+    filler=''.join(sha256(f'{name}{n}'.encode()).hexdigest() for n in range(pad//64+1))[:pad]
+    return f'<html><head><title>{name}</title></head><body>{name} {filler}</body></html>'.encode()
+
+
+def dated_receipts(tmp_path,value,store,writes):
+    """Append receipts written on chosen days and families to a native_fixture value.
+
+    `writes` holds (write_date, family, payload); each write is its own receipt.
+    """
+    from capture_qualification_helpers import write_qualified_bytes
+    from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    root=store.adapter.root;qualifications={}
+    class QualifiedAdapter(LocalAdapter):
+        def create(self,key,source,**kwargs):
+            if key.startswith('receipts/'):
+                qualifications[key]=write_qualified_bytes(root/key,source.read());return True
+            return super().create(key,source,**kwargs)
+    inventory=pq.read_table(value['body_inventory'])
+    rows=inventory.to_pylist()
+    for n,(day,family,data) in enumerate(writes):
+        writer=ReceiptWriter(BodyStore(QualifiedAdapter(root)),identity=dict(job='capture',commit='a'*40,lockfile_digest='b'*64),
+            run_id='dated'+str(n),write_date=day,archive_limits=None)
+        entity=tmp_path/('dated-body'+str(n));entity.write_bytes(data);digest=sha256(data).hexdigest()
+        url='https://docs.house.gov/dated'+str(n)+'.html'
+        attempt=FetchAttempt(url,url,'2026-10-28T12:00:00Z','direct',200,None,{},(),True,
+            BodyFile(entity,digest,len(data),'application/json',None,None,None))
+        key,line=writer.write(FetchResult(attempt),family=family)
+        value['receipt_inventory'].append(dict(key=key,path=str(root/key),qualification=qualifications[key]))
+        capture=line['captures'][0];physical='bodies/sha256/'+digest[:2]+'/'+digest+capture['stored_suffix']
+        if all(row['body_sha']!=bytes.fromhex(digest) for row in rows):
+            rows.append(dict(body_sha=bytes.fromhex(digest),physical_key=physical,relative_path=physical,
+                stored_bytes=capture['stored_bytes']))
+    pq.write_table(pa.Table.from_pylist(rows,schema=inventory.schema),value['body_inventory'])
+    return {row['body_sha'].hex():row['stored_bytes'] for row in rows}
+
+
+def opened_bodies(monkeypatch):
+    """Every body the html_metadata pass opens, in call order."""
+    opened=[]
+    real_execute=readings._execute_plan
+    def counted(planned,**kwargs):
+        if planned['parser']=='html_metadata':opened.append({item['body_sha'].hex() for item in kwargs['items']})
+        return real_execute(planned,**kwargs)
+    monkeypatch.setattr(readings,'_execute_plan',counted)
+    return opened
+
+
 @pytest.mark.parametrize('budget',['count','bytes'])
 def test_daily_html_over_budget_reads_the_oldest_budget_and_carries_the_rest(tmp_path,clean_tree,monkeypatch,budget):
     # ct-hiec: a night past either derived budget reads the oldest budget's worth and carries
     # the rest to the next night instead of stopping at derived_budget_required.
-    payloads=[f'<html><head><title>Carried page {n}</title></head><body>Carried {n}</body></html>'.encode()
-        for n in range(5)]
-    value,engine,store=native_fixture(tmp_path,5,payloads=payloads,url_suffix='.html')
+    value,engine,store=native_fixture(tmp_path,1,payloads=[html('Baseline')],url_suffix='.html')
+    x,y,z=html('Large X',pad=4000),html('Small Y'),html('Small Z')
+    # Key order puts congress/ (day 29) first; day order puts documents/ (day 28) first. X is
+    # captured first on day 29 and again on day 28, so its oldest capture is not its first.
+    stored=dated_receipts(tmp_path,value,store,[('2026-10-29','congress/hearings',y),
+        ('2026-10-29','congress/hearings',x),('2026-10-28','documents',z),('2026-10-28','documents',x)])
+    X,Y,Z=(sha256(data).hexdigest() for data in (x,y,z))
+    assert stored[X]>stored[Y]+stored[Z]
     records=ProducerRecords(root=tmp_path/'ledger')
     first=daily.produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1]),
         engine=engine,raw_store=store,producer_records=records)
     leaves=daily.produce_daily(dict(value,work=str(tmp_path/'leaves')),engine=engine,raw_store=store,producer_records=records)
     assert first['status']==leaves['status']=='completed'
-    # The oldest receipt first: each payload has its own receipt, written in order.
-    order=sorted(range(1,5),key=lambda n:(value['receipt_inventory'][n]['key'],sha256(payloads[n]).hexdigest()))
-    shas=[sha256(payloads[n]).hexdigest() for n in order]
-    stored={row['body_sha'].hex():row['stored_bytes'] for row in pq.read_table(value['body_inventory']).to_pylist()}
     policy=dict(captures=first['pins']['captures'],versions=compatible_versions.current_pins(),max_stored_bytes=1<<20)
-    limit=dict(max_work_items=2) if budget=='count' else dict(derived_scopes={'html_metadata':dict(policy,
-        max_stored_bytes=max(stored[shas[0]]+stored[shas[1]],stored[shas[2]]+stored[shas[3]]))})
-    enabled=dict(value,derived_parsers=['html_metadata'],**{'derived_scopes':{'html_metadata':policy},**limit})
-    opened=[]
-    real_execute=readings._execute_plan
-    def counted(planned,**kwargs):
-        if planned['parser']=='html_metadata':opened.extend(item['body_sha'].hex() for item in kwargs['items'])
-        return real_execute(planned,**kwargs)
-    monkeypatch.setattr(readings,'_execute_plan',counted)
+    if budget=='count':
+        limit=dict(max_work_items=2)
+        # Oldest receipt day, then key: Z and X (day 28) before Y (day 29).
+        nights=[({Z,X},dict(bodies=1,stored_bytes=stored[Y],unknown_sizes=0,oldest_day='2026-10-29')),({Y},None)]
+    else:
+        # Z fits; X would pass the bytes, so it waits, then reads alone though over budget.
+        policy['max_stored_bytes']=stored[Z]+stored[Y]
+        nights=[({Z},dict(bodies=2,stored_bytes=stored[X]+stored[Y],unknown_sizes=0,oldest_day='2026-10-28')),
+            ({X},dict(bodies=1,stored_bytes=stored[Y],unknown_sizes=0,oldest_day='2026-10-29')),({Y},None)]
+    enabled=dict(value,derived_parsers=['html_metadata'],derived_scopes={'html_metadata':policy},**limit if budget=='count' else {})
+    opened=opened_bodies(monkeypatch)
     def night(name):
         report=daily.produce_daily(dict(enabled,work=str(tmp_path/name)),engine=engine,raw_store=store,producer_records=records)
         # Gate 5: the readings head each night moves has its record, and nothing else moves.
         assert report['status']=='completed' and set(report['producers'])<={'readings'}
         assert records.find('readings',report['pins']['readings']) is not None
         return report,report['producerreports']['html_metadata']
-    carrying,derived=night('carrying')
-    carried=dict(bodies=2,stored_bytes=stored[shas[2]]+stored[shas[3]])
-    assert derived['work_items']==2 and derived['carried']==carried and carrying['carried']=={'html_metadata':carried}
-    assert opened==shas[:2]
-    remainder,derived=night('remainder')
-    assert derived['work_items']==2 and 'carried' not in derived and 'carried' not in remainder
-    assert sorted(opened)==sorted(shas)
+    for number,(read,carried) in enumerate(nights):
+        report,derived=night('night-'+str(number))
+        assert opened[number]==read and derived['work_items']==len(read)
+        if carried:assert derived['carried']==carried and report['carried']=={'html_metadata':carried}
+        else:assert 'carried' not in derived and 'carried' not in report
     settled,derived=night('settled')
-    assert derived['work_items']==0 and 'carried' not in settled and settled['producers']=={} and len(opened)==4
+    assert derived['work_items']==0 and 'carried' not in settled and settled['producers']=={}
+    assert len(opened)==len(nights)
     rows=run_job(tmp_path/'carried-rows',engine,inputs=[tables.table_input('readings',settled['pins']['readings'])],
         steps=[],outputs=[],queries=[dict(name='rows',sql="""SELECT encode(body_sha,'hex') AS sha,count(*) AS n
             FROM readings WHERE parser='html_metadata' GROUP BY body_sha ORDER BY sha""")])['rows']
-    assert rows==[dict(sha=sha,n=1) for sha in sorted(shas)]
+    baseline_sha=sha256(html('Baseline')).hexdigest()
+    assert [row for row in rows if row['sha']!=baseline_sha]==[dict(sha=sha,n=1) for sha in sorted([X,Y,Z])]
+
+
+def listed_fixture(tmp_path,payloads,unpinned):
+    from test_daily_raw_listing import fixture
+    value,engine,bucket,store=fixture(tmp_path,payloads,unpinned=unpinned)
+    base=daily.produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1]),engine=engine,raw_store=store)
+    leaves=daily.produce_daily(dict(value,work=str(tmp_path/'leaves')),engine=engine,raw_store=store)
+    assert base['status']==leaves['status']=='completed'
+    policy=dict(captures=base['pins']['captures'],versions=compatible_versions.current_pins(),max_stored_bytes=1<<20)
+    return dict(value,derived_parsers=['html_metadata'],derived_scopes={'html_metadata':policy}),engine,bucket,store,leaves
+
+
+def test_daily_html_unknown_size_on_r2_is_read_alone_and_the_rest_carried(tmp_path,monkeypatch):
+    # ct-hiec: an R2 capture with no stored size reads as 0 at admission and learns its size only
+    # at custody. Mixed into one batch it would pass the byte budget there and refuse every night.
+    from test_daily_raw_listing import body_key
+    payloads=[html('Listed base'),html('Unpinned large',pad=4000),html('Pinned one'),html('Pinned two')]
+    enabled,engine,bucket,store,_=listed_fixture(tmp_path,payloads,unpinned={1,2})
+    size=lambda data:bucket.head_object(Bucket='bucket',Key=body_key(data))['ContentLength']
+    big,one,two=(sha256(data).hexdigest() for data in payloads[1:])
+    enabled['derived_scopes']['html_metadata']['max_stored_bytes']=size(payloads[1])-1
+    opened=opened_bodies(monkeypatch)
+    def night(name):
+        report=daily.produce_daily(dict(enabled,work=str(tmp_path/name)),engine=engine,raw_store=store)
+        assert report['status']=='completed',report['producerreports'].get('html_metadata')
+        return report['producerreports']['html_metadata']
+    alone=night('unknown-alone')
+    assert opened==[{big}] and alone['work_items']==1 and alone['budget']['stored_bytes']==size(payloads[1])
+    # The carried bytes are the known sizes only; the unknown one is counted, not guessed.
+    assert alone['carried']==dict(bodies=2,stored_bytes=size(payloads[3]),unknown_sizes=1,oldest_day='2026-10-28')
+    second=night('unknown-second')
+    assert opened[1]=={one} and second['carried']==dict(bodies=1,stored_bytes=size(payloads[3]),
+        unknown_sizes=0,oldest_day='2026-10-28')
+    last=night('pinned-last')
+    assert opened[2]=={two} and 'carried' not in last
+    assert night('settled')['work_items']==0 and len(opened)==3
+
+
+def test_daily_html_unknown_local_size_refuses_without_opening_a_body(tmp_path,monkeypatch):
+    # The refusal that survives ct-hiec: a local capture with no stored size cannot be budgeted.
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    enabled,engine,_,_,leaves=listed_fixture(tmp_path,[html('Local base'),html('Unpinned local')],unpinned={1})
+    store=BodyStore(LocalAdapter(tmp_path/'raw'))
+    def forbidden(planned,**kwargs):
+        if planned['parser']=='html_metadata':raise AssertionError('Body opened before derived budget admission')
+        return real(planned,**kwargs)
+    real=readings._execute_plan
+    monkeypatch.setattr(readings,'_execute_plan',forbidden)
+    refused=daily.produce_daily(dict(enabled,work=str(tmp_path/'refused')),engine=engine,raw_store=store)
+    assert refused['status']=='derived_budget_required' and refused['pins'] is None
+    derived=refused['producerreports']['html_metadata']
+    assert derived['budget']['missing_sizes']==1 and derived['budget']['work_items']==1
+    after=tables.resolve_tables(engine=engine,catalog_root=enabled['catalog_root'],work=tmp_path/'after-heads',
+        tables=enabled['tables'])
+    assert after==leaves['pins']
 
 
 def test_daily_html_reconsiders_superseded_baseline_refusals(tmp_path,clean_tree):

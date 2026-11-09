@@ -687,30 +687,34 @@ def _carry_html_metadata(work_list,scoped,max_items,max_bytes,*,engine,work):
     """Narrow the scoped captures and readings to the oldest budget's worth of the work list.
 
     Bodies are ordered by their oldest receipt in (day, key) order, as _within_budget orders
-    receipts, then by hash, so nothing starves and every night picks the same prefix. The prefix
-    stops at `max_items` bodies or before its stored bytes pass `max_bytes`, but always holds one
-    body. The rest stays unread in the current heads, which the next night's anti-join selects
-    again; nothing records it here. One native job: O(W log W) for W pending bodies plus one
-    pass over the scoped captures and readings, never a rescan per body.
+    receipts (RECEIPT_DAY), then by hash, so nothing starves and every night picks the same
+    prefix. The prefix stops at `max_items` bodies or before its stored bytes pass `max_bytes`,
+    but always holds one body. An unknown stored size (an R2 capture that pinned none; custody
+    learns it later) counts as more than the whole byte budget, so such a body is only ever
+    admitted alone, first. The rest stays unread in the current heads, which the next night's
+    anti-join selects again; nothing records it here. One native job: O(W log W) for W pending
+    bodies plus joins from them into the scoped captures and readings, never a rescan per body.
     """
-    receipt="concat(coalesce((regexp_match(receipt_key,'/([0-9]{4}-[0-9]{2}-[0-9]{2})/'))[1],''),' ',receipt_key)"
+    receipt=f"concat(coalesce((regexp_match(c.receipt_key,'{RECEIPT_DAY.pattern}'))[1],''),' ',c.receipt_key)"
     order='ORDER BY f.oldest,w.body_sha'
     carried=run_job(work,engine,inputs=[tables.table_input('work_list',work_list),
         tables.table_input('captures',scoped/'captures.parquet'),tables.table_input('readings',scoped/'readings.parquet')],
-        steps=[dict(name='ordered',materialize=True,sql=f'''SELECT w.body_sha,coalesce(w.stored_bytes,0) AS stored_bytes,
+        steps=[dict(name='oldest',materialize=True,sql=f'''SELECT w.body_sha,min({receipt}) AS oldest
+            FROM work_list w JOIN captures c ON c.sha256=w.body_sha GROUP BY w.body_sha'''),
+        dict(name='ordered',materialize=True,sql=f'''SELECT w.body_sha,w.stored_bytes,f.oldest,
             row_number() OVER ({order}) AS position,
-            sum(coalesce(w.stored_bytes,0)) OVER ({order} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS held
-            FROM work_list w JOIN (SELECT sha256,min({receipt}) AS oldest FROM captures GROUP BY sha256) f
-            ON f.sha256=w.body_sha'''),
+            sum(coalesce(w.stored_bytes,{int(max_bytes)+1})) OVER ({order} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS held
+            FROM work_list w JOIN oldest f ON f.body_sha=w.body_sha'''),
         dict(name='admitted',materialize=True,sql=f'''SELECT body_sha FROM ordered
             WHERE position<={int(max_items)} AND (held<={int(max_bytes)} OR position=1)''')],
-        outputs=[parquet_output(work,'captures','''SELECT c.* FROM captures c
-                WHERE EXISTS(SELECT 1 FROM admitted a WHERE a.body_sha=c.sha256)''',['receipt_key','receipt_line','capture_index']),
-            parquet_output(work,'readings','''SELECT r.* FROM readings r
-                WHERE EXISTS(SELECT 1 FROM admitted a WHERE a.body_sha=r.body_sha)''',readings.PK)],
-        queries=[dict(name='carried',sql='''SELECT count(*) AS bodies,coalesce(sum(stored_bytes),0) AS stored_bytes
+        outputs=[parquet_output(work,'captures','SELECT c.* FROM admitted a JOIN captures c ON c.sha256=a.body_sha',
+                ['receipt_key','receipt_line','capture_index']),
+            parquet_output(work,'readings','SELECT r.* FROM admitted a JOIN readings r ON r.body_sha=a.body_sha',readings.PK)],
+        # Known sizes only: the stand-in for an unknown size is a rule, not bytes.
+        queries=[dict(name='carried',sql='''SELECT count(*) AS bodies,coalesce(sum(stored_bytes),0) AS stored_bytes,
+            count(*)-count(stored_bytes) AS unknown_sizes,nullif(split_part(min(oldest),' ',1),'') AS oldest_day
             FROM ordered o WHERE NOT EXISTS(SELECT 1 FROM admitted a WHERE a.body_sha=o.body_sha)''')])['carried'][0]
-    return dict(bodies=carried['bodies'],stored_bytes=carried['stored_bytes'])
+    return carried
 
 
 def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work):
@@ -723,7 +727,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     catalog commit (ct-z4i9: one commit per body made the step 93% catalog round-trips).
     Work past a budget is carried, not refused (ct-hiec): the oldest budget's worth is
     read (_carry_html_metadata) and the report names the rest, which the next night's
-    selection finds still unread. Unknown stored sizes still refuse.
+    selection finds still unread. Unknown stored sizes at the read still refuse.
     """
     scope=derived_scopes(spec)['html_metadata']
     baseline=scope['captures']
@@ -772,16 +776,17 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
             decided_at=spec['decided_at'],parser='html_metadata',**source)
     try:
         planned=admit(scoped,'admission');pending=planned['work_list']
-        over=_stored_bytes(pending)[0]>scope['max_stored_bytes']
+        known,unknown=_stored_bytes(pending)
+        # An unknown size may be anything once custody learns it: read it alone (ct-hiec).
+        over=known>scope['max_stored_bytes'] or (unknown and planned['work_items']>1)
     except readings.BackfillRequired as error:
         pending=error.report['work_list'];over=True
     if over:
         details['carried']=_carry_html_metadata(pending,scoped,
             spec['max_work_items'],scope['max_stored_bytes'],engine=engine,work=work/'carry')
         scoped=work/'carry'
-        try:planned=admit(scoped,'admitted')
-        except readings.BackfillRequired as error:
-            return dict(error.as_dict(),status='derived_budget_required',batches=[],**details)
+        # The narrowed scope holds at most max_work_items bodies, so this plan cannot exceed it.
+        planned=admit(scoped,'admitted')
     listing=None
     if _listed_reads(spec,raw_store):
         custody=_listed_custody(spec,engine,raw_store,
