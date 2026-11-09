@@ -106,6 +106,7 @@ purpose = "Reserved for deliberate research reproduction in an isolated environm
 roots = [
     "packages/congress_api/tests/test_r2_body_files_native.py",
     "packages/congress_api/tests/test_body_text_origin.py",
+    "packages/congress_api/tests/test_producer_records_loopback.py",
     "packages/viewer_publication/tests/test_archive_multipart.py",
 ]
 marker = "loopback"

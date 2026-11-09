@@ -480,7 +480,11 @@ def test_appearance_activation_appends_two_generations_in_one_snapshot_and_resum
         args = dict(engine=engine, raw_store=BodyStore(LocalAdapter(raw)), producer_records=records,
                     catalog_root=job['catalog_root'], targets={name: job['tables'][name]}, work=work,
                     decided_at=STAMP, max_output_bytes=32 << 20, min_disk_bytes=1)
+        # A daily run that died without moving this table left its owed record pending here.
+        stale = dict(input=name, job='daily', base=dict(selector=dict(kind='native_table', **initial[name]), record=None))
+        records.owe(dict(stale, owed=dict(status='pending')), None)
         result = daily.activate_appearance_generations(prepared, resume=False, **args)
+        assert records.owed(initial[name])[0] == dict(stale, owed=dict(status='superseded', by='Appearance activation'))
         final = tables.resolve_tables(engine=engine, work=tmp_path/'mods-after', catalog_root=job['catalog_root'],
                                       tables=job['tables'])
         assert set(result['pins']) == {name}

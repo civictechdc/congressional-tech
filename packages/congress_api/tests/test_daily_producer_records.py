@@ -120,8 +120,23 @@ def _failing_final_reads(monkeypatch, failures):
                 stderr='iceberg: Unexpected => client error (Connect): operation timed out'))
         return real(work=work, **kwargs)
     monkeypatch.setattr(tables, 'resolve_tables', resolve)
-    monkeypatch.setattr(daily.time, 'sleep', waits.append)
+    monkeypatch.setattr(daily, 'SLEEP', waits.append)
     return waits
+
+
+def _failing_owed_marks(monkeypatch, status, keys=None):
+    """Owed-record writes that set `status` fail (only at `keys`, when given); the rest go through."""
+    from congress_api.lake.producer_records import owed_key
+    real, failed = ProducerRecords.owe, []
+
+    def owe(self, intent, version):
+        key = owed_key(intent['base']['selector'])
+        if intent['owed']['status'] == status and (keys is None or key in keys):
+            failed.append(key)
+            raise OSError('storage unavailable')
+        return real(self, intent, version)
+    monkeypatch.setattr(ProducerRecords, 'owe', owe)
+    return failed
 
 
 def _heads(engine, value, work):
@@ -140,9 +155,45 @@ def test_a_transient_final_head_failure_is_retried_and_the_records_written(tmp_p
     result = daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
     assert result['status'] == 'completed' and waits == [daily.FINAL_HEAD_DELAYS[0]]
     assert set(result['producers']) == set(result['pins'])
+    owed = {name: _owed_at(records, pin, None) for name, pin in result['pins'].items()}
+    assert len({key for _, key, _ in owed.values()}) == len(owed)  # One owed record per table.
     for name, pin in result['pins'].items():
         assert records.find(name, pin)[1] == result['producers'][name]
-        assert _owed_at(records, pin, None)[0]['owed'] == dict(status='recorded', by='run', record=result['producers'][name])
+        assert owed[name][0]['input'] == name and pin['table_uuid'] in owed[name][1]
+        assert owed[name][0]['owed'] == dict(status='recorded', by='run', record=result['producers'][name])
+
+
+def test_a_failed_owed_mark_never_fails_a_run_that_wrote_its_records(tmp_path, clean_tree, monkeypatch):
+    value, engine, store = native_fixture(tmp_path)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    failed = _failing_owed_marks(monkeypatch, 'recorded')
+    result = daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    assert result['status'] == 'completed' and set(result['producers']) == set(result['pins'])
+    assert sorted(failed) == sorted(note.split(' ')[0] for note in result['owed_unmarked'])
+    assert all(records.find(name, pin)[1] == result['producers'][name] for name, pin in result['pins'].items())
+
+
+def test_a_refusal_mark_is_retried_per_table_and_a_lasting_failure_names_its_key(tmp_path, clean_tree, monkeypatch):
+    from congress_api.lake.producer_records import owed_key
+    value, engine, store = native_fixture(tmp_path)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    initial = _heads(engine, value, tmp_path / 'initial')
+    stuck = owed_key(initial['captures'])
+    failed = _failing_owed_marks(monkeypatch, 'refused', {stuck})
+    waits = []
+    monkeypatch.setattr(daily, 'SLEEP', waits.append)
+    produce = daily._produce
+
+    def produce_then_move_checkout(*args):
+        produce(*args)
+        monkeypatch.setattr(daily, 'writer_identity', lambda root, job: dict(WRITER, job=job, commit='c' * 40))
+    monkeypatch.setattr(daily, '_produce', produce_then_move_checkout)
+    with pytest.raises(daily.CheckoutChanged, match='could not be marked refused and must not be completed') as error:
+        daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    assert stuck in str(error.value) and failed == [stuck] * (len(daily.REFUSE_DELAYS) + 1)
+    assert waits == list(daily.REFUSE_DELAYS)
+    for name, pin in initial.items():
+        assert _owed_at(records, pin, None)[0]['owed']['status'] == ('pending' if name == 'captures' else 'refused')
 
 
 def test_the_next_preflight_completes_what_a_killed_run_owed(tmp_path, clean_tree, monkeypatch):
@@ -159,6 +210,13 @@ def test_the_next_preflight_completes_what_a_killed_run_owed(tmp_path, clean_tre
     heads = _heads(engine, value, tmp_path / 'heads')
     assert all(records.find(name, pin) is None for name, pin in heads.items())
     assert all(_owed_at(records, pin, None)[0]['owed'] == dict(status='pending') for pin in heads.values())
+    limit = daily.OWED_WALK_LIMIT
+    monkeypatch.setattr(daily, 'OWED_WALK_LIMIT', 0)  # A head beyond the walk is refused, not walked.
+    capped = daily.produce_daily(dict(value, work=str(tmp_path / 'capped')), engine=engine, raw_store=store,
+                                 producer_records=records)
+    assert capped['status'] == 'producer_unrecorded' and capped['producers']['owed'] == {
+        name: dict(reason='no recorded snapshot within 0 of the head') for name in heads}
+    monkeypatch.setattr(daily, 'OWED_WALK_LIMIT', limit)
     second = daily.produce_daily(dict(value, work=str(tmp_path / 'second')), engine=engine, raw_store=store,
                                  producer_records=records)
     assert second['status'] == 'completed' and second['pins'] == heads and second['producers'] == {}

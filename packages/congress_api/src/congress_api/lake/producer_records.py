@@ -12,18 +12,22 @@ viewer-publications/. A local root holds the same keys for local catalogs.
 
 Owed records (ct-8unc). Before its first append a daily run leaves, for each table, the
 record it will owe minus its head under lake/producers/owed/<table_uuid>/<base>.json, keyed
-by the head it appends onto. Its last step marks each one recorded, unmoved or refused.
-If the run dies or the catalog stops answering first, the next preflight finds the
-unrecorded head's nearest recorded ancestor (the record chain stops at the first
-recorded snapshot, so a stale intent at an older base is never read), checks that the
-head was reached from it by appends only, and writes the owed record. Intents are state,
-not proof: they change by compare-and-swap, and gate 5 reads only records.
+by the head it appends onto. Its last step marks the moved ones recorded, or all of them
+refused if its checkout changed. If the run dies or the catalog stops answering first,
+the next preflight finds the unrecorded head's nearest recorded ancestor (the record
+chain stops at the first recorded snapshot, so an owed record at an older base is never
+read), checks that the head was reached from it by appends only, and writes the owed
+record. Owed records are state, not proof: they change by compare-and-swap, and gate 5
+reads only records.
 
-Cannot see: rows appended between a base and its head by a writer that bypassed the
-shared R2 lock; the lineage check only proves the base is an ancestor reached by appends.
-A late completion cannot tell whether the checkout changed during a run that died, and
-widens that window to the time between the run and the completion.
+Cannot see: rows appended between a base and its head by a writer outside the nightly's
+local flock, the only writer exclusion; the lineage check only proves the base is an
+ancestor reached by appends. A late completion widens that window to the time between
+the run and the completion. Accepted risk (owner, 2026-11-08: "Keep auto-complete"): a
+run whose checkout changed and that then died before checking it is completed under the
+commit it started from.
 """
+import base64
 import gzip
 import hashlib
 import json
@@ -138,22 +142,20 @@ class ProducerRecords:
         key = owed_key(intent['base']['selector'])
         changed = 'Owed producer record changed concurrently: ' + key
         if self.root is not None:
+            import fcntl
+            from uuid import uuid4
             path = self.root / key
             path.parent.mkdir(parents=True, exist_ok=True)
-            if version is None:
-                try:
-                    with path.open('xb') as target:
-                        target.write(data)
-                except FileExistsError:
-                    raise ValueError(changed) from None
-            else:
-                if not path.is_file() or path.read_bytes() != version:
+            # The lock makes the comparison and the replace one step, as R2's conditional PUT is.
+            with path.with_name(path.name + '.lock').open('a') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                current = path.read_bytes() if path.is_file() else None
+                if current != version:
                     raise ValueError(changed)
-                temporary = path.with_name(path.name + '.tmp')
+                temporary = path.with_name(f'{path.name}.{uuid4().hex}.tmp')
                 temporary.write_bytes(data)
                 temporary.replace(path)
             return key
-        import base64
         condition = {'IfNoneMatch': '*'} if version is None else {'IfMatch': version}
         try:
             self.client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType='application/json',
@@ -193,7 +195,6 @@ class ProducerRecords:
                 if path.read_bytes() != data:
                     raise ValueError('Another producer record already names this snapshot: ' + key) from None
             return dict(key=key, **identity(data))
-        import base64
         try:
             self.client.put_object(Bucket=self.bucket, Key=key, Body=data, IfNoneMatch='*',
                                    ContentType='application/json',
