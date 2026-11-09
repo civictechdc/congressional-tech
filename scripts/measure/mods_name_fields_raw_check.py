@@ -30,12 +30,20 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   state), or that opens with no known given name while a later segment of its raw line opens with one.
 
 ``--accept`` names flagged occurrences a person has read and accepted, each as ``{"body", "locator",
-"flag", "after", "reason"}``, where ``after`` is the new name the person read; they are reported under
-``accepted`` instead of failing. An accept covers only that value: a different new name under the same flag
-fails, and an accepted entry the run no longer flags fails as ``stale_accept``. Listed for a person to read, without failing: ``unconfirmed`` new
-names that open with no known given name; ``residual`` unchanged names that open with no known given name
-on a raw line with a later segment that does. Bodies that are missing or do not parse are listed in
-``not_read`` and still compared without a line.
+"flag", "after", "reason"}``, where ``after`` holds the four new fields the person read (name, position,
+organization, on_behalf_of); they are reported under ``accepted`` instead of failing. An accept covers only
+those values: any other new value under the same flag (a dropped position or organization included) fails,
+and an accepted entry the run no longer flags fails as ``stale_accept``. Listed for a person to read, without
+failing: ``unconfirmed`` new names that open with no known given name; ``residual`` unchanged names that open
+with no known given name on a raw line with a later segment that does. Bodies that are missing or do not
+parse are listed in ``not_read`` and still compared without a line.
+
+What it cannot see: it cannot tell an organization from a person whose given name other publishers do not
+state twice. Such new names land in ``unconfirmed`` (132 on the 2026-11-08 run), which never fails; a swap of
+an organization for a rare-named person ("Nancy-Ann DeParle", "Ikeita Cantu Hinojosa", "Yasmina S. Vinci")
+passes unseen. Its "segment the raw line follows with a state" test for ``name_not_person`` restates the rule's
+own place heuristic, more strictly (the rule exempts MD, MA, MS and PA as credentials; this check does not), so
+it is not an independent measure of places.
 
 ``--plant`` writes one wrong value the rule could produce on the after side, and the check must flag it,
 accepted or not: ``person-moved`` moves an unchanged person's name into the organization
@@ -235,6 +243,11 @@ def plant(kind, before, after, given, family, raw_root):
     raise SystemExit(f'no occurrence to plant {kind} on')
 
 
+def accept_key(body, locator, flag, after):
+    """An accept is bound to the occurrence, the flag and all four new fields the reviewer read."""
+    return (body, locator, flag, *((after or {}).get(f) for f in FIELDS))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--before', required=True, type=Path)
@@ -250,12 +263,12 @@ def main(argv=None):
     planted = plant(args.plant, before, after, given, family, args.raw_root) if args.plant else None
     counts, out = judge(before, after, args.raw_root, given, family)
     accepts = json.loads(args.accept.read_text()) if args.accept else []
-    reviewed = {(a['body'], a['locator'], a['flag'], a['after']): a for a in accepts}
+    reviewed = {accept_key(a['body'], a['locator'], a['flag'], a['after']): a for a in accepts}
     out['accepted'], seen = [], set()
     for flag in FLAGS:
         kept = []
         for item in out[flag]:
-            key = (item['body'], item['locator'], flag, item.get('after', {}).get('name'))
+            key = accept_key(item['body'], item['locator'], flag, item.get('after') or {})
             if key in reviewed and not (planted and (item['body'], item['locator']) == (planted['body'], planted['locator'])):
                 seen.add(key)
                 out['accepted'].append(dict(item, flag=flag, reason=reviewed[key]['reason']))

@@ -98,16 +98,20 @@ def test_a_person_left_in_the_organization_a_lost_word_and_a_dropped_row_are_fla
     assert [i['locator'] for i in out['removed']] == ['mods:witness[3]']
 
 
+def fields(item):
+    return {f: item[f] for f in ('name', 'position', 'organization', 'on_behalf_of')}
+
+
 def test_a_reviewed_flag_is_accepted_and_an_accept_the_run_no_longer_flags_fails(tmp_path):
-    after = [AFTER[0], occurrence('mods:witness[2]', None, None, 'Vietnam Veterans of America, Richard F. Weidman'), *AFTER[2:]]
-    write(tmp_path, after=after)
-    accept = [dict(body=DIGEST, locator='mods:witness[2]', flag=flag, after=None, reason='read')
+    left = occurrence('mods:witness[2]', None, None, 'Vietnam Veterans of America, Richard F. Weidman')
+    write(tmp_path, after=[AFTER[0], left, *AFTER[2:]])
+    accept = [dict(body=DIGEST, locator='mods:witness[2]', flag=flag, after=fields(left), reason='read')
               for flag in ('words_lost', 'person_left_in_organization')]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 0 and [(i['locator'], i['flag']) for i in out['accepted']] == [
         ('mods:witness[2]', 'words_lost'), ('mods:witness[2]', 'person_left_in_organization')]
-    stale = accept + [dict(body=DIGEST, locator='mods:witness[1]', flag='person_moved', after=None, reason='read')]
+    stale = accept + [dict(body=DIGEST, locator='mods:witness[1]', flag='person_moved', after=fields(AFTER[0]), reason='read')]
     (tmp_path / 'accept.json').write_text(json.dumps(stale))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 1 and out['failed'] == {'stale_accept': 1}
@@ -117,7 +121,23 @@ def test_an_accept_covers_only_the_value_read(tmp_path):
     """A later wrong value under the same flag and occurrence is not covered by an earlier accept."""
     after = [*AFTER[:3], occurrence('mods:witness[4]', 'Washington', WASHINGTON)]
     write(tmp_path, after=after)
-    accept = [dict(body=DIGEST, locator='mods:witness[4]', flag='name_not_person', after='Jaime Herrera Beutler', reason='read')]
+    accept = [dict(body=DIGEST, locator='mods:witness[4]', flag='name_not_person', after=fields(AFTER[3]), reason='read')]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 1 and out['failed'] == {'name_not_person': 1, 'words_lost': 1, 'stale_accept': 1}
+
+
+@pytest.mark.parametrize('dropped', ['position', 'organization'])
+def test_an_accepted_lost_word_does_not_cover_a_dropped_position_or_organization(tmp_path, dropped):
+    """Same name, same flag: dropping a whole position or organization on an accepted row still fails."""
+    read = occurrence('mods:witness[2]', 'Richard F. Weidman', 'Director for Policy', 'Vietnam Veterans of America')
+    write(tmp_path, after=[AFTER[0], read, *AFTER[2:]])
+    accept = [dict(body=DIGEST, locator='mods:witness[2]', flag='words_lost', after=fields(read), reason='read')]
+    (tmp_path / 'accept.json').write_text(json.dumps(accept))
+    code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
+    assert code == 0 and [i['flag'] for i in out['accepted']] == ['words_lost']
+    dropped_row = dict(read, **{dropped: None})
+    (tmp_path / 'raw').rename(tmp_path / 'raw-old')  # write() lays the raw body out afresh
+    write(tmp_path, after=[AFTER[0], dropped_row, *AFTER[2:]])
+    code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
+    assert code == 1 and out['failed'] == {'words_lost': 1, 'stale_accept': 1}
