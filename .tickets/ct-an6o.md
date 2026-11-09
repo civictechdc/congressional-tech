@@ -23,3 +23,7 @@ Every root uv.lock change moves all eight producer parser identities, because th
 **2026-11-09T16:22:11Z**
 
 2026-11-09 rebased onto main e55e9c76 (worktree .claude/worktrees/ct-an6o-rebase; not pushed or merged). One map: 973298d7's body_text-lock entries were old-rule (whole-lock) fingerprints that producer_version cannot compute, so they are deleted; the body_text lock added nothing to any producer's import closure, so the seven non-MODS new-rule fingerprints are unchanged and their entries stand. MODS (ct-79j1/ct-rg34) new-rule fingerprint 8a34087e maps to the published 8a0023a9. Main's old rule and this branch both compute exactly publish-model.json's pins (all eight; catalog_version included); publish.json model_spec sha256/size match. CI 42518011172 failure (test_model_single_value_groups patched filenames.version_digest) fixed; the rebase also needed body_text_evidence to call _fingerprints (main's 61f51a92 used ImportClosure.fingerprints). Targeted files pass one at a time. reading-version diagnostics drift on readings + 4 body-text parsers (workspace_sha256) exists on main too; on the branch only the hashes differ because versions.py changed.
+
+**2026-11-09T16:25:33Z**
+
+Owner signed off the map equivalence 2026-11-09 (questions tool: 'Sign off (Recommended)'): 7 unchanged producers' import-closure fingerprints reproduce the ct-680z-reviewed entries byte-for-byte; MODS maps 8a34087e -> 8a0023a9 (activated today). Full lane queued after the ct-8cno roster lane; merge after it passes.
