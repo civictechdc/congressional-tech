@@ -87,10 +87,10 @@ def test_the_rule_counts_text_after_gpo_normalization_so_a_footer_alone_goes_to_
 
 def test_the_declared_engine_is_vision_in_three_bands_on_raw_rgb_at_200_dpi():
     from spicy_docs.extraction import NativeOrOcr
-    from spicy_docs.extraction.ocr import AppleVision
+    from spicy_docs.extraction.ocr import AppleVision, ExtractionError
     try:
         rule = bt.apple_vision()
-    except (ImportError, ValueError) as error:  # a host without Vision refuses the engine up front
+    except (ImportError, ValueError, ExtractionError) as error:  # a host without Vision refuses the engine up front
         pytest.skip(f'no Apple Vision here: {error}')
     assert isinstance(rule.strategy, NativeOrOcr) and rule.strategy.normalize is bt.gpo_page
     assert rule.strategy.min_chars == bt.OCR_MIN_CHARS and rule.strategy.require_images
