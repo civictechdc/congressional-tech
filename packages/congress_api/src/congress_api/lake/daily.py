@@ -677,6 +677,42 @@ def _scope_html_inputs(scope, heads, *, engine, work, allow_empty=False):
     return len(keys)
 
 
+def _stored_bytes(work_list):
+    """(known stored bytes, bodies with no stored size) over one work list."""
+    sizes=pq.read_table(work_list,columns=['stored_bytes']).column('stored_bytes')
+    return pc.sum(sizes).as_py() or 0,sizes.null_count
+
+
+def _carry_html_metadata(work_list,scoped,max_items,max_bytes,*,engine,work):
+    """Narrow the scoped captures and readings to the oldest budget's worth of the work list.
+
+    Bodies are ordered by their oldest receipt in (day, key) order, as _within_budget orders
+    receipts, then by hash, so nothing starves and every night picks the same prefix. The prefix
+    stops at `max_items` bodies or before its stored bytes pass `max_bytes`, but always holds one
+    body. The rest stays unread in the current heads, which the next night's anti-join selects
+    again; nothing records it here. One native job: O(W log W) for W pending bodies plus one
+    pass over the scoped captures and readings, never a rescan per body.
+    """
+    receipt="concat(coalesce((regexp_match(receipt_key,'/([0-9]{4}-[0-9]{2}-[0-9]{2})/'))[1],''),' ',receipt_key)"
+    order='ORDER BY f.oldest,w.body_sha'
+    carried=run_job(work,engine,inputs=[tables.table_input('work_list',work_list),
+        tables.table_input('captures',scoped/'captures.parquet'),tables.table_input('readings',scoped/'readings.parquet')],
+        steps=[dict(name='ordered',materialize=True,sql=f'''SELECT w.body_sha,coalesce(w.stored_bytes,0) AS stored_bytes,
+            row_number() OVER ({order}) AS position,
+            sum(coalesce(w.stored_bytes,0)) OVER ({order} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS held
+            FROM work_list w JOIN (SELECT sha256,min({receipt}) AS oldest FROM captures GROUP BY sha256) f
+            ON f.sha256=w.body_sha'''),
+        dict(name='admitted',materialize=True,sql=f'''SELECT body_sha FROM ordered
+            WHERE position<={int(max_items)} AND (held<={int(max_bytes)} OR position=1)''')],
+        outputs=[parquet_output(work,'captures','''SELECT c.* FROM captures c
+                WHERE EXISTS(SELECT 1 FROM admitted a WHERE a.body_sha=c.sha256)''',['receipt_key','receipt_line','capture_index']),
+            parquet_output(work,'readings','''SELECT r.* FROM readings r
+                WHERE EXISTS(SELECT 1 FROM admitted a WHERE a.body_sha=r.body_sha)''',readings.PK)],
+        queries=[dict(name='carried',sql='''SELECT count(*) AS bodies,coalesce(sum(stored_bytes),0) AS stored_bytes
+            FROM ordered o WHERE NOT EXISTS(SELECT 1 FROM admitted a WHERE a.body_sha=o.body_sha)''')])['carried'][0]
+    return dict(bodies=carried['bodies'],stored_bytes=carried['stored_bytes'])
+
+
 def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work):
     """Read only missing pairs for bodies admitted after a qualified immutable baseline.
 
@@ -685,6 +721,9 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     older readings and active unreadable decisions before either budget is evaluated.
     Admitted work fits both budgets, so it is read in one batch and appended in one
     catalog commit (ct-z4i9: one commit per body made the step 93% catalog round-trips).
+    Work past a budget is carried, not refused (ct-hiec): the oldest budget's worth is
+    read (_carry_html_metadata) and the report names the rest, which the next night's
+    selection finds still unread. Unknown stored sizes still refuse.
     """
     scope=derived_scopes(spec)['html_metadata']
     baseline=scope['captures']
@@ -726,13 +765,23 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     reconsidered=observed['reconsidered_baseline'][0]['n']
     details=dict(scope=dict(baseline=baseline,versions=scope['versions'],
         bodies_since_baseline=count-reconsidered,reconsidered_baseline_bodies=reconsidered))
-    try:
-        planned=readings.run(engine=engine,work=work/'admission',mode='daily',execute=False,
+    def admit(scoped,name):
+        return readings.run(engine=engine,work=work/name,mode='daily',execute=False,
             max_work_items=spec['max_work_items'],existing=scoped/'readings.parquet',
             captures=scoped/'captures.parquet',unreadable_files=unreadable_snapshot.files(),
             decided_at=spec['decided_at'],parser='html_metadata',**source)
+    try:
+        planned=admit(scoped,'admission');pending=planned['work_list']
+        over=_stored_bytes(pending)[0]>scope['max_stored_bytes']
     except readings.BackfillRequired as error:
-        return dict(error.as_dict(),status='derived_budget_required',batches=[],**details)
+        pending=error.report['work_list'];over=True
+    if over:
+        details['carried']=_carry_html_metadata(pending,scoped,
+            spec['max_work_items'],scope['max_stored_bytes'],engine=engine,work=work/'carry')
+        scoped=work/'carry'
+        try:planned=admit(scoped,'admitted')
+        except readings.BackfillRequired as error:
+            return dict(error.as_dict(),status='derived_budget_required',batches=[],**details)
     listing=None
     if _listed_reads(spec,raw_store):
         custody=_listed_custody(spec,engine,raw_store,
@@ -741,16 +790,13 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
         planned=custody['planned'];listing=custody['listing']
         if planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']:
             raise readings.RawCustodyRequired(planned)
-    stored_bytes=0;missing_sizes=0
-    for batch in pq.ParquetFile(planned['work_list']).iter_batches(columns=['stored_bytes']):
-        for size in batch.column('stored_bytes').to_pylist():
-            if size is None:missing_sizes+=1
-            else:stored_bytes+=size
+    stored_bytes,missing_sizes=_stored_bytes(planned['work_list'])
     budget=dict(work_items=planned['work_items'],max_work_items=spec['max_work_items'],
         stored_bytes=stored_bytes,missing_sizes=missing_sizes,max_stored_bytes=scope['max_stored_bytes'])
     details['budget']=budget
-    if missing_sizes or stored_bytes>scope['max_stored_bytes']:
-        # The generic nightly backfill fallback cannot repair this scoped byte budget.
+    if missing_sizes or (stored_bytes>scope['max_stored_bytes'] and planned['work_items']>1):
+        # The generic nightly backfill fallback cannot repair this scoped byte budget. One body
+        # past it is read alone (at most MAX_STORED_BYTES, as _batches allows), so it cannot block.
         return dict(status='derived_budget_required',parser='html_metadata',
             parser_version=readings.current_version('html_metadata'),batches=[],**details)
     current=tables.resolve_tables(engine=engine,catalog_root=spec['catalog_root'],work=work/'admitted-heads',
@@ -999,6 +1045,7 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
             report.update(status='raw_custody_required');report['producerreports'][step]=error.as_dict()
             return report
         report['producerreports'][step]=passes[step]
+        if passes[step].get('carried',{}).get('bodies'):report.setdefault('carried',{})[step]=passes[step]['carried']
         if passes[step]['status']=='pending':break
     parsed=passes['readings']
     versions.update(readings=parsed['parser_version'],parsers={p:readings.current_version(p)

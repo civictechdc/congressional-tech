@@ -532,7 +532,7 @@ def test_scoped_html_metadata_uses_pinned_r2_listing_for_older_captures(tmp_path
     assert (row['parser'], row['status'], row['body_sha']) == ('html_metadata', 'completed', sha256(data).digest())
 
 
-def test_daily_html_delta_recovers_after_receipt_commit_and_respects_both_budgets(tmp_path,clean_tree,monkeypatch):
+def test_daily_html_delta_recovers_after_receipt_commit(tmp_path,clean_tree,monkeypatch):
     payloads=[f'<html><head><title>Daily page {n}</title></head><body>Evidence {n}</body></html>'.encode()
         for n in range(5)]
     value,engine,store=native_fixture(tmp_path,5,payloads=payloads,url_suffix='.html')
@@ -567,16 +567,6 @@ def test_daily_html_delta_recovers_after_receipt_commit_and_respects_both_budget
     def invoke(name,**changes):
         return daily.produce_daily(dict(enabled,work=str(tmp_path/name),**changes),
             engine=engine,raw_store=store,producer_records=records)
-    def forbidden(*args,**kwargs):raise AssertionError('Body opened before derived budget admission')
-    with monkeypatch.context() as patch:
-        patch.setattr(readings,'_execute_plan',forbidden)
-        count_refusal=invoke('count-refusal',max_work_items=1)
-        byte_refusal=invoke('byte-refusal',derived_scopes={'html_metadata':dict(policy,max_stored_bytes=1)})
-    assert count_refusal['status']==byte_refusal['status']=='derived_budget_required'
-    assert count_refusal['producerreports']['html_metadata']['work_items']==3
-    assert byte_refusal['producerreports']['html_metadata']['budget']['stored_bytes']>1
-    after_refusals=tables.resolve_tables(**authority,work=tmp_path/'after-budget-heads',tables=value['tables'])
-    assert after_refusals==leaves['pins']
     bodies={row['body_sha'].hex():row for row in pq.read_table(value['body_inventory']).to_pylist()}
     missing_path=store.adapter.root/bodies[new[-2]]['relative_path']
     retained=missing_path.read_bytes();missing_path.unlink()
@@ -612,6 +602,53 @@ def test_daily_html_delta_recovers_after_receipt_commit_and_respects_both_budget
         dict(name='rows',sql="SELECT encode(body_sha,'hex') AS sha,status FROM readings WHERE parser='html_metadata' ORDER BY sha"),
         dict(name='duplicates',sql='SELECT count(*) AS n FROM (SELECT body_sha,parser,parser_version FROM readings GROUP BY body_sha,parser,parser_version HAVING count(*)>1)')])
     assert result==dict(rows=[dict(sha=key,status='completed') for key in sorted([old,*new[:-1]])],duplicates=[dict(n=0)])
+
+
+@pytest.mark.parametrize('budget',['count','bytes'])
+def test_daily_html_over_budget_reads_the_oldest_budget_and_carries_the_rest(tmp_path,clean_tree,monkeypatch,budget):
+    # ct-hiec: a night past either derived budget reads the oldest budget's worth and carries
+    # the rest to the next night instead of stopping at derived_budget_required.
+    payloads=[f'<html><head><title>Carried page {n}</title></head><body>Carried {n}</body></html>'.encode()
+        for n in range(5)]
+    value,engine,store=native_fixture(tmp_path,5,payloads=payloads,url_suffix='.html')
+    records=ProducerRecords(root=tmp_path/'ledger')
+    first=daily.produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1]),
+        engine=engine,raw_store=store,producer_records=records)
+    leaves=daily.produce_daily(dict(value,work=str(tmp_path/'leaves')),engine=engine,raw_store=store,producer_records=records)
+    assert first['status']==leaves['status']=='completed'
+    # The oldest receipt first: each payload has its own receipt, written in order.
+    order=sorted(range(1,5),key=lambda n:(value['receipt_inventory'][n]['key'],sha256(payloads[n]).hexdigest()))
+    shas=[sha256(payloads[n]).hexdigest() for n in order]
+    stored={row['body_sha'].hex():row['stored_bytes'] for row in pq.read_table(value['body_inventory']).to_pylist()}
+    policy=dict(captures=first['pins']['captures'],versions=compatible_versions.current_pins(),max_stored_bytes=1<<20)
+    limit=dict(max_work_items=2) if budget=='count' else dict(derived_scopes={'html_metadata':dict(policy,
+        max_stored_bytes=max(stored[shas[0]]+stored[shas[1]],stored[shas[2]]+stored[shas[3]]))})
+    enabled=dict(value,derived_parsers=['html_metadata'],**{'derived_scopes':{'html_metadata':policy},**limit})
+    opened=[]
+    real_execute=readings._execute_plan
+    def counted(planned,**kwargs):
+        if planned['parser']=='html_metadata':opened.extend(item['body_sha'].hex() for item in kwargs['items'])
+        return real_execute(planned,**kwargs)
+    monkeypatch.setattr(readings,'_execute_plan',counted)
+    def night(name):
+        report=daily.produce_daily(dict(enabled,work=str(tmp_path/name)),engine=engine,raw_store=store,producer_records=records)
+        # Gate 5: the readings head each night moves has its record, and nothing else moves.
+        assert report['status']=='completed' and set(report['producers'])<={'readings'}
+        assert records.find('readings',report['pins']['readings']) is not None
+        return report,report['producerreports']['html_metadata']
+    carrying,derived=night('carrying')
+    carried=dict(bodies=2,stored_bytes=stored[shas[2]]+stored[shas[3]])
+    assert derived['work_items']==2 and derived['carried']==carried and carrying['carried']=={'html_metadata':carried}
+    assert opened==shas[:2]
+    remainder,derived=night('remainder')
+    assert derived['work_items']==2 and 'carried' not in derived and 'carried' not in remainder
+    assert sorted(opened)==sorted(shas)
+    settled,derived=night('settled')
+    assert derived['work_items']==0 and 'carried' not in settled and settled['producers']=={} and len(opened)==4
+    rows=run_job(tmp_path/'carried-rows',engine,inputs=[tables.table_input('readings',settled['pins']['readings'])],
+        steps=[],outputs=[],queries=[dict(name='rows',sql="""SELECT encode(body_sha,'hex') AS sha,count(*) AS n
+            FROM readings WHERE parser='html_metadata' GROUP BY body_sha ORDER BY sha""")])['rows']
+    assert rows==[dict(sha=sha,n=1) for sha in sorted(shas)]
 
 
 def test_daily_html_reconsiders_superseded_baseline_refusals(tmp_path,clean_tree):
