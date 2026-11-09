@@ -361,6 +361,34 @@ def test_b14_meeting_fetchers_write_only_families_the_nightly_ingests(tmp_path):
     assert written <= ingested
 
 
+def test_every_capture_family_is_one_the_nightly_ingests():
+    """Scheduled capture's new pages reach the daily readings and html_metadata pass (ct-hiec)."""
+    project = Path(__file__).resolve().parents[3]
+    scope = json.loads((project / 'model/registries/capture-scope.json').read_text())
+    ingested = set(json.loads((project / 'model/jobs/publish-daily.json').read_text())['receipt_families'])
+    families = {entry['family'] for entry in scope['entries']}
+    assert {'house/pages', 'senate/pages', 'documents'} <= families <= ingested
+
+
+def test_scheduled_meeting_relist_covers_each_chamber_and_every_congress_in_the_window(tmp_path, capsys):
+    """capture-archive.yml relists the last week of meeting updates without a reviewed spec (ct-q4e2)."""
+    from congress_api.cli.fetch_meetings import main, recent_meeting_endpoints
+    windows = recent_meeting_endpoints(7, now=datetime(2027, 1, 4, 3, 23, tzinfo=timezone.utc))
+    assert {window['from_date_time'] for window in windows} == {'2026-12-28T03:23:00Z'}
+    assert [window['endpoint'].rsplit('/', 2)[1:] for window in windows] == [
+        [congress, chamber] for congress in ('119', '120') for chamber in ('house', 'senate', 'nochamber')]
+    assert len(recent_meeting_endpoints(7, now=datetime(2026, 11, 9, tzinfo=timezone.utc))) == 3
+    for value in (0, -1, True, '7'):
+        with pytest.raises(ValueError, match='since-days'):
+            recent_meeting_endpoints(value)
+    spec = tmp_path / 'spec.json'
+    spec.write_text(json.dumps({'congress_endpoints': ['https://api.congress.gov/v3/committee-meeting/119/house']}))
+    planned = main(['--spec', str(spec), '--since-days', '7'])
+    assert planned['status'] == 'planned' and len(planned['congress_endpoints']) == 4
+    assert all(item['from_date_time'] for item in planned['congress_endpoints'][1:])
+    capsys.readouterr()
+
+
 def test_b14_meeting_fetchers_and_url_state_capture_emit_stored_md5_and_suffix(tmp_path):
     from congress_api.cli.fetch_meetings import run_meeting_fetchers
     from congress_api.acquisition.capture_scheduler import run_capture

@@ -152,6 +152,31 @@ def test_capture_shell_passes_budgets_and_only_existing_weekly_seeds(tmp_path):
     assert not (tmp_path / 'invocation.json').exists()
 
 
+def test_capture_relists_recent_meetings_before_the_budgeted_capture(tmp_path):
+    """ct-q4e2: new hearings are relisted each run; a relist failure does not skip capture."""
+    steps = workflow('capture-archive.yml')['jobs']['capture']['steps']
+    runtime = next(i for i, step in enumerate(steps) if step.get('uses') == './.github/actions/setup-local-job-runtime')
+    meetings = next(i for i, step in enumerate(steps) if 'congress_api.cli.fetch_meetings' in step.get('run', ''))
+    capture = next(i for i, step in enumerate(steps) if 'capture_schedule' in step.get('run', ''))
+    assert runtime < meetings < capture and steps[runtime]['id'] == 'runtime'
+    assert steps[capture]['if'] == "${{ !cancelled() && steps.runtime.outcome == 'success' }}"
+    env = steps[meetings]['env']
+    assert env['DATA_GOV_API_KEY'] == '${{ secrets.DATA_GOV_API_KEY }}' and 'ZYTE_TOKEN' not in env
+    assert env['R2_ACCESS_KEY_ID'] == steps[capture]['env']['R2_ACCESS_KEY_ID']
+    assert '${{ runner.temp }}/archive-meetings/summary.json' in steps[-1]['with']['path']
+    tools = tmp_path / '.venv/bin'
+    tools.mkdir(parents=True)
+    interpreter = tools / 'python'
+    interpreter.write_text(f'#!{sys.executable}\nimport json, sys\nprint(json.dumps(sys.argv[1:]))\n')
+    interpreter.chmod(0o755)
+    result = subprocess.run(['bash', '-eo', 'pipefail', '-c', steps[meetings]['run']], cwd=tmp_path,
+                            env=dict(PATH=os.defpath, RUNNER_TEMP=str(tmp_path)), capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads((tmp_path / 'archive-meetings/summary.json').read_text()) == [
+        '-I', '-m', 'congress_api.cli.fetch_meetings', '--since-days', '7',
+        '--user-agent', 'congressional-tech-research/1.0', '--apply']
+
+
 def test_deploy_and_validation_add_local_archive_contract_before_upload():
     for name, job in [('deploy-pages.yml', 'build'), ('validate-explorer.yml', 'validate')]:
         steps = workflow(name)['jobs'][job]['steps']

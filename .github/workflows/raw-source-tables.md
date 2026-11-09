@@ -4,7 +4,7 @@
 
 | Workflow | Trigger | Operation |
 | --- | --- | --- |
-| `capture-archive.yml` | Daily at `03:23 UTC` or `workflow_dispatch` (when `vars.ARCHIVE_CAPTURE_ENABLED == 'true'` on `main`) | Run `congress_api.cli.capture_schedule` against the release selected by the public pointer |
+| `capture-archive.yml` | Daily at `03:23 UTC` or `workflow_dispatch` (when `vars.ARCHIVE_CAPTURE_ENABLED == 'true'` on `main`) | Relist Congress.gov committee meetings updated in the last 7 days (`congress_api.cli.fetch_meetings --since-days 7`), then run `congress_api.cli.capture_schedule` against the release selected by the public pointer |
 | `archive-jobs.yml` (`publish`) | `workflow_dispatch` on `main` with `operation=publish` | Execute the committed model publish specification (`viewer_publication.archive_publish_job`), run local browser contract and HTTPS canary gates, and atomically advance the release pointer |
 | `archive-jobs.yml` (`backfill`) | `workflow_dispatch` on `main` with `operation=backfill` | Execute the committed producer backfill specification (`viewer_publication.archive_backfill_job`) |
 | `archive-jobs.yml` (`maintenance`) | Weekly on Sundays at `07:17 UTC` or `workflow_dispatch` on `main` with `operation=maintenance` | Verify raw archive integrity, check retained receipt evidence, and prune unreferenced derived releases (`viewer_publication.archive_maintenance`) |
@@ -27,9 +27,11 @@ The `capture` job runs in the `archive-capture` environment on `ubuntu-24.04` wi
 - `ARCHIVE_CAPTURE_SPOOL_BUDGET` (`--spool-budget`)
 - `ARCHIVE_POINTER_URL` (`--pointer`)
 
+Before the budgeted batch, the job relists the House, Senate and no-chamber committee-meeting endpoints updated in the last 7 days and fetches each listed meeting's Congress.gov detail record (JSON and XML). The release's URL state has no meeting seeds, so this is how new hearings reach raw. It writes under `congress/meetings`, which the nightly's daily step reads. It needs `DATA_GOV_API_KEY` and sends a fixed `congressional-tech-research/1.0` User-Agent. The capture step runs even if the relist fails, and the job still reports that failure.
+
 The scheduler verifies the selected release and plans the batch under `$RUNNER_TEMP/archive-capture`. To account for specific reviewed targets, set `ARCHIVE_CAPTURE_CUTOFF_URLS` to a JSON array of exact URLs. The workflow passes it as `--cutoff-urls`. The list gives due retries priority and records target dispositions within the selected release's scope, schedule, and run budgets.
 
-The `archive-capture-<run_id>-<run_attempt>` artifact includes `selection.json` with the release input identities and reviewed list, the CLI's `summary.json` when it returns, and the scheduler's `capture/summary.json` when available after a failure. The scheduler reports attempted candidates and acknowledged receipt keys separately from the reviewed URLs. `receipts_pending_completion` identifies acknowledged receipts that still need local completion.
+The `archive-capture-<run_id>-<run_attempt>` artifact includes `selection.json` with the release input identities and reviewed list, the CLI's `summary.json` when it returns, the scheduler's `capture/summary.json` when available after a failure, and the meeting relist's `archive-meetings/summary.json`. The scheduler reports attempted candidates and acknowledged receipt keys separately from the reviewed URLs. `receipts_pending_completion` identifies acknowledged receipts that still need local completion.
 
 ## Release publication, backfill and maintenance (`archive-jobs.yml`)
 

@@ -3,10 +3,14 @@
 A JSON spec can include house_xml_targets, a list of reviewed event_id and url
 pairs. These targets fetch only the named meeting XML, with no page discovery
 or witness-list requests.
+
+`--since-days N` relists the Congress.gov committee-meeting endpoints (House, Senate
+and no-chamber) updated in the last N days, for each Congress the window touches.
+Scheduled capture runs it so new hearings reach raw without a reviewed spec (ct-q4e2).
 """
 import argparse
 from contextlib import ExitStack
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -25,9 +29,24 @@ from congress_api.retention.body_store import BodyStore, LocalAdapter, R2Adapter
 from congress_api.retention.pipeline_raw import new_run_id
 from congress_api.retention.receipt_writer import ReceiptWriter
 from congress_api.retention.writer_identity import writer_identity
+from congress_shared.dates import year_to_congress
 
 ROOT = Path(__file__).resolve().parents[5]
 DEFAULT_SCOPE = ROOT / 'model/registries/capture-scope.json'
+MEETING_CHAMBERS = ('house', 'senate', 'nochamber')
+
+
+def recent_meeting_endpoints(since_days, *, now=None):
+    """Committee-meeting list windows updated since `since_days` ago, per chamber and Congress."""
+    if type(since_days) is not int or since_days < 1:
+        raise ValueError('--since-days must be a positive integer')
+    now = now or datetime.now(timezone.utc)
+    start = now - timedelta(days=since_days)
+    since = start.strftime('%Y-%m-%dT%H:%M:%SZ')
+    congresses = sorted({year_to_congress(start.year), year_to_congress(now.year)})
+    return [{'endpoint': f'https://api.congress.gov/v3/committee-meeting/{congress}/{chamber}',
+             'from_date_time': since}
+            for congress in congresses for chamber in MEETING_CHAMBERS]
 
 
 def _house_xml_targets(targets):
@@ -205,10 +224,15 @@ def main(argv=None):
     parser.add_argument('--congress-detail-url', action='append', default=[])
     parser.add_argument('--fetcher-binary', type=Path, default=_default_fetcher_binary())
     parser.add_argument('--user-agent', help='Fixed User-Agent header for every source request')
+    parser.add_argument('--since-days', type=int,
+                        help='Also relist committee meetings updated in the last N days (current Congress)')
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args(argv)
 
     spec_data = json.loads(args.spec.read_text(encoding='utf-8')) if args.spec else {}
+    if args.since_days is not None:
+        spec_data['congress_endpoints'] = [*spec_data.get('congress_endpoints', ()),
+                                           *recent_meeting_endpoints(args.since_days)]
     if not args.apply and args.local_store is None:
         plan_report = {
             'status': 'planned',

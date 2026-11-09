@@ -1,6 +1,6 @@
 ---
 id: ct-4jms
-status: open
+status: in_progress
 deps: []
 links: [cefr-xjsp, cef-96wc, ct-tk10, ct-ud0b, ct-1l1h, ct-98sm, ct-v967, ct-rie2, ct-5kto, ct-082q, ct-hiec, ct-q4e2, ct-0mqc]
 created: 2026-10-30T14:32:31Z
@@ -40,6 +40,31 @@ The current command supplies neither a cutoff URL list nor the weekly seed input
 [November 5 root-cause analysis](../docs/experiments/url-normalization-revalidation-20261105/root-causes.md); exact GitHub commands in `.cache/archive-release/investigations/url-root-cause-20261105/greybeard.md`; Ashley capture and live queries in `.cache/archive-release/investigations/url-root-cause-20261105/etl-recovery-campaign/{handoff-check.json,mcp-ashley.json}`. The retained discovery result is `docs/experiments/url-normalization-validation-20261031/evidence/discovery-link-results.json`. These are November 5 observations, not proof of future deployment state.
 
 [Third-round root-cause analysis](../docs/plans/production-mvp-root-causes-round3-20261105.md).
+
+## Runbook: first unattended scheduled run (2026-11-09)
+
+The code side is ready on claude/ct-thread1-unattended. capture-archive.yml relists the last 7 days of Congress.gov committee meetings (ct-q4e2), then runs the budgeted capture. The capture step runs even if the relist fails. The Mac nightly (05:30 local) reads both through the daily path, including html_metadata for new pages (ct-hiec), now one catalog commit per pass (ct-z4i9).
+
+**Owner enables (in order):**
+
+1. Merge the branch to main and push.
+2. Create the `archive-capture` environment. Add secrets `ARCHIVE_CAPTURE_R2_ACCESS_KEY_ID` and `ARCHIVE_CAPTURE_R2_SECRET_ACCESS_KEY` (create-only writes to congressional-tech-raw), `DATA_GOV_API_KEY`, `ZYTE_TOKEN` and `DOCSPEC_ENGINE_CREDENTIALS`, as environment or repository secrets.
+3. Set the variables. `ARCHIVE_POINTER_URL` is the public pointer. The budgets match the 2026-11-08 supervised run: `ARCHIVE_CAPTURE_REQUEST_BUDGET=2000`, `ARCHIVE_CAPTURE_BYTE_BUDGET=4294967296` and `ARCHIVE_CAPTURE_SPOOL_BUDGET=536870912`. Optionally set `ARCHIVE_CAPTURE_CUTOFF_URLS`. Confirm `CLOUDFLARE_ACCOUNT_ID` and `DOCSPEC_RUNTIME_ARTIFACT` are set, then set `ARCHIVE_CAPTURE_ENABLED=true`.
+4. Run `gh workflow enable capture-archive.yml`. Do not dispatch it by hand: acceptance needs the 03:23 UTC scheduled event.
+
+**The first run should show:**
+
+- The event is `schedule` on main, and the job is green.
+- `archive-meetings/summary.json` has 3 `congress_windows` (House, Senate and no-chamber for Congress 119), each `complete: true`. Its `receipt_keys` are under `receipts/congress/meetings/<date>/`, with zero or more `congress_details`.
+- `summary.json` has `requests` at or under 2000 and `stop_reason` set, and its receipts sit under families in publish-daily.json.
+- The next morning's nightly has `daily_status: completed`. `producerreports.html_metadata` shows one batch with one append (zero when nothing new is HTML), and new meeting event IDs dated after the last release appear in the published release.
+
+**Check after:**
+
+- The ct-4jms acceptance list: release, profile and url_state identity, budgets, emitted receipt keys, stored MD5 and suffix against the stored objects, receipt-referenced body existence, zero old-index reads, and the Ashley disposition.
+- The ct-q4e2 done condition: at least one meeting dated after the previous release is in the nightly's release.
+- If the nightly stops at `derived_budget_required`, more than 64 MiB (or 5,000 bodies) of new HTML arrived since the last read. That still needs a supervised scoped run (`daily.produce_html_metadata`) or a raised budget. It is the one remaining non-unattended case for ct-hiec.
+- If the relist step fails, read the uploaded summary or log. The capture step still ran, and the next day's 7-day window repeats the missed days.
 
 ## Notes
 
@@ -100,3 +125,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-08T18:04:36Z**
 
 2026-11-08 supervised capture (owner-approved) from release 630164505301 at commit 491177f3, with the fixed planner (b3ababac) and reviewed-cutoffs-first ordering (4a632e11): dry run due 629,541, queue 45,291, cutoffs 21, unkeyable_states 2. Applied run: 2,000 requests (budget-stopped), 377 MB, 1,041 attempts: 990 unchanged, 41 stored new (budget.house.gov 27, appropriations.house.gov 14), 8 failed, 2 size_limit; 1 refusal outside scope (admin-intelligence.house.gov). Ashley: the reviewed target was attempted first as https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1; it redirects (302) to an HTML page, so the outcome is failed/complete. No Congress.gov committee-meeting URL was attempted: capture has no meeting seed list, and 45k never-tried legacy URLs sort ahead of rechecks, so scheduled capture as configured does not discover new hearings (see ct-q4e2). Evidence: .cache/archive-release/implementation/capture-supervised-20261108/.
+
+**2026-11-09T16:34:36Z**
+
+2026-11-09: added the Runbook section (owner enables, first-run expectations, checks). Code on claude/ct-thread1-unattended: capture-archive.yml relists the last 7 days of committee meetings before the budgeted capture, and capture runs even if the relist fails (tests in .github/tests/test_archive_workflows.py). No workflow was enabled or dispatched. Scheduled-run acceptance stays open.
