@@ -11,8 +11,11 @@ Reads use the copy each capture recorded (as `readings.plan(captured_copies=True
 local raw root or, given ``origin``, the raw bucket's public origin: one ranged GET per body through
 the readings range cache and R2Store's pinned read (`retention/public_origin.py`), conditional on the
 capture's stored MD5 and size, then the readings storage rule, which decodes and checks the body's
-SHA-256. A body whose stored size is over the bound settles as `size_limit` before any byte is
-fetched; one with no stored size or MD5 pin stays listed (`missing_pins`). A worker returns its
+SHA-256. Most captures record no MD5 (1,280 of 158,267 rows for one sixteenth of the corpus, 2026-11-09);
+such a read is pinned instead to the ETag a one-byte GET of the object answers, so it still reads one
+object version, and the SHA-256 check alone decides the bytes. A body whose stored size is over the
+bound settles as `size_limit` before any byte is fetched; one with no stored size stays listed
+(`missing_pins`). A worker returns its
 text as a file (path, bytes, SHA-256), so no text crosses the supervisor's 8 MiB pipe; the
 supervisor's timeout is a fixed document deadline and each page has its own deadline inside the
 worker. Batches are sized by an upper bound on their text bytes against ``max_cache_bytes``.
@@ -226,6 +229,8 @@ def _read_remote(request):
     """One ranged GET of the whole stored object, pinned by size and MD5, kept in the body's range
     cache so a retried body reads no byte twice; the storage rule then decodes and checks the SHA-256."""
     remote = request['remote']
+    if remote.get('md5') is None:  # no captured MD5: pin to the version the origin serves now
+        remote = dict(remote, etag=_observed_etag(remote, request['stored_bytes']))
     source = readings._ReadOnceBody(None, request['cache'], request['stored_bytes'], remote=remote,
                                     body_store=_origin_store(remote['origin']))
     try:
@@ -233,6 +238,22 @@ def _read_remote(request):
     finally:
         source.close()
     return data
+
+
+def _observed_etag(remote, stored_bytes):
+    """The object's strong ETag from a one-byte GET whose Content-Range total is the captured size."""
+    from botocore.exceptions import BotoCoreError, ClientError
+    try:
+        response = _origin_store(remote['origin']).client.get_object(
+            Bucket=remote['bucket'], Key=remote['key'], Range='bytes=0-0')
+    except (BotoCoreError, ClientError) as error:
+        raise OSError('origin_probe') from error
+    response['Body'].close()
+    etag = response.get('ETag') or ''
+    if (response['ResponseMetadata']['HTTPStatusCode'] != 206 or etag.startswith('W/') or not etag
+            or response.get('ContentRange') != f'bytes 0-0/{stored_bytes}'):
+        raise OSError('changed_input')
+    return etag
 
 
 def _read_local(request):
@@ -381,8 +402,8 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
                            texts=str(texts_dir), strategy=strategy, page_deadline_seconds=page_deadline_seconds)
             if origin is not None:
                 oversize = item['stored_bytes'] is not None and item['stored_bytes'] > MAX_STORED_BYTES
-                if not oversize and (item['stored_bytes'] is None or item.get('stored_md5') is None):
-                    counters['missing_pins'] += 1  # a ranged read needs the captured size and MD5
+                if not oversize and item['stored_bytes'] is None:
+                    counters['missing_pins'] += 1  # a ranged read needs the captured size
                     continue
                 request.update(cache=str(bodies_dir / body_hex), remote=dict(
                     origin=origin, bucket=PUBLIC_BUCKET, key=item['physical_key'], md5=item.get('stored_md5')))

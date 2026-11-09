@@ -85,7 +85,7 @@ def set_capture(captures, digest, **values):
 def test_origin_reads_are_pinned_ranged_gets_checked_by_the_body_hash(tmp_path):
     bodies = dict(pdf=(two_page_pdf(), 'pdf'), html=(HTML, 'html'), forged=(XML, 'xml'),
                   replaced=(XML.replace(b'Oversight', b'Hearing'), 'xml'), unpinned=(b'<a>unpinned</a>', 'xml'),
-                  huge=(XML.replace(b'met', b'adjourned'), 'xml'))
+                  sizeless=(b'<a>sizeless</a>', 'xml'), huge=(XML.replace(b'met', b'adjourned'), 'xml'))
     args, names = lake(tmp_path, bodies, gzip_stored={'html'})
     digests = {name: digest for digest, name in names.items()}
     raw, captures = args.pop('local_root'), args['captures']
@@ -95,29 +95,33 @@ def test_origin_reads_are_pinned_ranged_gets_checked_by_the_body_hash(tmp_path):
     key('forged').write_bytes(forged)
     set_capture(captures, digests['forged'], stored_bytes=len(forged), stored_md5=hashlib.md5(forged).digest())
     key('replaced').write_bytes(b'<x>changed after capture</x>')  # its captured MD5 no longer matches: 412
-    set_capture(captures, digests['unpinned'], stored_md5=None)
+    set_capture(captures, digests['unpinned'], stored_md5=None)  # most real captures: pinned to the served ETag
+    set_capture(captures, digests['sizeless'], stored_bytes=None, stored_md5=None)
     set_capture(captures, digests['huge'], stored_bytes=body_text.MAX_STORED_BYTES + 1)
     with Origin(raw) as origin:
         report = body_text.run(**args, origin=origin.url, work=tmp_path / 'run', execute=True)
     [batch] = report['batches']
     assert report['status'] == 'pending' and (batch['pending_reads'], batch['missing_pins']) == (2, 1)
     text = {names[bytes.fromhex(r['body'])]: r['text'] for r in committed(args, tmp_path / 't', 'body_text', 'text')}
+    assert text.pop('unpinned').strip() == 'unpinned'
     assert text == dict(pdf=PAGE_ONE + '\n' + PAGE_TWO, html='STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n')
     rows = {names[bytes.fromhex(r['body'])]: (r['status'], r['error_type'])
             for r in committed(args, tmp_path / 'r', 'readings', 'status,error_type')}
-    assert rows == dict(pdf=('completed', None), html=('completed', None), huge=('size_limit', 'stored_size_limit'))
+    assert rows == dict(pdf=('completed', None), html=('completed', None), unpinned=('completed', None),
+                        huge=('size_limit', 'stored_size_limit'))
     fetched = {}
     for path, headers in origin.requests:
-        fetched[path] = fetched.get(path, 0) + 1
-        stored = (raw / path.lstrip('/')).read_bytes()
-        pinned = [r for r in pq.read_table(captures).to_pylist() if path.endswith(r['sha256'].hex() + r['stored_suffix'])]
+        fetched.setdefault(path, []).append((headers.get('If-Match'), headers['Range']))
         assert headers['User-Agent'] == 'ct-body-text/1' and headers['Accept-Encoding'] == 'gzip'
-        assert headers['If-Match'] == '"' + pinned[0]['stored_md5'].hex() + '"'
-        assert headers['Range'] == f'bytes=0-{pinned[0]["stored_bytes"] - 1}'
-        assert len(stored) > 0
-    # One GET per pinned body under the bound; none for the oversize or unpinned body.
-    assert sorted(fetched) == sorted('/' + str(key(n).relative_to(raw)) for n in ('pdf', 'html', 'forged', 'replaced'))
-    assert set(fetched.values()) == {1}
+    # One GET per MD5-pinned body under the bound, If-Match on the captured MD5; the unpinned body's
+    # read is If-Match on the ETag its one-byte GET answered; none for the oversize or sizeless body.
+    md5 = lambda name: '"' + hashlib.md5(key(name).read_bytes()).hexdigest() + '"'
+    captured = {r['sha256']: r for r in pq.read_table(captures).to_pylist()}
+    assert fetched == {'/' + str(key(n).relative_to(raw)): [('"' + captured[digests[n]]['stored_md5'].hex() + '"',
+                                                             f'bytes=0-{captured[digests[n]]["stored_bytes"] - 1}')]
+                       for n in ('pdf', 'html', 'forged', 'replaced')} | {
+        '/' + str(key('unpinned').relative_to(raw)): [(None, 'bytes=0-0'),
+            (md5('unpinned'), f'bytes=0-{len(key("unpinned").read_bytes()) - 1}')]}
     assert not list((tmp_path / 'run').glob('batch-*/stage/bodies'))  # range caches leave with the stage
 
 
