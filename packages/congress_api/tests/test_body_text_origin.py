@@ -20,10 +20,13 @@ from congress_api.lake import body_text
 
 
 class Origin:
-    """A local origin over a raw root; records each request's path and headers."""
+    """A local origin over a raw root; records each request's path and headers.
+
+    ``quirks`` names paths it answers unlike the bucket: `weak` (a weak ETag) or `no_range` (200, the whole object).
+    """
 
     def __init__(self, root):
-        self.root, self.requests = root, []
+        self.root, self.requests, self.quirks = root, [], {}
         origin = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -33,14 +36,15 @@ class Origin:
                 if not path.is_file():
                     return self.reply(404, b'')
                 data = path.read_bytes()
-                etag = '"' + hashlib.md5(data).hexdigest() + '"'
+                quirk = origin.quirks.get(self.path)
+                etag = ('W/' if quirk == 'weak' else '') + '"' + hashlib.md5(data).hexdigest() + '"'
                 if self.headers.get('If-Match') not in (None, etag):
                     return self.reply(412, b'precondition failed')
                 headers = {'ETag': etag, 'Accept-Ranges': 'bytes'}
                 if data[:2] == b'\x1f\x8b' and 'gzip' in self.headers.get('Accept-Encoding', ''):
                     headers['Content-Encoding'] = 'gzip'
                 match = re.fullmatch(r'bytes=(\d+)-(\d+)', self.headers.get('Range', ''))
-                if match is None:
+                if match is None or quirk == 'no_range':
                     return self.reply(200, data, headers)
                 start, end = map(int, match.groups())
                 headers['Content-Range'] = f'bytes {start}-{end}/{len(data)}'
@@ -102,6 +106,9 @@ def test_origin_reads_are_pinned_ranged_gets_checked_by_the_body_hash(tmp_path):
         report = body_text.run(**args, origin=origin.url, work=tmp_path / 'run', execute=True)
     [batch] = report['batches']
     assert report['status'] == 'pending' and (batch['pending_reads'], batch['missing_pins']) == (2, 1)
+    # The forged body fails its hash; the replaced one's If-Match is refused (412).
+    assert batch['pending_read_reasons'] == report['pending_read_reasons'] == dict(
+        decoded_sha_mismatch=1, raw_range_ClientError=1)
     text = {names[bytes.fromhex(r['body'])]: r['text'] for r in committed(args, tmp_path / 't', 'body_text', 'text')}
     assert text.pop('unpinned').strip() == 'unpinned'
     assert text == dict(pdf=PAGE_ONE + '\n' + PAGE_TWO, html='STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n')
@@ -123,6 +130,34 @@ def test_origin_reads_are_pinned_ranged_gets_checked_by_the_body_hash(tmp_path):
         '/' + str(key('unpinned').relative_to(raw)): [(None, 'bytes=0-0'),
             (md5('unpinned'), f'bytes=0-{len(key("unpinned").read_bytes()) - 1}')]}
     assert not list((tmp_path / 'run').glob('batch-*/stage/bodies'))  # range caches leave with the stage
+    assert not list((tmp_path / 'run').glob('batch-*/stage/body-text.parquet'))  # and the committed text copy
+
+
+@pytest.mark.loopback
+def test_an_md5_less_read_refuses_an_origin_answer_it_cannot_pin(tmp_path):
+    bodies = {name: (b'<a>' + name.encode() + b'</a>', 'xml') for name in ('weak', 'whole', 'resized')}
+    args, names = lake(tmp_path, bodies | dict(gzipped=(HTML, 'html')), gzip_stored={'gzipped'})
+    digests = {name: digest for digest, name in names.items()}
+    raw, captures = args.pop('local_root'), args['captures']
+    path = lambda name: '/' + str(next(raw.glob(f'bodies/sha256/*/{digests[name].hex()}*')).relative_to(raw))
+    for name in digests:
+        set_capture(captures, digests[name], stored_md5=None)
+    set_capture(captures, digests['resized'], stored_bytes=len(bodies['resized'][0]) + 1)
+    with Origin(raw) as origin:
+        origin.quirks = {path('weak'): 'weak', path('whole'): 'no_range'}
+        report = body_text.run(**args, origin=origin.url, work=tmp_path / 'run', execute=True)
+    # A weak ETag, a 200 to the ranged probe and a total unlike the captured size each stop at the
+    # one-byte GET; the gzip-stored body reads once more under the ETag of its stored bytes.
+    assert report['status'] == 'pending' and report['pending_read_reasons'] == dict(changed_input=3)
+    stored = (raw / path('gzipped')[1:]).read_bytes()
+    assert stored[:2] == b'\x1f\x8b'
+    fetched = {}
+    for requested, headers in origin.requests:
+        fetched.setdefault(requested, []).append((headers.get('If-Match'), headers['Range']))
+    assert fetched == {path(name): [(None, 'bytes=0-0')] for name in bodies} | {path('gzipped'): [
+        (None, 'bytes=0-0'), ('"' + hashlib.md5(stored).hexdigest() + '"', f'bytes=0-{len(stored) - 1}')]}
+    text = {names[bytes.fromhex(r['body'])]: r['text'] for r in committed(args, tmp_path / 't', 'body_text', 'text')}
+    assert text == dict(gzipped='STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n')
 
 
 @pytest.mark.network

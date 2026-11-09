@@ -21,7 +21,9 @@ supervisor's timeout is a fixed document deadline and each page has its own dead
 worker. Batches are sized by an upper bound on their text bytes against ``max_cache_bytes``.
 
 Cost: one native plan (two narrow scans of captures and one of readings, all joined to the
-candidate set); O(B) worker time per body in its bytes; O(T) disk per batch in its text.
+candidate set); one ranged GET per origin body, and a one-byte GET before it for each body with no
+captured MD5; O(B) worker time per body in its bytes; O(T) disk per batch in its text, freed once
+the batch commits.
 """
 from functools import lru_cache
 import gzip
@@ -226,8 +228,9 @@ def _origin_store(origin):
 
 
 def _read_remote(request):
-    """One ranged GET of the whole stored object, pinned by size and MD5, kept in the body's range
-    cache so a retried body reads no byte twice; the storage rule then decodes and checks the SHA-256."""
+    """One ranged GET of the whole stored object, pinned by size and the captured MD5 (with none
+    captured, by the ETag a one-byte GET answers first), kept in the body's range cache so a retried
+    body reads no byte twice; the storage rule then decodes and checks the SHA-256."""
     remote = request['remote']
     if remote.get('md5') is None:  # no captured MD5: pin to the version the origin serves now
         remote = dict(remote, etag=_observed_etag(remote, request['stored_bytes']))
@@ -284,13 +287,19 @@ def _sniff_format(payload):
     return row.get('format') if row.get('status') == 'completed' else None
 
 
+def _read_reason(error):
+    """The read rule's own label when it raised one (`changed_input`, `origin_probe`), else the error's type."""
+    label = error.args[0] if len(error.args) == 1 else None
+    return label if isinstance(label, str) and label.isidentifier() else type(error).__name__
+
+
 _STRATEGIES = {}
 
 
 def parse_payload(payload):
     """Worker callable: read one body, derive its reading, write its text to the named directory.
 
-    Returns ``read_error`` (no verdict), ``pending`` (OCR needed, no engine), ``retry`` (a page
+    Returns ``read_error`` (no verdict; its reason), ``pending`` (OCR needed, no engine), ``retry`` (a page
     outlived its deadline) or a ``row`` with ``text`` naming the file, its bytes and SHA-256.
     """
     from congress_api.parsers import body_text as derivation
@@ -298,7 +307,7 @@ def parse_payload(payload):
     try:
         data = _read_decoded(request)
     except (OSError, EOFError) as error:
-        return dict(read_error=type(error).__name__)
+        return dict(read_error=_read_reason(error))
     if data is None:
         return dict(row=dict(status='error', error_type='decoded_size_limit'))
     spec = request['strategy']
@@ -385,14 +394,18 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         raise ValueError('Body text reads need a local raw root or an origin')
     bodies_dir = work / 'bodies'  # each remote body's range cache, removed once its reading returns
     counters = dict(work_items=0, pending_reads=0, missing_pins=0, ocr_pending=0, unreadable=0, ocr_pages=0)
-    rows, texts, decisions = [], {}, []
+    rows, texts, decisions, reasons = [], {}, [], {}
+
+    def pending_read(reason):  # no verdict: the body stays listed, counted under what stopped its read
+        counters['pending_reads'] += 1
+        reasons[reason] = reasons.get(reason, 0) + 1
 
     def jobs():
         for item in items:
             counters['work_items'] += 1
             body_hex = item['body_sha'].hex()
             if item['physical_key'] is None:
-                counters['pending_reads'] += 1
+                pending_read('no_captured_copy')
                 continue
             validate_key(item['physical_key'])
             relative = Path(item['relative_path'])
@@ -413,8 +426,8 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
             if item['stored_bytes'] is None:  # no pinned size: a local copy sized now and verified by hash
                 try:
                     request.update(stored_bytes=(raw / relative).stat().st_size, unpinned=True)
-                except OSError:
-                    counters['pending_reads'] += 1
+                except OSError as error:
+                    pending_read(_read_reason(error))
                     continue
             yield item, request
 
@@ -439,7 +452,7 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         for item, request, outcome in pool.map(invoke, jobs()):
             body_hex, parser, version = request['body_sha'], item['parser'], item['parser_version']
             if outcome['status'] == 'read_error':
-                counters['pending_reads'] += 1
+                pending_read(outcome['reason'])
                 continue
             if outcome['status'] == 'unreadable':
                 identity = json.dumps([body_hex, parser, version, decided_at], separators=(',', ':'))
@@ -451,7 +464,7 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
                 raise ValueError('Invalid body-text worker outcome')
             value = outcome['value']
             if value.get('read_error'):
-                counters['pending_reads'] += 1
+                pending_read(value['read_error'])
                 continue
             if value.get('pending'):
                 counters['ocr_pending'] += 1
@@ -476,7 +489,8 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
     shutil.rmtree(bodies_dir, ignore_errors=True)
     staged = dict(readings=work / 'readings.parquet', body_text=work / 'body-text.parquet',
                   readings_rows=len(rows), body_text_rows=text_rows, versions=planned['versions'],
-                  unreadable_key=None, unreadable_pending=False, unreadable_stage=None, **counters)
+                  unreadable_key=None, unreadable_pending=False, unreadable_stage=None,
+                  pending_read_reasons=dict(sorted(reasons.items())), **counters)
     if decisions:
         counters['unreadable'] = staged['unreadable'] = len(decisions)
         path = parsed / 'unreadable.jsonl'
@@ -554,7 +568,7 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
                    filename_readings=filename_readings)
     report = dict(status='planned', work_items=planned['work_items'], with_congress=planned['with_congress'],
                   by_parser=planned['by_parser'],
-                  versions=planned['versions'], batches=[], applied=False)
+                  versions=planned['versions'], batches=[], pending_read_reasons={}, applied=False)
     if not execute:
         return report
     report['status'] = 'completed'
@@ -570,6 +584,9 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
                        page_deadline_seconds=page_deadline_seconds, origin=origin)
         staged['append'] = append(staged, engine=engine, work=batch_work, catalog_root=catalog_root, tables=tables)
         report['applied'] |= any(value is not None for value in staged['append'].values())
+        staged['body_text'].unlink()  # committed (or empty): the staged text copy is the batch's disk cost
+        for reason, count in staged['pending_read_reasons'].items():
+            report['pending_read_reasons'][reason] = report['pending_read_reasons'].get(reason, 0) + count
         report['batches'].append(staged)
     if any(b['pending_reads'] or b['missing_pins'] or b['ocr_pending'] for b in report['batches']) \
             and report['status'] == 'completed':
