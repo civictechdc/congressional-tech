@@ -2,7 +2,7 @@
   "generations": {
     "amendments": "75c96edc20e43499f45efb19c135344cb849a801ce0f0abec1d0861b755698e2",
     "bill-family": "f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42",
-    "committee-rosters": "5f031073f8329cd49c5a6c43470e26178de5ef21362ad6d43a85ead6fab39da3",
+    "committee-rosters": "a152879f9d52f83c3a8ac358411db7615955c1f0edb5152751cf5a43bdfdb076",
     "members": "29718daf2daec8dd84dfcbfdb1f4bc7ed5daa439e6567294ef4b59cee3b58764",
     "nominations": "d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3",
     "roll-call-votes": "e7cdd80d9eecbf13ce172ce076c9a5df77fd418c97fb80d13393ce6ab595ace0"
@@ -60,15 +60,15 @@
     "spicy_committee_assignments": {
       "family": "committee-rosters",
       "key": "committee_assignments.parquet",
-      "path": "generations/committee-rosters/5f031073f8329cd49c5a6c43470e26178de5ef21362ad6d43a85ead6fab39da3/committee_assignments.parquet",
-      "rows": 2973,
-      "sha256": "e0cdb2ebc07c418a4730111bd964304759cc3d161d61f208961b7f8557d4ce48",
-      "size": 40433
+      "path": "generations/committee-rosters/a152879f9d52f83c3a8ac358411db7615955c1f0edb5152751cf5a43bdfdb076/committee_assignments.parquet",
+      "rows": 25187,
+      "sha256": "85bcd88f7572135a6e890c73ea26490406bbadd7fd7555fde11ae53a633016c8",
+      "size": 386707
     },
     "spicy_committees": {
       "family": "committee-rosters",
       "key": "committees.parquet",
-      "path": "generations/committee-rosters/5f031073f8329cd49c5a6c43470e26178de5ef21362ad6d43a85ead6fab39da3/committees.parquet",
+      "path": "generations/committee-rosters/a152879f9d52f83c3a8ac358411db7615955c1f0edb5152751cf5a43bdfdb076/committees.parquet",
       "rows": 817,
       "sha256": "75f27be725db2f4aeeab48c5b8d04bd2876a96877f65fe3c50445f1569abc577",
       "size": 90551
