@@ -222,3 +222,26 @@ address rather than an entity, and report `upstream_relations` as not published.
 On 448651e7, `bill_hearing_transcripts('119-hr-1')` returns `6EA8C1FAD7D36439`
 and `A80BBBC83ACF1C12`, both from meeting 118300; the fixed release should return
 one. The local 0db23484 copy has no `schema.json`, so it was not checked.
+
+## 2026-11-09: tool error text on direct transports (ct-9u0h)
+
+Every failure takes one server path. FastMCP 4.1.4 returns a JSON-RPC
+`result` with `isError: true`, one text block and no `structuredContent`. This
+covers `ToolError` from the reader, pydantic argument validation and unknown
+tools; `server.py` raises nothing as a JSON-RPC `error`. Hosted 0.6.4 (release
+63016450, HTTP, `User-Agent ct-mcp-polish/1`) returned the specific text for
+invalid SQL (`Parser Error`), an unknown column (`Binder Error` with
+candidates), `table=schema` (`Published control exceeds 128 KiB; use a table,
+relationship, or recipe selector`), an extra argument and a boolean `event_id`
+(pydantic detail). It did so under protocol versions 2024-11-05, 2025-03-26,
+2025-06-18 and 2025-11-25; 2026-07-28 negotiates 2025-11-25. Claude Code's
+stdio client showed a local install's `isError` text verbatim. The Python MCP
+2.3.0 and FastMCP clients skip output-schema validation on `isError` results.
+
+The bare `INVALID_ARGUMENT` is therefore added by the claude.ai connector, which
+drops the result text of `isError` results. It could not be observed from here.
+Returning failures as non-error structured results would get past such a
+connector, but every client would then read failures as successes, including
+those that show the text today. No server change was made; that choice is the
+owner's. Deciding test: in claude.ai, call `get_dataset_info(table="schema")`
+and record the text the model receives.
