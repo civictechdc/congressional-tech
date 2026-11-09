@@ -658,7 +658,11 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     result=execute(spec,**options)
     assert catalog_calls and result['status']==('published' if outcome=='completed' else outcome)
     # Gate 5: each head the run moved has its record in the bucket, even when the run stopped.
-    recorded={json.loads(body)['input'] for key,body in store.objects.items() if key.startswith('lake/producers/')}
+    recorded={json.loads(body)['input'] for key,body in store.objects.items()
+              if key.startswith('lake/producers/') and not key.startswith('lake/producers/owed/')}
+    owed={json.loads(body)['input']:json.loads(body)['owed'] for key,body in store.objects.items()
+          if key.startswith('lake/producers/owed/')}
+    assert {name for name,state in owed.items() if state['status']=='recorded'}==recorded
     assert recorded==set(result['daily']['producers']) and 'captures' in recorded
     if outcome=='completed':
         assert len(commands)==2 and 'viewer-publications/manifest.json' in store.objects

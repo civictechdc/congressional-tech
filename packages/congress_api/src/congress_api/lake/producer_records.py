@@ -10,14 +10,19 @@ Records are written once under lake/producers/<table_uuid>/<snapshot>.json in th
 bucket: outside provenance/, which the publisher pins exactly, and outside the public
 viewer-publications/. A local root holds the same keys for local catalogs.
 
-Before its first append a run writes the records it may owe (writer, bases, initial heads)
-to producer-owed.json in its work directory and deletes the file once they are written.
-If the final head read keeps failing, the file stays; daily.complete_owed_records writes
-the records later (ct-8unc).
+Owed records (ct-8unc). Before its first append a daily run leaves, for each table, the
+record it will owe minus its head under lake/producers/owed/<table_uuid>/<base>.json, keyed
+by the head it appends onto. Its last step marks each one recorded, unmoved or refused.
+If the run dies or the catalog stops answering first, the next preflight finds the
+unrecorded head's nearest recorded ancestor (the record chain stops at the first
+recorded snapshot, so a stale intent at an older base is never read), checks that the
+head was reached from it by appends only, and writes the owed record. Intents are state,
+not proof: they change by compare-and-swap, and gate 5 reads only records.
 
 Cannot see: rows appended between a base and its head by a writer that bypassed the
 shared R2 lock; the lineage check only proves the base is an ancestor reached by appends.
-A late completion widens that window to the time between the run and its completion.
+A late completion cannot tell whether the checkout changed during a run that died, and
+widens that window to the time between the run and the completion.
 """
 import gzip
 import hashlib
@@ -26,6 +31,7 @@ from pathlib import Path
 import re
 
 PREFIX = 'lake/producers/'
+OWED = PREFIX + 'owed/'
 DAILY_JOB = 'packages/congress_api/src/congress_api/lake/daily.py'
 PIN_FIELDS = ('metadata_location', 'table_uuid', 'snapshot', 'schema_id')
 RECORD_BYTES = 1 << 20
@@ -36,13 +42,26 @@ def pin_of(selector):
     return {k: selector.get(k) for k in PIN_FIELDS}
 
 
-def key_for(pin):
-    uuid, snapshot = pin.get('table_uuid'), pin.get('snapshot')
+def _uuid(pin):
+    uuid = pin.get('table_uuid')
     if not isinstance(uuid, str) or re.fullmatch('[0-9a-f-]{8,64}', uuid) is None:
         raise ValueError('Producer record key requires a table UUID')
+    return uuid
+
+
+def key_for(pin):
+    uuid, snapshot = _uuid(pin), pin.get('snapshot')
     if type(snapshot) is not int:
         raise ValueError('Producer record key requires a snapshot id')
     return f'{PREFIX}{uuid}/{snapshot}.json'
+
+
+def owed_key(base):
+    """Where a run leaves the record it owes for the table it appends onto `base`."""
+    snapshot = base.get('snapshot')
+    if snapshot is not None and type(snapshot) is not int:
+        raise ValueError('Owed producer record key requires a snapshot id or an empty table')
+    return f'{OWED}{_uuid(base)}/{"empty" if snapshot is None else snapshot}.json'
 
 
 def _code(error):
@@ -70,24 +89,80 @@ class ProducerRecords:
         self.client, self.bucket = client, bucket
         self.root = Path(root).resolve() if root is not None else None
 
-    def _get(self, key):
+    def _read(self, key):
+        """(bytes, version) or None; the version is the local bytes or the R2 ETag."""
         if self.root is not None:
             path = self.root / key
             if not path.is_file():
                 return None
             if path.stat().st_size > RECORD_BYTES:
                 raise ValueError('Producer record exceeds its size bound: ' + key)
-            return path.read_bytes()
+            data = path.read_bytes()
+            return data, data
         try:
-            body = self.client.get_object(Bucket=self.bucket, Key=key)['Body']
+            response = self.client.get_object(Bucket=self.bucket, Key=key)
         except Exception as error:
             if _code(error) in {'404', 'NoSuchKey', 'NotFound'}:
                 return None
             raise
-        data = body.read(RECORD_BYTES + 1)
+        data = response['Body'].read(RECORD_BYTES + 1)
         if len(data) > RECORD_BYTES:
             raise ValueError('Producer record exceeds its size bound: ' + key)
-        return data
+        return data, response['ETag']
+
+    def _get(self, key):
+        found = self._read(key)
+        return None if found is None else found[0]
+
+    def at(self, name, table_uuid, snapshot):
+        """(record, reference) naming this table's snapshot, by id alone, or None."""
+        data = self.anchors.get(name)
+        if data is not None:
+            record = json.loads(data)
+            selector = record.get('selector') or {}
+            if (selector.get('table_uuid'), selector.get('snapshot')) == (table_uuid, snapshot):
+                return record, dict(anchor=name, **identity(data))
+        key = key_for(dict(table_uuid=table_uuid, snapshot=snapshot))
+        data = self._get(key)
+        return None if data is None else (json.loads(data), dict(key=key, **identity(data)))
+
+    def owed(self, base):
+        """(intent, key, version) a run left for the table at `base`, or None."""
+        key = owed_key(base)
+        found = self._read(key)
+        return None if found is None else (json.loads(found[0]), key, found[1])
+
+    def owe(self, intent, version):
+        """Write an owed intent if `version` (None: absent) is still current, else refuse."""
+        data = encode(intent)
+        key = owed_key(intent['base']['selector'])
+        changed = 'Owed producer record changed concurrently: ' + key
+        if self.root is not None:
+            path = self.root / key
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if version is None:
+                try:
+                    with path.open('xb') as target:
+                        target.write(data)
+                except FileExistsError:
+                    raise ValueError(changed) from None
+            else:
+                if not path.is_file() or path.read_bytes() != version:
+                    raise ValueError(changed)
+                temporary = path.with_name(path.name + '.tmp')
+                temporary.write_bytes(data)
+                temporary.replace(path)
+            return key
+        import base64
+        condition = {'IfNoneMatch': '*'} if version is None else {'IfMatch': version}
+        try:
+            self.client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType='application/json',
+                                   ContentMD5=base64.b64encode(hashlib.md5(data).digest()).decode(), **condition)
+        except Exception as error:
+            if _code(error) in {'PreconditionFailed', '412'}:
+                raise ValueError(changed) from None
+            raise
+        return key
 
     def find(self, name, pin):
         """(record, reference) for the record naming exactly this snapshot, or None."""

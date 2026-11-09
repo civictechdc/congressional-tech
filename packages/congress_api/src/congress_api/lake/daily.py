@@ -12,7 +12,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,readings,tables,video_records
-from congress_api.lake.producer_records import DAILY_JOB,appended_from
+from congress_api.lake.producer_records import DAILY_JOB,pin_of
 from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStore,copy_receipts,
     discover_receipts,select_receipts)
 from congress_api.retention.writer_identity import writer_identity
@@ -37,7 +37,6 @@ HEAD_RETRY_STATUS={429,500,502,503,504}
 # Waits between final head reads. That read is idempotent and follows appends, so a catalog
 # blip (nightly 20261108T193702Z: a /v1/config connect timeout) must not cost the records.
 FINAL_HEAD_DELAYS=(10,30,90)
-OWED_RECORDS='producer-owed.json'
 
 
 def _qualified(row,kind,*,check_file=True):
@@ -411,42 +410,146 @@ def _body_source(spec,raw_store,work,listing=None):
                 body_store=R2Store(raw_store.adapter.client,raw_store.adapter.bucket,cache_dir=cache))
 
 
+class CheckoutChanged(ValueError):
+    """The checkout is no longer the clean commit the run named, so its records would lie."""
+
+
+def _require_commit(chain):
+    """The one owner of: a record names the commit that actually ran."""
+    try:commit=writer_identity(ROOT,DAILY_JOB)['commit']
+    except (ValueError,OSError,subprocess.CalledProcessError) as error:
+        raise CheckoutChanged('Application checkout changed during daily production: '+str(error)) from error
+    if commit!=chain['writer']['commit']:
+        raise CheckoutChanged('Application commit changed during daily production')
+
+
+def _record_fields(chain,name,base,decided_at):
+    """A table's record without its head: what a run owes before it appends onto `base`."""
+    return dict(version=1,input=name,job=DAILY_JOB,commit=chain['writer']['commit'],
+        lockfile_digest=chain['writer']['lockfile_digest'],decided_at=decided_at,
+        base=dict(selector=dict(kind='native_table',**base),record=chain['bases'][name]))
+
+
 def _producer_bases(records,heads):
     """Gate 5 preflight: the commit that will append, and each head's own record.
 
     Refuses before any append: a head without a record would leave every later
-    snapshot of that table unprovable.
+    snapshot of that table unprovable. An unrecorded head is first completed from
+    the record a stopped run owed for it (_complete_owed); the refusal names any
+    owed record it could not use.
     """
     try:writer=writer_identity(ROOT,DAILY_JOB)
     except (ValueError,OSError,subprocess.CalledProcessError) as error:
         return None,dict(unavailable='the checkout was not clean, so no commit can be named: '+str(error))
-    bases={};missing=[]
+    bases={};missing=[];owed={}
     for name,pin in heads.items():
         if pin['snapshot'] is None:bases[name]=None;continue
         found=records.find(name,pin)
+        if found is None:
+            found,problem=_complete_owed(records,name,pin)
+            if problem is not None:owed[name]=problem
         if found is None:missing.append(name)
         else:bases[name]=found[1]
-    if missing:return None,dict(missing=sorted(missing))
+    if missing:return None,dict(missing=sorted(missing),**({'owed':owed} if owed else {}))
     return dict(writer=writer,bases=bases),None
+
+
+def _complete_owed(records,name,head):
+    """((record, reference), None) once the owed record for this unrecorded head is written,
+    (None, why) naming an owed record it cannot use, or (None, None) when none applies.
+
+    The base is the head's nearest recorded ancestor (or the empty table) and every step
+    to it an append. A record in between stops the walk, so an owed record left at an
+    older base by a run whose records were written another way is never used. The walk
+    costs one record lookup per unrecorded snapshot.
+    """
+    lineage=records.lineage(head['metadata_location'])
+    snapshot,seen,base=head['snapshot'],set(),None
+    while True:
+        if snapshot in seen or snapshot not in lineage or lineage[snapshot][1]!='append':
+            return None,None
+        seen.add(snapshot)
+        parent=lineage[snapshot][0]
+        if parent is None:break
+        base=records.at(name,head['table_uuid'],parent)
+        if base is not None:break
+        snapshot=parent
+    lookup=dict(table_uuid=head['table_uuid'],snapshot=None if base is None else parent)
+    found=records.owed(lookup)
+    if found is None:return None,None
+    intent,key,version=found
+    state=intent.get('owed') or {}
+    if state.get('status')!='pending':
+        return None,dict(key=key,reason='the owed record is '+str(state.get('status')),owed=state)
+    claimed=intent.get('base') or {}
+    if base is None:
+        matches=(claimed.get('record') is None and (claimed.get('selector') or {}).get('snapshot') is None
+                 and (claimed.get('selector') or {}).get('table_uuid')==head['table_uuid'])
+    else:
+        matches=(claimed.get('record')==base[1]
+                 and claimed.get('selector')==dict(kind='native_table',**pin_of(base[0]['selector'])))
+    if intent.get('input')!=name or not matches:
+        return None,dict(key=key,reason='the owed record names another table or base record')
+    record=dict({k:v for k,v in intent.items() if k!='owed'},selector=dict(kind='native_table',**head))
+    reference=records.write(record)
+    records.owe(dict(intent,owed=dict(status='recorded',by='preflight',record=reference)),version)
+    return (record,reference),None
+
+
+def _owe_records(records,chain,heads,*,decided_at):
+    """Before the first append, leave each table's owed record beside the records.
+
+    The preflight just proved every head current and recorded, so whatever is still
+    pending at that head owed nothing and is replaced.
+    """
+    for name,base in heads.items():
+        found=records.owed(base)
+        records.owe(dict(_record_fields(chain,name,base,decided_at),owed=dict(status='pending')),
+                    None if found is None else found[2])
+
+
+def _mark_owed(records,base,state):
+    found=records.owed(base)
+    if found is not None and (found[0].get('owed') or {}).get('status')=='pending':
+        records.owe(dict(found[0],owed=state),found[2])
+
+
+def _supersede_owed(records,base,label):
+    """Before another writer appends onto `base`, retire a daily owed record still pending there.
+
+    That head is recorded and current, so the daily run that left it did not move the table;
+    left pending, a later preflight could credit this writer's appends to it.
+    """
+    _mark_owed(records,base,dict(status='superseded',by=label))
+
+
+def _settle_owed(records,chain,initial,*,authority,work,tables_spec,decided_at):
+    """(final heads, written records) after appends, marking each owed record.
+
+    A changed checkout marks them refused, so no preflight completes them. A failed
+    head read or record write leaves them pending for the next preflight.
+    """
+    try:
+        _require_commit(chain)
+        final=_final_heads(authority,work,tables_spec)
+        written=_record_moved(records,chain,initial,{n:final[n] for n in initial},decided_at=decided_at)
+    except CheckoutChanged as error:
+        for base in initial.values():_mark_owed(records,base,dict(status='refused',reason=str(error)))
+        raise
+    for name,base in initial.items():
+        _mark_owed(records,base,dict(status='recorded',by='run',record=written[name]) if name in written
+                   else dict(status='unmoved'))
+    return final,written
 
 
 def _record_moved(records,chain,initial,final,*,decided_at,transition_inputs=None,
                   transition_field="house_xml_transition"):
     """One record per table whose head moved during this run, written before returning."""
-    if writer_identity(ROOT,DAILY_JOB)['commit']!=chain['writer']['commit']:
-        raise ValueError('Application commit changed during daily production')
-    return _write_moved(records,chain,initial,final,decided_at=decided_at,
-                        transition_inputs=transition_inputs,transition_field=transition_field)
-
-
-def _write_moved(records,chain,initial,final,*,decided_at,transition_inputs=None,
-                 transition_field="house_xml_transition"):
+    _require_commit(chain)
     written={}
     for name,pin in sorted(final.items()):
         if pin==initial[name]:continue
-        record=dict(version=1,input=name,selector=dict(kind='native_table',**pin),job=DAILY_JOB,
-            commit=chain['writer']['commit'],lockfile_digest=chain['writer']['lockfile_digest'],decided_at=decided_at,
-            base=dict(selector=dict(kind='native_table',**initial[name]),record=chain['bases'][name]))
+        record=dict(_record_fields(chain,name,initial[name],decided_at),selector=dict(kind='native_table',**pin))
         if transition_inputs is not None:
             record[transition_field]=transition_inputs[name]
         written[name]=records.write(record)
@@ -463,53 +566,6 @@ def _final_heads(authority,work,tables_spec):
             if delay is None:raise
             time.sleep(delay)
 
-
-def _owe_records(work,*,catalog_root,tables_spec,chain,initial,decided_at):
-    """Durably name, before the first append, every record this run may owe.
-
-    The file goes once the records are written. If it outlives the run,
-    complete_owed_records finishes the job; later runs refuse until then.
-    """
-    path=Path(work)/OWED_RECORDS
-    durable_json(path,dict(job=DAILY_JOB,catalog_root=catalog_root,tables={n:tables_spec[n] for n in initial},
-                           chain=chain,initial=initial,decided_at=decided_at))
-    return path
-
-
-def _record_final(owed,records,chain,initial,*,authority,work,tables_spec,decided_at):
-    """(final heads, written records) after appends; on failure the owed file stays and is named."""
-    try:
-        final=_final_heads(authority,work,tables_spec)
-        written=_record_moved(records,chain,initial,{n:final[n] for n in initial},decided_at=decided_at)
-    except Exception as error:
-        error.add_note(f'Producer records may be owed for {sorted(initial)}; once the catalog answers, run '
-                       f'congress_api.lake.daily.complete_owed_records({str(owed)!r}, engine=..., producer_records=...)')
-        raise
-    owed.unlink()
-    return final,written
-
-
-def complete_owed_records(owed,*,engine,producer_records):
-    """Write the records a stopped run owes, then delete its owed file. Safe to repeat.
-
-    The caller holds the archive writer lock. Each moved head must be the same table,
-    reached from the owed base by appends only. Every gate-5 writer refuses a head
-    without a record, so only a writer bypassing the lock could have appended since.
-    """
-    owed=Path(owed)
-    value=json.loads(owed.read_text())
-    initial=value['initial']
-    work=owed.parent/f'owed-completion-{len(list(owed.parent.glob("owed-completion-*")))+1}'
-    final=_final_heads(dict(engine=engine,catalog_root=value['catalog_root']),work,value['tables'])
-    for name,head in final.items():
-        base=initial[name]
-        if head==base:continue
-        if (head['table_uuid']!=base['table_uuid'] or not appended_from(
-                producer_records.lineage(head['metadata_location']),head['snapshot'],base['snapshot'])):
-            raise ValueError(f'Owed {name} head is not reached from its base by appends only')
-    written=_write_moved(producer_records,value['chain'],initial,final,decided_at=value['decided_at'])
-    owed.unlink()
-    return written
 
 
 def _copy_html_input(pin, target):
@@ -701,8 +757,7 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
     if current != heads:
         raise ValueError('HTML metadata expected captures or readings head changed during scoping')
 
-    owed = _owe_records(work, catalog_root=catalog_root, tables_spec=tables_spec, chain=chain,
-                        initial=base, decided_at=decided_at)
+    _owe_records(producer_records, chain, base, decided_at=decided_at)
     try:
         result = readings.run(engine=engine, work=reading_work, mode='backfill', execute=True,
             table=tables_spec['readings'], catalog_root=catalog_root, parser='html_metadata',
@@ -714,7 +769,7 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
     except readings.RawCustodyRequired as error:
         report.update(status='raw_custody_required', readings=error.as_dict())
     finally:
-        final, report['producers'] = _record_final(owed, producer_records, chain, base, authority=authority,
+        final, report['producers'] = _settle_owed(producer_records, chain, base, authority=authority,
             work=work/'producer-heads', tables_spec=tables_spec, decided_at=decided_at)
     if final['captures'] != heads['captures']:
         raise ValueError('HTML metadata captures head changed during production')
@@ -738,9 +793,9 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
     unread captures behind.
 
     With `producer_records` (gate 5), every head must already have a record and every
-    head this run moves gets one, whether the run completes, stops or fails. If the
-    catalog cannot name the final heads, work/producer-owed.json stays for
-    complete_owed_records.
+    head this run moves gets one, whether the run completes, stops or fails. If the run
+    dies or the catalog cannot name its final heads, the records it owed stay pending
+    beside the records and the next run's preflight writes them (_complete_owed).
     """
     work,provenance,identities=_validate(spec,engine,raw_store)
     work.mkdir(parents=True,exist_ok=False)
@@ -760,12 +815,11 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
         report.update(status='producer_unrecorded',producers=refusal)
         return report
     initial=dict(heads)
-    owed=_owe_records(work,catalog_root=spec['catalog_root'],tables_spec=spec['tables'],chain=chain,
-                      initial=initial,decided_at=spec['decided_at'])
+    _owe_records(producer_records,chain,initial,decided_at=spec['decided_at'])
     try:
         _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapshot,authority,heads,versions,report)
     finally:
-        _,report['producers']=_record_final(owed,producer_records,chain,initial,authority=authority,
+        _,report['producers']=_settle_owed(producer_records,chain,initial,authority=authority,
             work=work/'producer-heads',tables_spec=spec['tables'],decided_at=spec['decided_at'])
     return report
 
@@ -1095,6 +1149,7 @@ def append_scoped_recovery(prepared, *, engine, catalog_root, targets, producer_
             continue
         _record_activation_file(prepared['stages'][name],'Scoped recovery')
         if name not in state['intents']:
+            _supersede_owed(producer_records,heads[name],'scoped recovery')
             state['intents'].append(name)
             durable_json(journal,state)
         if name=='captures':
@@ -1242,6 +1297,7 @@ def _activate_record_transition(prepared,*,engine,raw_store,producer_records,cat
             stage=prepared['tables'][name]
             # No pending flag is cleared here: the qualified input is explicitly
             # the observed cohort with zero new refusals and unchanged provenance.
+            _supersede_owed(producer_records,heads[name],label+' activation')
             state['intent']=[name];save()
             result=module.append(dict(records=_record_activation_file(stage['records'],label),
                 parser_version=module.current_versions(),unreadable_pending=False),

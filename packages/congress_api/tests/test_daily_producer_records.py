@@ -124,6 +124,15 @@ def _failing_final_reads(monkeypatch, failures):
     return waits
 
 
+def _heads(engine, value, work):
+    return tables.resolve_tables(engine=engine, work=work, catalog_root=value['catalog_root'], tables=value['tables'])
+
+
+def _owed_at(records, pin, snapshot):
+    """The owed record a run left for this table when it started from `snapshot` (None: empty)."""
+    return records.owed(dict(table_uuid=pin['table_uuid'], snapshot=snapshot))
+
+
 def test_a_transient_final_head_failure_is_retried_and_the_records_written(tmp_path, clean_tree, monkeypatch):
     value, engine, store = native_fixture(tmp_path)
     records = ProducerRecords(root=tmp_path / 'ledger')
@@ -131,50 +140,109 @@ def test_a_transient_final_head_failure_is_retried_and_the_records_written(tmp_p
     result = daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
     assert result['status'] == 'completed' and waits == [daily.FINAL_HEAD_DELAYS[0]]
     assert set(result['producers']) == set(result['pins'])
-    assert all(records.find(name, pin)[1] == result['producers'][name] for name, pin in result['pins'].items())
-    assert not (tmp_path / 'work' / daily.OWED_RECORDS).exists()
+    for name, pin in result['pins'].items():
+        assert records.find(name, pin)[1] == result['producers'][name]
+        assert _owed_at(records, pin, None)[0]['owed'] == dict(status='recorded', by='run', record=result['producers'][name])
 
 
-def test_a_persistent_final_head_failure_leaves_owed_records_an_operator_completes(tmp_path, clean_tree, monkeypatch):
-    value, engine, store = native_fixture(tmp_path, 2)
+def test_the_next_preflight_completes_what_a_killed_run_owed(tmp_path, clean_tree, monkeypatch):
+    value, engine, store = native_fixture(tmp_path)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+
+    def killed(*args, **kwargs):
+        raise SystemExit('killed between the appends and the record write')
+    settle = daily._settle_owed
+    monkeypatch.setattr(daily, '_settle_owed', killed)
+    with pytest.raises(SystemExit):
+        daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    monkeypatch.setattr(daily, '_settle_owed', settle)
+    heads = _heads(engine, value, tmp_path / 'heads')
+    assert all(records.find(name, pin) is None for name, pin in heads.items())
+    assert all(_owed_at(records, pin, None)[0]['owed'] == dict(status='pending') for pin in heads.values())
+    second = daily.produce_daily(dict(value, work=str(tmp_path / 'second')), engine=engine, raw_store=store,
+                                 producer_records=records)
+    assert second['status'] == 'completed' and second['pins'] == heads and second['producers'] == {}
+    for name, pin in heads.items():
+        record, reference = records.find(name, pin)
+        assert record['decided_at'] == value['decided_at'] and record['base']['record'] is None
+        owed = _owed_at(records, pin, None)
+        assert owed[0]['owed'] == dict(status='recorded', by='preflight', record=reference)
+        assert {k: v for k, v in owed[0].items() if k != 'owed'} == {k: v for k, v in record.items() if k != 'selector'}
+
+
+def test_a_changed_checkout_refuses_the_owed_records_for_good(tmp_path, clean_tree, monkeypatch):
+    from congress_api.lake.producer_records import owed_key
+    value, engine, store = native_fixture(tmp_path)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    produce = daily._produce
+
+    def produce_then_move_checkout(*args):
+        produce(*args)
+        monkeypatch.setattr(daily, 'writer_identity', lambda root, job: dict(WRITER, job=job, commit='c' * 40))
+    monkeypatch.setattr(daily, '_produce', produce_then_move_checkout)
+    with pytest.raises(daily.CheckoutChanged, match='Application commit changed during daily production'):
+        daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    monkeypatch.setattr(daily, 'writer_identity', lambda root, job: dict(WRITER, job=job))
+    heads = _heads(engine, value, tmp_path / 'heads')
+    refused = daily.produce_daily(dict(value, work=str(tmp_path / 'second')), engine=engine, raw_store=store,
+                                  producer_records=records)
+    assert refused['status'] == 'producer_unrecorded' and refused['producers']['missing'] == sorted(heads)
+    state = dict(status='refused', reason='Application commit changed during daily production')
+    assert refused['producers']['owed'] == {name: dict(key=owed_key(dict(pin, snapshot=None)),
+        reason='the owed record is refused', owed=state) for name, pin in heads.items()}
+    assert all(records.find(name, pin) is None for name, pin in heads.items())
+
+
+def test_a_lost_final_read_is_completed_from_its_own_base_never_a_stale_one(tmp_path, clean_tree, monkeypatch):
+    value, engine, store = native_fixture(tmp_path, 3)
     records = ProducerRecords(root=tmp_path / 'ledger')
     failures = [1] * (len(daily.FINAL_HEAD_DELAYS) + 1)
     waits = _failing_final_reads(monkeypatch, failures)
-    with pytest.raises(OSError, match='operation timed out') as stopped:
+    with pytest.raises(OSError, match='operation timed out'):
         daily.produce_daily(dict(value, receipt_inventory=value['receipt_inventory'][:1]), engine=engine,
                             raw_store=store, producer_records=records)
-    owed = tmp_path / 'work' / daily.OWED_RECORDS
     assert waits == list(daily.FINAL_HEAD_DELAYS) and not failures
-    assert owed.is_file() and str(owed) in '\n'.join(stopped.value.__notes__)
-    heads = tables.resolve_tables(engine=engine, work=tmp_path / 'heads', catalog_root=value['catalog_root'],
-                                  tables=value['tables'])
-    assert all(records.find(name, pin) is None for name, pin in heads.items())
+    first = _heads(engine, value, tmp_path / 'first-heads')
+    # As on 2026-11-08: the records are written by hand, leaving run A's owed records pending.
+    for name, pin in first.items():
+        if pin['snapshot'] is None:
+            continue
+        intent = _owed_at(records, pin, None)[0]
+        records.write(dict({k: v for k, v in intent.items() if k != 'owed'}, selector=dict(kind='native_table', **pin)))
+
+    # Run B appends onto those heads and loses its final read too.
+    failures.extend([1] * (len(daily.FINAL_HEAD_DELAYS) + 1))
+    later = '2026-10-29T12:00:00Z'
+    with pytest.raises(OSError, match='operation timed out'):
+        daily.produce_daily(dict(value, work=str(tmp_path / 'b'), decided_at=later,
+                                 receipt_inventory=value['receipt_inventory'][:2]),
+                            engine=engine, raw_store=store, producer_records=records)
+    second = _heads(engine, value, tmp_path / 'second-heads')
+    assert second['captures'] != first['captures']
+
+    # Planted: B's owed captures record names another base record; the preflight refuses and names it.
+    _, key, _ = _owed_at(records, first['captures'], first['captures']['snapshot'])
+    saved = (tmp_path / 'ledger' / key).read_bytes()
+    planted = json.loads(saved)
+    planted['base']['record'] = dict(planted['base']['record'], sha256='0' * 64)
+    (tmp_path / 'ledger' / key).write_bytes(encode(planted))
     refused = daily.produce_daily(dict(value, work=str(tmp_path / 'refused')), engine=engine, raw_store=store,
                                   producer_records=records)
-    assert refused['status'] == 'producer_unrecorded' and refused['producers'] == dict(
-        missing=['captures', 'filename_readings', 'readings'])
+    assert refused['status'] == 'producer_unrecorded' and refused['producers'] == dict(missing=['captures'],
+        owed=dict(captures=dict(key=key, reason='the owed record names another table or base record')))
+    assert records.find('captures', second['captures']) is None
 
-    # Planted: an owed base the head was not appended from refuses and writes nothing.
-    planted = json.loads(owed.read_text())
-    saved = owed.read_bytes()
-    planted['initial']['captures']['snapshot'] = 1
-    owed.write_text(json.dumps(planted))
-    with pytest.raises(ValueError, match='Owed captures head is not reached from its base by appends only'):
-        daily.complete_owed_records(owed, engine=engine, producer_records=records)
-    assert all(records.find(name, pin) is None for name, pin in heads.items())
-
-    owed.write_bytes(saved)
-    written = daily.complete_owed_records(owed, engine=engine, producer_records=records)
-    assert set(written) == set(heads) and not owed.exists()
-    for name, pin in heads.items():
-        record, reference = records.find(name, pin)
-        assert reference == written[name] and record['commit'] == HEAD and record['base']['record'] is None
-    owed.write_bytes(saved)  # Repeating a completion rewrites identical bytes.
-    assert daily.complete_owed_records(owed, engine=engine, producer_records=records) == written
-    second = daily.produce_daily(dict(value, work=str(tmp_path / 'second')), engine=engine, raw_store=store,
-                                 producer_records=records)
-    assert second['status'] == 'completed' and 'captures' in second['producers']
-    assert records.find('captures', second['pins']['captures'])[0]['base']['record'] == written['captures']
+    (tmp_path / 'ledger' / key).write_bytes(saved)
+    third = daily.produce_daily(dict(value, work=str(tmp_path / 'third')), engine=engine, raw_store=store,
+                                producer_records=records)
+    assert third['status'] == 'completed'
+    record, reference = records.find('captures', second['captures'])
+    assert record['decided_at'] == later
+    assert record['base'] == dict(selector=dict(kind='native_table', **first['captures']),
+                                  record=records.find('captures', first['captures'])[1])
+    assert _owed_at(records, first['captures'], first['captures']['snapshot'])[0]['owed']['record'] == reference
+    # Run A's stale owed record at the empty base was never read.
+    assert _owed_at(records, first['captures'], None)[0]['owed'] == dict(status='pending')
 
 
 def test_gate_five_accepts_the_chain_a_daily_run_wrote(tmp_path, clean_tree):

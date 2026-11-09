@@ -589,7 +589,8 @@ def main(argv=None):
         _save_continuation(args.nightly_work/'inputs-changed.json',dict(reason=str(error)))
         print(str(error),file=sys.stderr)
         return 2
-    except (ValueError,OSError,subprocess.SubprocessError) as error:parser.error(str(error))
+    except (ValueError,OSError,subprocess.SubprocessError) as error:
+        parser.error('\n'.join([str(error),*getattr(error,'__notes__',())]))
     daily=result.get('daily') if args.execute else None
     stopped=isinstance(daily,dict) and daily.get('status')!='completed'
     print(json.dumps(result,sort_keys=True));return 2 if stopped else 0
