@@ -245,3 +245,27 @@ connector, but every client would then read failures as successes, including
 those that show the text today. No server change was made; that choice is the
 owner's. Deciding test: in claude.ai, call `get_dataset_info(table="schema")`
 and record the text the model receives.
+
+## 2026-11-09: 0.6.5 caption seek and caption availability (ct-bi7s, ct-7jv1)
+
+Unpublished branch `claude/ct-thread3-mcp-polish`; the hosted server still runs 0.6.4.
+
+- The explorer-mcp lane passes: 220 tests, 4 native-fixture skips.
+- **ct-bi7s.** Hosted 0.6.4 reproduction: hearing 338785's playlist
+  (`senate:govtaff093026`, 728 segments) opens with 107 silent segments sharing
+  one body. Three empty pages took about 4.5 s each; cues started at segment 108
+  on the fourth call. On fixtures, 40 silent segments now return segment 41's cue in
+  one call and read the silent body at most once. With 300 silent segments the first
+  read stops at the 256-segment bound with `skipped_segments` 1–256. Cursor pages
+  then cover 257–288, then 289–300 plus the cue. The raw and indexed readers behave
+  the same. Setting the bound to 32 fails the test.
+- **ct-7jv1.** The `captions` expression, run through hosted `query_sql` over all
+  18,692 meetings of release 63016450, gives 705 `retained_track`, 308
+  `advertised_not_archived`, 3 `recording_without_video_record`, 8,291
+  `recording_link_pending` and 9,385 `unknown`. A 200-row page costs no more than
+  without it. The 705 equal the reader's event-scope caption sources. Fixture tests
+  cover each basis on search, get_entity, the bundle meeting row, the transcript
+  inventory and hearings_by_committee.
+- `build_desktop.py` regenerated the manifests, and `--check` built the 0.6.5
+  `.mcpb` and plugin ZIPs. Wheel, distribution and desktop launch checks run at
+  publication.

@@ -52,7 +52,7 @@ to work around an error. Hosted data is pinned by the service deployment;
 local `prepare` commands cannot refresh it. For a hosted `503`, retry after the
 server's `Retry-After` delay. To refresh data at the user's request with a full
 local plugin installation, run
-`uvx --python 3.12 --from congressional-explorer-mcp==0.6.4
+`uvx --python 3.12 --from congressional-explorer-mcp==0.6.5
 congress-explorer-mcp prepare`, then restart the connection. For a manual server
 installation, use `congress-explorer-mcp prepare`. Use the same
 `CONGRESS_MCP_DATA_DIR` if it was customized. Queries never refresh data silently.
