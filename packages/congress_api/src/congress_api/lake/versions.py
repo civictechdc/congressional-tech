@@ -11,8 +11,11 @@ import tomllib
 
 # ct-an6o: producer identities hashed the whole uv.lock until this change, so
 # every unrelated patch moved them. They now hash the locked packages their
-# parsers import. At the switch, the old rule computed exactly the published
-# IDs below from the same tree; each new fingerprint maps to that published ID.
+# parsers import. At the switch (rebased onto e55e9c76), the old rule, with the
+# ct-680z and body_text-lock (973298d7) reviewed entries it carried, computed
+# exactly the published IDs below from the same tree, and MODS computed its
+# ct-79j1/ct-rg34 full input digest; each new fingerprint maps to that ID. The
+# old-rule entries are gone because no new-rule fingerprint can match them.
 # Any later source, schema, parameter or imported-package change produces an
 # unmapped fingerprint. Add an entry only with a reviewed equivalence decision.
 _REVIEWED_PRODUCER_VERSIONS = {
@@ -23,8 +26,8 @@ _REVIEWED_PRODUCER_VERSIONS = {
     "2daadbeb9c249c4dc19b58969ef6f9305392b1aafcffdcf6d5b826f763d5a69e":
         "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
     # appearance_records.mods
-    "059195144f6963fd02f8062ae7eb45084f9cfe3033eaf0a2e575dfd635cd1241":
-        "1d57eb4426f67b84116bdb4a66774d0e401668b277586939b5c014db8547e32e",
+    "8a34087e918243fabb0b849d3921a0cf78b119578f1ba7d5359d52b18b7f162d":
+        "8a0023a9303e2b0e502b20a6cfaa276a3c0937fa93454f474f7b25f0a1b5c4af",
     # appearance_records.senate_page
     "d2faf6985353f72219cd6a8a99feebb142170e4936c1d1eefad9d91de654e67a":
         "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb",
@@ -39,34 +42,6 @@ _REVIEWED_PRODUCER_VERSIONS = {
         "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
     # meeting_records.house_xml
     "75cb286456a185f89c0081658d4569ced72a148324155df91d2f0945681f3c71":
-        "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5",
-    # body_text dependency lock (spicy-docs 0.79.0+body.text.f20f38dc, rulespec-artifacts 1.1.2,
-    # pymupdf 1.28.2, warcio 1.7.5 and PyObjC 12.2.2 core, Cocoa, CoreML, Quartz and Vision added;
-    # no locked package changed; none is in these producers' import closure). Proposed by the
-    # body_text producer branch for the maintainer's review, as ct-680z was.
-    # appearance_records.congress_gov
-    "09d9ffe6ca6a2d44fb814252735f8067a1778bb69794a56bf9639da695361b89":
-        "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
-    # appearance_records.house_xml
-    "0ad39284a8c7476f379738a39de457903ffec8c5c5ec133e24c17346a513e898":
-        "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
-    # appearance_records.mods
-    "4f880fd3bda8c616c02a210f1ba4f6c9f7f8c7a752fa400d9137d0877c3e0c80":
-        "1d57eb4426f67b84116bdb4a66774d0e401668b277586939b5c014db8547e32e",
-    # appearance_records.senate_page
-    "64716c3e375f4d43cd3997f36b41ffdfd6720746164a2a715d55c1e31651de78":
-        "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb",
-    # committee_records.house_xml
-    "a22777d61a6178c0993810f965cb273d63d55ce663d32413495fc2c22571fcb3":
-        "e1c6ad0d1398f1d1985e085a0fb9b94c6c42ad38a2d9175ad3e8908eb46c531e",
-    # filename_readings
-    "ac8522c479ab3ca1483f443d0885c75a2735760a2f8c05214e353d1dee4fa58c":
-        "c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09",
-    # meeting_records.congress_gov
-    "b62b203d218ffcbfb03709951693a9b824e7f8b2fb01f7958cf1b6069164fa25":
-        "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
-    # meeting_records.house_xml
-    "a8f71feb07d2fefad454dedd9a586ffbe78cf80f0e5f1ab4373701498e31fef8":
         "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5",
 }
 

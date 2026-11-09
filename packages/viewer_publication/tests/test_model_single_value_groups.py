@@ -94,7 +94,8 @@ def parser_fingerprint_files(monkeypatch):
     def capture(*, packages, files, values=None):
         hashed.update(Path(path).resolve() for path in files.values())
         return digest(packages=packages, files=files, values=values)
-    for module in (diagnostics, versions, filenames, video_records):
+    # filenames reaches version_digest through versions.producer_version.
+    for module in (diagnostics, versions, video_records):
         monkeypatch.setattr(module, 'version_digest', capture)
     diagnostics.snapshot()
     filenames.current_version()
