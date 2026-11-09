@@ -2,7 +2,7 @@
 id: ct-9lxf
 status: closed
 deps: []
-links: [ct-tk10, ct-umtm, ct-ud0b]
+links: [ct-tk10, ct-umtm, ct-ud0b, ct-fskn]
 created: 2026-11-02T16:23:34Z
 type: chore
 priority: 3
