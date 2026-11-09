@@ -28,11 +28,13 @@ run whose checkout changed and that then died before checking it is completed un
 commit it started from.
 """
 import base64
+import fcntl
 import gzip
 import hashlib
 import json
 from pathlib import Path
 import re
+from uuid import uuid4
 
 PREFIX = 'lake/producers/'
 OWED = PREFIX + 'owed/'
@@ -142,8 +144,6 @@ class ProducerRecords:
         key = owed_key(intent['base']['selector'])
         changed = 'Owed producer record changed concurrently: ' + key
         if self.root is not None:
-            import fcntl
-            from uuid import uuid4
             path = self.root / key
             path.parent.mkdir(parents=True, exist_ok=True)
             # The lock makes the comparison and the replace one step, as R2's conditional PUT is.

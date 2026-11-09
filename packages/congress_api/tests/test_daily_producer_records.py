@@ -182,18 +182,98 @@ def test_a_refusal_mark_is_retried_per_table_and_a_lasting_failure_names_its_key
     failed = _failing_owed_marks(monkeypatch, 'refused', {stuck})
     waits = []
     monkeypatch.setattr(daily, 'SLEEP', waits.append)
-    produce = daily._produce
-
-    def produce_then_move_checkout(*args):
-        produce(*args)
-        monkeypatch.setattr(daily, 'writer_identity', lambda root, job: dict(WRITER, job=job, commit='c' * 40))
-    monkeypatch.setattr(daily, '_produce', produce_then_move_checkout)
+    _move_checkout_after_producing(monkeypatch)
     with pytest.raises(daily.CheckoutChanged, match='could not be marked refused and must not be completed') as error:
         daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
     assert stuck in str(error.value) and failed == [stuck] * (len(daily.REFUSE_DELAYS) + 1)
     assert waits == list(daily.REFUSE_DELAYS)
     for name, pin in initial.items():
         assert _owed_at(records, pin, None)[0]['owed']['status'] == ('pending' if name == 'captures' else 'refused')
+
+
+def _stop_after_producing(monkeypatch, stop):
+    produce = daily._produce
+
+    def produce_then_stop(*args):
+        produce(*args)
+        raise stop
+    monkeypatch.setattr(daily, '_produce', produce_then_stop)
+
+
+def _move_checkout_after_producing(monkeypatch):
+    produce = daily._produce
+
+    def produce_then_move_checkout(*args):
+        produce(*args)
+        monkeypatch.setattr(daily, 'writer_identity', lambda root, job: dict(WRITER, job=job, commit='c' * 40))
+    monkeypatch.setattr(daily, '_produce', produce_then_move_checkout)
+
+
+def test_a_run_of_forty_unrecorded_appends_is_completed_and_a_cycle_refused(tmp_path):
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    empty = dict(metadata_location='/empty.json', table_uuid=PIN['table_uuid'], snapshot=None, schema_id=0)
+    intent = dict(version=1, input='captures', job=DAILY_JOB, commit=HEAD, lockfile_digest='b' * 64,
+                  decided_at='2026-11-08T19:37:02Z', base=dict(selector=dict(kind='native_table', **empty), record=None))
+    records.owe(dict(intent, owed=dict(status='pending')), None)
+    head = dict(PIN, metadata_location='/head.json', snapshot=40)
+    lookups = []
+    at = records.at
+    records.at = lambda *args: lookups.append(args[2]) or at(*args)
+    records.lineage = lambda location: {n: (n - 1 or None, 'append') for n in range(1, 41)}
+    unmarked = []
+    (record, reference), problem = daily._complete_owed(records, 'captures', head, unmarked)
+    assert problem is None and not unmarked and lookups == list(range(39, 0, -1))
+    assert record == dict(intent, selector=dict(kind='native_table', **head))
+    assert records.find('captures', head) == (record, reference)
+    assert records.owed(empty)[0]['owed'] == dict(status='recorded', by='preflight', record=reference)
+
+    records.lineage = lambda location: {7: (8, 'append'), 8: (7, 'append')}
+    assert daily._complete_owed(records, 'captures', dict(PIN, snapshot=7), unmarked) == (
+        None, dict(reason='the head lineage repeats a snapshot'))
+    records.lineage = lambda location: {7: (6, 'append')}
+    assert daily._complete_owed(records, 'captures', dict(PIN, snapshot=7), unmarked) == (
+        None, dict(reason='snapshot 6 is missing from the head lineage'))
+
+
+def test_a_lost_final_read_with_a_changed_checkout_refuses_and_raises_the_read(tmp_path, clean_tree, monkeypatch):
+    value, engine, store = native_fixture(tmp_path)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    failures = [1] * (len(daily.FINAL_HEAD_DELAYS) + 1)
+    waits = _failing_final_reads(monkeypatch, failures)
+    _move_checkout_after_producing(monkeypatch)
+    with pytest.raises(OSError, match='operation timed out'):
+        daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    assert waits == list(daily.FINAL_HEAD_DELAYS) and not failures
+    heads = _heads(engine, value, tmp_path / 'heads')
+    assert all(_owed_at(records, pin, None)[0]['owed'] == dict(
+        status='refused', reason='Application commit changed during daily production') for pin in heads.values())
+
+
+def test_a_failed_mark_while_a_run_stops_becomes_a_note_on_its_exception(tmp_path, clean_tree, monkeypatch):
+    value, engine, store = native_fixture(tmp_path)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    failed = _failing_owed_marks(monkeypatch, 'recorded')
+    _stop_after_producing(monkeypatch, ValueError('stopped after appending'))
+    with pytest.raises(ValueError, match='stopped after appending') as stopped:
+        daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    notes = '\n'.join(stopped.value.__notes__)
+    assert failed and all(key + ' not marked recorded' in notes for key in failed)
+    heads = _heads(engine, value, tmp_path / 'heads')
+    assert all(records.find(name, pin) is not None for name, pin in heads.items())
+
+
+def test_an_interrupt_reads_the_heads_once_and_leaves_the_rest_pending(tmp_path, clean_tree, monkeypatch):
+    value, engine, store = native_fixture(tmp_path)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    failures = [1] * (len(daily.FINAL_HEAD_DELAYS) + 1)
+    waits = _failing_final_reads(monkeypatch, failures)
+    _stop_after_producing(monkeypatch, KeyboardInterrupt())
+    with pytest.raises(KeyboardInterrupt) as stopped:
+        daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    assert waits == [] and len(failures) == len(daily.FINAL_HEAD_DELAYS)
+    assert 'Owed producer records not settled' in '\n'.join(stopped.value.__notes__)
+    heads = _heads(engine, value, tmp_path / 'heads')
+    assert all(_owed_at(records, pin, None)[0]['owed'] == dict(status='pending') for pin in heads.values())
 
 
 def test_the_next_preflight_completes_what_a_killed_run_owed(tmp_path, clean_tree, monkeypatch):
@@ -210,13 +290,6 @@ def test_the_next_preflight_completes_what_a_killed_run_owed(tmp_path, clean_tre
     heads = _heads(engine, value, tmp_path / 'heads')
     assert all(records.find(name, pin) is None for name, pin in heads.items())
     assert all(_owed_at(records, pin, None)[0]['owed'] == dict(status='pending') for pin in heads.values())
-    limit = daily.OWED_WALK_LIMIT
-    monkeypatch.setattr(daily, 'OWED_WALK_LIMIT', 0)  # A head beyond the walk is refused, not walked.
-    capped = daily.produce_daily(dict(value, work=str(tmp_path / 'capped')), engine=engine, raw_store=store,
-                                 producer_records=records)
-    assert capped['status'] == 'producer_unrecorded' and capped['producers']['owed'] == {
-        name: dict(reason='no recorded snapshot within 0 of the head') for name in heads}
-    monkeypatch.setattr(daily, 'OWED_WALK_LIMIT', limit)
     second = daily.produce_daily(dict(value, work=str(tmp_path / 'second')), engine=engine, raw_store=store,
                                  producer_records=records)
     assert second['status'] == 'completed' and second['pins'] == heads and second['producers'] == {}
@@ -232,12 +305,7 @@ def test_a_changed_checkout_refuses_the_owed_records_for_good(tmp_path, clean_tr
     from congress_api.lake.producer_records import owed_key
     value, engine, store = native_fixture(tmp_path)
     records = ProducerRecords(root=tmp_path / 'ledger')
-    produce = daily._produce
-
-    def produce_then_move_checkout(*args):
-        produce(*args)
-        monkeypatch.setattr(daily, 'writer_identity', lambda root, job: dict(WRITER, job=job, commit='c' * 40))
-    monkeypatch.setattr(daily, '_produce', produce_then_move_checkout)
+    _move_checkout_after_producing(monkeypatch)
     with pytest.raises(daily.CheckoutChanged, match='Application commit changed during daily production'):
         daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
     monkeypatch.setattr(daily, 'writer_identity', lambda root, job: dict(WRITER, job=job))

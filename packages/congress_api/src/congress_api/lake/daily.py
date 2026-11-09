@@ -5,7 +5,6 @@ from pathlib import Path
 import re
 from shutil import copyfile
 import subprocess
-import sys
 import time
 
 import pyarrow as pa
@@ -40,8 +39,6 @@ HEAD_RETRY_STATUS={429,500,502,503,504}
 FINAL_HEAD_DELAYS=(10,30,90)
 # Waits between attempts to mark owed records refused; an unmarked one could be completed.
 REFUSE_DELAYS=(1,5,15)
-# Unrecorded snapshots a preflight walks back to find a recorded base before refusing.
-OWED_WALK_LIMIT=32
 SLEEP=time.sleep  # The retry waits; tests replace this, never the global time.sleep.
 
 
@@ -442,44 +439,48 @@ def _producer_bases(records,heads):
     Refuses before any append: a head without a record would leave every later
     snapshot of that table unprovable. An unrecorded head is first completed from
     the record a stopped run owed for it (_complete_owed); the refusal names any
-    owed record it could not use. `proven` is the heads this check found current
-    and recorded, which makes any owed record still pending at them moot.
+    owed record it could not use, and either result lists owed records completed
+    but not marked (`owed_unmarked`).
     """
     try:writer=writer_identity(ROOT,DAILY_JOB)
     except (ValueError,OSError,subprocess.CalledProcessError) as error:
         return None,dict(unavailable='the checkout was not clean, so no commit can be named: '+str(error))
-    bases={};missing=[];owed={}
+    bases={};missing=[];owed={};unmarked=[]
     for name,pin in heads.items():
         if pin['snapshot'] is None:bases[name]=None;continue
         found=records.find(name,pin)
         if found is None:
-            found,problem=_complete_owed(records,name,pin)
+            found,problem=_complete_owed(records,name,pin,unmarked)
             if problem is not None:owed[name]=problem
         if found is None:missing.append(name)
         else:bases[name]=found[1]
-    if missing:return None,dict(missing=sorted(missing),**({'owed':owed} if owed else {}))
-    return dict(writer=writer,bases=bases,proven=dict(heads)),None
+    marks={'owed_unmarked':unmarked} if unmarked else {}
+    if missing:return None,dict(missing=sorted(missing),**({'owed':owed} if owed else {}),**marks)
+    return dict(writer=writer,bases=bases,**marks),None
 
 
-def _complete_owed(records,name,head):
+def _complete_owed(records,name,head,unmarked):
     """((record, reference), None) once the owed record for this unrecorded head is written,
     (None, why) when it cannot be, or (None, None) when no owed record applies.
 
-    The base is the head's nearest recorded ancestor (or the empty table), at most
-    OWED_WALK_LIMIT snapshots back, reached by appends only. A record in between stops
-    the walk, so an owed record left at an older base by a run whose records were
-    written another way is never used. One record lookup per unrecorded snapshot.
+    The base is the head's nearest recorded ancestor (or the empty table), reached by
+    appends only. A record in between stops the walk, so an owed record left at an older
+    base by a run whose records were written another way is never used. The lineage is
+    one bounded metadata read; the walk is one record lookup per unrecorded snapshot,
+    linear in the stopped run's own appends, and len(lineage)+1 steps bound a cycle.
     """
     lineage=records.lineage(head['metadata_location'])
     base,current=None,head['snapshot']
-    for _ in range(OWED_WALK_LIMIT):
-        parent=lineage.get(current,(None,None))[0]
+    for _ in range(len(lineage)+1):
+        if current not in lineage:
+            return None,dict(reason=f'snapshot {current} is missing from the head lineage')
+        parent=lineage[current][0]
         if parent is None:break
         base=records.at(name,head['table_uuid'],parent)
         if base is not None:break
         current=parent
     else:
-        return None,dict(reason=f'no recorded snapshot within {OWED_WALK_LIMIT} of the head')
+        return None,dict(reason='the head lineage repeats a snapshot')
     snapshot=None if base is None else base[0]['selector']['snapshot']
     if not appended_from(lineage,head['snapshot'],snapshot):return None,None
     found=records.owed(dict(table_uuid=head['table_uuid'],snapshot=snapshot))
@@ -501,7 +502,7 @@ def _complete_owed(records,name,head):
     reference=records.write(record)
     try:records.owe(dict(intent,owed=dict(status='recorded',by='preflight',record=reference)),version)
     except Exception as error:  # The record is written; the mark is evidence only.
-        print(f'warning: {key} not marked recorded: {error}',file=sys.stderr)
+        unmarked.append(f'{key} not marked recorded: {error}')
     return (record,reference),None
 
 
@@ -512,16 +513,13 @@ def _owed_fields(intent):
 def _owe_records(records,chain,heads,*,decided_at):
     """Before the first append, leave each table's owed record beside the records.
 
-    An owed record still pending at a head is replaced only when the preflight just
-    proved that head current and recorded (chain['proven']): its run did not move it.
+    The caller passes the heads its preflight just proved current and recorded, under
+    the nightly flock, so whatever is still pending at them owed nothing and is replaced.
     """
     for name,base in heads.items():
-        own=_record_fields(chain,name,base,decided_at)
         found=records.owed(base)
-        if (found is not None and (found[0].get('owed') or {}).get('status')=='pending'
-                and _owed_fields(found[0])!=own and chain['proven'].get(name)!=base):
-            raise ValueError('Another run still owes a pending producer record at this head: '+found[1])
-        records.owe(dict(own,owed=dict(status='pending')),None if found is None else found[2])
+        records.owe(dict(_record_fields(chain,name,base,decided_at),owed=dict(status='pending')),
+                    None if found is None else found[2])
 
 
 def _mark_owed(records,base,state,own=None):
@@ -542,11 +540,11 @@ def _supersede_owed(records,base,label):
     _mark_owed(records,base,dict(status='superseded',by=label))
 
 
-def _refuse_owed(records,chain,initial,*,decided_at,error):
+def _refuse_owed(records,chain,initial,*,decided_at,error,delays):
     """Mark every table's owed record refused, retrying each; name any that stays completable."""
     unmarked=[]
     for name,base in initial.items():
-        for delay in (*REFUSE_DELAYS,None):
+        for delay in (*delays,None):
             try:
                 _mark_owed(records,base,dict(status='refused',reason=str(error)),
                            _record_fields(chain,name,base,decided_at))
@@ -559,22 +557,24 @@ def _refuse_owed(records,chain,initial,*,decided_at,error):
                               'not be completed: '+', '.join(unmarked)) from error
 
 
-def _settle_owed(records,chain,initial,*,authority,work,tables_spec,decided_at):
+def _settle_owed(records,chain,initial,*,authority,work,tables_spec,decided_at,patient=True):
     """(final heads, written records, unmarked notes) after appends.
 
     The commit is checked once, after the head read or its failure: a changed checkout
     marks the owed records refused so no preflight completes them. A failed head read
     or record write leaves them pending for the next preflight. Marking an owed record
-    recorded is evidence only; a failure is returned, never raised.
+    recorded is evidence only; a failure is returned, never raised. Not `patient`
+    (an interrupt), every read and mark is tried once, without waits.
     """
-    try:final=_final_heads(authority,work,tables_spec)
+    refuse=dict(decided_at=decided_at,delays=REFUSE_DELAYS if patient else ())
+    try:final=_final_heads(authority,work,tables_spec,FINAL_HEAD_DELAYS if patient else ())
     except BaseException:
         try:_require_commit(chain)
-        except CheckoutChanged as error:_refuse_owed(records,chain,initial,decided_at=decided_at,error=error)
+        except CheckoutChanged as error:_refuse_owed(records,chain,initial,error=error,**refuse)
         raise
     try:_require_commit(chain)
     except CheckoutChanged as error:
-        _refuse_owed(records,chain,initial,decided_at=decided_at,error=error)
+        _refuse_owed(records,chain,initial,error=error,**refuse)
         raise
     written=_write_moved(records,chain,initial,{n:final[n] for n in initial},decided_at=decided_at)
     unmarked=[]
@@ -585,11 +585,23 @@ def _settle_owed(records,chain,initial,*,authority,work,tables_spec,decided_at):
     return final,written,unmarked
 
 
-def _report_unmarked(report,stopped,unmarked):
-    """Owed-record marks never fail a run: note them on its exception, or in its report."""
-    if not unmarked:return
-    if stopped is not None:stopped.add_note('; '.join(unmarked))
-    else:report['owed_unmarked']=unmarked
+def _finish_owed(records,chain,initial,report,stopped,**settle):
+    """Settle in a producer's finally; returns the final heads (None after an interrupt's failure).
+
+    Owed-record marks never fail a run: they go on its stopping exception's notes, or in
+    its report. An interrupt (`stopped` is no Exception) gets one try at everything and
+    keeps propagating; what stays pending is completed by the next preflight.
+    """
+    interrupted=stopped is not None and not isinstance(stopped,Exception)
+    try:final,report['producers'],unmarked=_settle_owed(records,chain,initial,patient=not interrupted,**settle)
+    except Exception as error:
+        if not interrupted:raise
+        stopped.add_note(f'Owed producer records not settled: {error}')
+        return None
+    unmarked=chain.get('owed_unmarked',[])+unmarked
+    if unmarked and stopped is not None:stopped.add_note('; '.join(unmarked))
+    elif unmarked:report['owed_unmarked']=unmarked
+    return final
 
 
 def _record_moved(records,chain,initial,final,*,decided_at,transition_inputs=None,
@@ -612,9 +624,9 @@ def _write_moved(records,chain,initial,final,*,decided_at,transition_inputs=None
     return written
 
 
-def _final_heads(authority,work,tables_spec):
+def _final_heads(authority,work,tables_spec,delays=FINAL_HEAD_DELAYS):
     """Heads after appends: a failed read is retried in a sibling dir, then raised."""
-    for attempt,delay in enumerate((*FINAL_HEAD_DELAYS,None)):
+    for attempt,delay in enumerate((*delays,None)):
         try:
             return tables.resolve_tables(**authority,tables=tables_spec,
                 work=work if not attempt else work.with_name(f'{work.name}-retry-{attempt}'))
@@ -828,9 +840,8 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
         stopped = error
         raise
     finally:
-        final, report['producers'], unmarked = _settle_owed(producer_records, chain, base, authority=authority,
+        final = _finish_owed(producer_records, chain, base, report, stopped, authority=authority,
             work=work/'producer-heads', tables_spec=tables_spec, decided_at=decided_at)
-        _report_unmarked(report, stopped, unmarked)
     if final['captures'] != heads['captures']:
         raise ValueError('HTML metadata captures head changed during production')
     return dict(report, pins=final, unreadable=unreadable_snapshot.rows())
@@ -883,9 +894,8 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
         stopped=error
         raise
     finally:
-        _,report['producers'],unmarked=_settle_owed(producer_records,chain,initial,authority=authority,
+        _finish_owed(producer_records,chain,initial,report,stopped,authority=authority,
             work=work/'producer-heads',tables_spec=spec['tables'],decided_at=spec['decided_at'])
-        _report_unmarked(report,stopped,unmarked)
     return report
 
 
