@@ -5,43 +5,13 @@ about the tables a later run plans against, not about the producer's own report.
 """
 import hashlib
 import json
-import os
 
 import pyarrow.parquet as pq
 import pytest
 
-from body_text_fixtures import HTML, PAGE_ONE, PAGE_TWO, XML, raw_inputs, scanned_pdf, two_page_pdf, warc_member
-from congress_api.lake import body_text, readings
-from congress_api.lake.tables import resolve_tables, table_input
-from congress_api.retention.body_store import BodyStore, LocalAdapter
-from congress_api.retention.provenance import run_job
-from docspec_client.client import NativeDatasets
-
-STAMP = '2026-11-08T12:00:00Z'
-TABLES = dict(readings=dict(namespace=['archive'], name='readings'),
-              body_text=dict(namespace=['archive'], name='body_text'))
-
-
-def lake(tmp_path, bodies, **kwargs):
-    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    captures, _, raw, digests = raw_inputs(tmp_path / 'source', bodies,
-                                           sniff_version=readings.current_version('sniff'), **kwargs)
-    catalog = tmp_path / 'catalog'
-    readings.create_table(engine=engine, work=tmp_path / 'create-readings', catalog_root=catalog,
-                          table=TABLES['readings'], location=tmp_path / 'readings-table', create_namespace=True)
-    body_text.create_table(engine=engine, work=tmp_path / 'create-text', catalog_root=catalog,
-                           table=TABLES['body_text'], location=tmp_path / 'text-table')
-    args = dict(engine=engine, captures=captures, local_root=raw, decided_at=STAMP, catalog_root=catalog,
-                tables=TABLES, unreadable_store=BodyStore(LocalAdapter(tmp_path / 'raw-provenance')))
-    return args, {digest: name for name, digest in digests.items()}
-
-
-def committed(args, work, table, columns):
-    pin = resolve_tables(engine=args['engine'], work=work / 'resolve', catalog_root=args['catalog_root'],
-                         tables={'t': TABLES[table]})['t']
-    rows = run_job(work / 'read', args['engine'], inputs=[table_input('t', pin)], steps=[], outputs=[],
-                   queries=[dict(name='rows', sql=f"SELECT encode(body_sha,'hex') AS body,{columns} FROM t")])['rows']
-    return rows
+from body_text_fixtures import (HTML, PAGE_ONE, PAGE_TWO, STAMP, XML, committed, lake, scanned_pdf, two_page_pdf,
+                                warc_member)
+from congress_api.lake import body_text
 
 
 def test_one_run_settles_every_parser_and_leaves_ocr_bodies_listed(tmp_path):

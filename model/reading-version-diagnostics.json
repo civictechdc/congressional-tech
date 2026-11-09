@@ -56,7 +56,7 @@
       "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "00994d3df2a6f0fba27827ed098c7b17204132e45a19c77b1b10260c2321bdf4",
-    "workspace_sha256": "384223f74c1782bef37739006b11c8203519580254e58f13573717fe83e13ad3"
+    "workspace_sha256": "15d6d569a6a3b2238c3f6bc832f2683c0bb124c8f9efdc511621e927042ecbad"
   },
   "json": {
     "limits": {
@@ -101,7 +101,7 @@
       "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
-    "workspace_sha256": "384223f74c1782bef37739006b11c8203519580254e58f13573717fe83e13ad3"
+    "workspace_sha256": "15d6d569a6a3b2238c3f6bc832f2683c0bb124c8f9efdc511621e927042ecbad"
   },
   "readings": {
     "limits": {
@@ -163,7 +163,7 @@
       "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "97738b4229e0d064bc9c90aed181d05c4ecb1c4be0775dbdee077d7b6e60c9cb",
-    "workspace_sha256": "384223f74c1782bef37739006b11c8203519580254e58f13573717fe83e13ad3"
+    "workspace_sha256": "15d6d569a6a3b2238c3f6bc832f2683c0bb124c8f9efdc511621e927042ecbad"
   },
   "xml": {
     "limits": {
@@ -196,6 +196,6 @@
       "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
-    "workspace_sha256": "384223f74c1782bef37739006b11c8203519580254e58f13573717fe83e13ad3"
+    "workspace_sha256": "15d6d569a6a3b2238c3f6bc832f2683c0bb124c8f9efdc511621e927042ecbad"
   }
 }

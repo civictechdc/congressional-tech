@@ -7,15 +7,20 @@ row settles a body too. Per batch, `body_text` commits first and `readings` seco
 through `append_rows`' PK anti-join, so a crash between the commits leaves the body on the
 list and its retry appends no second text row.
 
-Reads use the copy each capture recorded (as `readings.plan(captured_copies=True)` picks it) in a
-local raw root; R2 ranged reads are not wired here yet. A worker returns its text as a file (path, bytes,
-SHA-256), so no text crosses the supervisor's 8 MiB pipe; the supervisor's timeout is a fixed
-document deadline and each page has its own deadline inside the worker. Batches are sized by
-an upper bound on their text bytes against ``max_cache_bytes``.
+Reads use the copy each capture recorded (as `readings.plan(captured_copies=True)` picks it), from a
+local raw root or, given ``origin``, the raw bucket's public origin: one ranged GET per body through
+the readings range cache and R2Store's pinned read (`retention/public_origin.py`), conditional on the
+capture's stored MD5 and size, then the readings storage rule, which decodes and checks the body's
+SHA-256. A body whose stored size is over the bound settles as `size_limit` before any byte is
+fetched; one with no stored size or MD5 pin stays listed (`missing_pins`). A worker returns its
+text as a file (path, bytes, SHA-256), so no text crosses the supervisor's 8 MiB pipe; the
+supervisor's timeout is a fixed document deadline and each page has its own deadline inside the
+worker. Batches are sized by an upper bound on their text bytes against ``max_cache_bytes``.
 
 Cost: one native plan (two narrow scans of captures and one of readings, all joined to the
 candidate set); O(B) worker time per body in its bytes; O(T) disk per batch in its text.
 """
+from functools import lru_cache
 import gzip
 from hashlib import sha256
 import json
@@ -31,6 +36,7 @@ from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_
 from congress_api.retention.parser_worker import ParserWorker, ParserWorkerPool, reading_input
 from congress_api.retention.provenance import (field, finish_stage, import_unreadable, instant, json_input,
     parquet_output, parquet_records, run_job)
+from congress_api.retention.r2_edge_rules import PUBLIC_BUCKET, PUBLIC_HOSTNAME
 
 ROOT = Path(__file__).resolve().parents[5]
 # Read here, not through tables.LAKE_SCHEMA_PATHS, whose module every reading version's evidence hashes.
@@ -48,6 +54,8 @@ PAGE_DEADLINE_SECONDS = 60
 MAX_CACHE_BYTES = 8 << 30
 MAX_BATCH_ITEMS = 4096
 STAGE_TEXT_BYTES = 64 << 20
+ORIGIN = 'https://' + PUBLIC_HOSTNAME
+USER_AGENT = 'ct-body-text/1'
 
 
 def current_versions():
@@ -61,7 +69,7 @@ def worker_limits():
                 max_input_bytes=65536, max_output_bytes=8 << 20)
 
 
-def plan(*, captures, engine, work, decided_at, local_root, existing=None, unreadable_files=(),
+def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, unreadable_files=(),
          registry=None):
     """Materialize the ordered work list in one native job, opening no body.
 
@@ -116,7 +124,9 @@ def plan(*, captures, engine, work, decided_at, local_root, existing=None, unrea
             concat('bodies/sha256/',substr(encode(c.sha256,'hex'),1,2),'/',encode(c.sha256,'hex'),
                 coalesce(c.stored_suffix,'.gz')) AS physical_key,
             max(c.bytes) AS decoded_bytes,max(c.stored_bytes) AS stored_bytes,max(c.retrieved_at) AS latest,
-            min(c.bytes)<>max(c.bytes) OR min(c.stored_bytes)<>max(c.stored_bytes) AS conflict
+            max(encode(c.stored_md5,'hex')) AS stored_md5,
+            min(c.bytes)<>max(c.bytes) OR min(c.stored_bytes)<>max(c.stored_bytes)
+                OR min(encode(c.stored_md5,'hex'))<>max(encode(c.stored_md5,'hex')) AS conflict
             FROM candidates k RIGHT SEMI JOIN captures c ON k.body_sha=c.sha256
             GROUP BY c.sha256,coalesce(c.stored_suffix,'.gz')"""),
         dict(name='body_copies', materialize=True, sql='''SELECT * FROM (SELECT *,row_number() OVER (
@@ -124,7 +134,7 @@ def plan(*, captures, engine, work, decided_at, local_root, existing=None, unrea
                 CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
             FROM body_storage) WHERE choice=1'''),
         dict(name='pending_bodies', materialize=True, sql='''SELECT k.body_sha,k.format,k.parser,k.parser_version,
-            s.physical_key,s.physical_key AS relative_path,s.stored_bytes,s.decoded_bytes,
+            s.physical_key,s.physical_key AS relative_path,s.stored_bytes,s.stored_md5,s.decoded_bytes,
             coalesce(s.conflict,false) AS conflict,
             cast(row_number() OVER (ORDER BY s.latest DESC NULLS LAST,k.body_sha) AS BIGINT) AS position
             FROM candidates k LEFT JOIN body_copies s ON k.body_sha=s.body_sha'''),
@@ -141,7 +151,7 @@ def plan(*, captures, engine, work, decided_at, local_root, existing=None, unrea
         raise ValueError('Conflicting sniff facts or captured copies for body-text work')
     return dict(status='planned', work=work, work_list=work / 'work-list.parquet', versions=versions,
                 work_items=checks['work_items'][0]['n'], by_parser=checks['by_parser'],
-                local_root=Path(local_root).resolve(), decided_at=decided_at)
+                local_root=None if local_root is None else Path(local_root).resolve(), decided_at=decided_at)
 
 
 def batches(items, *, max_cache_bytes=MAX_CACHE_BYTES, max_items=MAX_BATCH_ITEMS):
@@ -167,6 +177,34 @@ def batches(items, *, max_cache_bytes=MAX_CACHE_BYTES, max_items=MAX_BATCH_ITEMS
 
 
 def _read_decoded(request):
+    """The body's decoded bytes (None above MAX_DECODED_BYTES), from its local copy or the origin."""
+    if 'remote' in request:
+        return _read_remote(request)
+    return _read_local(request)
+
+
+@lru_cache(maxsize=2)
+def _origin_store(origin):
+    """One read-only store per worker process and origin; its client has no write call."""
+    from congress_api.retention.public_origin import PublicOrigin
+    from congress_api.retention.r2 import R2Store
+    return R2Store(PublicOrigin(origin, user_agent=USER_AGENT), PUBLIC_BUCKET)
+
+
+def _read_remote(request):
+    """One ranged GET of the whole stored object, pinned by size and MD5, kept in the body's range
+    cache so a retried body reads no byte twice; the storage rule then decodes and checks the SHA-256."""
+    remote = request['remote']
+    source = readings._ReadOnceBody(None, request['cache'], request['stored_bytes'], remote=remote,
+                                    body_store=_origin_store(remote['origin']))
+    try:
+        data, _ = readings._page_entity(source.read(0, source.size), request['body_sha'])
+    finally:
+        source.close()
+    return data
+
+
+def _read_local(request):
     """One open of the local copy: the storage rule decides gzip by hash, then a bounded read."""
     path = Path(request['path'])
     with reading_input():
@@ -277,8 +315,11 @@ def _write_texts(path, texts):
 
 def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadable_store=None,
           parser_workers=1, parser_memory_bytes=readings.PARSER_MEMORY_BYTES,
-          strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS):
-    """Read one batch with bounded workers; stage its texts, readings rows and decisions."""
+          strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS, origin=None):
+    """Read one batch with bounded workers; stage its texts, readings rows and decisions.
+
+    ``origin`` reads bodies from the archive origin rather than the plan's local raw root.
+    """
     from congress_api.parsers.body_text import DEFAULT_STRATEGY, load_page_rule
     ParserWorkerPool.validate_budget(parser_workers, parser_memory_bytes, WORKER_MEMORY_BYTES)
     strategy = strategy or DEFAULT_STRATEGY
@@ -288,7 +329,10 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
     texts_dir = work / 'texts'
     texts_dir.mkdir()
     raw, decided_at = planned['local_root'], planned['decided_at']
-    counters = dict(work_items=0, pending_reads=0, ocr_pending=0, unreadable=0, ocr_pages=0)
+    if origin is None and raw is None:
+        raise ValueError('Body text reads need a local raw root or an origin')
+    bodies_dir = work / 'bodies'  # each remote body's range cache, removed once its reading returns
+    counters = dict(work_items=0, pending_reads=0, missing_pins=0, ocr_pending=0, unreadable=0, ocr_pages=0)
     rows, texts, decisions = [], {}, []
 
     def jobs():
@@ -302,9 +346,18 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
             relative = Path(item['relative_path'])
             if relative.is_absolute() or '..' in relative.parts or body_object_digest(item['physical_key']) != body_hex:
                 raise ValueError('Body copy path or key does not name its body')
-            request = dict(path=str(raw / relative), body_sha=body_hex, parser=item['parser'],
-                           stored_bytes=item['stored_bytes'], texts=str(texts_dir),
-                           strategy=strategy, page_deadline_seconds=page_deadline_seconds)
+            request = dict(body_sha=body_hex, parser=item['parser'], stored_bytes=item['stored_bytes'],
+                           texts=str(texts_dir), strategy=strategy, page_deadline_seconds=page_deadline_seconds)
+            if origin is not None:
+                oversize = item['stored_bytes'] is not None and item['stored_bytes'] > MAX_STORED_BYTES
+                if not oversize and (item['stored_bytes'] is None or item.get('stored_md5') is None):
+                    counters['missing_pins'] += 1  # a ranged read needs the captured size and MD5
+                    continue
+                request.update(cache=str(bodies_dir / body_hex), remote=dict(
+                    origin=origin, bucket=PUBLIC_BUCKET, key=item['physical_key'], md5=item.get('stored_md5')))
+                yield item, request
+                continue
+            request['path'] = str(raw / relative)
             if item['stored_bytes'] is None:  # no pinned size: a local copy sized now and verified by hash
                 try:
                     request.update(stored_bytes=(raw / relative).stat().st_size, unpinned=True)
@@ -318,11 +371,15 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         if request['stored_bytes'] > MAX_STORED_BYTES:
             return item, request, dict(status='completed', value=dict(
                 row=dict(status='size_limit', error_type='stored_size_limit')))
-        for attempt in range(2):  # §6: a page past its deadline is a resource failure, retried once
-            outcome = worker.parse(request['body_sha'], json.dumps(request, separators=(',', ':')).encode())
-            if outcome['status'] != 'completed' or 'retry' not in outcome['value']:
-                return item, request, outcome
-        return item, request, dict(status='unreadable', reason=outcome['value']['retry'])
+        try:
+            for attempt in range(2):  # §6: a page past its deadline is a resource failure, retried once
+                outcome = worker.parse(request['body_sha'], json.dumps(request, separators=(',', ':')).encode())
+                if outcome['status'] != 'completed' or 'retry' not in outcome['value']:
+                    return item, request, outcome
+            return item, request, dict(status='unreadable', reason=outcome['value']['retry'])
+        finally:
+            if 'cache' in request:
+                shutil.rmtree(request['cache'], ignore_errors=True)
 
     with ParserWorkerPool('body_text', json.dumps(planned['versions'], sort_keys=True),
             'congress_api.lake.body_text:parse_payload', workers=parser_workers,
@@ -364,6 +421,7 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         f'SELECT {readings._LAKE_READING_COLUMNS} FROM parsed_readings', PK)])
     text_rows = _write_texts(work / 'body-text.parquet', texts)
     shutil.rmtree(texts_dir)
+    shutil.rmtree(bodies_dir, ignore_errors=True)
     staged = dict(readings=work / 'readings.parquet', body_text=work / 'body-text.parquet',
                   readings_rows=len(rows), body_text_rows=text_rows, versions=planned['versions'],
                   unreadable_key=None, unreadable_pending=False, unreadable_stage=None, **counters)
@@ -410,17 +468,20 @@ def create_table(*, engine, work, catalog_root, table, location, create_namespac
             {'source-id': 3, 'field-id': 1001, 'name': 'parser_version', 'transform': 'identity'}]})
 
 
-def run(*, engine, work, captures, local_root, decided_at, catalog_root, tables, execute=False,
+def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=None, origin=None, execute=False,
         unreadable_store=None, unreadable_files=(), max_cache_bytes=MAX_CACHE_BYTES, max_batch_items=MAX_BATCH_ITEMS,
         max_batches=None, worker_factory=ParserWorker, parser_workers=1,
         parser_memory_bytes=readings.PARSER_MEMORY_BYTES, strategy=None,
         page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None):
     """Plan once against current `readings`, then stage and commit batches in work-list order.
 
-    Resuming is a fresh run: a new plan against the current tables, never a local journal.
+    Bodies come from ``local_root`` or ``origin`` (exactly one). Resuming is a fresh run: a new plan
+    against the current tables, never a local journal.
     """
     from congress_api.lake.tables import resolve_tables, validate_catalog_authority
     validate_catalog_authority(engine, catalog_root)
+    if (local_root is None) == (origin is None):
+        raise ValueError('Name exactly one body source: a local raw root or an origin')
     if set(tables) != {'readings', 'body_text'}:
         raise ValueError('Body text needs the readings and body_text table identifiers')
     if execute and unreadable_store is None:
@@ -452,10 +513,11 @@ def run(*, engine, work, captures, local_root, decided_at, catalog_root, tables,
         staged = stage(planned, items, engine=engine, work=batch_work / 'stage', worker_factory=worker_factory,
                        unreadable_store=unreadable_store, parser_workers=parser_workers,
                        parser_memory_bytes=parser_memory_bytes, strategy=strategy,
-                       page_deadline_seconds=page_deadline_seconds)
+                       page_deadline_seconds=page_deadline_seconds, origin=origin)
         staged['append'] = append(staged, engine=engine, work=batch_work, catalog_root=catalog_root, tables=tables)
         report['applied'] |= any(value is not None for value in staged['append'].values())
         report['batches'].append(staged)
-    if any(b['pending_reads'] or b['ocr_pending'] for b in report['batches']) and report['status'] == 'completed':
+    if any(b['pending_reads'] or b['missing_pins'] or b['ocr_pending'] for b in report['batches']) \
+            and report['status'] == 'completed':
         report['status'] = 'pending'
     return report
