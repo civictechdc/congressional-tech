@@ -240,6 +240,65 @@ def test_nonindexed_citations_refuse_unsupported_witness_claims(tmp_path,phase2)
         asyncio.run(run())
 
 
+SILENT=b'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:900000\n'
+
+
+def silent_playlists(root,shas):
+    """Event 338785's shape: a playlist that opens on segments without spoken cues (ct-bi7s)."""
+    playlists={}
+    for video,event,silent in [('senate:quiet',103,40),('senate:silent',104,300)]:
+        lines=['silent.vtt']*silent+['segment.vtt']
+        playlist=('#EXTM3U\n'+''.join(f'#EXTINF:4.0,\n{line}\n' for line in lines)+'#EXT-X-ENDLIST\n').encode()
+        playlists[video]=playlist
+        track=sha256(playlist).digest()
+        base='https://www.senate.gov/'+video.split(':')[1]+'/'
+        recordings=pq.read_table(root/'recordings.parquet')
+        pq.write_table(pa.Table.from_pylist(recordings.to_pylist()+[dict(video_key=video,event_ids=[event],
+            tracks=[dict(body=track,suffix='',format='m3u8',language='en',production='live')])],schema=recordings.schema),root/'recordings.parquet')
+        resources=pq.read_table(root/'caption_resources.parquet')
+        rows=[dict(video_key=video,track_body=track,ordinal=0,source_url=base+'track.m3u8',declared_uri=None,body=track,suffix='',
+                   format='m3u8',parser_version='fixture-playlist-v1',status='retained')]
+        rows+=[dict(rows[0],ordinal=ordinal,source_url=base+line,declared_uri=line,
+                    body=sha256(SILENT).digest() if line=='silent.vtt' else shas[2],format='vtt') for ordinal,line in enumerate(lines,1)]
+        pq.write_table(pa.Table.from_pylist(resources.to_pylist()+rows,schema=resources.schema),root/'caption_resources.parquet')
+    return playlists
+
+
+def test_cursorless_caption_reads_seek_past_silent_segments_within_a_bound(tmp_path,phase2):
+    routes={}
+    with local_archive_server(routes) as (origin,requests):
+        _,payloads,shas=hearing_release(tmp_path,phase2,origin)
+        root=tmp_path/'release'
+        for payload in [*payloads,SILENT,*silent_playlists(root,shas).values()]:
+            digest=sha256(payload).hexdigest()
+            routes[f'/bodies/sha256/{digest[:2]}/{digest}{".pdf" if payload is payloads[0] else ""}']=payload
+        prepare(tmp_path/'silent',manifest(root),archive_origin=origin)
+        mcp=create_server(None,data_dir=tmp_path/'silent')
+        async def run():
+            async with Client(mcp) as client:
+                async def call(name,**kwargs):
+                    return (await client.call_tool(name,kwargs)).data
+                quiet=(await call('get_transcript',event_id=103,kind='captions'))['rows'][0]['reference']
+                silent_path=f'/bodies/sha256/{sha256(SILENT).hexdigest()[:2]}/{sha256(SILENT).hexdigest()}'
+                before=requests.count(silent_path)
+                landed=await call('get_transcript',**quiet,limit=1)
+                # One call lands on speech past more than one 32-segment page, reading the shared silent body once.
+                assert landed['rows'][0]['text']=='First complete caption.' and landed['rows'][0]['resource_ordinal']==41
+                assert landed['skipped_segments']==dict(first=1,last=40) and landed['has_more']
+                assert requests.count(silent_path)-before<=1
+                # An explicit cursor keeps today's 32-segment page.
+                cursor=await call('get_transcript',**quiet,limit=1,cursor=landed['next_cursor'])
+                assert cursor['rows'][0]['text']=='Second caption.' and 'skipped_segments' not in cursor
+                silent=(await call('get_transcript',event_id=104,kind='captions'))['rows'][0]['reference']
+                bounded=await call('get_transcript',**silent,limit=1)
+                assert bounded['rows']==[] and bounded['has_more'] and bounded['skipped_segments']==dict(first=1,last=256)
+                after=await call('get_transcript',**silent,limit=1,cursor=bounded['next_cursor'])
+                assert after['rows']==[] and after['skipped_segments']==dict(first=257,last=288)
+                last=await call('get_transcript',**silent,limit=1,cursor=after['next_cursor'])
+                assert last['rows'][0]['resource_ordinal']==301 and last['skipped_segments']==dict(first=289,last=300)
+        asyncio.run(run())
+
+
 def test_old_release_playlist_fallback_and_missing_table_states(tmp_path,phase2):
     with local_archive_server({}) as (origin,_):
         selected,_,_=hearing_release(tmp_path,phase2,origin)

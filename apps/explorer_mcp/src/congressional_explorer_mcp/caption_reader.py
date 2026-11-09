@@ -20,6 +20,8 @@ from .release import encoded
 
 MAX_CAPTION_BYTES = 32 << 20
 MAX_SEGMENTS_PER_CALL = 32
+# A request without a cursor that has returned no cue yet reads on to the first spoken cue (ct-bi7s).
+MAX_SEEK_SEGMENTS = 256
 CAPTION_READER_VERSION = 'archive-cues-v1'
 
 
@@ -100,6 +102,18 @@ def caption_cursor(reference, segment, cue, position):
     return base64.urlsafe_b64encode(encoded(dict(reference=reference,segment=segment,cue=cue,position=position))).decode()
 
 
+def may_read(query,result,seen,*,seeking=True):
+    """Whether a call may read another segment: 32 per call, or up to 256 while a cursorless page is still empty."""
+    return seen<MAX_SEGMENTS_PER_CALL or (seeking and query.cursor is None and not result['rows'] and seen<MAX_SEEK_SEGMENTS)
+
+
+def mark_skipped(result,start,unread):
+    """Name playlist segments read before the first returned cue: no spoken cue, missing, or consumed by offset. Direct files start at 0 and never skip."""
+    end=result['rows'][0]['resource_ordinal'] if result['rows'] else unread
+    if start and end>start:
+        result['skipped_segments']=dict(first=start,last=end-1)
+
+
 def _position(query,target):
     if not query.cursor:
         return (1 if target['format']=='m3u8' else 0),0,0,query.offset
@@ -131,15 +145,20 @@ async def read_caption_page(target, query, load_resources, *, data_dir=None,time
                 rows=[],offset=query.offset,has_more=False,missing_resources=[],state='available',
                 reader_version=CAPTION_READER_VERSION)
     spent=0
+    texts={}
     async def read(resource):
         nonlocal spent
         _check_deadline(deadline)
+        # Silent stretches often repeat one segment body; read and charge each body once per call.
+        if resource['saved_body'] in texts:
+            return texts[resource['saved_body']]
         pages,_,_,_ = await run_body_read(partial(_load_or_extract_pages,resource,
             data_dir=data_dir,timeout=max(.05,deadline-time.monotonic()),max_bytes=MAX_CAPTION_BYTES-spent,deadline=deadline))
         text='\n\n'.join(pages)
         spent+=len(text.encode())
         if spent>MAX_CAPTION_BYTES:
             raise ExplorerError('Caption page exceeds its verified-body byte budget')
+        texts[resource['saved_body']]=text
         return text
     root_text=await read(target)
     try:
@@ -167,7 +186,10 @@ async def read_caption_page(target, query, load_resources, *, data_dir=None,time
         raise ExplorerError('Caption cursor is outside this direct caption file')
     resources_seen=0
     done=False
-    while not done and resources_seen<MAX_SEGMENTS_PER_CALL:
+    start=segment
+    seek_until=time.monotonic()+timeout/2  # seeking past 32 segments leaves half the deadline for the reply
+    pending=[]
+    while not done and may_read(query,result,resources_seen,seeking=time.monotonic()<seek_until):
         _check_deadline(deadline)
         if playlist is None:
             resource=target
@@ -175,10 +197,11 @@ async def read_caption_page(target, query, load_resources, *, data_dir=None,time
         else:
             if segment>len(playlist):
                 done=True; break
-            page=await load_resources(segment,1)
-            if not page['rows'] or page['rows'][0]['ordinal']!=segment:
+            if not pending or pending[0]['ordinal']!=segment:
+                pending=(await load_resources(segment,MAX_SEGMENTS_PER_CALL))['rows']
+            if not pending or pending[0]['ordinal']!=segment:
                 raise ExplorerError('Retained playlist resource map omits a declared segment')
-            resource=page['rows'][0]
+            resource=pending.pop(0)
             if resource['declared_uri']!=playlist[segment-1] or resource['source_url']!=urljoin(root['source_url'],playlist[segment-1]):
                 raise ExplorerError('Published segment location differs from the verified playlist')
             if resource['status']!='retained' or not resource['saved_body']:
@@ -220,6 +243,7 @@ async def read_caption_page(target, query, load_resources, *, data_dir=None,time
     if not done and playlist is not None and segment>len(playlist):
         done=True
     result['has_more']=not done
+    mark_skipped(result,start,segment)
     if not done:
         result['next_cursor']=caption_cursor(target['reference'],segment,cue_offset,position)
     result['next_offset']=position if not done else None

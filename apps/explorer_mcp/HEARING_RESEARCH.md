@@ -48,7 +48,9 @@ track selection predates the producer's declared-segment checks.
 Missing, corrupt, unsupported, or unreadable resources are reported explicitly. Older releases
 without the resource map still expose playlist references and report server-side
 assembly as unavailable. Caption calls read at most 32 segments and 32 MiB of
-decoded text, then return a continuation where possible.
+decoded text, then return a continuation where possible. A read without a cursor
+whose page is still empty reads on, up to 256 segments, to the first cue and names
+what it passed in `skipped_segments` (hearing 338785 opens with 107 silent ones).
 
 WebVTT cues preserve identifiers, settings, local timestamps and any
 `X-TIMESTAMP-MAP`. MPEG timestamps remain a separate timebase, following

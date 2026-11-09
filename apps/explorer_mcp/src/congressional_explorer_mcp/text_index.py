@@ -269,7 +269,7 @@ class TextIndex:
             return result
 
     def read_caption(self,target,query):
-        from .caption_reader import _position,caption_cursor,CAPTION_READER_VERSION,MAX_SEGMENTS_PER_CALL
+        from .caption_reader import _position,caption_cursor,may_read,mark_skipped,CAPTION_READER_VERSION,MAX_SEGMENTS_PER_CALL,MAX_SEEK_SEGMENTS
         segment,cue_offset,position,skip=_position(query,target)
         reference=target['reference']
         conditions=["s.seen=?","json_extract(s.context,'$.reference.source_id')=?","json_extract(s.context,'$.reference.video_key')=?"]
@@ -306,12 +306,13 @@ class TextIndex:
                 caption_resource_coverage=coverage,reading_origin='accepted immutable corpus text index',raw_bytes_fetched=0)
             resources=db.execute('SELECT s.context,s.reason,s.body_key,b.state,b.extra FROM sources s LEFT JOIN bodies b USING(body_key) WHERE '+
                 ' AND '.join(conditions)+" AND json_extract(s.context,'$.resource_ordinal')>=? ORDER BY json_extract(s.context,'$.resource_ordinal') LIMIT ?",
-                [*args,segment,MAX_SEGMENTS_PER_CALL+1]).fetchall()
-            done=True;next_position=None
+                [*args,segment,(MAX_SEGMENTS_PER_CALL if query.cursor else MAX_SEEK_SEGMENTS)+1]).fetchall()
+            done=True;next_position=None;start=unread=segment
             for resource_number,resource in enumerate(resources):
                 context=json.loads(resource['context']);ordinal=context['resource_ordinal']
-                if resource_number>=MAX_SEGMENTS_PER_CALL:
+                if not may_read(query,result,resource_number):
                     done=False;next_position=(ordinal,0);break
+                unread=ordinal+1
                 if resource['reason'] or resource['state'] not in ('indexed','empty'):
                     result['missing_resources'].append(dict(ordinal=ordinal,reason=resource['reason'] or resource['state']))
                     continue
@@ -335,6 +336,7 @@ class TextIndex:
             result.update(has_more=not done,next_offset=position if not done else None,
                 verification='Exact release, root, declared resource occurrence, retained reading and cue location verified in the immutable index')
             if not done:result['next_cursor']=caption_cursor(reference,*next_position,position)
+            mark_skipped(result,start,unread)
             if not result['rows'] and done and not position:
                 result.update(state='unavailable',reason='Retained source contains no readable caption cues')
             return result

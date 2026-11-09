@@ -112,6 +112,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         Without source_id, returns a source inventory; offset/limit page that inventory. Choose a returned
         source_id and release_id to read its exact source. Document sources use page and character offset/max_chars;
         captions use cue offset/limit and next_cursor for efficient continuation across retained playlist segments.
+        A caption read without a cursor skips up to 256 segments that hold no cue (e.g. silence before a hearing
+        opens) and names them in skipped_segments; next_cursor pages read at most 32 segments each.
         Caption timestamps retain their source timebase. Package context stays labelled and does not establish
         event-specific coverage. Missing resources and unsupported playlists are explicit; only archived bytes are fetched.
         """

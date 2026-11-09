@@ -554,6 +554,48 @@ def test_retained_caption_page_preserves_cues_cursor_and_zero_raw_reads(tmp_path
         assert len(requests)==count
 
 
+def test_indexed_cursorless_caption_reads_seek_past_silent_segments(tmp_path):
+    from congressional_explorer_mcp.reader import Reader
+    from congressional_explorer_mcp.hearing_models import TranscriptQuery
+    from congressional_explorer_mcp.citations import caption_source_id
+    from contextlib import closing
+    routes={}
+    with local_archive_server(routes) as (origin,requests):
+        root,selected,_=source_fixture(tmp_path,origin,routes)
+        recording=pq.read_table(root/'recordings.parquet').to_pylist()[0]
+        direct=recording['tracks'][0];spoken=direct['body']
+        silent=b'WEBVTT\n\n';silent_body=sha256(silent).digest()
+        routes[f'/bodies/sha256/{silent_body.hex()[:2]}/{silent_body.hex()}']=silent
+        resources,tracks=[],{}
+        for count in (40,300):
+            lines=['silent.vtt']*count+['one.vtt']
+            playlist=('#EXTM3U\n'+''.join(f'#EXTINF:2,\n{line}\n' for line in lines)+'#EXT-X-ENDLIST\n').encode()
+            track=tracks[count]=sha256(playlist).digest()
+            routes[f'/bodies/sha256/{track.hex()[:2]}/{track.hex()}']=playlist
+            recording['tracks'].append(dict(direct,body=track,format='m3u8'))
+            resources+=[dict(video_key='youtube:search',track_body=track,ordinal=0,declared_uri=None,body=track,suffix='',format='m3u8',status='retained')]
+            resources+=[dict(resources[-1],ordinal=ordinal,declared_uri=line,body=silent_body if line=='silent.vtt' else spoken,format='vtt')
+                        for ordinal,line in enumerate(lines,1)]
+        pq.write_table(pa.Table.from_pylist([recording],schema=pq.read_table(root/'recordings.parquet').schema),root/'recordings.parquet')
+        pq.write_table(pa.Table.from_pylist(resources),root/'caption_resources.parquet')
+        selected=prepare(tmp_path/'with-resources',manifest(root),archive_origin=origin)
+        report=build(selected,tmp_path/'work',root/'search_index.sqlite')
+        selected=attach(root,selected,root/'search_index.sqlite',report,tmp_path/'indexed')
+        def read(reader,count,**extra):
+            identity=caption_source_id('youtube:search',tracks[count].hex(),'en','publisher')
+            reference=dict(release_id=selected['release_id'],event_id=118001,kind='captions',source_id=identity)
+            target=dict(release_id=selected['release_id'],reference=reference,saved_body=tracks[count].hex(),format='m3u8',video_key='youtube:search')
+            query=TranscriptQuery(event_id=118001,kind='captions',source_id=identity,limit=1,**extra)
+            return reader.indexed_caption_text(dict(source=target,query=query.model_dump()))
+        with closing(Reader(selected)) as reader:
+            landed=read(reader,40)
+            assert landed['rows'][0]['resource_ordinal']==41 and landed['skipped_segments']==dict(first=1,last=40)
+            bounded=read(reader,300)
+            assert bounded['rows']==[] and bounded['has_more'] and bounded['skipped_segments']==dict(first=1,last=256)
+            after=read(reader,300,cursor=bounded['next_cursor'])
+            assert after['rows']==[] and after['skipped_segments']==dict(first=257,last=288)
+
+
 def test_freeze_admits_bounded_mutation_without_reserving_a_database_copy(tmp_path,monkeypatch,independent_clone_for_lifecycle):
     from types import SimpleNamespace
     import congressional_explorer_mcp.index_builder as builder
