@@ -54,3 +54,11 @@ Results: test_qualification.py 22 passed in 6.95 s; test_page_metadata_model.py 
 **2026-11-09T20:20:35Z**
 
 2026-11-09: the parser-worker startup wait (max(5, timeout)) is hashed into the filename producer identity (lake/filenames/__init__.py current_version names retention/parser_worker.py), so raising it moved filenames.current_version and failed the three checked-in job-spec pin tests. Reverted that hunk; only the qualification test's budget change remains. The startup wait stays 5 s and is scheduled as an identity bump with the next intentional filename version change. Evidence: the test passed twice on quiet machines (ct-8unc and MODS lanes).
+
+**2026-11-09T21:16:13Z**
+
+2026-11-09: full lane on 489f026f is green under load 25-38 (production-offline 12338 passed, 39 skipped, exit 0, 3166 s; storage-loopback 34 passed, exit 0). Log: .cache/archive-release/investigations/thread1-lane-489f026f-20261109.log. The qualification-test half is done.
+
+Remaining half, confirmed on main 16084de5 by the CT session: lake/filenames/__init__.py current_version hashes retention/parser_worker.py (and process_resources.py) as declared inputs, while lake/versions.py lists retention as excluded plumbing. The reason is in versions.py: 'Files that set refusal limits are hashed as declared inputs.' The worker file holds the per-input timeout and memory refusal paths, so hashing it is deliberate; the cost is that any worker-transport edit (the 5 s startup wait at parser_worker.py:111 included) moves filename_readings (c65e505e).
+
+Plan for the next intentional filename version step, one commit: raise the startup wait, and narrow what the filename producer hashes to the refusal limits themselves (the declared timeout and memory values) instead of the whole worker file, so transport edits stop moving the identity. That needs the owner's recorded equivalence decision and a _REVIEWED_PRODUCER_VERSIONS entry. Nobody changes the hash before then.
