@@ -97,7 +97,8 @@ and its scoped decision checks passed; it does not approve migration or release.
 
 Current daily configuration already names seven writers, including committee
 and playlist records. Video refresh support and produced-pin handoff exist;
-video remains deliberately opt-in, and decisions remain pinned. This task does
+video was deliberately opt-in when this inventory was taken (the owner set the
+scheduled daily to read it on 2026-11-09, ct-85dm), and decisions remain pinned. This task does
 not activate a new writer or schedule. The independent consultant's suggested
 video activation is deferred to the existing qualified-source/operations owner,
 because the latest accepted handoff explicitly preserves that opt-in boundary.

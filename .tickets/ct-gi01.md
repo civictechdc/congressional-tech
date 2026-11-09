@@ -208,3 +208,7 @@ The remaining work is specific: publish historical matcher observations with the
 **2026-11-08T17:33:44Z**
 
 2026-11-08 closed: owner accepted the disposition (all 7,200 curated decisions verified; the original issue input file, sha256 a18a56e5…, not found) and split the paid recapture into ct-lft6. Published: historical_recording_matches (34,641 rows, release 630164505301); 18 Senate pages in raw custody; all 9,636 material occurrences dispositioned (D/F preserved, G raw-only, H/I in ct-lft6).
+
+**2026-11-09T21:56:16Z**
+
+2026-11-09: the owner reversed the Nov 5 opt-in for the scheduled run (ct-85dm). The weekly cache refresh left 52 newest YouTube cache bodies unread and the nightly refused at unsettled_video_records = 52. The scheduled daily names video_records again; backfill.json still leaves it out.

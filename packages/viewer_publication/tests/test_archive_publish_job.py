@@ -1208,3 +1208,20 @@ def test_a_first_release_cannot_name_link_history(tmp_path):
     path=tmp_path/'publish.json';path.write_text(json.dumps(value))
     with pytest.raises(ValueError,match='A first release has no link history'):
         load_spec(path)
+
+
+def test_the_shipped_daily_writes_every_capture_record_table_the_shipped_model_reads():
+    # 2026-11-09 (ct-85dm): the model read video_records while the scheduled daily did not name it.
+    # The weekly refresh replaced all 52 YouTube cache bodies, nothing read them, and the nightly
+    # refused at unsettled_video_records = 52. The fixtures above never read the shipped specs.
+    # Cannot see: the live table heads, the raw bodies, or backfill.json (which leaves video out).
+    from congress_api.lake.daily import DAILY_CAPTURE_RECORDS
+    jobs=Path(__file__).resolve().parents[3]/'model/jobs'
+    publish=json.loads((jobs/'publish.json').read_text())
+    model=json.loads((jobs/publish['model_spec']['path']).read_text())
+    tables=json.loads((jobs/publish['daily']['path']).read_text())['tables']
+    read={name for name in DAILY_CAPTURE_RECORDS if name in model}
+    assert read and read<=set(tables)
+    for name in read:
+        target='/'+'/'.join([*tables[name]['namespace'],tables[name]['name']])+'/metadata/'
+        assert target in model[name]['metadata_location'],name
