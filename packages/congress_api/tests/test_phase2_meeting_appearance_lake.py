@@ -2477,12 +2477,13 @@ def test_a_member_listed_alone_is_an_asker_only_after_a_question_heading(line):
 
 def test_a_long_line_of_paged_askers_that_fails_to_match_does_not_backtrack():
     """Review r3: the paged-asker pattern took 0.5 s at ten "Senator X.....NN," groups and four times longer per
-    group when the line then failed; it runs on every MODS line. Twenty groups would take hours."""
-    line = "Senator Graham.....23, " * 20 + "Larson, Amy W., Esq."
+    group when the line then failed; it runs on every MODS line. Thirteen groups make a returning pattern fail this
+    test in about half a minute; twenty would hang the suite for hours."""
+    line = "Senator Graham.....23, " * 13 + "Larson, Amy W., Esq."
     started = time.perf_counter()
     assert appearance_records.mods_entry_kind(line, None, after_question=True) is None
     assert time.perf_counter() - started < 1
-    assert appearance_records.mods_question_entry("Senator Graham.....23, " * 20)
+    assert appearance_records.mods_question_entry("Senator Graham.....23, " * 13)
 
 
 def _mods_lines(*lines):
