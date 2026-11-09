@@ -1,6 +1,6 @@
 ---
 id: ct-an6o
-status: in_progress
+status: closed
 deps: []
 links: [ct-680z]
 created: 2026-11-08T17:42:58Z
@@ -27,3 +27,7 @@ Every root uv.lock change moves all eight producer parser identities, because th
 **2026-11-09T16:25:33Z**
 
 Owner signed off the map equivalence 2026-11-09 (questions tool: 'Sign off (Recommended)'): 7 unchanged producers' import-closure fingerprints reproduce the ct-680z-reviewed entries byte-for-byte; MODS maps 8a34087e -> 8a0023a9 (activated today). Full lane queued after the ct-8cno roster lane; merge after it passes.
+
+**2026-11-09T20:18:11Z**
+
+2026-11-09 merged to main as 16084de5, a fast-forward from 7dd01f79. Full lanes passed on the pre-rebase tip 77328aaf: production-offline 12,327 passed, storage-loopback 34 passed. After the rebase, the 8 overlap files passed (producer identities, single-value groups, filename readings, daily producer records, daily producers, readings budget backfill, spicy-regs inputs, body-text derivation), and doctor shows the same 5 reading-version warnings as before. filenames.current_version() is still c65e505e, equal to the catalog_version pin. Validate Committee Explorer dispatched on 16084de5 (run 42691558640).
