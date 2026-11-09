@@ -2137,20 +2137,72 @@ def test_mods_reads_qualified_person_fields_at_exact_source_position(control):
 
 
 def test_mods_person_qualification_requires_package_position_and_original_line():
-    line = "American Enterprise Institute, John H. Makin"
-    expected = "John H. Makin"
+    line = ("Thursday, July 13, 2006, 2:12 p.m., Part III Mr. Bernard Cohen, Director, Lower Manhattan Recovery "
+            "Office, Federal Transit Administration, U.S. Department of Transportation:")
+    expected = "Bernard Cohen"
     assert appearance_records._mods_witness_fields(
-        line, package_id="CHRG-108hhrg91630", source_index=4,
+        line, package_id="CHRG-109hhrg35501", source_index=13,
     )["name"] == expected
     for package, index, text in [
-        ("CHRG-108hhrg91630", 3, line),
-        ("CHRG-108hhrg91631", 4, line),
-        ("CHRG-108hhrg91630", 4, line + ", Additional material"),
-        (None, 4, line),
+        ("CHRG-109hhrg35501", 12, line),
+        ("CHRG-109hhrg35502", 13, line),
+        ("CHRG-109hhrg35501", 13, line + ", Additional material"),
+        (None, 13, line),
     ]:
         assert appearance_records._mods_witness_fields(
             text, package_id=package, source_index=index,
         )["name"] != expected
+
+
+@pytest.mark.parametrize("line, expected", [
+    ("Vietnam Veterans of America, Richard F. Weidman, Executive Director for Policy and Government Affairs",
+     ("Richard F. Weidman", "Executive Director for Policy and Government Affairs", "Vietnam Veterans of America")),
+    ("Veterans of Foreign Wars of the United States, Eric A. Hilleman, Deputy Director, National Legislative Service",
+     ("Eric A. Hilleman", "Deputy Director", "National Legislative Service, Veterans of Foreign Wars of the United States")),
+    ("Mayo Clinic and Foundation, Douglas L. Wood, M.D.", ("Douglas L. Wood", None, "Mayo Clinic and Foundation")),
+    ("American Coalition for Filipino Veterans, Inc., Eric Lachica",
+     ("Eric Lachica", None, "American Coalition for Filipino Veterans, Inc.")),
+    ("Vietnamese-American Public Affairs Committee, Falls Church, Virginia, Dan Duy-Tu Hoang",
+     ("Dan Duy-Tu Hoang", None, "Vietnamese-American Public Affairs Committee, Falls Church, Virginia")),
+    ("Social Security and Medicare Trust Funds, Thomas R. Saving, Ph.D., Public Trustee",
+     ("Thomas R. Saving", "Public Trustee", "Social Security and Medicare Trust Funds")),
+    ("National Credit Union Administration, the Honorable Norman E. D'Amours",
+     ("Norman E. D'Amours", None, "National Credit Union Administration")),
+    # An organization alone keeps its row: no name, the line's text as the organization.
+    ("U.S. Department of Veterans Affairs", (None, None, "U.S. Department of Veterans Affairs")),
+    ("American Legion", (None, None, "American Legion")),
+    # Untouched: a person first, a titled person, a nominee and a record entry.
+    ("John Smith, Director, Office of Management and Budget", ("John Smith", "Director", "Office of Management and Budget")),
+    ("Hon. Eleanor Holmes Norton, a Delegate in Congress from the District of Columbia",
+     ("Eleanor Holmes Norton", "a Delegate in Congress from the District of Columbia", None)),
+    ("Nomination of Patrick W. Dunne to be Under Secretary for Benefits of the Department of Veterans Affairs",
+     ("Nomination of Patrick W. Dunne to be Under Secretary for Benefits of the Department of Veterans Affairs", None, None)),
+    ("Letter from the nominee to the Office of General Counsel, U.S. Department of Veterans Affairs",
+     ("Letter from the nominee to the Office of General Counsel", "U.S. Department of Veterans Affairs", None)),
+    ("LaVerne Council, Chief Executive Officer, Emerald One, LLC", ("LaVerne Council", "Chief Executive Officer", "Emerald One, LLC")),
+    ("Committee on Agriculture The Honorable Bob Goodlatte, a Representative in Congress From the State of Virginia",
+     ("Committee on Agriculture The Honorable Bob Goodlatte", "a Representative in Congress From the State of Virginia", None)),
+    ("Mr. Sterling Thomas, Chief Scientist, U.S. Government Accountability Office",
+     ("Sterling Thomas", "Chief Scientist", "U.S. Government Accountability Office")),
+    # A surname of more than one word written first, or after the contents heading "Page", joins its given name.
+    ("Herrera Beutler, Hon. Jaime, a Representative in Congress from the State of Washington",
+     ("Jaime Herrera Beutler", "a Representative in Congress from the State of Washington", None)),
+    ("Echo Hawk, Hon. Larry J., Assistant Secretary for Indian Affairs, U.S. Department of the Interior",
+     ("Larry J. Echo Hawk", "Assistant Secretary for Indian Affairs", "U.S. Department of the Interior")),
+    ("Page Robinson, Mr. Alfred, Deputy Administrator, Wage and Hour Division, U.S. Department of Labor",
+     ("Alfred Robinson", "Deputy Administrator", "Wage and Hour Division, U.S. Department of Labor")),
+    # Two full words after a title name a whole person: left as written.
+    ("Jon Tester, Hon. Mark Begich", ("Jon Tester", "Hon. Mark Begich", None)),
+])
+def test_mods_name_fields_read_the_person_the_line_names(line, expected):
+    """ct-rg34: an organization written first is never the name, a surname written first joins its given name,
+    and no text is dropped."""
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension><witness>'
+           + escape(line) + '</witness></extension></mods>')
+    item, = appearance_records.build_appearance_record_row(_sha(xml), "mods", xml)["appearances"]
+    assert (item["name"], item["position"], item["organization"]) == expected
+    assert item["source_locator"] == "mods:witness[1]"
+    assert item["name_key"] == (appearance_records.normalize_name_key(expected[0]) or None)
 
 
 def test_mods_reviewed_joined_line_yields_both_printed_entries():

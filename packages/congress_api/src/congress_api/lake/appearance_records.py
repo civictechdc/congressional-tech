@@ -203,6 +203,16 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_REP_RUNON",
         "_MODS_REP_PERSON_NAME",
         "_mods_representative_value",
+        "_MODS_ORGANIZATION_WORD",
+        "_MODS_ORGANIZATION_NAME",
+        "_MODS_STATE",
+        "_mods_organization_first",
+        "_MODS_NOT_ORGANIZATION",
+        "_MODS_CIVIL_TITLE",
+        "_MODS_SURNAME",
+        "_MODS_GIVEN",
+        "_MODS_PAGE_GIVEN",
+        "_mods_surname_first",
         "_mods_witness_fields",
         "extract_mods_observation",
         "extract_mods_appearances",
@@ -1076,14 +1086,133 @@ def _mods_representative_value(text: str) -> str | None:
     return re.sub(r"\s+", " ", value).rstrip(" ,:") or None
 
 
+# GPO writes some witness lines organization first ("Vietnam Veterans of America, Richard F. Weidman, Executive
+# Director ...", "U.S. Department of Veterans Affairs"), and the name parser then reads the organization as the
+# name (ct-rg34). An organization's name ends in one of these words or continues from it ("Department of ...");
+# "Council", "Chamber(s)", "Board" and "Trust" are also surnames ("LaVerne Council", "Kevin Chambers"), so they
+# count only before "of", "for" or "on" ("Chamber of Commerce").
+_MODS_ORGANIZATION_WORD = re.compile(
+    r"\b(?:Department|Office|Administration|Agency|Bureau|Service|Commission|Association|Institute|Foundation"
+    r"|Federation|Union|League|Society|Coalition|Committee|Center|Legion|Veterans|Project|Fund|Group|Corporation"
+    r"|Company|Inc|Clinic|Hospital|University|College|Organization|Alliance|Network|Program|Conference|Authority"
+    r"|Partnership|Corps|Panel|Initiative|Institution|Laboratory|Museum|Library|School|Academy)s?\b")
+# A name that is a sentence ("American Council of Life Insurers given by Stephen E. Rahn", "Testimony before House
+# Small Business Committee") or a person run into their post, rank or title ("Robert K. Stumberg Professor of Law
+# and Director of Harrison Institute ...", "First Class Cadet Kyra Grace Holmstrup ...", "Committee on Agriculture
+# The Honorable Bob Goodlatte") is not an organization's name.
+_MODS_NOT_ORGANIZATION = re.compile(
+    r"(?:^|\s)(?!(?:of|and|for|the|on|in|to|at|de|la|del|du)\b)[a-z]+\b"
+    r"|^[A-Z][a-z]+(?: [A-Z]\.)? [A-Z][A-Za-z'-]+ (?:Professor|Director|President|Chair(?:man|woman)?|Secretary"
+    r"|Commissioner|Administrator|Counsel|Manager|Officer|Executive|Vice)\b"
+    r"|\b(?:Cadet|Midshipman|Corporal|Seaman|Airman|Sergeant|Lieutenant|Captain|Colonel|Admiral|Honorable) [A-Z]"
+    r"|\b(?:Hon|Mr|Ms|Mrs|Dr)\. [A-Z]")
+_MODS_ORGANIZATION_NAME = re.compile(
+    _MODS_ORGANIZATION_WORD.pattern + r"\.?(?=$|\s+(?:of|for|on|and|to|in|&)\b)"
+    r"|\b(?:Council|Chambers?|Board|Trust)(?=\s+(?:of|for|on)\b)")
+# A place before a state ("Falls Church, Virginia", "Cleveland Heights, OH") is not the person the line names.
+_MODS_STATE = re.compile(
+    r"Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho"
+    r"|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi"
+    r"|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota"
+    r"|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont"
+    r"|Virginia|Washington|West Virginia|Wisconsin|Wyoming|District of Columbia|Puerto Rico|Guam|D\.C\."
+    r"|A[LKZR]|C[AOT]|D[EC]|FL|GA|HI|I[DLNA]|K[SY]|LA|M[EDAINSOT]|N[EVHJMYCD]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[TA]|W[AVIY]"
+    r"|Ala\.|Ariz\.|Ark\.|Calif\.|Colo\.|Conn\.|Del\.|Fla\.|Ga\.|Ill\.|Ind\.|Kans?\.|Ky\.|La\.|Md\.|Mass\."
+    r"|Mich\.|Minn\.|Miss\.|Mo\.|Mont\.|Nebr?\.|Nev\.|N\. ?[HJMYCD]\.|Okla\.|Ore\.|Pa\.|R\. ?I\.|S\. ?[CD]\."
+    r"|Tenn\.|Tex\.|Vt\.|Va\.|Wash\.|W\. ?Va\.|Wis\.|Wyo\.")
+
+
+def _mods_organization_first(line: str, parsed: dict[str, Any]) -> tuple[dict[str, Any], str | None] | None:
+    """An organization-first line read as the first person named after the organization, with the
+    organization to follow their own; or, with no person, no name and the whole reading as the organization.
+    None for any other line, a titled person's, a nominee's and a record entry's, which keeps its label."""
+    name = parsed["name"]
+    # "Nomination of Patrick W. Dunne to be Under Secretary ... of Veterans Affairs" names its nominee.
+    if (not name or not _MODS_ORGANIZATION_NAME.search(name) or _MODS_NOT_ORGANIZATION.search(name)
+            or re.search(r"\b[Nn]omination\b", name) or mods_entry_kind(line, name)):
+        return None
+    text = strip_contents_markers(line)
+    # "the Honorable Norman E. D'Amours" is titled; "17th Judicial Circuit: Lee Cohen" and
+    # "Robert A. Zarzar; accompanied by ..." name a person after the separator.
+    parts = [re.sub(r"^the\b", "The", part.strip()) for part in re.split(r"[,:;]", text) if part.strip()]
+    if WITNESS_TITLE.match(text) or not parts or name not in parts[0]:
+        return None
+
+    def place_follows(i: int) -> bool:
+        return i + 1 < len(parts) and bool(_MODS_STATE.fullmatch(parts[i + 1]))
+
+    def person_at(i: int) -> dict[str, Any] | None:
+        candidate = WITNESS_TITLE.sub("", parts[i] + " ").strip()
+        # A surname alone opens a surname-first entry that ends the line ("..., Hill, James A"); a firm's
+        # names ("Akin, Gump, Strauss, Hauer & Feld") run on past theirs.
+        surname = (re.fullmatch(r"[A-Z][a-z]+(?:-[A-Z][a-z]+)?", candidate) and not _MODS_STATE.fullmatch(candidate)
+                   and i + 2 == len(parts) and bool(re.fullmatch(r"[A-Z][a-z]+(?: [A-Z]\.?)?", parts[i + 1]))
+                   and not _MODS_STATE.fullmatch(parts[i + 1]))
+        if not (is_name(candidate) or surname) or _MODS_ORGANIZATION_WORD.search(candidate) or "&" in candidate:
+            return None
+        person = parse_gpo_witness(", ".join(parts[i:]))
+        last = ([word for word in person["name"].split() if not re.fullmatch(r"(?:Jr|Sr|II|III|IV)\.?", word)] or [""])[-1]
+        # A name ends in a surname, never an initial ("Daniel K." of "Akaka, Daniel K.") or letters ("Watan USA").
+        if (not is_name(person["name"]) or _MODS_ORGANIZATION_WORD.search(person["name"])
+                or re.fullmatch(r"[A-Z]\.?|[A-Z]{2,}", last) or (surname and last != candidate)):
+            return None
+        return person
+
+    # A name with an initial or a title is read first: an organization's name without one of the words above
+    # can look like a person's ("VR Services, Richmond Area Arc, Quintin M. Mitchell"). A state can also be a
+    # credential ("MD"), so a name before one is read when no other name follows.
+    for marked, skip_places in ((True, True), (False, True), (False, False)):
+        for i in range(1, len(parts)):
+            if marked and not (WITNESS_TITLE.match(parts[i] + " ") or re.search(r"\b[A-Z]\.", parts[i])):
+                continue
+            if not (skip_places and place_follows(i)) and (person := person_at(i)):
+                return person, ", ".join(parts[:i])
+    whole = ", ".join(filter(None, (name, parsed["position"], parsed["organization"])))
+    return dict(parsed, name="", honorific="", position="", organization=whole), None
+
+
+# A surname of more than one word, written first ("Torres Small, Hon. Xochitl, Under Secretary ..."), or a
+# surname after the contents heading "Page" ("Page Robinson, Mr. Alfred, ..."), leaves the name parser with the
+# surname as the name and the title and given name as the position (ct-rg34). The given name is one word, with
+# initials before or after it ("Larry J.", "J. Beckwith"); after "Page", up to three words. Two full words after
+# a title ("Brookings Institution, Hon. Bill Frenzel") name a whole person and stay as they are.
+_MODS_SURNAME = re.compile(
+    r"(?P<page>Page )?(?P<surname>(?:(?:de|la|van|von|del|der|di|da|du|le) )*(?:[A-Z]['’])?[A-Z][a-z][A-Za-z'’-]*"
+    r"(?: (?:(?:de|la|van|von|del|der|di|da|du|le) )*(?:[A-Z]['’])?[A-Z][a-z][A-Za-z'’-]*){0,3})")
+_MODS_CIVIL_TITLE = re.compile(r"(?:The )?(?:Hon|Honorable|Mr|Ms|Mrs|Miss|Mx|Dr|Rep|Representative|Senator|Sen|Rev|Reverend)\.? ")
+_MODS_GIVEN = re.compile(r"(?:[A-Z]\. )?[A-Z][a-z'’-]+(?: [A-Z]\.)*")
+_MODS_PAGE_GIVEN = re.compile(r"(?:[A-Z]\.|[A-Z][a-z'’-]+)(?: (?:[A-Z]\.|[A-Z][a-z'’-]+)){0,2}")
+
+
+def _mods_surname_first(line: str, parsed: dict[str, Any]) -> dict[str, Any] | None:
+    """The fields of a surname-first line whose surname the name parser could not see as one. Only a civil
+    title marks the given name: "Chief", "Staff" and "President" also open posts ("Chief Scientist")."""
+    name, position = parsed["name"] or "", parsed["position"] or ""
+    title = _MODS_CIVIL_TITLE.match(position)
+    surname = _MODS_SURNAME.fullmatch(name)
+    if (not title or not surname or _MODS_ORGANIZATION_WORD.search(name) or LABEL_NAME.match(name)
+            or WITNESS_TITLE.match(strip_contents_markers(line))):
+        return None
+    given = position[title.end():].strip()
+    if not (surname["page"] and _MODS_PAGE_GIVEN.fullmatch(given) or _MODS_GIVEN.fullmatch(given)):
+        return None
+    person = f"{position[:title.end()]}{given} {surname['surname']}"
+    if not is_name(WITNESS_TITLE.sub("", person + " ").strip()):
+        return None
+    return parse_gpo_witness(", ".join(filter(None, (person, parsed["organization"]))))
+
+
 def _mods_witness_fields(
     line: str, *, package_id: str | None = None, source_index: int | None = None,
 ) -> dict[str, Any]:
     parsed = parse_gpo_witness(line)
+    reading = _mods_organization_first(line, parsed)
+    parsed, organization_first = reading or (_mods_surname_first(line, parsed) or parsed, None)
     position, organization = parsed["position"], parsed["organization"]
     affiliation = ", ".join(part for part in (position, organization) if part)
     representative = _MODS_REPRESENTATIVE.search(affiliation)
-    if representative:
+    # An organization alone keeps its whole text, a representation marker included.
+    if representative and not (reading and not parsed["name"]):
         previous_party = _opt_str(affiliation[representative.end():].rstrip(":"))
         parsed["on_behalf_of"] = previous_party
         if previous_party:
@@ -1095,6 +1224,8 @@ def _mods_witness_fields(
         # Keep the original name parser's field split before the marker.
         position, _, organization = affiliation[:representative.start()].partition(", ")
         parsed.update(position=position or None, organization=organization or None)
+    if organization_first:
+        parsed["organization"] = ", ".join(filter(None, (parsed["organization"], organization_first)))
 
     reviewed = MODS_PERSON_FIELDS.get(package_id or "", {}).get(source_index)
     if reviewed and sha256(line.strip().encode()).hexdigest() == reviewed[0]:
