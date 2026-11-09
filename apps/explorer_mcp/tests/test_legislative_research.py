@@ -182,6 +182,8 @@ def test_named_queries_use_published_rows_and_recipes(reader):
     assert [row['nomination_id'] for row in pending['rows']]==['119-pn-pending']
     hearings = reader.run_research_query(dict(name='hearings_by_committee',committee='hsif00'))
     assert {r['event_id'] for r in hearings['rows']} == {118001,335321}
+    # An unlabelled transcript list and no captions coverage leave both caption facts unknown, never false.
+    assert {str(r['captions']) for r in hearings['rows']} == {str(dict(advertised=None,archived=None,basis='coverage_unavailable'))}
     assert reader.run_research_query(dict(name='recent_bills',since='2099-01-01'))['rows'] == []
     with pytest.raises(ExplorerError,match='Subject must identify one'):
         reader.run_research_query(dict(name='legislation_by_subject',subject='t'))

@@ -116,6 +116,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         opens) and names them in skipped_segments; next_cursor pages read at most 32 segments each.
         Caption timestamps retain their source timebase. Package context stays labelled and does not establish
         event-specific coverage. Missing resources and unsupported playlists are explicit; only archived bytes are fetched.
+        The inventory's captions field (as on meeting records) explains an absent caption source.
         """
         try:
             query=TranscriptQuery(event_id=event_id,kind=kind,source_id=source_id,offset=offset,limit=limit,page=page,
@@ -136,6 +137,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         committee_transcripts, captions, recordings and coverage. Narrow include to those section names;
         each section's next request continues it using offsets. Transcript rows carry get_transcript references.
         Original recording observations and event versus package_context scope remain intact.
+        The meeting row's captions {advertised, archived, basis} separates publisher-advertised captions
+        (basis advertised_not_archived) from retained tracks get_transcript can read (retained_track).
         Empty sections mean unknown; unavailable tables remain distinct from zero observations.
         """
         value=dict(event_id=event_id,limit=limit,offsets=offsets or {},release_id=release_id)
@@ -329,6 +332,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         section='documents' follows direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
         use nomination_transcripts, bill_hearing_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         Integer IDs accept leading zeros and surrounding whitespace; decimals, exponents and booleans are rejected.
+        Meeting records add captions: advertised (publisher video metadata or a recording says captions exist),
+        archived (retained caption tracks) and basis (retained_track, advertised_not_archived, or the coverage reason).
         For a saved HLS (m3u8) track, saved_url downloads the retained playlist file.
         Relative segment paths refer to the publisher's playlist context. Use the publisher recording link for playback.
         """

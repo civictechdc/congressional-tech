@@ -299,6 +299,38 @@ def test_cursorless_caption_reads_seek_past_silent_segments_within_a_bound(tmp_p
         asyncio.run(run())
 
 
+def test_meeting_results_say_whether_captions_are_archived_or_only_advertised(tmp_path,phase2):
+    with local_archive_server({}) as (origin,_):
+        hearing_release(tmp_path,phase2,origin)
+        root=tmp_path/'release'
+        def caption_list(rows):
+            for row in rows:
+                if row['event_id']==105:
+                    row['transcripts']=[dict(source='captions',package_id=None,list_row=None,formats=['srt'],
+                                             video_key='youtube:srt',language='en',production='caption')]
+        replace_rows(root,'meetings',caption_list)
+        # The published meeting_coverage shape (ct-7jv1 audit: 308 present without a retained track, 3 without a video record).
+        pq.write_table(pa.Table.from_pylist([dict(event_id=event,aspect='captions',state=state,basis='videos.has_caption,recordings.tracks',
+            count=int(state=='present'),reason=reason) for event,state,reason in
+            [(105,'present',None),(103,'present',None),(102,'unknown','recording_without_video_record')]]),root/'meeting_coverage.parquet')
+        reader=Reader(prepare(tmp_path/'coverage',manifest(root),archive_origin=origin))
+        try:
+            expected={105:dict(advertised=True,archived=1,basis='retained_track'),
+                      103:dict(advertised=True,archived=0,basis='advertised_not_archived'),
+                      102:dict(advertised=False,archived=0,basis='recording_without_video_record'),
+                      106:dict(advertised=None,archived=0,basis='coverage_unavailable')}
+            found={row['event_id']:row['captions'] for row in reader.search_entities(dict(table='meetings',limit=100))['rows']}
+            assert {event:found[event] for event in expected}==expected
+            for event,captions in expected.items():
+                assert reader.get_entity(dict(table='meetings',id=event))['rows'][0]['captions']==captions
+                bundle=reader.get_hearing_bundle(dict(event_id=event,include=['meeting']))
+                assert bundle['sections']['meeting']['rows'][0]['captions']==captions
+                assert reader.transcript_inventory(dict(event_id=event,kind='captions'))['captions']==captions
+            assert 'captions' not in reader.get_entity(dict(table='meetings',id=103,fields=['title']))['rows'][0]
+        finally:
+            reader.close()
+
+
 def test_old_release_playlist_fallback_and_missing_table_states(tmp_path,phase2):
     with local_archive_server({}) as (origin,_):
         selected,_,_=hearing_release(tmp_path,phase2,origin)

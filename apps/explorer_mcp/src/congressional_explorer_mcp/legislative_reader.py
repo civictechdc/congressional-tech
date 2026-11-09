@@ -204,7 +204,8 @@ class LegislativeReader:
             raise ExplorerError('This release does not publish the named research recipe; use get_dataset_info for supported recipes')
         recipe_args = [query.since,query.since,query.until,query.until]
         if query.name == 'legislation_by_subject': recipe_args = [subject]
-        result = self.page(query, 'SELECT t.*,'+source_url+' AS publisher_url FROM ('+recipe['sql']+') t'+(' WHERE '+' AND '.join(terms) if terms else ''), [*recipe_args,*args],
+        captions = ','+self.meeting_captions('t') if table == 'meetings' else ''
+        result = self.page(query, 'SELECT t.*,'+source_url+' AS publisher_url'+captions+' FROM ('+recipe['sql']+') t'+(' WHERE '+' AND '.join(terms) if terms else ''), [*recipe_args,*args],
             order=f't.{field} DESC NULLS LAST,t.{key}')
         result = self.entity_rows(result, table)
         for row in result['rows']:

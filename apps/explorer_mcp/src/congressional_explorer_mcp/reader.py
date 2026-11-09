@@ -523,6 +523,8 @@ class Reader(HearingReader, LegislativeReader):
     def entity_columns(self, table, fields=None):
         if table == 'recordings' and fields is None:
             return '* REPLACE(list_transform(tracks,lambda t:struct_pack(body:=hex(t.body),suffix:=t.suffix,format:=t.format,language:=t.language,production:=t.production)) AS tracks)'
+        if table == 'meetings' and fields is None:
+            return '*,'+self.meeting_captions('meetings')
         if fields is not None:
             return ','.join(
                 'list_transform(tracks,lambda t:struct_pack(body:=hex(t.body),suffix:=t.suffix,format:=t.format,language:=t.language,production:=t.production)) AS tracks'

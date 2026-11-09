@@ -10,10 +10,29 @@ class HearingReader:
             raise ExplorerError('Hearing reference belongs to another release; select its pinned release')
         self.require('meetings')
         fields = [name for name, kind in self.schemas['meetings'].items() if '[]' not in kind and not kind.startswith(('STRUCT', 'MAP'))]
-        found = self.rows('SELECT '+','.join(map(quote, fields))+' FROM meetings WHERE event_id=?', [query.event_id], limit=1)['rows']
+        found = self.rows('SELECT '+','.join(map(quote, fields))+','+self.meeting_captions('meetings')+' FROM meetings WHERE event_id=?',
+                          [query.event_id], limit=1)['rows']
         if not found:
             raise ExplorerError('Meeting is absent from this release')
         return found[0]
+
+    def meeting_captions(self, alias):
+        """Say whether a meeting's captions are archived or only advertised, so an empty transcript list explains itself.
+
+        archived counts the meeting's own retained caption tracks (meetings.transcripts source='captions');
+        advertised is the published meeting_coverage captions state 'present' (videos.has_caption or a recording
+        track); basis is retained_track, advertised_not_archived, or that coverage row's reason or state (ct-7jv1).
+        """
+        archived = (f"len(list_filter({alias}.transcripts,lambda x:x.source='captions'))"
+                    if 'source' in self.schemas['meetings'].get('transcripts', '') else 'NULL::BIGINT')
+        retained = f"CASE WHEN {archived}>0 THEN 'retained_track' "
+        fallback = f"struct_pack(advertised:=NULL::BOOLEAN,archived:={archived},basis:={retained}ELSE 'coverage_unavailable' END)"
+        if 'meeting_coverage' not in self.schemas:
+            return fallback+' AS captions'
+        stated = 'coalesce(c.reason,c.state)' if 'reason' in self.schemas['meeting_coverage'] else 'c.state'
+        return (f"coalesce((SELECT struct_pack(advertised:=c.state='present',archived:={archived},basis:={retained}"
+                f"WHEN c.state='present' THEN 'advertised_not_archived' ELSE {stated} END) "
+                f"FROM meeting_coverage c WHERE c.event_id={alias}.event_id AND c.aspect='captions'),{fallback}) AS captions")
 
     def _transcript_sql(self):
         labelled = 'source' in self.schemas['meetings'].get('transcripts', '')
@@ -74,9 +93,9 @@ class HearingReader:
 
     def transcript_inventory(self, value):
         query = TranscriptQuery.model_validate(value)
-        self._hearing(query)
+        captions = self._hearing(query)['captions']
         result = self._source_page(query,offset=query.offset if not query.source_id else 0,limit=query.limit if not query.source_id else 2)
-        result.update(release_id=self.release_id,event_id=query.event_id,
+        result.update(release_id=self.release_id,event_id=query.event_id,captions=captions,
                       state='available' if result['rows'] else 'not_found',
                       note='Choose source_id to read one source. An empty inventory does not establish that no transcript exists.')
         result['availability']=dict(official='available',

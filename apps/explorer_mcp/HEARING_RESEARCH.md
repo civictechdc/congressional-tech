@@ -13,6 +13,14 @@ Witnesses use the published `superseded_by IS NULL` rule. Names never establish
 document ownership. Prepared testimony uses the published testimony material
 kinds; it does not treat every witness-related document as testimony.
 
+Meeting records, the bundle's meeting row and the `get_transcript` inventory carry
+`captions`: `advertised` (published coverage says captions exist, from publisher
+video metadata or a recording track), `archived` (the meeting's retained caption
+tracks) and `basis`. `advertised_not_archived` means a publisher, usually YouTube
+metadata, offers captions the archive did not retain, so no caption source appears;
+`retained_track` means `get_transcript` can read one. Other bases repeat the
+published coverage reason, such as `recording_without_video_record`.
+
 ## Discover a source, then read it
 
 Call `get_transcript(event_id=338785)` for an inventory. Sources have separate
