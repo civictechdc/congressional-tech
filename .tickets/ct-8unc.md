@@ -1,6 +1,6 @@
 ---
 id: ct-8unc
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-09T00:31:06Z
@@ -24,3 +24,9 @@ Review 1 (bcf0a293, merge with fixes; owner: fix both before merging): replaced 
 ## Acceptance Criteria
 
 Tests: transient final read retried and recorded, one owed record per table; a failed recorded mark never fails the run; a refusal mark retried per table, a lasting failure named; killed run completed by the next preflight; 40 unrecorded appends completed, a lineage cycle and a missing snapshot refused; a lost final read with a changed checkout refuses and raises the read; a failed mark while a run stops becomes a note; an interrupt reads once and leaves the rest pending; lost final read after hand-written records completed from its own base, never the stale one; planted wrong base record refused naming the owed key; changed checkout refused for good; activation supersedes a pending daily owed record; R2 If-None-Match/If-Match with 412 PreconditionFailed through the real SDK (storage-loopback). Existing producer record, daily producer, House XML, publish job and selective tests pass.
+
+## Notes
+
+**2026-11-09T05:34:29Z**
+
+Merged to local main at 1ae30211 (fast-forward over e2c878ad, after the body-text merge). Full lanes on that tree, 2026-11-09: production-offline (full lane): exit 0 — 12258 passed, 39 skipped in 2451.96s; storage-loopback (full lane): exit 0 — 34 passed. Log: .cache/archive-release/investigations/ct-8unc-lane-1ae30211-20261109.log. Three independent reviews (findings folded in bcf0a293..1ae30211). Not covered by tests: real R2 accepting If-Match on lake/producers/owed/ (archive_publish already uses If-Match in the same bucket), and scoped-recovery supersede (no caller or fixture). The 2026-11-09 killed nightly predates this code and left no owed record: its readings head (1536270973362461595) still needs one hand-written record, pending owner decision.
