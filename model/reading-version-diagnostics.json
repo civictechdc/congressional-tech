@@ -41,7 +41,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
+    "locked_sha256": "66fe925c21d445b317174df119ba5d423db8444ab43b09faf8e88bef50ae7dca",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -52,11 +52,11 @@
     "sample_sha256": "b60e6a549af0d96615d78f8a076d8f71862b79f37b4f18167406613da66d124f",
     "spicy_docs": {
       "derivation": "003",
-      "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
-      "version": "0.78.0"
+      "digest": "sha256:bc0f8aad8391e4625f74674ae81f1c8295c8877242efc5be6758559c3280aecc",
+      "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "00994d3df2a6f0fba27827ed098c7b17204132e45a19c77b1b10260c2321bdf4",
-    "workspace_sha256": "3138cf5bcd10cf0a7841b6b3d4aedc4acbcf5b4151c2b8040910c7ab2657504b"
+    "workspace_sha256": "384223f74c1782bef37739006b11c8203519580254e58f13573717fe83e13ad3"
   },
   "json": {
     "limits": {
@@ -74,14 +74,17 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
+    "locked_sha256": "66fe925c21d445b317174df119ba5d423db8444ab43b09faf8e88bef50ae7dca",
     "macos_build": "25G5057c",
     "ocr_rule": {
+      "bands": 3,
       "default_strategy": "congress_api.parsers.body_text:native_only",
       "dpi": 200,
       "engine_strategy": "congress_api.parsers.body_text:apple_vision",
-      "garble": "[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f-\\x9f\\ufffd]",
-      "min_chars": 50
+      "garble": "spicy_docs.extraction.api.control_characters",
+      "min_chars": 50,
+      "normalize": "congress_api.parsers.body_text.gpo_page",
+      "require_images": true
     },
     "page_deadline_seconds": 60,
     "policy": {
@@ -94,11 +97,11 @@
     "sample_sha256": "7f791be470e94b701aa4412bfd995b9257803eee33262bc8634251aea5ff25cc",
     "spicy_docs": {
       "derivation": "003",
-      "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
-      "version": "0.78.0"
+      "digest": "sha256:bc0f8aad8391e4625f74674ae81f1c8295c8877242efc5be6758559c3280aecc",
+      "version": "0.79.0+body.text.f20f38dc"
     },
-    "version": "875d3362d6a460d181c510b99701e19fc34dacd751cb306280e66d13e4c7ed7f",
-    "workspace_sha256": "3138cf5bcd10cf0a7841b6b3d4aedc4acbcf5b4151c2b8040910c7ab2657504b"
+    "version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
+    "workspace_sha256": "384223f74c1782bef37739006b11c8203519580254e58f13573717fe83e13ad3"
   },
   "readings": {
     "limits": {
@@ -133,14 +136,17 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
+    "locked_sha256": "66fe925c21d445b317174df119ba5d423db8444ab43b09faf8e88bef50ae7dca",
     "macos_build": "25G5057c",
     "ocr_rule": {
+      "bands": 3,
       "default_strategy": "congress_api.parsers.body_text:native_only",
       "dpi": 200,
       "engine_strategy": "congress_api.parsers.body_text:apple_vision",
-      "garble": "[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f-\\x9f\\ufffd]",
-      "min_chars": 50
+      "garble": "spicy_docs.extraction.api.control_characters",
+      "min_chars": 50,
+      "normalize": "congress_api.parsers.body_text.gpo_page",
+      "require_images": true
     },
     "page_deadline_seconds": 60,
     "policy": {
@@ -153,11 +159,11 @@
     "sample_sha256": "5e5334e9e4f88a1bce6d31860199894fa12f83d65b7f167dc9dbd389c9f9423a",
     "spicy_docs": {
       "derivation": "003",
-      "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
-      "version": "0.78.0"
+      "digest": "sha256:bc0f8aad8391e4625f74674ae81f1c8295c8877242efc5be6758559c3280aecc",
+      "version": "0.79.0+body.text.f20f38dc"
     },
-    "version": "c1e2164947ebcd6cde3eb4fe55e7c4409e791a32c5a89f9a6fa85d67f83b7a81",
-    "workspace_sha256": "3138cf5bcd10cf0a7841b6b3d4aedc4acbcf5b4151c2b8040910c7ab2657504b"
+    "version": "97738b4229e0d064bc9c90aed181d05c4ecb1c4be0775dbdee077d7b6e60c9cb",
+    "workspace_sha256": "384223f74c1782bef37739006b11c8203519580254e58f13573717fe83e13ad3"
   },
   "xml": {
     "limits": {
@@ -175,7 +181,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "f0650a3954af7e20fa0852f80ce04aafa073d4d84fd6c85662d8305124dba213",
+    "locked_sha256": "66fe925c21d445b317174df119ba5d423db8444ab43b09faf8e88bef50ae7dca",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -186,10 +192,10 @@
     "sample_sha256": "c97558482f050dcc25737267a2e0053310bd8e477646335934420c5694b924b7",
     "spicy_docs": {
       "derivation": "003",
-      "digest": "sha256:b483a57d7c26f263f0192320a71423e7ec468d0e4840d2dc3fbe2b56dce4ecdc",
-      "version": "0.78.0"
+      "digest": "sha256:bc0f8aad8391e4625f74674ae81f1c8295c8877242efc5be6758559c3280aecc",
+      "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
-    "workspace_sha256": "3138cf5bcd10cf0a7841b6b3d4aedc4acbcf5b4151c2b8040910c7ab2657504b"
+    "workspace_sha256": "384223f74c1782bef37739006b11c8203519580254e58f13573717fe83e13ad3"
   }
 }

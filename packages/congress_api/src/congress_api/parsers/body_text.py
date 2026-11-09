@@ -8,7 +8,8 @@ page rule's injection point and the bounds around it:
 
 - **Page rule.** ``pdf_text`` takes a :class:`PageRule`: a spicy-docs ``PageStrategy``
   (``extract(page) -> PageContent``) and the reader that renders for it. The declared rule is
-  spicy-docs' ``NativeOrOcr``: keep a sane native layer, else recognize the page whole. A page is
+  :func:`page_rule`, spicy-docs' ``NativeOrOcr`` judging each page's native text as GPO
+  normalization leaves it: keep a sane native layer, else recognize the page whole. A page is
   OCR'd when its content carries a ``native-text-replaced`` issue (or any observation but
   ``native``). :func:`apple_vision` is the declared engine; the default, :func:`native_only`,
   has none: a page the rule sends to OCR raises :class:`OcrRequired`, so a host without Vision
@@ -29,7 +30,6 @@ import hashlib
 import importlib
 import io
 import platform
-import re
 import signal
 import subprocess
 import threading
@@ -38,14 +38,12 @@ import zlib
 from congress_api.parsers.archive_readings import fingerprint
 
 TEXT_HEAD_BYTES = 2048
-# The declared page rule, spicy-docs NativeOrOcr's defaults (reading_versions declares the same):
-# recognize a page with no text layer, with a control character other than tab and line breaks or
-# U+FFFD in its native text, or with fewer than OCR_MIN_CHARS non-whitespace characters that draws
-# an image. GARBLE restates NativeOrOcr's control_characters only for a spicy-docs without it.
+# The declared page rule (reading_versions declares the same): NativeOrOcr's control_characters
+# garble rule and image test, OCR_MIN_CHARS, Apple Vision in OCR_BANDS strips at OCR_DPI.
 OCR_MIN_CHARS = 50
-GARBLE = r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ufffd]'
-REPLACED_ISSUE = 'native-text-replaced'
+OCR_BANDS = 3
 OCR_DPI = 200
+REPLACED_ISSUE = 'native-text-replaced'
 MARKUP_RENDITIONS = {'html_text': 'htm', 'xml_text': 'xml'}
 PAYLOAD_PARSERS = {'pdf': 'pdf_text', 'html': 'html_text', 'xml': 'xml_text'}
 DEFAULT_STRATEGY = 'congress_api.parsers.body_text:native_only'
@@ -117,51 +115,39 @@ class NoEngine:
         raise OcrRequired('page needs OCR and this host has no engine')
 
 
-def _images_drawn(page):
-    """Raster images the page draws (spicy-docs ``Page.image_count``, where the reader has it)."""
-    count = getattr(page, 'image_count', None)
-    return count() if count is not None else len(page.page.get_image_info())
+def gpo_page(text):
+    """One page's native text as GPO normalization leaves it: what the rule counts and checks.
+
+    A GPO hearing page whose body is an inserted scan keeps only its ``VerDate`` footer, 50 or more
+    characters raw, which normalization strips (plan §1: raw counts missed 78% of such pages).
+    ``normalize_gpo_pages`` takes a document's pages, so one page goes in as a document of one.
+    """
+    from spicy_docs.extraction.gpo_normalize import normalize_gpo_pages
+    return normalize_gpo_pages([text])[0][0]
 
 
-def needs_ocr(page, native):
-    """The declared rule over one native observation, for a spicy-docs without ``NativeOrOcr``."""
-    if re.search(GARBLE, native.text):
-        return True
-    return len(''.join(native.text.split())) < OCR_MIN_CHARS and _images_drawn(page) > 0
-
-
-@dataclass(frozen=True)
-class _InterimNativeOnly:
-    """Native text, refusing a page the rule sends to OCR: the rule NativeOrOcr(NoEngine()) applies."""
-
-    def extract(self, page):
-        from spicy_docs.extraction import NativeText
-        content = NativeText().extract(page)
-        if needs_ocr(page, content.observations[0]):
-            raise OcrRequired(page.number)
-        return content
+def page_rule(backend, reader=None):
+    """The declared routing over ``backend``: spicy-docs ``NativeOrOcr`` on GPO-normalized text."""
+    from spicy_docs.extraction import NativeOrOcr
+    return PageRule(NativeOrOcr(backend, min_chars=OCR_MIN_CHARS, normalize=gpo_page), reader)
 
 
 def native_only():
     """The default page rule: the declared routing with no OCR engine."""
-    try:
-        from spicy_docs.extraction import NativeOrOcr
-    except ImportError:  # spicy-docs 0.78.0, which predates NativeOrOcr
-        return PageRule(_InterimNativeOnly())
-    return PageRule(NativeOrOcr(NoEngine(), min_chars=OCR_MIN_CHARS))
+    return page_rule(NoEngine())
 
 
 def apple_vision():
-    """The declared engine: NativeOrOcr over Apple Vision, accurate, correction off, raw RGB at 200 dpi.
+    """The declared engine: Apple Vision, accurate, correction off, three bands, raw RGB at 200 dpi.
 
     Builds Vision's request now, so a host without it refuses here, before any body is read,
     rather than failing every OCR page.
     """
-    from spicy_docs.extraction import DefaultReader, NativeOrOcr
+    from spicy_docs.extraction import DefaultReader
     from spicy_docs.extraction.ocr import AppleVision
-    backend = AppleVision(recognition_level='accurate', language_correction=False)
+    backend = AppleVision(recognition_level='accurate', language_correction=False, bands=OCR_BANDS)
     backend.require_reproducible_identity()
-    return PageRule(NativeOrOcr(backend, min_chars=OCR_MIN_CHARS), DefaultReader(dpi=OCR_DPI, raw_rgb=True))
+    return page_rule(backend, DefaultReader(dpi=OCR_DPI, raw_rgb=True))
 
 
 def load_page_rule(spec):

@@ -30,14 +30,18 @@ archive = [
     "trafilatura==2.0.0",
     "pytz==2026.5",
     "extruct==0.18.0",
-    # body_text (data model §6.6): spicy-docs' body-text derivation and WARC reader. Its
-    # pdf and acquisition extras are not requested: pdf pins Pillow<13 against ours, so
-    # PyMuPDF and warcio are named directly at the versions those extras allow.
-    "spicy-docs==0.78.0; python_version < '3.13'",
+    # body_text (data model §6.6): spicy-docs' body-text derivation, page rule and WARC reader,
+    # a local build of its main (vendor/spicy_docs-*.json names the commit). Its pdf, pdf-apple
+    # and acquisition extras are not requested: pdf pins Pillow<13 against ours and pdf-apple
+    # installs ocrmac only for PyObjC, so PyMuPDF, warcio and the Vision and Quartz bindings
+    # AppleVision imports are named directly, the last at the release spicy-docs measured.
+    "spicy-docs==0.79.0+body.text.f20f38dc; python_version < '3.13'",
     # spicy-docs' own dependency, vendored beside it; named so its path source binds.
     "rulespec-artifacts==1.1.2; python_version < '3.13'",
     "pymupdf>=1.28,<2",
     "warcio==1.7.5",
+    "pyobjc-framework-Vision==12.2.2; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz==12.2.2; sys_platform == 'darwin'",
 ]
 test = ["pytest>=9,<10"]
 

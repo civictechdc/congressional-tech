@@ -28,6 +28,9 @@ constraint-dependencies = [
     "certifi>=2026.10.23",
     "httplib2>=0.32.0",
     "urllib3>=2.8.0",
+    # One PyObjC release across the core and the frameworks AppleVision's bindings pull in:
+    # the release spicy-docs measured Vision on (congress-api's archive extra names Vision and Quartz).
+    "pyobjc-core==12.2.2",
 ]
 
 
@@ -60,5 +63,5 @@ news-lake = { workspace = true }
 inflation-gsheets = { workspace = true }
 # Sibling readers ship as vendored wheels, as spicy-regs binds them; the build
 # receipt beside each wheel names its source commit (vendor/spicy_docs-*.json).
-spicy-docs = { path = "vendor/spicy_docs-0.78.0-py3-none-any.whl" }
+spicy-docs = { path = "vendor/spicy_docs-0.79.0+body.text.f20f38dc-py3-none-any.whl" }
 rulespec-artifacts = { path = "vendor/rulespec_artifacts-1.1.2-py3-none-any.whl" }

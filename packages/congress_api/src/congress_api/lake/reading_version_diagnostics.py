@@ -189,8 +189,11 @@ def body_text_evidence(closure):
                   policy=body_text.worker_limits(), page_deadline_seconds=body_text.PAGE_DEADLINE_SECONDS,
                   spicy_docs=dict(version=version('spicy-docs'), derivation=BODY_TEXT_DERIVATION_VERSION,
                                   digest=derivation_code_digest()))
-    pdf = dict(pymupdf=version('pymupdf'), ocr_rule=dict(min_chars=derivation.OCR_MIN_CHARS,
-               garble=derivation.GARBLE, dpi=derivation.OCR_DPI, default_strategy=derivation.DEFAULT_STRATEGY,
+    rule = derivation.native_only().strategy  # the declared routing, read off the object, not restated
+    name = lambda function: f'{function.__module__}.{function.__qualname__}'
+    pdf = dict(pymupdf=version('pymupdf'), ocr_rule=dict(min_chars=rule.min_chars,
+               require_images=rule.require_images, garble=name(rule.garble), normalize=name(rule.normalize),
+               bands=derivation.OCR_BANDS, dpi=derivation.OCR_DPI, default_strategy=derivation.DEFAULT_STRATEGY,
                engine_strategy=derivation.VISION_STRATEGY), macos_build=derivation.macos_build())
     return {parser: dict(version=version_, **common, **(pdf if parser in ('pdf_text', 'warc') else {}))
             for parser, version_ in body_text.current_versions().items()}

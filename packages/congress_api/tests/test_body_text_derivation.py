@@ -40,30 +40,8 @@ def test_native_only_leaves_a_textless_image_page_for_ocr():
         derive(scanned_pdf(), 'pdf_text')
 
 
-class FakeOcr:
-    """NativeOrOcr's output shape: a replaced page keeps its native observation first and adds the
-    recognized one, marked ``native-text-replaced``, its configuration naming the macOS build."""
-    def extract(self, page):
-        from spicy_docs.extraction import NativeText, Observation, PageContent, ProcessingIssue, TextBlock
-        content = NativeText().extract(page)
-        if not bt.needs_ocr(page, content.observations[0]):
-            return content
-        block = TextBlock('RECOGNIZED PAGE TEXT', observation='full')
-        recognized = Observation('full', block.text, {'backend': 'fake', 'macos_build': '25X999'}, None, (block,),
-                                 issues=(ProcessingIssue(bt.REPLACED_ISSUE, 'no text, draws an image'),))
-        return PageContent((block,), (content.observations[0], recognized))
-
-
-def test_an_injected_strategy_reads_the_textless_page_and_records_it():
-    reading = derive(scanned_pdf(), 'pdf_text', strategy=FakeOcr())
-    assert reading.status == 'completed' and reading.ocr_pages == (2,)
-    assert reading.text == PAGE_ONE + '\nRECOGNIZED PAGE TEXT'
-    assert reading.row()['fingerprint'] is None  # OCR output is not a native layer
-    assert reading.macos_build == '25X999'  # the backend's stated build, not a guess
-
-
 class FixedBackend:
-    """An ImageBackend standing in for Apple Vision."""
+    """An ImageBackend standing in for Apple Vision: its configuration names the macOS build."""
     def __init__(self):
         self.pages = 0
 
@@ -73,30 +51,54 @@ class FixedBackend:
         return Recognition('VISION TEXT', {'backend': 'fixed', 'macos_build': '25Y111'}, None)
 
 
-NATIVE_OR_OCR = __import__('importlib').util.find_spec('spicy_docs') and hasattr(
-    __import__('spicy_docs.extraction', fromlist=['x']), 'NativeOrOcr')
-
-
-@pytest.mark.skipif(not NATIVE_OR_OCR, reason='the pinned spicy-docs predates NativeOrOcr (spicy-docs body-text-ocr-path)')
-def test_native_or_ocr_with_a_fake_backend_recognizes_only_the_textless_page():
-    from spicy_docs.extraction import NativeOrOcr
+def test_the_declared_rule_recognizes_only_the_textless_page_and_records_it():
     backend = FixedBackend()
-    reading = derive(scanned_pdf(), 'pdf_text', strategy=bt.PageRule(NativeOrOcr(backend, min_chars=bt.OCR_MIN_CHARS)))
+    reading = derive(scanned_pdf(), 'pdf_text', strategy=bt.page_rule(backend))
     assert backend.pages == 1 and reading.ocr_pages == (2,) and reading.macos_build == '25Y111'
     assert reading.text == PAGE_ONE + '\nVISION TEXT'
+    assert reading.row()['fingerprint'] is None  # OCR output is not a native layer
     with pytest.raises(bt.OcrRequired):  # the default rule on a host without the engine
-        derive(scanned_pdf(), 'pdf_text', strategy=bt.PageRule(NativeOrOcr(bt.NoEngine())))
+        derive(scanned_pdf(), 'pdf_text')
 
 
-def test_the_rule_keeps_short_pages_without_images_and_flags_garbled_text():
-    from types import SimpleNamespace
-    page = lambda images: SimpleNamespace(image_count=lambda: images)
-    native = lambda text: SimpleNamespace(text=text, issues=())
-    assert not bt.needs_ocr(page(0), native('')) and bt.needs_ocr(page(1), native(''))
-    assert not bt.needs_ocr(page(1), native('x' * bt.OCR_MIN_CHARS))
-    assert bt.needs_ocr(page(0), native('Caesar shifted\x03 text ' * 10))
-    assert bt.needs_ocr(page(0), native('replacement \ufffd character ' * 10))
-    assert not bt.needs_ocr(page(0), native('tabs\tand\nline breaks\r are fine ' * 5))
+def footer_over_scan():
+    """A GPO hearing page whose body is an inserted scan: only the VerDate footer is native text."""
+    import pymupdf
+    document = pymupdf.open()
+    page = document.new_page(width=600, height=800)
+    pixmap = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 32, 32), False)
+    pixmap.clear_with(180)
+    page.insert_image(pymupdf.Rect(60, 60, 540, 700), pixmap=pixmap)
+    footer = ['VerDate Nov 24 2008', '10:22 Feb 03, 2020', 'Jkt 000000', 'PO 00000', 'Frm 00558', 'Fmt 6601',
+              'Sfmt 6602', 'C:\\USERS\\WR47328\\DESKTOP\\39567', 'WILDA']
+    for i, line in enumerate(footer):
+        page.insert_text((30, 720 + 8 * i), line, fontsize=6)
+    return document.tobytes()
+
+
+def test_the_rule_counts_text_after_gpo_normalization_so_a_footer_alone_goes_to_ocr():
+    from spicy_docs.extraction import NativeText
+    data = footer_over_scan()
+    assert derive(data, 'pdf_text', strategy=NativeText()).text == ''  # GPO normalization drops the footer
+    backend = FixedBackend()
+    reading = derive(data, 'pdf_text', strategy=bt.page_rule(backend))
+    assert backend.pages == 1 and reading.ocr_pages == (1,) and reading.text == 'VISION TEXT'
+
+
+def test_the_declared_engine_is_vision_in_three_bands_on_raw_rgb_at_200_dpi():
+    from spicy_docs.extraction import NativeOrOcr
+    from spicy_docs.extraction.ocr import AppleVision
+    try:
+        rule = bt.apple_vision()
+    except (ImportError, ValueError) as error:  # a host without Vision refuses the engine up front
+        pytest.skip(f'no Apple Vision here: {error}')
+    assert isinstance(rule.strategy, NativeOrOcr) and rule.strategy.normalize is bt.gpo_page
+    assert rule.strategy.min_chars == bt.OCR_MIN_CHARS and rule.strategy.require_images
+    backend = rule.strategy.backend
+    assert isinstance(backend, AppleVision)
+    assert {k: backend.configuration()[k] for k in ('recognition_level', 'language_correction', 'bands')} == dict(
+        recognition_level='accurate', language_correction=False, bands=3)
+    assert (rule.reader.dpi, rule.reader.raw_rgb) == (bt.OCR_DPI, True)
 
 
 def test_a_blank_page_without_an_image_stays_native():
@@ -192,6 +194,8 @@ def test_body_text_ids_are_their_declarations_and_name_the_page_rule():
     # A threshold the code uses must be the one its ID declares; moving it needs a new ID.
     assert f'under {bt.OCR_MIN_CHARS} non-whitespace' in BODY_TEXT_DECLARATIONS['pdf_text']
     assert 'U+FFFD' in BODY_TEXT_DECLARATIONS['pdf_text'] and f'raw RGB at {bt.OCR_DPI} dpi' in BODY_TEXT_DECLARATIONS['pdf_text']
+    assert f'in {bt.OCR_BANDS} horizontal bands' in BODY_TEXT_DECLARATIONS['pdf_text']
+    assert 'as normalize_gpo_pages leaves it' in BODY_TEXT_DECLARATIONS['pdf_text']
 
 
 FIXTURES = __import__('pathlib').Path(__file__).parent / 'fixtures'
