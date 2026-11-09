@@ -13,7 +13,13 @@ prepared-statement entry ("Prepared Statement of ........ 300,", "Prepared
 statement..........213,"), kept as typed rows rather than dropped; and CHRG-114hhrg94806's Andre Carson and Peter A.
 DeFazio after Sarah Feinberg's testimony, the askers of the print's other
 question-for-the-record headings, listed here without one; and CHRG-115shrg25981's
-Patty Murray, an asker whose page numbers run into the next heading.
+Patty Murray, an asker whose page numbers run into the next heading. Review r3
+adds the Senate Veterans' Affairs askers printed after a witness's entry as
+"Hon. Jon Tester......22,32 Hon. Roland W. Burris" (the first asker is named;
+the raw line keeps the second) and CHRG-113shrg80510's "Response to request
+arising during the hearing by: Hon. Richard Burr". A shape rule would mistype
+the real witnesses printed the same way ("Hon. Condoleeza Rice, Secretary ...
+........285,"), so these are reviewed one by one.
 """
 
 from typing import Literal
@@ -178,9 +184,18 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         5: ('9d260641607123e8c5849e5a3c064ea902aa9c9b0e812ba6fd2571fb79c5f8cc', None, 'record_material'),
         6: ('881eeda28c54c73b0f5712ca2c8137c31761d04c968a6d91220c8c89579bd89a', None, 'record_material'),
     },
+    'CHRG-111shrg47763': {
+        2: ('2c5b4414728a6d4f6fb5adff87f632062c8b41e063dbeb87a71d23db0fc9ad72', 'Jon Tester', 'record_material'),
+    },
+    'CHRG-111shrg51121': {
+        2: ('00684bf42d469b94d532bcad2b8bcf79f7cda200e59446812425f43a7a68a851', 'Mark Begich', 'record_material'),
+    },
     'CHRG-111shrg52162': {
         6: ('b6f369b7d66aa2d51eb6a5e49bd96bff3a65750646955c6f923a9ca4a55daf2d', None),
         7: ('7af23ea39cb80a0ad43508d37094d76e15d76a8e3c2a1c689cb2248f6e1f5f66', None),
+    },
+    'CHRG-111shrg64440': {
+        2: ('af274e4c95a5953397994ade14d576f6d96bb530cadc5bc307ded06d76bc8e90', 'Jon Tester', 'record_material'),
     },
     'CHRG-111shrg68174': {
         3: ('fb6b185d9dd5a8e6e94849c1097a41b5ebb1cb0d6cafb26872d00487bbde84b5', 'Glenn F. Tilton'),
@@ -247,6 +262,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-113hhrg85873': {
         3: ('4fd06d69bf55f21f303ab5b6107242645b76a6cc51d55d04962a5df45d104d70', None),
     },
+    'CHRG-113shrg80510': {
+        2: ('e52b150a51bb82a540b35281c2602cd446b8c6935253a44fe4fe9dbf96ae6cef', 'Richard Burr', 'record_material'),
+        3: ('c46b121a566b47fb460da5f924708b67933dd1d27b5b5e5a94cd0553fe48956c', 'Jerry Moran', 'record_material'),
+    },
     'CHRG-113shrg88369': {
         6: ('f7075fa4ada87f99df81cd42c428812b9c20d751e065970ab8341c6a845f8170', None),
     },
@@ -278,6 +297,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-114shrg97368': {
         4: ('d646f835d493085e5bd7b0a1b3cd09b1c125c71cbd5962f5a7b915565525e12e', None, 'record_material'),
     },
+    'CHRG-115shrg24586': {
+        3: ('86b0b2cc099e95d14eb67ec0994781b2c05b1e9faec057845fabe8de77afcc1a', 'Jon Tester', 'record_material'),
+    },
     'CHRG-115shrg25981': {
         4: ('527e535a4f89ea672523fe5972f4897408d7082e36d7727c62c394050db4adfc', 'Patty Murray', 'record_material'),
     },
@@ -289,6 +311,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         4: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
         6: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
         8: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
+    },
+    'CHRG-115shrg34881': {
+        5: ('c030adbf8f01de81a247dbfbec67727e0e3c657186f65c7733ea6a4488880316', 'Sherrod Brown', 'record_material'),
     },
     'CHRG-115shrg57804': {
         6: ('b84f0982a08e4207738d802d274b2556ca23cf908c7d9a513c10e25bb465ef77', None),

@@ -24,6 +24,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import time
 from typing import Any
 from xml.sax.saxutils import escape
 
@@ -2472,6 +2473,39 @@ def test_a_member_listed_alone_is_an_asker_only_after_a_question_heading(line):
     assert appearance_records.mods_entry_kind(line, None, after_question=True) == "record_material"
     assert appearance_records.mods_entry_kind("Hon. Joseph H. Boardman, President, Amtrak: Testimony", None,
                                               after_question=True) is None
+
+
+def test_a_long_line_of_paged_askers_that_fails_to_match_does_not_backtrack():
+    """Review r3: the paged-asker pattern took 0.5 s at ten "Senator X.....NN," groups and four times longer per
+    group when the line then failed; it runs on every MODS line. Twenty groups would take hours."""
+    line = "Senator Graham.....23, " * 20 + "Larson, Amy W., Esq."
+    started = time.perf_counter()
+    assert appearance_records.mods_entry_kind(line, None, after_question=True) is None
+    assert time.perf_counter() - started < 1
+    assert appearance_records.mods_question_entry("Senator Graham.....23, " * 20)
+
+
+def _mods_lines(*lines):
+    return ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+            + "".join(f"<witness>{line}</witness>" for line in lines) + "</extension></mods>")
+
+
+def test_reviewed_askers_and_a_heading_run_into_a_witness():
+    """Review r3: a reviewed asker printed after a witness's entry is record material; CHRG-112shrg25114's heading
+    runs into witness Amy W. Larson's entry, which reads as her own row after the heading's."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(
+        "Hawthorne, Kara, Director, Office of Rural Health",
+        "Hon. Jon Tester............................................ 22,32 Hon. Roland W. Burris"),
+        package_id="CHRG-111shrg47763")
+    assert [(a["name"], a["witness_type"]) for a in found] == [("Kara Hawthorne", None), ("Jon Tester", "record_material")]
+    found = appearance_records.extract_mods_appearances(_mods_lines(
+        "Curtis, Stephen A., P.E., M.ASCE, Board Member and At-Large Director, American Society of Civil Engineers",
+        "Sullivan, Terry, State Director, Rhode Island Chapter, The Nature Conservancy",
+        "Responses to additional questions from: Senator Boxer Senator Inhofe Larson, Amy W., Esq., President and CEO, "
+        "National Waterways Conference, Inc"), package_id="CHRG-112shrg25114")
+    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["witness_type"]) for a in found[2:]] == [
+        ("mods:witness[3]", None, None, None, "record_material"),
+        ("mods:witness[3]/part[2]", "Amy W. Larson", "President and CEO", "National Waterways Conference, Inc", None)]
 
 
 def test_a_question_block_ends_at_the_first_line_that_is_not_an_asker():

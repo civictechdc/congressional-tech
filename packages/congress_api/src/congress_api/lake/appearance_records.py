@@ -202,7 +202,8 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_TITLED_ASKER",
         "_MODS_ASKER",
         "_MODS_PAGED_ASKERS",
-        "_mods_question_heading_tail",
+        "_MODS_ASKER_TITLE",
+        "_mods_question",
         "mods_question_entry",
         "_MODS_REPRESENTATIVE",
         "_MODS_REP_PRINT",
@@ -1044,34 +1045,39 @@ _MODS_ASKER = re.compile(
     r"|(?:Hon\.|The Honorable|Honorable)\s+[A-Z][\w.'\" -]*?,\s+(?:of (?:the )?[A-Z][\w. ]*"
     r"|a (?:Representative|Delegate|Resident Commissioner|Senator) in Congress from [\w. ]+)"
     r"|[A-Z][\w'-]+(?: [A-Z][\w'-]+)?(?: [IVX]+| Jr\.?)?,\s+(?:Hon\.|Honorable)\s+[A-Z][\w.]*(?: [A-Z][\w.]*){0,2}")
-_MODS_PAGED_ASKERS = re.compile(rf"(?:(?:{_MODS_TITLED_ASKER})\s*\.{{2,}}\s*\d[\d,\s-]*)+")
+# Possessive: the name word can also take the dots of its leader, and on a long line of several askers that then
+# fails to match, every split of every leader was tried (0.5 s at ten askers, x4 per asker; ct-zs48 review r2).
+_MODS_PAGED_ASKERS = re.compile(rf"(?:(?:{_MODS_TITLED_ASKER})\s*+\.{{2,}}+\s*+\d[\d,\s-]*+)++")
+# A heading naming two askers ("...: Senator Boxer Senator Inhofe") has no one name to read.
+_MODS_ASKER_TITLE = re.compile(r"(?<![\w.])(?:Senator|Hon\.|Honorable)\s+[A-Z]")
 
 
-def _mods_question_heading_tail(line: str) -> str | None:
-    """What follows a question heading's colon, without page numbers, when the heading names only its askers."""
-    heading = _MODS_QUESTION_HEADING.match(line)
-    if not heading:
-        return None
-    tail = _MODS_QUESTION_PAGES.sub("", heading["tail"]).strip()
-    return tail if not tail or _MODS_ASKER.fullmatch(tail) else None
+def _mods_question(line: str, after_question: bool = False) -> tuple[bool, str | None]:
+    """Is this line a question heading or an asker, given whether the line before it was one; and, for a heading
+    that names only its askers, what follows its colon without page numbers ("" when nothing does)."""
+    line = (line or "").strip()
+    if heading := _MODS_QUESTION_HEADING.match(line):
+        tail = _MODS_QUESTION_PAGES.sub("", heading["tail"]).strip()
+        if not tail or _MODS_ASKER.fullmatch(tail):
+            return True, tail
+    return bool(_MODS_PAGED_ASKERS.fullmatch(line)
+                or (after_question and _MODS_ASKER.fullmatch(_MODS_QUESTION_PAGES.sub("", line).strip()))), None
 
 
 def mods_question_entry(line: str, after_question: bool = False) -> bool:
     """Is this line a question heading or an asker, given whether the line before it was one?"""
-    line = (line or "").strip()
-    return bool(_mods_question_heading_tail(line) is not None or _MODS_PAGED_ASKERS.fullmatch(line)
-                or (after_question and _MODS_ASKER.fullmatch(_MODS_QUESTION_PAGES.sub("", line).strip())))
+    return _mods_question(line, after_question)[0]
 
 
 def mods_entry_kind(line: str, name: str | None, organization: str | None = None, *,
-                    after_question: bool = False) -> str | None:
+                    after_question: bool = False, question: bool | None = None) -> str | None:
     """A print's <witness> line is sometimes a record entry (a letter, a submission, questions for the
     record) or a Member's prepared statement, not a witness. Only explicit markers say so; a Member who
     appears (Member Day panels, "Green, Hon. Al") and a nominee or anyone said to testify is a witness.
     The model also treats anyone the meeting's own list names as a witness. `after_question` says the line
-    before this one was a question heading or an asker."""
+    before this one was a question heading or an asker; `question`, when given, is that line's reading already."""
     line = line or ""
-    if mods_question_entry(line, after_question):
+    if question if question is not None else mods_question_entry(line, after_question):
         return "record_material"
     if _RECORD_OPENING.match(line) or (_RETAINED_IN_FILES.match(line) and not drop_footnote_text(line)):
         return "member_statement" if _MEMBER_STATEMENT.search(line) else "statement_for_record"
@@ -1470,7 +1476,7 @@ def extract_mods_observation(
         segments = [(source_locator, cleaned_line)]
         joined = MODS_JOINED_LINES.get(resolved_pkg or "", {}).get(idx)
         if joined and sha256(cleaned_line.encode()).hexdigest() == joined[0]:
-            first, second = cleaned_line.split(joined[1], 1)
+            first, second = re.split(joined[1], cleaned_line, maxsplit=1)
             segments = [(source_locator, first.strip()), (source_locator + "/part[2]", second.strip())]
         for source_locator, cleaned_line in segments:
             if not cleaned_line:
@@ -1484,16 +1490,15 @@ def extract_mods_observation(
                     }
                 )
                 continue
-            question = mods_question_entry(cleaned_line, after_question)
-            tail = _mods_question_heading_tail(cleaned_line)
+            question, tail = _mods_question(cleaned_line, after_question)
             if tail is None:
                 parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
             else:  # a question heading is read for the one asker it names, without a committee title
                 asker = re.sub(r"^(?:Chairman|Chairwoman|Ranking Member)\s+", "", tail)
-                parsed = _mods_witness_fields(asker) if asker and not asker.startswith("Senators ") else {}
+                one = asker and not asker.startswith("Senators ") and len(_MODS_ASKER_TITLE.findall(asker)) < 2
+                parsed = _mods_witness_fields(asker) if one else {}
             w_name = _opt_str(parsed.get("name"))
-            kind = mods_entry_kind(cleaned_line, w_name, _opt_str(parsed.get("organization")),
-                                   after_question=after_question)
+            kind = mods_entry_kind(cleaned_line, w_name, _opt_str(parsed.get("organization")), question=question)
             after_question = question
             # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4). A
             # question heading or asker is kept as record material, never skipped as a label.
