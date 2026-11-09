@@ -63,7 +63,7 @@ The code side is ready on claude/ct-thread1-unattended. capture-archive.yml reli
 
 - The ct-4jms acceptance list: release, profile and url_state identity, budgets, emitted receipt keys, stored MD5 and suffix against the stored objects, receipt-referenced body existence, zero old-index reads, and the Ashley disposition.
 - The ct-q4e2 done condition: at least one meeting dated after the previous release is in the nightly's release.
-- If the nightly stops at `derived_budget_required`, more than 64 MiB (or 5,000 bodies) of new HTML arrived since the last read. That still needs a supervised scoped run (`daily.produce_html_metadata`) or a raised budget. It is the one remaining non-unattended case for ct-hiec.
+- If more than 64 MiB (or 5,000 bodies) of new HTML arrived since the last read, the nightly reads the oldest budget's worth and carries the rest (ct-hiec); `summary.json` shows `daily_carried`. `derived_budget_required` now means a body's stored size is still unknown after custody (local reads), which needs a supervised scoped run (`daily.produce_html_metadata`).
 - If the relist step fails, read the uploaded summary or log. The capture step still ran, and the next day's 7-day window repeats the missed days.
 
 ## Notes

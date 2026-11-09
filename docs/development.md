@@ -170,16 +170,20 @@ were committed. A fresh attempt therefore recovers interrupted work without a
 second local journal, and an unchanged rerun does not reopen settled bodies.
 Changing any reading version requires a newly qualified baseline.
 
-Both budgets apply before raw custody lookups and body reads. Work past either
-budget is carried, not refused (ct-hiec): the attempt reads the bodies of the
-oldest receipts up to the budget (always at least one) and reports the rest as
-`carried` bodies and stored bytes, at the top of the daily report and in
-`daily-summary.json`. The status stays `completed`, so the nightly publishes; a
-carried page shows `unread` main content until a later night reads it, since
-the next attempt's selection still finds it missing. Unknown stored sizes return
-`derived_budget_required`, which does not invoke the scheduler's generic
-archive backfill. Leaf classification retains its own existing admission and
-can precede this derived gate.
+Both budgets select the work before raw custody lookups and body reads. Work
+past either budget is carried, not refused (ct-hiec): the attempt reads the
+bodies of the oldest receipts up to the budget (always at least one) and reports
+the rest as `carried` (bodies, known stored bytes, unknown sizes and the oldest
+receipt day), in the daily report, `daily-summary.json` and the nightly
+`summary.json` (`daily_carried`). The status stays `completed`, so the nightly
+publishes; a carried page shows `unread` main content until a later night reads
+it, since the next attempt's selection still finds it missing. A body whose
+stored size is unknown before custody is admitted only alone. After any
+exact-key custody HEADs, a second byte gate returns `derived_budget_required`
+for a still-unknown size or for more than one admitted body past the byte
+budget; this does not invoke the scheduler's generic archive backfill. Leaf
+classification retains its own existing admission and can precede this derived
+gate.
 
 Qualification must measure the current-versus-baseline narrow SHA scan, parser
 work, bytes, elapsed time, memory and scratch space on the intended daily scope
