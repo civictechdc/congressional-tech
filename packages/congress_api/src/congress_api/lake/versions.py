@@ -33,6 +33,34 @@ _REVIEWED_PRODUCER_VERSIONS = {
     # meeting_records.house_xml
     "fd42cc63b3202e511e5a4acd5594e973eba7aaff08076bedf820119b33ed3de2":
         "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5",
+    # body_text dependency lock (spicy-docs 0.79.0+body.text.f20f38dc, rulespec-artifacts 1.1.2,
+    # pymupdf 1.28.2, warcio 1.7.5 and PyObjC 12.2.2 core, Cocoa, CoreML, Quartz and Vision added;
+    # no locked package changed; none is in these producers' import closure). Proposed by the
+    # body_text producer branch for the maintainer's review, as ct-680z was.
+    # appearance_records.congress_gov
+    "09d9ffe6ca6a2d44fb814252735f8067a1778bb69794a56bf9639da695361b89":
+        "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
+    # appearance_records.house_xml
+    "0ad39284a8c7476f379738a39de457903ffec8c5c5ec133e24c17346a513e898":
+        "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
+    # appearance_records.mods
+    "4f880fd3bda8c616c02a210f1ba4f6c9f7f8c7a752fa400d9137d0877c3e0c80":
+        "1d57eb4426f67b84116bdb4a66774d0e401668b277586939b5c014db8547e32e",
+    # appearance_records.senate_page
+    "64716c3e375f4d43cd3997f36b41ffdfd6720746164a2a715d55c1e31651de78":
+        "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb",
+    # committee_records.house_xml
+    "a22777d61a6178c0993810f965cb273d63d55ce663d32413495fc2c22571fcb3":
+        "e1c6ad0d1398f1d1985e085a0fb9b94c6c42ad38a2d9175ad3e8908eb46c531e",
+    # filename_readings
+    "ac8522c479ab3ca1483f443d0885c75a2735760a2f8c05214e353d1dee4fa58c":
+        "c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09",
+    # meeting_records.congress_gov
+    "b62b203d218ffcbfb03709951693a9b824e7f8b2fb01f7958cf1b6069164fa25":
+        "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
+    # meeting_records.house_xml
+    "a8f71feb07d2fefad454dedd9a586ffbe78cf80f0e5f1ab4373701498e31fef8":
+        "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5",
 }
 
 
