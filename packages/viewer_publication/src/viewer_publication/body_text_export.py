@@ -214,3 +214,73 @@ def publish(client, *, bucket, export_path, pointer, expected_pointer_etag, jour
     published = publish_manifest_pointer(client, bucket=bucket, pointer=pointer,
         key=pointer_key or definition['pointer'], expected_etag=expected_pointer_etag)
     return dict(export=outcome, pointer=published)
+
+
+SPEC_REQUIRED = {'body_text', 'detail', 'work'}
+SPEC_OPTIONAL = {'readings', 'unreadable_files', 'release_id'}
+
+
+def _pointer_etag(client, *, bucket, key):
+    """The pointer's current ETag for the compare-and-swap, or None when there is none yet."""
+    try:
+        return client.head_object(Bucket=bucket, Key=key)['ETag']
+    except Exception as error:
+        if (getattr(error, 'response', None) or {}).get('Error', {}).get('Code') in {'404', 'NoSuchKey', 'NotFound'}:
+            return None
+        raise
+
+
+def main(argv=None, *, client=None):
+    """Plan, build or publish one release's body_text export, as `congress_api.cli.body_text` runs the producer.
+
+    The spec names ``body_text`` (an exact native pin or a Parquet path), the release's local
+    ``detail`` Parquet and ``work``; ``readings`` (pin or path), ``unreadable_files`` and
+    ``release_id`` add coverage. ``--execute`` writes ``export.parquet`` and ``current.json`` under
+    ``work`` on a local-only engine; ``--publish`` then uploads them to the definition's bucket with
+    R2 credentials from the environment, journaling each multipart stage beside them.
+    """
+    import argparse
+    import os
+    from docspec_client.client import NativeDatasets
+    parser = argparse.ArgumentParser(description=main.__doc__)
+    parser.add_argument('--spec', required=True, type=Path)
+    parser.add_argument('--engine-config', default=os.environ.get('DOCSPEC_JOB_CONFIG'))
+    actions = parser.add_mutually_exclusive_group(required=True)
+    actions.add_argument('--plan', action='store_true', help='Validate the spec and name the work directory')
+    actions.add_argument('--execute', action='store_true', help='Build the export and its pointer under work')
+    parser.add_argument('--publish', action='store_true', help='With --execute: upload the export, move the pointer')
+    args = parser.parse_args(argv)
+    if args.publish and not args.execute:
+        parser.error('--publish requires --execute')
+    spec = json.loads(args.spec.read_text())
+    if not isinstance(spec, dict) or not SPEC_REQUIRED <= spec.keys() or spec.keys() - SPEC_REQUIRED - SPEC_OPTIONAL:
+        parser.error('Body-text export spec requires body_text, detail and work')
+    definition = load_definition()
+    work = Path(spec['work']).resolve()
+    if args.plan:
+        print(json.dumps(dict(status='planned', executed=False, work=str(work), key_prefix=definition['prefix'],
+                              pointer=definition['pointer']), sort_keys=True))
+        return 0
+    if not args.engine_config:
+        parser.error('An explicit pinned engine configuration is required')
+    with NativeDatasets.from_config(args.engine_config) as engine:
+        if engine.remote is not None:
+            parser.error('The body-text export runs on a local-only engine configuration')
+        pointer = export(engine=engine, work=work, body_text=spec['body_text'], detail=spec['detail'],
+                         readings_table=spec.get('readings'), unreadable_files=spec.get('unreadable_files', ()),
+                         definition=definition, release_id=spec.get('release_id'))
+    result = dict(status='exported', executed=True, work=str(work), pointer=pointer)
+    if args.publish:
+        from congress_shared.storage import connect_r2
+        bucket = definition['bucket']
+        client = client or connect_r2(bucket=bucket, connect_timeout=15, read_timeout=180,
+                                      retries={'total_max_attempts': 1})
+        result.update(status='published', published=publish(client, bucket=bucket, export_path=work / 'export.parquet',
+            pointer=pointer, expected_pointer_etag=_pointer_etag(client, bucket=bucket, key=definition['pointer']),
+            journal=lambda stage: durable_json(work / 'upload-journal.json', stage)))
+    print(json.dumps(result, default=str, sort_keys=True))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

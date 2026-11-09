@@ -135,6 +135,10 @@ class Bucket:
         self.calls.append(('abort', Key))
 
     def head_object(self, Bucket, Key):
+        if Key not in self.objects:
+            error = RuntimeError('not found')
+            error.response = {'Error': {'Code': '404'}}
+            raise error
         value = self.objects[Key]
         return dict(ContentLength=len(value['body']), ETag='"' + value['etag'] + '"')
 
@@ -180,3 +184,27 @@ def test_row_groups_hold_the_declared_row_count(tmp_path):
     assert [metadata.row_group(i).num_rows for i in range(metadata.num_row_groups)] == [256, 44]
     saved = pq.read_table(tmp_path / 'export/export.parquet', columns=['saved_body']).column(0).to_pylist()
     assert saved == sorted(saved) and pointer['rows'] == 300
+
+
+def test_the_command_plans_builds_and_publishes_with_a_pointer_compare_and_swap(tmp_path, capsys):
+    path, detail = stage(tmp_path)
+    spec = tmp_path / 'spec.json'
+
+    def command(work, *flags, client=None):
+        spec.write_text(json.dumps(dict(body_text=str(path), detail=str(detail), work=str(tmp_path / work))))
+        assert export.main(['--spec', str(spec), *flags], client=client) == 0
+        return json.loads(capsys.readouterr().out)
+
+    planned = command('first', '--plan')
+    assert (planned['status'], planned['executed']) == ('planned', False) and not (tmp_path / 'first').exists()
+    bucket = Bucket()
+    first = command('first', '--execute', '--publish', client=bucket)
+    assert first['status'] == 'published' and first['published']['export'] == 'created'
+    assert ('put', 'derived/body_text/current.json', {'IfNoneMatch': '*'}) in bucket.calls
+    assert json.loads((tmp_path / 'first/upload-journal.json').read_text())['stage'] == 'completed'
+    pointer_etag = bucket.head_object(Bucket='archive', Key='derived/body_text/current.json')['ETag']
+    second = command('second', '--execute', '--publish', client=bucket)  # the same export again
+    assert second['published']['export'] == 'already_exists'
+    assert ('put', 'derived/body_text/current.json', {'IfMatch': pointer_etag}) in bucket.calls
+    with pytest.raises(SystemExit):
+        export.main(['--spec', str(spec), '--plan', '--publish'])

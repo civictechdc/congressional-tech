@@ -53,11 +53,12 @@ def warc_member(payload, *, content_type='text/html', target='https://example.ho
     return out.getvalue()
 
 
-def raw_inputs(root, bodies, *, sniff_version, gzip_stored=(), captured_sniff=True):
+def raw_inputs(root, bodies, *, sniff_version, gzip_stored=(), captured_sniff=True, urls=None):
     """A local raw root, a captures file and sniff readings for ``{name: (bytes, format)}``.
 
     With ``captured_sniff`` the captures record each format at ``sniff_version`` (the fetcher's
-    sniff); the sniff rows are returned either way. Returns (captures, sniff rows, raw, digests).
+    sniff); the sniff rows are returned either way. ``urls`` names a body's fetched URL (one
+    fetch capture each). Returns (captures, sniff rows, raw, digests).
     """
     raw = root / 'raw'
     captures, sniff, digests = [], [], {}
@@ -69,13 +70,19 @@ def raw_inputs(root, bodies, *, sniff_version, gzip_stored=(), captured_sniff=Tr
         key = 'bodies/sha256/' + digest.hex()[:2] + '/' + digest.hex() + suffix
         (raw / key).parent.mkdir(parents=True, exist_ok=True)
         (raw / key).write_bytes(stored)
-        captures.append(dict(sha256=digest, bytes=len(data), stored_bytes=len(stored), stored_suffix=suffix,
+        captures.append(dict(receipt_key=f'receipts/{name}.jsonl', receipt_line=1, capture_index=0, mode='fetch',
+                             url=(urls or {}).get(name),
+                             sha256=digest, bytes=len(data), stored_bytes=len(stored), stored_suffix=suffix,
                              stored_md5=hashlib.md5(stored).digest(),
                              retrieved_at=1_700_000_000_000_000 + position,
                              **(dict(sniffed_format=fmt, sniff_version=sniff_version) if captured_sniff else {})))
         sniff.append(dict(body_sha=digest, parser='sniff', parser_version=sniff_version,
                           status='completed', format=fmt))
-    schema = pa.schema([('sha256', pa.binary(32)), ('bytes', pa.int64()), ('stored_bytes', pa.int64()),
+    schema = pa.schema([('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()),
+                        ('mode', pa.string()), ('url', pa.string()), ('requested_url', pa.string()),
+                        ('context_url', pa.string()), ('member_path', pa.string()),
+                        ('h_content_disposition', pa.string()),
+                        ('sha256', pa.binary(32)), ('bytes', pa.int64()), ('stored_bytes', pa.int64()),
                         ('stored_suffix', pa.string()), ('stored_md5', pa.binary(16)),
                         ('retrieved_at', pa.timestamp('us', tz='UTC')),
                         ('sniffed_format', pa.string()), ('sniff_version', pa.string()), ('intact', pa.bool_())])

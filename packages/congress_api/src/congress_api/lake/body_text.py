@@ -70,10 +70,13 @@ def worker_limits():
 
 
 def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, unreadable_files=(),
-         registry=None):
+         registry=None, filename_readings=None):
     """Materialize the ordered work list in one native job, opening no body.
 
-    The newest captured bodies come first, so weekly bodies lead a backfill.
+    Newest Congress first (plan §1), each body taking the highest Congress any of its captures'
+    effective filenames reads at the current filename catalog version (`filename_readings`, the
+    model's join on filename and source URL); then, and for a body with no Congress or without
+    `filename_readings`, newest capture first, so weekly bodies lead a backfill.
     """
     from congress_api.lake import compatible_versions
     instant(decided_at)
@@ -97,6 +100,13 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
     else:
         inputs.append(json_input(work, 'unreadable', [], **unreadable_schema))
     steps = []
+    if filename_readings is not None:
+        from congress_api.lake import filenames
+        inputs += [table_input('filename_readings', filename_readings),
+                   json_input(work, 'current_recoveries', [], id='Utf8', original_url='Utf8',
+                              recovered_filename='Utf8', kind='Utf8'),
+                   json_input(work, 'filename_parameters', json.loads(filenames.PARAMETERS.read_text()),
+                              priority='Int32', parameter='Utf8')]
     if existing:
         inputs.append(table_input('existing', existing))
     else:
@@ -133,15 +143,35 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
             PARTITION BY body_sha ORDER BY stored_bytes IS NULL,
                 CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
             FROM body_storage) WHERE choice=1'''),
-        dict(name='pending_bodies', materialize=True, sql='''SELECT k.body_sha,k.format,k.parser,k.parser_version,
-            s.physical_key,s.physical_key AS relative_path,s.stored_bytes,s.stored_md5,s.decoded_bytes,
-            coalesce(s.conflict,false) AS conflict,
-            cast(row_number() OVER (ORDER BY s.latest DESC NULLS LAST,k.body_sha) AS BIGINT) AS position
-            FROM candidates k LEFT JOIN body_copies s ON k.body_sha=s.body_sha'''),
     ]
+    if filename_readings is not None:
+        version = "'" + filenames.current_version().replace("'", "''") + "'"
+        steps += [
+            # Only the candidates' captures are named (AGENTS.md pushdown rule), by the model's rule.
+            dict(name='filename_captures', materialize=True, sql='''SELECT c.sha256,c.receipt_key,c.receipt_line,
+                c.capture_index,c.mode,c.url,c.requested_url,c.member_path,c.h_content_disposition,c.context_url,
+                encode(sha256(json_array(c.receipt_key,c.receipt_line,c.capture_index)),'hex') AS capture_id
+                FROM candidates k RIGHT SEMI JOIN captures c ON k.body_sha=c.sha256'''),
+            dict(name='filename_inputs', sql=filenames.INPUT_SQL.read_text()),
+            dict(name='effective_names', sql=filenames.SQL.read_text()),
+            dict(name='named_bodies', materialize=True, sql='''SELECT c.sha256 AS body_sha,n.filename,
+                coalesce(n.source_url,'') AS source_url FROM filename_captures c
+                JOIN effective_names n ON n.input_id=c.capture_id'''),
+            dict(name='body_congress', materialize=True, sql=f'''SELECT b.body_sha,max(f.congress) AS congress
+                FROM named_bodies b JOIN (SELECT filename,source_url,congress FROM filename_readings
+                    WHERE catalog_version={version} AND congress IS NOT NULL) f
+                ON f.filename=b.filename AND f.source_url=b.source_url GROUP BY b.body_sha''')]
+    congress = ('g.congress', ' LEFT JOIN body_congress g ON k.body_sha=g.body_sha') if filename_readings is not None \
+        else ('cast(NULL AS INT)', '')
+    steps.append(dict(name='pending_bodies', materialize=True, sql=f'''SELECT k.body_sha,k.format,k.parser,
+        k.parser_version,s.physical_key,s.physical_key AS relative_path,s.stored_bytes,s.stored_md5,s.decoded_bytes,
+        coalesce(s.conflict,false) AS conflict,{congress[0]} AS congress,
+        cast(row_number() OVER (ORDER BY {congress[0]} DESC NULLS LAST,s.latest DESC NULLS LAST,k.body_sha) AS BIGINT)
+            AS position
+        FROM candidates k LEFT JOIN body_copies s ON k.body_sha=s.body_sha{congress[1]}'''))
     checks = run_job(work, engine, inputs=inputs, steps=steps,
         outputs=[parquet_output(work, 'work-list', 'SELECT * FROM pending_bodies', ['position'])],
-        queries=[dict(name='work_items', sql='SELECT count(*) AS n FROM pending_bodies'),
+        queries=[dict(name='work_items', sql='SELECT count(*) AS n,count(congress) AS with_congress FROM pending_bodies'),
                  dict(name='by_parser', sql='''SELECT parser,count(*) AS n,coalesce(sum(stored_bytes),0) AS stored_bytes
                     FROM pending_bodies GROUP BY parser ORDER BY parser'''),
                  dict(name='conflicts', sql='''SELECT count(*) AS n FROM (SELECT body_sha FROM sniff_conflicts
@@ -150,7 +180,8 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
     if checks['conflicts'][0]['n']:
         raise ValueError('Conflicting sniff facts or captured copies for body-text work')
     return dict(status='planned', work=work, work_list=work / 'work-list.parquet', versions=versions,
-                work_items=checks['work_items'][0]['n'], by_parser=checks['by_parser'],
+                work_items=checks['work_items'][0]['n'], with_congress=checks['work_items'][0]['with_congress'],
+                by_parser=checks['by_parser'],
                 local_root=None if local_root is None else Path(local_root).resolve(), decided_at=decided_at)
 
 
@@ -472,7 +503,7 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
         unreadable_store=None, unreadable_files=(), max_cache_bytes=MAX_CACHE_BYTES, max_batch_items=MAX_BATCH_ITEMS,
         max_batches=None, worker_factory=ParserWorker, parser_workers=1,
         parser_memory_bytes=readings.PARSER_MEMORY_BYTES, strategy=None,
-        page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None):
+        page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None):
     """Plan once against current `readings`, then stage and commit batches in work-list order.
 
     Bodies come from ``local_root`` or ``origin`` (exactly one). Resuming is a fresh run: a new plan
@@ -498,8 +529,10 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
         files += [r for r in unreadable_inventory(unreadable_store, work=work / 'unreadable-inventory').files()
                   if r['key'] not in known]
     planned = plan(captures=captures, engine=engine, work=work / 'plan', decided_at=decided_at,
-                   local_root=local_root, existing=current, unreadable_files=files, registry=registry)
-    report = dict(status='planned', work_items=planned['work_items'], by_parser=planned['by_parser'],
+                   local_root=local_root, existing=current, unreadable_files=files, registry=registry,
+                   filename_readings=filename_readings)
+    report = dict(status='planned', work_items=planned['work_items'], with_congress=planned['with_congress'],
+                  by_parser=planned['by_parser'],
                   versions=planned['versions'], batches=[], applied=False)
     if not execute:
         return report

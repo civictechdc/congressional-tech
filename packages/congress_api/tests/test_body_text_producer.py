@@ -9,8 +9,8 @@ import json
 import pyarrow.parquet as pq
 import pytest
 
-from body_text_fixtures import (HTML, PAGE_ONE, PAGE_TWO, STAMP, XML, committed, lake, scanned_pdf, two_page_pdf,
-                                warc_member)
+from body_text_fixtures import (HTML, PAGE_ONE, PAGE_TWO, STAMP, TABLES, XML, committed, lake, scanned_pdf,
+                                two_page_pdf, warc_member)
 from congress_api.lake import body_text
 
 
@@ -150,3 +150,61 @@ def test_a_page_rule_this_host_cannot_build_refuses_before_any_body_is_read(tmp_
                         work=tmp_path / 'stage', worker_factory=Scripted,
                         strategy='congress_api.parsers.body_text:no_such_engine')
     assert Scripted.calls == []
+
+
+def test_the_work_list_runs_newest_congress_first_then_newest_capture(tmp_path):
+    """Each body takes the highest Congress its captures' filenames read at the current catalog
+    version; a body with none, or only at another version, falls back to its newest capture."""
+    import pyarrow as pa
+    from congress_api.lake import filenames
+    names = ['old_congress', 'new_congress', 'no_congress', 'other_version', 'no_url', 'two_captures']
+    bodies = {n: (b'<doc><p>' + n.encode() + b'</p></doc>', 'xml') for n in names}
+    urls = {n: f'https://docs.house.gov/meetings/{n}.pdf' for n in names if n != 'no_url'}
+    args, by_digest = lake(tmp_path, bodies, urls=urls)
+    captures = pq.read_table(args['captures'])
+    rows = captures.to_pylist()
+    second = dict(next(r for r in rows if r['url'] == urls['two_captures']), receipt_key='receipts/again.jsonl',
+                  url='https://docs.house.gov/meetings/two_captures_later.pdf')
+    pq.write_table(pa.Table.from_pylist(rows + [second], schema=captures.schema), args['captures'])
+    current, other = filenames.current_version(), 'f' * 64
+    readings_rows = [('old_congress', current, 117), ('new_congress', current, 119), ('no_congress', current, None),
+                     ('other_version', other, 120), ('two_captures', current, 116),
+                     ('two_captures_later', current, 118)]
+    path = tmp_path / 'filename-readings.parquet'
+    pq.write_table(pa.Table.from_pylist(
+        [dict(filename=n + '.pdf', source_url=f'https://docs.house.gov/meetings/{n}.pdf', catalog_version=v, congress=c)
+         for n, v, c in readings_rows],
+        schema=pa.schema([('filename', pa.string()), ('source_url', pa.string()), ('catalog_version', pa.string()),
+                          ('congress', pa.int32())])), path)
+    planned = body_text.plan(captures=args['captures'], engine=args['engine'], work=tmp_path / 'plan',
+                             decided_at=STAMP, filename_readings=path)
+    order = [(by_digest[r['body_sha']], r['congress']) for r in pq.read_table(planned['work_list']).to_pylist()]
+    # Newest capture last in `bodies`, so the fallback runs in reverse order of insertion.
+    assert order == [('new_congress', 119), ('two_captures', 118), ('old_congress', 117), ('no_url', None),
+                     ('other_version', None), ('no_congress', None)]
+    assert planned['with_congress'] == 3
+    unordered = body_text.plan(captures=args['captures'], engine=args['engine'], work=tmp_path / 'plain',
+                               decided_at=STAMP)
+    assert [by_digest[r['body_sha']] for r in pq.read_table(unordered['work_list']).to_pylist()] == names[::-1]
+
+
+def test_the_command_plans_and_executes_from_a_spec(tmp_path, capsys):
+    from congress_api.cli import body_text as command
+    args, _ = lake(tmp_path, dict(pdf=(two_page_pdf(), 'pdf'), xml=(XML, 'xml')))
+    spec = dict(captures=str(args['captures']), work=str(tmp_path / 'plan'), decided_at=STAMP,
+                catalog_root=str(args['catalog_root']), tables=TABLES, local_root=str(args['local_root']))
+    path = tmp_path / 'spec.json'
+    path.write_text(json.dumps(spec))
+    assert command.main(['--spec', str(path), '--plan']) == 0
+    planned = json.loads(capsys.readouterr().out)
+    assert (planned['status'], planned['work_items'], planned['applied']) == ('planned', 2, False)
+    path.write_text(json.dumps(dict(spec, work=str(tmp_path / 'run'))))
+    assert command.main(['--spec', str(path), '--execute', '--durable-unreadable-root', str(tmp_path / 'raw')]) == 0
+    done = json.loads(capsys.readouterr().out)
+    assert (done['status'], done['applied']) == ('completed', True)
+    assert len(committed(args, tmp_path / 'read', 'readings', 'status')) == 2
+    path.write_text(json.dumps(dict(spec, work=str(tmp_path / 'both'), origin=body_text.ORIGIN)))
+    with pytest.raises(SystemExit):  # exactly one body source
+        command.main(['--spec', str(path), '--plan'])
+    with pytest.raises(SystemExit):  # execution names its durable unreadable store
+        command.main(['--spec', str(path), '--execute'])
