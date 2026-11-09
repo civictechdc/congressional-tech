@@ -107,9 +107,15 @@ def test_tight_bounds_fall_back_to_the_guaranteed_prefix(tmp_path, bound):
 
 
 class Bucket:
-    """An in-memory S3 subset: conditional completion and conditional pointer PUTs."""
-    def __init__(self):
-        self.objects, self.uploads, self.calls = {}, {}, []
+    """An in-memory S3 subset: conditional completion and pointer PUTs, paged listing, deletes.
+
+    Each write stamps the object with the next tick of a counter, as LastModified."""
+    def __init__(self, page_size=1000):
+        self.objects, self.uploads, self.calls, self.page_size, self.clock = {}, {}, [], page_size, 0
+
+    def _store(self, key, body, etag):
+        self.clock += 1
+        self.objects[key] = dict(body=body, etag=etag, modified=self.clock)
 
     def create_multipart_upload(self, Bucket, Key, ContentType, CacheControl):
         self.calls.append(('create', Key, ContentType))
@@ -128,7 +134,7 @@ class Bucket:
             error = RuntimeError('precondition')
             error.response = {'ResponseMetadata': {'HTTPStatusCode': 412}}
             raise error
-        self.objects[Key] = dict(body=b''.join(parts), etag=etag)
+        self._store(Key, b''.join(parts), etag)
         return dict(ETag='"' + etag + '"')
 
     def abort_multipart_upload(self, Bucket, Key, UploadId):
@@ -144,8 +150,26 @@ class Bucket:
 
     def put_object(self, Bucket, Key, Body, ContentLength, ContentType, CacheControl, **condition):
         self.calls.append(('put', Key, condition))
-        self.objects[Key] = dict(body=Body, etag=md5(Body).hexdigest())
+        self._store(Key, Body, md5(Body).hexdigest())
         return dict(ETag='"' + md5(Body).hexdigest() + '"')
+
+    def get_object(self, Bucket, Key):
+        import io
+        value = self.objects[Key]
+        return dict(Body=io.BytesIO(value['body']), LastModified=value['modified'], ETag='"' + value['etag'] + '"')
+
+    def list_objects_v2(self, Bucket, Prefix, ContinuationToken=None):
+        keys = sorted(k for k in self.objects if k.startswith(Prefix))
+        start = int(ContinuationToken or 0)
+        page = keys[start:start + self.page_size]
+        more = start + self.page_size < len(keys)
+        return dict(Contents=[dict(Key=k, LastModified=self.objects[k]['modified'], Size=len(self.objects[k]['body']))
+                              for k in page], IsTruncated=more,
+                    **(dict(NextContinuationToken=str(start + self.page_size)) if more else {}))
+
+    def delete_object(self, Bucket, Key):
+        self.calls.append(('delete', Key))
+        del self.objects[Key]
 
 
 def test_publish_is_create_only_for_the_export_and_conditional_for_the_pointer(tmp_path):
@@ -208,3 +232,29 @@ def test_the_command_plans_builds_and_publishes_with_a_pointer_compare_and_swap(
     assert ('put', 'derived/body_text/current.json', {'IfMatch': pointer_etag}) in bucket.calls
     with pytest.raises(SystemExit):
         export.main(['--spec', str(spec), '--plan', '--publish'])
+
+
+def test_publishing_keeps_only_the_export_the_current_pointer_names(tmp_path):
+    pointer, output = run(tmp_path, 1 << 20)
+    bucket = Bucket(page_size=2)  # several listing pages
+    prefix = 'derived/body_text/'
+    old = [prefix + sha256(str(i).encode()).hexdigest() + '.parquet' for i in range(3)]
+    for key in old:
+        bucket._store(key, b'an earlier export', md5(b'an earlier export').hexdigest())
+    for key in (prefix + 'notes.txt', prefix + 'staging/' + 'a' * 64 + '.parquet', 'derived/other/x.parquet'):
+        bucket._store(key, b'not an export', md5(b'not an export').hexdigest())
+    first = export.publish(bucket, bucket='archive', export_path=output, pointer=pointer,
+                           expected_pointer_etag=None, journal=lambda stage: None)
+    assert sorted(first['retired']) == sorted(old)
+    assert [c for c in bucket.calls if c[0] == 'delete'] == [('delete', k) for k in first['retired']]
+    assert pointer['key'] in bucket.objects and prefix + 'current.json' in bucket.objects
+    assert {prefix + 'notes.txt', prefix + 'staging/' + 'a' * 64 + '.parquet', 'derived/other/x.parquet'} <= set(bucket.objects)
+    # Another publisher's export, uploaded after the pointer last moved, waits for its own pointer move.
+    pending = prefix + 'b' * 64 + '.parquet'
+    bucket._store(pending, b'next export', md5(b'next export').hexdigest())
+    assert export.retire_unnamed(bucket, bucket='archive', prefix=prefix, pointer_key=prefix + 'current.json') == []
+    # Once the pointer names it, the earlier one goes and the named one stays.
+    bucket._store(prefix + 'current.json', json.dumps(dict(pointer, key=pending)).encode(), 'p')
+    assert export.retire_unnamed(bucket, bucket='archive', prefix=prefix, pointer_key=prefix + 'current.json') \
+        == [pointer['key']]
+    assert pending in bucket.objects and pointer['key'] not in bucket.objects

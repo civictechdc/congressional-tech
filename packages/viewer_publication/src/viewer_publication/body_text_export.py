@@ -10,6 +10,8 @@ row's ``text_sha256`` is of the text it carries, so a reader's per-row check sti
 
 The export is written create-only to ``derived/body_text/<sha256>.parquet`` and pinned by its
 own pointer, ``derived/body_text/current.json``, never by the release manifest (§8.1, §8.3).
+Once the pointer has moved, every other export under the prefix is deleted (plan §2, Lifetimes:
+only the export the current pointer names is kept).
 
 Joins keep text off build sides (§6.6, AGENTS.md): the saved-body set and the narrow chosen
 keys build, the text rows probe. Cost: one pass over the selected text, materialized once to
@@ -18,6 +20,7 @@ scratch and sorted by the writer with spill; the counts read narrow steps.
 from hashlib import md5, sha256
 import json
 from pathlib import Path
+import re
 
 from congress_api.lake import readings
 from congress_api.lake.tables import table_input
@@ -211,9 +214,45 @@ def publish(client, *, bucket, export_path, pointer, expected_pointer_etag, jour
         head = client.head_object(Bucket=bucket, Key=pointer['key'])
         if head.get('ContentLength') != facts['size'] or head.get('ETag', '').strip('"') not in {plan['etag'], facts['md5']}:
             raise ValueError('An existing export key holds other bytes')
+    pointer_key = pointer_key or definition['pointer']
     published = publish_manifest_pointer(client, bucket=bucket, pointer=pointer,
-        key=pointer_key or definition['pointer'], expected_etag=expected_pointer_etag)
-    return dict(export=outcome, pointer=published)
+        key=pointer_key, expected_etag=expected_pointer_etag)
+    retired = retire_unnamed(client, bucket=bucket, prefix=definition['prefix'], pointer_key=pointer_key)
+    return dict(export=outcome, pointer=published, retired=retired)
+
+
+def retire_unnamed(client, *, bucket, prefix, pointer_key):
+    """Delete each export under ``prefix`` that the current pointer does not name; return their keys.
+
+    The pointer is read afresh, so a pointer another publisher moved since is the one kept. Only
+    content-named exports (``<prefix><sha256>.parquet``) are candidates, never the pointer or any
+    other key, and one written after the pointer last changed is kept: it may be another
+    publisher's upload whose pointer move is still to come. Deletion only; no object is replaced.
+    Cost: one pointer read, one listing page per 1,000 keys and one DELETE per retired export.
+    """
+    response = client.get_object(Bucket=bucket, Key=pointer_key)
+    with response['Body'] as body:
+        named = json.loads(body.read(1 << 20))['key']
+    moved = response['LastModified']
+    pattern = re.compile(re.escape(prefix) + '[0-9a-f]{64}[.]parquet')
+    if pattern.fullmatch(named) is None:
+        raise ValueError('The body-text pointer names no content-named export')
+    retired, token = [], None
+    while True:
+        request = dict(Bucket=bucket, Prefix=prefix, **({} if token is None else dict(ContinuationToken=token)))
+        page = client.list_objects_v2(**request)
+        for item in page.get('Contents', []):
+            if pattern.fullmatch(item['Key']) and item['Key'] != named and item['LastModified'] <= moved:
+                retired.append(item['Key'])
+        if not page.get('IsTruncated'):
+            break
+        following = page.get('NextContinuationToken')
+        if not isinstance(following, str) or not following or following == token:
+            raise ValueError('Body-text export listing did not advance')
+        token = following
+    for key in retired:  # after the listing, so no page is read while keys are being removed
+        client.delete_object(Bucket=bucket, Key=key)
+    return retired
 
 
 SPEC_REQUIRED = {'body_text', 'detail', 'work'}
