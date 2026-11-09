@@ -78,3 +78,13 @@ def test_refuses_a_table_path_outside_the_manifest(tmp_path,path):
 def test_refuses_a_non_https_source(tmp_path):
     with pytest.raises(ValueError,match='https'):
         fetch_pinned(_manifest(tmp_path,b'parquet',source='http://spicy.example'),opener=_opener(b'parquet',[]))
+
+
+def test_the_shipped_pin_names_the_shipped_manifest():
+    # 2026-11-09: a re-pinned spicy-regs.json shipped without its publish-model.json pin, and the
+    # nightly refused at its spicy-regs step. Every test above uses a made-up manifest, so check the real one.
+    from pathlib import Path
+    jobs=Path(__file__).resolve().parents[3]/'model/jobs'
+    pin=json.loads((jobs/'publish-model.json').read_text())['spicy_regs']
+    data=(jobs/pin['path']).read_bytes()
+    assert (hashlib.sha256(data).hexdigest(),len(data))==(pin['sha256'],pin['size'])

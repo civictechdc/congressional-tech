@@ -52,8 +52,8 @@
   },
   "spicy_regs": {
     "path": "spicy-regs/spicy-regs.json",
-    "sha256": "4adb1f42785bdd14409f8f45f10e2380556d9406fe13d4299305863a02d93a68",
-    "size": 5770
+    "sha256": "07fe3d760892db138481a56850d6b0633fe93270ff93fb6928ba9e519b2c7e79",
+    "size": 5772
   },
   "parser_versions": {
     "appearance_records": {
