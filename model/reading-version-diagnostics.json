@@ -56,7 +56,7 @@
       "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "00994d3df2a6f0fba27827ed098c7b17204132e45a19c77b1b10260c2321bdf4",
-    "workspace_sha256": "54c907fc6309ba208d9db57b9f23f0b64508beb05429248ac62f0ded7854d736"
+    "workspace_sha256": "9fc06f12658883c5033df70af29472c47d2e8d71ac4426144f0e345a014fdcef"
   },
   "json": {
     "limits": {
@@ -101,7 +101,7 @@
       "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
-    "workspace_sha256": "54c907fc6309ba208d9db57b9f23f0b64508beb05429248ac62f0ded7854d736"
+    "workspace_sha256": "9fc06f12658883c5033df70af29472c47d2e8d71ac4426144f0e345a014fdcef"
   },
   "readings": {
     "limits": {
@@ -118,7 +118,7 @@
     },
     "sample_sha256": "475a2288edeaf9a7dc8e8c91be51524729eeb54b750bb99d28ebb81996393982",
     "version": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
-    "workspace_sha256": "345d096df407ee0e14d433cafefc1140c1779ef4ee24f06d0f2540379207d9a6"
+    "workspace_sha256": "ea6df6aa663b4113a511d5ca8c0c11268479645826419d5ed4b34897f861f2ea"
   },
   "sniff": {
     "locked_sha256": "4712044f1e68920433b7352425e350d3e301037e7ddf2b0943378193d7d35dec",
@@ -129,7 +129,7 @@
     },
     "sample_sha256": "a65c8c35474262329806ea3ebcc90e962c6df3aecf509ab9246f599253bb8357",
     "version": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
-    "workspace_sha256": "3b2f98d54446c891041f1bbaa5c5faae65474ae89f4d59d731efc6e4b2429de9"
+    "workspace_sha256": "61f16f0e56544ac7be80e42ad3248aa11749cdb290e07e538cf23198c7cccb8c"
   },
   "warc": {
     "limits": {
@@ -163,7 +163,7 @@
       "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "97738b4229e0d064bc9c90aed181d05c4ecb1c4be0775dbdee077d7b6e60c9cb",
-    "workspace_sha256": "54c907fc6309ba208d9db57b9f23f0b64508beb05429248ac62f0ded7854d736"
+    "workspace_sha256": "9fc06f12658883c5033df70af29472c47d2e8d71ac4426144f0e345a014fdcef"
   },
   "xml": {
     "limits": {
@@ -196,6 +196,6 @@
       "version": "0.79.0+body.text.f20f38dc"
     },
     "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
-    "workspace_sha256": "54c907fc6309ba208d9db57b9f23f0b64508beb05429248ac62f0ded7854d736"
+    "workspace_sha256": "9fc06f12658883c5033df70af29472c47d2e8d71ac4426144f0e345a014fdcef"
   }
 }
