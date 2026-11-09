@@ -197,6 +197,13 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_TESTIFIED_WORDS",
         "mods_entry_kind",
         "_MODS_ORGANIZATION_DOCUMENT",
+        "_MODS_QUESTION_HEADING",
+        "_MODS_QUESTION_PAGES",
+        "_MODS_TITLED_ASKER",
+        "_MODS_ASKER",
+        "_MODS_PAGED_ASKERS",
+        "_mods_question_heading_tail",
+        "mods_question_entry",
         "_MODS_REPRESENTATIVE",
         "_MODS_REP_PRINT",
         "_MODS_REP_COMPANION",
@@ -1009,26 +1016,6 @@ _RECORD_OPENING = re.compile(
 _WITNESS_HEADING = re.compile(r"^\W*(?:opening )?statements?\b", re.I)
 # GPO's note that an item has been retained, when it is the line's opening and no name follows it.
 _RETAINED_IN_FILES = re.compile(r"^\W*[^\\]*?\b(?:has|have|are) been retained in (?:committee|the files)", re.I)
-
-
-def mods_entry_kind(line: str, name: str | None) -> str | None:
-    """A print's <witness> line is sometimes a record entry (a letter, a submission, questions for the
-    record) or a Member's prepared statement, not a witness. Only explicit markers say so; a Member who
-    appears (Member Day panels, "Green, Hon. Al") and a nominee or anyone said to testify is a witness.
-    The model also treats anyone the meeting's own list names as a witness."""
-    line = line or ""
-    if _RECORD_OPENING.match(line) or (_RETAINED_IN_FILES.match(line) and not drop_footnote_text(line)):
-        return "member_statement" if _MEMBER_STATEMENT.search(line) else "statement_for_record"
-    # Footnote text that runs into a witness's line says nothing about that witness (green-f4).
-    text = drop_footnote_text(line)
-    # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
-    if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text):
-        return None
-    if _MEMBER_STATEMENT.search(text) and (_STATEMENT_WORD.search(text) or _RECORD_ENTRY.search(text)):
-        return "member_statement"
-    return "statement_for_record" if _RECORD_ENTRY.search(text) else None
-
-
 # A line read as an organization alone that ends in a document of its own ("Paralyzed Veterans of America,
 # statement", "National Restaurant Association, letter, dated Sept. 8, 2014", "Federalist Society, Washington,
 # D.C., paper") is that organization's submission for the record (ct-3aap). A person's line ending the same way
@@ -1037,6 +1024,66 @@ def mods_entry_kind(line: str, name: str | None) -> str | None:
 _MODS_ORGANIZATION_DOCUMENT = re.compile(
     r",\s*(?:prepared |submitted )?(?:statement|letter|memorandum|article|paper|report)s?(?: and attachments?)?"
     r"(?:,\s*dated\b[^,]*(?:,\s*\d{4})?)?\s*$", re.I)
+# Questions for the record (ct-zs48 review): a contents heading naming who asked ("Responses to questions for the
+# record from the following Representatives and Delegate: Hon. Bill Shuster, of Pennsylvania", "Questions and
+# Answers (Post-Hearing) from: Senator Kevin Cramer....... 393,") and the askers listed after it are record
+# material: those Members asked; they did not testify. The heading is read only when what follows its colon is
+# nothing, one asker or a list of Senators, so a heading run into a witness's entry ("...: Senator Boxer Senator
+# Inhofe Larson, Amy W., Esq., ...") keeps its reading. After it, a line that is an asker alone continues the list;
+# any other line ends it. An asker's own contents line, page numbers included ("Senator Graham..........23,"),
+# is record material wherever it stands.
+_MODS_QUESTION_HEADING = re.compile(
+    r"^\W*(?:(?:(?:written|additional|supplemental) )?(?:responses?|answers?) to (?:[\w()-]+ )*?questions?"
+    r"|questions and answers)\b[^:]*:\s*(?P<tail>.*)$", re.I)
+_MODS_QUESTION_PAGES = re.compile(r"\s*\.{2,}\s*[\d,\s-]*$")
+_MODS_TITLED_ASKER = (r"(?:Senator|Chairman|Chairwoman|Ranking Member|Representative)\s+[A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,3}"
+                      r"|Senators\s+[A-Z]\w*(?:,?\s+(?:and\s+)?[A-Z]\w*)*")
+_MODS_ASKER = re.compile(
+    _MODS_TITLED_ASKER
+    + r"|(?:Hon\.|The Honorable|Honorable)\s+[A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){1,3}"
+    r"|(?:Hon\.|The Honorable|Honorable)\s+[A-Z][\w.'\" -]*?,\s+(?:of (?:the )?[A-Z][\w. ]*"
+    r"|a (?:Representative|Delegate|Resident Commissioner|Senator) in Congress from [\w. ]+)"
+    r"|[A-Z][\w'-]+(?: [A-Z][\w'-]+)?(?: [IVX]+| Jr\.?)?,\s+(?:Hon\.|Honorable)\s+[A-Z][\w.]*(?: [A-Z][\w.]*){0,2}")
+_MODS_PAGED_ASKERS = re.compile(rf"(?:(?:{_MODS_TITLED_ASKER})\s*\.{{2,}}\s*\d[\d,\s-]*)+")
+
+
+def _mods_question_heading_tail(line: str) -> str | None:
+    """What follows a question heading's colon, without page numbers, when the heading names only its askers."""
+    heading = _MODS_QUESTION_HEADING.match(line)
+    if not heading:
+        return None
+    tail = _MODS_QUESTION_PAGES.sub("", heading["tail"]).strip()
+    return tail if not tail or _MODS_ASKER.fullmatch(tail) else None
+
+
+def mods_question_entry(line: str, after_question: bool = False) -> bool:
+    """Is this line a question heading or an asker, given whether the line before it was one?"""
+    line = (line or "").strip()
+    return bool(_mods_question_heading_tail(line) is not None or _MODS_PAGED_ASKERS.fullmatch(line)
+                or (after_question and _MODS_ASKER.fullmatch(_MODS_QUESTION_PAGES.sub("", line).strip())))
+
+
+def mods_entry_kind(line: str, name: str | None, organization: str | None = None, *,
+                    after_question: bool = False) -> str | None:
+    """A print's <witness> line is sometimes a record entry (a letter, a submission, questions for the
+    record) or a Member's prepared statement, not a witness. Only explicit markers say so; a Member who
+    appears (Member Day panels, "Green, Hon. Al") and a nominee or anyone said to testify is a witness.
+    The model also treats anyone the meeting's own list names as a witness. `after_question` says the line
+    before this one was a question heading or an asker."""
+    line = line or ""
+    if mods_question_entry(line, after_question):
+        return "record_material"
+    if _RECORD_OPENING.match(line) or (_RETAINED_IN_FILES.match(line) and not drop_footnote_text(line)):
+        return "member_statement" if _MEMBER_STATEMENT.search(line) else "statement_for_record"
+    organization_document = bool(not name and organization and _MODS_ORGANIZATION_DOCUMENT.search(line))
+    # Footnote text that runs into a witness's line says nothing about that witness (green-f4).
+    text = drop_footnote_text(line)
+    # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
+    if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text):
+        return "statement_for_record" if organization_document else None
+    if _MEMBER_STATEMENT.search(text) and (_STATEMENT_WORD.search(text) or _RECORD_ENTRY.search(text)):
+        return "member_statement"
+    return "statement_for_record" if _RECORD_ENTRY.search(text) or organization_document else None
 
 
 def mods_held_dates(doc: ModsDocument) -> list[str]:
@@ -1399,11 +1446,13 @@ def extract_mods_observation(
 
     raw_rows = []
     reviewed_entries = MODS_RECORD_ENTRIES.get(resolved_pkg or "", {})
+    after_question = False
     for idx, w_line in enumerate(raw_witness_lines, start=1):
         cleaned_line = (w_line or "").strip()
         source_locator = f"mods:witness[{idx}]"
         reviewed = reviewed_entries.get(idx)
         if reviewed and sha256(cleaned_line.encode()).hexdigest() == reviewed[0]:
+            after_question = False
             entry_type = "member_statement" if _MEMBER_STATEMENT.search(cleaned_line) else "record_material"
             raw_rows.append(
                 {
@@ -1425,6 +1474,7 @@ def extract_mods_observation(
             segments = [(source_locator, first.strip()), (source_locator + "/part[2]", second.strip())]
         for source_locator, cleaned_line in segments:
             if not cleaned_line:
+                after_question = False
                 raw_rows.append(
                     {
                         "source_locator": source_locator,
@@ -1434,12 +1484,22 @@ def extract_mods_observation(
                     }
                 )
                 continue
-            parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
+            question = mods_question_entry(cleaned_line, after_question)
+            tail = _mods_question_heading_tail(cleaned_line)
+            if tail is None:
+                parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
+            else:  # a question heading is read for the one asker it names, without a committee title
+                asker = re.sub(r"^(?:Chairman|Chairwoman|Ranking Member)\s+", "", tail)
+                parsed = _mods_witness_fields(asker) if asker and not asker.startswith("Senators ") else {}
             w_name = _opt_str(parsed.get("name"))
-            # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
-            if w_name and LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name):
+            kind = mods_entry_kind(cleaned_line, w_name, _opt_str(parsed.get("organization")),
+                                   after_question=after_question)
+            after_question = question
+            # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4). A
+            # question heading or asker is kept as record material, never skipped as a label.
+            if not question and w_name and LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name):
                 continue
-            if w_name and not is_name(w_name) and any(
+            if not question and w_name and not is_name(w_name) and any(
                 phrase in cleaned_line.lower()
                 for phrase in ("answers to questions", "printed hearing record", "submitted for the record")
             ):
@@ -1455,9 +1515,7 @@ def extract_mods_observation(
                     "organization": _opt_str(parsed.get("organization")),
                     "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
                     "bioguide_id": bg,
-                    "witness_type": mods_entry_kind(cleaned_line, w_name) or (
-                        "statement_for_record" if not w_name and parsed.get("organization")
-                        and _MODS_ORGANIZATION_DOCUMENT.search(cleaned_line) else None),
+                    "witness_type": kind,
                     "display_order": len(raw_rows) + 1,
                     "document_links": [],
                 }

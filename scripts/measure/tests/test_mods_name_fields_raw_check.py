@@ -201,3 +201,38 @@ def test_an_accept_is_bound_to_the_type(tmp_path):
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 1 and out['failed'] == {'type_unsupported': 1, 'stale_accept': 1}
+
+
+# ct-zs48 review: a question-for-the-record heading and the Members listed under it are record material.
+QUESTION_LINES = ['Responses to questions for the record from the following Representatives: Hon. Richard Roe, of Ohio',
+                  'Hon. Eleanor Smith, of Texas', 'Jaime Herrera Beutler, Director, Office of Things: Testimony']
+QUESTION_BEFORE = [occurrence('mods:witness[2]', 'Eleanor Smith', 'of Texas'),
+                   occurrence('mods:witness[3]', 'Jaime Herrera Beutler', 'Director', 'Office of Things: Testimony')]
+QUESTION_AFTER = [typed(occurrence('mods:witness[1]', 'Richard Roe', 'of Ohio'), 'record_material'),
+                  typed(QUESTION_BEFORE[0], 'record_material'), QUESTION_BEFORE[1]]
+
+
+def test_a_restored_heading_and_its_typed_asker_pass(tmp_path):
+    write(tmp_path, before=QUESTION_BEFORE, after=QUESTION_AFTER, lines=QUESTION_LINES)
+    code, out = run(tmp_path)
+    assert code == 0 and [i['locator'] for i in out['restored']] == ['mods:witness[1]']
+    assert out['counts']['typed'] == 1
+
+
+def test_an_asker_left_a_witness_and_a_witness_typed_as_an_asker_fail(tmp_path):
+    write(tmp_path, before=QUESTION_BEFORE, after=QUESTION_BEFORE, lines=QUESTION_LINES)
+    code, out = run(tmp_path)
+    assert code == 1 and out['failed'] == {'question_asker_as_witness': 1}
+    assert [i['locator'] for i in out['question_asker_as_witness']] == ['mods:witness[2]']
+    (tmp_path / 'raw').rename(tmp_path / 'raw-old')
+    write(tmp_path, before=QUESTION_BEFORE, after=[*QUESTION_AFTER[:2], typed(QUESTION_BEFORE[1], 'record_material')],
+          lines=QUESTION_LINES)
+    code, out = run(tmp_path)
+    assert code == 1 and out['failed'] == {'type_unsupported': 1}
+
+
+def test_a_planted_asker_left_a_witness_is_flagged(tmp_path):
+    write(tmp_path, before=QUESTION_BEFORE, after=QUESTION_AFTER, lines=QUESTION_LINES)
+    code, out = run(tmp_path, '--plant', 'asker-as-witness')
+    assert code == 1 and out['planted']['flagged'] and out['planted']['locator'] == 'mods:witness[2]'
+    assert out['failed'] == {'question_asker_as_witness': 1}

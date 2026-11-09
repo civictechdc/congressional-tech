@@ -2288,18 +2288,24 @@ def test_mods_reviewed_joined_line_yields_both_printed_entries():
 def test_mods_reviewed_joined_line_splits_norton_from_lipinski():
     """ct-zs48: CHRG-114hhrg93258's tenth contents line, under "Responses to questions for the record from the
     following Representatives and Delegate", runs Delegate Eleanor Holmes Norton's entry into Representative
-    Daniel Lipinski's. The retained MODS bytes give each their own occurrence; neither is a WITNESS congMember,
-    so neither links to a bioguide, like the Members listed above them."""
+    Daniel Lipinski's. The retained MODS bytes give each their own occurrence. The heading and every Member
+    listed under it asked questions for the record; they are record material, not witnesses, and the heading,
+    which names Bill Shuster, is kept as his row. None is a WITNESS congMember, so none links to a bioguide."""
     xml = (ROOT / "packages/congress_api/tests/fixtures/gpo_metadata/CHRG-114hhrg93258.xml").read_bytes()
     assert hashlib.sha256(xml).hexdigest() == "b7222c476e68a944d4bf0c57890400287a153988e2a02b66ef985893fd4f9f6e"
     row = appearance_records.build_appearance_record_row(_sha("mods-93258"), "mods", xml)
     assert row["package_id"] == "CHRG-114hhrg93258"
     people = [(a["source_locator"], a["name"], a["position"], a["organization"], a["bioguide_id"], a["witness_type"],
                a["display_order"]) for a in row["appearances"]]
+    asked = "record_material"
+    assert people[0] == ("mods:witness[1]", "Anthony R. Foxx", "Secretary", "U.S. Department of Transportation: Testimony",
+                         None, None, 1)
+    assert people[1] == ("mods:witness[2]", "Bill Shuster", "of Pennsylvania", None, None, asked, 2)
+    assert {p[5] for p in people[1:]} == {asked} and len(people) == 11
     assert people[-3:] == [
-        ("mods:witness[9]", "Peter A. DeFazio", "of Oregon", None, None, None, 8),
-        ("mods:witness[10]", "Eleanor Holmes Norton", "of the District of Columbia", None, None, None, 9),
-        ("mods:witness[10]/part[2]", "Daniel Lipinski", "of Illinois", None, None, None, 10),
+        ("mods:witness[9]", "Peter A. DeFazio", "of Oregon", None, None, asked, 9),
+        ("mods:witness[10]", "Eleanor Holmes Norton", "of the District of Columbia", None, None, asked, 10),
+        ("mods:witness[10]/part[2]", "Daniel Lipinski", "of Illinois", None, None, asked, 11),
     ]
 
     # The split needs the reviewed package, position and exact original line.
@@ -2445,11 +2451,42 @@ def test_the_lake_table_keeps_each_records_held_dates_title_and_created():
     ("The Honorable Tom Lantos, a Representative in Congress From the State of California, and Ranking Member Prepared Statement", "member_statement"),
     ("Kingston, Hon. Jack, a Representative in Congress from the State of Georgia, Oral statement of", None),
     ("Statement of Honorable Amy Klobuchar, A United States Senator from the State of Minnesota", None),
-    ("Response to posthearing questions submitted by: Hon. Jon Tester", "statement_for_record"),
-    ("Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana", "statement_for_record"),
+    # Questions for the record (ct-zs48 review): a heading that names only its askers, and an asker's own paged
+    # contents line, are record material; a heading run into a witness's entry keeps its reading.
+    ("Response to posthearing questions submitted by: Hon. Jon Tester", "record_material"),
+    ("Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana", "record_material"),
+    ("Questions and Answers (Post-Hearing) from: Senator Kevin Cramer.................................. 393,", "record_material"),
+    ("Responses to written questions of: Senators Brown, Warner, Van Hollen, Cortez Masto, and Jones", "record_material"),
+    ("Senator Graham...........................................23,", "record_material"),
+    ("Response to posthearing questions submitted by: Hon. Jon Tester......... 49,55 Hon. Jerry Moran", "statement_for_record"),
+    ("Responses to additional questions from: Senator Boxer Senator Inhofe Larson, Amy W., Esq., President and CEO", "statement_for_record"),
 ])
 def test_a_witnesss_own_entries_are_the_witness_and_submissions_are_statements(line, kind):
     assert appearance_records.mods_entry_kind(line, None) == kind
+
+
+@pytest.mark.parametrize("line", ["Hon. Sam Graves, of Missouri", "Akaka, Hon. Daniel K", "Senator Smith",
+                                  "Hon. Patty Murray"])
+def test_a_member_listed_alone_is_an_asker_only_after_a_question_heading(line):
+    assert appearance_records.mods_entry_kind(line, None) is None
+    assert appearance_records.mods_entry_kind(line, None, after_question=True) == "record_material"
+    assert appearance_records.mods_entry_kind("Hon. Joseph H. Boardman, President, Amtrak: Testimony", None,
+                                              after_question=True) is None
+
+
+def test_a_question_block_ends_at_the_first_line_that_is_not_an_asker():
+    """CHRG-114hhrg94806: a heading and the Member after it are record material; the witness after them, and a
+    Member listed after that witness with no heading of their own, read as before."""
+    lines = ["Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana",
+             "Hon. Peter A. DeFazio, of Oregon",
+             "Hon. Joseph H. Boardman, President and Chief Executive Officer, Amtrak: Testimony",
+             "Hon. Corrine Brown, of Florida"]
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+           + "".join(f"<witness>{line}</witness>" for line in lines) + "</extension></mods>")
+    found = appearance_records.extract_mods_appearances(xml, package_id="CHRG-000hhrg00000")
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        ("Andre Carson", "record_material"), ("Peter A. DeFazio", "record_material"),
+        ("Joseph H. Boardman", None), ("Corrine Brown", None)]
 
 
 def test_every_source_version_covers_the_table_write():

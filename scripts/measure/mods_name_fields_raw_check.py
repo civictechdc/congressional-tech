@@ -2,7 +2,7 @@
 
     mods_name_fields_raw_check.py --before GEN.parquet --after GEN.parquet --raw-root BODIES
         --people WITNESSES.parquet --output OUT.json [--accept REVIEWED.json]
-        [--plant person-moved|reversed-name|previous-segment|split-untrimmed|typed-organization]
+        [--plant person-moved|reversed-name|previous-segment|split-untrimmed|typed-organization|asker-as-witness]
 
 The re-read under test moves an organization out of a witness name ("American Legion" alone, or before
 the person: "Vietnam Veterans of America, Richard F. Weidman, ...") and joins a surname written first to its
@@ -16,7 +16,9 @@ people's given and family names, and the raw line's words.
 
 Both directions, per occurrence key (body, locator); every flag fails the check:
 
-- an occurrence or a body on one side only (``added``, ``removed``, ``unpaired_bodies``);
+- an occurrence or a body on one side only (``added``, ``removed``, ``unpaired_bodies``), except a line the
+  before side read no occurrence for at all, now kept with a supported type and a name its raw line holds
+  (listed under ``restored``);
 - ``person_moved``: a changed name that opens with a known given name and whose words the new name lacks;
 - ``name_not_in_line``: a new name with a word its raw line lacks;
 - ``words_lost``: a changed occurrence that loses a word across name, position, organization and
@@ -35,14 +37,18 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   ``split`` and its parent's moved words are not counted as lost;
 - ``type_unsupported``: a changed ``witness_type`` unless it goes from none to ``statement_for_record`` on an
   occurrence with no name, an organization, and a raw line that names a document anywhere (any of
-  ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap).
+  ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap); or it
+  is ``record_material`` on a line a question-for-the-record list covers (``question_context``);
+- ``question_asker_as_witness``: any after occurrence, changed or not, left a witness (no type) on a line a
+  question-for-the-record list covers: a heading naming who asked, or a Member listed under it.
 
 ``--accept`` names flagged occurrences a person has read and accepted, each as ``{"body", "locator",
 "flag", "after", "reason"}``, where ``after`` holds the four new fields the person read (name, position,
 organization, on_behalf_of); they are reported under ``accepted`` instead of failing. An accept covers only
 those values and the occurrence's honorific, witness_type, bioguide_id and display_order (``KEYED``): any
 other new value under the same flag (a dropped position or organization included) fails, and an accepted entry
-the run no longer flags fails as ``stale_accept``. Listed for a person to read, without failing: ``unconfirmed``
+the run no longer flags fails as ``stale_accept``. Reviewed entries (MODS_RECORD_ENTRIES titles and the askers
+listed without a heading) are typed by a person, not by a rule this check reads, so they are accepted here. Listed for a person to read, without failing: ``unconfirmed``
 new names that open with no known given name; ``residual`` unchanged names that open with no known given name
 on a raw line with a later segment that does; ``untyped_record`` occurrences left with no name and no type
 whose raw line names a document and no person (what the typing rule leaves). Bodies that are missing or do not
@@ -56,7 +62,11 @@ own place heuristic, more strictly (the rule exempts MD, MA, MS and PA as creden
 it is not an independent measure of places. It reads a document word anywhere in the line, where the typing rule
 reads one ending the line, so a line naming a document inside an organization's name and ending in one passes on
 either reading. It does not judge honorific, bioguide_id or display_order changes, nor a split whose second person
-has a given name other publishers do not state twice (that split fails, for a person to accept).
+has a given name other publishers do not state twice (that split fails, for a person to accept). Its question
+reading shares the rule's idea of a list (a heading, then Member-only lines), though not its patterns; a Member
+named by title alone in a list ("Hon. Sam Graves, of Missouri") counts as an asker on the title, so it cannot
+tell an asker from a Member who testified in a list that follows a question heading without a break. A titled,
+paged line ("Senator Graham.......23,") is read in the rule's own shape and counts only on known names.
 
 ``--plant`` writes one wrong value the rule could produce on the after side, and the check must flag it,
 accepted or not: ``person-moved`` moves an unchanged person's name into the organization
@@ -64,7 +74,8 @@ accepted or not: ``person-moved`` moves an unchanged person's name into the orga
 ``previous-segment`` replaces a person read after an organization with the raw segment before them
 (``name_not_person``); ``split-untrimmed`` leaves a split's parent holding the second person's words
 (``split_unsupported``); ``typed-organization`` types an organization alone whose line names no document
-(``type_unsupported``).
+(``type_unsupported``); ``asker-as-witness`` leaves a Member listed under a question heading as a witness
+(``question_asker_as_witness``).
 """
 import argparse
 from collections import Counter
@@ -84,14 +95,23 @@ SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'iv'}
 KEYED = (*FIELDS, 'honorific', 'witness_type', 'bioguide_id', 'display_order')
 FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'words_lost', 'words_gained',
          'person_left_in_organization', 'reorder_unsupported', 'name_not_person', 'split_unsupported',
-         'type_unsupported')
+         'type_unsupported', 'question_asker_as_witness')
 PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported', 'previous-segment': 'name_not_person',
-          'split-untrimmed': 'split_unsupported', 'typed-organization': 'type_unsupported'}
+          'split-untrimmed': 'split_unsupported', 'typed-organization': 'type_unsupported',
+          'asker-as-witness': 'question_asker_as_witness'}
 # Words that name a document submitted for the record, read anywhere in a line.
 DOCUMENTS = set('statement statements letter letters memorandum memo article articles paper papers report reports '
                 'attachment attachments testimony comments submission summary excerpt study analysis editorial '
                 'resolution petition exhibit packet'.split())
 CIVIL = {'hon', 'honorable', 'mr', 'mrs', 'ms', 'dr'}
+# The words of a Member's style in a contents list, which are not names.
+STYLE = set('hon honorable the of and a in from state senator senators representative representatives delegate resident '
+            'commissioner congress chairman chairwoman ranking member district columbia jr sr ii iii iv'.split())
+MEMBER_TITLES = {'hon', 'honorable', 'senator', 'senators', 'representative', 'chairman', 'chairwoman'}
+# Words of an office, which a witness's entry has and a Member's style in a question list does not.
+OFFICES = set('director president secretary administrator chief officer counsel manager deputy assistant executive '
+              'professor commissioner governor mayor attorney judge inspector general association department office '
+              'university institute agency bureau council board foundation company inc commission former'.split())
 SPLIT = re.compile(r"(mods:witness\[\d+\])/part\[2\]")
 # U.S. states and the District, by name and postal code, as places a name can never be.
 STATES = {s.lower() for s in (
@@ -103,10 +123,12 @@ STATES = {s.lower() for s in (
     'south carolina', 'south dakota', 'west virginia', 'district of columbia', 'puerto rico', 'dc', 'd.c.'} | {
     c.lower() for c in ('AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM '
                         'NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY').split()}
+STATE_WORDS = {word for state in STATES for word in state.replace('.', '').split()}
 
 
 def words(text):
-    return [w for w in re.split(r"[\s,;:()\[\]]+", text or '') if w.strip('.-\'"')]
+    """A text's words; a dot leader ("Inhofe.........73,") separates words like a space."""
+    return [w for w in re.split(r"[\s,;:()\[\]]+|\.{2,}", text or '') if w.strip('.-\'"')]
 
 
 def plain(word):
@@ -150,10 +172,60 @@ def generation(path):
     return rows
 
 
-def raw_lines(raw_root, digest):
+def raw_print(raw_root, digest):
+    """A body's <witness> lines, and the words of the Members its <congMember> entries name."""
     path = Path(raw_root) / digest[:2] / f'{digest}.gz'
     root = ET.fromstring(gzip.decompress(path.read_bytes()))
-    return [''.join(el.itertext()) for el in root.iter() if el.tag.rsplit('}', 1)[-1] == 'witness']
+    lines = [''.join(el.itertext()) for el in root.iter() if el.tag.rsplit('}', 1)[-1] == 'witness']
+    members = {plain(w) for el in root.iter() if el.tag.rsplit('}', 1)[-1] == 'congMember'
+               for name in el.iter() if name.tag.rsplit('}', 1)[-1] == 'name' for w in words(name.text) if len(plain(w)) > 2}
+    return lines, members
+
+
+def raw_lines(raw_root, digest):
+    return raw_print(raw_root, digest)[0]
+
+
+def question_context(lines, known):
+    """Lines a question-for-the-record list covers, read without the rule: {position: 'heading' | 'asker'}.
+
+    A heading is a line whose text before its last colon says "question(s)" with "from", "by" or "of" (who asked;
+    "Submitted questions: Taylor, Alexis" names who answered), with no page-number run before it (a run means an
+    earlier entry runs into it), and whose text after the colon (page numbers aside) is empty or only Members'
+    names; each following line that holds only Members' names is an asker, until one does not. A Member's name
+    here is what is left once places, page numbers and the words of a Member's style ("a Representative in
+    Congress from") go: words other publishers or the print's own <congMember> entries use as names, or any words
+    in a text that marks a Member by title ("Hon.", "Senator") with at most three such words per title, and no
+    word of an office or a document in either case. A heading that names a document ("Report, ... Responses to
+    additional questions from: ...") is an earlier entry run into it, and covers nothing.
+
+    A line that is only a titled Member's name and page numbers ("Senator Graham..........23,") is the contents
+    entry of someone who asked ('paged'), with no heading needed (GPO prints the heading in the witness's entry).
+    That reading is the rule's own shape, so it counts only when every name word is known from other publishers
+    or the print's <congMember> entries; any other such line fails for a person to read."""
+    def askers(text, marked_suffices=True):
+        titles = [w for w in map(plain, words(text)) if w in MEMBER_TITLES]
+        found = [w for w in map(plain, words(re.sub(r"\.{2,}[\d,\s-]*", ' ', text))) if w and not w.isdigit()]
+        found = [w for w in found if w not in STYLE and w not in STATE_WORDS and len(w) > 1]
+        # A title marks a Member's name, of at most three words, not a description after it.
+        marked = marked_suffices and titles and len(found) <= 3 * len(titles)
+        return bool(found) and not set(found) & (OFFICES | DOCUMENTS) and (bool(marked) or set(found) <= known)
+
+    covered = {}
+    for n, line in enumerate(lines, start=1):
+        opening, _, tail = line.rpartition(':')
+        asked = {plain(w) for w in words(opening)}
+        if (asked & {'question', 'questions'} and asked & {'from', 'by', 'of'} and not asked & DOCUMENTS
+                and not re.search(r"\.{3,}.*\bquestions?\b", opening, re.I)):
+            tail = re.sub(r"\.{2,}[\d,\s-]*", ' ', tail).strip()
+            if not tail or askers(tail):
+                covered[n] = 'heading'
+        elif covered.get(n - 1) in ('heading', 'asker') and askers(line):
+            covered[n] = 'asker'
+        elif (re.fullmatch(r"\W*(?:Senators?|Chairman|Ranking Member)\s[^.]+(?:\.{3,}\s*\d[\d,\s-]*)+", line.strip())
+              and askers(line, marked_suffices=False)):
+            covered[n] = 'paged'
+    return covered
 
 
 def in_order(name, line):
@@ -189,7 +261,7 @@ def judge(before, after, raw_root, given, family):
                 return True
         return not person(name) and any(person(part) for part in parts[1:])
 
-    out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'untyped_record', 'split', 'not_read',
+    out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'untyped_record', 'split', 'restored', 'not_read',
                                'bodies_only_before', 'bodies_only_after')}
     counts = Counter()
     out['bodies_only_before'] = sorted(before.keys() - after.keys())
@@ -198,23 +270,50 @@ def judge(before, after, raw_root, given, family):
         package, old = before[digest]
         new = after[digest][1]
         try:
-            lines = raw_lines(raw_root, digest)
+            lines, members = raw_print(raw_root, digest)
         except (OSError, ET.ParseError, EOFError) as error:
             # Named, and still compared: with no raw line, any changed name is reported as not in its line.
             out['not_read'].append(dict(body=digest, package=package, error=type(error).__name__))
-            lines = []
+            lines, members = [], set()
         counts['bodies'] += 1
+        covered = question_context(lines, given | family | members)
+
+        def position(locator):
+            index = re.match(r"mods:witness\[(\d+)\]", locator)
+            return int(index.group(1)) if index else 0
 
         def line_of(locator):
-            index = re.match(r"mods:witness\[(\d+)\]", locator)
-            return lines[int(index.group(1)) - 1] if index and int(index.group(1)) <= len(lines) else ''
+            n = position(locator)
+            return lines[n - 1] if 0 < n <= len(lines) else ''
+
+        # Both directions of the question-list reading: a listed asker or heading left as a witness, and a line
+        # typed record material by the question rule outside any list this check reads.
+        for locator, b in sorted(new.items()):
+            if covered.get(position(locator)) and b.get('witness_type') is None:
+                out['question_asker_as_witness'].append(dict(package=package, body=digest, locator=locator,
+                                                             line=line_of(locator), after={f: b.get(f) for f in KEYED}))
+
+        def type_supported(a, b, line, locator):
+            if b.get('witness_type') == 'record_material':
+                return bool(covered.get(position(locator)))
+            return (a.get('witness_type') is None and b.get('witness_type') == 'statement_for_record'
+                    and not b.get('name') and b.get('organization') and names_document_only(line))
 
         moved = {}  # a split parent's locator -> the words its second person took
         for locator in sorted(new.keys() - old.keys()):
             item = dict(package=package, body=digest, locator=locator)
             parent = SPLIT.fullmatch(locator)
             if not parent:
-                out['added'].append(item)
+                # A line the old reading dropped, now kept: its raw line must exist, hold the new name, and its
+                # type must be supported like any other.
+                b, line = new[locator], line_of(locator)
+                item.update(line=line, after={f: b.get(f) for f in KEYED})
+                if (line and not any(position(k) == position(locator) for k in old)
+                        and (not b.get('name') or set(map(plain, words(b['name']))) <= set(map(plain, words(line))))
+                        and type_supported({}, b, line, locator)):
+                    out['restored'].append(item)
+                else:
+                    out['added'].append(item)
                 continue
             parent, b, line = parent.group(1), new[locator], line_of(locator)
             item.update(line=line, after={f: b.get(f) for f in KEYED})
@@ -239,8 +338,7 @@ def judge(before, after, raw_root, given, family):
             item.update(line=line, before={f: a.get(f) for f in KEYED}, after={f: b.get(f) for f in KEYED})
             if a.get('witness_type') != b.get('witness_type'):
                 counts['typed'] += 1
-                if not (a.get('witness_type') is None and b.get('witness_type') == 'statement_for_record'
-                        and not b.get('name') and b.get('organization') and names_document_only(line)):
+                if not type_supported(a, b, line, locator):
                     out['type_unsupported'].append(item)
             elif not b.get('name') and not b.get('witness_type') and names_document_only(line):
                 out['untyped_record'].append(item)
@@ -286,6 +384,15 @@ def plant(kind, before, after, given, family, raw_root):
         return found[int(index.group(1)) - 1] if index and int(index.group(1)) <= len(found) else ''
 
     for digest in sorted(before.keys() & after.keys()):
+        if kind == 'asker-as-witness':
+            # A Member listed under a question heading (not the heading itself) left as a witness.
+            for locator, b in sorted(after[digest][1].items()):
+                prior = after[digest][1].get(f'mods:witness[{int(re.match(r"mods:witness\[(\d+)\]", locator).group(1)) - 1}]')
+                if (b.get('witness_type') == 'record_material' and b.get('name') and prior
+                        and prior.get('witness_type') == 'record_material' and 'question' not in lines(digest, locator).lower()):
+                    after[digest][1][locator] = dict(b, witness_type=None)
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=None)
+            continue
         if kind == 'split-untrimmed':
             for locator in sorted(after[digest][1].keys() - before[digest][1].keys()):
                 parent = SPLIT.fullmatch(locator)

@@ -4,6 +4,16 @@ Each entry binds a package and one-based witness locator to the SHA-256
 of the stripped original line. A supplied name is the person named in
 the entry. The optional third value distinguishes a reviewed paper from
 a member's own statement. The original MODS retains the full text.
+
+Reviewed 2026-11-09 (ct-3aap, ct-zs48), all `record_material`: sixteen
+document titles a line prints alone or after their publisher ("Association of
+American Railroads, "AAR Calls for ..."", "Report of the National Surface
+Transportation ... Commission"); four dot-leader leftovers of a witness's
+prepared-statement entry ("Prepared Statement of ........ 300,", "Prepared
+statement..........213,"), kept as typed rows rather than dropped; and CHRG-114hhrg94806's Andre Carson and Peter A.
+DeFazio after Sarah Feinberg's testimony, the askers of the print's other
+question-for-the-record headings, listed here without one; and CHRG-115shrg25981's
+Patty Murray, an asker whose page numbers run into the next heading.
 """
 
 from typing import Literal
@@ -41,8 +51,14 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         17: ('f7efd85d4cb7c2c8af6fa2546a6108b12485e5095d6576ea14f6213cf7b1eb9b', 'Senator Smith'),
         25: ('c0072a5d03d490de0212885e9a7eae2aed5758dd3ad2ec35f94c9b7d5cd3a694', 'Ella Wong-Ruskinko'),
     },
+    'CHRG-106shrg66381': {
+        26: ('cea4b6c24e32e60b55b1ece9c3dedeb722bb1aaf5f5dbe7b877dae6f8de7441c', None, 'record_material'),
+    },
     'CHRG-106shrg73821': {
         19: ('ebaac7aca5d25b82c2825243fae3db6c93986b3ddd8d716b328752cfca9f4965', 'Paul Warner'),
+    },
+    'CHRG-106shrg77325': {
+        6: ('7e3ca7ad6086d701b7bb3d5eade7cad2ecdfa7bcfdb195abfa9fa4dd48cf57f0', None, 'record_material'),
     },
     'CHRG-106shrg85219': {
         7: ('2513ed90ad15dfc46574afa7cf2ac5df0da7aa8cfec47d5662fd2c24effa211d', 'Rodney E. Slater'),
@@ -68,6 +84,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-107shrg83717': {
         25: ('814b704f2cb2de804fa8df804a5349917a8b7a8e94921ee7da087bf69a68ddf1', None),
     },
+    'CHRG-107shrg89642': {
+        6: ('2b5d381c972b0ca1e4d0ac59d564fb69c22e9b05dda1724e77042fb6b57f0e4a', None, 'record_material'),
+    },
     'CHRG-108hhrg85516': {
         7: ('6f789ff04f11030b8049da40d2fc520add885e9e14cd3a45782deae79d25c983', 'Charles G. Groat'),
         8: ('7d7f75199d43467d4cfafd02f07149635d819d669db154f30ca8cb51d4ad8d44', 'Wayne W. Carmichael'),
@@ -90,6 +109,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-108shrg21190': {
         8: ('5564c8357b4c519547adc04f40e9b40f4a9371707e1cf4a902ae3db25626cc11', 'Thomas H. Collins'),
     },
+    'CHRG-108shrg92386': {
+        5: ('8640edf1613251e943547430c3773c0be33e32882611283dd85dacff8ccb0338', None, 'record_material'),
+    },
     'CHRG-108shrg94598': {
         7: ('dbd748985d0fcd74d6e11445001b958bc07fcf265d0af4943d1ed13259dcce99', None),
     },
@@ -98,6 +120,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     },
     'CHRG-109hhrg29565': {
         3: ('c6d37563b7cbd3caafc255f118db8e98f49144163c788018dc12d16f2f36d6aa', None),
+    },
+    'CHRG-109shrg22551': {
+        6: ('7cc18dca3203d43571e8a86c1ad95ac3d5a5026b19677799104b944af389ca20', None, 'record_material'),
     },
     'CHRG-109shrg37444': {
         4: ('c1524a77161b644431ace94a70b538fa9d0c40fc6a4d8ed3ec67d5688b29e0e6', None),
@@ -121,8 +146,17 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-110hhrg42334': {
         9: ('6054c7ce244ae5fbd199754c5a941b12f13533ec952bf16e6907972a68366eed', None),
     },
+    'CHRG-110hhrg44215': {
+        9: ('1224a1e659455fbe570bc28fe8402db41c27fe0c835c2a52f5c299bf03b834b7', None, 'record_material'),
+    },
     'CHRG-110hhrg48907': {
         6: ('6b05415a0e4e51476747192b34eb62bb9fad325fd83deb0241c1e8fa1971a34e', None),
+    },
+    'CHRG-110shrg52887': {
+        16: ('f80dbd0215387353a0cbe56d5a0a2188dbbb8f516768a5ffe397c5922b60293b', None, 'record_material'),
+    },
+    'CHRG-110shrg55921': {
+        3: ('096a8068427b1be79a410cb58a0dfe43efa578e83926680de43eac481a2701c5', None, 'record_material'),
     },
     'CHRG-110shrg72249': {
         3: ('7c2220cc4188d8761e8589358e2f07ff002770932cf3b7cf1763fc34a0a3f0e5', None),
@@ -140,6 +174,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-111hhrg51877': {
         4: ('2ec288ab84138197e9a29004a67311addcf1a8c603c19f28daf4d36a27203642', 'Kortney Clemons'),
     },
+    'CHRG-111hhrg55850': {
+        5: ('9d260641607123e8c5849e5a3c064ea902aa9c9b0e812ba6fd2571fb79c5f8cc', None, 'record_material'),
+        6: ('881eeda28c54c73b0f5712ca2c8137c31761d04c968a6d91220c8c89579bd89a', None, 'record_material'),
+    },
     'CHRG-111shrg52162': {
         6: ('b6f369b7d66aa2d51eb6a5e49bd96bff3a65750646955c6f923a9ca4a55daf2d', None),
         7: ('7af23ea39cb80a0ad43508d37094d76e15d76a8e3c2a1c689cb2248f6e1f5f66', None),
@@ -148,6 +186,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         3: ('fb6b185d9dd5a8e6e94849c1097a41b5ebb1cb0d6cafb26872d00487bbde84b5', 'Glenn F. Tilton'),
     },
     'CHRG-112hhrg64533': {
+        2: ('6c3b8d2f59ddee276dce5387eae92ba0d76cb937febd0697b2f960db0954b2a8', None, 'record_material'),
+        3: ('449c937bbd076a17ea44359ca1a9998d8f09bd3add563a0f49fa9fe4a0125021', None, 'record_material'),
         5: ('c7e315dd2ba93cb317d4385401363d47910263e53ebc7db7dcaa3009b5bc25ed', None),
     },
     'CHRG-112hhrg68336': {
@@ -185,10 +225,18 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         5: ('6b741a67c55d9a2e336a1c3b963fe7b141ec0e441825d7bc4b74144892e2213b', None),
     },
     'CHRG-112jhrg85228': {
+        8: ('819d3e27deb6ca377c9f5848bacc7ec49fe760b6f42fee0f6e63dd60c261b5a2', None, 'record_material'),
+        10: ('23b6e24c5ba9841d3e8135fde1154decda6286caca11e02fc86ea78f46f50124', None, 'record_material'),
         23: ('1312032ad8acaf6dfd00fbc1f9782bd75ef58f8bd68bc2f514ad59421c80c53b', 'Anne Mayer'),
     },
     'CHRG-112shrg85223': {
         3: ('ff46dbe866a34997363eaa52347aa28ca494cd507170d7a58cc5197ab2c77498', None),
+    },
+    'CHRG-112shrg85232': {
+        3: ('494ecd9f0cb7c1aead06b9e9ca313960d54639847a80a024f220de164198316d', None, 'record_material'),
+    },
+    'CHRG-113hhrg80816': {
+        3: ('edf183d0e07b2af67fbca21af752392b9c31677d872ac8017224fc65aae35faa', None, 'record_material'),
     },
     'CHRG-113hhrg82220': {
         3: ('501432a9c33fd15c6d553b9ba54273156c85520ef94d76972ebac92ae604901f', 'Matthew Stepp'),
@@ -201,6 +249,13 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     },
     'CHRG-113shrg88369': {
         6: ('f7075fa4ada87f99df81cd42c428812b9c20d751e065970ab8341c6a845f8170', None),
+    },
+    'CHRG-114hhrg93069': {
+        4: ('3882d9b193f6a097144d68149e66a539a0191b22a792eb390a1cd7796c44d743', None, 'record_material'),
+    },
+    'CHRG-114hhrg94806': {
+        9: ('8b3705e13bcd877c7e0c670cfe5a19774e60b11ea7d0057a8e05698c3aa16b16', 'Andre Carson', 'record_material'),
+        10: ('a415850d34c059d4e7f51fef85e1208c853889097d8d58f223e384a53be6dc3f', 'Peter A. DeFazio', 'record_material'),
     },
     'CHRG-114hhrg96269': {
         2: ('682824679f8f0f5ed8cd774cd88282f11a846d6907605a8bf403d78e7d6843ae', 'Alexis Taylor'),
@@ -220,6 +275,15 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-114shrg94274': {
         2: ('c9938097cc6447df2cdfac661cf536bdc95f4b470de9722f5220ee39a0f01e9e', 'Eugene Dodaro'),
     },
+    'CHRG-114shrg97368': {
+        4: ('d646f835d493085e5bd7b0a1b3cd09b1c125c71cbd5962f5a7b915565525e12e', None, 'record_material'),
+    },
+    'CHRG-115shrg25981': {
+        4: ('527e535a4f89ea672523fe5972f4897408d7082e36d7727c62c394050db4adfc', 'Patty Murray', 'record_material'),
+    },
+    'CHRG-115shrg26915': {
+        5: ('b27836ef058075b90e1a1d9efefd7f3d5e648f4da0bcb6be94aff16b2eedbd72', None, 'record_material'),
+    },
     'CHRG-115shrg33409': {
         2: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
         4: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
@@ -234,6 +298,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         11: ('1e2c28c1352c50c9ced760ead7e4fa278362445391db9cabedd0fbadf28c07c7', 'David Cicilline', 'record_material'),
         12: ('f4f441fa3bba03c5e8e5c2e84486a7865bbb775e54ae0082b3fc5c8dbc82c5f6', 'David Cicilline', 'record_material'),
         13: ('da87589782b6dafb128c6ec0ebd6a3a3220220cd6679112e7810760cd0ebb99e', 'David Cicilline', 'record_material'),
+    },
+    'CHRG-116shrg39734': {
+        4: ('6abeb975664b585397deb125ca9ce09dfcf0c227737d91d9270c589e3a885c0a', None, 'record_material'),
     },
     'CHRG-117hhrg49906': {
         73: ('90fad09498efeba8e1f7def4b216fe40478737e6790fff0f055b18d4763fa13a', 'Glenn Thompson'),
