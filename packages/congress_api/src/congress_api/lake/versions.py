@@ -19,6 +19,8 @@ import tomllib
 # old-rule entries are gone because no new-rule fingerprint can match them.
 # Any later source, schema, parameter or imported-package change produces an
 # unmapped fingerprint. Add an entry only with a reviewed equivalence decision.
+# ct-zs48/ct-3aap changed MODS extraction, so appearance_records.mods publishes
+# its new fingerprint and its entry was removed.
 _REVIEWED_PRODUCER_VERSIONS = {
     # appearance_records.congress_gov
     "7f9ac402f23815c37f5c53dec202ea9094abf172dd8bd32a9efa6b811a779252":
@@ -26,9 +28,6 @@ _REVIEWED_PRODUCER_VERSIONS = {
     # appearance_records.house_xml
     "2daadbeb9c249c4dc19b58969ef6f9305392b1aafcffdcf6d5b826f763d5a69e":
         "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
-    # appearance_records.mods
-    "8a34087e918243fabb0b849d3921a0cf78b119578f1ba7d5359d52b18b7f162d":
-        "8a0023a9303e2b0e502b20a6cfaa276a3c0937fa93454f474f7b25f0a1b5c4af",
     # appearance_records.senate_page
     "d2faf6985353f72219cd6a8a99feebb142170e4936c1d1eefad9d91de654e67a":
         "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb",

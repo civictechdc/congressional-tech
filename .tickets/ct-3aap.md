@@ -25,6 +25,10 @@ Decision: an organization-only line (no name read, organization set) ending in '
 
 Review follow-up (owner 2026-11-09, reviewed list): 16 document titles typed record_material through sha-bound MODS_RECORD_ENTRIES (AAR 'Calls for...', GAO 'Public Safety Communications...', both Project Labor Agreements, 'Report of the National Surface Transportation ... Commission', 'Summary of Goals and Projects', SEJ letter, etc.); the existing reviewed mechanism keeps no fields, so their text moves out of organization (raw MODS keeps it). The two 'Prepared Statement of ........ 300,' dot-leader leftovers (CHRG-116shrg39734 4, CHRG-115shrg26915 5) stay visible as nameless record_material rows. The trailing-document rule moved into mods_entry_kind (organization passed in); its 37 rows are unchanged.
 
+**2026-11-09T20:25:59Z**
+
+Rebased with ct-zs48 onto main after ct-an6o; final MODS pin 6a4a9765. Reviewed list now 16 titles + 4 dot-leader 'Prepared statement......NN,' leftovers (CHRG-116shrg39734 4, CHRG-115shrg26915 5, CHRG-106shrg66381 26, CHRG-110shrg55921 3) + 3 headingless askers.
+
 **2026-11-10T13:27:10Z**
 
 2026-11-10 (session congress-1): see ct-zs48 for the branch state. The 16 reviewed title rows keep their line in organization (no title field exists; three name no organization). Owner decision 2026-11-10: the FTC and National Commission on Hunger rows become record_material.

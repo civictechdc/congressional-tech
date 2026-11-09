@@ -73,7 +73,8 @@ def test_each_reviewed_entry_is_a_current_fingerprint_of_its_published_pin(monke
     reviewed = dict(versions._REVIEWED_PRODUCER_VERSIONS)
     monkeypatch.setattr(versions, '_REVIEWED_PRODUCER_VERSIONS', {})
     fingerprints = identities()
-    assert reviewed == {fingerprints[name]: pin for name, pin in published().items()}
+    # A producer whose published pin is its own fingerprint (a deliberate bump since ct-an6o) needs no entry.
+    assert reviewed == {fingerprints[name]: pin for name, pin in published().items() if fingerprints[name] != pin}
 
 
 @pytest.mark.parametrize('name', ['meeting_records.house_xml', 'filename_readings'])
