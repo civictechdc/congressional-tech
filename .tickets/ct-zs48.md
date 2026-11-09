@@ -2,7 +2,7 @@
 id: ct-zs48
 status: in_progress
 deps: []
-links: [ct-79j1, ct-3aap]
+links: [ct-79j1, ct-3aap, ct-gfo7]
 created: 2026-11-08T20:05:51Z
 type: bug
 priority: 3
@@ -32,6 +32,10 @@ Rebased onto main after ct-an6o (16084de5): MODS publishes its new import-closur
 **2026-11-09T21:51:59Z**
 
 Review r3 fixes (pin 0b58c1a2): _MODS_PAGED_ASKERS made possessive (exponential backtracking on long failing lines of paged askers; 0.05 ms at 200 groups; old and new agree on all 108,896 corpus witness lines, 19 matches); the question-heading reading now runs once per line. Seven Senate VA askers printed 'Hon. X......pages Hon. Y' after a witness, and CHRG-113shrg80510's 'Response to request arising during the hearing by: Hon. Richard Burr', are sha-bound record_material MODS_RECORD_ENTRIES (a shape rule would mistype real witnesses printed the same way); the second named Member of each line stays only in the raw line. CHRG-112shrg25114 #3 is a reviewed joined line (MODS_JOINED_LINES now holds a separator pattern): the heading naming Boxer and Inhofe is a nameless record row and witness Amy W. Larson reads at /part[2]. Against m5: these 8 lines change 10 occurrences (Larson's line yields 2, and Williams' display order moves 3->5). Left as the review noted, no change: CHRG-110shrg75166 #3 (FTC) and CHRG-114hhrg93962 #11 (National Commission on Hunger) are debatable statement_for_record rows (the witnesses' own body's document); the review's re-run, state survey and plant confirmation need no action. Evidence: .cache/archive-release/implementation/mods-zs48-3aap-20261109/fix-r3/.
+
+**2026-11-09T23:08:29Z**
+
+Review follow-ups filed as ct-gfo7 (seven residual items, one MODS bump). Still to do before activation: (1) the previous-segment plant in scripts/measure/mods_name_fields_raw_check.py was run by the rule's author only (evidence fix-r3-n13/README.txt); a reviewer other than the author must confirm it. (2) Two product calls go to the owner: the second Member on five joined asker lines (Burris, Moran, Begich, Manchin) is in no field, and the organization text is dropped on the 16 reviewed title rows; the raw record keeps both. No full lane has run on this branch yet; it waits for the nightly to finish.
 
 **2026-11-10T13:27:10Z**
 

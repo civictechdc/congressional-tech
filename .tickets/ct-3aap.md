@@ -2,7 +2,7 @@
 id: ct-3aap
 status: in_progress
 deps: []
-links: [ct-rg34, ct-zs48]
+links: [ct-rg34, ct-zs48, ct-gfo7]
 created: 2026-11-09T03:09:09Z
 type: task
 priority: 3
