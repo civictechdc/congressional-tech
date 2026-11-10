@@ -17,3 +17,9 @@ On 2026-11-10 a push that moved uv.lock made the scheduled nightly refuse at set
 
 Each budget's measurement text states a measured figure with its run folder, not 'carried forward'. The release procedure says which pushes need re-qualification (engine pin, local limits, .github/archive-jobs.json, uv.lock, apps/site/package-lock.json) and how.
 
+
+## Notes
+
+**2026-11-10T18:01:04Z**
+
+2026-11-10 18:01Z also needed for the release after this one: the hearing-records (MODS) parser change needs the appearance table regenerated in the lake once at its final parser version (35,020 records) through the backfill job, and no disk budget names the 'backfill' operation today. Add a measured budget for it before that activation (congress-1's plan: MODS reviewed, then Member appearances stacked on it, one offline all-in build, one cause record, the activation, then the driver run).
