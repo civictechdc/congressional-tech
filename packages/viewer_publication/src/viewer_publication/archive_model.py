@@ -131,7 +131,7 @@ SPICY_SCHEMAS={
         history=list_of(struct(officialName='Utf8',startDate='Utf8',endDate='Utf8')),
     ),
     'spicy_members':dict(
-        bioguide_id='Utf8',name_first='Utf8',name_last='Utf8',
+        bioguide_id='Utf8',name_first='Utf8',name_last='Utf8',name_nickname='Utf8',
         lis_id='Utf8',opensecrets_id='Utf8',govtrack_id='Utf8',
         icpsr_id='Utf8',wikidata_id='Utf8',fec_ids=list_of('Utf8'),
     ),
@@ -987,7 +987,8 @@ def appearance_steps(*,root=ROOT):
         dict(name='appearance_observations',sql=(Path(root)/'model/sql/appearance-observations.sql').read_text(),materialize=True),
         dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(
         ['witness-precedence','witness-key-current','witness-key-priors','witness-key-map',
-         'member-terms','witness-member-facts','witness-member-candidates','witness-member-states','witness-members'],root=root)
+         'member-terms','witness-member-facts','witness-member-candidates','witness-member-mentions','witness-member-tiers',
+         'witness-member-decisions','witness-members'],root=root)
 
 
 def package_link_steps(*,root=ROOT):

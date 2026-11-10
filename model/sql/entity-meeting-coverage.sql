@@ -73,7 +73,8 @@ WITH observations AS (
  SELECT event_id,count(*) AS n FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
   AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material','member_appearance') GROUP BY event_id
 ), member_only AS (
- -- The meeting's stated list names Members of Congress and no outside witness: empty, not unstated.
+ -- The meeting's stated list names Members of Congress (and perhaps record entries) and no outside witness: empty,
+ -- not unstated. A nomination hearing's list that names only Members left its nominee out: unknown, not empty.
  SELECT DISTINCT event_id FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
   AND witness_type='member_appearance'
 ), witness_states AS (
@@ -107,10 +108,14 @@ WITH observations AS (
   AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material','member_appearance')
 ), witness_rows AS (
  SELECT e.event_id,'witnesses' AS aspect,
-  CASE WHEN c.n IS NOT NULL THEN 'present' WHEN s.rank=2 THEN 'unresolved' WHEN mo.event_id IS NOT NULL OR s.rank=1 THEN 'empty'
+  CASE WHEN c.n IS NOT NULL THEN 'present' WHEN s.rank=2 THEN 'unresolved'
+       WHEN mo.event_id IS NOT NULL AND regexp_like(e.title,'nominat','i') THEN 'unknown'
+       WHEN mo.event_id IS NOT NULL OR s.rank=1 THEN 'empty'
        WHEN u.event_id IS NOT NULL OR (e.chamber='senate' AND s.event_id IS NULL) THEN 'unknown' ELSE 'not_stated' END AS state,
   'appearance_records' AS basis,cast(coalesce(c.n,0) AS INT) AS count,
-  CASE WHEN c.n IS NOT NULL OR s.rank=2 THEN NULL WHEN mo.event_id IS NOT NULL THEN 'member_appearances_only'
+  CASE WHEN c.n IS NOT NULL OR s.rank=2 THEN NULL
+       WHEN mo.event_id IS NOT NULL AND regexp_like(e.title,'nominat','i') THEN 'nominee_not_listed'
+       WHEN mo.event_id IS NOT NULL THEN 'member_appearances_only'
        WHEN s.rank=1 THEN NULL WHEN u.event_id IS NOT NULL THEN 'package_witnesses_unattached'
        WHEN e.chamber='senate' AND s.event_id IS NULL THEN 'senate_page_links_pending' END AS reason
  FROM meetings_export e LEFT JOIN witness_counts c ON e.event_id=c.event_id LEFT JOIN witness_states s ON e.event_id=s.event_id
