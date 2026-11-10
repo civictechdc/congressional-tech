@@ -592,7 +592,7 @@ def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
 def test_a_timeline_sample_is_stamped_where_its_reading_ended_with_how_long_it_took(monkeypatch, tmp_path):
     """step_memory gives a sample only to a statement that spans its reading, so the stamp is the reading's end.
     The real-job tests see a stamp misplaced by less than one reading only when a reading lands on a statement
-    boundary (two runs in three); a clock that only the reading and the sleep advance sees it every time."""
+    boundary, so not on every run; a clock that only the reading and the sleep advance sees it every time."""
     class Clock:
         now = 0.0
         monotonic = staticmethod(lambda: Clock.now)
