@@ -263,6 +263,58 @@ def test_a_signal_at_the_instruction_that_holds_a_childs_wait_lock_still_stops_t
     assert list(private_state.glob('*.json')) == [], 'the stopped watchdog left its admission entry behind'
 
 
+def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing_once_the_stop_has_begun(monkeypatch, tmp_path):
+    """The loop reads the record once per pass, right after its sleep. Here the signal is the installed handler
+    called from a stand-in sampler, sleep or stop, so each case is exact: no real signal, no process, no timing."""
+    import signal
+    import types
+
+    def watched(signal_during):
+        events = []
+
+        class Job:
+            pid, returncode = 1, 7
+
+            def poll(self):
+                events.append('poll')
+                return None if events.count('poll') <= 2 else 7
+
+        def passing(through):
+            events.append(through)
+            if through == signal_during and 'signal' not in events:
+                events.append('signal')
+                signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
+
+        class Readings:
+            def __init__(self, _sampler):
+                pass
+
+            def sample(self, _pid):
+                passing('sample')
+                return 2**30, 2**30
+
+        monkeypatch.setattr(watchdog, 'available_gb', lambda: None)
+        monkeypatch.setattr(watchdog, 'time', types.SimpleNamespace(monotonic=lambda: 0.0, sleep=lambda _seconds: passing('sleep')))
+        monkeypatch.setattr(watchdog, 'sampler', types.SimpleNamespace(
+            MemorySamples=Readings, start_owned=lambda command, **_: Job(), stop_owned=lambda _process: passing('stop')))
+        before = {number: signal.getsignal(number) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
+        try:
+            code, _, _, reason, _ = watchdog.watch(['job'], rss_gb=4, min_available_gb=0, min_disk_gb=0,
+                                                   disk_root=tmp_path, interval=1)
+            assert {number: signal.getsignal(number) for number in before} == before, 'watch() kept its handlers'
+        finally:  # a watch() that raises must not leave this pytest process with its handlers
+            for number, handler in before.items():
+                signal.signal(number, handler)
+        return code, reason, events
+
+    stopped = 'Interrupted: watchdog received signal 15'
+    assert watched('sample') == (99, stopped, ['poll', 'sample', 'signal', 'stop']), 'it slept on a signal it already had'
+    assert watched('sleep') == (99, stopped, ['poll', 'sample', 'sleep', 'signal', 'stop']), 'it sampled again first'
+    quiet = ['poll', 'sample', 'sleep', 'poll', 'sample', 'sleep', 'poll', 'stop']
+    assert watched(None) == (7, None, quiet)
+    assert watched('stop') == (7, None, [*quiet, 'signal']), 'a signal during the stop changed the outcome'
+
+
 def test_sigkill_to_the_watchdog_keeps_the_lock_until_the_job_stops(tmp_path):
     import fcntl
 
