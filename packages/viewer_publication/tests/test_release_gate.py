@@ -892,7 +892,7 @@ def test_url_state_a_new_receipt_does_not_imply_refuses_unattended(tmp_path, pla
     (dict(raw={(NEW_RECEIPT, 2): dict(requested_url=Q + '?other')}),
      f'automatic causes: {NEW_RECEIPT}:2 requests {Q}?other in raw, not {Q}'),
     (dict(fetches={(NEW_RECEIPT, 5): dict(requested_url='https://www.govinfo.gov/w.pdf', outcome='failed', http_status=404)}),
-     'automatic causes: url_state: 1 addresses with new lines have no row in the candidate'),
+     'automatic causes: url_state: 1 addresses with new lines have no changed or added row in the candidate'),
 ])
 def test_url_state_rows_that_raw_or_the_capture_table_do_not_bear_out_refuse_unattended(tmp_path, plant, reason):
     report = unattended(tmp_path, **plant)

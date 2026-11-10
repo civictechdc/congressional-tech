@@ -401,13 +401,72 @@ def _url_state_rules():
         ELSE {first(fetched)} END"""
 
 
-def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
+# The capture columns the gate's one engine job reads: the model's fold, good-fetch and band steps
+# (url_state_lines, good-archive-containers.sql, good-fetches.sql, url_state_good_lines) and the
+# body trace. The capture input is scanned once, for these only (17 of its 42 columns).
+CAPTURE_COLUMNS = ('receipt_key', 'receipt_line', 'capture_index', 'mode', 'outcome', 'family', 'requested_url',
+                   'context_url', 'member_path', 'attempt', 'http_status', 'complete', 'fetch_http_status',
+                   'fetch_outcome', 'retrieved_at', 'sha256', 'expansion')
+
+
+def capture_job(work, engine, captures, *, keys, new_receipts=(), candidate_state=None):
+    """One engine job and one scan of the capture input, for the trace and the url_state proof.
+
+    The scan keeps only CAPTURE_COLUMNS of the rows in `new_receipts` or holding a body whose first
+    16 hex digits are in `keys`; both small sides are hash-built and the capture input is probed
+    once. Returns `trace`: the receipt lines of every traced body, in every receipt (a body the
+    live release also read must show), and, given `candidate_state` (the candidate's url_state
+    file), `lines` and `newest` from the model's own steps over the new receipts' captures.
+    """
+    from congress_api.lake.tables import table_input
+    from congress_api.retention.provenance import run_job
+    from viewer_publication.archive_model import evidence_steps, registry_inputs, source_steps
+    from viewer_publication.archive_url_state import url_state_steps
+    work = Path(work)
+    work.mkdir(parents=True, exist_ok=True)
+    pq.write_table(pa.table({'receipt_key': pa.array(sorted(new_receipts), pa.string())}), work / 'new-receipts.parquet')
+    pq.write_table(pa.table({'prefix': pa.array(sorted(keys), pa.string())}), work / 'traced-keys.parquet')
+    inputs = [table_input('lake_captures', _captures_source(captures)),
+              dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')),
+              dict(name='traced_keys', kind='parquet', path=str(work / 'traced-keys.parquet'))]
+    steps = [dict(name='capture_rows', materialize=True, sql=f"""SELECT {','.join('c.' + c for c in CAPTURE_COLUMNS)},
+        n.receipt_key IS NOT NULL AS new_line,k.prefix
+        FROM traced_keys k RIGHT JOIN (new_receipts n RIGHT JOIN lake_captures c ON c.receipt_key=n.receipt_key)
+          ON k.prefix=substr(lower(encode(c.sha256,'hex')),1,16)
+        WHERE n.receipt_key IS NOT NULL OR k.prefix IS NOT NULL""")]
+    queries = [dict(name='trace', sql="""SELECT DISTINCT prefix,receipt_key,receipt_line,lower(encode(sha256,'hex')) AS sha
+        FROM capture_rows WHERE prefix IS NOT NULL ORDER BY 1,2,3""")]
+    if candidate_state is not None:
+        # The model's own steps, by name: the fold, the good-fetch predicate and the band.
+        model = {step['name']: step for step in [*evidence_steps(), *source_steps(), *url_state_steps()]}
+        inputs += [dict(name='candidate_url_state', kind='parquet', path=str(Path(candidate_state).resolve())),
+                   next(item for item in registry_inputs(work / 'registries') if item['name'] == 'recheck_intervals')]
+        steps += [dict(name='captures', materialize=True, sql=f"SELECT {','.join(CAPTURE_COLUMNS)} FROM capture_rows WHERE new_line"),
+                  dict(name='capture_evidence', sql='SELECT * FROM captures'),
+                  *(model[name] for name in ('good_archive_containers', 'good_fetches', 'good_fetch_contexts',
+                                             'url_state_lines', 'url_state_good_lines', 'url_state_latest')),
+                  dict(name='url_state_meeting_dates', sql="""SELECT requested_url,recheck_meeting_date AS meeting_date
+                      FROM candidate_url_state WHERE recheck_meeting_date IS NOT NULL""", materialize=True),
+                  model['url_state_ages'], model['url_state_interval_candidates'], model['url_state_intervals']]
+        queries += [
+            dict(name='lines', sql="""SELECT l.receipt_key,l.receipt_line,l.requested_url,arrow_cast(l.retrieved_at,'Int64') AS t,
+                g.receipt_key IS NOT NULL AS good FROM url_state_lines l LEFT JOIN url_state_good_lines g
+                ON g.receipt_key=l.receipt_key AND g.receipt_line=l.receipt_line AND g.requested_url=l.requested_url ORDER BY 1,2,3"""),
+            dict(name='newest', sql="""SELECT x.requested_url,arrow_cast(x.retrieved_at,'Int64') AS t,
+                cast(x.http_status AS INT) AS s,x.outcome AS o,i.interval_seconds
+                FROM url_state_latest x LEFT JOIN url_state_intervals i ON i.requested_url=x.requested_url""")]
+    return run_job(work / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
+
+
+def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, keys=()):
     """Check a capture night's url_state rows against the receipts new to the release (ct-9j3z).
 
-    Returns (reasons, summary, page_keys, lines). reasons is empty when every changed, added or
-    removed row is exactly what the new lines imply. page_keys (hex) are the pages behind newly
+    Returns (reasons, summary, page_keys, lines, trace). reasons is empty when every changed or
+    added row is exactly what the new lines imply. page_keys (hex) are the pages behind newly
     queued links and lines the new (receipt_key, receipt_line, requested_url) lines; the caller
-    traces both to raw. summary counts each url_state group's rows and how many are implied.
+    traces both to raw. trace holds the receipt lines of `keys` (the new documents' bodies) and of
+    those pages, from the same job; None when the proof stops before the job. summary counts each url_state group's rows and how many are
+    implied.
 
     New lines: the model's own url_state_lines, run by the engine over `captures` restricted to
     `new_receipts` (the candidate's receipts absent from the live set). The model's own latest and
@@ -428,18 +487,16 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
         at most AUTOMATIC_FIRST_SCHEDULE_CAP such first schedules carrying a date in one night.
       queued (added, or queued in both): no new line, no schedule, at least one linking page, every
         live page kept; each page the live row did not list must come from new receipts only.
-      Every address with a new line must be among these rows. A removed address, or a change to
-      any other column, is its own comparison group, refused before this proof runs.
+      Every address with a new line must have a changed or added row. A removed address, or a
+      change to any other column, is its own comparison group, refused before this proof runs.
     Cannot see: a wrong meeting association on a first schedule (no live value to keep; like any
-    value of an added row it is taken as published); whether a page really links its queued address (the reading is the model's); a change to the
-    fold or band code that touches only new lines (the gate runs the same code).
-    Cost: one engine job over the new receipts' captures and one DuckDB join of the two url_state
-    files on requested_url, O(rows).
+    value of an added row it is taken as published); whether a page really links its queued
+    address (the reading is the model's); a change to the fold or band code that touches only new
+    lines (the gate runs the same code).
+    Cost: the two url_state files are joined once here (O(rows), about 1.2M), keeping only the
+    changed and added rows, each side as a struct; then `capture_job`, one scan of the capture
+    input. The comparison joins the same two files once more on its own connection.
     """
-    from congress_api.lake.tables import table_input
-    from congress_api.retention.provenance import run_job
-    from viewer_publication.archive_model import evidence_steps, registry_inputs, source_steps
-    from viewer_publication.archive_url_state import url_state_steps
     columns = {side: set(d.columns(side, 'url_state')) if d.has(side, 'url_state') else set() for side in ('base', 'candidate')}
     # Both releases must publish both facts: the rules read the live and the candidate values. The first
     # candidate with the columns meets a live release without them, once; it refuses here, plainly.
@@ -447,63 +504,41 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
                for side, name in (('base', 'the live release'), ('candidate', 'the candidate'))
                if (absent := [f for f in ('recheck_meeting_date', 'linked_from') if f not in columns[side]])]
     if missing:
-        return missing, {}, set(), []
-    work = Path(work)
-    work.mkdir(parents=True, exist_ok=True)
-    pq.write_table(pa.table({'receipt_key': pa.array(sorted(new_receipts), pa.string())}), work / 'new-receipts.parquet')
-    # The model's own steps, by name: the fold, the good-fetch predicate and the band.
-    model = {step['name']: step for step in [*evidence_steps(), *source_steps(), *url_state_steps()]}
-    registry = next(item for item in registry_inputs(work / 'registries') if item['name'] == 'recheck_intervals')
-    steps = [dict(name='captures', sql='SELECT c.* FROM new_receipts n JOIN lake_captures c ON c.receipt_key=n.receipt_key', materialize=True),
-             dict(name='capture_evidence', sql='SELECT * FROM captures'),
-             *(model[name] for name in ('good_archive_containers', 'good_fetches', 'good_fetch_contexts',
-                                        'url_state_lines', 'url_state_good_lines', 'url_state_latest')),
-             dict(name='url_state_meeting_dates', sql="""SELECT requested_url,recheck_meeting_date AS meeting_date
-                 FROM candidate_url_state WHERE recheck_meeting_date IS NOT NULL""", materialize=True),
-             model['url_state_ages'], model['url_state_interval_candidates'], model['url_state_intervals']]
-    result = run_job(work / 'job', engine, steps=steps, outputs=[], inputs=[
-        table_input('lake_captures', _captures_source(captures)),
-        dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')),
-        dict(name='candidate_url_state', kind='parquet', path=str((Path(candidate_dir) / 'url_state.parquet').resolve())),
-        registry], queries=[
-        dict(name='lines', sql="""SELECT l.receipt_key,l.receipt_line,l.requested_url,arrow_cast(l.retrieved_at,'Int64') AS t,
-            g.receipt_key IS NOT NULL AS good FROM url_state_lines l LEFT JOIN url_state_good_lines g
-            ON g.receipt_key=l.receipt_key AND g.receipt_line=l.receipt_line AND g.requested_url=l.requested_url ORDER BY 1,2,3"""),
-        dict(name='newest', sql="""SELECT x.requested_url,arrow_cast(x.retrieved_at,'Int64') AS t,
-            cast(x.http_status AS INT) AS s,x.outcome AS o,i.interval_seconds
-            FROM url_state_latest x LEFT JOIN url_state_intervals i ON i.requested_url=x.requested_url""")])
+        return missing, {}, set(), [], None
+    common = sorted(columns['base'] & columns['candidate'] - {'requested_url'})
+    # The one join of the two files: changed and added rows, the live row `b` and the candidate's `c`.
+    d.table('url_pairs', f"""SELECT c.requested_url AS url,b,c FROM candidate_url_state c
+        LEFT JOIN base_url_state b ON b.requested_url=c.requested_url
+        WHERE b.requested_url IS NULL OR {' OR '.join(f'b.{column} IS DISTINCT FROM c.{column}' for column in common)}""")
+    pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(c.linked_from) AS k FROM url_pairs WHERE c.attempts=0)
+        ANTI JOIN (SELECT url,unnest(b.linked_from) AS k FROM url_pairs WHERE b.requested_url IS NOT NULL) USING(url,k)""")}
+    dated = d.one('SELECT count(*) FROM url_pairs WHERE c.attempts>0 AND coalesce(b.attempts,0)=0 AND c.recheck_meeting_date IS NOT NULL')
+    result = capture_job(work, engine, captures, keys=set(keys) | pages, new_receipts=new_receipts,
+                         candidate_state=Path(candidate_dir) / 'url_state.parquet')
     d.con.register('url_new_lines', pa.Table.from_pylist(result['lines'], schema=pa.schema([
         ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('requested_url', pa.string()), ('t', pa.int64()), ('good', pa.bool_())])))
     d.con.register('url_newest', pa.Table.from_pylist(result['newest'], schema=pa.schema([
         ('requested_url', pa.string()), ('t', pa.int64()), ('s', pa.int32()), ('o', pa.string()), ('interval_seconds', pa.int64())])))
-    common = sorted(columns['base'] & columns['candidate'] - {'requested_url'})
     d.table('url_rows', f"""WITH p AS (SELECT requested_url,count(*) AS n,
           max(t) FILTER (WHERE good) AS good FROM url_new_lines GROUP BY 1)
-        SELECT c.requested_url AS url,b.requested_url IS NOT NULL AS live,
-          c.attempts>0 AS attempted,b.linked_from AS live_pages,c.linked_from AS pages,
-          c.attempts>0 AND coalesce(b.attempts,0)=0 AND c.recheck_meeting_date IS NOT NULL AS dated_first_schedule,
+        SELECT u.url,b.requested_url IS NOT NULL AS live,c.attempts>0 AS attempted,
           {''.join(f'b.{column} IS DISTINCT FROM c.{column} AS "moved {column}",' for column in common if column in URL_STATE_COLUMNS)}
           {_url_state_rules()} AS reason
-        FROM candidate_url_state c LEFT JOIN base_url_state b ON b.requested_url=c.requested_url
-        LEFT JOIN p ON p.requested_url=c.requested_url LEFT JOIN url_newest x ON x.requested_url=c.requested_url
-        WHERE b.requested_url IS NULL OR p.n>0
-          OR {' OR '.join(f'b.{column} IS DISTINCT FROM c.{column}' for column in common)}""")
+        FROM url_pairs u LEFT JOIN p ON p.requested_url=u.url LEFT JOIN url_newest x ON x.requested_url=u.url""")
     reasons = [f'automatic causes: url_state: {count} rows: {reason} (first {urls})' for reason, count, urls in d.rows(
         'SELECT reason,count(*),list(url ORDER BY url)[1:3] FROM url_rows WHERE reason IS NOT NULL GROUP BY 1 ORDER BY 1')]
-    dated = d.one('SELECT count(*) FROM url_rows WHERE dated_first_schedule')
     reasons += over_cap(dated, 'first schedules with a meeting date', AUTOMATIC_FIRST_SCHEDULE_CAP)
     unaccounted = d.one('SELECT count(*) FROM (SELECT DISTINCT requested_url FROM url_new_lines) ANTI JOIN url_rows ON url=requested_url')
     if unaccounted:
-        reasons.append(f'automatic causes: url_state: {unaccounted} addresses with new lines have no row in the candidate')
+        reasons.append(f'automatic causes: url_state: {unaccounted} addresses with new lines have no changed or added row in the candidate')
     counts = 'SELECT count(*),count(*) FILTER (WHERE reason IS NULL) FROM url_rows WHERE '
     summary = {f'changed {column}': list(d.rows(f'{counts}live AND "moved {column}"')[0])
                for column in URL_STATE_COLUMNS if column in common}
     summary[f'added URLs: {ATTEMPTED_URLS}'] = list(d.rows(f'{counts}NOT live AND attempted')[0])
     summary[f'added URLs: {QUEUED_URLS}'] = list(d.rows(f'{counts}NOT live AND NOT attempted')[0])
     summary['first schedules with a meeting date'] = [dated, AUTOMATIC_FIRST_SCHEDULE_CAP]
-    pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(pages) AS k FROM url_rows WHERE NOT attempted)
-        ANTI JOIN (SELECT url,unnest(live_pages) AS k FROM url_rows WHERE live AND live_pages IS NOT NULL) USING(url,k)""")}
-    return reasons, summary, pages, [(r['receipt_key'], r['receipt_line'], r['requested_url']) for r in result['lines']]
+    lines = [(r['receipt_key'], r['receipt_line'], r['requested_url']) for r in result['lines']]
+    return reasons, summary, pages, lines, result['trace']
 
 
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work,
@@ -533,8 +568,6 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
     new row whose receipts are new while the code that made it changed; the other gates still run.
     """
-    from congress_api.lake.tables import table_input
-    from congress_api.retention.provenance import run_job
     from viewer_publication.release_comparison import Diff, documents
     reasons = []
     groups = report['failing']
@@ -583,24 +616,17 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if reasons:
         return [], reasons
     # From here every check runs and every reason is kept, so a refused night names all it found.
-    summary, pages, url_lines = {}, set(), []
-    if url_state:
-        if candidate_receipt_keys is None:
-            reasons.append("automatic causes: url_state needs the candidate's receipt set")
-        else:
-            reasons, summary, pages, url_lines = url_state_proof(d, candidate_dir, engine=engine, captures=captures,
-                new_receipts=set(candidate_receipt_keys) - held, work=Path(work) / 'url-state')
+    # One engine job for the trace and the url_state proof: one scan of the capture input.
+    summary, pages, url_lines, lines = {}, set(), [], None
     work = Path(work)
+    if url_state and candidate_receipt_keys is None:
+        reasons.append("automatic causes: url_state needs the candidate's receipt set")
+    elif url_state:
+        reasons, summary, pages, url_lines, lines = url_state_proof(d, candidate_dir, engine=engine, captures=captures,
+            new_receipts=set(candidate_receipt_keys) - held, work=work / 'url-state', keys=keys)
+    if lines is None:
+        lines = capture_job(work / 'trace', engine, captures, keys=set(keys))['trace'] if keys else []
     work.mkdir(parents=True, exist_ok=True)
-    traced_keys = sorted(set(keys) | pages)
-    lines = []
-    if traced_keys:
-        pq.write_table(pa.table({'prefix': traced_keys}), work / 'added-keys.parquet')
-        lines = run_job(work / 'trace', engine, inputs=[table_input('captures', _captures_source(captures)),
-            dict(name='added_keys', kind='parquet', path=str(work / 'added-keys.parquet'))], steps=[], outputs=[],
-            queries=[dict(name='lines', sql="""SELECT DISTINCT k.prefix,c.receipt_key,c.receipt_line,lower(encode(c.sha256,'hex')) AS sha
-                FROM added_keys k JOIN captures c ON substr(lower(encode(c.sha256,'hex')),1,16)=k.prefix
-                WHERE c.sha256 IS NOT NULL ORDER BY 1,2,3""")])['lines']
     traced = {row['prefix'] for row in lines}
     for kind, missing in (('new document', [k for k in keys if k not in traced]), ('queued link page', sorted(pages - traced))):
         if missing:
