@@ -1,9 +1,15 @@
 -- Publisher memberships precede edition exclusion; fallback never uses one of
 -- their source files, even when the publisher group is later rejected.
+-- Listed together is not enough to be one document (ct-h3jb): a row that holds a PDF and a link to
+-- a page made the page that PDF's HTML version, and one listing page beside seven PDFs made them one
+-- document. A publisher item (page body, context, group_path) joins only its files that share a
+-- filename stem, spelled as in source-directories.sql; item_id keeps the whole item together so
+-- valid-rendition-members.sql still judges one body per format across all of it.
 WITH publisher AS (
  SELECT DISTINCT 'publisher' AS group_kind,
- encode(sha256(json_array(p.page_body,p.context,p.group_path)),'hex') AS group_id,
- f.source_id AS source_id,f.body_sha AS body_sha,f.format AS format
+ encode(sha256(json_array(p.page_body,p.context,p.group_path,regexp_replace(f.filename,'[.][^.]*$',''))),'hex') AS group_id,
+ f.source_id AS source_id,f.body_sha AS body_sha,f.format AS format,
+ encode(sha256(json_array(p.page_body,p.context,p.group_path)),'hex') AS item_id
  FROM source_files f JOIN publisher_links p USING(source_id)
  WHERE f.is_real_file AND p.group_path IS NOT NULL
 ), fallback AS (
@@ -18,4 +24,4 @@ WITH publisher AS (
  ) ON p.source_id=f.source_id
  WHERE f.is_real_file AND d.directory_key IS NOT NULL AND d.stem<>''
 )
-SELECT * FROM publisher UNION ALL SELECT * FROM fallback
+SELECT * FROM publisher UNION ALL SELECT *,group_id AS item_id FROM fallback

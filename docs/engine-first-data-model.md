@@ -589,17 +589,20 @@ same_text      := source files at one endpoint whose real files have equal finge
                   copy whose text is equal joins it, and one whose text differs makes
                   that endpoint edition-ambiguous; sources keep the container and path
 same_rendition := real source files that are one document in different formats:
-                  (a) the publisher groups them: links resolved in one context of one page
-                      body (§7.2) with the same non-null group_path; one node per
-                      (page body, context, group_path);
+                  (a) the publisher groups them under one name: links resolved in one context
+                      of one page body (§7.2) with the same non-null group_path (an item),
+                      whose files share a filename stem, compared bytewise; one node per
+                      (page body, context, group_path, stem). Listed together is not enough:
+                      a page or another file beside a PDF in one row is not its format (ct-h3jb);
                   (b) for real source files in no publisher group: the same directory and filename
                       stem, compared bytewise, in formats the formats registry's preference
                       lists, the stem not one of its generic stems; a directory is the
                       source URL's host and path up to its last '/', or for an archive
                       member its container's URL and the member path up to its last '/';
                   bodies in edition_bodies never join a group, and a group draws edges
-                  only if its remaining real bodies all differ in format, one body per
-                  format (several names of one body count once)
+                  only if it holds several remaining real bodies and those of its whole
+                  item (for (b), the group) all differ in format, one body per format
+                  (several names of one body count once)
 review_edge    := a reviewer's duplicate_of between two body link keys (§7.9)
 
 components     := ConnectedComponents over source files and the nodes above
@@ -675,7 +678,7 @@ version_keys   := for each edition-ambiguous endpoint holding one of its real bo
 - **Versions (owner decision, 2026-11-02):** copies whose text fingerprints are equal are one document, which shows the latest; bytes that differ only by per-fetch noise, such as Cloudflare's email obfuscation (§6.2), do not make a version. Only different text makes an edition. Editions at one address are separate documents that share a `version_keys` entry, and the site lists every version, not only the latest (ct-64el).
 - Only `same_rendition` joins renditions; several files of one format listed together, such as a witness's testimony, disclosure form and biography, stay separate documents.
 - The model reports the largest components by edge kind.
-- Rendition groups today: about 34,100 GovInfo ZIPs (rule a; 112 hold no PDF); about 560 same-stem groups (rule b; 732 on the old catalog's names).
+- Rendition groups today: about 34,100 GovInfo ZIPs (rule a; 112 hold no PDF); about 560 same-stem groups (rule b; 732 on the old catalog's names). Candidate a70ebc3d1466 held 28 publisher groups whose files did not share a stem, every one a wrong join (27 a page beside a PDF, 1 a presentation beside a testimony); rule (a) now requires the stem. An item that lists several named pairs, such as a GovInfo hearing with its errata (341 packages, 1,232 pairs), still joins nothing (ct-h3jb).
 - *Est.* 0.5–0.7M listed documents: 1.24M catalog rows less 454k caption snippets, about 150k metadata records (47,643 source records, 103,200 GovInfo metadata files), 10k playlists, 1k API responses and the listing pages among about 200k HTML rows.
 - No capture date (expected): about 0.8% of listed documents with a real file (4,681 of 561,791 distinct non-caption bodies), and every recovery-only document, which shows its recovery's import date instead (6,546 in release e4538f00). Of the snapshot's 2.67M rows without `retrieved_at`, 0.74M carry another fetch time (§6.1); the 1.93M with none are mostly undated Senate caption segments (0.91M), undated document bundles (0.88M) and inline meeting records (0.2M). 102,427 saved files carry only an import run's date.
 
@@ -989,7 +992,7 @@ A conforming implementation MUST satisfy, and SHOULD test, each of the following
 10. `first_captured` comes from neither an import run nor a recovery row; `document_date_source` is set exactly when `document_date` is.
 11. `url_state` has one row per requested URL and no recovery rows; no queue row's `url_key` matches a fetch row's requested or final URL; no row carries a credential parameter.
 12. Every recovery row its decision does not reject yields exactly one recovery, which has a display kind and resolves to a listed document; a body that only recovery rows hold is neither a link key nor the saved file of a document with real files.
-13. Without a review edge, no component holds two real bodies from one edition-ambiguous endpoint whose fingerprints differ, and no rendition group joins two different bodies of one format or a body in `edition_bodies`.
+13. Without a review edge, no component holds two real bodies from one edition-ambiguous endpoint whose fingerprints differ, and no rendition group joins two different bodies of one format, files of two filename stems, or a body in `edition_bodies`.
 14. A hidden document has no search or facet presence, and its links resolve to its "removed by review" note.
 
 **Release**

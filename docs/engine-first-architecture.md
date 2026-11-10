@@ -331,7 +331,7 @@ A file is a real document when its main content is the document itself (testimon
 
 ### 9.3 Grouping
 
-Source files connect when they share a real body, when one endpoint served re-packaged bytes with equal main text, when the publisher lists them together as formats of one document, and when a reviewer merges them. A new edition is a new document: an edition that ever shared an address with a different edition never joins a rendition group, so mirrors cannot merge editions transitively.
+Source files connect when they share a real body, when one endpoint served re-packaged bytes with equal main text, when the publisher lists them together under one name as formats of one document, and when a reviewer merges them. A new edition is a new document: an edition that ever shared an address with a different edition never joins a rendition group, so mirrors cannot merge editions transitively.
 
 Files connect through one node per body, fingerprint or rendition group, so a group of n files costs n edges, not n² (§13).
 
