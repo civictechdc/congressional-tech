@@ -1208,7 +1208,11 @@ def retained_captures(inputs):
     named `captures` 42 times and took 414 s of an 867 s build. Read once into a retained step,
     all of them scan local rows; no model SQL changes. Only the full job does this: the admission
     job and every other caller of the step factories keep their own `captures` binding. Final
-    queries read the step, so it lives to the end of the job.
+    queries read the step, so it lives to the end of the job. The engine holds a step in memory
+    while what it retains fits under its ceiling and in scratch otherwise: at about 2.7 GiB of
+    Arrow data against a 3 GiB ceiling this step sits at that boundary, so held in memory it
+    takes most of the ceiling and sends later steps to scratch, and it moves to scratch itself
+    as the table grows.
     """
     return ([dict(item,name=CAPTURES_INPUT) if item['name']=='captures' else item for item in inputs],
         dict(name='captures',sql='SELECT * FROM '+CAPTURES_INPUT,materialize=True))
