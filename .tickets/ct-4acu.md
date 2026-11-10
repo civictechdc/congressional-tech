@@ -17,3 +17,9 @@ Branch claude/ct-next-release (worktree /Users/mikewolfd/Work/wt/ct-next-release
 
 Six shards and storage-loopback pass on the stack. A full model build outside the driver produces a candidate; the gate's differences against 619db5f9e08e are each explained by a named change, with a reviewed cause record where the gate asks for one. One independent review covers the whole stack. The owner approves before anything is published. Release note written.
 
+
+## Notes
+
+**2026-11-10T14:08:12Z**
+
+2026-11-10 14:03Z: lanes pass on the stack claude/ct-next-release c03c43da (document roles + recovery rule + name rule merged): six production-offline shards exit 0 and storage-loopback (full lane) exit 0; logs .cache/archive-release/lanes-ct-next-release-c03c43da/. First model-only build attempt stopped in 2 s on a missing local input (the worktree had no fetched spicy-regs tables); the spec now reads the nightly worktree's verified copy and the build is queued again.
