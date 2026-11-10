@@ -2328,7 +2328,8 @@ def test_a_details_sub_page_that_is_no_govinfo_id_names_no_file_and_is_counted(t
     """Review finding 3 (2026-11-10): the landing rule accepts any path under /app/details/ and matches a
     page's last segment to any host's file stem, so a sub-page that is no package or granule ID would attach
     to an unrelated summary.pdf. Its stem must be a GovInfo ID (page signals govinfo_details_name). Such a
-    page then is neither a document nor a landing page: lost_landing_addresses counts its address."""
+    page then is neither a document nor a landing page: lost_landing_addresses counts its address. An error
+    page or an unread page at a details address is not counted."""
     from congress_api.retention.provenance import json_input
     from viewer_publication.archive_model import LANDING_PAGE_INVARIANTS, ROOT, registry_inputs
     package = f'{GOVINFO}/app/details/{LANDED}'
@@ -2336,7 +2337,11 @@ def test_a_details_sub_page_that_is_no_govinfo_id_names_no_file_and_is_counted(t
         dict(component='page', source_id='page', body_sha='1' * 64, source_url=package, filename=LANDED, record_role='wrapper', is_real_file=False, format='html'),
         dict(component='sub', source_id='sub', body_sha='2' * 64, source_url=f'{package}/summary', filename='summary', record_role='wrapper', is_real_file=False, format='html'),
         dict(component='hearing', source_id='pdf', body_sha='3' * 64, source_url=f'{GOVINFO}/content/pkg/{LANDED}/pdf/{LANDED}.pdf', filename=f'{LANDED}.pdf', record_role='document', is_real_file=True, format='pdf'),
-        dict(component='summary', source_id='other', body_sha='4' * 64, source_url='https://committee.house.gov/files/summary.pdf', filename='summary.pdf', record_role='document', is_real_file=True, format='pdf')]
+        dict(component='summary', source_id='other', body_sha='4' * 64, source_url='https://committee.house.gov/files/summary.pdf', filename='summary.pdf', record_role='document', is_real_file=True, format='pdf'),
+        # An error page or an unread page at a details address is no landing page by the general role rules
+        # (url_state and the reading counts see those), so its address is not lost to the fold.
+        dict(component='error', source_id='error', body_sha='5' * 64, source_url=f'{GOVINFO}/app/details/{TEXT_ONLY}', filename=TEXT_ONLY, record_role='error_response', is_real_file=False, format='html'),
+        dict(component='unread', source_id='unread', body_sha='6' * 64, source_url=f'{GOVINFO}/app/details/{PARTS}', filename=PARTS, record_role=None, is_real_file=False, format='html')]
     for row in members:
         row['first_fetched'] = '2026-10-01T12:00:00Z'
     strings = dict(component='Utf8', source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8', record_role='Utf8', format='Utf8')
