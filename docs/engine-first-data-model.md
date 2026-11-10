@@ -555,6 +555,7 @@ One row per source file: 1,683,430 today.
 | `is_real_file` | bool | At least one of its capture rows is in `real_files` |
 | `first_fetched`, `last_fetched` | ts, nullable | Over its `mode = fetch` rows outside import runs |
 | `in_archive_since` | date32, nullable | The registry date of its earliest import run, when all its fetch rows come from import runs |
+| `body_stored` | bool | One of its capture rows has outcome `stored`; false when every row found the archive already holding the bytes (`unchanged`) |
 
 - **Derivation:** the distinct `(body, effective filename, source URL)` triples over `mode = fetch` rows in `captures`; plus one bodiless row per URL that never yielded a body; plus one bodiless row per distinct recovery original link, whose source URL is that link. Recovery rows make no other source files, because their `url` is the recovered copy's address (11,950 of 12,106 lines).
 - **Effective filename:** the first non-empty name in this order, else `''`, by one SQL definition that the filename producer (§6.3) and the model share:
@@ -642,8 +643,11 @@ document_id    := SHA-256 of the compact JSON ["bodies", [k1, k2, …]], the dis
                   body keys of its real files sorted bytewise, or ["sources", [h1, h2, …]],
                   its source_id hex strings sorted, when it has none
 filename       := the saved file's effective filename; saved-file order picks the saved body,
-                  then among that body's source files a named one first, otherwise
-                  saved-file order (a ZIP member is a first-class copy)
+                  then among that body's source files a named one first, then one that
+                  stored the bytes (`body_stored`, §7.4) before one that found them already
+                  held, so a fetch of held bytes at another address never renames the
+                  document (ct-f7hp), otherwise saved-file order, where the newest fetch
+                  leads (a ZIP member is a first-class copy)
                   (invariant saved_unnamed_with_named_sibling = 0)
                   a blank filename carries a recorded reason read from every capture of
                   the saved body and its published address: none, a query URL whose
