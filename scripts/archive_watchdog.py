@@ -197,6 +197,9 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
     def record(number, _frame):
         received.append(number)
 
+    def signalled():
+        return f'Interrupted: watchdog received signal {received[0]}' if received else None
+
     old = {number: signal.signal(number, record) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
     memory = sampler.MemorySamples(sampler)
     peak = physical_peak = 0.0
@@ -230,11 +233,11 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
             if not received:  # a signal during the sample is acted on now, one during the sleep when it ends
                 time.sleep(interval)
             if received:
-                return (STOPPED, peak, physical_peak, f'Interrupted: watchdog received signal {received[0]}',
-                        time.monotonic() - started)
+                return STOPPED, peak, physical_peak, signalled(), time.monotonic() - started
         return process.returncode, peak, physical_peak, None, time.monotonic() - started
     except Exception as error:  # the finally stops the job
-        return STOPPED, peak, physical_peak, f'{type(error).__name__}: {error}', time.monotonic() - started
+        # A signal to the whole group also kills the reader this pass had running; the signal is the reason.
+        return STOPPED, peak, physical_peak, signalled() or f'{type(error).__name__}: {error}', time.monotonic() - started
     finally:
         if process is not None:
             sampler.stop_owned(process)
