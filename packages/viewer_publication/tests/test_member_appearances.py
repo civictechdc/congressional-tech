@@ -106,7 +106,7 @@ def result(tmp_path_factory):
             cast(NULL AS SMALLINT) AS panel_order,cast(NULL AS SMALLINT) AS display_order,witness_type,cast(NULL AS BOOLEAN) AS testified,
             bioguide_id FROM appearance_rows""", materialize=True),
         dict(name='witness_precedence', sql='SELECT witness_key,superseded_by FROM precedence_rows', materialize=True),
-        *[dict(name=n.replace('-', '_'), sql=sql(n), materialize=True) for n in ('member-terms', 'witness-member-facts', 'witness-members')],
+        *[dict(name=n.replace('-', '_'), sql=sql(n), materialize=True) for n in ('member-terms', 'witness-member-facts', 'witness-member-candidates', 'witness-member-states', 'witness-members')],
     ]
     return run_job(work, engine, inputs=inputs, steps=steps, outputs=[], queries=[
         dict(name='members', sql='SELECT witness_key,outcome,matched_bioguide_id,match_basis FROM witness_members ORDER BY witness_key'),
