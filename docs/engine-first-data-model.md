@@ -414,6 +414,7 @@ A **registry** is a versioned list a rule depends on.
 | recheck intervals | `(family, interval)` for every family, with bands by meeting age where pages change as a meeting ages | `url_state` (§7.7) | profile |
 | capture scope | URL patterns capture follows from links, as an allowlist, and its exclusions: media, crawler traps such as calendar archives, and forms | `url_state`; the fetchers, from the live release's copy (§8.1) | profile |
 | meeting status conflicts | Meetings whose publisher status says not held but whose own recording a person found streamed on its date, with the quoted evidence | `not_held` (§7.11) | profile |
+| saved-name decisions | Documents whose official name a committee name contradicts, read one by one: the saved body's SHA-256, which name leads (official or committee) or that the reading could not decide (undecided, neither), both names and the reader's evidence | name standing, `filename` (§7.5) | profile |
 | reader limits | The largest gzip copy the site reader unpacks (`max_unpacked_bytes`) | the release probe's choice of a readable saved document | profile |
 | capture eligibility fields | The capture-decision columns `url_state` carries under capture profile version 2 (`capture_disposition`, `capture_reason`, `capture_decision_id`) | `schema.json` for `url_state` (§8.1) | profile |
 | compatible versions | Parser versions whose readings stay valid under a newer version, each with the proof (a lock-only change re-parsed with zero differences) | the readings selection and the producer proof; never captures | profile |
@@ -656,21 +657,32 @@ filename       := the saved file's effective filename; saved-file order picks th
                   then among that body's source files a named one first, then by name
                   standing (ct-h8dr, ct-yuf0): an official name (its filename reading is
                   `valid`, a House or GovInfo convention name) that no committee name
-                  contradicts, then a committee name that states a kind beside an official
-                  slot name, then the rest; then one that stored the bytes (`body_stored`,
-                  §7.4) before one that found them already held (ct-f7hp), otherwise
-                  saved-file order, where the newest fetch leads (a ZIP member is a
-                  first-class copy). A name states the families its copy would give the
-                  document. An official name is contradicted when it states a kind, a
-                  committee (non-official) name of the same bytes states a kind, and no
-                  committee name shares a family with it. Only a contradicted name in a
-                  House meeting-document slot (biography, disclosure, statement,
-                  supporting-material) gives way: of 158 read, the slot label was wrong or
-                  said less than the committee's name in 144. A contradicted official name of
-                  any other kind keeps saved-file order (owner decision pending, ct-h8dr),
-                  as do two official names of different kinds with no committee name; a
-                  reading of the bytes would settle both, and no PDF reading is a model
-                  input yet (`pdf_text`, §6.6). The saved body never changes. Because the
+                  contradicts, then the name a rule or the review prefers, then the rest;
+                  then one that stored the bytes (`body_stored`, §7.4) before one that
+                  found them already held (ct-f7hp), otherwise saved-file order, where the
+                  newest fetch leads (a ZIP member is a first-class copy). A name states
+                  the families its copy would give the document. An official name is
+                  contradicted when it states a kind, a committee (non-official) name of
+                  the same bytes states a kind, and no committee name shares a family with
+                  it. Rules settle three contradictions, each without exception in the
+                  documents read: a GovInfo printed hearing is also the hearing's
+                  transcript and nomination record, and an official vote record is also the
+                  amendment it tallies, so those names lead, after an official name a
+                  committee name agrees with outright; a contradicted name in a House
+                  meeting-document slot (biography, disclosure, statement,
+                  supporting-material) or the generic House name (`committee-document`: a
+                  cover page, a table of contents) gives way to a committee name that
+                  states a kind (the slot label was wrong or said less in 144 of 158 pairs
+                  read; all 21 generic names read stood beside a hearing notice). The 343
+                  non-slot contradictions were read one by one (2026-11-10):
+                  `saved-name-decisions.json` keys by its SHA-256 each body no rule
+                  settles as read and says which name leads, or that the reading could not
+                  decide; a reviewed body takes its decision instead of any rule, and an
+                  undecided one keeps saved-file order (query saved_name_decisions_unused
+                  counts entries no saved body matches). A contradicted official name in neither keeps
+                  saved-file order, as do two official names of different kinds with no
+                  committee name; a reading of the bytes would settle both, and no PDF
+                  reading is a model input yet (`pdf_text`, §6.6). The saved body never changes. Because the
                   name can come from an official copy that no page lists, the title's last
                   fallback is the listing-link text of another copy of the saved bytes
                   (`document_rendition_titles`). `saved_name_conflicts` lists every document
