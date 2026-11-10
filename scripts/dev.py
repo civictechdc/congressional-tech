@@ -206,7 +206,7 @@ def job_runtime(config, lane_name, *, pin_file=PIN_FILE):
     variable = config['lanes'].get(lane_name, {}).get('required_job_config_env')
     if not variable:
         return None
-    remedy =(f'{variable} must name an explicit pinned local runtime; write one with '
+    remedy = (f'{variable} must name an explicit pinned local runtime; write one with '
               'scripts/dev.py write-local-runtime (see docs/development.md)')
     location = os.environ.get(variable)
     if not location:
