@@ -40,19 +40,23 @@ CHRG-107shrg83683 #9 is a document run into a heading: the entry names the
 document and the rule appends its asker, Jeffords.
 
 Owner decision 2026-11-10 ("fix them in this branch now"; the third review's
-rejected rows): fifteen documents run into a question heading, or titled
+rejected rows; the biography appendices it named are read by a rule,
+appearance_records._MODS_BIOGRAPHY_APPENDIX): fifteen documents run into a question heading, or titled
 "Report, ... Questions and Answers ...", that published as witnesses named for
 their titles ("title", e.g. "Report, Arsenic and Old Laws, NRDC....267-285
 Responses to additional questions from: Senator Crapo"); and seven rows with
 no person that published as witnesses, record_material with no name: the
-contents heading "Page QUESTIONS AND ANSWERS Questions and Answers" and three
-"Appendix 1: Biographies, Financial Disclosures, and Answers to Post-Hearing
-Questions" lines (each witness has their own row), the note "Questions
-submitted, classified responses received", and two prose fragments (a budget
+contents heading "Page QUESTIONS AND ANSWERS Questions and Answers", the note
+"Questions submitted, classified responses received", and two prose fragments (a budget
 request, a hearing exchange). A shape rule is not right on these: other lines
 that open "Report," hold a witness after the report ("Report, Plant Life
 Extension.....58-63 ... Moore, W. Henson, President ..."). The five people
 those rows named with heading text are reviewed fields in mods_person_fields.
+Round 5 (the fourth review): every other prose line of the two transcripts
+those fragments came from (CHRG-109hhrg29389 #1-9 and #11-15; CHRG-115hhrg30357
+#3, #6, #9 and #10, whose panel lines #1, #2, #4, #7, #8 and #11 name witnesses
+and stay) is record_material with no name too, #9 and #10 typed so explicitly
+since their prose names Members ("Congressman Ryan's district").
 
 Owner decision 2026-11-10 (ct-gfo7 item 4): an organization's own statement is
 record material, not a statement for the record, when a witness of the same
@@ -161,28 +165,6 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-107shrg89642': {
         6: ('2b5d381c972b0ca1e4d0ac59d564fb69c22e9b05dda1724e77042fb6b57f0e4a', None, 'document'),
     },
-    'CHRG-108hhrg85516': {
-        6: ('7ee226c021893f970a90acd2c222112e37f562cbc9a112d44b7262e3d6582c7e', None),
-        7: ('6f789ff04f11030b8049da40d2fc520add885e9e14cd3a45782deae79d25c983', 'Charles G. Groat'),
-        8: ('7d7f75199d43467d4cfafd02f07149635d819d669db154f30ca8cb51d4ad8d44', 'Wayne W. Carmichael'),
-        9: ('26870e2072591a5667c8f9777798d7a9fb0a0cebcdef7ec857361645d200123d', 'Donald M. Anderson'),
-        10: ('c6602ffa0eb35432b256b5be7b5af937993bb93bb3ebf518c0d5fb66032b076e', 'Dan L. Ayres'),
-    },
-    'CHRG-108hhrg86341': {
-        8: ('e6c2802ffb83660dd5d2f8b988e67380e2440f5535a7cd682aef410c4408b21c', None),
-        9: ('ced9cade110329384dff4a83fd159dee9f645c9c3974e08ae425cfd084c14bce', 'Eric E. Harm'),
-        10: ('e3d43cbf1721e420ddfd6aefda5ec0e75750cdd490831b512b60106ad19246dc', 'C. Michael Walton'),
-        11: ('4a9c71909bc9823e506bf2a77b70d6a6208c589b4ab3515e7b3df232fff750c7', 'Katherine Siggerud'),
-        12: ('562e048ee9217fdf3092fb91f387f91a25ab53189ccb0f3eb1d80af336a16f3e', 'Anne P. Canby'),
-        13: ('27dcf42c5b0da5cf5377567a52b241bf4acab4f4f2a8cb1f682b48402bb12f2c', 'Michael D. Meyer'),
-    },
-    'CHRG-108hhrg87544': {
-        6: ('752dcc941cc5feb200f2833f9cda18db37ec7ab62d17d7e01c2440b9a89a4bc7', None),
-        7: ('64d693aa6434a46dacdc1b7c0f77a8875098771bb56b217a0996193c6ccfadad', 'Lawrence J. Rhoades'),
-        8: ('fe2fcb70b7bda17d7c080362494f55a8dc15a31e9e3aefcd39c2a21213d6a06f', 'Herman M. Reininga'),
-        9: ('db971c1ddf6b61932d046c763391f8181a3ce95ff6a412d2144b8f48e766831d', 'Jay R. Dunwell'),
-        10: ('e67d62fb5f918dcbeb3b22daac765ff5e1be6715e0c434804a43a300c52fca4a', 'Jason Farmer'),
-    },
     'CHRG-108shrg21190': {
         8: ('5564c8357b4c519547adc04f40e9b40f4a9371707e1cf4a902ae3db25626cc11', 'Thomas H. Collins'),
     },
@@ -203,7 +185,21 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         5: ('b0f16ef3d5d901ed7d56964368ab28f1859827ec0c9e632dae843553ecec4fe0', 'Robert Brandewie'),
     },
     'CHRG-109hhrg29389': {
+        1: ('c3e6e007ea722d606338a5aad08ab763e6e88adf896c1443ea5d0536f3b54f73', None),
+        2: ('9bc4c83c5a48af273cd6872c830782b88ea4f703339f3000993332a29b0ec215', None),
+        3: ('ae485d69979dbd0997a33284fc7dcaa7ea49b33ced9281beec7757c3a724b154', None),
+        4: ('75cc0021a52ff9f3e71a30bfc9f96847cfe9fd3edc5bb9950df368c7e75fb959', None),
+        5: ('60a09a2313e9bdd247b49e4885f076dec7736bc49764e00d6986080fb1f7d1fe', None),
+        6: ('b4f585feb7ade627ca21d4795ce4682619c08d2d478f9aa4717cfa1b75da072f', None),
+        7: ('a98c5f0b3e57ee73c93465954c2b3d22ca76f1e68008d94d90167470a645f3f6', None),
+        8: ('27ff6950308816347520622e28be9e2c8c389a6b952f3e94a45263d2f7c07ecb', None),
+        9: ('06567d53e840ef8c8682cfcaee536a4c830202f28f03b62d8ff1e0ddaf18c555', None),
         10: ('731103ed8d32d0377ed680dc122f25de4561567a48124d199fcb67f625ade684', None),
+        11: ('0475f6391a537db96a1a82cfb52bce826e225d120f19c2f0c4c0a0c18f8a5df5', None),
+        12: ('c63358031a8936bce589b320cb2d544194c1966665cb0f85e6889c80821b0881', None),
+        13: ('e42ba33a59baaaad319b0319503a677097775512aafd8ec8cd30daf85d3c913f', None),
+        14: ('cd7b8c1d371e5dc0ad631992a0cf52f58c3e12872e0dca46adc77e2ec8bf86fa', None),
+        15: ('a4254d8d6e22ca2bd70fa3fd3ed6123656bf284fceedd80feffa68cb5d1361ea', None),
     },
     'CHRG-109hhrg29565': {
         3: ('c6d37563b7cbd3caafc255f118db8e98f49144163c788018dc12d16f2f36d6aa', None),
@@ -390,7 +386,11 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
             ('Frank A. LoBiondo', 'Paul Mitchell'), 'record_material'),
     },
     'CHRG-115hhrg30357': {
+        3: ('f9878746d79ba59b29fecae28a3046aaca96e97621fe424bb62a097a9845cf9c', None),
         5: ('9948113420f78df911cd5bf210ce36b044e4b55cb67b8048ee0110f20b206ace', None),
+        6: ('6ae2fa3beade990414934ae3d1fa238d4e0a1c16953010c5c135fba190f1d24e', None),
+        9: ('d867fe7c677e6608b1320b5cc28fef98e6b673cd87533be43901a05254b1615e', None, 'record_material'),
+        10: ('1f690b53083c00c1c583616a9d32830ef1777b49826dc51b6b47284af66cb3d1', None, 'record_material'),
     },
     'CHRG-115shrg26915': {
         5: ('b27836ef058075b90e1a1d9efefd7f3d5e648f4da0bcb6be94aff16b2eedbd72', None, 'record_material'),

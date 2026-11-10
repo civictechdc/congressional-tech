@@ -2688,27 +2688,48 @@ def test_a_hon_name_in_a_confirmed_heading_list_is_a_member(line, members, names
     assert [a["witness_type"] for a in alone] == [None]
 
 
-REVIEW3_ROWS = json.loads((Path(__file__).parent / "fixtures/source_models/mods-review3-rows.json").read_text())
+REVIEWED_ROWS = json.loads((Path(__file__).parent / "fixtures/source_models/mods-review3-rows.json").read_text())
 
 
-@pytest.mark.parametrize("entry", REVIEW3_ROWS, ids=[f"{r['package']}#{r['index']}" for r in REVIEW3_ROWS])
-def test_the_third_reviews_rejected_rows(entry):
-    """Owner decision 2026-11-10 ("fix them in this branch now"): each row the third review rejected, from its line's
-    real text. Fifteen documents run into a question heading are record material keeping their own printed text;
-    seven rows with no person are nameless record material; five people named with heading text keep their rows,
-    named with what the line states and typed as the rules type the line. Each is bound to its line's SHA-256."""
+@pytest.mark.parametrize("entry", REVIEWED_ROWS, ids=[f"{r['package']}#{r['index']}" for r in REVIEWED_ROWS])
+def test_the_rows_the_third_and_fourth_reviews_rejected(entry):
+    """Owner decision 2026-11-10 ("fix them in this branch now"): each row the third and fourth reviews rejected, from
+    its line's real text. Documents run into a question heading are record material keeping their own printed text;
+    rows with no person (a contents heading, a note, transcript prose) are nameless record material; people named
+    with heading text keep their rows, named with what the line states. Those are reviewed, each bound to its line's
+    SHA-256. Rules read the rest: a biography appendix's first entry is the person's biography; a question heading
+    after a witness's entry is not part of the position; a Member's submitted article or summary is a member's
+    statement."""
     package, index, line = entry["package"], entry["index"], entry["line"]
     digest = hashlib.sha256(line.encode()).hexdigest()
     if entry["how"] == "person":
         assert mods_person_fields.MODS_PERSON_FIELDS[package][index][0] == digest
+    elif entry["how"] == "title":
+        assert mods_record_entries.MODS_RECORD_ENTRIES[package][index] == (digest, None, "title")
+    elif entry["how"] == "nameless":
+        assert mods_record_entries.MODS_RECORD_ENTRIES[package][index] in (
+            (digest, None), (digest, None, "record_material"))
     else:
-        assert mods_record_entries.MODS_RECORD_ENTRIES[package][index] == (
-            (digest, None, "title") if entry["how"] == "title" else (digest, None))
+        assert index not in mods_record_entries.MODS_RECORD_ENTRIES.get(package, {})
     found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
     row = found[index - 1]
     assert row["source_locator"] == f"mods:witness[{index}]"
     assert {f: row[f] for f in ("name", "position", "organization", "witness_type")} == entry["expect"]
-    assert (row["name"], row["witness_type"]) != (entry["published"]["name"], entry["published"]["witness_type"])
+    published = entry["published"]
+    assert (row["name"], row["position"], row["witness_type"]) != (
+        published["name"], published.get("position", row["position"]), published["witness_type"])
+
+
+def test_a_biography_appendix_is_read_by_rule_in_a_real_print():
+    """CHRG-108hhrg85516 (real bytes): five witnesses, then "Appendix 1: Biographies, ... Questions" run into the
+    first biography and one line per witness ending "Biography". Each biography is record material named for its
+    person; the witnesses' own lines stay witnesses. No reviewed entry is left for the print."""
+    xml = (ROOT / "packages/congress_api/tests/fixtures/gpo_metadata/CHRG-108hhrg85516.xml").read_bytes()
+    row = appearance_records.build_appearance_record_row(_sha("CHRG-108hhrg85516"), "mods", xml)
+    people = ["Donald Scavia", "Charles G. Groat", "Wayne W. Carmichael", "Donald M. Anderson", "Dan L. Ayres"]
+    assert [(a["name"], a["witness_type"]) for a in row["appearances"]] == [
+        *((name, None) for name in people), *((name, "record_material") for name in people)]
+    assert "CHRG-108hhrg85516" not in mods_record_entries.MODS_RECORD_ENTRIES
 
 
 @pytest.mark.parametrize("lines,index,names", [

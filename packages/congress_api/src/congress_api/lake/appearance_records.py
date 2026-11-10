@@ -194,6 +194,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_RECORD_OPENING",
         "_RETAINED_IN_FILES",
         "_STATEMENT_WORD",
+        "_MEMBER_SUBMISSION",
         "_WITNESS_HEADING",
         "_TESTIFIED_WORDS",
         "mods_entry_kind",
@@ -242,6 +243,9 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_mods_family",
         "_mods_same_person",
         "_mods_document_text",
+        "_MODS_BIOGRAPHY_APPENDIX",
+        "_MODS_BIOGRAPHY",
+        "_mods_entry_before_heading",
         "_mods_record_rows",
         "extract_mods_observation",
         "extract_mods_appearances",
@@ -1022,8 +1026,12 @@ _RECORD_ENTRY = re.compile(
     r"|(?:statements?|letters?|information|materials?|testimony) submitted by|prepared statement only"
     r"|letters? (?:dated|from|to|of|submitted|regarding|re\b|in support|on behalf))", re.I)
 # A Member's statement: a Member's line that names a prepared statement or a submission. A Member who appears,
-# or gives an oral statement, is a witness (red-f3).
+# or gives an oral statement, is a witness (red-f3). A submission is also the document the line names after the
+# Member's style ("Courtney, Hon. Joe, a Representative in Congress from the State of Connecticut: Hartford Courant
+# article: ...", "...: May 2008 Executive Summary ...", "..., letter, dated Sept. 3, 2014"; round 5).
 _STATEMENT_WORD = re.compile(r"\bprepared statements?\b", re.I)
+_MEMBER_SUBMISSION = re.compile(
+    r"\b(?:articles?|(?:executive )?summary|letters?|reports?|editorials?|op-eds?|memorand(?:um|a))\b", re.I)
 # A line that says the person testified or was the nominee is a witness whatever else it says.
 _TESTIFIED_WORDS = re.compile(r"\b(?:testimony|testified|nominee|nominated)\b", re.I)
 # ...unless the line opens with a record entry's own marker ("Letter from the nominee to the Office of General
@@ -1276,7 +1284,9 @@ def mods_entry_kind(line: str, name: str | None, organization: str | None = None
     # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
     if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text):
         return "statement_for_record" if organization_document else None
-    if _MEMBER_STATEMENT.search(text) and (_STATEMENT_WORD.search(text) or _RECORD_ENTRY.search(text)):
+    member = _MEMBER_STATEMENT.search(text)
+    if member and (_STATEMENT_WORD.search(text) or _RECORD_ENTRY.search(text)
+                   or _MEMBER_SUBMISSION.search(text, member.end())):
         return "member_statement"
     return "statement_for_record" if _RECORD_ENTRY.search(text) or organization_document else None
 
@@ -1535,6 +1545,25 @@ def _mods_document_text(line: str) -> str | None:
     return re.sub(r"(?<=[A-Za-z])\d[\d,-]*\s*$", "", text.strip()).strip(" ,;:") or None
 
 
+# A print's appendix of its witnesses' biographies (House Science prints of the 108th: "Appendix 1: Biographies,
+# Financial Disclosures, and Answers to Post- Hearing Questions Dr. Donald Scavia, Chief Scientist, ... Biography",
+# then one line per witness ending "Biography"): the heading runs into its first entry, and each entry is the
+# person's biography, record material named for them (round 5; it replaced sixteen reviewed entries).
+_MODS_BIOGRAPHY_APPENDIX = re.compile(r"^\W*Appendix\s+\w+:\s*Biographies\b[^.]*?\bQuestions\s+", re.I)
+_MODS_BIOGRAPHY = re.compile(r"\s*\bBiography\s*$", re.I)
+
+
+def _mods_entry_before_heading(line: str, roster: Mapping[tuple[str, ...], set[str]]) -> str:
+    """A line's own entry when a question heading and its askers follow it and end the line ("Apostolakis, Hon.
+    George, Commissioner Responses to additional questions from Senator Boxer" -> "Apostolakis, Hon. George,
+    Commissioner"); otherwise the line."""
+    for head in _MODS_ASKED_BY.finditer(line):
+        before = line[:head.start()].rstrip(" .,;:")
+        if before and _mods_askers_named(line[head.start():], roster, 0)[2]:
+            return before
+    return line
+
+
 def _mods_record_rows(names: Sequence[str | None], locators: Iterable[str], witness_type: str,
                       **kept: str | None) -> list[dict[str, Any]]:
     """A reviewed entry's rows, one per name, at the line's next locators."""
@@ -1712,7 +1741,7 @@ def extract_mods_observation(
 
     roster = _mods_roster(doc.members)
     reviewed_entries = MODS_RECORD_ENTRIES.get(resolved_pkg or "", {})
-    after_question = 0
+    after_question, biographies = 0, False
     for idx, w_line in enumerate(raw_witness_lines, start=1):
         cleaned_line = (w_line or "").strip()
         # A line's first row reads at its locator; a joined line's second entry at /part[2]; every further row the
@@ -1743,6 +1772,14 @@ def extract_mods_observation(
                 askers, answerers, _, after_question = _mods_askers_named(cleaned_line, roster, after_question)
                 emit(found, askers, parts, answerers)
                 continue
+        appendix = _MODS_BIOGRAPHY_APPENDIX.match(cleaned_line)
+        biographies = biographies or bool(appendix)
+        if biographies and _MODS_BIOGRAPHY.search(cleaned_line):
+            person = _MODS_BIOGRAPHY.sub("", cleaned_line[appendix.end():] if appendix else cleaned_line)
+            name = _opt_str(_mods_witness_fields(person).get("name"))
+            after_question = 0
+            emit([(0, r) for r in _mods_record_rows([name], parts, "record_material")], (), parts)
+            continue
         joined = MODS_JOINED_LINES.get(resolved_pkg or "", {}).get(idx)
         if joined and sha256(cleaned_line.encode()).hexdigest() == joined[0]:
             segments = [part.strip() for part in re.split(joined[1], cleaned_line, maxsplit=1)]
@@ -1754,7 +1791,10 @@ def extract_mods_observation(
             askers, answerers, only, after_question = _mods_askers_named(cleaned_line, roster, after_question)
             # The line's own reading: what it reads as when it is more than askers, and on a line of askers and
             # answerers the row a reader saw before the rule (which then named an answerer, "...to Caitlin Thompson").
-            parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
+            # A question heading and its askers after the entry are not the entry's (a reviewed reading keeps its line).
+            entry = (_mods_entry_before_heading(cleaned_line, roster) if askers and not only
+                     and idx not in MODS_PERSON_FIELDS.get(resolved_pkg or "", {}) else cleaned_line)
+            parsed = _mods_witness_fields(entry, package_id=resolved_pkg, source_index=idx)
             w_name = _opt_str(parsed.get("name"))
             kind = mods_entry_kind(cleaned_line, w_name, _opt_str(parsed.get("organization")))
             # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
