@@ -787,6 +787,31 @@ def test_a_title_with_no_name_in_it_refuses(tmp_path):
     assert sorted(row['title'] for row in result['g']) == sorted(titles[:10])
 
 
+def test_a_bill_number_placeholder_is_a_link_word(tmp_path):
+    """Review finding 9 (2026-11-10): c03c43da titles 69 documents 'H.R. ___' and the like, from another
+    same-bytes copy's link text. A bill prefix followed only by underscores names no bill: the link-word
+    rule passes over it to the source's next link text, and the gate refuses it as a title. A number or a
+    name after the prefix stays."""
+    from viewer_publication.archive_model import GENERIC_TITLES_SQL, registry_inputs
+    links = [('placeholder', 'H.R. ___'), ('placeholder-then-name', 'H.R.___'), ('placeholder-then-name', 'Discussion Draft of the Farm Act'),
+             ('senate', 'S. ____'), ('numbered', 'H.R. 5430'), ('named', 'S. ___, Traumatic Brain Injury Program Reauthorization Act of 2018.pdf')]
+    rows = [dict(source_id=source, text=text, doc_type=None, first_good_at=f'2026-10-0{i + 1}T12:00:00Z', context='c', page_body='p',
+                 link_index=i, split_position=0) for i, (source, text) in enumerate(links)]
+    sources = sorted({source for source, _ in links})
+    inputs = [i for i in registry_inputs(tmp_path / 'registries') if i['name'] in ('page_signals', 'publisher_kinds')] + [
+        json_input(tmp_path, 'links', rows, source_id='Utf8', text='Utf8', doc_type='Utf8', first_good_at='Utf8', context='Utf8',
+                   page_body='Utf8', link_index='Int64', split_position='Int64'),
+        json_input(tmp_path, 'source_files', [dict(source_id=s) for s in sources], source_id='Utf8'),
+        json_input(tmp_path, 'ordered', [dict(doc_key=str(i), title=text) for i, (_, text) in enumerate(links)], doc_key='Utf8', title='Utf8')]
+    steps = [dict(name='publisher_links', sql="SELECT * EXCLUDE(first_good_at),cast(first_good_at AS TIMESTAMP WITH TIME ZONE) AS first_good_at FROM links")]
+    result = run_job(tmp_path / 'job', NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
+        queries=[dict(name='listing', sql='SELECT source_id,listing_title FROM ('+(ROOT / 'model/sql/source-annotations-publisher.sql').read_text()+') a ORDER BY 1'),
+                 dict(name='generic', sql=f'SELECT title FROM ({GENERIC_TITLES_SQL}) g ORDER BY title')])
+    assert {row['source_id']: row['listing_title'] for row in result['listing']} == {'named': links[5][1], 'numbered': 'H.R. 5430',
+        'placeholder': None, 'placeholder-then-name': 'Discussion Draft of the Farm Act', 'senate': None}
+    assert [row['title'] for row in result['generic']] == ['H.R. ___', 'H.R.___', 'S. ____']
+
+
 def test_the_generic_title_gate_checks_the_titles_the_link_word_rule_keeps(tmp_path):
     """A page title longer than the rule's bound is a title, for the rule and the gate alike.
 

@@ -9574,6 +9574,38 @@
       "source": "Authored boundary: letters of any script are a name (published title of A_HRC_WG6_4_CHN_2_C.pdf)"
     },
     {
+      "id": "page-signals:link_word_bill_placeholder",
+      "registry": "page-signals",
+      "entry": "link_word_bill_placeholder",
+      "value": "H.R. ___",
+      "expected": true,
+      "source": "Release build c03c43da: 33 documents titled 'H.R. ___' (69 bill-number placeholders in all) from another same-bytes copy's link text; all 86 matching link texts are H.R. or S. followed only by underscores (review finding 9, 2026-11-10)"
+    },
+    {
+      "id": "page-signals:link_word_bill_placeholder_senate",
+      "registry": "page-signals",
+      "entry": "link_word_bill_placeholder",
+      "value": "S. ____",
+      "expected": true,
+      "source": "Release build c03c43da: 4 Senate link texts 'S. ____'"
+    },
+    {
+      "id": "page-signals:link_word_bill_placeholder_number",
+      "registry": "page-signals",
+      "entry": "link_word_bill_placeholder",
+      "value": "H.R. 5430",
+      "expected": false,
+      "source": "Authored boundary: a bill with its number is a title"
+    },
+    {
+      "id": "page-signals:link_word_bill_placeholder_named",
+      "registry": "page-signals",
+      "entry": "link_word_bill_placeholder",
+      "value": "S. ___, Traumatic Brain Injury Program Reauthorization Act of 2018.pdf",
+      "expected": false,
+      "source": "Authored boundary: a placeholder followed by the bill's name keeps the name"
+    },
+    {
       "id": "page-signals:description_templates",
       "registry": "page-signals",
       "entry": "description_templates",
