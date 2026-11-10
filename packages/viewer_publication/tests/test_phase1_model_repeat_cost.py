@@ -18,6 +18,13 @@ The same plans show which input each outer join builds on: the engine builds on 
 (AGENTS.md), so a LEFT or FULL join whose left input is large holds that preserved relation in
 the hash table. That lint reads the logical plan, so it sees neither a statistics-driven swap
 over a raw table in the physical plan, nor column width, nor memory.
+
+The same plans show which statements read a lake table itself. Every statement that names one
+reads it again from the object store: 31 statements scanned `captures` 42 times, about 10 s
+each, in a 867 s build. The job therefore reads the lake `captures` in one statement, its first
+step, and every other reader scans that retained step. That check names the lake input by the
+stand-in file it is bound to, so it sees the scans whatever the job calls the input; it sees
+neither the admission job nor any other job that binds `captures` itself.
 """
 import collections
 import json
@@ -146,6 +153,9 @@ PLANTED = {
         FROM witness_precedence w RIGHT JOIN resolved_links l ON l.target_url=w.witness_key""",
 }
 
+# A second direct read of the lake table. Its SQL names the job's own input, so the fixture builds it.
+PLANTED_LAKE_READ = 'planted_second_read_of_the_lake_captures'
+
 SCAN = re.compile(r'^\s*TableScan: (\S+)', re.M)
 JOIN = re.compile(r'^\s*\w+ Join: (.*)$', re.M)
 REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
@@ -193,6 +203,18 @@ def submitted_job(root, engine):
     return json.loads((root/'submitted-job.json').read_text())
 
 
+def lake_input(job, table):
+    """The job input bound to a lake table's stand-in file, under whatever name the job gives it."""
+    [name] = [item['name'] for item in job['inputs'] if Path(item.get('path', '')).name == f'empty-{table}.parquet']
+    return name
+
+
+def lake_readers(job, plans, table):
+    """Scans of a lake table itself, per statement that has any."""
+    name = lake_input(job, table)
+    return {reader: count for reader, plan in plans.items() if (count := scans(plan)[name])}
+
+
 def readers(job):
     """Everything that executes: materialized and components steps, exports and queries. Views run inside them."""
     for step in job['steps']:
@@ -211,6 +233,7 @@ def planned(tmp_path_factory):
         job = submitted_job(root, engine)
         steps = [{k: v for k, v in step.items() if k != 'release_after'} for step in job['steps']]
         steps += [dict(name=name, sql=sql, materialize=True) for name, sql in PLANTED.items()]
+        steps += [dict(name=PLANTED_LAKE_READ, sql='SELECT receipt_key FROM ' + lake_input(job, 'captures'), materialize=True)]
         job = dict(job, steps=steps)
         named = list(readers(job))
         path = root/'explain-job.json'
@@ -294,7 +317,19 @@ def large_outer_builds(job, plan):
 
 
 def model_plans(plans):
-    return {name: plan for name, plan in plans.items() if name not in PLANTED}
+    return {name: plan for name, plan in plans.items() if name not in PLANTED and name != PLANTED_LAKE_READ}
+
+
+def test_the_lake_captures_table_is_read_by_one_statement_the_first_retained_step(planned):
+    job, plans = planned
+    assert lake_readers(job, model_plans(plans), 'captures') == {'captures': 1}
+    first = job['steps'][0]
+    assert first['name'] == 'captures' and first.get('materialize') is True
+
+
+def test_lint_flags_a_planted_second_read_of_the_lake_captures_table(planned):
+    job, plans = planned
+    assert lake_readers(job, plans, 'captures') == {'captures': 1, PLANTED_LAKE_READ: 1}
 
 
 def test_views_are_planned_inside_their_readers(planned):

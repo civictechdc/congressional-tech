@@ -56,6 +56,10 @@ def test_metadata_only_writer_caption_never_becomes_a_public_source(tmp_path):
     assert pq.ParquetFile(arguments['readings']).metadata.num_rows==0
     prepared=prepare_model_inputs(**arguments,scratch=tmp_path/'model')
     build_prepared_release(prepared,engine=arguments['engine'],output=tmp_path/'release')
+    # Only the full job retains captures as a step. The prepared plan, which the admission job runs, keeps its own binding.
+    job=json.loads((tmp_path/'model/job.json').read_text())
+    assert job['steps'][0]['name']=='captures' and 'captures' not in {item['name'] for item in job['inputs']}
+    assert 'captures' in {item['name'] for item in prepared['inputs']} and 'captures' not in {step['name'] for step in prepared['steps']}
     reports=json.loads((tmp_path/'model/result.json').read_text())
     receipts=next(query['data'] for query in reports['queries'] if query['name']=='input_receipts')
     assert receipts==[dict(receipt_key='receipts/documents/2026-10-27/writer.jsonl.gz')]
