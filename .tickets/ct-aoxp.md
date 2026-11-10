@@ -32,7 +32,7 @@ How the 81 meetings arose: the Repository's chrome links Help from every page, i
 Measured on release 619db5f9e08e. Scripts and outputs: `.cache/archive-release/investigations/document-roles-20261110/` (`dr-40-roles.out`, `dr-09-aoxp-effect.out`).
 
 - The committed role SQL through the pinned engine on all 4,176,147 capture rows: before the change it gives back the exported record_roles exactly; after it, 2 rows change (the help page's two bodies, `document` to `wrapper`) and no other.
-- Leaves the release: row 286993, its 2 link keys (58f225d644ab9ad0, c0a3d1b8b7c817ec; published first last night, so they retire to a removal notice with no successor, which is right for a help page), 1 address row, 1 lookup key. Each of the 81 meetings keeps at least 2 documents, so no coverage state changes, only counts (minus one each).
+- Leaves the release: row 286993, its 2 link keys (58f225d644ab9ad0, c0a3d1b8b7c817ec; published first last night, so they retire to a removal notice with no successor, which is right for a help page), 1 address row, 1 lookup key. Each of the 81 meetings keeps at least one other document, so no coverage state changes, only counts (minus one each).
 - The scan the ticket asks for, web-page documents by meeting count, before / after: 2 or more meetings 13 / 12; 5 or more 2 / 1; 14 or more 1 / 0. Every one left is a printed hearing's HTML text (`published-hearing`), the largest with 13 meetings.
 
 Alternatives weighed on the same rows:
