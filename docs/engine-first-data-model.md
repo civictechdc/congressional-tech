@@ -651,12 +651,30 @@ document_id    := SHA-256 of the compact JSON ["bodies", [k1, k2, …]], the dis
                   body keys of its real files sorted bytewise, or ["sources", [h1, h2, …]],
                   its source_id hex strings sorted, when it has none
 filename       := the saved file's effective filename; saved-file order picks the saved body,
-                  then among that body's source files a named one first, then one that
-                  stored the bytes (`body_stored`, §7.4) before one that found them already
-                  held, so a fetch of held bytes at another address never renames the
-                  document (ct-f7hp), otherwise saved-file order, where the newest fetch
-                  leads (a ZIP member is a first-class copy)
-                  (invariant saved_unnamed_with_named_sibling = 0)
+                  then among that body's source files a named one first, then by name
+                  standing (ct-h8dr, ct-yuf0): an official name (its filename reading is
+                  `valid`, a House or GovInfo convention name) that no committee name
+                  contradicts, then a committee name that states a kind beside an official
+                  slot name, then the rest; then one that stored the bytes (`body_stored`,
+                  §7.4) before one that found them already held (ct-f7hp), otherwise
+                  saved-file order, where the newest fetch leads (a ZIP member is a
+                  first-class copy). A name states the families its copy would give the
+                  document. An official name is contradicted when it states a kind, a
+                  committee (non-official) name of the same bytes states a kind, and no
+                  committee name shares a family with it. Only a contradicted name in a
+                  House meeting-document slot (biography, disclosure, statement,
+                  supporting-material) gives way: of 158 read, the slot label was wrong or
+                  said less than the committee's name in 144. A contradicted official name of
+                  any other kind keeps saved-file order (owner decision pending, ct-h8dr),
+                  as do two official names of different kinds with no committee name; a
+                  reading of the bytes would settle both, and no PDF reading is a model
+                  input yet (`pdf_text`, §6.6). The saved body never changes. Because the
+                  name can come from an official copy that no page lists, the title's last
+                  fallback is the listing-link text of another copy of the saved bytes
+                  (`document_rendition_titles`). `saved_name_conflicts` lists every document
+                  whose leading name's kind another name of its bytes does not share (query
+                  saved_name_kinds; invariants contradicted_official_saved_names = 0,
+                  saved_unnamed_with_named_sibling = 0)
                   a blank filename carries a recorded reason read from every capture of
                   the saved body and its published address: none, a query URL whose
                   captures name no file (no final URL, no disposition), or a bare host;
