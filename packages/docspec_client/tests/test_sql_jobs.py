@@ -93,6 +93,16 @@ def test_job_log_keeps_the_engine_stream_whether_the_job_passes_or_fails(tmp_pat
     assert list(metric_events(log)) == [STEP, RELEASE]
 
 
+def test_job_log_outlives_a_timeout(tmp_path):
+    client, _, binary = executable(tmp_path, stderr=METRICS)
+    body = binary.read_text() + 'exec sleep 30\n'
+    binary.write_text(body)
+    client.binary_sha256, client.timeout = sha256(body.encode()).hexdigest(), 1
+    with pytest.raises(subprocess.TimeoutExpired):
+        client.run_job(tmp_path / 'job.json', log=tmp_path / 'engine.log')
+    assert (tmp_path / 'engine.log').read_text() == METRICS
+
+
 def test_job_without_a_log_writes_nothing_new(tmp_path):
     client, arguments, _ = executable(tmp_path, stderr=METRICS)
     before = sorted(tmp_path.iterdir())
