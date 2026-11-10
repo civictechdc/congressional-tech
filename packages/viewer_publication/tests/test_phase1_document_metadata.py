@@ -730,14 +730,36 @@ def test_a_blank_filename_needs_a_recorded_reason(tmp_path):
 
 
 def test_the_generic_title_check_is_its_own_rule(tmp_path):
-    """Independent of the page-signals link_word list: only format, size and download words."""
+    """Independent of the page-signals link_word list: only format, size and download words, and a title
+    with no letter in any script (review finding 7: that class came only from the rule's own pattern)."""
     from viewer_publication.archive_model import GENERIC_TITLE_SQL
     titles = ['PDF (48.1 MB)', 'Download XML (6KB)', 'ZIP', 'click here', 'Overview of the Hearing',
-              'Testimony of Jane Doe (PDF, 2 MB)', '2024', None]
+              'Testimony of Jane Doe (PDF, 2 MB)', '2024', '$1.5', '中文', None]
     inputs = [json_input(tmp_path, 'ordered', [dict(i=i, title=t) for i, t in enumerate(titles)], i='Int64', title='Utf8')]
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
         queries=[dict(name='g', sql=f'SELECT i,coalesce({GENERIC_TITLE_SQL},false) AS generic FROM ordered o ORDER BY i')])
-    assert [row['generic'] for row in result['g']] == [True, True, True, True, False, False, False, False]
+    assert [row['generic'] for row in result['g']] == [True, True, True, True, False, False, True, True, False, False]
+
+
+def test_a_letterless_title_refuses_with_the_rules_pattern_removed(tmp_path):
+    """Review finding 7 (2026-11-10): the gate's letterless class came only from the rule's own pattern
+    (page signals link_word_no_name). Planted: that entry removed from the registry; the gate still
+    refuses every letterless title, of any length, and still keeps letters of any script."""
+    import json, shutil
+    from viewer_publication.archive_model import GENERIC_TITLES_SQL, registry_inputs
+    root = tmp_path / 'root'
+    shutil.copytree(ROOT / 'model/registries', root / 'model/registries')
+    signals = root / 'model/registries/page-signals.json'
+    kept = [r for r in json.loads(signals.read_text()) if r['id'] != 'link_word_no_name']
+    assert len(kept) == len(json.loads(signals.read_text())) - 1
+    signals.write_text(json.dumps(kept))
+    letterless = ['12', '_3', '.', '16-4', '$1.5', '19-26-03-26-19', '2024 - ' + '0' * 70]
+    titles = letterless + ['中文', 'H.R. 1', 'Overview of the Hearing', None]
+    inputs = registry_inputs(tmp_path / 'registries', root=root) + [json_input(tmp_path, 'ordered', [dict(doc_key=str(i), title=t)
+        for i, t in enumerate(titles)], doc_key='Utf8', title='Utf8')]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
+        queries=[dict(name='g', sql=f'SELECT title FROM ({GENERIC_TITLES_SQL}) g ORDER BY title')])
+    assert sorted(row['title'] for row in result['g']) == sorted(letterless)
 
 
 def test_a_title_generic_by_either_rule_refuses(tmp_path):
