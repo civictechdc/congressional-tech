@@ -21,3 +21,9 @@ Do this before or alongside the full-corpus run only if the measured probe cost 
 - The refusal cases the probe covers today still refuse: weak ETag, changed size, an origin that ignores Range (test_body_text_origin.py::test_an_md5_less_read_refuses_an_origin_answer_it_cannot_pin keeps passing or is replaced by an equal listing case).
 - Request count per MD5-less body measured before and after on the slice.
 
+
+## Notes
+
+**2026-11-10T03:56:09Z**
+
+2026-11-10 measurement: 60 random bodies from the captures pin, one-byte Range GET against the public origin with a fresh connection each (urllib, User-Agent ct-body-text/1): median 293 ms, p90 430 ms; 57 of 60 answered 206 with the captured size (the other 3 not examined). The producer reuses a client connection, so its real cost per probe is lower and unmeasured. Upper bound for the full run at 12 workers: 584,000 bodies x 0.3 s / 12 = about 4 hours of a multi-day run, and for cheap html bodies the probe is a large share of per-body time. A bucket LIST would replace this with about 600 requests but needs R2 credentials: the public origin does not list, so the local full run (body-text-full-20261110) cannot use it. Scope of this ticket is therefore the credentialed production route only. Cheaper first step if wanted: time the probe inside the worker (one counter) on the running job before building anything.
