@@ -10,16 +10,20 @@ watchdog samples the real process tree, so this gives each sample to the stateme
     python3 scripts/measure/step_memory.py <step log> <report>.timeline.jsonl [--top 20] [--json]
 
 The step log is the file DOCSPEC_STEP_LOG names, or any log holding the engine's
-`[docspec-metric] {json}` stderr lines. A timeline whose samples carry `epoch` joins
-exactly: both sides record the same wall clock. An older timeline has only seconds
-since the watchdog started, so the caller must give --offset-seconds, the timeline
-second at which the first statement starts. That is read by eye and a few tenths of a
-second uncertain, so statements under a second are then not attributed.
+`[docspec-metric] {json}` stderr lines. A timeline whose samples carry `epoch` and
+`read_seconds` joins exactly: both sides record the same wall clock, and a sample
+counts for a statement only when the statement spans the whole reading (one takes about
+0.07 s, longer than many statements). An older timeline has only seconds since the
+watchdog started, so the caller must give --offset-seconds, the timeline second at
+which the first statement starts. That is read by eye and a few tenths of a second
+uncertain, so statements under a second are then not attributed.
 
-What this cannot see. A statement with no sample inside its window is unattributed,
-never given a neighbour's figure. A peak between two samples is missed; sample faster
-with the watchdog's --interval. The samples cover the watchdog's whole process tree, so
-a Python parent's memory is in every figure. Standard library only, like the watchdog.
+What this cannot see. A statement that spans no whole reading is unattributed, never
+given a neighbour's figure. A peak between two readings is missed; sample faster with
+the watchdog's --interval. A footprint the allocator has not returned still counts in
+later statements, so read the rise beside the peak. The samples cover the watchdog's
+whole process tree, so a Python parent's memory is in every figure. Standard library
+only, like the watchdog.
 """
 import argparse
 from bisect import bisect_left, bisect_right
@@ -33,6 +37,7 @@ GIB = 2**30
 # Long enough to place with an offset read by eye, and to have a starting footprint worth summarising.
 LONG_SECONDS = 1.0
 NO_SAMPLE = 'no sample in its window'
+EXACT = ('epoch', 'read_seconds')
 SHORT_FOR_OFFSET = 'under 1 s with a hand-given offset'
 
 
@@ -74,22 +79,26 @@ def measure(events, samples, offset_seconds=None):
                    key=lambda event: event['start_epoch'])
     if not spans or not samples:
         raise Refused('the timeline has no samples' if spans else 'the step log has no step or output events')
-    exact = all('epoch' in sample for sample in samples)
+    exact = all(key in sample for sample in samples for key in EXACT)
     if exact and offset_seconds is not None:
         raise Refused('this timeline carries epoch, which joins exactly; drop --offset-seconds')
     if not exact and offset_seconds is None:
-        raise Refused('this timeline has no epoch (an older watchdog wrote it), so the join needs --offset-seconds: the '
-                      'timeline second at which the first statement starts. Statements under 1 s are then not attributed')
+        raise Refused('this timeline has no epoch and read_seconds (an older watchdog wrote it), so the join needs '
+                      '--offset-seconds: the timeline second at which the first statement starts. Statements under 1 s '
+                      'are then not attributed')
     clock = 'epoch' if exact else 'seconds'
     shift = 0.0 if exact else offset_seconds - spans[0]['start_epoch']
     samples = sorted(samples, key=lambda sample: sample[clock])
-    times = [sample[clock] for sample in samples]
-    highest = max(samples, key=lambda sample: sample['physical_gb'])
+    # A reading ends at its stamp. Readings never overlap, so their starts are in the same order as their ends.
+    ends = [sample[clock] for sample in samples]
+    begins = [sample['epoch'] - sample['read_seconds'] for sample in samples] if exact else ends
+    highest = max(range(len(samples)), key=lambda index: samples[index]['physical_gb'])
     rows, during = [], []
     for event in spans:
         start, end = event['start_epoch'] + shift, event['end_epoch'] + shift
-        window = samples[bisect_left(times, start):bisect_right(times, end)]
-        earlier = bisect_right(times, start)  # the last sample at or before the start is the starting footprint
+        first, last = bisect_left(begins, start), bisect_right(ends, end)
+        window = samples[first:last]
+        earlier = bisect_right(ends, start)  # the last reading that finished by the start is the starting footprint
         query = event.get('storage') == 'query'  # the engine logs a query as a step named query:<name>
         row = dict(kind='query' if query else event['event'], name=event['name'].removeprefix('query:') if query else event['name'],
                    seconds=round(event['end_epoch'] - event['start_epoch'], 3), samples=len(window), unattributed=None,
@@ -107,21 +116,21 @@ def measure(events, samples, offset_seconds=None):
             if earlier:
                 row['start_physical_gb'] = samples[earlier - 1]['physical_gb']
                 row['rise_gb'] = round(row['peak_physical_gb'] - row['start_physical_gb'], 3)
-            if start <= highest[clock] <= end:
+            if first <= highest < last:
                 during.append(dict(kind=row['kind'], name=row['name'], pool_before_gb=row['pool_before_gb']))
-    gaps = [later - sooner for sooner, later in zip(times, times[1:])]
+    gaps = [later - sooner for sooner, later in zip(ends, ends[1:])]
     interval = round(median(gaps), 3) if gaps else None
     if all(row['unattributed'] for row in rows):
         raise Refused('no statement has a sample in its window: these two files are not from the same run'
                       + (f', or every statement is shorter than the {interval} s between samples' if exact
                          else ', or the offset is wrong'))
     long = [row for row in rows if row['start_physical_gb'] is not None and row['seconds'] >= LONG_SECONDS]
-    peak_rss = max(sample['rss_gb'] for sample in samples)
+    peak_physical, peak_rss = samples[highest]['physical_gb'], max(sample['rss_gb'] for sample in samples)
     return dict(
         alignment=clock if exact else 'offset', offset_seconds=offset_seconds, samples=len(samples), interval_seconds=interval,
-        run_peak=dict(peak_physical_gb=highest['physical_gb'], peak_rss_gb=peak_rss, during=during),
+        run_peak=dict(peak_physical_gb=peak_physical, peak_rss_gb=peak_rss, seconds=samples[highest]['seconds'], during=during),
         # The watchdog admits on, and stops at, the larger of the two; its samples are in thousandths.
-        expect_gb=math.ceil(round(max(highest['physical_gb'], peak_rss) * 1000) / 100) / 10,
+        expect_gb=math.ceil(round(max(peak_physical, peak_rss) * 1000) / 100) / 10,
         long_statements=dict(count=len(long),
             median_start_physical_gb=round(median(row['start_physical_gb'] for row in long), 3) if long else None,
             median_pool_before_gb=round(median(row['pool_before_gb'] for row in long), 3) if long else None),
@@ -146,7 +155,7 @@ def render(result, top):
         + (f'; {result["failed_samples"]} failed samples dropped' if result.get('failed_samples') else '')
         + (f'; {result["unreadable_metric_lines"]} metric lines unreadable' if result.get('unreadable_metric_lines') else ''),
         f'run peak: {peak["peak_physical_gb"]:.2f} GiB physical, {peak["peak_rss_gb"]:.2f} GiB RSS, '
-        + (f'during {during}' if during else 'outside every attributed statement'),
+        + (f'during {during}' if during else f'at timeline second {peak["seconds"]:g}, outside every attributed statement'),
         f'next time: --expect-gb {result["expect_gb"]} (this run\'s peak, rounded up to 0.1 GiB)',
         f'{sum(result["unattributed"].values())} of {len(rows)} statements unattributed' + (f': {reasons}' if reasons else ''),
     ]
