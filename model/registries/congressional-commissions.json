@@ -1,0 +1,58 @@
+[
+  {
+    "id": "cyberspace-solarium",
+    "name": "Cyberspace Solarium Commission",
+    "pattern": "cyberspace solarium commission",
+    "created_by": "John S. McCain National Defense Authorization Act for Fiscal Year 2019, Pub. L. 115-232, section 1652",
+    "members_serve": "Section 1652 (composition): four of its commissioners are Members of Congress appointed by the congressional leadership (Senators Angus King and Ben Sasse, Representatives Mike Gallagher and Jim Langevin).",
+    "citation_status": "unverified: cited from memory on 2026-11-10 (ct-kw85); check against the public law text before release"
+  },
+  {
+    "id": "emerging-biotechnology",
+    "name": "National Security Commission on Emerging Biotechnology",
+    "pattern": "national security commission (on|for) emerging biotechnology",
+    "created_by": "National Defense Authorization Act for Fiscal Year 2022, Pub. L. 117-81, section 1091",
+    "members_serve": "Section 1091 (composition): four of its twelve commissioners are Members of Congress (Senator Todd Young chairs).",
+    "citation_status": "unverified: cited from memory on 2026-11-10 (ct-kw85); check against the public law text before release"
+  },
+  {
+    "id": "congressional-executive-china",
+    "name": "Congressional-Executive Commission on China",
+    "pattern": "congressional-\\s*executive commission on china",
+    "created_by": "U.S.-China Relations Act of 2000, Pub. L. 106-286, title III (22 U.S.C. 6911)",
+    "members_serve": "Section 302 (22 U.S.C. 6912): nine Senators and nine Members of the House, with five executive branch officials.",
+    "citation_status": "unverified: cited from memory on 2026-11-10 (ct-kw85); check against the public law text before release"
+  },
+  {
+    "id": "security-cooperation-europe",
+    "name": "Commission on Security and Cooperation in Europe (Helsinki Commission)",
+    "pattern": "commission on security and cooperation in europe|helsinki commission",
+    "created_by": "Pub. L. 94-304 (22 U.S.C. 3001 et seq.)",
+    "members_serve": "Section 3 (22 U.S.C. 3003): nine Senators and nine Members of the House, with three executive branch officials.",
+    "citation_status": "unverified: cited from memory on 2026-11-10 (ct-kw85); check against the public law text before release"
+  },
+  {
+    "id": "lantos-human-rights",
+    "name": "Tom Lantos Human Rights Commission",
+    "pattern": "lantos human rights commission",
+    "created_by": "H.Res. 1451, 110th Congress (2008)",
+    "members_serve": "The resolution: a commission of Members of the House, led by two co-chairs.",
+    "citation_status": "unverified: cited from memory on 2026-11-10 (ct-kw85); check against the resolution text before release"
+  },
+  {
+    "id": "semiquincentennial",
+    "name": "United States Semiquincentennial Commission",
+    "pattern": "semiquincentennial commission",
+    "created_by": "United States Semiquincentennial Commission Act of 2016, Pub. L. 114-196",
+    "members_serve": "Section 4 (membership): four Senators and four Members of the House, with private citizens and ex officio officials.",
+    "citation_status": "unverified: cited from memory on 2026-11-10 (ct-kw85); check against the public law text before release"
+  },
+  {
+    "id": "eisenhower-memorial",
+    "name": "Dwight D. Eisenhower Memorial Commission",
+    "pattern": "eisenhower memorial commission",
+    "created_by": "Department of Defense Appropriations Act, 2000, Pub. L. 106-79, section 8162",
+    "members_serve": "Section 8162 (membership): four Senators and four Members of the House, with private citizens.",
+    "citation_status": "unverified: cited from memory on 2026-11-10 (ct-kw85); check against the public law text before release"
+  }
+]

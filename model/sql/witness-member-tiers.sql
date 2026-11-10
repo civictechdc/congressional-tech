@@ -1,7 +1,7 @@
 -- ct-kw85: how each sitting candidate's term agrees with the row's own words, in one pass. For a candidate whose
 -- first name agrees (witness_member_candidates.agrees), tier 1: the row names the term's state (and a chamber, a role,
 -- or only Congress and places); 2: it names the term's chamber, or Congress, and no state; 3: it opens a field with a
--- congressional role, names no state, and its first name agrees in full;
+-- congressional role (a listed congressional commission counts), names no state, and its first name agrees in full;
 -- 6: it is a name alone at a Member Day hearing. For any other candidate, tier 5, the initial rule's pool: the row
 -- names the term's state and a chamber that is the term's ('Member of Congress' is either). A row that names a state
 -- legislature, or a state no candidate's term holds, has no tier.

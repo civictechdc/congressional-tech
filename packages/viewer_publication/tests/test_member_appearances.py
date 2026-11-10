@@ -9,8 +9,10 @@ sitting Members of one name, a nickname the members data holds, an abbreviated f
 a district code, a name with nothing else, a seat's holder named only by family name (at large, and a district),
 a seat stated beside a state legislature, a bare initial in the members data (C. Cox) and in the row's own
 reading (JD Vance), an initial another sitting Member shares, 'ranking House Member', 'Representatives in
-Congress', and a name alone at a Member Day hearing and at a Former Members Day hearing.
+Congress', a name alone at a Member Day hearing and at a Former Members Day hearing, a co-chair of a listed
+congressional commission, and a namesake at a commission the list does not hold.
 """
+import json
 import os
 from pathlib import Path
 
@@ -18,7 +20,7 @@ import pytest
 
 from congress_api.retention.provenance import json_input, list_of, run_job
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_model import WITNESSES_SQL
+from viewer_publication.archive_model import REGISTRIES, WITNESSES_SQL
 
 ROOT = Path(__file__).parents[3]
 STEPS = ('member-terms', 'witness-member-facts', 'witness-member-names', 'witness-member-candidates', 'witness-member-rows',
@@ -55,6 +57,8 @@ MEMBERS = [
     ('W000006', 'James', 'Walker', None, 'rep', 'NC', '2001-01-03', '2011-01-03'),
     ('W000007', 'Timothy', 'Walz', None, 'rep', 'MN', '2007-01-04', '2019-01-03'),
     ('S000005', 'F.', 'Sensenbrenner', None, 'rep', 'WI', '1979-01-15', '2021-01-03'),
+    ('K000005', 'Angus', 'King', None, 'sen', 'ME', '2013-01-03', '2025-01-03'),
+    ('W000008', 'Joe', 'Wilson', None, 'rep', 'SC', '2001-12-18', '2027-01-03'),
 ]
 DISTRICTS = {'P000003': 0, 'C000004': 46}  # House seats the seat rule reads; 0 is at large
 MEETINGS = [
@@ -85,6 +89,8 @@ MEETINGS = [
     (9025, '2006-06-14', 'Communications'),
     (9026, '2005-03-01', 'Textiles'),
     (9027, '2019-05-01', 'Former Members Day Hearing: Speaking from Experience'),
+    (9028, '2020-02-11', 'Cybersecurity'),
+    (9029, '2008-04-15', 'Veterans health'),
 ]
 # witness_key: (source, event_id, package_id, name, position, organization, witness_type, bioguide_id, superseded_by)
 ROWS = {
@@ -133,6 +139,9 @@ ROWS = {
                                     'a Representatives in Congress from the State of Wisconsin', None, None, None),
     'member-day-name-alone': ('house_xml', 9001, None, 'The Honorable Ann Sitting', None, None, None, None, None),
     'former-members-day-name-alone': ('house_xml', 9027, None, 'The Honorable Ann Sitting', None, None, None, None, None),
+    'listed-commission': ('mods', 9028, None, 'Angus S. King Jr.', 'Co-Chair', 'Cyberspace Solarium Commission', None, None, None),
+    'commission-not-listed': ('mods', 9029, None, 'Joseph L. Wilson', 'Deputy Director',
+                              'Veterans Affairs and Rehabilitation Commission, American Legion', None, None, None),
 }
 
 
@@ -149,6 +158,9 @@ def result(tmp_path_factory):
                    term_start='Utf8', term_end='Utf8'),
         json_input(work, 'meetings_input', [dict(event_id=e, meeting_date=d, title=t) for e, d, t in MEETINGS],
                    event_id='Int64', meeting_date='Utf8', title='Utf8'),
+        json_input(work, 'congressional_commissions',
+                   json.loads((ROOT / 'model/registries/congressional-commissions.json').read_text()),
+                   **REGISTRIES['congressional_commissions']),
         json_input(work, 'package_mods_facts', [dict(package_id='CHRG-rivers', held_dates=['2010-03-02'], title='Rivers')],
                    package_id='Utf8', held_dates=list_of('Utf8'), title='Utf8'),
         json_input(work, 'appearance_rows', [
@@ -202,6 +214,7 @@ def decided(result):
     ('ranking-house-member', ('member', 'W000007', 'name_role')),
     ('representatives-in-congress', ('member', 'S000005', 'name_state')),
     ('member-day-name-alone', ('member', 'S000001', 'member_day')),
+    ('listed-commission', ('member', 'K000005', 'name_role')),       # the registry lists the Solarium Commission
 ])
 def test_sitting_members_acting_officially_are_member_appearances(result, key, expected):
     assert decided(result)[key] == expected
@@ -210,7 +223,7 @@ def test_sitting_members_acting_officially_are_member_appearances(result, key, e
 @pytest.mark.parametrize('key', ['says-former-while-sitting', 'term-ended-without-the-word', 'non-member-namesake', 'no-term-dates',
                                  'prepared-statement', 'outside-witness', 'representative-of-an-organization',
                                  'initial-and-state-commission', 'state-legislature-by-name', 'name-and-nothing-else',
-                                 'seat-in-a-state-legislature', 'former-members-day-name-alone'])
+                                 'seat-in-a-state-legislature', 'former-members-day-name-alone', 'commission-not-listed'])
 def test_these_stay_witnesses_or_statements(result, key):
     assert key not in decided(result)
 

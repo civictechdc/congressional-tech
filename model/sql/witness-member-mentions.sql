@@ -5,7 +5,8 @@
 -- else's employer is not the Member's), and the House seats it states as 'XX-n' (witness_member_seats): a district
 -- of a state ('3d District, Utah', "Utah's 3d District", '12th District | FL', 'Utah, District 3', '(AR-2)'), 0 for
 -- a state at large ('(ND-At Large)') or a territory's Delegate or Resident Commissioner ('a Delegate from Guam').
--- The row's own facts ride along for the steps after. The state list has its one owner here.
+-- A row naming a commission on which Members serve as Members (the congressional_commissions registry) says a
+-- congressional role. The row's own facts ride along for the steps after. The state list has its one owner here.
 WITH states(name,code,territory) AS (VALUES ('alabama','AL',false),('alaska','AK',false),('arizona','AZ',false),('arkansas','AR',false),('california','CA',false),('colorado','CO',false),('connecticut','CT',false),('delaware','DE',false),('florida','FL',false),('georgia','GA',false),('hawaii','HI',false),('idaho','ID',false),('illinois','IL',false),('indiana','IN',false),('iowa','IA',false),('kansas','KS',false),('kentucky','KY',false),('louisiana','LA',false),('maine','ME',false),('maryland','MD',false),('massachusetts','MA',false),('michigan','MI',false),('minnesota','MN',false),('mississippi','MS',false),('missouri','MO',false),('montana','MT',false),('nebraska','NE',false),('nevada','NV',false),('new hampshire','NH',false),('new jersey','NJ',false),('new mexico','NM',false),('new york','NY',false),('north carolina','NC',false),('north dakota','ND',false),('ohio','OH',false),('oklahoma','OK',false),('oregon','OR',false),('pennsylvania','PA',false),('rhode island','RI',false),('south carolina','SC',false),('south dakota','SD',false),('tennessee','TN',false),('texas','TX',false),('utah','UT',false),('vermont','VT',false),('virginia','VA',false),('washington','WA',false),('west virginia','WV',false),('wisconsin','WI',false),('wyoming','WY',false),('american samoa','AS',true),('district of columbia','DC',true),('guam','GU',true),('northern mariana islands','MP',true),('puerto rico','PR',true),('virgin islands','VI',true)
 ), named AS (
  SELECT r.witness_key,s.code,
@@ -33,14 +34,18 @@ WITH states(name,code,territory) AS (VALUES ('alabama','AL',false),('alaska','AK
 ), about_congress AS (
  SELECT witness_key,bool_and(placed OR regexp_like(segment,'congress|senat|house|representative|delegate|commissioner|member|committee|caucus|chair|ranking|district|statement|leader|whip|speaker|majority|minority|conference|subcommittee|delegation|panel|introduc|sponsor|testimony|honorable|\bhon\b')) AS about_congress
  FROM placed_segments GROUP BY witness_key
+), commissions AS (
+ SELECT r.witness_key FROM congressional_commissions c JOIN witness_member_rows r ON regexp_like(r.field_text,c.pattern)
+ GROUP BY r.witness_key
 ), mentions AS (
  SELECT witness_key,array_agg(code) FILTER (WHERE stated) AS states,bool_or(legislature) AS legislature,
   array_agg(code||'-'||cast(district AS VARCHAR)) FILTER (WHERE district IS NOT NULL) AS seats
  FROM named GROUP BY witness_key
 )
-SELECT r.witness_key,r.person,r.chamber,r.says_role,r.says_nominee,r.member_day_name_only,
+SELECT r.witness_key,r.person,r.chamber,r.says_role OR c.witness_key IS NOT NULL AS says_role,r.says_nominee,r.member_day_name_only,
  r.seat_words,r.dates,
  coalesce(m.states,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS states,
  coalesce(m.legislature,false) AS names_legislature,coalesce(a.about_congress,true) AS about_congress,
  coalesce(m.seats,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS seats
-FROM about_congress a RIGHT JOIN (mentions m RIGHT JOIN witness_member_rows r ON m.witness_key=r.witness_key) ON a.witness_key=r.witness_key
+FROM commissions c RIGHT JOIN (about_congress a RIGHT JOIN (mentions m RIGHT JOIN witness_member_rows r ON m.witness_key=r.witness_key)
+ ON a.witness_key=r.witness_key) ON c.witness_key=r.witness_key

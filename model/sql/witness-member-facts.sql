@@ -88,8 +88,9 @@ SELECT side,part,id,person,publisher_id,publisher_member,toks,abbreviated,
   WHEN regexp_like(name_lines_folded,'(?m)\brepresentatives? in congress\b|\b(u\.\s?s\.|united states|us)\s+(house of )?representatives?\b|\bcongress(wo)?man\b|\bdelegate (in|to|from|of|for)\b|\bresident commissioner\b|^\W*representative\s*($|,|\(|from\b|in\b)|\brepresentative\s*(\(|from\b)|\bcongressional district\b|^\W*rep\.?\W*$|\([a-z]{2}-(\d+|al|at[- ]large)\)') THEN 'house'
   WHEN regexp_like(full_text,'\b(member of (the )?(united states |u\.\s?s\.\s?)?congress|members? of congress)\b') THEN 'either' END AS chamber,
  -- A congressional role opening a field, with a full first name (witness_member_tiers): chair or ranking member of a
- -- committee, subcommittee, caucus, conference or congressional commission; a committee member; a leadership office.
- regexp_like(field_lines_folded,'(?m)^\W*(chair(man|woman|person)?|ranking (minority |house |senate )?member|vice[- ]chair\w*|co-?chair\w*)\b[^|]*?(\|[^|]*?)?(\b(committee|subcommittee|caucus|conference)\b|\bcongressional[- ]+(\w+[- ]+)?commission\b)|\bmember of the (house |senate )?(permanent |special )?(select |joint )?committee\b|\b(speaker of the house|majority leader|minority leader|majority whip|minority whip|democratic leader|republican leader)\b') AS says_role
+ -- committee, subcommittee, caucus or conference; a committee member; a leadership office. A commission counts only
+ -- when the congressional_commissions registry lists it (witness_member_mentions).
+ regexp_like(field_lines_folded,'(?m)^\W*(chair(man|woman|person)?|ranking (minority |house |senate )?member|vice[- ]chair\w*|co-?chair\w*)\b[^|]*?(\|[^|]*?)?\b(committee|subcommittee|caucus|conference)\b|\bmember of the (house |senate )?(permanent |special )?(select |joint )?committee\b|\b(speaker of the house|majority leader|minority leader|majority whip|minority whip|democratic leader|republican leader)\b') AS says_role
 FROM tokened
 )
 SELECT *,side='witness' AND NOT publisher_member AND coalesce(cardinality(dates),0)>0

@@ -6,7 +6,8 @@
 --                state the row names, and the row names a chamber, a role, or only Congress and places;
 --  name_chamber  ...whose covering term's chamber the row names ('U.S. Senator', 'Representative in Congress',
 --                '(NM-01)', 'Rep.'), or Congress ('Member of Congress'), and no state;
---  name_role     ...the row opens a field with a congressional role, names no state, and the first name agrees in full;
+--  name_role     ...the row opens a field with a congressional role or names a commission on which Members serve as
+--                Members (the congressional_commissions registry), names no state, and the first name agrees in full;
 --  seat          the row states a House seat (a state and district, a state at large, or a territory's Delegate or
 --                Resident Commissioner) and a word of its name or first field is the family name of the Member
 --                holding that seat on the date (witness_member_seats);
