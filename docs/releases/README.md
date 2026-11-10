@@ -77,6 +77,11 @@ removed value, a split or merge, a new key or address on a document the live rel
 recovered document (its key is a link, not a body), or a row that cannot be traced still
 needs a reviewed cause record.
 
+A capture night always changes `url_state` (attempt counts and times on fetched addresses,
+newly queued links), and those changes are not automatic yet. The history columns can be
+derived from new receipts, but `next_attempt_at` depends on a meeting date and a queued link
+on the page that linked it, and the gate is given neither (ct-9j3z).
+
 What it cannot see: a bug that adds only wrong rows from genuinely new receipts. A
 code change that alters how new rows are built is invisible too, when no existing row
 changes. Gates 2-5 still run on every nightly candidate.

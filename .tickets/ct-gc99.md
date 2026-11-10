@@ -2,7 +2,7 @@
 id: ct-gc99
 status: in_progress
 deps: []
-links: []
+links: [ct-9j3z, ct-ud0b]
 created: 2026-11-10T03:26:30Z
 type: task
 priority: 2
