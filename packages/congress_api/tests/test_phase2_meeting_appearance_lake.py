@@ -2629,6 +2629,30 @@ def test_askers_printed_inside_another_entry_are_appended_to_its_row(package, in
     assert [(a["name"], a["witness_type"]) for a in unreviewed[index:]] == [witness]
 
 
+# ct-gfo7 item 4 (owner 2026-11-10): the organization-only statements whose organization a witness of the same print
+# testified for, among all 37 such rows on 2026-11-10.
+OWN_STATEMENTS = [
+    ("CHRG-110shrg75166", 3, "The Federal Trade Commission, prepared statement"),
+    ("CHRG-114hhrg93962", 11, "National Commission on Hunger, submitted report"),
+    ("CHRG-107shrg81998", 23, "American Civil Liberties Union, Washington, D.C.: November 28, 2001, statement"),
+]
+
+
+@pytest.mark.parametrize("package,index,line", OWN_STATEMENTS)
+def test_the_testifying_bodys_own_statement_is_record_material(package, index, line):
+    """Owner decision 2026-11-10 (ct-gfo7 item 4): an organization's statement is the testifying body's own document
+    when a witness of the print testified for it (FTC commissioners, the Hunger Commission's co-chairs, the ACLU's
+    president), so record_material rather than statement_for_record, its text kept in organization as before. Off its
+    reviewed position the line reads by the rule, a statement for the record."""
+    assert mods_record_entries.MODS_RECORD_ENTRIES[package][index] == (hashlib.sha256(line.encode()).hexdigest(), None,
+                                                                       "document")
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
+    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["witness_type"])
+            for a in found[index - 1:]] == [(f"mods:witness[{index}]", None, None, line, "record_material")]
+    unreviewed = appearance_records.extract_mods_appearances(_mods_lines(*[""] * index, line), package_id=package)
+    assert [(a["organization"], a["witness_type"]) for a in unreviewed[index:]] == [(line, "statement_for_record")]
+
+
 def test_reviewed_document_titles_keep_their_text_in_organization():
     """Owner decision 2026-11-10 (ct-3aap): the sixteen reviewed document titles are record material and keep in
     `organization` the text the activated generation holds for them, the title and the publisher it names, as an
@@ -2636,12 +2660,13 @@ def test_reviewed_document_titles_keep_their_text_in_organization():
     generation's (pin 8a0023a9); the dot-leader leftovers and the reviewed askers keep no field."""
     controls = json.loads((Path(__file__).parent / "fixtures/source_models/mods-record-titles.json").read_text())
     entries = mods_record_entries.MODS_RECORD_ENTRIES
-    titles = {(package, index) for package, by in entries.items() for index, entry in by.items() if entry[2:] == ("title",)}
-    assert {(c["package"], int(c["locator"][13:-1])) for c in controls} == titles
+    documents = {(package, index) for package, by in entries.items() for index, entry in by.items()
+                 if entry[2:] == ("document",)}
+    assert {(c["package"], int(c["locator"][13:-1])) for c in controls} == documents - {s[:2] for s in OWN_STATEMENTS}
     assert len(controls) == 16
     for control in controls:
         package, index, line = control["package"], int(control["locator"][13:-1]), control["source_literal"]
-        assert entries[package][index] == (hashlib.sha256(line.encode()).hexdigest(), None, "title")
+        assert entries[package][index] == (hashlib.sha256(line.encode()).hexdigest(), None, "document")
         row = appearance_records.build_appearance_record_row(
             _sha(line), "mods", _mods_lines(*[""] * (index - 1), line), package_id=package)
         item = row["appearances"][index - 1]

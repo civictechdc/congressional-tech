@@ -1501,12 +1501,13 @@ def extract_mods_observation(
         if reviewed and how != "askers":
             after_question = False
             entry_type = "member_statement" if _MEMBER_STATEMENT.search(cleaned_line) else "record_material"
-            # A reviewed document title keeps the line's organization reading, as an organization's letter does.
+            # A reviewed document (a title, or the testifying body's own statement) keeps the line's organization
+            # reading, as an organization's letter does.
             kept = {}
-            if how == "title":
+            if how == "document":
                 fields = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
                 kept = {"organization": _opt_str(fields.get("organization"))}
-            raw_rows += _mods_record_rows(names, parts, "record_material" if how == "title" else how or entry_type,
+            raw_rows += _mods_record_rows(names, parts, "record_material" if how == "document" else how or entry_type,
                                           len(raw_rows) + 1, **kept)
             if (resolved_pkg, idx) not in MODS_MIXED_RECORD_ENTRIES:
                 continue

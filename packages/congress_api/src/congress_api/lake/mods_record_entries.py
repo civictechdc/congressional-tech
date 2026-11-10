@@ -6,8 +6,9 @@ the entry; several names are Members who asked questions for the record
 jointly, each given a row, the second at `<locator>/part[2]`, the third at
 `/part[3]` and so on. The optional third value says how the entry reads:
 "record_material", a reviewed paper rather than a member's own statement;
-"title", a document title, record_material with no name that keeps the
-line's `organization` reading; "askers", a line the rules still read,
+"document", a document the line names rather than a person (a title, or the
+testifying body's own statement), record_material with no name that keeps
+the line's `organization` reading; "askers", a line the rules still read,
 whose named Members asked questions the rules do not see, each appended as
 a record_material row at the line's next part. The original MODS retains
 the full text.
@@ -45,12 +46,23 @@ two lines whose witness keeps its row while the askers printed before it are
 appended (CHRG-106shrg66382's Inhofe and Smith before Jeff Sessions, and
 CHRG-107shrg83717's Jeffords and Leahy before Hilton Kelley). Members print by
 surname alone in a list of Senators, so their rows name them so.
+
+Owner decisions 2026-11-10 (ct-gfo7 items 3 and 4): CHRG-115hhrg25242's line is
+shown as submitted material naming both LoBiondo and Mitchell (above); and an
+organization's own statement is record material, not a statement for the
+record, when a witness of the same print testified for that organization:
+"The Federal Trade Commission, prepared statement" beside four FTC
+commissioners (CHRG-110shrg75166), "National Commission on Hunger, submitted
+report" beside its co-chairs (CHRG-114hhrg93962), and, found by a survey of all
+37 organization-only statements, the American Civil Liberties Union's
+statement beside its president Nadine Strossen (CHRG-107shrg81998). Each keeps
+its text in `organization`.
 """
 
 from typing import Literal
 
 Names = str | tuple[str, ...] | None
-RecordEntry = tuple[str, Names] | tuple[str, Names, Literal["record_material", "title", "askers"]]
+RecordEntry = tuple[str, Names] | tuple[str, Names, Literal["record_material", "document", "askers"]]
 
 MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-106hhrg55613': {
@@ -93,7 +105,7 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         19: ('ebaac7aca5d25b82c2825243fae3db6c93986b3ddd8d716b328752cfca9f4965', 'Paul Warner'),
     },
     'CHRG-106shrg77325': {
-        6: ('7e3ca7ad6086d701b7bb3d5eade7cad2ecdfa7bcfdb195abfa9fa4dd48cf57f0', None, 'title'),
+        6: ('7e3ca7ad6086d701b7bb3d5eade7cad2ecdfa7bcfdb195abfa9fa4dd48cf57f0', None, 'document'),
     },
     'CHRG-106shrg85219': {
         7: ('2513ed90ad15dfc46574afa7cf2ac5df0da7aa8cfec47d5662fd2c24effa211d', 'Rodney E. Slater'),
@@ -108,6 +120,7 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         7: ('58101642e7d76b41315f08cd8b40aeabfbb10aee3753203a567863a244b3d1d2', None),
     },
     'CHRG-107shrg81998': {
+        23: ('34bb6fb539513bfcc1d80124a4f3dfc3c43ce6deb95b1842de61d1567ceea673', None, 'document'),
         54: ('bc351fa25e56f86ec14035855236f8ed9ba89904faa2bf551d3b7a702b3da97e', None),
         60: ('c44bfe6afdadc9ca62c866a3c0ca8c63945d2c43eae1fefab6ce882a35026ab3', None),
         67: ('32dd1a0e518dd307fe04544082d9cdd3a99d55adc43c8e84ded687be71adac0d', None),
@@ -121,7 +134,7 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         25: ('814b704f2cb2de804fa8df804a5349917a8b7a8e94921ee7da087bf69a68ddf1', None),
     },
     'CHRG-107shrg89642': {
-        6: ('2b5d381c972b0ca1e4d0ac59d564fb69c22e9b05dda1724e77042fb6b57f0e4a', None, 'title'),
+        6: ('2b5d381c972b0ca1e4d0ac59d564fb69c22e9b05dda1724e77042fb6b57f0e4a', None, 'document'),
     },
     'CHRG-108hhrg85516': {
         7: ('6f789ff04f11030b8049da40d2fc520add885e9e14cd3a45782deae79d25c983', 'Charles G. Groat'),
@@ -146,7 +159,7 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         8: ('5564c8357b4c519547adc04f40e9b40f4a9371707e1cf4a902ae3db25626cc11', 'Thomas H. Collins'),
     },
     'CHRG-108shrg92386': {
-        5: ('8640edf1613251e943547430c3773c0be33e32882611283dd85dacff8ccb0338', None, 'title'),
+        5: ('8640edf1613251e943547430c3773c0be33e32882611283dd85dacff8ccb0338', None, 'document'),
     },
     'CHRG-108shrg94598': {
         7: ('dbd748985d0fcd74d6e11445001b958bc07fcf265d0af4943d1ed13259dcce99', None),
@@ -158,7 +171,7 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         3: ('c6d37563b7cbd3caafc255f118db8e98f49144163c788018dc12d16f2f36d6aa', None),
     },
     'CHRG-109shrg22551': {
-        6: ('7cc18dca3203d43571e8a86c1ad95ac3d5a5026b19677799104b944af389ca20', None, 'title'),
+        6: ('7cc18dca3203d43571e8a86c1ad95ac3d5a5026b19677799104b944af389ca20', None, 'document'),
     },
     'CHRG-109shrg37444': {
         4: ('c1524a77161b644431ace94a70b538fa9d0c40fc6a4d8ed3ec67d5688b29e0e6', None),
@@ -183,13 +196,13 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         9: ('6054c7ce244ae5fbd199754c5a941b12f13533ec952bf16e6907972a68366eed', None),
     },
     'CHRG-110hhrg44215': {
-        9: ('1224a1e659455fbe570bc28fe8402db41c27fe0c835c2a52f5c299bf03b834b7', None, 'title'),
+        9: ('1224a1e659455fbe570bc28fe8402db41c27fe0c835c2a52f5c299bf03b834b7', None, 'document'),
     },
     'CHRG-110hhrg48907': {
         6: ('6b05415a0e4e51476747192b34eb62bb9fad325fd83deb0241c1e8fa1971a34e', None),
     },
     'CHRG-110shrg52887': {
-        16: ('f80dbd0215387353a0cbe56d5a0a2188dbbb8f516768a5ffe397c5922b60293b', None, 'title'),
+        16: ('f80dbd0215387353a0cbe56d5a0a2188dbbb8f516768a5ffe397c5922b60293b', None, 'document'),
     },
     'CHRG-110shrg55921': {
         3: ('096a8068427b1be79a410cb58a0dfe43efa578e83926680de43eac481a2701c5', None, 'record_material'),
@@ -201,6 +214,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         6: ('4fdb62c03417c7b9aa1cb431f92a925333137426bb724b7117e0eee0d14fab9d', None),
         7: ('dcef65b733889722d90faa0791ba3f0e7e878fbbe3c5340682c03982bd0d86ba', None),
     },
+    'CHRG-110shrg75166': {
+        3: ('c13ac896d132633508fd241b5e6423f00fda21c596febd7aa46bb97c1cf3497a', None, 'document'),
+    },
     'CHRG-110shrg75776': {
         25: ('ff7b4d327132dbb18d1e1a12b1b6c269f9b91f28a499ebdbf0e266d3eed4aec3', 'Robert V. Smith'),
     },
@@ -211,8 +227,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         4: ('2ec288ab84138197e9a29004a67311addcf1a8c603c19f28daf4d36a27203642', 'Kortney Clemons'),
     },
     'CHRG-111hhrg55850': {
-        5: ('9d260641607123e8c5849e5a3c064ea902aa9c9b0e812ba6fd2571fb79c5f8cc', None, 'title'),
-        6: ('881eeda28c54c73b0f5712ca2c8137c31761d04c968a6d91220c8c89579bd89a', None, 'title'),
+        5: ('9d260641607123e8c5849e5a3c064ea902aa9c9b0e812ba6fd2571fb79c5f8cc', None, 'document'),
+        6: ('881eeda28c54c73b0f5712ca2c8137c31761d04c968a6d91220c8c89579bd89a', None, 'document'),
     },
     'CHRG-111shrg47763': {
         2: ('2c5b4414728a6d4f6fb5adff87f632062c8b41e063dbeb87a71d23db0fc9ad72',
@@ -233,8 +249,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         3: ('fb6b185d9dd5a8e6e94849c1097a41b5ebb1cb0d6cafb26872d00487bbde84b5', 'Glenn F. Tilton'),
     },
     'CHRG-112hhrg64533': {
-        2: ('6c3b8d2f59ddee276dce5387eae92ba0d76cb937febd0697b2f960db0954b2a8', None, 'title'),
-        3: ('449c937bbd076a17ea44359ca1a9998d8f09bd3add563a0f49fa9fe4a0125021', None, 'title'),
+        2: ('6c3b8d2f59ddee276dce5387eae92ba0d76cb937febd0697b2f960db0954b2a8', None, 'document'),
+        3: ('449c937bbd076a17ea44359ca1a9998d8f09bd3add563a0f49fa9fe4a0125021', None, 'document'),
         5: ('c7e315dd2ba93cb317d4385401363d47910263e53ebc7db7dcaa3009b5bc25ed', None),
     },
     'CHRG-112hhrg68336': {
@@ -272,8 +288,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         5: ('6b741a67c55d9a2e336a1c3b963fe7b141ec0e441825d7bc4b74144892e2213b', None),
     },
     'CHRG-112jhrg85228': {
-        8: ('819d3e27deb6ca377c9f5848bacc7ec49fe760b6f42fee0f6e63dd60c261b5a2', None, 'title'),
-        10: ('23b6e24c5ba9841d3e8135fde1154decda6286caca11e02fc86ea78f46f50124', None, 'title'),
+        8: ('819d3e27deb6ca377c9f5848bacc7ec49fe760b6f42fee0f6e63dd60c261b5a2', None, 'document'),
+        10: ('23b6e24c5ba9841d3e8135fde1154decda6286caca11e02fc86ea78f46f50124', None, 'document'),
         23: ('1312032ad8acaf6dfd00fbc1f9782bd75ef58f8bd68bc2f514ad59421c80c53b', 'Anne Mayer'),
     },
     'CHRG-112shrg86775': {
@@ -284,10 +300,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         3: ('ff46dbe866a34997363eaa52347aa28ca494cd507170d7a58cc5197ab2c77498', None),
     },
     'CHRG-112shrg85232': {
-        3: ('494ecd9f0cb7c1aead06b9e9ca313960d54639847a80a024f220de164198316d', None, 'title'),
+        3: ('494ecd9f0cb7c1aead06b9e9ca313960d54639847a80a024f220de164198316d', None, 'document'),
     },
     'CHRG-113hhrg80816': {
-        3: ('edf183d0e07b2af67fbca21af752392b9c31677d872ac8017224fc65aae35faa', None, 'title'),
+        3: ('edf183d0e07b2af67fbca21af752392b9c31677d872ac8017224fc65aae35faa', None, 'document'),
     },
     'CHRG-113hhrg82220': {
         3: ('501432a9c33fd15c6d553b9ba54273156c85520ef94d76972ebac92ae604901f', 'Matthew Stepp'),
@@ -306,7 +322,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         6: ('f7075fa4ada87f99df81cd42c428812b9c20d751e065970ab8341c6a845f8170', None),
     },
     'CHRG-114hhrg93069': {
-        4: ('3882d9b193f6a097144d68149e66a539a0191b22a792eb390a1cd7796c44d743', None, 'title'),
+        4: ('3882d9b193f6a097144d68149e66a539a0191b22a792eb390a1cd7796c44d743', None, 'document'),
+    },
+    'CHRG-114hhrg93962': {
+        11: ('8f2ab73a64ee7801be0c3b4f9b5e73d7df156f6f3b4e9d271735578d7d379e55', None, 'document'),
     },
     'CHRG-114hhrg94806': {
         9: ('8b3705e13bcd877c7e0c670cfe5a19774e60b11ea7d0057a8e05698c3aa16b16', 'Andre Carson', 'record_material'),
@@ -331,7 +350,7 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         2: ('c9938097cc6447df2cdfac661cf536bdc95f4b470de9722f5220ee39a0f01e9e', 'Eugene Dodaro'),
     },
     'CHRG-114shrg97368': {
-        4: ('d646f835d493085e5bd7b0a1b3cd09b1c125c71cbd5962f5a7b915565525e12e', None, 'title'),
+        4: ('d646f835d493085e5bd7b0a1b3cd09b1c125c71cbd5962f5a7b915565525e12e', None, 'document'),
     },
     'CHRG-115hhrg25242': {
         2: ('8e8e80c14aa8efd74682837c08390a1a726ec44c3336510f2e87475c28072f2c',
