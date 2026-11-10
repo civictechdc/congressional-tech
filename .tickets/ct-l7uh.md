@@ -1,6 +1,6 @@
 ---
 id: ct-l7uh
-status: in_progress
+status: closed
 deps: []
 links: [ct-umtm]
 created: 2026-11-08T18:59:37Z
@@ -92,3 +92,7 @@ R2 import run by the orchestrator session (owner decision "Fetch and import", cr
 Written to congressional-tech-raw: 36 keys, exactly those in import-key-list.json (12 bodies, 31,373,355 bytes; 12 receipts; 12 provenance). Nothing else.
 Checks (l7uh_orch_head.py, HEAD only): 22:30Z all 36 absent with a known-present control present (orch-head-check.json); 22:41:52Z all 36 present with a known-absent control still 404 and each body's stored size equal to its local file (orch-head-after-import.json). Before the import, every packets/NN/body.pdf SHA-256 was recomputed and matched the ct-umtm ledger, the request and the key list.
 Still open: (1) the 14 requirement rows go into the MODS regeneration (owned by the CT session), so until then the 12 targets read eligible/no_satisfying_recovery like Duke did; (2) confirm the 12 recoveries in the first nightly release that reads these receipts; (3) the ct-umtm ledger still says not_in_raw for these pairs and wants a dated follow-up line. VA (letter case) and FEMA (double slash) were admitted knowingly under the owner's "all 12, loose match" decision.
+
+**2026-11-10T05:38:12Z**
+
+2026-11-10: the twelve Wayback recoveries are in published release 619db5f9e08e (recoveries.parquet +13: these twelve and one Duke recovery, ct-umtm; cause-record entries in model/jobs/release-causes/630164505301-619db5f9e08e.json, evidence under .cache/archive-release/release-20261110/causes-2/capture-address/). Their requirement rows ride with the MODS branch (claude/ct-mods-zs48-3aap); the dated follow-up for the ct-umtm ledger is noted there.

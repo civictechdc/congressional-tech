@@ -2,7 +2,7 @@
 id: ct-yuf0
 status: open
 deps: []
-links: []
+links: [ct-h8dr]
 created: 2026-11-10T05:18:40Z
 type: bug
 priority: 1

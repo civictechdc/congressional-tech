@@ -1,8 +1,8 @@
 ---
 id: ct-f7hp
-status: in_progress
+status: closed
 deps: []
-links: [ct-vq2a, ct-94hw]
+links: [ct-vq2a, ct-94hw, ct-h8dr]
 created: 2026-11-10T03:42:38Z
 type: bug
 priority: 1
@@ -48,3 +48,7 @@ Limit of the rule: `body_stored` is the capture writer's flag. Every fetch befor
 Tests: `test_a_later_capture_of_held_bytes_never_names_the_saved_body` (saved-files fixture) and `test_a_later_capture_of_held_bytes_never_renames_the_document` (end-to-end build) fail at 57f4f2fa and pass at 2c351724. The 25 test files that read saved files, source files or the model's plans, with the join audit and the repeat-cost lint: 370 passed, `production-offline (partial: 25 of 524 lane files; not a lane result): exit 0`. No full lane and no model build were run. No pin hashes this SQL; `docs/engine-first-data-model.md` §7.4 and §7.5 state the rule.
 
 Open: build a candidate and confirm these counts on its diff against live; then the owner decides whether names should follow what the name says (row 5).
+
+**2026-11-10T05:38:12Z**
+
+2026-11-10: verified on the published candidate 619db5f9e08e: 620 of 621 swapped names return (620 match live in all four fields); 1,689 documents return to the storing copy as predicted; 1,443 live documents change name (1,354 gain a House-convention name, 28 neutral, 61 lose a copy number or bill detail). Not predicted and shipped as an accepted defect: 54 documents whose House repository name contradicts the committee's (ct-yuf0). The broader rule the owner approved is ct-h8dr.

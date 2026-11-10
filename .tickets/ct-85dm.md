@@ -1,6 +1,6 @@
 ---
 id: ct-85dm
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-09T21:56:16Z
@@ -23,3 +23,9 @@ Expected next stop: gate 1 (release causes). videos.parquet is compared by video
 
 The shipped daily names every capture-record table the shipped model reads, and a test fails when it does not. A nightly passes unsettled_video_records = 0 with a daily producer record for video_records.
 
+
+## Notes
+
+**2026-11-10T05:38:12Z**
+
+2026-11-10: acceptance met. The nightly build at e65aef7e completed the model and its release-key invariants with the daily's video_records read, and release 619db5f9e08e was published at 05:34:59Z (run .cache/archive-release/nightly/20261110T043915.510596Z and the resume 20261110T053213.525969Z-resume). The test that the shipped daily names every capture-record table landed with 83be9f32.

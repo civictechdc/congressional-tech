@@ -17,3 +17,9 @@ Inside the 22,217 roster rows first published by ct-8cno (release cause review 2
 
 Each of the three counts is re-measured at zero or explained row by row; a rank the source does not print is either absent or labelled as derived; the 118th publishes one dated edition per row.
 
+
+## Notes
+
+**2026-11-10T05:38:12Z**
+
+2026-11-10 correction from the recount on release 619db5f9e08e: 697 new seats carry an archive-made rank, of which 254 are Directory seats of the 113th to 117th, 441 come from archived Senate files and 2 from manual readings; the 118th joins three sources, not two; the 19 unlabelled departed seats are confirmed.

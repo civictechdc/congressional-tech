@@ -1,6 +1,6 @@
 ---
 id: ct-h3jb
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T03:39:42Z
@@ -51,3 +51,7 @@ Correction: 63339a55 rewrote `test_a_listing_label_outranks_another_formats_page
 - Predicted documents (`fj-10-effect.out`): 19 candidate documents become 47. Against live, 17 of them return to the live shape; live row 28415 (four State Department reports and a page) becomes 5 documents and live row 305452 (testimony plus PowerPoint) becomes 2; four pages captured since live become their own rows.
 
 Still to confirm on a full model build: the acceptance list above, and that titles, dates and meeting links of the 47 documents match their live rows where one exists. No model build was run.
+
+**2026-11-10T05:38:12Z**
+
+2026-11-10: acceptance verified on the published candidate 619db5f9e08e by two independent checks (causes-2/capture-address and causes-2/document-fields/05-fix-checks.json, and causes-2/orchestrator-checks/all-live-link-keys.md): the six Financial Services link keys each answer their own file; 19 fused documents are 47; rows 150775 and 153462 stay merged; every live link key, lookup key and address answers the live file, the same document or its own file after a correct split.
