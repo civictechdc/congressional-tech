@@ -983,3 +983,38 @@ def test_a_first_schedules_meeting_date_is_taken_as_published_within_the_cap(tmp
     assert unattended(tmp_path, **plant)['reasons'] == []
 
 
+def test_url_state_without_the_candidates_receipt_set_refuses(tmp_path):
+    report = unattended(tmp_path, receipt_set=None)
+    assert report['reasons'] and 'automatic_causes' not in report
+    assert "automatic causes: url_state needs the candidate's receipt set" in report['automatic_reasons']
+
+
+@pytest.mark.parametrize('plant,reason', [
+    # W13: an added address whose band is wrong.
+    (dict(candidate={A: state(A, 1, FETCHED, 403, 'failed', None, 28 * DAY)}),
+     'next_attempt_at is not last_attempt plus the band of its published meeting date'),
+    # A fetched-before address whose status is not its newest line's.
+    (dict(candidate={F: state(F, 2, FETCHED, 500, 'unchanged', FETCHED, 7 * DAY, datetime(2026, 10, 20).date())}),
+     'last_attempt, last_status or last_outcome is not the newest new line'),
+    # W14: a first fetch whose last_attempt is not its line's time.
+    (dict(candidate={Q: state(Q, 1, FETCHED + DAY, 200, 'stored', FETCHED, 28 * DAY, datetime(2026, 1, 5).date())}),
+     'last_attempt, last_status or last_outcome is not the newest new line'),
+    # W9: a backlog line older than the live one moves the latest attempt backward.
+    (dict(fetches={(NEW_RECEIPT, 6): dict(requested_url=Z, sha256=None, retrieved_at=T0 - 3 * DAY, outcome='failed', http_status=500)},
+          candidate={Z: state(Z, 2, T0 - 3 * DAY, 500, 'failed', T0, 7 * DAY)}),
+     'the latest attempt moved without a later new line'),
+    # A queued address (in both) with a new line of its own.
+    (dict(fetches={(NEW_RECEIPT, 6): dict(requested_url=V, sha256=None, outcome='failed', http_status=404)}),
+     'a queued address has new lines'),
+    # A fetched address that names linking pages.
+    (dict(candidate={F: state(F, 2, FETCHED, 200, 'unchanged', FETCHED, 7 * DAY, datetime(2026, 10, 20).date(), pages=[PAGE['N']])}),
+     'an address with attempts names linking pages'),
+    # A new line with no time.
+    (dict(fetches={(NEW_RECEIPT, 3): dict(requested_url=A, sha256=None, outcome='failed', http_status=403, complete=False,
+                                          retrieved_at=None)}),
+     'the newest new line has no time'),
+])
+def test_url_state_checks_the_first_review_found_untested_refuse(tmp_path, plant, reason):
+    report = unattended(tmp_path, **plant)
+    assert report['reasons'] and 'automatic_causes' not in report
+    assert any(f': {reason} (first' in r for r in report['automatic_reasons']), report['automatic_reasons']
