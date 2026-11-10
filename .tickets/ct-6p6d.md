@@ -2,7 +2,7 @@
 id: ct-6p6d
 status: open
 deps: []
-links: [ct-64t4]
+links: [ct-64t4, ct-w2kf]
 created: 2026-11-10T13:27:30Z
 type: task
 priority: 2
@@ -23,3 +23,7 @@ The repeated daily scans run once per night, or the reason they cannot is writte
 **2026-11-10T13:39:21Z**
 
 2026-11-10 thread measurement (congress-1; .cache/archive-release/investigations/thread-measure-20261110/RESULT.md; 147-step prefix to base_normalized, pinned engine b0342a73, one run each, OCR at 8 workers alongside): 2 threads 444.1 s / 7.83 GiB, 4 threads 405.7 s / 7.94 GiB, 8 threads 423.0 s / 7.41 GiB, exports byte-identical. Item 3 is answered: engine threads are not the limit (4 is 9% faster than 2, 8 is slower than 4). Slowest steps are the same at every count: pinned_readings 29-32 s, link_inputs 17-20 s, appearance_url_inputs 18-20 s, placeholders 16 s. Unprofiled candidates: step results reach later queries through a one-partition streaming table, remote lake reads, single-threaded operators. Next cheap step if the model is to be faster: a sampling profile of pinned_readings and link_inputs.
+
+**2026-11-10T15:47:02Z**
+
+2026-11-10 root-cause analysis, measured (root-cause/ROOT-CAUSE.md cause A; PLAN.md M1). Where the model's time goes in build c03c43da (902 s): 44 of 336 statements read a lake table and take 545 s (61%); captures is scanned 42 to 46 times and readings 50 to 70 times per build (the selected_readings view holds 11 scans of readings and is used 6 times). At 2, 4 and 8 threads those statements took 254, 251 and 255 s while statements over step results took 177, 138 and 152 s: the lake scan ignores compute_threads (iceberg-datafusion 0.10.1 exposes one output stream; its file concurrency is the CPU count). Measurement M1: the 11 statements that read only captures take 144.9 s in that build and 9.2, 7.4 and 6.8 s on a local copy of the table at 1, 2 and 8 threads, same pinned binary. So the cost is the remote read path, not threads and not decoding. Fix being built in docspec-rs: read each lake file once (a read-through cache for immutable lake objects). The daily's repeated scans in item 1 are the same cause. Item 3 (threads) is answered: do not raise them for speed.
