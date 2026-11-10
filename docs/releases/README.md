@@ -70,14 +70,14 @@ putting them in the release would force a second model run.
 ## Nightly publication (ct-ud0b)
 
 The daily publish (`model/jobs/publish.json`, `automatic_causes: true`) can explain a
-difference without a person only when every difference is a new row and every new row is
-traced to receipts the live release did not read. A new row is a new document, or a source
+difference without a person only when every difference is a new row traced to receipts the
+live release did not read, or `url_state` bookkeeping those receipts imply (below). A new row is a new document, or a source
 or lookup row on one. Each new document's body is joined to `captures`, and each receipt
 line is read from raw. The receipt key must be outside the live release's receipt set (the
 key list its input record names, `inputs/receipts/<sha256>.json.gz`), and the line must name
 the body. The key's date does not matter (ct-gc99): the daily reads a backlog oldest first,
 so its receipts are new to the release without being newer than it. Every capture line of a
-new document must qualify, so a body the live release also read is not new. Any changed or
+new document must qualify, so a body the live release also read is not new. Any other changed or
 removed value, a split or merge, a new key or address on a document the live release has, a
 recovered document (its key is a link, not a body), or a row that cannot be traced still
 needs a reviewed cause record. So does a night that adds more than 250 documents
@@ -85,9 +85,20 @@ needs a reviewed cause record. So does a night that adds more than 250 documents
 its title, date or meeting are right, so a large batch waits for a person.
 
 A capture night always changes `url_state` (attempt counts and times on fetched addresses,
-newly queued links), and those changes are not automatic yet. The history columns can be
-derived from new receipts, but `next_attempt_at` depends on a meeting date and a queued link
-on the page that linked it, and the gate is given neither (ct-9j3z).
+newly queued links). Since ct-9j3z each changed, added or removed row must be exactly what the
+lines of the candidate's receipts outside the live set imply, folded by the model's own
+`url_state_lines` over the capture table, each line in raw and naming its address: attempts
+grow by the new lines; the newest new line, when later than the live one (a tie refuses), sets
+the latest attempt, and `next_attempt_at` is its time plus the band of the published
+`recheck_meeting_date`, which must equal the live value where the live release had scheduled
+the address; `last_good_at` stays or moves forward to a new line that stored a body. A newly
+queued link's pages (`linked_from`) must each come only from new receipts, traced like a new
+document's body. A row that changed with no new line (a meeting link that moved), a meeting date
+that moved on a scheduled address, a removed address or any other column change still needs a
+record. An added attempted address no longer has to have supplied a new document: a failed or
+repeated fetch is still a fetch. Cannot see: a wrong meeting date on an address scheduled for
+the first time, whether a stored line was a good fetch, or whether a page really links its
+queued address; those are the model's.
 
 What it cannot see: a bug that adds only wrong rows from genuinely new receipts. A
 code change that alters how new rows are built is invisible too, when no existing row

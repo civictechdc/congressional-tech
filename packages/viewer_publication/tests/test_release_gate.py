@@ -1,5 +1,5 @@
 """Gates 1 and 2 at publish: every difference needs its recorded cause; no link key may vanish."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import md5, sha256
 from io import BytesIO
 import json
@@ -378,21 +378,39 @@ REQUEST = 'https://www.govinfo.gov/content/pkg/CHRG-119hhrg12345/pdf/CHRG-119hhr
 FETCHED = datetime(2026, 11, 3, 15, tzinfo=timezone.utc)
 
 
-def url_states(url, attempts):
-    ts = pa.timestamp('us', tz='UTC')
-    return pa.table({
-        'requested_url': pa.array([url], pa.string()),
-        'attempts': pa.array([attempts], pa.int32()),
-        'last_attempt': pa.array([FETCHED if attempts else None], ts),
-        'last_status': pa.array([200 if attempts else None], pa.int16()),
-        'last_outcome': pa.array(['stored' if attempts else None], pa.string()),
-        'last_good_at': pa.array([FETCHED if attempts else None], ts),
-        'next_attempt_at': pa.array([None], ts),
-    })
+TS = pa.timestamp('us', tz='UTC')
+WEEK = timedelta(days=7)
+URL_STATE = pa.schema([('requested_url', pa.string()), ('attempts', pa.int32()), ('last_attempt', TS),
+                       ('last_status', pa.int16()), ('last_outcome', pa.string()), ('last_good_at', TS),
+                       ('next_attempt_at', TS), ('recheck_meeting_date', pa.date32()), ('linked_from', pa.list_(pa.binary(8)))])
+
+
+def url_states(url, attempts, pages=(K('P'),)):
+    """One url_state row as a capture night writes it: a fetch at FETCHED with no meeting date (so
+    the shortest band, a week), or a queued link with the pages behind it."""
+    return pa.Table.from_pylist([dict(requested_url=url, attempts=attempts, last_attempt=FETCHED if attempts else None,
+        last_status=200 if attempts else None, last_outcome='stored' if attempts else None,
+        last_good_at=FETCHED if attempts else None, next_attempt_at=FETCHED + WEEK if attempts else None,
+        recheck_meeting_date=None, linked_from=[] if attempts else list(pages))], schema=URL_STATE)
+
+
+CAPTURES = pa.schema([('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()),
+                      ('sha256', pa.binary(32)), ('requested_url', pa.string()), ('url', pa.string()),
+                      ('context_url', pa.string()), ('family', pa.string()), ('mode', pa.string()),
+                      ('complete', pa.bool_()), ('attempt', pa.int32()), ('outcome', pa.string()),
+                      ('http_status', pa.int32()), ('fetch_outcome', pa.string()), ('fetch_http_status', pa.int32()),
+                      ('retrieved_at', TS)])
+
+
+def write_captures(rows, path):
+    """The lake captures table's columns that the gate reads, with a fetch's usual defaults."""
+    defaults = dict(capture_index=0, url=None, context_url=None, family='documents', fetch_outcome=None,
+                    fetch_http_status=None, retrieved_at=FETCHED)
+    pq.write_table(pa.Table.from_pylist([{**defaults, **row} for row in rows], schema=CAPTURES), path)
 
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
-            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=False,
+            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=None,
             base_tables=None, candidate_tables=None, also_held=None, cache_files=(), base_retired=None):
     """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
     import gzip
@@ -403,7 +421,7 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     states = url_states(url, attempts)
     failure_url = 'https://www.govinfo.gov/failed-copy.pdf'
     baseline = dict(url_state=states.slice(0, 0))
-    additions = dict(url_state=pa.concat_tables([states, url_states(failure_url, 1)]) if failed_duplicate else states)
+    additions = dict(url_state=pa.concat_tables([states, failed_duplicate]) if failed_duplicate is not None else states)
     if list(candidate_docs) == list(base_docs):
         additions['url_state'] = states.slice(0, 0)  # no new document, so no newly attempted address
     if other_entity:
@@ -425,7 +443,7 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     capture_rows = [dict(receipt_key=receipt, receipt_line=1, sha256=body, requested_url=capture_url,
                          mode='fetch', complete=True, attempt=0, outcome='stored', http_status=200)
                     for body in bodies.values()]
-    if failed_duplicate:
+    if failed_duplicate is not None:
         capture_rows.append(dict(capture_rows[0], receipt_line=2, requested_url=failure_url,
                                  outcome='failed', http_status=403))
     if also_held:
@@ -434,11 +452,7 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     # Cache files the pipeline captured: (file hash, receipt key).
     capture_rows += [dict(receipt_key=key, receipt_line=1, sha256=file_sha, requested_url=None, mode='fetch', complete=True,
                           attempt=0, outcome='stored', http_status=200) for file_sha, key in cache_files]
-    pq.write_table(pa.Table.from_pylist(capture_rows, schema=pa.schema([
-        ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('sha256', pa.binary(32)),
-        ('requested_url', pa.string()), ('mode', pa.string()), ('complete', pa.bool_()),
-        ('attempt', pa.int32()), ('outcome', pa.string()), ('http_status', pa.int32()),
-    ])), tmp_path / 'captures.parquet')
+    write_captures(capture_rows, tmp_path / 'captures.parquet')
     sha = next(iter(bodies.values()), b'').hex() if raw_names_body else '0' * 64
     line = dict(record=dict(mode='fetch', outcome='stored', requested_url=raw_url, url=raw_url,
                             http_status=200, retrieved_at=FETCHED.isoformat(), content=dict(sha256=sha)),
@@ -449,13 +463,14 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     if not nested:
         line.update(line.pop('record'))
     unrelated = (dict(record=dict(mode='fetch', requested_url=failure_url, outcome='failed', http_status=403),
-                      captures=line['captures']) if failed_duplicate else
+                      captures=line['captures']) if failed_duplicate is not None else
                  dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[]))
     raw = {receipt: gzip.compress(('\n'.join(map(json.dumps, (line, unrelated))) + '\n').encode(), mtime=0)}
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     def automatic(report):
         return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
-                                live_receipt_keys=live_receipts, read_receipt=raw.__getitem__, work=tmp_path / 'auto')
+                                live_receipt_keys=live_receipts, read_receipt=raw.__getitem__, work=tmp_path / 'auto',
+                                candidate_receipt_keys={*live_receipts, receipt, *(key for _, key in cache_files)})
     return base, candidate, automatic
 
 
@@ -463,10 +478,11 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
 def test_additions_from_new_receipts_pass_unattended(tmp_path, nested):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], nested=nested)
     report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
-    assert report['reasons'] == [] and {e['tickets'][0] for e in report['automatic_causes']} == {'ct-ud0b'}
-    assert {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys', 'added URLs'}
+    assert report['reasons'] == []
+    assert {(e['id'].split('|')[0], e['tickets'][0]) for e in report['automatic_causes']} == {
+        ('list.parquet', 'ct-ud0b'), ('detail.parquet', 'ct-ud0b'), ('links.parquet', 'ct-ud0b'), ('url_state.parquet', 'ct-9j3z')}
     trace = json.loads((tmp_path / 'auto/automatic-trace.json').read_text())
-    assert trace['url_attempts'] == {REQUEST: [[NEW_RECEIPT, 1]]}
+    assert trace['url_state']['groups']['added URLs: new attempts'] == [1, 1] and trace['url_state']['lines'] == 1
     assert (trace['live_receipts'], trace['new_receipts']) == (2, 1)
 
 
@@ -481,7 +497,7 @@ def test_additions_from_a_backlog_receipt_pass_unattended(tmp_path, receipt):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], receipt=receipt)
     report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert report['reasons'] == [] and {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys', 'added URLs'}
-    assert json.loads((tmp_path / 'auto/automatic-trace.json').read_text())['url_attempts'] == {REQUEST: [[receipt, 1]]}
+    assert json.loads((tmp_path / 'auto/automatic-trace.json').read_text())['url_state']['groups']['added URLs: new attempts'] == [1, 1]
 
 
 @pytest.mark.parametrize('receipt', [sorted(LIVE_RECEIPTS)[0], UNDATED_LIVE_RECEIPT])
@@ -603,12 +619,22 @@ def test_a_second_document_hash_in_raw_notes_does_not_ride_an_eligible_attempt(t
     assert len(reasons) == 1 and 'does not name body' in reasons[0]
 
 
-def test_a_failed_response_sharing_the_new_documents_body_cannot_qualify_its_url(tmp_path):
-    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], failed_duplicate=True)
+@pytest.mark.parametrize('recorded', ['as the failure it was', 'as a success'])
+def test_an_added_address_whose_fetch_failed_is_bookkeeping_and_must_record_the_failure(tmp_path, recorded):
+    """ct-9j3z replaces ct-ud0b's rule that an added attempted address must have supplied a new
+    document (349 of 910 did on 2026-11-10): a failed fetch is still a fetch. Its row must be what
+    its line says; one claiming the shared body's success refuses."""
+    failed = 'https://www.govinfo.gov/failed-copy.pdf'
+    failure = dict(last_status=403, last_outcome='failed', last_good_at=None) if recorded == 'as the failure it was' else {}
+    row = {**url_states(failed, 1).to_pylist()[0], **failure}
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], failed_duplicate=pa.Table.from_pylist([row], schema=URL_STATE))
+    if failure:
+        assert require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)['reasons'] == []
+        return
     with pytest.raises(ValueError, match='no recorded cause'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
-    reasons = json.loads((tmp_path / 'r.json').read_text())['automatic_reasons']
-    assert len(reasons) == 1 and 'failed-copy.pdf has 1 attempts but 0 fresh raw lines' in reasons[0]
+    assert json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'] == [
+        f"automatic causes: url_state: 1 rows: last_attempt, last_status or last_outcome is not the newest new line (first ['{failed}'])"]
 
 
 def test_an_added_link_key_on_an_existing_document_requires_review(tmp_path):
@@ -700,3 +726,183 @@ def test_a_check_date_in_the_future_refuses_unattended(tmp_path):
     base, candidate, automatic = refreshed(tmp_path, year=2099)
     with pytest.raises(ValueError, match=r'no recorded cause for videos.parquet\|changed details_checked_at'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+
+
+# ct-9j3z: a capture night's url_state bookkeeping, proven from the lines of receipts new to the
+# release. Every expected value below is written by hand from the receipts and the recheck
+# registry (documents and house/pages: 7 days under 31 days of age, 28 under 731, else 365).
+DAY = timedelta(days=1)
+T0 = datetime(2026, 10, 21, 12, tzinfo=timezone.utc)
+LIVE = sorted(LIVE_RECEIPTS)[0]
+F = 'https://docs.house.gov/meetings/AG/AG03/20261020/111/F.pdf'  # fetched before, fetched again
+Q = 'https://www.govinfo.gov/content/pkg/CHRG-119hhrg1/pdf/CHRG-119hhrg1.pdf'  # queued, fetched for the first time
+A = 'https://www.energy.senate.gov/a.pdf'  # first seen and fetched; the fetch failed
+N = 'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=1'  # a page read for the first time
+U = 'https://docs.house.gov/meetings/AG/AG03/20261105/222/U.pdf'  # newly queued, linked from N
+V = 'https://www.govinfo.gov/v.pdf'  # queued in both; N links it too now
+Z = 'https://www.govinfo.gov/z.pdf'  # untouched
+BODY = {name: sha256(name.encode()).digest() for name in ('F', 'Q', 'N', 'P')}
+PAGE = {name: BODY[name][:8] for name in BODY}  # a page key is its body's first 8 bytes
+
+
+def state(url, attempts=0, at=None, status=None, outcome=None, good=None, interval=None, date=None, pages=()):
+    return dict(requested_url=url, attempts=attempts, last_attempt=at, last_status=status, last_outcome=outcome,
+                last_good_at=good, next_attempt_at=at + interval if interval else None, recheck_meeting_date=date,
+                linked_from=list(pages))
+
+
+def capture_night(tmp_path, *, base=None, candidate=None, drop=(), captures=(), raw_url=None, live_columns=None,
+                  extra_columns=None):
+    """Releases, captures and raw receipts for one capture night, as the gate's automatic callback.
+
+    `base`/`candidate` override rows by address; `drop` leaves addresses out of the candidate;
+    `captures` adds capture rows; `raw_url` rewrites one address in the raw receipt."""
+    import gzip
+    import os
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.release_gate import automatic_causes
+    meeting = datetime(2026, 10, 20).date()
+    live = {F: state(F, 1, T0, 200, 'stored', T0, 7 * DAY, meeting), Q: state(Q, pages=[PAGE['P']]),
+            V: state(V, pages=[PAGE['P']]), Z: state(Z, 1, T0, 200, 'stored', T0, 7 * DAY)}
+    night = {**live,
+             # 14 days after its meeting: the 7-day band.
+             F: state(F, 2, FETCHED, 200, 'unchanged', FETCHED, 7 * DAY, meeting),
+             # A first schedule: 302 days after the meeting date the model found, the 28-day band.
+             Q: state(Q, 1, FETCHED, 200, 'stored', FETCHED, 28 * DAY, datetime(2026, 1, 5).date()),
+             # No meeting date: the shortest band.
+             A: state(A, 1, FETCHED, 403, 'failed', None, 7 * DAY),
+             N: state(N, 1, FETCHED, 200, 'stored', FETCHED, 7 * DAY),
+             U: state(U, pages=[PAGE['N']]), V: state(V, pages=sorted([PAGE['N'], PAGE['P']]))}
+    live.update(base or {})
+    night.update(candidate or {})
+    for url in drop:
+        night.pop(url)
+    tables = []
+    for rows in (live, night):
+        table = pa.Table.from_pylist(sorted(rows.values(), key=lambda r: r['requested_url']), schema=URL_STATE)
+        for name, changed in (extra_columns or {}).items():  # the candidate's values; the live release's are 'eligible'
+            values = changed if rows is night else {}
+            table = table.append_column(name, pa.array([values.get(r, 'eligible') for r in table['requested_url'].to_pylist()]))
+        tables.append(table)
+    if live_columns is not None:
+        tables[0] = tables[0].select(live_columns)
+    release_dir(tmp_path / 'base', ['A'], url_state=tables[0])
+    release_dir(tmp_path / 'candidate', ['A'], url_state=tables[1])
+    fetches = [dict(receipt_key=LIVE, receipt_line=1, requested_url=F, sha256=BODY['F'], retrieved_at=T0, outcome='stored'),
+               dict(receipt_key=LIVE, receipt_line=2, requested_url='https://docs.house.gov/old-page', sha256=BODY['P'],
+                    retrieved_at=T0, outcome='stored', family='house/pages'),
+               dict(receipt_key=NEW_RECEIPT, receipt_line=1, requested_url=F, sha256=BODY['F'], outcome='unchanged'),
+               dict(receipt_key=NEW_RECEIPT, receipt_line=2, requested_url=Q, sha256=BODY['Q'], outcome='stored'),
+               dict(receipt_key=NEW_RECEIPT, receipt_line=3, requested_url=A, sha256=None, outcome='failed', http_status=403,
+                    complete=False),
+               dict(receipt_key=NEW_RECEIPT, receipt_line=4, requested_url=N, sha256=BODY['N'], outcome='stored', family='house/pages'),
+               *captures]
+    write_captures([dict(dict(mode='fetch', complete=True, attempt=0, http_status=200), **row) for row in fetches],
+                   tmp_path / 'captures.parquet')
+    lines = {}
+    for row in fetches:
+        url = raw_url.get(row['requested_url'], row['requested_url']) if raw_url else row['requested_url']
+        body = [dict(sha256=row['sha256'].hex())] if row.get('sha256') else []
+        lines.setdefault(row['receipt_key'], {})[row['receipt_line']] = json.dumps(dict(
+            record=dict(mode='fetch', requested_url=url, outcome=row['outcome']), captures=body))
+    raw = {key: gzip.compress(('\n'.join(by_line.get(i, '{}') for i in range(1, max(by_line) + 1)) + '\n').encode(), mtime=0)
+           for key, by_line in lines.items()}
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+
+    def automatic(report):
+        return automatic_causes(report, tmp_path / 'base', tmp_path / 'candidate', engine=engine,
+                                captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
+                                live_receipt_keys=LIVE_RECEIPTS, read_receipt=raw.__getitem__, work=tmp_path / 'auto',
+                                candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT})
+    return tmp_path / 'base', tmp_path / 'candidate', automatic
+
+
+def unattended(tmp_path, **night):
+    base, candidate, automatic = capture_night(tmp_path, **night)
+    try:
+        report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    except ValueError:
+        report = json.loads((tmp_path / 'r.json').read_text())
+    return report
+
+
+def test_a_capture_night_whose_url_state_the_new_receipts_imply_passes_unattended(tmp_path):
+    report = unattended(tmp_path)
+    assert report['reasons'] == [] and report['automatic_reasons'] == []
+    entries = {e['id']: e for e in report['automatic_causes']}
+    assert {(i, e['count']) for i, e in entries.items()} == {
+        ('url_state.parquet|added URLs|new attempts', 2), ('url_state.parquet|added URLs|queued link with no attempts yet', 1),
+        *((f'url_state.parquet|changed {column}|value differs on matched key', n) for column, n in (
+            ('attempts', 2), ('last_attempt', 2), ('last_status', 1), ('last_outcome', 2), ('last_good_at', 2),
+            ('next_attempt_at', 2), ('recheck_meeting_date', 1), ('linked_from', 2)))}
+    assert {e['tickets'][0] for e in entries.values()} == {'ct-9j3z'}
+    trace = json.loads((tmp_path / 'auto/automatic-trace.json').read_text())
+    assert trace['url_state']['queued_link_pages'] == [PAGE['N'].hex()] and trace['url_state']['lines'] == 4
+    assert trace['url_state']['groups']['changed attempts'] == [2, 2]
+    # The live receipt's line for F is not counted again, and the old page P needs no trace.
+    assert {(row['receipt_key'], row['receipt_line']) for row in trace['lines']} == {(NEW_RECEIPT, 4)}
+
+
+LATER = 'receipts/documents/2026-11-04/later.jsonl.gz'
+
+
+def test_a_line_in_a_receipt_the_candidate_did_not_read_is_not_counted(tmp_path):
+    """The lake holds receipts newer than the candidate; only the candidate's own set counts."""
+    report = unattended(tmp_path, captures=[dict(receipt_key=LATER, receipt_line=1, requested_url=F, sha256=BODY['F'],
+                                                 outcome='unchanged', retrieved_at=FETCHED + DAY)])
+    assert report['reasons'] == []
+
+
+@pytest.mark.parametrize('plant,reason', [
+    # A wrong band: 28 days where the published meeting date gives 7.
+    (dict(candidate={F: state(F, 2, FETCHED, 200, 'unchanged', FETCHED, 28 * DAY, datetime(2026, 10, 20).date())}),
+     'next_attempt_at is not last_attempt plus the band of its published meeting date'),
+    # A consistent band on a changed meeting date: the live release had scheduled F.
+    (dict(candidate={F: state(F, 2, FETCHED, 200, 'unchanged', FETCHED, 28 * DAY, datetime(2026, 1, 5).date())}),
+     'recheck_meeting_date changed on an address the live release had scheduled'),
+    (dict(candidate={F: state(F, 0)}), 'attempts are not the live count plus the new lines'),
+    (dict(candidate={F: state(F, 2, FETCHED, 200, 'unchanged', None, 7 * DAY, datetime(2026, 10, 20).date())}),
+     'last_good_at was lost or moved without a stored new line'),
+    (dict(candidate={A: state(A, 1, FETCHED, 403, 'failed', FETCHED, 7 * DAY)}), 'last_good_at is not a stored new line'),
+    (dict(candidate={A: state(A, 1, FETCHED, 200, 'stored', None, 7 * DAY)}),
+     'last_attempt, last_status or last_outcome is not the newest new line'),
+    # No receipt implies a change with no new line (the 10 rows of 2026-11-10 were this).
+    (dict(candidate={Z: state(Z, 1, T0, 200, 'stored', T0, 365 * DAY)}), 'changed with no new line'),
+    # A tie in time with the live value cannot be ordered without the receipt keys' order.
+    (dict(base={F: state(F, 1, FETCHED, 200, 'stored', T0, 7 * DAY, datetime(2026, 10, 20).date())}),
+     'the newest new line ties the live last_attempt'),
+    (dict(candidate={U: state(U)}), 'a queued address names no linking page'),
+    (dict(candidate={V: state(V, pages=[PAGE['N']])}), 'a page that linked a queued address is gone'),
+    (dict(candidate={U: state(U, at=FETCHED, interval=7 * DAY, pages=[PAGE['N']])}), 'a queued address carries a schedule'),
+    (dict(live_columns=[n for n in URL_STATE.names if n != 'recheck_meeting_date']),
+     'the live release publishes no recheck_meeting_date to compare with'),
+])
+def test_url_state_a_new_receipt_does_not_imply_refuses_unattended(tmp_path, plant, reason):
+    report = unattended(tmp_path, **plant)
+    assert report['reasons'] and 'automatic_causes' not in report
+    assert any(f': {reason} (first' in r for r in report['automatic_reasons']), report['automatic_reasons']
+
+
+@pytest.mark.parametrize('plant,reason', [
+    # The page behind a newly queued link must come from new receipts only.
+    (dict(candidate={U: state(U, pages=[PAGE['P']])}), f'automatic causes: {LIVE} is already in the live release'),
+    (dict(candidate={U: state(U, pages=[K('X')])}), "automatic causes: 1 queued link page keys have no capture to trace (first ['5858585858585858'])"),
+    (dict(raw_url={Q: Q + '?other'}), f'automatic causes: {NEW_RECEIPT}:2 does not name {Q} in raw'),
+    (dict(captures=[dict(receipt_key=NEW_RECEIPT, receipt_line=5, requested_url='https://www.govinfo.gov/w.pdf', outcome='failed',
+                         http_status=404)]),
+     'automatic causes: url_state: 1 addresses with new lines have no row in the candidate'),
+])
+def test_url_state_rows_that_raw_or_the_capture_table_do_not_bear_out_refuse_unattended(tmp_path, plant, reason):
+    report = unattended(tmp_path, **plant)
+    assert report['reasons'] and 'automatic_causes' not in report
+    assert reason in report['automatic_reasons'], report['automatic_reasons']
+
+
+@pytest.mark.parametrize('plant,group', [
+    (dict(extra_columns={'capture_disposition': {Z: 'excluded'}}), 'changed capture_disposition'),
+    (dict(drop=[Z]), 'removed URLs'),
+])
+def test_url_state_groups_no_receipt_sets_refuse_unattended(tmp_path, plant, group):
+    report = unattended(tmp_path, **plant)
+    assert report['reasons'] and 'automatic_causes' not in report
+    assert any(f'url_state.parquet|{group}|' in r and 'is not an addition' in r for r in report['automatic_reasons'])

@@ -26,9 +26,7 @@ from urllib.request import Request, urlopen
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake.receipt_metadata import document_status, document_status_sql
-
-from viewer_publication.release_comparison import ADDED_URL_STATE, ATTEMPTED_URLS
+from viewer_publication.release_comparison import ATTEMPTED_URLS, QUEUED_URLS
 
 DIGEST = re.compile('[0-9a-f]{64}')
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
@@ -247,8 +245,15 @@ AUTOMATIC_GROUPS = {('list.parquet', 'added rows'), ('detail.parquet', 'added ro
                     ('urls.parquet', 'keys new'), ('urls.parquet', 'keys with more rows'),
                     ('sources.parquet', 'new URLs'), ('sources.parquet', 'member rows added'),
                     ('sources.parquet', 'same-URL rows added')}
-ATTEMPTED_URL_GROUP = ('url_state.parquet', 'added URLs', ATTEMPTED_URLS)
+# ct-9j3z: the url_state groups a capture night makes. url_state_proof checks each of their rows
+# against the lines of receipts new to the release; any other url_state group still needs a record.
+URL_STATE_COLUMNS = ('attempts', 'last_attempt', 'last_status', 'last_outcome', 'last_good_at', 'next_attempt_at',
+                     'recheck_meeting_date', 'linked_from')
+URL_STATE_GROUPS = {*(('changed ' + column, 'value differs on matched key') for column in URL_STATE_COLUMNS),
+                    ('added URLs', ATTEMPTED_URLS), ('added URLs', QUEUED_URLS)}
 AUTOMATIC_CAUSE = "addition traced to receipts absent from the live release's receipt set (automatic, ct-ud0b)"
+URL_STATE_CAUSE = ("every row is what the lines of receipts absent from the live release's receipt set imply "
+                   "(automatic, ct-9j3z)")
 # The proof shows where an added document came from, never that its title, date or meeting are
 # right: values of added rows have no live partner to compare with. So one unattended night may
 # add at most this many documents; more waits for a person. Chosen from the two nights measured
@@ -257,26 +262,31 @@ AUTOMATIC_CAUSE = "addition traced to receipts absent from the live release's re
 AUTOMATIC_ADDITION_CAP = 250
 
 
-def _raw_document_proof(line):
-    """Read body references and the explicit request from one raw receipt line."""
+def _raw_line_facts(line):
+    """Body references and every string value of one raw receipt line.
+
+    A url_state line is confirmed by its address appearing as a whole value anywhere in the line,
+    without a second copy of the capture mapping's field rules.
+    """
     try:
         receipt = json.loads(line)
     except ValueError:
-        return set(), None
+        return set(), set()
     if not isinstance(receipt, dict):
-        return set(), None
+        return set(), set()
     entries = receipt.get('captures') or receipt.get('file_references')
     bodies = {entry['sha256'].lower() for entry in entries
               if isinstance(entry, dict) and isinstance(entry.get('sha256'), str)} if isinstance(entries, list) else set()
-    record = receipt.get('record', {})
-    url = None
-    if isinstance(record, dict):
-        status = receipt.get('http_status', record.get('http_status'))
-        if (receipt.get('mode', record.get('mode')) == 'fetch'
-                and receipt.get('outcome', record.get('outcome')) in ('stored', 'unchanged')
-                and type(status) is int and document_status(status)):
-            url = receipt.get('requested_url', record.get('requested_url'))
-    return bodies, url
+    strings, stack = set(), [receipt]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, str):
+            strings.add(value)
+        elif isinstance(value, dict):
+            stack.extend(value.values())
+        elif isinstance(value, list):
+            stack.extend(value)
+    return bodies, strings
 
 
 def _captures_source(captures):
@@ -322,23 +332,190 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     return reasons
 
 
-def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work):
-    """Cause entries for an addition-only difference whose every new row comes from new receipts.
+def _url_state_rules(base_columns, candidate_columns):
+    """SQL giving one reason for a url_state row the new lines do not imply, NULL when they do.
 
-    Returns (entries, reasons); entries is empty unless every check passes. A new document is
-    a candidate row none of whose link keys an earlier release published. Its body keys are
-    joined to `captures` (the capture mapping, not the archive model) to find the receipt
-    lines holding those bodies. A key the live release retired is absent from its links too, but
-    a document that comes back is not new: published again, its key leaves the ledger, and that
-    `retired_links` group is not an addition, so the proof stops above. Each line is then read
-    from raw: its key must be outside the
-    live release's receipt set, and the line itself must name the body's SHA-256. The set is the
-    live release's own input record (every key its captures were read from), so "new" is by key,
-    whatever the key's date: a backlog read oldest first is new without being recent (ct-gc99).
-    Every capture line of a new document must qualify, so a body the live release also read
-    is not new. Link, source and lookup additions must sit on new documents only.
-    Every attempt for an added URL needs a fresh receipt line that supplied the new document.
-    At most AUTOMATIC_ADDITION_CAP documents may be added this way in one night.
+    Aliases: b (live row), c (candidate row), p (the address's new lines: n, and the times of those
+    that stored a body), x (its newest new line, and the interval the model's own band steps give it
+    with the candidate's published meeting date). Times compare as epoch microseconds. Every
+    condition is written to be true or false, never NULL, so a missing value cannot pass a rule.
+    """
+    n, stored_times = 'coalesce(p.n,0)', 'coalesce(p.stored,[]::BIGINT[])'
+    other = sorted((base_columns & candidate_columns) - set(URL_STATE_COLUMNS) - {'requested_url'})
+    unset = [(f'{column} changed, which no receipt sets', f'c.{column} IS DISTINCT FROM b.{column}') for column in other]
+    schedule = ('last_attempt', 'last_status', 'last_outcome', 'last_good_at', 'next_attempt_at', 'recheck_meeting_date')
+    later = '(x.t IS NOT NULL AND (b.last_attempt IS NULL OR x.t>epoch_us(b.last_attempt)))'
+    newest = ('epoch_us(c.last_attempt) IS NOT DISTINCT FROM x.t AND c.last_status IS NOT DISTINCT FROM x.s '
+              'AND c.last_outcome IS NOT DISTINCT FROM x.o')
+    band = ('x.interval_seconds IS NOT NULL AND epoch_us(c.next_attempt_at) IS NOT DISTINCT FROM '
+            'x.t+x.interval_seconds*1000000')
+    stored = f'list_contains({stored_times},epoch_us(c.last_good_at))'
+    has_pages = 'coalesce(len(c.linked_from),0)>0'
+    wrong_band = 'next_attempt_at is not last_attempt plus the band of its published meeting date'
+    # The band's date is anchored to the live release only where the live release had scheduled the
+    # address; a first schedule has no live value to keep.
+    date = (('recheck_meeting_date changed on an address the live release had scheduled',
+             'b.attempts>0 AND c.recheck_meeting_date IS DISTINCT FROM b.recheck_meeting_date')
+            if 'recheck_meeting_date' in base_columns else
+            ('the live release publishes no recheck_meeting_date to compare with', 'b.attempts>0'))
+    pages = (('a page that linked a queued address is gone', 'NOT coalesce(list_has_all(c.linked_from,b.linked_from),false)')
+             if 'linked_from' in base_columns else ('the live release publishes no linked_from to compare with', 'true'))
+    fetched = [
+        ('changed with no new line', f'{n}=0'),
+        ('attempts are not the live count plus the new lines', f'c.attempts IS DISTINCT FROM b.attempts+{n}'),
+        ('the newest new line has no time', 'x.t IS NULL'),
+        ('the newest new line ties the live last_attempt', 'b.last_attempt IS NOT NULL AND x.t=epoch_us(b.last_attempt)'),
+        ('last_attempt, last_status or last_outcome is not the newest new line', f'{later} AND NOT ({newest})'),
+        ('the latest attempt moved without a later new line', f"""NOT {later} AND (c.last_attempt IS DISTINCT FROM b.last_attempt
+            OR c.last_status IS DISTINCT FROM b.last_status OR c.last_outcome IS DISTINCT FROM b.last_outcome
+            OR c.next_attempt_at IS DISTINCT FROM b.next_attempt_at)"""),
+        ('last_good_at was lost or moved without a stored new line', f"""NOT (c.last_good_at IS NOT DISTINCT FROM b.last_good_at
+            OR (c.last_good_at IS NOT NULL AND (b.last_good_at IS NULL OR c.last_good_at>b.last_good_at) AND {stored}))"""),
+        date,
+        ('an address with attempts names linking pages', has_pages),
+        (wrong_band, f'{later} AND NOT ({band})'),
+        *unset]
+    added = [
+        ('attempts are not its new lines', f'c.attempts IS DISTINCT FROM {n}'),
+        ('the newest new line has no time', 'x.t IS NULL'),
+        ('last_attempt, last_status or last_outcome is not the newest new line', f'NOT ({newest})'),
+        ('last_good_at is not a stored new line', f'c.last_good_at IS NOT NULL AND NOT {stored}'),
+        ('an address with attempts names linking pages', has_pages),
+        (wrong_band, f'NOT ({band})')]
+    queued = [('a queued address has new lines', f'{n}>0'),
+              ('a queued address carries a schedule', ' OR '.join(f'c.{column} IS NOT NULL' for column in schedule))]
+
+    def first(rules):
+        return 'CASE ' + ' '.join(f"WHEN {condition} THEN '{reason}'" for reason, condition in rules) + ' END'
+    return f"""CASE WHEN c.requested_url IS NULL THEN 'an address left url_state'
+        WHEN c.attempts IS NULL OR c.attempts<0 THEN 'invalid attempt count'
+        WHEN b.requested_url IS NULL AND c.attempts>0 THEN {first(added)}
+        WHEN b.requested_url IS NULL THEN {first([*queued, ('a queued address names no linking page', f'NOT {has_pages}')])}
+        WHEN b.attempts=0 AND c.attempts=0 THEN {first([*queued, pages, *unset])}
+        ELSE {first(fetched)} END"""
+
+
+def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
+    """Check a capture night's url_state rows against the receipts new to the release (ct-9j3z).
+
+    Returns (reasons, summary, page_keys, lines). reasons is empty when every changed, added or
+    removed row is exactly what the new lines imply. page_keys (hex) are the pages behind newly
+    queued links and lines the new (receipt_key, receipt_line, requested_url) lines; the caller
+    traces both to raw. summary counts each url_state group's rows and how many are implied.
+
+    New lines: the model's own url_state_lines, run by the engine over `captures` restricted to
+    `new_receipts` (the candidate's receipts absent from the live set). The model's own latest and
+    band steps (archive_url_state) then give each address's newest new line and its interval, fed
+    the candidate's published recheck_meeting_date. So the gate keeps no second copy of the fold or
+    of the band rule; what makes this a check is its inputs: lines, times, statuses and families
+    come from the capture table, which the candidate does not control, every line is confirmed in
+    raw by the caller, and a meeting date the live release published must be kept.
+    Per address (`_url_state_rules`):
+      fetched, before or now: at least one new line; attempts = live + new lines; when the newest
+        new line is later than the live last_attempt (a tie refuses) it sets last_attempt,
+        last_status and last_outcome, and next_attempt_at = last_attempt + its band; otherwise none
+        of those moves; last_good_at stays or moves forward to a new line that stored a body;
+        recheck_meeting_date equals the live value when the live release had scheduled the address;
+        linked_from is empty; every other column is unchanged.
+      added with attempts: the same with no live values, so its meeting date is taken as published.
+      queued (added, or queued in both): no new line, no schedule, at least one linking page, every
+        live page kept; each page the live row did not list must come from new receipts only.
+      removed: refused. And every address with a new line must be among these rows.
+    Cannot see: a wrong meeting association on a first schedule (no live value to keep; like any
+    value of an added row it is taken as published); whether a stored line was good (that
+    classification is the model's), so last_good_at may only move to a line that stored a body;
+    whether a page really links its queued address (the reading is the model's); a change to the
+    fold or band code that touches only new lines (the gate runs the same code).
+    Cost: one engine job over the new receipts' captures and one DuckDB join of the two url_state
+    files on requested_url, O(rows).
+    """
+    from congress_api.lake.tables import table_input
+    from congress_api.retention.provenance import json_input, run_job
+    from viewer_publication.archive_model import REGISTRIES
+    from viewer_publication.archive_url_state import url_state_steps
+    columns = {side: set(d.columns(side, 'url_state')) if d.has(side, 'url_state') else set() for side in ('base', 'candidate')}
+    missing = [name for name in ('recheck_meeting_date', 'linked_from') if name not in columns['candidate']]
+    if missing or not columns['base']:
+        return [f'automatic causes: url_state cannot be traced: {"the live release has no url_state" if not missing else "the candidate publishes no " + ", ".join(missing)}'], {}, set(), []
+    work = Path(work)
+    work.mkdir(parents=True, exist_ok=True)
+    pq.write_table(pa.table({'receipt_key': pa.array(sorted(new_receipts), pa.string())}), work / 'new-receipts.parquet')
+    model = {step['name']: step for step in url_state_steps()}
+    registry = json.loads((Path(__file__).resolve().parents[4] / 'model/registries/recheck-intervals.json').read_text())
+    steps = [dict(name='captures', sql='SELECT c.* FROM new_receipts n JOIN lake_captures c ON c.receipt_key=n.receipt_key', materialize=True),
+             model['url_state_lines'], model['url_state_latest'],
+             dict(name='url_state_meeting_dates', sql="""SELECT requested_url,recheck_meeting_date AS meeting_date
+                 FROM candidate_url_state WHERE recheck_meeting_date IS NOT NULL""", materialize=True),
+             model['url_state_ages'], model['url_state_interval_candidates'], model['url_state_intervals']]
+    result = run_job(work / 'job', engine, steps=steps, outputs=[], inputs=[
+        table_input('lake_captures', _captures_source(captures)),
+        dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')),
+        dict(name='candidate_url_state', kind='parquet', path=str((Path(candidate_dir) / 'url_state.parquet').resolve())),
+        json_input(work, 'recheck_intervals', registry, **REGISTRIES['recheck_intervals'])], queries=[
+        dict(name='lines', sql="""SELECT l.receipt_key,l.receipt_line,l.requested_url,arrow_cast(l.retrieved_at,'Int64') AS t,
+            (l.context_good OR s.receipt_key IS NOT NULL) AS stored FROM url_state_lines l LEFT JOIN (
+              SELECT DISTINCT receipt_key,receipt_line FROM captures
+              WHERE outcome IN ('stored','unchanged') AND sha256 IS NOT NULL) s
+            ON s.receipt_key=l.receipt_key AND s.receipt_line=l.receipt_line ORDER BY 1,2,3"""),
+        dict(name='newest', sql="""SELECT x.requested_url,arrow_cast(x.retrieved_at,'Int64') AS t,
+            cast(x.http_status AS INT) AS s,x.outcome AS o,i.interval_seconds
+            FROM url_state_latest x LEFT JOIN url_state_intervals i ON i.requested_url=x.requested_url""")])
+    d.con.register('url_new_lines', pa.Table.from_pylist(result['lines'], schema=pa.schema([
+        ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('requested_url', pa.string()), ('t', pa.int64()), ('stored', pa.bool_())])))
+    d.con.register('url_newest', pa.Table.from_pylist(result['newest'], schema=pa.schema([
+        ('requested_url', pa.string()), ('t', pa.int64()), ('s', pa.int32()), ('o', pa.string()), ('interval_seconds', pa.int64())])))
+    common = sorted(columns['base'] & columns['candidate'] - {'requested_url'})
+    d.table('url_rows', f"""WITH p AS (SELECT requested_url,count(*) AS n,
+          list(t) FILTER (WHERE stored AND t IS NOT NULL) AS stored FROM url_new_lines GROUP BY 1)
+        SELECT coalesce(c.requested_url,b.requested_url) AS url,b.requested_url IS NOT NULL AS live,
+          c.requested_url IS NOT NULL AS present,c.attempts>0 AS attempted,b.linked_from AS live_pages,c.linked_from AS pages,
+          {''.join(f'b.{column} IS DISTINCT FROM c.{column} AS "moved {column}",' for column in common if column in URL_STATE_COLUMNS)}
+          {_url_state_rules(columns['base'], columns['candidate'])} AS reason
+        FROM base_url_state b FULL JOIN candidate_url_state c ON c.requested_url=b.requested_url
+        LEFT JOIN p ON p.requested_url=coalesce(c.requested_url,b.requested_url)
+        LEFT JOIN url_newest x ON x.requested_url=coalesce(c.requested_url,b.requested_url)
+        WHERE b.requested_url IS NULL OR c.requested_url IS NULL OR p.n>0
+          OR {' OR '.join(f'b.{column} IS DISTINCT FROM c.{column}' for column in common)}""")
+    reasons = [f'automatic causes: url_state: {count} rows: {reason} (first {urls})' for reason, count, urls in d.rows(
+        'SELECT reason,count(*),list(url ORDER BY url)[1:3] FROM url_rows WHERE reason IS NOT NULL GROUP BY 1 ORDER BY 1')]
+    unaccounted = d.one('SELECT count(*) FROM (SELECT DISTINCT requested_url FROM url_new_lines) ANTI JOIN url_rows ON url=requested_url')
+    if unaccounted:
+        reasons.append(f'automatic causes: url_state: {unaccounted} addresses with new lines have no row in the candidate')
+    counts = 'SELECT count(*),count(*) FILTER (WHERE reason IS NULL) FROM url_rows WHERE '
+    summary = {f'changed {column}': list(d.rows(f'{counts}live AND present AND "moved {column}"')[0])
+               for column in URL_STATE_COLUMNS if column in common}
+    summary[f'added URLs: {ATTEMPTED_URLS}'] = list(d.rows(f'{counts}NOT live AND attempted')[0])
+    summary[f'added URLs: {QUEUED_URLS}'] = list(d.rows(f'{counts}NOT live AND NOT attempted')[0])
+    summary['removed URLs'] = list(d.rows(f'{counts}NOT present')[0])
+    pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(pages) AS k FROM url_rows WHERE present AND NOT attempted)
+        ANTI JOIN (SELECT url,unnest(live_pages) AS k FROM url_rows WHERE live AND live_pages IS NOT NULL) USING(url,k)""")}
+    return reasons, summary, pages, [(r['receipt_key'], r['receipt_line'], r['requested_url']) for r in result['lines']]
+
+
+def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work,
+                     candidate_receipt_keys=None):
+    """Cause entries for a difference whose every row comes from receipts new to the release.
+
+    Returns (entries, reasons); entries is empty unless every check passes: the proof is all or
+    nothing, because a change no receipt explains is a sign that something else moved (a code or
+    policy change), and while one stands no addition is attributed to receipts without a person.
+    A new document is a candidate row none of whose link keys an earlier release published. Its
+    body keys are joined to `captures` (the capture mapping, not the archive model) to find the
+    receipt lines holding those bodies. A key the live release retired is absent from its links
+    too, but a document that comes back is not new: published again, its key leaves the ledger,
+    and that `retired_links` group is not an addition, so the proof stops above. Each line is then
+    read from raw: its key must be outside the live release's receipt set, and the line itself must
+    name the body's SHA-256. The set is the live release's own input record (every key its
+    captures were read from), so "new" is by key, whatever the key's date: a backlog read oldest
+    first is new without being recent (ct-gc99). Every capture line of a new document must
+    qualify, so a body the live release also read is not new. Link, source and lookup additions
+    must sit on new documents only. At most AUTOMATIC_ADDITION_CAP documents may be added this way
+    in one night.
+    url_state (ct-9j3z): every changed, added or removed row must be exactly what the lines of the
+    candidate's receipts outside the live set imply (`url_state_proof`); each such line must be in
+    raw and name its address, and each page behind a newly queued link is traced like a new
+    document's body. This replaces ct-ud0b's rule that an added attempted address must have
+    supplied a new document: a failed or repeated fetch is still a fetch.
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
     new row whose receipts are new while the code that made it changed; the other gates still run.
     """
@@ -354,9 +531,9 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     # their own check below, against the capture table.
     every = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
     differences = [g for g in every if not g.get('citation_only')]
-    other = [g for g in differences if g.get('value') or g['count'] <= 0 or
-             ((g['file'], g['group']) not in AUTOMATIC_GROUPS and
-              (g['file'], g['group'], g['cause']) != ATTEMPTED_URL_GROUP)]
+    url_state = [g for g in differences if g['file'] == 'url_state.parquet' and (g['group'], g['cause']) in URL_STATE_GROUPS]
+    other = [g for g in differences if g not in url_state and (
+        g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS)]
     if other:
         return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
     if len(every) == 0:
@@ -382,70 +559,71 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
                 EXCEPT SELECT x.lr,{','.join('p.' + f for f in fields.split(','))} FROM base_{table} p JOIN pairs x ON p.list_row=x.pr)""")
             if stray:
                 reasons.append(f'automatic causes: {stray} {table} rows were added to existing documents')
-    url_additions = {}
-    if any((g['file'], g['group'], g['cause']) == ATTEMPTED_URL_GROUP for g in groups):
-        url_additions = dict(d.rows(f'SELECT requested_url, attempts FROM {ADDED_URL_STATE} WHERE attempts>0'))
     keys = [r[0] for r in d.rows("SELECT DISTINCT lower(hex(link_key)) FROM candidate_links WHERE list_row IN (SELECT r FROM added_documents) ORDER BY 1")]
     # A new document has no link key in the base. Its keys must account for
     # every added link key already counted by the comparison.
     added_links = sum(g['count'] for g in differences if (g['file'], g['group']) == ('links.parquet', 'added keys'))
     if len(keys) != added_links:
         reasons.append(f'automatic causes: {added_links} added link keys, {len(keys)} attached to new documents')
-    if not keys:
+    if not keys and len(url_state) < len(differences):
         reasons.append('automatic causes: no new document carries a key to trace')
     if reasons:
         return [], reasons
+    # From here every check runs and every reason is kept, so a refused night names all it found.
+    summary, pages, url_lines = {}, set(), []
+    if url_state:
+        if candidate_receipt_keys is None:
+            reasons.append("automatic causes: url_state needs the candidate's receipt set")
+        else:
+            reasons, summary, pages, url_lines = url_state_proof(d, candidate_dir, engine=engine, captures=captures,
+                new_receipts=set(candidate_receipt_keys) - held, work=Path(work) / 'url-state')
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
-    pq.write_table(pa.table({'prefix': keys}), work / 'added-keys.parquet')
-    source = _captures_source(captures)
-    request_column = (f", CASE WHEN c.mode='fetch' AND c.complete AND coalesce(c.attempt,0)=0 "
-                      f"AND c.outcome IN ('stored','unchanged') AND {document_status_sql('c.http_status')} "
-                      "THEN c.requested_url END AS requested_url") if url_additions else ''
-    lines = run_job(work / 'trace', engine, inputs=[table_input('captures', source),
-        dict(name='added_keys', kind='parquet', path=str(work / 'added-keys.parquet'))], steps=[], outputs=[],
-        queries=[dict(name='lines', sql=f"""SELECT DISTINCT k.prefix,c.receipt_key,c.receipt_line,lower(encode(c.sha256,'hex')) AS sha{request_column}
-            FROM added_keys k JOIN captures c ON substr(lower(encode(c.sha256,'hex')),1,16)=k.prefix
-            WHERE c.sha256 IS NOT NULL ORDER BY 1,2,3""")])['lines']
-    traced = {}
-    for row in lines:
-        traced.setdefault(row['prefix'], []).append(row)
-    untraced = [k for k in keys if k not in traced]
-    if untraced:
-        reasons.append(f'automatic causes: {len(untraced)} new document keys have no capture to trace (first {untraced[:3]})')
-    raw = {}
-    named = {}
-    attempts = {url: set() for url in url_additions}
+    traced_keys = sorted(set(keys) | pages)
+    lines = []
+    if traced_keys:
+        pq.write_table(pa.table({'prefix': traced_keys}), work / 'added-keys.parquet')
+        lines = run_job(work / 'trace', engine, inputs=[table_input('captures', _captures_source(captures)),
+            dict(name='added_keys', kind='parquet', path=str(work / 'added-keys.parquet'))], steps=[], outputs=[],
+            queries=[dict(name='lines', sql="""SELECT DISTINCT k.prefix,c.receipt_key,c.receipt_line,lower(encode(c.sha256,'hex')) AS sha
+                FROM added_keys k JOIN captures c ON substr(lower(encode(c.sha256,'hex')),1,16)=k.prefix
+                WHERE c.sha256 IS NOT NULL ORDER BY 1,2,3""")])['lines']
+    traced = {row['prefix'] for row in lines}
+    for kind, missing in (('new document', [k for k in keys if k not in traced]), ('queued link page', sorted(pages - traced))):
+        if missing:
+            reasons.append(f'automatic causes: {len(missing)} {kind} keys have no capture to trace (first {missing[:3]})')
+    raw, facts = {}, {}
+
+    def line_facts(key, line):
+        """One raw receipt line's bodies and strings, each receipt read once."""
+        if key not in raw:
+            with gzip.open(BytesIO(read_receipt(key)), 'rt') as stream:
+                raw[key] = stream.read().splitlines()
+        if (key, line) not in facts:
+            text = raw[key]
+            facts[key, line] = _raw_line_facts(text[line - 1]) if isinstance(line, int) and 1 <= line <= len(text) else (set(), set())
+        return facts[key, line]
     for row in lines:
         key = row['receipt_key']
         if key in held:
             reasons.append(f'automatic causes: {key} is already in the live release')
-        else:
-            if key not in raw:
-                with gzip.open(BytesIO(read_receipt(key)), 'rt') as stream:
-                    raw[key] = stream.read().splitlines()
-            text = raw[key]
-            line = row['receipt_line']
-            location = (key, line)
-            if location not in named:
-                named[location] = (_raw_document_proof(text[line - 1]) if
-                                   isinstance(line, int) and 1 <= line <= len(text) else (set(), None))
-            bodies, raw_url = named[location]
-            if row['sha'] not in bodies:
-                reasons.append(f'automatic causes: {key}:{line} does not name body {row["sha"][:12]} in raw')
-            elif (url := row.get('requested_url')) in attempts and url == raw_url:
-                attempts[url].add(location)
-    for url, count in url_additions.items():
-        if len(attempts[url]) != count:
-            reasons.append(f'automatic causes: {url} has {count} attempts but {len(attempts[url])} fresh raw lines naming the new document and its request URL')
+        elif row['sha'] not in line_facts(key, row['receipt_line'])[0]:
+            reasons.append(f'automatic causes: {key}:{row["receipt_line"]} does not name body {row["sha"][:12]} in raw')
+    for key, line, url in url_lines:
+        if url not in line_facts(key, line)[1]:
+            reasons.append(f'automatic causes: {key}:{line} does not name {url} in raw')
     if reasons:
         return [], sorted(set(reasons))
     evidence = work / 'automatic-trace.json'
-    evidence.write_text(json.dumps(dict(live_receipts=len(held), new_receipts=len(raw), lines=lines, url_attempts={url: sorted(matches) for url, matches in attempts.items()}), indent=1, default=str) + '\n')
+    evidence.write_text(json.dumps(dict(live_receipts=len(held), new_receipts=len(raw), lines=lines,
+                                        url_state=dict(groups=summary, lines=len(url_lines), queued_link_pages=sorted(pages))),
+                                   indent=1, default=str) + '\n')
     from congress_api.retention.provenance import file_pin
     pin = dict(path=str(evidence), **file_pin(evidence))
-    return [dict(id=group_id(g), count=g['count'], disposition='explained', cause=AUTOMATIC_CAUSE,
-                 tickets=['ct-ud0b'], evidence=[pin], automatic=True) for g in groups], []
+    bookkeeping = {group_id(g) for g in url_state}
+    return [dict(id=group_id(g), count=g['count'], disposition='explained', evidence=[pin], automatic=True,
+                 **(dict(cause=URL_STATE_CAUSE, tickets=['ct-9j3z']) if group_id(g) in bookkeeping else
+                    dict(cause=AUTOMATIC_CAUSE, tickets=['ct-ud0b']))) for g in groups], []
 
 
 def group_id(group):

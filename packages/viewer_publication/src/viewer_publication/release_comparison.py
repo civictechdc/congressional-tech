@@ -35,6 +35,7 @@ OFFSETS = {'src_start', 'rec_start', 'file_row_number'}  # shift whenever an ear
 TRIPLE = 'receipt_key,receipt_line,capture_index'
 ADDED_URL_STATE = 'candidate_url_state ANTI JOIN base_url_state USING(requested_url)'
 ATTEMPTED_URLS = 'new attempts'
+QUEUED_URLS = 'queued link with no attempts yet'
 
 
 class Diff:
@@ -546,7 +547,7 @@ def url_state(d: Diff):
     excluded = sum(not n for _, n in matching)
     attempted = len(matching) - excluded
     added = d.rows(f"""SELECT CASE WHEN attempts>0 THEN '{ATTEMPTED_URLS}'
-        WHEN attempts=0 THEN 'queued link with no attempts yet' ELSE 'invalid attempt count' END,count(*)
+        WHEN attempts=0 THEN '{QUEUED_URLS}' ELSE 'invalid attempt count' END,count(*)
         FROM {ADDED_URL_STATE} GROUP BY 1""")
     out = [group('removed URLs', 'never attempted and matches a live capture scope exclusion', -excluded, 'verified')]
     if attempted:
