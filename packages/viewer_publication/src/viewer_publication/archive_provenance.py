@@ -11,6 +11,18 @@ RECOVERY_FIELDS['recovery_record_version']='Int32'
 REVIEW_FIELDS={name:'Utf8' for name in ('id','target','verdict','note','reviewer','decided_at','supersedes')}
 
 
+# ct-u9y4: every recovery row of a dead link belongs to that link's document, so one document can
+# hold recovered files that are not the same document and shows only the first. This counts, per
+# build, the documents holding several different recovered files by what their text says:
+# same_text (equal fingerprints), text_differs, or text_unread (a file with no fingerprint, as every
+# PDF today). Reported, not refused: 215 such documents were published in 619db5f9e08e.
+RECOVERY_FILE_AGREEMENT=dict(name='recovery_documents_with_several_files',sql="""SELECT agreement,count(*) AS documents FROM (
+ SELECT r.component,CASE WHEN count(f.fingerprint)<count(*) THEN 'text_unread'
+  WHEN min(f.fingerprint)<>max(f.fingerprint) THEN 'text_differs' ELSE 'same_text' END AS agreement
+ FROM (SELECT DISTINCT component,body_sha FROM saved_recoveries) r LEFT JOIN fingerprints f ON f.body_sha=r.body_sha
+ GROUP BY r.component HAVING count(*)>1) GROUP BY 1 ORDER BY 1""")
+
+
 def provenance_inputs(work,*,recovery_files=(),review_files=()):
     """Register raw decisions without converting heterogeneous review values."""
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
@@ -56,7 +68,9 @@ def attachment_steps(*,root=ROOT):
 def recovered_copy_steps(*,root=ROOT):
     """Name each original link a recovered copy makes another address of a published body.
 
-    Inputs: model_recovery_rows, effective_filenames, source_files, body_evidence.
+    Inputs: model_recovery_rows, effective_filenames, source_files, body_evidence, body_fingerprints.
+    A link names only the published body its own row would show (its first recovered copy in the
+    recovery order) or another of its copies with that copy's text (ct-u9y4).
     grouping_steps(recovered_copies=True) moves each such link into the body's one document.
     """
     return _steps(['recovered-copy-links'],root)

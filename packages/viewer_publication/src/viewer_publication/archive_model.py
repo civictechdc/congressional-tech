@@ -1125,7 +1125,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     """Continue one prepared plan through grouping and the shared native exporter."""
     from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS,MEETING_DICTIONARY
     from viewer_publication.archive_annotations import annotation_steps
-    from viewer_publication.archive_provenance import attachment_steps,body_review_steps,recovered_copy_steps
+    from viewer_publication.archive_provenance import RECOVERY_FILE_AGREEMENT,attachment_steps,body_review_steps,recovered_copy_steps
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
     inputs=prepared['inputs'];capture_profile=prepared['capture_profile']
     parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
@@ -1360,7 +1360,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
-        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,FILENAME_BOTH_NAMES,
+        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,RECOVERY_FILE_AGREEMENT,FILENAME_BOTH_NAMES,
         # Main-content outcomes and page-metadata conflicts per release (ct-c5xf D7); unread is a reading gap.
         dict(name='html_main_content',sql="""SELECT main_content['outcome'] AS outcome,count(*) AS documents,
             count(*) FILTER (WHERE description IS NOT NULL) AS described,
