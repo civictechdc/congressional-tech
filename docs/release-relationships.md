@@ -46,9 +46,10 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 Nullability: Nullability transcribes data model §8.1 (list.parquet bullet): a type without "nullable" there is required. A required column is refused at write time.
 
 - `version_keys[]`: Shared lowercase hexadecimal endpoint keys identify different editions, not alternate formats of one document. A document can have several keys.
-- `document_kind[]`: Embedded classification values, not foreign keys.
+- `document_kind[]`: Embedded classification values, not foreign keys. Words listed together under synonyms name one kind (the first is the House naming guide's word); filter them as one.
 - `document_family[]`: Embedded filename classification values.
 - `chambers[]`: Embedded chamber labels.
+- `document_kind[]` synonyms: `witness-statement` = `testimony`.
 
 Outgoing: `document_detail`, `document_meetings`, `document_committees`, `document_bills`, `document_nominations`, `document_members`, `witness_submitted_documents`, `document_editions`.
 

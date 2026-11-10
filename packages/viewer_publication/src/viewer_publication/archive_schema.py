@@ -98,6 +98,14 @@ def validate_schema(schema):
         for path in table.get('notes', {}):
             if path not in paths[name]:
                 raise ValueError(f'Unknown note field: {name}.{path}')
+        # Words that name one kind (ct-isnv): readers filter each set as one, so a word in two sets is ambiguous.
+        for path, sets in table.get('synonyms', {}).items():
+            if path not in paths[name]:
+                raise ValueError(f'Unknown synonym field: {name}.{path}')
+            words = [word for words in sets for word in words] if isinstance(sets, list) and all(isinstance(s, list) for s in sets) else None
+            if (words is None or any(len(s) < 2 for s in sets) or len(set(words)) != len(words)
+                    or not all(isinstance(word, str) and word for word in words)):
+                raise ValueError(f'Invalid synonyms: {name}.{path}')
     ids = set()
     for relationship in schema['relationships']:
         rid = relationship['id']
@@ -331,6 +339,8 @@ def render_reference(schema):
         lines += ['', 'Nullability: ' + table['nullability'] + ' A required column is refused at write time.', '']
         for path, note in table.get('notes', {}).items():
             lines += [f'- `{path}`: {note}']
+        for path, sets in table.get('synonyms', {}).items():
+            lines += [f'- `{path}` synonyms: ' + '; '.join(' = '.join(f'`{word}`' for word in words) for words in sets) + '.']
         lines.append('')
         for direction in ('source', 'target'):
             selected = [r['id'] for r in schema['relationships'] if r[direction].get('table') == name]
