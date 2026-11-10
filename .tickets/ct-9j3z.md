@@ -1,6 +1,6 @@
 ---
 id: ct-9j3z
-status: open
+status: in_progress
 deps: []
 links: [ct-gc99, ct-ud0b]
 created: 2026-11-10T07:18:55Z
@@ -42,3 +42,7 @@ Decide and build one of: (a) the publisher passes the gate, as pinned files besi
 **2026-11-10T13:16:36Z**
 
 Owner decision 2026-11-10: publish the missing facts. Add the meeting date behind each recheck band and the page behind each queued link to the release so the gate can prove next_attempt_at and queued rows.
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10 status: builder started in wt/ct-9j3z-gate-facts (branch claude/ct-9j3z-gate-facts off the stack); report at .cache/archive-release/investigations/gate-facts-20261110/README.md. Until it lands, a capture night still needs a hand cause record.

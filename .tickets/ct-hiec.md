@@ -34,3 +34,7 @@ Moved out of ct-082q's acceptance criteria (owner decision 2026-11-08). New HTML
 **2026-11-10T01:14:01Z**
 
 2026-11-10: rebased on main b3c937a8, tip 72e8b1a9. Tested: production-offline as six shards, all exit 0 (12,344 passed), and storage-loopback (full lane) exit 0; logs in .cache/archive-release/ct-hiec-lanes-72e8b1a9/. The two earlier single-process lanes (0ba6e7d1) failed only six site-reader tests because the worktree had no apps/site node_modules. Held out of main until the release is published: it changes the nightly's daily step, and the release build changes one thing at a time (architect review 2026-11-10). Merge and push right after the pointer moves.
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10 status: merged to main in 0fad483d (one budget per night, the rest carried). Three scheduled or hand-run nightlies have run with it since; the 12:15Z run ended release_unchanged, so it has not yet been seen reading a night's new HTML pages under the budget and carrying a remainder. Left: observe one such night (run folder steps.jsonl now records it) and state the numbers here; then close.

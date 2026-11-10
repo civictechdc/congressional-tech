@@ -129,3 +129,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-09T16:34:36Z**
 
 2026-11-09: added the Runbook section (owner enables, first-run expectations, checks). Code on claude/ct-thread1-unattended: capture-archive.yml relists the last 7 days of committee meetings before the budgeted capture, and capture runs even if the relist fails (tests in .github/tests/test_archive_workflows.py). No workflow was enabled or dispatched. Scheduled-run acceptance stays open.
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10: the Mac nightly publisher is back on its schedule (05:30 local) and proven unattended: run 20261110T121530.896579Z, status ok, release_unchanged (ct-xnn6). Hosted scheduled capture is still off: the repository lacks the two capture secrets (ARCHIVE_CAPTURE_R2_ACCESS_KEY_ID, ARCHIVE_CAPTURE_R2_SECRET_ACCESS_KEY), which only the owner can create; then 'gh workflow enable capture-archive.yml'. The owner chose 'Both automatic' for capture and publishing on 2026-11-10.

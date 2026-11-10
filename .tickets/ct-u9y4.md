@@ -1,6 +1,6 @@
 ---
 id: ct-u9y4
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-10T05:08:06Z
@@ -23,3 +23,7 @@ Every multi-body recovery document is either shown to be one document (same text
 **2026-11-10T13:16:36Z**
 
 Owner decision 2026-11-10: correct the records. Mark the wrong acceptances in the recovery records and re-record each file under its own address (option 1 with re-recording), so each hidden file becomes its own document.
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10 status: the model rule (a recovered copy moves its link only when it is the copy the link shows) is on claude/ct-next-release (4bd50c6d..f8192a6a) and separates 18 of the 56 unrelated fusions. For the remaining 38 the owner chose record corrections; a builder is preparing them and proving them on a local copy in wt/ct-u9y4-records (report: .cache/archive-release/investigations/recovery-records-20261110/README.md). No raw write happens until the orchestrator has read that report. Left: the correction write, full model build, review, release.

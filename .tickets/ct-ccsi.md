@@ -1,6 +1,6 @@
 ---
 id: ct-ccsi
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-10T03:26:30Z
@@ -17,3 +17,9 @@ tags: [model, titles]
 
 A link text that is a bare number, punctuation or a generic label is not used as a title when the file name or the page gives a better one; the counts of such titles are measured before and after on a full build.
 
+
+## Notes
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10 status: fixed on claude/ct-next-release (247bbf6f, 2249baf8, 99e7e0dd). Of the ticket's 275 titles, 103 become 'Biography - <name>' and 172 show their filename; 334 other junk titles change with them. Left: full model build on the stack to measure before/after, review, release. Closes when released.

@@ -23,3 +23,7 @@ The public archive has no Congress.gov meeting update after 2026-10-30. Schedule
 **2026-11-09T16:34:36Z**
 
 2026-11-09: wired option (b) into scheduled capture. fetch_meetings has --since-days N, which relists committee-meeting/<congress>/{house,senate,nochamber} with fromDateTime = now - N days, for each Congress the window touches (year_to_congress). This is the same request shape as the 11-08 supervised spec. capture-archive.yml runs it with --since-days 7 and a fixed research User-Agent before the budgeted capture, and uploads archive-meetings/summary.json. The 7-day overlap repeats a missed day. Unchanged details store as unchanged. Tests: test_capture_scheduler.py::test_scheduled_meeting_relist_covers_each_chamber_and_every_congress_in_the_window and .github/tests/test_archive_workflows.py::test_capture_relists_recent_meetings_before_the_budgeted_capture. Done condition still open: one scheduled run plus a nightly publishing a meeting dated after the previous release. See the ct-4jms Runbook.
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10: blocked on the same owner step as ct-4jms (the two hosted capture secrets). Nothing else changed here today.

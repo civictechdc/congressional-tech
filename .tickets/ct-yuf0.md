@@ -1,6 +1,6 @@
 ---
 id: ct-yuf0
-status: open
+status: in_progress
 deps: []
 links: [ct-h8dr]
 created: 2026-11-10T05:18:40Z
@@ -17,3 +17,9 @@ Found 2026-11-10 in the recount of release candidate 619db5f9 (.cache/archive-re
 
 Each of the 54 is read and classified. The naming rule does not let a repository name override a committee name that states a more specific kind for the same bytes, or the conflict is published as such. A model invariant counts documents whose copies' names imply different kinds.
 
+
+## Notes
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10 status: the 54 are among the 253 slot names that give way under the name rule on claude/ct-next-release (52 read as statements, 1 amendment, 1 committee action); invariant contradicted_official_saved_names counts them. Still live as published in release 619db5f9e08e (accepted defect). Closes when the next release is out and the 54 are checked on it.

@@ -1,6 +1,6 @@
 ---
 id: ct-h8dr
-status: open
+status: in_progress
 deps: []
 links: [ct-yuf0, ct-f7hp]
 created: 2026-11-10T05:38:12Z
@@ -23,3 +23,7 @@ The rule is built and measured on a full model build, not simulated: renames aga
 **2026-11-10T13:16:36Z**
 
 Owner decision 2026-11-10 on the 343 non-slot official names against a committee kind: 'Review them manually'. Each is read and decided per document; until then they stay as published (the built behaviour on claude/ct-name-rule).
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10 status: the name rule is built on claude/ct-next-release (0f427b29..c03c43da): 18,033 renames measured, 17,778 gain an official name, 253 contradicted slot names give way. Lanes green on a43f83d1. A reader is going through the 343 clashes one by one (.cache/archive-release/investigations/name-clash-review-20261110/decisions.csv). Left: full model build on the stack (none run yet), the 343 sheet checked by the owner, review, release. Follow-ups filed on the branch: ct-fk4w (settle a contradiction by reading the document), ct-29n4 (Truth in Testimony filename reader defect).

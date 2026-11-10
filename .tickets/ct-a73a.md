@@ -17,3 +17,9 @@ Found by the OCR throughput investigation 2026-11-10 (.cache/archive-release/inv
 
 The 7 page_deadline decisions are superseded and the bodies read; the 7 memory_limit bodies are re-read with a 2 GiB worker limit and each is either read or kept unreadable with its measured peak; the page deadline counts running time, not wall time across a stop, with a test; the body-text pool has its own memory budget so a 2 GiB per-worker limit does not shrink the worker count.
 
+
+## Notes
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10: the cause of the 7 page_deadline decisions is removed for future batches: the driver no longer pauses a batch (SIGSTOP let the page timer expire); it kills the open batch and reruns it. The 14 wrong decisions themselves are not yet superseded, and the 2 GiB worker limit is not yet set.

@@ -17,3 +17,9 @@ Second-pass review of claude/ct-gate-rules (31d53712), 2026-11-10: push as is, n
 
 Each numbered item is fixed with a failing-first test from the reviewer's plant, or declined with evidence recorded here; the docstrings state only what the code does.
 
+
+## Notes
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10: no work since filing. The gate rules it follows (ct-syp1, ct-gc99, ct-4qld, ct-wscb) are on main in e6c1865c and ran in the 12:15Z scheduled nightly without a refusal (release unchanged, so no comparison groups were formed).

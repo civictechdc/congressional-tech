@@ -1,6 +1,6 @@
 ---
 id: ct-aoxp
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-10T03:26:30Z
@@ -17,3 +17,9 @@ Newly captured House meeting pages link the site's help page, and the model publ
 
 The help page has role wrapper (or is excluded) and is a document of no meeting; a scan lists other addresses that are a document of more than N meetings with a non-document path, with the count before and after.
 
+
+## Notes
+
+**2026-11-10T13:27:30Z**
+
+2026-11-10 status: fixed on the stacked next-release branch claude/ct-next-release (commits 672bf44a test, 787ea6d7 fix: the help page is a wrapper through registry kind wrapper_url). Lanes green on the source branch (six shards + storage-loopback). Left: lanes and a full model build on the stack, the one review, release. Closes when released.
