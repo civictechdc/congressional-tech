@@ -1,6 +1,6 @@
 ---
 id: ct-aoxp
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T03:26:30Z
@@ -44,3 +44,7 @@ Alternatives weighed on the same rows:
 Found, not fixed: 48 web-page documents are linked from 30 or more captured pages (22 from 100 or more), and 8 documents are a site's home page. Only the help page has a meeting. They are navigation published as documents (`dr-05b-web-pages-linked-from-10-or-more.csv`; from 10 pages up the list also holds 23 parts of one printed hearing, which are real). A general furniture rule needs its own ticket and an owner view on which index pages are documents.
 
 A full model build must confirm: no row for Help.aspx in list, links, sources or urls; its two keys in retired_links with no successor; `documents` counts of the 81 meetings each one lower; no other record_role changed.
+
+**2026-11-10T20:38:25Z**
+
+2026-11-10 SHIPPED, closed. Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables, not on notes. No sources row for docs.house.gov/committee/Help.aspx (619db5f9e08e: 1). Its two link keys 58f225d644ab9ad0 and c0a3d1b8b7c817ec are in retired_links with no successor (last_filename Help.aspx). The scan the acceptance asks for, html documents in list.parquet by meeting count, before/after: 2 or more 13/12; 5 or more 2/1; 14 or more 1/0; largest 81 -> 13. model_invariants all 0. Found-not-fixed navigation pages moved to ct-xj8s.

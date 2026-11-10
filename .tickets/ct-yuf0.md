@@ -1,6 +1,6 @@
 ---
 id: ct-yuf0
-status: in_progress
+status: closed
 deps: []
 links: [ct-h8dr, ct-fk4w]
 created: 2026-11-10T05:18:40Z
@@ -34,3 +34,7 @@ Rule: an official name contradicted by a committee name of the same bytes (both 
 Invariant: step saved_name_conflicts lists every document whose leading name's kind another named copy of its bytes does not share (3,531 on these rows), query saved_name_kinds reports them, and model invariant contradicted_official_saved_names (a slot name leading against a committee name) is 0.
 
 Not settled here: 602 documents with two official names of different kinds and no committee name (a Bio and a Wstate name on one file; 22 read: 11 testimony, 5 biography, 5 disclosure form, 1 report), and Bio names with no second name at all. Both need the document read (ct-h8dr, written step).
+
+**2026-11-10T20:38:25Z**
+
+2026-11-10 SHIPPED, closed. Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables, not on notes. The 54 (investigations/name-rule-20261110/05-reading-sample.csv, stratum known54), found by saved body: on 619db5f9e08e kinds were witness-biography 37, witness-support 10, meeting-support 7, and 38 had a '-Bio-' or '-SD-' House name; now 0 do. Kinds now testimony 49, witness-statement 3, business-meeting 1 (2023-02-28-MTG-Action.pdf, a committee action) and oversight-plan 1 (AMDT-OversightPlan-Thompson.pdf, which the reading calls an amendment to the oversight plan: the kind comes from the committee name; minor). 'Testimony - Bryan.pdf' shows under that name, kind testimony. Counting invariant: contradicted_official_saved_names 0, and the query saved_name_kinds reports the 3,539 documents whose copies' names state different kinds.

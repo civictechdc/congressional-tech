@@ -23,3 +23,7 @@ Each budget's measurement text states a measured figure with its run folder, not
 **2026-11-10T18:01:04Z**
 
 2026-11-10 18:01Z also needed for the release after this one: the hearing-records (MODS) parser change needs the appearance table regenerated in the lake once at its final parser version (35,020 records) through the backfill job, and no disk budget names the 'backfill' operation today. Add a measured budget for it before that activation (congress-1's plan: MODS reviewed, then Member appearances stacked on it, one offline all-in build, one cause record, the activation, then the driver run).
+
+**2026-11-10T20:39:29Z**
+
+2026-11-10 not resolved by release 77673bfb8fcf. The release runs at d3ed7ca5 still admitted against budget revision 8c3a2633, whose publish-fresh text still says 'carried forward'. The fresh run (nightly/20261110T195322.097664Z) gives figures to use: publish step 1,658.6 s, peak 9.74 GiB RSS (publish-watchdog.json). Its disk-admission files hold free space at admission only, not the drawdown, so that number still has to come from a measured run.

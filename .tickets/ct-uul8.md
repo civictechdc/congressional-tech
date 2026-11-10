@@ -17,3 +17,9 @@ Found 2026-11-10 while reading the 343 name clashes (.cache/archive-release/inve
 
 Each of the eleven is attached to its hearing, or the reason it cannot be is recorded; the rule that attached the three is named.
 
+
+## Notes
+
+**2026-11-10T20:39:29Z**
+
+2026-11-10 unchanged in release 77673bfb8fcf; this release did not touch it. Followed by link key from 619db5f9e08e: rows 130655 (CHRG-117shrg45945.pdf), 138297 (CHRG-119shrg58674.pdf) and 138459 (CHRG-119shrg60657.pdf) are now rows 100076, 103985 and 104069, still on meetings 329124, 336584 and 337025.

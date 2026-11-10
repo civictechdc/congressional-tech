@@ -1,6 +1,6 @@
 ---
 id: ct-4acu
-status: open
+status: closed
 deps: []
 links: [ct-w564]
 created: 2026-11-10T13:27:30Z
@@ -63,3 +63,10 @@ Six shards and storage-loopback pass on the stack. A full model build outside th
 **2026-11-10T18:47:39Z**
 
 2026-11-10 18:42Z RELEASE PROOF BUILD: claude/ct-release-20261110b at cc7e64be on the pinned inputs of 619db5f9e08e plus the ct-u9y4 corrections gives release 8aa4f840c41b (release-next/build-release-b; 601 s, 9.63 GiB peak physical). Against the earlier build of record it differs only by the hearing-records effects being gone (22 groups: all witnesses groups, the CHRG-113hhrg85898 / meeting 101527 effects); 43 groups remain against the live release: documents 357,471 -> 322,696 (34,827 removed, 24 added, 28 split), link keys 442,109 -> 407,305 with all 34,828 removed keys retired (retired 450 -> 35,278), link rule 0 missing / 0 dangling / 30 link keys and 38 lookup keys answer another file, renames 18,185, kinds 16,484, families 5,965, titles 1,168, 14 meeting outcomes, 112 transcripts, recoveries 12,632 -> 12,587, 13 url_state capture decisions (recovery requirements), schema.json and capture_profile.json changed; witnesses unchanged (172,435). The 93 corrected links verify by file identity; lost_landing_addresses 0, generic_titles 0, unplaced_landing_pages 2. The stack touches no guarded resource path (engine pin, limits, archive-jobs, uv.lock, package-lock), so disk budgets stand. Refactor team released to use the machine (captures proof first).
+
+**2026-11-10T20:39:17Z**
+
+2026-11-10 RELEASED, closed. Release 77673bfb8fcf published 2026-11-10T20:27:52Z over 619db5f9e08e (run nightly/20261110T202340.237447Z, exit 0); release note docs/releases/2026-11-10-77673bfb8fcf.md (e04d58bd); reviewed cause record model/jobs/release-causes/619db5f9e08e-77673bfb8fcf.json (78 groups: 67 explained, 11 accepted defects; 68 named corrections). Each line below was checked on the published tables, not on notes.
+SHIPPED: help page as a wrapper (ct-aoxp, closed); GovInfo details pages folded into their hearings: 34,826 fewer documents, 34,824 addresses kept, 35,278 retired keys (ct-m878, closed; owner questions to ct-egoo); junk link-text titles gone (ct-ccsi, closed); official House names with committee names winning slot clashes, and the 343 clash decisions (ct-h8dr, open for 25 unread clashes and 1 unmet decision); the 54 testimonies back under committee names (ct-yuf0, closed); recovered-copy rule plus the 69 rejections and 24 re-recorded files: Bowman two rows, no unrelated documents fused (ct-u9y4, open for the 83 page-plus-file rows, 18 editions, 3 recordings, and a refusing check); url_state.recheck_meeting_date and linked_from (ct-9j3z, open until a real night proves it); named corrections in the gate, used for 30 + 38 keys (ct-4nax, closed); witness-statement/testimony synonym in schema.json (ct-isnv); recovery requirements 1 -> 14 rows, 13 url_state rows (ct-l7uh, ct-umtm); the day's Mac capture and meetings relist (392 + 24 new documents; ct-4jms, ct-q4e2).
+MOVED TO THE NEXT RELEASE: hearing-record (MODS) parsing round 4 with Member appearances (ct-kw85, on its branch, not on main yet; ct-zs48, ct-3aap); the model reading captures once (ct-07wr).
+OPEN FOLLOW-UPS: ct-isnv (widened: amendment, opening-statement, transcript, committee-report still lose under exact filters), ct-m3h3 (two same-text Ways and Means reports split), ct-fk4w (settle name clashes by reading the PDF), ct-jcnd (placeholder and Download titles, unmet decision), ct-uywf (relist re-keys witnesses), ct-zdj8 (recordings not traceable), ct-dagf and ct-faan (named-correction follow-ups), ct-v8us (530 outcome references still renumbered), ct-egoo, ct-xj8s.

@@ -17,3 +17,9 @@ Found 2026-11-10 in the release 619db5f9e08e difference review (.cache/archive-r
 
 The reference is stored or compared through a release-stable key (the link key, as the gate already does for transcripts), so an unchanged meeting produces no difference; one release comparison shows zero renumbering rows.
 
+
+## Notes
+
+**2026-11-10T20:39:29Z**
+
+2026-11-10 still happening in release 77673bfb8fcf. Checked on published release 77673bfb8fcf against 619db5f9e08e with DuckDB on the published tables. Meetings whose outcome_source_reference differs: 530, and 516 of them have the same outcome and outcome_basis, so they changed only by renumbering. The cause record explained the group by hand again (ct-v8us, ct-h8dr).

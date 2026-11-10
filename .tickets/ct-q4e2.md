@@ -27,3 +27,7 @@ The public archive has no Congress.gov meeting update after 2026-10-30. Schedule
 **2026-11-10T13:27:30Z**
 
 2026-11-10: blocked on the same owner step as ct-4jms (the two hosted capture secrets). Nothing else changed here today.
+
+**2026-11-10T20:39:29Z**
+
+2026-11-10 release 77673bfb8fcf published the results of a meetings relist run by hand on this Mac (run 20261110T140153Z-6b3c368e77f8: 38 receipts, 35 Congress.gov details). Per the cause record: 3 new meetings, 25 nominations, 10 recording matches and 4 witnesses, plus 37 witness re-keys (ct-uywf). The relist is not yet seen running from the scheduled workflow, which still waits on the hosted secrets (ct-4jms).

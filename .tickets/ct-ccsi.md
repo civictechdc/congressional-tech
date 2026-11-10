@@ -1,6 +1,6 @@
 ---
 id: ct-ccsi
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T03:26:30Z
@@ -48,3 +48,7 @@ Limit: document-recovery-normalized.sql holds its own copy of the label list and
 Found, not fixed: 2,263 documents are titled "Download <something>" ("Download General" 540, "Download QFR Responses" 464, "Download Responses to Questions for the Record" 325) and 410 by another type word alone ("Transcript" 216, "Hearing Memo" 45, "Hearing Transcript" 42). They name a kind of document, which is more than a number does, so they are outside this rule; whether a kind alone is a title is the same question one size up.
 
 A full model build must confirm: `generic_titles` is 0; no published title is letterless or "no. N" (256 today) or "{" (11); no document with a filename is titled by a label alone (239 today); 103 documents read "Biography - <name>"; and the comparison's changed-title group against 619db5f9e08e holds these 609 documents and no title with a name in it.
+
+**2026-11-10T20:38:25Z**
+
+2026-11-10 SHIPPED, closed. Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables, not on notes. Titles in list.parquet, before -> after: with no letter 206 -> 0; 'no. N' 61 -> 0; '{' 11 -> 0; a bare number 58 -> 0; bare 'Biography' 163 -> 0; a label alone (testimony, witness testimony, witness biography, written statement, biography, witness statement, statement) on a document with a filename 342 -> 0; 'Biography - <name>' 0 -> 103; model generic_titles 0. (My patterns are wider than the build note's, hence 206 and 342 rather than 256 and 239.) Left, outside this rule and recorded on ct-jcnd item 7: 2 placeholder-only titles 'H.R.___,' and 'H.Res.___'; 'Download...' titles 2,263 -> 2,270.

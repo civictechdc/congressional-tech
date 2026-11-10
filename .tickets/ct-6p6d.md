@@ -27,3 +27,7 @@ The repeated daily scans run once per night, or the reason they cannot is writte
 **2026-11-10T15:47:02Z**
 
 2026-11-10 root-cause analysis, measured (root-cause/ROOT-CAUSE.md cause A; PLAN.md M1). Where the model's time goes in build c03c43da (902 s): 44 of 336 statements read a lake table and take 545 s (61%); captures is scanned 42 to 46 times and readings 50 to 70 times per build (the selected_readings view holds 11 scans of readings and is used 6 times). At 2, 4 and 8 threads those statements took 254, 251 and 255 s while statements over step results took 177, 138 and 152 s: the lake scan ignores compute_threads (iceberg-datafusion 0.10.1 exposes one output stream; its file concurrency is the CPU count). Measurement M1: the 11 statements that read only captures take 144.9 s in that build and 9.2, 7.4 and 6.8 s on a local copy of the table at 1, 2 and 8 threads, same pinned binary. So the cost is the remote read path, not threads and not decoding. Fix being built in docspec-rs: read each lake file once (a read-through cache for immutable lake objects). The daily's repeated scans in item 1 are the same cause. Item 3 (threads) is answered: do not raise them for speed.
+
+**2026-11-10T20:39:29Z**
+
+2026-11-10 one more figure: the fresh release-night run (nightly/20261110T195322.097664Z, d3ed7ca5) took 1,658.6 s in its publish step (model, export and gate). The captures read-once change (ct-07wr) did not ship in this release; it moved to the next one.

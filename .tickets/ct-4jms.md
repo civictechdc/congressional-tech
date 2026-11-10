@@ -141,3 +141,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-10T14:23:02Z**
 
 2026-11-10 capture run on the Mac (owner: 'Turn on and run capture'; hosted secrets still absent), mirroring capture-archive.yml at af1da283 with the nightly driver's environment; runner and evidence .cache/archive-release/capture-20261110/apply-20261110T140152Z/. Meetings relist (7 days): 38 receipts, 35 Congress.gov meeting details, run 20261110T140153Z-6b3c368e77f8. Budgeted capture against release 619db5f9e08e: run 20261110T140311Z-06d91c83c2d8, 2,000 requests (budget reached), 1,032 receipts, 285.9 MB fetched, 1,027 HTTP 200, 5 HTTP 410 (budget.house.gov), 3 refused as outside scope (admin-* hosts), 8 discovery jobs refused, no paid provider, queue was 41,887. Hosts: democrats-edworkforce 799, agriculture 134, democrats-agriculture 42, armedservices 40, budget 17. This is a hand run, not the scheduled-run acceptance; that still needs the two secrets and the hosted workflow.
+
+**2026-11-10T20:39:29Z**
+
+2026-11-10 release 77673bfb8fcf published the results of a capture run by hand on this Mac (run 20261110T140311Z-06d91c83c2d8: 2,000 requests, 1,032 receipts), not a scheduled hosted run. The cause record attributes 392 new documents to it (197 new bytes, 195 already in raw). Acceptance still needs the scheduled capture-archive.yml run, which waits on the owner's two hosted secrets.
