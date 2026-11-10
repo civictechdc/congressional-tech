@@ -164,12 +164,9 @@ class DocSpecFailure(RuntimeError, OSError):
             if isinstance(payload.get('pre_admission'), bool):
                 self.pre_admission = payload['pre_admission']
         reported = failed['error'] if isinstance(failed.get('error'), dict) else {}
-        code, message = (value if isinstance(value, str) else '' for value in (reported.get('code'), reported.get('message')))
-        if self.code is None and code:
-            self.code = code
+        lead = ': '.join(value for value in (reported.get('code'), reported.get('message')) if isinstance(value, str) and value)
         said = ''.join(line for line in self.stderr.splitlines(keepends=True)
                        if not line.startswith(METRIC_PREFIX)).strip()
-        lead = ': '.join(filter(None, (code, message)))
         super().__init__('\n'.join(filter(None, (lead, said))) or f'DocSpec exited {self.returncode}')
 
     @property

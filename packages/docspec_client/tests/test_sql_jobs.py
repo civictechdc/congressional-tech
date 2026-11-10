@@ -64,7 +64,7 @@ def test_job_failure_leads_with_the_engine_error_and_keeps_the_whole_stream(tmp_
     assert str(raised.value).splitlines() == ['invalid_export: second output failed', 'second output failed']
     assert '[docspec-metric]' not in str(raised.value)
     assert raised.value.stderr == METRICS + 'second output failed\n'
-    assert raised.value.code == 'invalid_export'
+    assert raised.value.code is None  # as before: the report's code is a pre-admission name with no reader on this path
     silent = subprocess.CompletedProcess(['docspec'], 7, stdout='', stderr=METRICS)
     assert str(DocSpecFailure(['docspec'], silent)) == 'DocSpec exited 7'
 

@@ -50,4 +50,4 @@ def test_a_failing_job_says_what_failed_first_and_keeps_the_whole_stream(tmp_pat
     assert str(error).splitlines()[0]=='query: Execution error: absent line 1: source open failed'
     assert '[docspec-metric]' not in str(error) and 'Caused by:' in str(error)
     assert error.stderr.startswith('[docspec-metric] ') and error.stderr==(tmp_path/'job/engine.log').read_text()
-    assert error.code=='query' and error.completed['queries'][0]['name']=='before'
+    assert error.code is None and error.completed['queries'][0]['name']=='before'
