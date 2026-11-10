@@ -33,16 +33,40 @@ def no_watchdog_outlives_its_test():
     later (ct-psb5). Killed, a watchdog's job goes with it: the owned group's leader sees its starter die."""
     yield
     while STARTED:
-        process = STARTED.pop()
-        if process.poll() is None:
-            process.kill()
-        process.communicate()
+        reap(STARTED.pop())
+
+
+def reap(process, seconds=15):
+    """Kill a started process and collect it without ever waiting longer than `seconds`: its pipes stay open for
+    as long as any descendant holds them, so an unbounded read here could hang the whole test run."""
+    if process.poll() is None:
+        process.kill()
+    try:
+        process.communicate(timeout=seconds)
+    except subprocess.TimeoutExpired:
+        for stream in (process.stdout, process.stderr):
+            if stream is not None:
+                stream.close()
+        process.wait(timeout=seconds)
 HOLD = "import time\nb=bytearray({size}*1024*1024)\nfor i in range(0,len(b),4096):b[i]=1\ntime.sleep(60)\n"
 
 
 def run(tmp_path, *flags, command):
     return subprocess.run([sys.executable, str(WATCHDOG), '--min-disk-gb', '0', '--min-available-gb', '0', '--interval', '0.1',
         '--report', str(tmp_path / 'report.json'), *flags, '--', *command], capture_output=True, text=True, timeout=120)
+
+
+def test_teardown_does_not_wait_on_pipes_a_descendant_still_holds(tmp_path):
+    marker = tmp_path / 'grandchild.pid'
+    parent = (f"import subprocess,sys,time\nsubprocess.Popen([sys.executable,'-c',{sleeper(marker)!r}])\ntime.sleep(60)\n")
+    process = subprocess.Popen([sys.executable, '-c', parent], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    grandchild = wait_for(marker)
+    try:
+        began = time.monotonic()
+        reap(process, seconds=0.5)
+        assert process.returncode == -9 and time.monotonic() - began < 20, 'teardown waited for the grandchild'
+    finally:
+        os.kill(grandchild, 9)
 
 
 def test_a_clean_job_keeps_its_exit_code_and_records_a_peak(tmp_path):
