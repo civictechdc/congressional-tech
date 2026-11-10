@@ -972,6 +972,13 @@ def test_more_first_schedules_with_a_meeting_date_than_one_unattended_night_may_
         'automatic causes: 1 first schedules with a meeting date, more than the 0 one unattended night may add']
     monkeypatch.setattr(release_gate, 'AUTOMATIC_FIRST_SCHEDULE_CAP', 1)
     assert unattended(tmp_path / 'within')['reasons'] == []
+    monkeypatch.undo()
+    # The cap itself: one above refuses, at the cap passes. 2,000 is the nightly capture budget.
+    cap, what = release_gate.AUTOMATIC_FIRST_SCHEDULE_CAP, 'first schedules with a meeting date'
+    assert cap == 2000
+    assert release_gate.over_cap(cap + 1, what, cap) == [
+        'automatic causes: 2001 first schedules with a meeting date, more than the 2000 one unattended night may add']
+    assert release_gate.over_cap(cap, what, cap) == []
 
 
 @pytest.mark.parametrize('plant', [

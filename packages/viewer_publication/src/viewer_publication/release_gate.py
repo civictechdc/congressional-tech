@@ -261,12 +261,14 @@ URL_STATE_CAUSE = ("every row is what the lines of receipts absent from the live
 # 567 more (731 with recoveries). 250 passes the first with room and stops the second.
 AUTOMATIC_ADDITION_CAP = 250
 # First schedules with a meeting date (ct-9j3z): an address fetched for the first time has no live
-# meeting date to keep, so the band's date is taken as published. 500 is the coordinator's
-# decision of 2026-11-10, made from an estimate of about 360. Measured since on that night's pair:
-# at least 663 of 5,325 first schedules carried a date (a band longer than the shortest), 630 of
-# them among the 1,132 the 2026-11-08 capture day fetched and 33 among the 4,193 from the
-# 2026-10-31 backlog. So 500 stops a capture day like 2026-11-08.
-AUTOMATIC_FIRST_SCHEDULE_CAP = 500
+# meeting date to keep, so the band's date is taken as published. The scheduled capture is budgeted
+# at 2,000 requests a night (repository variable ARCHIVE_CAPTURE_REQUEST_BUDGET, read by
+# capture-archive.yml; 2,000 on 2026-11-10), so an ordinary night cannot make more than 2,000 first
+# fetches, dated or not; a night above that is a catch-up or a hand run with a larger budget, and
+# those get a person. Measured on the 2026-11-10 pair: at least 663 first schedules carried a date,
+# 630 of them among the 1,132 first fetches of the one 2026-11-08 capture day. The two numbers are
+# coupled by hand: if the capture budget is raised, this cap must be looked at again.
+AUTOMATIC_FIRST_SCHEDULE_CAP = 2000
 
 
 def over_cap(count, what, cap):
