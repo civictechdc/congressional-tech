@@ -4,28 +4,34 @@
         --members members.parquet --terms member_terms.parquet --meetings meetings.parquet
         [--prints prints.parquet] [--plant] --output OUT.json
 
-The rows under test are a release's witnesses (witness_type member_appearance, matched_bioguide_id), or a release's
-witnesses with an engine run's decisions laid over them (--decisions: witness_key, outcome, matched_bioguide_id).
+The rows under test are a release's witnesses (witness_type member_appearance, matched_bioguide_id, match_basis), or a
+release's witnesses with an engine run's decisions laid over them (--decisions: witness_members).
 Members come from the spicy-regs members table itself (name_first, name_last, name_nickname and other_names, which
 the rule does not read) and its member_terms; hearing dates and titles from the release's meetings and, for prints
 without a meeting, a prints table (package_id, held_dates, title) read from the raw MODS.
 
 Everything here is this check's own reading: names are folded with Unicode NFKD and split on anything not a letter;
-a first name agrees when one word starts with the other (three letters at least), or spells out an abbreviated one
-('William' for 'Wm.', its letters in order); offices, states and outside words are its own short lists. It judges in
-both directions and from one independent fact first:
- - publisher: every row whose publisher states a Bioguide ID of a known Member is a labelled example: a Member
-   appearance exactly when one of that Member's terms covers the hearing date (and not when the hearing is that
-   person's own nomination);
- - retyped: each other row published as a Member appearance must name, by family and first name, the Member it is
-   matched to, who must hold a term on the date that agrees with a state or chamber the row states, be the only
-   sitting Member who fits, not be the hearing's own nominee, and the row must state some congressional office or
-   role and no former, state-legislature or outside employer words;
- - left: each shown row that is not one, has a date, states a congressional office and no such words, and names
-   exactly one sitting Member who fits, is flagged as a Member left a witness.
+offices, seats, states and outside words are its own short lists. A row names a sitting Member three ways: by name
+(family name, and a first name where one word starts with the other, three letters at least, or spells out an
+abbreviated one: 'William' for 'Wm.'), by seat (it states a House seat, a district of a state, a state at large or a
+territory's Delegate, and a word of its name or first field is the holder's family name), or by initial (one side of
+the first name is a bare initial and the Member is the only one sitting in the stated state and chamber with that
+family name and initial). It judges in both directions:
+ - cross-publisher (the core measure): an appearance whose house_xml row carries the Bioguide ID of a Member sitting
+   on the date is labelled by that publisher; every other publisher's row of the same appearance is graded on what
+   the rule decided from its own words ('same Member', 'different Member', 'silent' when only the appearance matched
+   it). The rule never reads a name when the publisher's ID is there, so the publisher's own rows grade nothing;
+ - publisher: those rows must still be Member appearances exactly when a term covers the date (and not at the
+   person's own nomination), matched to that ID;
+ - retyped: each other Member appearance must name, by one of the readings, the Member it is matched to, who must
+   hold a term on the date that agrees with a state or chamber the row states, be the only sitting Member it names,
+   not be the hearing's own nominee, and the row must state a congressional office, role or seat, or be at a Member
+   Day hearing, with no former, state-legislature or outside employer words; a flag names the Member(s) expected;
+ - left: each shown row that is not one, has a date, states a congressional office or seat in a field or is at a
+   Member Day hearing, has no such words, and names exactly one sitting Member, is flagged as left a witness.
 Rows not read are counted by reason (no name, record entries, no hearing date, superseded rows for the 'left' side).
-With --plant the six planted wrong values below are laid over the decisions and each must raise a flag the baseline
-does not have (tests/test_member_appearances_raw_check.py plants the same six kinds on hand rows).
+With --plant the nine planted wrong values below are laid over the decisions and each must raise a flag the baseline
+does not have (tests/test_member_appearances_raw_check.py plants the same kinds on hand rows).
 """
 import argparse
 from collections import Counter, defaultdict
@@ -65,8 +71,22 @@ HOUSE_WORDS = re.compile(r'representative|congress(wo)?man|\bdelegate\b|resident
 STATE_PHRASE = re.compile(r'\b(?:from|of)\s+(?:the\s+)?(?:(?:state|commonwealth|territory)\s+of\s+)?('
                           + '|'.join(sorted(STATE_CODES, key=len, reverse=True)) + r')\b')
 CODE_PHRASE = re.compile(r'\(([A-Z]{2})-(?:\d+|AL|At[- ]Large)\)|\b[DRI]-([A-Z]{2})\b')
+STATE_NAMES = '|'.join(sorted(STATE_CODES, key=len, reverse=True))
+TERRITORIES = {'GU', 'PR', 'DC', 'AS', 'VI', 'MP'}
+NUMBER = r'(\d+)(?:st|nd|rd|th|d)?\s+(?:congressional\s+)?district'
+SEATS = (  # (pattern, which group is the state, which the district); district None means at large or a territory
+    (re.compile(r'\(([a-z]{2})[- ](\d+|al|at[- ]large)\)'), 1, 2),
+    (re.compile(NUMBER + r'\W{0,3}(?:of\s+)?(?:the\s+)?(?:state\s+of\s+)?(' + STATE_NAMES + r')\b'), 2, 1),
+    (re.compile(r'\b(' + STATE_NAMES + r")(?:'s)?\W{0,3}" + NUMBER), 1, 2),
+    (re.compile(NUMBER + r'\W{0,3}([a-z]{2})\s*(?:$|\|)'), 2, 1),
+    (re.compile(r'\b(' + STATE_NAMES + r'),?\s+district\s+(\d+)\b'), 1, 2),
+    (re.compile(r'\b(?:delegate|resident commissioner)\b[^|]*?\b(?:from|of|for)\s+(?:the\s+)?(?:(?:territory|commonwealth)\s+of\s+)?('
+                + STATE_NAMES + r')\b'), 1, 'territory'),
+    (re.compile(r'\b(' + STATE_NAMES + r')\b[^|]*\bat[- ]large\b'), 1, None),
+)
+MEMBER_DAY = re.compile(r"\bmembers?['\u2019]?s?\s+day\b")
 
-# The six planted wrong values (review of c98dab56, mar-plant.py): release witness keys and the value laid over them.
+# The planted wrong values (reviews of c98dab56 and d8e1b039): release witness keys and the value laid over them.
 PLANTS = {
     'member left a witness (Silvestre Reyes 2007)': ('5fc16a144de708d2', None),
     'outside witness retyped (Timothy V. Johnson, Corning)': ('6498602416854ede', 'J000177'),
@@ -74,6 +94,9 @@ PLANTS = {
     'former Member retyped (Ben Nighthorse Campbell 2017)': ('76f6fc3772eafc1a', 'C000077'),
     'ambiguous name resolved (French J. Hill to Katie Hill)': ('98d539f7169ccf98', 'H001087'),
     'wrong one of two (Sander Levin to Carl Levin)': ('3c12eb0487bc421a', 'L000261'),
+    'Member Day row naming only the Member left a witness (Dan Newhouse 2019)': ('0ad4c582d03b9bf2', None),
+    'Member Day row stating only a seat left a witness (John R. Curtis, Utah, 3d District 2019)': ('79b0d948ee489e5a', None),
+    'wrong one of two on a seat row (Mike Rogers, 3rd District, Alabama, to Mike Rogers of Michigan)': ('054887fc0e814102', 'R000572'),
 }
 
 
@@ -101,47 +124,97 @@ def first_names_agree(row_words, member_words, abbreviations=()):
     return False
 
 
-def load_members(con, members, terms):
-    names = {}
-    for b, first, last, nick, others in con.execute(
-            f"select bioguide_id,name_first,name_last,name_nickname,other_names from read_parquet('{members}')").fetchall():
-        given = set(words(re.sub(r'[()]', ' ', first or ''))) | set(words(nick or ''))
-        family = set(words(last or ''))
-        abbreviations = {fold(first).strip('. ')} if re.fullmatch(r'\s*[A-Za-z]{2,4}\.\s*', first or '') else set()
-        for other in others or []:
-            given |= set(words(other.get('first') or '')) | set(words(other.get('nickname') or ''))
-            family |= set(words(other.get('last') or ''))
-        names[b] = (given, family, abbreviations)
-    spans = defaultdict(list)
-    for b, kind, state, start, end in con.execute(
-            f"select bioguide_id,term_type,term_state,term_start,term_end from read_parquet('{terms}')").fetchall():
-        if start and end:
-            spans[b].append(('senate' if (kind or '').lower().startswith('sen') else 'house', state, start[:10], end[:10]))
-    by_family = defaultdict(set)
-    for b, (_given, family, _abbr) in names.items():
-        for w in family:
-            by_family[w].add(b)
-    return names, spans, by_family
+class Reference:
+    """The members data as this check reads it: names, terms, family-name index and House seat holders."""
+
+    def __init__(self, con, members, terms):
+        self.names = {}
+        for b, first, last, nick, others in con.execute(
+                f"select bioguide_id,name_first,name_last,name_nickname,other_names from read_parquet('{members}')").fetchall():
+            given = set(words(re.sub(r'[()]', ' ', first or ''))) | set(words(nick or ''))
+            family = set(words(last or ''))
+            abbreviations = {fold(first).strip('. ')} if re.fullmatch(r'\s*[A-Za-z]{2,4}\.\s*', first or '') else set()
+            for other in others or []:
+                given |= set(words(other.get('first') or '')) | set(words(other.get('nickname') or ''))
+                family |= set(words(other.get('last') or ''))
+            self.names[b] = (given, family, abbreviations)
+        self.spans, self.holders = defaultdict(list), defaultdict(list)
+        for b, kind, state, district, start, end in con.execute(
+                f"select bioguide_id,term_type,term_state,term_district,term_start,term_end from read_parquet('{terms}')").fetchall():
+            if start and end:
+                chamber = 'senate' if (kind or '').lower().startswith('sen') else 'house'
+                self.spans[b].append((chamber, state, start[:10], end[:10]))
+                if chamber == 'house' and str(district or '').lstrip('-').isdigit() and int(district) >= 0:
+                    self.holders[(state, int(district))].append(b)
+        self.by_family = defaultdict(set)
+        for b, (_given, family, _abbr) in self.names.items():
+            for w in family:
+                self.by_family[w].add(b)
+
+    def sitting(self, bioguide, days):
+        return [t for t in self.spans.get(bioguide, ()) if any(t[2] <= d <= t[3] for d in days)]
+
+    def readings(self, row):
+        """{bioguide: reading} for the sitting Members the row names, within the state and chamber it states."""
+        w, days = words(row['name']), (row['dates'] or '').split(',')
+        states, chambers = stated(row)
+        def placed(b):
+            terms = self.sitting(b, days)
+            return terms and (not states or states & {t[1] for t in terms}) and (
+                not chambers or chambers & {t[0] for t in terms})
+        found = {}
+        if len(w) >= 2:
+            for b in self.by_family.get(w[-1], ()):
+                if first_names_agree(w[:-1], *self.names[b][0::2]) and placed(b):
+                    found[b] = 'name'
+        heard = set(w) | set(words(((row['fields'] or '').split('|') + [''])[0]))
+        for state, district in seats(row):
+            for b in self.holders.get((state, district), ()):
+                if b not in found and heard & self.names[b][1] and placed(b):
+                    found[b] = 'seat'
+        if not found and len(w) >= 2 and states:
+            initials = {g[0] for g in w[:-1]}
+            pool = [b for b in self.by_family.get(w[-1], ()) if placed(b) and initials & {g[0] for g in self.names[b][0]}]
+            if len(pool) == 1 and any(g[0] == m[0] and min(len(g), len(m)) == 1 for g in w[:-1] for m in self.names[pool[0]][0]):
+                found[pool[0]] = 'initial'
+        return found
 
 
 def read_rows(con, witnesses, decisions, meetings, prints):
     overlay = ''
     if decisions:
-        overlay = f"""left join (select witness_key,outcome,matched_bioguide_id as decided_id from read_parquet('{decisions}')) d using(witness_key)"""
+        overlay = f"""left join (select witness_key,outcome,matched_bioguide_id as decided_id,match_basis as decided_basis
+            from read_parquet('{decisions}')) d using(witness_key)"""
     prints_join = (f"left join (select package_id,held_dates,title as print_title from read_parquet('{prints}')) p using(package_id)"
                    if prints else '')
     held = "array_to_string(p.held_dates,',')" if prints else 'NULL'
     title = 'coalesce(m.title,p.print_title)' if prints else 'm.title'
     member = ("d.outcome='member'" if decisions else "w.witness_type='member_appearance'")
     matched = ("d.decided_id" if decisions else "w.matched_bioguide_id")
+    basis = ("d.decided_basis" if decisions else "w.match_basis")
     rows = con.execute(f"""select w.witness_key,w.source,w.name,w.bioguide_id,coalesce(w.superseded_by,w.witness_key) as person,
           concat_ws(' | ',w.position,w.organization,w.on_behalf_of,w.location) as fields,
           coalesce(cast(m.meeting_date as varchar),{held}) as dates,{title} as title,w.superseded_by is null as shown,
           coalesce(w.witness_type,'') in ('statement_for_record','member_statement','record_material') as record_entry,
-          coalesce({member},false) as retyped,{matched} as matched
+          coalesce({member},false) as retyped,{matched} as matched,{basis} as basis
         from read_parquet('{witnesses}') w left join read_parquet('{meetings}') m using(event_id) {prints_join} {overlay}""").fetchall()
-    keys = ('witness_key', 'source', 'name', 'publisher_id', 'person', 'fields', 'dates', 'title', 'shown', 'record_entry', 'retyped', 'matched')
+    keys = ('witness_key', 'source', 'name', 'publisher_id', 'person', 'fields', 'dates', 'title', 'shown', 'record_entry',
+            'retyped', 'matched', 'basis')
     return {r[0]: dict(zip(keys, r)) for r in rows}
+
+
+def seats(row):
+    """The House seats the row states, as (state, district): 0 for a state at large or a territory's Delegate."""
+    text, found = fold((row['name'] or '') + ' | ' + (row['fields'] or '')), set()
+    for pattern, state_group, district_group in SEATS:
+        for m in pattern.finditer(text):
+            state = m.group(state_group)
+            state = STATE_CODES.get(state) or (state.upper() if state.upper() in STATE_CODES.values() else None)
+            if state is None or (district_group == 'territory' and state not in TERRITORIES):
+                continue
+            district = m.group(district_group) if isinstance(district_group, int) else '0'
+            found.add((state, int(district) if district.isdigit() else 0))
+    return found
 
 
 def stated(row):
@@ -149,6 +222,7 @@ def stated(row):
     states = {STATE_CODES[m] for m in STATE_PHRASE.findall(text)}
     states |= {STATE_CODES[f.strip(' .,;:')] for f in text.split('|') if f.strip(' .,;:') in STATE_CODES}
     states |= {a or b for a, b in CODE_PHRASE.findall(row['fields'] or '')}
+    states |= {state for state, _district in seats(row)}
     chambers = set()
     if SENATE_WORDS.search(text):
         chambers.add('senate')
@@ -165,35 +239,28 @@ def own_nomination(row):
     return 'nominat' in title and len(w) >= 2 and f' {w[-1]} ' in title and any(f' {g} ' in title for g in w[:-1])
 
 
-def sitting(spans, bioguide, days):
-    return [t for t in spans.get(bioguide, ()) if any(t[2] <= d <= t[3] for d in days)]
+def member_day(row):
+    return bool(MEMBER_DAY.search(fold(row['title'])))
 
 
-def fits(row, names, spans, by_family):
-    """Members sitting on the date whom the row's name and stated state and chamber fit."""
-    w, days = words(row['name']), (row['dates'] or '').split(',')
-    if len(w) < 2:
-        return []
-    states, chambers = stated(row)
-    found = []
-    for b in by_family.get(w[-1], ()):
-        given, _family, abbreviations = names[b]
-        terms = sitting(spans, b, days)
-        if not terms or not first_names_agree(w[:-1], given, abbreviations):
+def read_words(rows, ref):
+    """Each row's own words, read once (judge runs again for every plant): the Members it names, its office, places."""
+    for row in rows.values():
+        if 'found' in row:
             continue
-        if states and not states & {t[1] for t in terms}:
-            continue
-        if chambers and not chambers & {t[0] for t in terms}:
-            continue
-        found.append(b)
-    return found
+        text = fold(row['fields'])
+        states, chambers = stated(row)
+        row.update(found=ref.readings(row) if row['name'] and row['dates'] else {}, states=states, chambers=chambers,
+                   office=bool(OFFICE.search(text) or ROLE.search(text) or chambers or seats(row)),
+                   office_field=any(OFFICE.search(f.strip()) for f in text.split('|')) or bool(seats(row)),
+                   member_day=member_day(row), outside=bool(OUTSIDE.search(text)), nominee=own_nomination(row))
 
 
-def judge(rows, decided, names, spans, by_family):
+def judge(rows, decided, ref):
     flags, publisher, not_read = {}, Counter(), Counter()
+    read_words(rows, ref)
     # One appearance stated by several publishers (superseded_by): an office any of its rows states counts for all.
-    office_groups = {r.get('person') for r in rows.values()
-                     if OFFICE.search(fold(r['fields'])) or ROLE.search(fold(r['fields'])) or stated(r)[1]}
+    office_groups = {r['person'] for r in rows.values() if r['office']}
     for key, row in rows.items():
         if row['name'] is None:
             not_read['no name'] += 1; continue
@@ -203,49 +270,79 @@ def judge(rows, decided, names, spans, by_family):
             not_read['no hearing date'] += 1; continue
         retyped, matched = decided.get(key, (False, None))
         days = row['dates'].split(',')
-        text = fold(row['fields'])
-        if row['publisher_id'] in names:  # the publisher's own label, both directions
-            expected = bool(sitting(spans, row['publisher_id'], days)) and not own_nomination(row)
+        if row['publisher_id'] in ref.names:  # the publisher's own label, both directions
+            expected = bool(ref.sitting(row['publisher_id'], days)) and not row['nominee']
             publisher[(expected, retyped)] += 1
             if expected != retyped:
                 flags[key] = 'publisher id ' + ('in office, left a witness' if expected else 'not in office or nominee, retyped')
             elif retyped and matched != row['publisher_id']:
                 flags[key] = f'publisher id {row["publisher_id"]}, matched {matched}'
             continue
+        found = row['found']
+        named = 'names ' + ','.join(sorted(found)) if found else 'names no sitting Member'
         if retyped:
             why = []
             w = words(row['name'])
-            given, family, abbreviations = names.get(matched, (set(), set(), set()))
-            if not w or w[-1] not in family:
-                why.append('family name differs')
-            elif not first_names_agree(w[:-1], given, abbreviations):
-                why.append('first name differs')
-            if not sitting(spans, matched, days):
+            given, family, abbreviations = ref.names.get(matched, (set(), set(), set()))
+            if not ref.sitting(matched, days):
                 why.append('no term covers the date')
-            candidates = fits(row, names, spans, by_family)
-            if matched not in candidates and not why:
-                why.append('stated state or chamber is not the term')
-            if len(candidates) > 1:
-                why.append('more than one sitting Member fits: ' + ','.join(sorted(candidates)))
-            if own_nomination(row):
+            if matched not in found and not why:
+                if not w or w[-1] not in family:
+                    why.append('family name differs')
+                elif not first_names_agree(w[:-1], given, abbreviations):
+                    why.append('first name differs')
+                else:
+                    why.append('stated state or chamber is not the term')
+            if len(found) > 1:
+                why.append('more than one sitting Member fits')
+            if row['nominee']:
                 why.append("the hearing's own nominee")
-            if OUTSIDE.search(text):
+            if row['outside']:
                 why.append('former, state legislature or outside words')
-            states, chambers = stated(row)
-            if not (OFFICE.search(text) or ROLE.search(text) or states or chambers or row.get('person') in office_groups):
+            if not (row['office'] or row['states'] or row['member_day'] or row['person'] in office_groups):
                 why.append('no congressional office stated')
             if why:
-                flags[key] = 'retyped: ' + '; '.join(why)
-        elif row['shown'] and any(OFFICE.search(f.strip()) for f in text.split('|')) and not OUTSIDE.search(text) \
-                and not own_nomination(row):
-            candidates = fits(row, names, spans, by_family)
-            if len(candidates) == 1:
-                flags[key] = 'left a witness: names sitting ' + candidates[0]
+                flags[key] = f'retyped: {"; ".join(why)} ({named}; matched {matched})'
+        elif row['shown'] and (row['office_field'] or row['member_day']) and not row['outside'] and not row['nominee'] \
+                and len(found) == 1:
+            flags[key] = 'left a witness: names sitting ' + next(iter(found))
     not_read['superseded rows (not judged as left)'] = sum(1 for r in rows.values() if not r['shown'] and not r['retyped'])
     return flags, publisher, not_read
 
 
-def plant_results(rows, decided, baseline, plants, names, spans, by_family):
+def cross_publisher(rows, decided, ref):
+    """Grade the rule's own reading of other publishers' rows against the house_xml Bioguide ID of the same appearance."""
+    labels, unlabelled = defaultdict(set), defaultdict(set)
+    for row in rows.values():
+        if row['publisher_id'] and row['name'] and row['dates'] and not row['record_entry']:
+            sitting = row['publisher_id'] in ref.names and ref.sitting(row['publisher_id'], row['dates'].split(','))
+            (labels if sitting and not row['nominee'] else unlabelled)[row['person']].add(row['publisher_id'])
+    grade, examples, appearances = Counter(), defaultdict(list), labels.keys() | unlabelled.keys()
+    for key, row in rows.items():
+        if row['publisher_id'] or not row['name'] or row['record_entry'] or row['person'] not in appearances:
+            continue
+        retyped, matched = decided.get(key, (False, None))
+        own = retyped and row['basis'] not in ('group', 'publisher_id')
+        if row['person'] in labels:
+            label = labels[row['person']]
+            kind = ('two publisher IDs' if len(label) > 1 else 'same Member' if own and matched in label
+                    else 'DIFFERENT Member' if own else 'silent: matched only through the appearance' if retyped
+                    else 'left a witness with its appearance')
+            grade[(row['source'], kind)] += 1
+        elif own:
+            kind = 'matched where the publisher ID is not a Member sitting on the date'
+            grade[(row['source'], kind)] += 1
+        else:
+            continue
+        if kind != 'same Member':
+            examples[kind].append(dict(witness_key=key, source=row['source'], name=row['name'], fields=row['fields'],
+                                       publisher_id=','.join(sorted(labels.get(row['person']) or unlabelled[row['person']])),
+                                       matched=matched, basis=row['basis']))
+    return dict(labelled_appearances=len(labels), grades={f'{s}: {k}': n for (s, k), n in sorted(grade.items())},
+                totals=dict(Counter(k for (_s, k) in grade.elements())), examples=dict(examples))
+
+
+def plant_results(rows, decided, baseline, plants, ref):
     """Lay each planted value over the decisions; it is caught when its row gets a flag the baseline lacks."""
     results = {}
     for label, (key, value) in plants.items():
@@ -253,26 +350,27 @@ def plant_results(rows, decided, baseline, plants, names, spans, by_family):
             results[label] = 'not in these rows'; continue
         planted = dict(decided)
         planted[key] = (value is not None, value)
-        got, _publisher, _not_read = judge(rows, planted, names, spans, by_family)
+        got, _publisher, _not_read = judge(rows, planted, ref)
         results[label] = ('caught: ' + got[key]) if got.get(key) and got.get(key) != baseline.get(key) else 'MISSED'
     return results
 
 
 def run(args):
     con = duckdb.connect()
-    names, spans, by_family = load_members(con, args.members, args.terms)
+    ref = Reference(con, args.members, args.terms)
     rows = read_rows(con, args.witnesses, args.decisions, args.meetings, args.prints)
     decided = {k: (r['retyped'], r['matched']) for k, r in rows.items()}
-    flags, publisher, not_read = judge(rows, decided, names, spans, by_family)
+    flags, publisher, not_read = judge(rows, decided, ref)  # reads every row's words first
     out = dict(rows=len(rows), retyped=sum(1 for r in rows.values() if r['retyped']),
                retyped_shown=sum(1 for r in rows.values() if r['retyped'] and r['shown']),
-               publisher_examples={f'expected {"member" if e else "witness"}, published {"member" if p else "witness"}': n
-                                   for (e, p), n in sorted(publisher.items())},
+               cross_publisher=cross_publisher(rows, decided, ref),
+               publisher_rows={f'expected {"member" if e else "witness"}, published {"member" if p else "witness"}': n
+                               for (e, p), n in sorted(publisher.items())},
                flags=Counter(v.split(':')[0] for v in flags.values()), not_read=dict(not_read),
                flagged=[dict(witness_key=k, flag=v, name=rows[k]['name'], fields=rows[k]['fields'], dates=rows[k]['dates'])
                         for k, v in sorted(flags.items(), key=lambda x: x[1])])
     if args.plant:
-        out['plants'] = plant_results(rows, decided, flags, PLANTS, names, spans, by_family)
+        out['plants'] = plant_results(rows, decided, flags, PLANTS, ref)
     Path(args.output).write_text(json.dumps(out, indent=1, default=str))
     return out
 
@@ -283,7 +381,7 @@ def main(argv=None):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--decisions'); parser.add_argument('--prints'); parser.add_argument('--plant', action='store_true')
     out = run(parser.parse_args(argv))
-    print(json.dumps({k: v for k, v in out.items() if k != 'flagged'}, indent=1, default=str))
+    print(json.dumps({k: v for k, v in out.items() if k not in ('flagged',)}, indent=1, default=str))
 
 
 if __name__ == '__main__':
