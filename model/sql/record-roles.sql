@@ -26,7 +26,7 @@ WITH roles AS (
             WHEN c.format = 'xml' AND b.source_record THEN 'source_record'
             WHEN c.format = 'html' AND (b.error_response OR l.error_response)
                  THEN 'error_response'
-            WHEN c.format = 'html' AND b.wrapper THEN 'wrapper'
+            WHEN c.format = 'html' AND (b.wrapper OR l.wrapper) THEN 'wrapper'
             WHEN (c.format = 'html' AND b.listing)
                  OR (c.format = 'xml' AND (b.feed OR l.feed)) THEN 'listing'
             ELSE 'document'

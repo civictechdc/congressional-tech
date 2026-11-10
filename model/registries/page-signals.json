@@ -60,6 +60,12 @@
     "sample_id": "page-signals:download_wrapper"
   },
   {
+    "id": "site_help_page",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://[^/?#]+(?:/[^?#]*)?/help[.](?:aspx?|html?|php|cfm)(?:[?#]|$)",
+    "sample_id": "page-signals:site_help_page"
+  },
+  {
     "id": "error_routes",
     "kind": "error_url",
     "pattern": "(?i)/(404|error|errors|notfound|not-found|page-not-found)(\\b|[/.?_-])|[?&]aspxerrorpath=",

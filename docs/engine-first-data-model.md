@@ -398,7 +398,7 @@ A **registry** is a versioned list a rule depends on.
 | Registry | Holds | Used by | Versioned by |
 |---|---|---|---|
 | file shapes | Regular expressions over the locator that mark a link as pointing at a file | `real_files` (§7.3) | profile |
-| page signals | Kinds: *link word*, whole link texts and prefixes that say what a link does, never a title (§7.5); *error word*, generic error words for a title or heading, such as "not found", and body markers of challenge and soft-error pages; *error URL*, URL patterns that only ever serve error or placeholder pages; *wrapper marker*, text markers of download-wrapper pages, such as "download will begin shortly"; *threshold*, the near-empty text size and a listing page's minimum link count and link-text percent; *source-record root*, XML roots of metadata records, such as METS, MODS and PREMIS; *API endpoint*, URL patterns of API JSON, such as api.congress.gov; *feed root*, XML roots and URL patterns of feeds and sitemaps | record roles (§7.3); feed roots also `listed_on` (§7.10) | profile |
+| page signals | Kinds: *link word*, whole link texts and prefixes that say what a link does, never a title (§7.5); *error word*, generic error words for a title or heading, such as "not found", and body markers of challenge and soft-error pages; *error URL*, URL patterns that only ever serve error or placeholder pages; *wrapper marker*, text markers of download-wrapper pages, such as "download will begin shortly"; *wrapper URL*, addresses whose page only leads elsewhere and is never a document, such as a site's help page (ct-aoxp); *threshold*, the near-empty text size and a listing page's minimum link count and link-text percent; *source-record root*, XML roots of metadata records, such as METS, MODS and PREMIS; *API endpoint*, URL patterns of API JSON, such as api.congress.gov; *feed root*, XML roots and URL patterns of feeds and sitemaps | record roles (§7.3); feed roots also `listed_on` (§7.10) | profile |
 | URL rules | Kinds: *wrapper*, redirect and archive wrapper patterns; *strip*, tracker parameters on any host, such as `utm_*`, and page-state parameters on named hosts, such as congress.gov `q`; *repair*, repairs of malformed links, such as `ttps://` and concatenated URLs | `url_key` and link targets (§7.2) | profile |
 | archive layouts | Containers whose layout mirrors their server directory: a container URL pattern, a member path pattern whose first segment is the container's name, and the prefix members are published under; GovInfo `content/pkg/P.zip` holds `P/html/P.htm` and `P/pdf/P.pdf`, published at `content/pkg/P/html/P.htm` (its `mods.xml` is published elsewhere, so it is not listed) | an archive member's second endpoint (§7.5 `same_text`) | profile |
 | formats | Kinds: *preference*, the document formats in order, PDF first; *generic stem*, filename stems never grouped, such as `index` and `download` | saved file, alternates and renditions (§7.5) | profile |
@@ -499,7 +499,8 @@ record_role := per capture row, the first that applies:
                                  and reading.xml_root is a source-record root
                'error_response'  when format = 'html' and error_signs(reading, c.url)
                'wrapper'         when format = 'html'
-                                 and a wrapper-marker entry appears in reading.text_head
+                                 and a wrapper-marker entry appears in reading.text_head,
+                                 or c.url (the address that answered) matches a wrapper-URL entry
                'listing'         when format = 'html' and listing_signs(reading),
                                  or format = 'xml' and (reading.xml_root or c.url)
                                  matches a feed-root entry
@@ -538,6 +539,7 @@ real_body   := a body with at least one real_files row
 - Bodies that are not real files stay in the lake as evidence; listing, wrapper and error pages and metadata records still supply links. A damaged PDF is fetched again on its recheck schedule.
 - `file_shaped(locator)` is true when a file-shape registry entry matches; the labeled sample fixes the list.
 - The model reports, per release, the bodies with no role by format and error type, the damaged PDFs (those over the reader's limit apart), and the bodies that newly crossed the placeholder threshold.
+- **Site furniture (ct-aoxp):** release 619db5f9e08e published `docs.house.gov/committee/Help.aspx` as a document of 81 meetings: the site's chrome links it from every page, including the error page served at a missing meeting file's address, whose address named the meeting. The wrapper-URL entry matches a help page file (`help.aspx`, `help.html`) on any host, one published document; a `help` path segment with no extension (the HELP committee) and pages under `/help/` stay documents.
 - Role sample, 3,021 pages; under 2 KB of visible text: 67% download wrappers, 11% hearing pages, 11% cover-only GovInfo pages, 9% soft errors, about 2% real documents, so length alone is no sign of an error.
 - *k* = 100 selects 18 placeholder bodies (20 at 50, 11 at 200); the widest is a 57-byte caption file at 87,161 URLs.
 
