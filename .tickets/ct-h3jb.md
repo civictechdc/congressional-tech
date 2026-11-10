@@ -32,6 +32,8 @@ Follow-up, not filed: join the 1,232 named pairs by dropping the item check, onc
 
 Not changed: an item whose files have no stem at all (432 publisher memberships, none in a valid group) is judged as before.
 
+Not changed either: an HTML body at a file-shaped address (`/files/`, `/download/`, `/uploadedfiles/` and the other routes in `model/registries/file-shapes.json`) is not a real file (`record-roles.sql`), so an HTML rendition served from such a route cannot join its PDF whatever the join rule says. On the candidate no valid group, before or after the fix, holds an HTML member at a file-shaped address, and none of the 236 HTML documents that are not real for that reason alone shares a stem and a publisher item with a real file of another format; 16 share a directory and stem with one, all an HTML response at the PDF's own address (`fj-13-file-shaped-html.out`, `fj-14-file-shaped-samedir.out`).
+
 ## Acceptance Criteria
 
 A fixture with one listing page beside each of several PDFs yields separate documents; an HTML and PDF of one name still join; files of one body still merge. On the rebuilt candidate: the six Financial Services link keys (28f7a541731b530b, f209387c5948760f, e0560d54500bf13e, 45027a7365cdc1f1, 7b63de014d2cd6a2, d5f411b954a0c3bf) each answer their own file; no valid rendition group holds two stems; the 19 documents listed in `fj-10-effect.out` become 47; rows 150775 and 153462 stay merged.
@@ -41,6 +43,8 @@ A fixture with one listing page beside each of several PDFs yields separate docu
 **2026-11-10**
 
 Done on branch claude/ct-join-rule (local commits, not pushed): tests 7a992762, fix 18f3b854.
+
+Correction: 63339a55 rewrote `test_a_listing_label_outranks_another_formats_page_title` and was committed without being run; the passing run reported before it predates it. A full lane on 7b888308 failed on that test. Cause: the rewrite put the HTML under `/files/`, where an HTML body is not a real file, so it was neither an alternate nor a row and the join rule never saw it (`fj-37-debug.out`). The HTML now sits at a page address with the same stem and joins (`fj-37-debug-hearings-text.out`); the rule did not change.
 
 - Before the fix the five new cases fail (four group cases, one end-to-end release case); after it all pass (`fj-30-test-before.out`, `fj-31-test-after.out`).
 - The committed SQL, before and after, run through the pinned engine on the candidate's real rows (`fj-40-native.out`): the old SQL gives back the exported 619,919 members and 73,091 valid rows exactly; the new SQL gives 73,035 valid rows in 36,517 groups, adds none, and drops 56 rows in exactly the 28 groups above.
