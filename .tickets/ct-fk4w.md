@@ -17,3 +17,9 @@ The name rule (ct-h8dr) keeps a committee name whenever it contradicts a House s
 
 pdf_text is a pinned model input with an empty work list. saved-name-standing.sql keeps a contradicted slot name when the body's reading states its family and drops a committee name the reading contradicts; two official names of different kinds are settled by the reading. A separate decision records whether the reading may correct a kind when the document has one name only. Effect measured against live before it publishes.
 
+
+## Notes
+
+**2026-11-10T19:23:54Z**
+
+2026-11-10 KNOWN CASE for the reading step: event 101019 (House Ways and Means, 2013-06-20) gains HHRG-113-WM02-Transcript-20130620.pdf in its transcript list in the 2026-11-10 release. The House filed that file under the June 20 event, but its text is the July 10, 2013 hearing 'The Delay of the Employer Mandate'. The archive repeats the House's filing; only a reading of the body's own date and title can catch it. Named in the release's cause record and release note (ct-jcnd item 9 points here).
