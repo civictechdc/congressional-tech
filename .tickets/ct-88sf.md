@@ -17,3 +17,9 @@ From the docspec-rs feedback root-cause analysis (causes E and D; .cache/archive
 
 Phase 1: a failing step, output and query are each named with the code unchanged; a missing input is refused naming the path while a zero-row file still works; the open-file limit rises under a low soft limit; no pipeline caller that matches engine error text breaks; engine check green; independent review. Phase 2: each new field checked against a different instrument in the prefix run (process peak against the watchdog timeline; shared low-water against the debug log; start event against the limits file). Outward: binaries, pin move.
 
+
+## Notes
+
+**2026-11-10T16:39:20Z**
+
+2026-11-10: re-homed with the same owner decision (ct-x00f): phase 1 continues on the pinned line until reviewed, then lands on dx/one-line by merge. Expect conflicts there in the four files the one line also changed: src/job/spec.rs, src/job.rs, src/main.rs, src/job/json_lines.rs (predicted from both lines having changed them; to be measured by a trial merge). Phase 2 (everything written through src/job/metrics.rs: start line, real memory, the shared half's lowest available per statement beside the count of refused copies) is built on dx/one-line after the memory fix's final tip is merged there.

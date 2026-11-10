@@ -2,7 +2,7 @@
 id: ct-i5u3
 status: open
 deps: []
-links: [ct-qxfc]
+links: [ct-qxfc, ct-x00f]
 created: 2026-11-10T13:26:44Z
 type: task
 priority: 2

@@ -1,8 +1,8 @@
 ---
 id: ct-w2kf
-status: open
+status: closed
 deps: []
-links: [ct-6p6d]
+links: [ct-6p6d, ct-07wr]
 created: 2026-11-10T15:47:02Z
 type: task
 priority: 1
@@ -17,3 +17,9 @@ From the docspec-rs feedback root-cause analysis (cause A) and measurement M1 (r
 
 A second scan of the same snapshot in one job issues no remote data request (counted in a test against a fake store); concurrent scans of one file share one download; results identical; cache bytes are admitted against scratch and removed with the job; engine check green. Outward: binaries, pin move, and one full-size build with the timing of the 44 lake statements before and after.
 
+
+## Notes
+
+**2026-11-10T16:39:20Z**
+
+2026-11-10: NOT built. Checked in the engine repository: the one line (fix/docspec-one-line-20261109, f803ee6) already reads lake files once for managed jobs: src/engine/managed_job/snapshots.rs sizes and copies a snapshot input's whole read closure (metadata, manifest list, manifests, every live data file) and src/storage/custody.rs reads it back through a URI-to-retained-copy map with no fallback to the source. A cache on the pinned line would be a second copy of that. On the pinned line the gain comes from ct-07wr (captures as the model's first retained step). The engine-side mechanism reaches the pipeline when it moves to the one line (ct-x00f) and, for the model, to managed jobs (owner: write it up first).
