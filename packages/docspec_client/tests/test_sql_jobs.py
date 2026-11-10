@@ -126,14 +126,28 @@ def test_job_without_a_log_writes_nothing_new(tmp_path):
     assert sorted(tmp_path.iterdir()) == sorted([*before, arguments])
 
 
-def test_metric_events_skip_other_text_and_a_line_cut_short_by_a_kill(tmp_path):
-    from docspec_client.models import metric_events
+def test_metric_events_read_a_whole_last_line_and_report_a_torn_one(tmp_path):
+    from docspec_client.models import TornMetricLine, metric_events
     log = tmp_path / 'engine.log'
-    log.write_text('warning: not a metric\n' + METRICS + 'Error: query: failed\n[docspec-metric] {"event":"st')
+    log.write_text('warning: not a metric\n' + METRICS + 'Error: query: failed\n' + METRICS.rstrip('\n'))
+    assert list(metric_events(log)) == [STEP, RELEASE, STEP, RELEASE]  # a last line with no newline that parses is an event
+    log.write_text(METRICS + 'Error: que')  # other text cut short is not a metric line
     assert list(metric_events(log)) == [STEP, RELEASE]
     steps = tmp_path / 'steps.jsonl'  # DOCSPEC_STEP_LOG holds the same events without the prefix.
-    steps.write_text(''.join(json.dumps(event) + '\n' for event in (STEP, RELEASE)))
-    assert list(metric_events(steps, prefix='')) == [STEP, RELEASE]
+    whole = ''.join(json.dumps(event) + '\n' for event in (STEP, RELEASE))
+    steps.write_text(whole + json.dumps(STEP))
+    assert list(metric_events(steps, prefix='')) == [STEP, RELEASE, STEP]
+    # A kill mid-line: every whole event is read, then the caller is told, whether the cut fell in the event or in the prefix.
+    for path, prefix, torn in ((log, '[docspec-metric] ', METRICS + '[docspec-metric] {"event":"st'),
+                               (log, '[docspec-metric] ', METRICS + '[docspec-me'), (steps, '', whole + '{"event":"st')):
+        path.write_text(torn)
+        events = metric_events(path, prefix=prefix)
+        assert [next(events), next(events)] == [STEP, RELEASE]
+        with pytest.raises(TornMetricLine, match=path.name):
+            next(events)
+    log.write_text('[docspec-metric] {oops\n' + METRICS)  # a whole line that does not parse is damage, not a torn line
+    with pytest.raises(json.JSONDecodeError):
+        list(metric_events(log))
 
 
 @pytest.mark.parametrize('missing', ['limits', 'binary_sha256', 'source_revision'])

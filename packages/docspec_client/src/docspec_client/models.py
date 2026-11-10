@@ -119,16 +119,28 @@ PRE_ADMISSION_ERROR_CODES = frozenset({
 METRIC_PREFIX = '[docspec-metric] '
 
 
+class TornMetricLine(ValueError):
+    """The log's last line is a metric line cut short: its writer was stopped mid-line."""
+
+
 def metric_events(log: str | Path, *, prefix: str = METRIC_PREFIX) -> Iterator[dict[str, Any]]:
     """Yield the engine's step, retain, release, output and query events from a kept stderr log.
 
-    Other text is skipped, and so is a last line a kill cut short. ``prefix=''`` reads a
-    ``DOCSPEC_STEP_LOG`` file, which holds the same events one per line without the prefix.
+    Other text is skipped. A last line with no newline is an event if it parses; if it does not,
+    every whole event has been yielded and ``TornMetricLine`` tells the caller the log was cut
+    short. ``prefix=''`` reads a ``DOCSPEC_STEP_LOG`` file: the same events, one per line, no prefix.
     """
     with open(log, encoding='utf-8', errors='replace') as lines:
         for line in lines:
-            if line.startswith(prefix) and line.endswith('\n'):
+            whole = line.endswith('\n')
+            if not line.startswith(prefix) and (whole or not prefix.startswith(line)):
+                continue
+            try:
                 yield json.loads(line[len(prefix):])
+            except ValueError as error:
+                if whole:
+                    raise
+                raise TornMetricLine(f'{log}: last line cut short after {len(line)} characters') from error
 
 
 class DocSpecFailure(RuntimeError, OSError):

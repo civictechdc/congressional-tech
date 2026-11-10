@@ -7,7 +7,8 @@ RUN holds the build's model-scratch/job.json, steps.jsonl and model-spec.json. S
 take their logged rows (views and queries are never scanned and are left out); lake tables the total-records
 of their pinned snapshot; Parquet inputs their footers; spicy-regs tables the manifest;
 JSON-lines inputs their non-blank lines, read from model-spec's source file when the
-build's private copy is gone. An input it cannot count stops the script.
+build's private copy is gone. An input it cannot count stops the script, and so does a step
+log whose last line was cut short (`TornMetricLine`): its build did not finish.
 """
 import gzip
 import json
