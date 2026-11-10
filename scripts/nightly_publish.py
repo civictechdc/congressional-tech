@@ -150,6 +150,24 @@ def keep_small_json(output, evidence):
             shutil.copy2(path, target)
 
 
+def keep_engine_logs(output, evidence):
+    """Each job's engine.log, kept like the small JSON: one above the bound keeps its tail, where the error is."""
+    for path in output.rglob('engine.log'):
+        if not path.is_file():
+            continue
+        target = evidence / path.relative_to(output)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        size = path.stat().st_size
+        if size <= EVIDENCE_MAX_BYTES:
+            shutil.copy2(path, target)
+            continue
+        with path.open('rb') as source, target.open('wb') as kept:
+            kept.write(f'[nightly] dropped the first {size - EVIDENCE_MAX_BYTES} of {size} bytes; '
+                       f'the last {EVIDENCE_MAX_BYTES} follow\n'.encode())
+            source.seek(size - EVIDENCE_MAX_BYTES)
+            shutil.copyfileobj(source, kept)
+
+
 def daily_summary(candidate):
     report = candidate / 'archive-daily/daily-summary.json'
     if not report.is_file():
@@ -232,6 +250,7 @@ def archive_candidate(candidate, evidence):
             target = evidence / path.relative_to(retired)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
+    keep_engine_logs(retired, evidence)
     shutil.rmtree(retired)
 
 
