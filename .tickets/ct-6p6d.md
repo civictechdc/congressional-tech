@@ -2,7 +2,7 @@
 id: ct-6p6d
 status: open
 deps: []
-links: []
+links: [ct-64t4]
 created: 2026-11-10T13:27:30Z
 type: task
 priority: 2
