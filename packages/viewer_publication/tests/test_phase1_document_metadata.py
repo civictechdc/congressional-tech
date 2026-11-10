@@ -469,7 +469,9 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
     member('undecided-cover','cpg-sm','l','HHRG-115-SM00-20180117-CPg.pdf',house+'HHRG-115-SM00-20180117-CPg.pdf',late,True,True,['committee-document'])
     member('undecided-cover','notice-sm','l','1-17-18_hearing_notice.pdf',site+'1-17-18_hearing_notice.pdf',early,True,False,['notice'])
     decisions=[dict(body_sha='i'*64,decision='committee',evidence='planted'),dict(body_sha='j'*64,decision='official',evidence='planted'),
-               dict(body_sha='k'*64,decision='undecided',evidence='planted'),dict(body_sha='l'*64,decision='undecided',evidence='planted')]
+               dict(body_sha='k'*64,decision='undecided',evidence='planted'),dict(body_sha='l'*64,decision='undecided',evidence='planted'),
+               # A reviewed body no document saves any more (a newer fetch moved it): it decides nothing and is counted.
+               dict(body_sha='a'*64,decision='official',evidence='planted')]
     # The saved body is still the newest fetch: an official name on older bytes names nothing.
     member('body','old-official','a','HHRG-118-XX00-Wstate-JonesB-20240101.pdf',house+'HHRG-118-XX00-Wstate-JonesB-20240101.pdf',early,True,True,['statement'])
     member('body','new-plain','b','jones_revised.pdf',site+'jones_revised.pdf',late,True,False,[])
@@ -486,12 +488,12 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
             json_input(tmp_path,'source_annotations',annotations,source_id='Utf8',document_kind=strings,document_family=strings),
             json_input(tmp_path,'formats',[dict(id='pdf',kind='preference',value='pdf',rank=1)],id='Utf8',kind='Utf8',value='Utf8',rank='Int32'),
             _name_readings(tmp_path,members,said),_name_decisions(tmp_path,decisions)]
-    from viewer_publication.archive_model import SAVED_NAME_KINDS
+    from viewer_publication.archive_model import SAVED_NAME_DECISIONS_UNUSED,SAVED_NAME_KINDS
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=_saved_file_steps()+[dict(name='saved_name_conflicts',sql=(ROOT/'model/sql/saved-name-conflicts.sql').read_text(),materialize=True)],outputs=[],
         queries=[dict(name='lead',sql="""SELECT s.component,s.source_id,s.body_sha,s.filename,a.document_kind,a.document_family
                       FROM saved_files s JOIN source_annotations a ON s.source_id=a.source_id WHERE s.saved_rank=1 ORDER BY s.component"""),
-                 dict(name='conflicts',sql="SELECT * FROM saved_name_conflicts ORDER BY component"),SAVED_NAME_KINDS,
+                 dict(name='conflicts',sql="SELECT * FROM saved_name_conflicts ORDER BY component"),SAVED_NAME_KINDS,SAVED_NAME_DECISIONS_UNUSED,
                  dict(name='rows',sql="SELECT count(*) AS n,count(DISTINCT source_id) AS sources FROM saved_files")])
     lead={row['component']:row for row in result['lead']}
     assert {c:row['source_id'] for c,row in lead.items()}=={'bio-slot':'knox-site','bryan':'bryan-site','real-bio':'hayden-house',
@@ -515,6 +517,7 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
         flags('undecided-cover',True,False,True,False),flags('undecided-tally',False,False,False,False),flags('unsettled',True,True,False,False)]
     assert result['saved_name_kinds']==[dict(documents=15,committee_name_leads=6,official_name_leads_with_committee_agreement=2,
         official_names_disagree_unsettled=1,other_official_name_leads_contradicted=6,slot_name_leads_contradicted=0)]
+    assert result['saved_name_decisions_unused']==[dict(entries=1)]
 
 
 def test_the_name_conflict_step_sees_a_slot_name_leading_against_a_committee_name(tmp_path):

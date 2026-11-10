@@ -30,6 +30,7 @@ REGISTRIES={
     'bill_package_evidence':dict(id='Utf8',package_id='Utf8',pdf_sha='Utf8',source_urls=list_of('Utf8'),
         package_disposition='Utf8',rejected_package_ids=list_of('Utf8'),excluded_measure_keys=list_of('Utf8'),
         supported_measure_keys=list_of('Utf8'),evidence='Utf8'),
+    'saved_name_decisions':dict(body_sha='Utf8',decision='Utf8',evidence='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
 }
 
@@ -734,7 +735,8 @@ FILENAME_BOTH_NAMES=dict(name='filename_both_names',sql='SELECT count(*) FILTER 
 # Documents whose saved body carries names that state different kinds (saved-name-conflicts.sql,
 # ct-yuf0): how many a committee name leads, how many are two official names of different kinds with
 # no committee name to settle them (a reading would), and how many official names outside the House
-# meeting-document slots lead against a committee name (left to saved-file order, ct-h8dr).
+# meeting-document slots lead against a committee name: a printed hearing or vote record the rule
+# settles, a body the review decided official, or one left to saved-file order (ct-h8dr).
 SAVED_NAME_KINDS=dict(name='saved_name_kinds',sql="""SELECT count(*) AS documents,
  count(*) FILTER (WHERE NOT official_leads) AS committee_name_leads,
  count(*) FILTER (WHERE official_leads AND committee_agrees) AS official_name_leads_with_committee_agreement,
@@ -744,7 +746,13 @@ SAVED_NAME_KINDS=dict(name='saved_name_kinds',sql="""SELECT count(*) AS document
  FROM saved_name_conflicts""")
 # The case the name rule forbids, as model invariant contradicted_official_saved_names: a House
 # meeting-document slot name leading a document against a committee name that states another kind.
+# The generic House name also gives way, but not where the review left a body undecided, so it is
+# not counted here.
 CONTRADICTED_OFFICIAL_SAVED_NAMES_SQL="SELECT count(*) FROM saved_name_conflicts WHERE official_slot AND committee_speaks AND NOT committee_agrees"
+# Reviewed name decisions (saved-name-decisions.json) whose body is no document's saved body: a newer
+# fetch moved the document to other bytes, and its names fall back to the rules until it is reviewed again.
+SAVED_NAME_DECISIONS_UNUSED=dict(name='saved_name_decisions_unused',sql="""SELECT count(*) AS entries
+ FROM saved_name_decisions v LEFT ANTI JOIN (SELECT body_sha FROM saved_files WHERE saved_rank=1) s ON s.body_sha=v.body_sha""")
 
 # Meeting-record doc-url literals that are no http(s) address get no URL key (model-url-inputs.sql)
 # and so cannot reach invalid_url_keys; this counts them instead of refusing the release.
@@ -1391,7 +1399,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         # The recorded disposition (ct-m878): a landing page that names no saved file has no document;
         # its link key retires with a plain notice. Two multi-part GovInfo packages in 619db5f9e08e.
         dict(name='unplaced_landing_pages',sql="SELECT DISTINCT page_url AS url FROM landing_pages WHERE component IS NULL ORDER BY 1"),
-        SAVED_NAME_KINDS,
+        SAVED_NAME_KINDS,SAVED_NAME_DECISIONS_UNUSED,
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
         UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,RECOVERY_FILE_AGREEMENT,FILENAME_BOTH_NAMES,
