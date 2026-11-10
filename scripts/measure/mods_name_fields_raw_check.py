@@ -714,7 +714,7 @@ def plant(kind, before, after, given, family, raw_root):
                 if b.get('witness_type') != 'record_material' or locator in old or not said:
                     continue
                 if (kind == 'reversed-asker' and len(said) > 1 and len(b['name'].split()) == 2
-                        and in_order(b['name'], lines(digest, locator))):
+                        and not in_order(' '.join(reversed(b['name'].split())), lines(digest, locator))):
                     given_part, surname = b['name'].split()
                     new[locator] = dict(b, name=f'{surname} {given_part}')
                 elif kind == 'given-added' and len(b['name'].split()) == 1:
@@ -784,8 +784,9 @@ def plant(kind, before, after, given, family, raw_root):
                 wrong = dict(b, name=None, organization=', '.join(filter(None, (b['name'], b.get('organization')))))
             elif kind == 'previous-segment' and at and opening(line_parts[at - 1]) not in given and parts and parts[0] in given:
                 wrong = dict(b, name=line_parts[at - 1])
-            elif (kind == 'reversed-name' and b and b != a and len(parts) > 1 and parts[0] in given
-                  and parts[-1] in family and parts[-1] not in given and in_order(b['name'], lines(digest, locator))):
+            elif (kind == 'reversed-name' and b and any(a.get(f) != b.get(f) for f in FIELDS) and len(parts) > 1
+                  and parts[0] in given and parts[-1] in family and parts[-1] not in given
+                  and not in_order(' '.join(b['name'].rsplit(' ', 1)[::-1]), lines(digest, locator))):
                 given_part, surname = b['name'].rsplit(' ', 1)
                 wrong = dict(b, name=f'{surname} {given_part}')
             else:
