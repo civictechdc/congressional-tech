@@ -120,6 +120,59 @@ def test_admission_is_refused_on_measured_free_memory_with_a_named_reason(monkey
     assert 'exceeds this machine' in capsys.readouterr().err
 
 
+def test_admission_waits_out_a_reader_that_fails_and_refuses_by_name_if_it_never_answers(monkeypatch, capsys, tmp_path,
+                                                                                         private_state):
+    """A reader past its time limit means no room is known yet, not that the watchdog must die: one slow `vm_stat`
+    or `ps` used to be waited out, and on a loaded machine the unattended nightly must still start."""
+    import types
+
+    clock, naps = [0.0], []
+    monkeypatch.setattr(watchdog, 'time', types.SimpleNamespace(
+        monotonic=lambda: clock[0], time=time.time, sleep=lambda seconds: (naps.append(seconds), clock.__setitem__(0, clock[0] + seconds))))
+    real_start_times = watchdog.start_times
+
+    def failing(reader, times, answer):
+        calls = []
+
+        def read(*args):
+            calls.append(1)
+            if len(calls) <= times:
+                raise subprocess.TimeoutExpired([reader], 5)
+            return answer(*args)
+        return read
+
+    def admission(*, wait_seconds, free=lambda: 30.0, processes=real_start_times):
+        registry = watchdog.Registry(private_state)
+        me = dict(pid=os.getpid(), started=None, queued=time.time(), admitted=None, expect_gb=1.0, command=['job'])
+        monkeypatch.setattr(watchdog, 'available_gb', free)
+        monkeypatch.setattr(watchdog, 'start_times', processes)
+        del naps[:]
+        try:
+            return watchdog.admit(registry, me, headroom=1.0, wait_seconds=wait_seconds), list(naps), registry.live()
+        finally:
+            registry.drop(os.getpid())
+
+    refused, waits, entries = admission(wait_seconds=60)
+    assert (refused, waits) == (None, []), 'a healthy machine admits at once'
+    assert [(e['pid'], e['started'], e['admitted'] is not None) for e in entries] == [
+        (os.getpid(), real_start_times([os.getpid()])[os.getpid()], True)]
+    for slow in (dict(free=failing('vm_stat', 1, lambda: 30.0)), dict(processes=failing('ps', 1, real_start_times))):
+        refused, waits, entries = admission(wait_seconds=60, **slow)
+        assert (refused, waits, len(entries)) == (None, [2], 1), 'one slow reader, then the job is admitted at the next tick'
+    refused, waits, entries = admission(wait_seconds=5, free=failing('vm_stat', 99, None))
+    assert waits == [2, 2, 2] and entries == [], 'it tries at every tick until the deadline'
+    assert 'refused to start' in refused and 'vm_stat: TimeoutExpired 4 times' in refused
+    # Through main(): the refusal code and one line, no traceback, nothing left behind.
+    monkeypatch.setattr(watchdog, 'available_gb', failing('vm_stat', 99, None))
+    monkeypatch.setattr(watchdog, 'start_times', real_start_times)
+    marker = tmp_path / 'ran'
+    code = watchdog.main(['--rss-gb', '4', '--expect-gb', '1', '--wait-seconds', '0', '--',
+                          sys.executable, '-c', f'import pathlib;pathlib.Path({str(marker)!r}).touch()'])
+    printed = capsys.readouterr().err
+    assert code == 98 and 'vm_stat: TimeoutExpired 1 time' in printed and printed.count('\n') == 1
+    assert not marker.exists() and list(private_state.glob('*.json')) == []
+
+
 def test_a_high_kill_limit_does_not_delay_a_small_job(tmp_path):
     """The kill limit bounds a runaway; it is not the job's need (declared limits ran 5-10x real use)."""
     result = run(tmp_path, '--rss-gb', '100000', '--expect-gb', '0.1', '--wait-seconds', '0',
@@ -297,7 +350,9 @@ def test_a_planted_signal_still_stops_the_job_and_the_report_names_it(tmp_path, 
     on that child's lock: job not stopped, no report, registry entry kept. `cleanup`: a second signal as the stop
     began used to abort it: exit 1 with a traceback and no report. Recorded and read by the loop, both are harmless.
     `group`: the pass that received the signal also lost its free-memory reader to it, and the report must still
-    give the signal as the reason, not the reader's failure."""
+    give the signal as the reason, not the reader's failure. A pass of `group` is not proof of that: the reader can
+    finish before the signal reaches it, and then nothing in the pass fails. The proof is the in-process case with a
+    failing sampler in test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_the_interval."""
     marker, fired = tmp_path / 'job.pid', tmp_path / 'fired'
     watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)], plant=(site, str(int(number)), str(marker), str(fired)),
                      own_group=site == 'group')
@@ -399,7 +454,7 @@ def test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_t
             return then
         return read
 
-    blind = 'RuntimeError: Three consecutive readings of free memory failed'
+    blind = 'RuntimeError: Three consecutive readings of free memory failed, the last vm_stat: TimeoutExpired'
     assert watched(None, free=reading('xx'), passes=3)[0] == (7, None, [*quiet[:-1], 'sample', 'sleep', 'poll', 'stop']), (
         'two passes without the reading are gaps, like two failed samples')
     assert watched(None, free=reading('xx.xx'), passes=6)[0][:2] == (7, None), 'a reading in between starts the count again'
