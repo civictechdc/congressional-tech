@@ -722,13 +722,36 @@ def test_a_live_key_that_reaches_another_file_is_named(tmp_path, prev, live, nam
     assert changed(tmp_path, served(tmp_path / 'prev', **prev), served(tmp_path / 'live', **live)) == named
 
 
-def test_a_release_without_saved_bodies_says_the_answer_check_did_not_run(tmp_path):
+def test_a_release_without_saved_bodies_fails_the_link_rule(tmp_path):
+    """A check that cannot run is not a pass: the rule says what it lacked and is not ok."""
     bare = dict(SCHEMAS, detail=[('link_key', B)])
     prev = release(tmp_path / 'prev', documents=['A', 'B'], schemas=bare, detail=[{'link_key': key('A')}, {'link_key': key('B')}])
     live = release(tmp_path / 'live', documents=['AB'], schemas=bare, detail=[{'link_key': key('A')}])
     _, result = run(tmp_path, prev, live)
-    assert result['link_rule']['changed'] == 0
-    assert result['cannot_see'] == ['link rule: a release has no detail.saved_body, so no live key was checked for answering another file']
+    rule = result['link_rule']
+    assert rule['changed'] == 0 and rule['missing'] == 0 and not rule['ok']
+    assert rule['unchecked'] == ['a release has no detail.saved_body, so no live key could be checked for answering another file']
+
+
+def test_a_release_without_lookup_keys_fails_the_link_rule(tmp_path):
+    without = {name: fields for name, fields in LINK_SCHEMAS.items() if name != 'urls'}
+    rows = [{'saved_body': body('A'), 'alternates': []}]
+    prev = release(tmp_path / 'prev', documents=['A'], schemas=without, detail=rows)
+    live = release(tmp_path / 'live', documents=['A'], schemas=without, detail=rows)
+    rule = run(tmp_path, prev, live)[1]['link_rule']
+    assert not rule['ok'] and rule['unchecked'] == ['a release has no urls with lookup_key, so none could be checked for answering another file']
+
+
+def test_keys_whose_live_file_became_an_alternate_are_a_group_not_a_refusal(tmp_path):
+    """a70ebc3d1466 fused 13 pages into PDFs this way. Splits, recoveries and unchanged rows are not in it."""
+    prev = served(tmp_path / 'prev', [('H', 'H'), ('P', 'P'), ('AB', 'A', 'B'), ('U', 'X')], recoveries=[(3, 'X'), (3, 'Y')])
+    live = served(tmp_path / 'live', [('HP', 'P', 'H'), ('A', 'A'), ('B', 'B'), ('UY', 'Y')], recoveries=[(3, 'X'), (3, 'Y')])
+    _, result = run(tmp_path, prev, live)
+    rule = result['link_rule']
+    assert rule['ok'] and rule['changed'] == 0 and rule['demoted_keys'] == [key('H').hex()]
+    assert counts(result, 'links') == {('added keys', 'no evidence given'): 1,  # Y, the newly fetched body's key
+                                       ('live file now an alternate', 'the key reaches a row whose saved file is another body'): 1}
+    assert any(g['group'] == 'live file now an alternate' and g['status'] == 'unverified' for g in result['failing'])
 
 
 # ct-wscb: a live lookup key or address must reach a row serving the live file or one of the

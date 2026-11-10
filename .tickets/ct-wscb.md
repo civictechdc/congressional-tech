@@ -31,3 +31,7 @@ Counts (investigations/gate-rules-20261110/wscb-real-data.md), each equal to a p
 Planted on a copy of the published candidate: one lookup key and one address re-pointed at another row; each is named and nothing else is.
 
 Cannot see: which of a wrongly joined live document's files an address named (the capture table knows, the release does not), so after a split an address sent to the wrong half passes; whether a recorded alternate or recovery is the same document (ct-u9y4). Open, as for ct-4qld: a refusal here has no hand path.
+
+**2026-11-10T07:53:59Z**
+
+2026-11-10: after the review of ct-4qld the rule fails closed. If urls or sources lacks the columns it reads, or detail has no saved_body, link_rule.unchecked says so and the gate refuses. Re-proved on the published candidate after that change: 0 lookup keys and 0 addresses named, the 11 lookup-key rows and 6 address rows of correct splits pass (review-4qld-real-data.md, wscb-real-data.md).

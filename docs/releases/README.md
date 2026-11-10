@@ -51,8 +51,13 @@ putting them in the release would force a second model run.
   another row, keep its file as an alternate or recovery while another body is shown first,
   or reach its own file when a wrong join is split. Anything else refuses the publish and
   names each key with its live and candidate file; like a vanished key, no cause record
-  overrides it. It cannot tell whether an alternate or recovery recorded on a row is truly
-  the same document (ct-u9y4).
+  overrides it. If a column the rule reads is missing from either release it refuses too: a
+  check that could not run is not a pass. It cannot tell whether an alternate or recovery
+  recorded on a row is truly the same document (ct-u9y4). So a key whose live file is now
+  only an alternate of a row that shows another body passes the rule but is listed
+  (`link_rule.demoted_keys`) and counted in the group `links.parquet | live file now an
+  alternate`, which needs a recorded cause: a correct rendition join and a wrong one look the
+  same to the gate.
 - **Lookups and addresses answer the same file (ct-wscb).** The same holds for every lookup
   key (`urls.parquet`) and address (`sources.parquet`) of a live document the candidate
   still holds. Neither names a body, so the test is: at least one row it reaches serves the

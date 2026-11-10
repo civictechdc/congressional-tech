@@ -17,15 +17,17 @@ K = lambda letter: (letter * 8).encode()
 SCOPE = {'version': 1, 'entries': []}
 
 
-def release_dir(root, documents, retired=None, *, scope=SCOPE, saved=None, **extra_tables):
+def release_dir(root, documents, retired=None, *, scope=SCOPE, saved=..., **extra_tables):
     """A real, internally consistent release: documents are rows of link-key letters.
 
     `saved` names each row's saved file by the letter of its body key (a link key is the first
-    8 bytes of its body's SHA-256); without it the release has no saved_body column."""
+    8 bytes of its body's SHA-256); by default each row saves the file its first key names, as
+    every real release does. `saved=None` writes no saved_body column at all."""
     root.mkdir(parents=True)
     detail = {'link_key': pa.array([K(keys[0]) for keys in documents], pa.binary(8))}
     if saved is not None:
-        detail['saved_body'] = pa.array([K(letter) + bytes(24) for letter in saved], pa.binary(32))
+        letters = [keys[0] for keys in documents] if saved is ... else saved
+        detail['saved_body'] = pa.array([K(letter) + bytes(24) for letter in letters], pa.binary(32))
     tables = {
         'list': pa.table({'filename': [f'{keys}.pdf' for keys in documents]}),
         'detail': pa.table(detail),
@@ -204,6 +206,43 @@ def test_link_rule_refuses_fused_documents_even_with_record(tmp_path):
         (f'{letter}.pdf', 'ABCDEFG.pdf') for letter in 'ABCDEF']
 
 
+def test_link_rule_fails_closed_without_saved_bodies_even_with_record(tmp_path):
+    """Review of ct-4qld, plant L1: the fused candidate with its saved_body column dropped, and a
+    record naming every group. A check that could not run is not a pass."""
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, list('ABCDEFG'))
+    release_dir(candidate, ['ABCDEFG'], saved=None)
+    causes = record_for(*ids((base, candidate)), tmp_path, groups=[
+        *((name, 'merged rows', 'previous rows now share one document', -6) for name in ('detail.parquet', 'list.parquet')),
+        ('detail.parquet', 'column saved_body removed', 'unexplained', 0), MOVED_LINKS])
+    with pytest.raises(ValueError):
+        require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['reasons'] == ['link rule: not checked: a release has no detail.saved_body, so no live key could be checked for answering another file']
+    assert report['link_rule']['changed'] == 0 and not report['link_rule']['ok']
+
+
+def test_a_live_file_that_became_an_alternate_needs_a_recorded_cause(tmp_path):
+    """Review of ct-4qld: a page H fused into a PDF's row keeps its file, as an alternate. The rule
+    does not refuse it (a right rendition join looks the same); a person must see it."""
+    alternates = pa.list_(pa.struct([('body', pa.binary(32))]))
+    detail = lambda saved, extra: pa.table({
+        'link_key': pa.array([K(s) for s in saved], pa.binary(8)), 'saved_body': pa.array([K(s) + bytes(24) for s in saved], pa.binary(32)),
+        'alternates': pa.array([[dict(body=K(a) + bytes(24)) for a in letters] for letters in extra], alternates)})
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, ['H', 'P'], detail=detail('HP', ['', '']))
+    release_dir(candidate, ['PH'], detail=detail('P', ['H']))
+    with pytest.raises(ValueError, match=r'no recorded cause for links.parquet\|live file now an alternate\|the key reaches a row whose saved file is another body \(1\)'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json')
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['link_rule']['ok'] and report['link_rule']['demoted_keys'] == [K('H').hex()]
+    assert report['link_rule']['demoted_answers'][0]['candidate_file'] == 'PH.pdf'
+    causes = record_for(*ids((base, candidate)), tmp_path, groups=[
+        *((name, 'merged rows', 'previous rows now share one document', -1) for name in ('detail.parquet', 'list.parquet')),
+        ('links.parquet', 'live file now an alternate', 'the key reaches a row whose saved file is another body', 1), MOVED_LINKS])
+    assert require_release_gates(base, candidate, causes, report_path=tmp_path / 'r2.json')['reasons'] == []
+
+
 def test_link_rule_passes_documents_that_keep_their_files(tmp_path):
     base, candidate = tmp_path / 'base', tmp_path / 'candidate'
     release_dir(base, ['AB', 'C'], saved='AC')
@@ -213,7 +252,8 @@ def test_link_rule_passes_documents_that_keep_their_files(tmp_path):
     report = require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
     assert report['link_rule'] == dict(missing=0, missing_keys=[], dangling=0, dangling_keys=[], changed=0, changed_keys=[],
                                        changed_answers=[], lookup_changed=0, lookup_changed_keys=[], lookup_changed_answers=[],
-                                       address_changed=0, address_changed_keys=[], address_changed_answers=[], ok=True)
+                                       address_changed=0, address_changed_keys=[], address_changed_answers=[],
+                                       demoted=0, demoted_keys=[], demoted_answers=[], unchecked=[], ok=True)
 
 
 def addresses(rows):

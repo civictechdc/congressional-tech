@@ -463,6 +463,8 @@ def verdict(report, causes):
     if rule['changed']:
         # ct-4qld: every key is named, up to the report's sample; the report has each one's two files.
         reasons.append(f'link rule: {rule["changed"]} live link keys answer another file ({", ".join(rule["changed_keys"])})')
+    for missing_input in rule['unchecked']:
+        reasons.append(f'link rule: not checked: {missing_input}')
     for label, what in (('lookup', 'lookup keys'), ('address', 'addresses')):  # ct-wscb
         if rule[f'{label}_changed']:
             reasons.append(f'link rule: {rule[f"{label}_changed"]} live {what} answer another file ({", ".join(rule[f"{label}_changed_keys"])})')

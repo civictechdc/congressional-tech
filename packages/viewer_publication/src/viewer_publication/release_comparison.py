@@ -792,23 +792,31 @@ def changed_answers(d: Diff):
     Cannot see: whether an alternate or recovery recorded on a row is truly the same document
     (cae8e4ea34ec603a, ct-u9y4: two testimonies, one row; the saved_body value group reports it).
     Lookup keys and addresses are judged by `changed_addresses`, which reads the `served` table.
-    Returns False, with the limit stated, when a release's detail has no saved_body.
+    Also builds `rule_demoted`: keys that pass only because the live file is now an alternate
+    of a row that shows another body first. That is what a correct rendition join looks like
+    and also what a wrong one does (a70ebc3d1466: 13 pages fused into PDFs), and "alternate" is
+    the candidate's own claim, so `compare` reports them as a group that needs a recorded cause.
+    Returns a reason, and builds nothing, when a release's detail has no saved_body: the rule
+    then cannot run, and `link_rule` fails closed.
     """
-    if not all('saved_body' in d.columns(side, 'detail') for side in d.dirs):
-        d.cannot_see.append('link rule: a release has no detail.saved_body, so no live key was checked for answering another file')
-        return False
-    served = ['SELECT file_row_number r,saved_body body FROM candidate_detail']
+    if not all(d.has(side, 'detail') and 'saved_body' in d.columns(side, 'detail') for side in d.dirs):
+        return 'a release has no detail.saved_body, so no live key could be checked for answering another file'
+    served = ["SELECT file_row_number r,saved_body body,'saved' how FROM candidate_detail"]
     if 'alternates' in d.columns('candidate', 'detail'):
-        served.append('SELECT file_row_number,unnest(alternates).body FROM candidate_detail')
+        served.append("SELECT file_row_number,unnest(alternates).body,'alternate' FROM candidate_detail")
     if d.has('candidate', 'recoveries') and {'list_row', 'body'} <= set(d.columns('candidate', 'recoveries')):
-        served.append('SELECT list_row,body FROM candidate_recoveries')
-    d.table('served', f"SELECT DISTINCT r,body,left(hex(body),16) named FROM ({' UNION ALL '.join(served)}) WHERE body IS NOT NULL")
+        served.append("SELECT list_row,body,'recovery' FROM candidate_recoveries")
+    d.table('served', f"SELECT DISTINCT r,body,left(hex(body),16) named,how FROM ({' UNION ALL '.join(served)}) WHERE body IS NOT NULL")
     d.table('rule_changed', """SELECT lower(hex(k.link_key)) k,k.pr,k.lr,lower(hex(p.saved_body)) live_body
       FROM key_pairs k JOIN base_detail p ON p.file_row_number=k.pr
       WHERE p.saved_body IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM served s WHERE s.r=k.lr AND s.body=p.saved_body)
       AND NOT EXISTS (SELECT 1 FROM served s WHERE s.r=k.lr AND s.named=hex(k.link_key))""")
-    return True
+    d.table('rule_demoted', """SELECT lower(hex(k.link_key)) k,k.pr,k.lr,lower(hex(p.saved_body)) live_body
+      FROM key_pairs k JOIN base_detail p ON p.file_row_number=k.pr JOIN candidate_detail l ON l.file_row_number=k.lr
+      WHERE p.saved_body IS NOT NULL AND l.saved_body IS DISTINCT FROM p.saved_body
+      AND EXISTS (SELECT 1 FROM served s WHERE s.r=k.lr AND s.body=p.saved_body AND s.how='alternate')""")
+    return None
 
 
 ADDRESSED = {'urls': ('lookup_key',), 'sources': ('url', 'member_path')}  # what a reader follows to a document
@@ -838,12 +846,12 @@ def changed_addresses(d: Diff, table):
     Cannot see: which of a wrongly joined live document's files an address named (the capture
     table knows, the release does not), so after a split an address sent to the wrong half
     passes; nor whether a recorded alternate or recovery is the same document.
-    Returns False, with the limit stated, when either release lacks the table's columns.
+    Returns a reason, and builds nothing, when either release lacks the table's columns:
+    `link_rule` fails closed.
     """
     fields = ADDRESSED[table]
     if not all(d.has(side, table) and {'list_row', *fields} <= set(d.columns(side, table)) for side in d.dirs):
-        d.cannot_see.append(f'link rule: a release has no {table} with {", ".join(fields)}, so none was checked for answering another file')
-        return False
+        return f'a release has no {table} with {", ".join(fields)}, so none could be checked for answering another file'
     on = ' AND '.join(f'l.{f} IS NOT DISTINCT FROM p.{f}' for f in fields)
     d.table(f'reach_{table}', f"""SELECT DISTINCT {','.join('l.' + f for f in fields)},s.body,s.named
       FROM candidate_{table} l JOIN served s ON s.r=l.list_row""")
@@ -855,7 +863,7 @@ def changed_addresses(d: Diff, table):
       AND NOT EXISTS (SELECT 1 FROM reach_{table} l WHERE {on} AND l.body=b.saved_body)
       AND NOT EXISTS (SELECT 1 FROM reach_{table} l JOIN base_links k ON hex(k.link_key)=l.named
                       WHERE {on} AND k.list_row=p.list_row)""")
-    return True
+    return None
 
 
 def link_rule(d: Diff, sample=100):
@@ -868,7 +876,11 @@ def link_rule(d: Diff, sample=100):
     changed: a live key the candidate answers with another file (`changed_answers`); each is
     listed with the live and candidate file.
     lookup_changed, address_changed: the same for lookup keys and addresses (`changed_addresses`).
-    No record overrides any of the five.
+    unchecked: why one of those three could not run (a column the rule reads is missing). The
+    rule then fails: a check that did not run is never a pass.
+    No record overrides any of the six.
+    demoted: keys whose live file is now only an alternate of the row. Not a refusal of the
+    rule; `compare` turns the count into a comparison group that needs a recorded cause.
     Cannot see whether a successor is the right document, or keys outside links (lookup keys,
     event IDs, witness keys, bill IDs), which value groups and release notes cover.
     """
@@ -890,17 +902,24 @@ def link_rule(d: Diff, sample=100):
         out[name + '_keys'] = [r[0] for r in d.rows(f'SELECT k FROM rule_{name} ORDER BY k LIMIT {int(sample)}')]
     for label in ('', 'lookup_', 'address_'):
         out[label + 'changed'], out[label + 'changed_keys'], out[label + 'changed_answers'] = 0, [], []
-    if changed_answers(d):
-        out['changed'] = d.one('SELECT count(*) FROM rule_changed')
-        name = lambda side: f'{side}_list' if 'filename' in d.columns(side, 'list') else '(SELECT NULL filename,NULL file_row_number)'
+    out['demoted'], out['demoted_keys'], out['unchecked'] = 0, [], []
+    name = lambda side: f'{side}_list' if 'filename' in d.columns(side, 'list') else '(SELECT NULL filename,NULL file_row_number)'
+    missing_input = changed_answers(d)
+    if missing_input:
+        out['unchecked'].append(missing_input)
+    else:
         fields = ('key', 'live_row', 'live_file', 'live_body', 'candidate_row', 'candidate_file', 'candidate_body')
-        out['changed_answers'] = [dict(zip(fields, r)) for r in d.rows(f"""SELECT c.k,c.pr,pl.filename,c.live_body,c.lr,ll.filename,lower(hex(ld.saved_body))
-          FROM rule_changed c JOIN candidate_detail ld ON ld.file_row_number=c.lr
-          LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=c.lr
-          ORDER BY 1 LIMIT {int(sample)}""")]
-        out['changed_keys'] = [a['key'] for a in out['changed_answers']]
+        for rule, label in (('rule_changed', 'changed'), ('rule_demoted', 'demoted')):
+            out[label] = d.one(f'SELECT count(*) FROM {rule}')
+            out[f'{label}_answers'] = [dict(zip(fields, r)) for r in d.rows(f"""SELECT c.k,c.pr,pl.filename,c.live_body,c.lr,ll.filename,lower(hex(ld.saved_body))
+              FROM {rule} c JOIN candidate_detail ld ON ld.file_row_number=c.lr
+              LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=c.lr
+              ORDER BY 1 LIMIT {int(sample)}""")]
+            out[f'{label}_keys'] = [a['key'] for a in out[f'{label}_answers']]
         for table, label in (('urls', 'lookup'), ('sources', 'address')):
-            if not changed_addresses(d, table):
+            missing_input = changed_addresses(d, table)
+            if missing_input:
+                out['unchecked'].append(missing_input)
                 continue
             # One name per key or address: the hex lookup key, or the URL with its archive member.
             shown = ('lower(hex(c.lookup_key))' if table == 'urls' else
@@ -914,7 +933,7 @@ def link_rule(d: Diff, sample=100):
               LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=l.list_row
               GROUP BY 1,2,4 ORDER BY 1,2 LIMIT {int(sample)}""")]
             out[f'{label}_changed_keys'] = sorted({a['key'] for a in out[f'{label}_changed_answers']})
-    out['ok'] = not any(out[name] for name in ('missing', 'dangling', 'changed', 'lookup_changed', 'address_changed'))
+    out['ok'] = not any(out[name] for name in ('missing', 'dangling', 'changed', 'lookup_changed', 'address_changed', 'unchecked'))
     return out
 
 
@@ -928,8 +947,14 @@ def compare(base, candidate, *, evidence_base=None, evidence_candidate=None, rec
     d = Diff(Path(base), Path(candidate), history, now)
     flips = add_evidence(d, evidence_base, evidence_candidate) if evidence_base else None
     files = account(d)
+    rule = link_rule(d)
+    if rule['demoted'] and 'links.parquet' in files:
+        # ct-4qld review: the key still reaches its live file, but only as an alternate of a row
+        # that shows another body. A right join and a wrong one look the same, so a person decides.
+        files['links.parquet']['groups'].append(dict(group(
+            'live file now an alternate', 'the key reaches a row whose saved file is another body', rule['demoted']), value=True))
     result = {'base_release': d.manifest['base']['release_id'], 'candidate_release': d.manifest['candidate']['release_id'],
-              'compared_at': d.now.isoformat(), 'capture_flips': flips, 'files': files, 'link_rule': link_rule(d), 'cannot_see': d.cannot_see,
+              'compared_at': d.now.isoformat(), 'capture_flips': flips, 'files': files, 'link_rule': rule, 'cannot_see': d.cannot_see,
               'inputs': [digest(p) for p in [evidence_base, evidence_candidate, *record_digest] if p]}
     if removed_keys:
         result['removed_keys_written'] = write_removed_keys(d, removed_keys)
@@ -962,7 +987,7 @@ def main(argv=None):
     rule = result['link_rule']
     if not rule['ok']:
         print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling; answering another file: {rule['changed']} link keys, "
-              f"{rule['lookup_changed']} lookup keys, {rule['address_changed']} addresses", file=sys.stderr)
+              f"{rule['lookup_changed']} lookup keys, {rule['address_changed']} addresses; not checked: {rule['unchecked']}", file=sys.stderr)
     return 0 if result['ok'] else 1
 
 
