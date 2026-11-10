@@ -2,7 +2,7 @@
 id: ct-01kq
 status: in_progress
 deps: []
-links: [ct-64t4]
+links: [ct-64t4, ct-psb5, ct-0jgy]
 created: 2026-11-10T15:46:33Z
 type: task
 priority: 2
@@ -17,3 +17,9 @@ From the docspec-rs feedback root-cause analysis (cause D, pipeline half). The e
 
 The script reproduces the report's figures on build c03c43da (run peak 10.28 GiB during the member_votes.parquet export at 2.81 GiB pool); a timeline without epoch needs an explicit offset; no reader of timeline files breaks; lane and independent review done.
 
+
+## Notes
+
+**2026-11-10T17:00:46Z**
+
+2026-11-10: built and independently reviewed (no must-fix); both review fixes are in (f7d1f75f, 7966a28d, ddaf7fb8 on claude/dx-step-memory): the report says which statement the highest reading FELL IN, and names the statements it overlaps when none spans it; bad input is refused with exit 2 or reported, never a traceback. 61 focused tests pass (partial); 21 planted wrong values each fail a test. Outstanding: the reviewer's confirmation of the fixes and one full lane. While this was built a hung watchdog was found: ct-psb5.
