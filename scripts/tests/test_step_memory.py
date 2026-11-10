@@ -131,6 +131,9 @@ def test_a_timeline_without_epoch_is_refused_until_the_caller_gives_the_offset(t
     text = capsys.readouterr().out
     assert 'statements under 1 s are not attributed' in text
     assert 'per-statement figures move with that offset; the run peak and --expect-gb do not' in text
+    # A peak inside a statement the offset cannot place fell in no statement; that statement is only overlapped.
+    early, _ = report(capsys, *write(tmp_path, samples=timeline({0.5: (10.0, 12.0)}, epoch=False)), '--offset-seconds', '2.7')
+    assert (early['run_peak']['during'], early['run_peak']['overlaps']) == ([], [dict(kind='step', name='short', pool_before_gb=0.0)])
 
 
 def test_an_offset_beside_an_exact_clock_or_a_log_from_another_run_is_refused(tmp_path, capsys):

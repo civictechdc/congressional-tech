@@ -47,7 +47,8 @@ still ramping, stops it at the kill limit, stops only the youngest job below
 4 GiB machine memory, and takes the job down if the watchdog itself is killed.
 Its stderr and `--report` give the peak to pass as `--expect-gb` next time.
 For an engine job, add `--timeline` and run `python3 scripts/measure/step_memory.py
-<step log> <report>.timeline.jsonl`: it prints that figure and the statement that set it.
+<step log> <report>.timeline.jsonl`: it prints that figure and the statement its highest
+reading fell in.
 
 Data another agent or a later run reads (frozen inputs, run outputs,
 measurements) lives under `<main checkout>/.cache/archive-release/`, never only
