@@ -304,14 +304,16 @@ def test_a_planted_signal_still_stops_the_job_and_the_report_names_it(tmp_path, 
 
 
 @SIGNALS
-def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing_once_the_stop_has_begun(monkeypatch, tmp_path,
-                                                                                                          number):
-    """The loop reads the record once per pass, right after its sleep. Here the signal is the installed handler
-    called from a stand-in sampler, sleep or stop, so each case is exact: no real signal, no process, no timing."""
+@pytest.mark.parametrize('interval', [0.2, 1, 60])
+def test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_the_interval(monkeypatch, tmp_path, number,
+                                                                                            interval):
+    """A sleep resumes after a handler that returns, so one sleep per pass would hold a recorded signal for the rest
+    of the interval. Here the signal is the installed handler, called from a stand-in sampler, sleep or stop on a
+    clock only the sleep advances, so every case is exact: no real signal, no process, no timing."""
     import types
 
-    def watched(signal_during, failing=False):
-        events = []
+    def watched(signal_during, *, after=0.0, failing=False):
+        events, clock, slept, at = [], [0.0], [], {}
 
         class Job:
             pid, returncode = 1, 7
@@ -321,9 +323,12 @@ def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing
                 return None if events.count('poll') <= 2 else 7
 
         def passing(through):
-            events.append(through)
-            if through == signal_during and 'signal' not in events:
+            if events[-1] != through:
+                events.append(through)
+            at.setdefault(through, clock[0])
+            if through == signal_during and clock[0] >= after and 'signal' not in events:
                 events.append('signal')
+                at['signal'] = clock[0]
                 handler = signal.getsignal(number)
                 # Never call the handler pytest runs under: for SIGINT that would abort the whole session.
                 assert handler is not before[number], 'watch() does not handle this signal'
@@ -339,28 +344,37 @@ def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing
                     raise RuntimeError('the signal took the sampler too')
                 return 2**30, 2**30
 
+        def sleep(seconds):
+            passing('sleep')  # the signal, when due, lands as this sleep starts; the sleep still runs to its end
+            slept.append(seconds)
+            clock[0] += seconds
+
         monkeypatch.setattr(watchdog, 'available_gb', lambda: None)
-        monkeypatch.setattr(watchdog, 'time', types.SimpleNamespace(monotonic=lambda: 0.0, sleep=lambda _seconds: passing('sleep')))
+        monkeypatch.setattr(watchdog, 'time', types.SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
         monkeypatch.setattr(watchdog, 'sampler', types.SimpleNamespace(
             MemorySamples=Readings, start_owned=lambda command, **_: Job(), stop_owned=lambda _process: passing('stop')))
         before = {each: signal.getsignal(each) for each in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
         try:
             code, _, _, reason, _ = watchdog.watch(['job'], rss_gb=4, min_available_gb=0, min_disk_gb=0,
-                                                   disk_root=tmp_path, interval=1)
+                                                   disk_root=tmp_path, interval=interval)
             assert {each: signal.getsignal(each) for each in before} == before, 'watch() kept its handlers'
         finally:  # a watch() that raises must not leave this pytest process with its handlers
             for each, handler in before.items():
                 signal.signal(each, handler)
-        return code, reason, events
+        return (code, reason, events), at, slept
 
     stopped = f'Interrupted: watchdog received signal {int(number)}'
-    assert watched('sample') == (99, stopped, ['poll', 'sample', 'signal', 'stop']), 'it slept on a signal it already had'
-    assert watched('sample', failing=True) == (99, stopped, ['poll', 'sample', 'signal', 'stop']), 'the signal is the reason'
-    assert watched(None, failing=True) == (99, 'RuntimeError: the signal took the sampler too', ['poll', 'sample', 'stop'])
-    assert watched('sleep') == (99, stopped, ['poll', 'sample', 'sleep', 'signal', 'stop']), 'it sampled again first'
+    assert watched('sample')[0] == (99, stopped, ['poll', 'sample', 'signal', 'stop']), 'it slept on a signal it already had'
+    assert watched('sample', failing=True)[0] == (99, stopped, ['poll', 'sample', 'signal', 'stop']), 'the signal is the reason'
+    assert watched(None, failing=True)[0] == (99, 'RuntimeError: the signal took the sampler too', ['poll', 'sample', 'stop'])
+    for after in (0.0, interval / 2):  # as the wait begins, and half way through it
+        outcome, at, _ = watched('sleep', after=after)
+        assert outcome == (99, stopped, ['poll', 'sample', 'sleep', 'signal', 'stop']), 'it sampled again first'
+        assert 0 < at['stop'] - at['signal'] <= 0.05 + 1e-9, 'the stop waited out the interval'
     quiet = ['poll', 'sample', 'sleep', 'poll', 'sample', 'sleep', 'poll', 'stop']
-    assert watched(None) == (7, None, quiet)
-    assert watched('stop') == (7, None, [*quiet, 'signal']), 'a signal during the stop changed the outcome'
+    outcome, _, slept = watched(None)
+    assert outcome == (7, None, quiet) and sum(slept) == pytest.approx(2 * interval), 'an undisturbed wait is one interval'
+    assert watched('stop')[0] == (7, None, [*quiet, 'signal']), 'a signal during the stop changed the outcome'
 
 
 def test_sigkill_to_the_watchdog_keeps_the_lock_until_the_job_stops(tmp_path):
