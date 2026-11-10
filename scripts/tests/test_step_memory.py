@@ -2,6 +2,8 @@
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -14,6 +16,7 @@ GIB = 2**30
 EPOCH = 1000.0   # the engine's wall clock at timeline second WATCHDOG_LEAD
 WATCHDOG_LEAD = 2.5
 FIRST_START = 0.2
+READ = 0.04   # each sample is stamped when its reading ends
 
 
 def statement(name, start, end, *, before, after, peak=None, event='step', storage='memory'):
@@ -47,7 +50,7 @@ def timeline(readings=READINGS, *, epoch=True):
         second = quarter / 4
         rss, physical = readings.get(second, (0.8, 1.0))
         row = dict(seconds=second + WATCHDOG_LEAD, rss_gb=rss, physical_gb=physical, free_disk_gb=100.0)
-        rows.append({**row, 'epoch': EPOCH + second} if epoch else row)
+        rows.append({**row, 'epoch': EPOCH + second, 'read_seconds': READ} if epoch else row)
     return rows
 
 
@@ -77,7 +80,7 @@ def test_each_statement_gets_the_samples_inside_its_window_on_the_shared_clock(t
     assert result['alignment'] == 'epoch' and result['samples'] == 33 and result['interval_seconds'] == 0.25
     assert [(row['kind'], row['name']) for row in result['statements']] == [
         ('step', 'short'), ('step', 'a'), ('step', 'blip'), ('output', 'big.parquet'), ('query', 'q1')]
-    assert rows['a'] == dict(kind='step', name='a', seconds=2.0, samples=9, unattributed=None,
+    assert rows['a'] == dict(kind='step', name='a', seconds=2.0, samples=8, unattributed=None,
         peak_physical_gb=5.0, peak_rss_gb=4.0, start_physical_gb=2.0, rise_gb=3.0,
         pool_before_gb=1.0, pool_after_gb=2.0, pool_peak_gb=3.0)
     big = rows['big.parquet']
@@ -97,6 +100,17 @@ def test_a_statement_between_two_samples_is_unattributed_not_given_a_neighbours_
         peak_physical_gb=None, peak_rss_gb=None, start_physical_gb=None, rise_gb=None,
         pool_before_gb=2.0, pool_after_gb=2.0, pool_peak_gb=2.0)
     assert result['unattributed'] == {'no sample in its window': 1}
+
+
+def test_a_sample_whose_reading_began_before_the_statement_is_not_that_statements(tmp_path, capsys):
+    """The 3.25 s sample, the run's peak, was read from 3.21 s; a statement that starts at 3.22 s did not make it."""
+    events = [statement('a', 1.0, 3.0, before=1, after=2), statement('late.parquet', 3.22, 6.0, before=2, after=2, event='output')]
+    result, rows = report(capsys, *write(tmp_path, events=events))
+    late = rows['late.parquet']
+    assert (late['samples'], late['peak_physical_gb'], late['start_physical_gb'], late['rise_gb']) == (11, 2.2, 3.0, -0.8)
+    assert result['run_peak'] == dict(peak_physical_gb=9.04, peak_rss_gb=7.0, during=[])
+    assert step_memory.main(write(tmp_path, events=events)) == 0
+    assert 'outside every attributed statement' in capsys.readouterr().out
 
 
 def test_a_timeline_without_epoch_is_refused_until_the_caller_gives_the_offset(tmp_path, capsys):
@@ -145,3 +159,36 @@ def test_the_text_report_names_the_peak_statement_and_the_figure_to_start_with(t
     assert [line.split()[-2:] for line in table] == [['output', 'big.parquet'], ['step', 'a']]
     assert [line.split()[:6] for line in table] == [['9.04', '+6.04', '7.00', '2.00', '2.00', '-'],
                                                     ['5.00', '+3.00', '4.00', '1.00', '2.00', '3.00']]
+
+
+JOB = """import json, sys, time
+def statement(name, megabytes):
+    start = time.time()
+    held = bytearray(megabytes * 1024 * 1024)
+    for index in range(0, len(held), 4096):
+        held[index] = 1
+    time.sleep(1)
+    del held
+    print('[docspec-metric] ' + json.dumps(dict(event='step', name=name, storage='memory', start_epoch=start,
+        end_epoch=time.time(), pool_reserved_before=0, pool_reserved_after=0)), file=sys.stderr, flush=True)
+time.sleep(0.5)
+for name, megabytes in (('small', 20), ('medium', 150), ('large', 400)):
+    statement(name, megabytes)
+time.sleep(0.3)
+"""
+
+
+def test_a_real_jobs_allocation_lands_in_the_statement_that_made_it(tmp_path, capsys, monkeypatch):
+    """The whole seam: the watchdog's clock against epochs a job stamps on its own stderr, with no offset given."""
+    monkeypatch.setenv('ARCHIVE_WATCHDOG_STATE', str(tmp_path / 'state'))
+    ran = subprocess.run([sys.executable, str(PATH.parents[1] / 'archive_watchdog.py'), '--rss-gb', '4', '--min-disk-gb', '0',
+        '--min-available-gb', '0', '--interval', '0.1', '--report', str(tmp_path / 'report.json'), '--timeline', '--',
+        sys.executable, '-c', JOB], capture_output=True, text=True, timeout=120)
+    assert ran.returncode == 0, ran.stderr
+    (tmp_path / 'engine.log').write_text(ran.stderr)
+    result, rows = report(capsys, str(tmp_path / 'engine.log'), str(tmp_path / 'report.timeline.jsonl'))
+    assert result['alignment'] == 'epoch' and not result['unattributed']
+    assert [held['name'] for held in result['run_peak']['during']] == ['large']
+    assert rows['small']['peak_physical_gb'] < 0.12 < rows['medium']['peak_physical_gb'] < rows['large']['peak_physical_gb'] - 0.2
+    assert rows['medium']['rise_gb'] > 0.1 and rows['large']['rise_gb'] > 0.2
+    assert result['run_peak']['peak_physical_gb'] == json.loads((tmp_path / 'report.json').read_text())['peak_physical_gb']

@@ -578,8 +578,10 @@ def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
     value = json.loads(report.read_text())
     assert value['exit_code'] == 7 and value['stopped'] is None and value['peak_physical_gb'] > 0
     samples = [json.loads(line) for line in report.with_suffix('.timeline.jsonl').read_text().splitlines()]
-    assert samples and set(samples[0]) == {'seconds', 'epoch', 'rss_gb', 'physical_gb', 'free_disk_gb'}
-    # The wall clock of each sample, the clock engine step events carry (scripts/measure/step_memory.py joins on it).
+    assert samples and set(samples[0]) == {'seconds', 'epoch', 'read_seconds', 'rss_gb', 'physical_gb', 'free_disk_gb'}
+    # The wall clock at which each reading ended, on the clock engine step events carry, and how long the reading
+    # took: scripts/measure/step_memory.py gives a sample only to a statement that spans its whole reading.
+    assert all(0 < sample['read_seconds'] <= sample['seconds'] for sample in samples)
     assert began <= samples[0]['epoch'] <= samples[-1]['epoch'] <= time.time()
     started = [sample['epoch'] - sample['seconds'] for sample in samples]
     assert max(started) - min(started) < 0.05
