@@ -10,7 +10,7 @@ the source for each note:
 
 - the accepted cause record, `model/jobs/release-causes/<base12>-<candidate12>.json`, which
   lists every difference from the previous release with its cause, count and tickets
-  (gate 1); and
+  (gate 1), and every link the release corrects on purpose (below); and
 - the release's `retired_links.parquet`, which counts the link keys that now redirect or
   show a removal notice (gate 2).
 
@@ -50,10 +50,19 @@ putting them in the release would force a second model run.
   serves its saved body, its alternates and its recoveries. So a key may follow its file to
   another row, keep its file as an alternate or recovery while another body is shown first,
   or reach its own file when a wrong join is split. Anything else refuses the publish and
-  names each key with its live and candidate file; like a vanished key, no cause record
-  overrides it. If a column the rule reads is missing from either release it refuses too: a
-  check that could not run is not a pass. It cannot tell whether an alternate or recovery
-  recorded on a row is truly the same document (ct-u9y4). So a key whose live file is now
+  names each key with its live and candidate file, unless the reviewed cause record names it
+  as a correction (ct-4nax, owner decision 2026-11-10). A `corrections` entry is `{kind, key,
+  live_body, candidate_body, decision, tickets}`: kind `link_key`, `lookup_key` or `address`,
+  the key as the report prints it, both files' SHA-256, what was corrected and by which
+  permanent record, and tickets that exist. A key passes only when an entry matches its kind,
+  key and both bodies; an unnamed key, a key beyond the report's sample of 100 and an entry
+  that matches nothing all refuse. The report lists the keys let through (`named_corrections`)
+  and the release note lists each entry. The gate checks that the record names exactly what
+  changed, not that the new file is the right document: that is the record's claim (ct-faan
+  would prove it from the published rejection records). A vanished key, a successor that is
+  not a published key and a check that could not run (a column the rule reads is missing
+  from either release) refuse whatever the record says. The rule cannot tell whether an
+  alternate or recovery recorded on a row is truly the same document (ct-u9y4). So a key whose live file is now
   only an alternate of a row that shows another body passes the rule but is listed
   (`link_rule.demoted_keys`) and counted in the group `links.parquet | live file now an
   alternate`, which needs a recorded cause: a correct rendition join and a wrong one look the
@@ -64,8 +73,9 @@ putting them in the release would force a second model run.
   live row's saved body or a body one of the live row's own link keys names. An address may
   hold several editions, and after a wrong join is split it may reach any of the live
   document's own files. A key or address the candidate dropped, and a document it removed,
-  are reported as their own comparison groups. It cannot tell which file of a wrongly
-  joined live document an address named.
+  are reported as their own comparison groups. A correction for one names the single file
+  every row it reaches now shows. It cannot tell which file of a wrongly joined live document
+  an address named.
 
 ## Nightly publication (ct-ud0b)
 

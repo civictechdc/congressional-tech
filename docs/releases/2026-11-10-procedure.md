@@ -95,7 +95,9 @@ no catalog head moves, no commits in the main checkout.
 
 The nightly driver now keeps a candidate whose only changes since the build are cause records, the
 `release_causes` pin, tickets and docs (`only_cause_records` in `scripts/nightly_publish.py`). So after
-a gate stop: write and review the record, commit it with the pin, push, and run the nightly again; it
+a gate stop: write and review the record (a link the release corrects on purpose goes in its
+`corrections` list with both files, `docs/releases/README.md`, ct-4nax), commit it with the pin, push,
+and run the nightly again; it
 resumes the same candidate. Remove the pin in the commit after the pointer moves. No raw or catalog
 write may happen between the build and the resume: the publisher refuses a candidate whose daily heads
 moved.

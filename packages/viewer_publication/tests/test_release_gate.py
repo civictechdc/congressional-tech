@@ -186,17 +186,25 @@ def test_link_rule_refuses_missing_base_key_even_with_record(tmp_path):
 MOVED_LINKS = ('links.parquet', 'changed bytes, no key or value difference found', 'unexplained', 0)
 
 
-def test_link_rule_refuses_fused_documents_even_with_record(tmp_path):
+FUSED_GROUPS = [*((name, 'merged rows', 'previous rows now share one document', -6) for name in ('detail.parquet', 'list.parquet')),
+                MOVED_LINKS]
+
+
+def fused(tmp_path):
     """ct-4qld, a70ebc3d1466: seven PDFs become one row, and six keys open the seventh's file."""
     base, candidate = tmp_path / 'base', tmp_path / 'candidate'
     release_dir(base, list('ABCDEFG'), saved='ABCDEFG')
     release_dir(candidate, ['ABCDEFG'], saved='G')
+    return base, candidate
+
+
+def test_link_rule_refuses_fused_documents_even_with_record(tmp_path):
+    base, candidate = fused(tmp_path)
     named = ', '.join(K(letter).hex() for letter in 'ABCDEF')
     with pytest.raises(ValueError, match=f'link rule: 6 live link keys answer another file \\({named}\\)'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json')
     # A reviewed record for every group of the comparison does not override it.
-    causes = record_for(*ids((base, candidate)), tmp_path, groups=[
-        *((name, 'merged rows', 'previous rows now share one document', -6) for name in ('detail.parquet', 'list.parquet')), MOVED_LINKS])
+    causes = record_for(*ids((base, candidate)), tmp_path, groups=FUSED_GROUPS)
     with pytest.raises(ValueError) as refusal:
         require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
     report = json.loads((tmp_path / 'r.json').read_text())
@@ -280,8 +288,185 @@ def test_link_rule_refuses_a_repointed_address_even_with_record(tmp_path):
                                  'link rule: 1 live addresses answer another file (https://example.test/a)']
     assert report['link_rule']['changed'] == 0 and not report['link_rule']['ok']
     assert report['link_rule']['address_changed_answers'] == [dict(
-        key='https://example.test/a', live_row=0, live_file='A.pdf', live_body=(K('A') + bytes(24)).hex(),
-        candidate_rows=[1], candidate_files=['B.pdf'])]
+        key='https://example.test/a', live_row=0, live_file='A.pdf', live_body=body('A'),
+        candidate_rows=[1], candidate_files=['B.pdf'], candidate_bodies=[body('B')])]
+
+
+# ct-4nax (owner decision 2026-11-10, "Accept named corrections"): a changed answer passes only
+# where the reviewed record names its kind, key and both bodies. Records are written by hand
+# from the fixtures' letters, never copied from the comparison's output.
+body = lambda letter: (K(letter) + bytes(24)).hex()
+
+
+def correction(kind, key, live, now):
+    return dict(kind=kind, key=key, live_body=body(live), candidate_body=body(now),
+                decision=f'fixture: {live} was the wrong file; a permanent record rejects it', tickets=['ct-4nax'])
+
+
+FUSED_CORRECTIONS = [correction('link_key', K(letter).hex(), letter, 'G') for letter in 'ABCDEF']
+
+
+def corrected_gate(tmp_path, pair, groups, corrections, **override):
+    """The gate's report for `pair` under a record naming `groups` exactly and `corrections`."""
+    causes = record_for(*ids(pair), tmp_path, groups=groups, corrections=corrections, **override)
+    try:
+        require_release_gates(*pair, causes, report_path=tmp_path / 'r.json')
+    except ValueError:
+        pass
+    return json.loads((tmp_path / 'r.json').read_text()), causes
+
+
+def unmatched(kind, key, live, now):
+    return f'cause record: correction {kind} {key} from {body(live)} to {body(now)} matches no finding of the link rule'
+
+
+def test_named_corrections_let_exactly_the_named_changes_through(tmp_path):
+    report, causes = corrected_gate(tmp_path, fused(tmp_path), FUSED_GROUPS, FUSED_CORRECTIONS)
+    assert report['reasons'] == []
+    assert not report['link_rule']['ok']  # the comparison still reports what changed
+    assert report['named_corrections'] == dict(link_key=dict(waived=6, keys=[K(letter).hex() for letter in 'ABCDEF']),
+                                               lookup_key=dict(waived=0, keys=[]), address=dict(waived=0, keys=[]))
+    notes = render_notes(causes, tmp_path / 'base', tmp_path / 'candidate')
+    assert f'| link_key | `{K("A").hex()}` | `{body("A")[:12]}` | `{body("G")[:12]}` |' in notes
+
+
+@pytest.mark.parametrize('side', ['live_body', 'candidate_body'])
+def test_a_correction_with_one_wrong_body_refuses(tmp_path, side):
+    wrong = [dict(c, **{side: body('Z')}) if c['key'] == K('C').hex() else c for c in FUSED_CORRECTIONS]
+    report, _ = corrected_gate(tmp_path, fused(tmp_path), FUSED_GROUPS, wrong)
+    named = dict(live_body=('Z', 'G'), candidate_body=('C', 'Z'))[side]
+    assert report['reasons'] == [f'link rule: 1 live link keys answer another file ({K("C").hex()})',
+                                 unmatched('link_key', K('C').hex(), *named)]
+    assert report['named_corrections']['link_key']['waived'] == 5
+
+
+def test_an_unnamed_changed_key_beside_named_ones_refuses_and_is_named(tmp_path):
+    report, _ = corrected_gate(tmp_path, fused(tmp_path), FUSED_GROUPS, FUSED_CORRECTIONS[:-1])
+    assert report['reasons'] == [f'link rule: 1 live link keys answer another file ({K("F").hex()})']
+
+
+def test_a_correction_that_matches_no_finding_refuses_the_record(tmp_path):
+    padded = [*FUSED_CORRECTIONS, correction('link_key', K('Z').hex(), 'Z', 'G')]
+    report, _ = corrected_gate(tmp_path, fused(tmp_path), FUSED_GROUPS, padded)
+    assert report['reasons'] == [unmatched('link_key', K('Z').hex(), 'Z', 'G')]
+
+
+def test_a_record_for_another_candidate_waives_nothing(tmp_path):
+    report, _ = corrected_gate(tmp_path, fused(tmp_path), FUSED_GROUPS, FUSED_CORRECTIONS, candidate_release_id='f' * 64)
+    assert report['reasons'][0] == f'link rule: 6 live link keys answer another file ({", ".join(K(x).hex() for x in "ABCDEF")})'
+    assert report['reasons'][1].startswith('cause record: bound to candidate ffffffffffff')
+    assert report['named_corrections']['link_key'] == dict(waived=0, keys=[])
+
+
+def test_keys_beyond_the_reports_sample_cannot_be_named(tmp_path, monkeypatch):
+    from viewer_publication import release_comparison
+    monkeypatch.setattr(release_comparison.link_rule, '__defaults__', (5,))  # the report lists 5 of the 6 keys
+    report, _ = corrected_gate(tmp_path, fused(tmp_path), FUSED_GROUPS, FUSED_CORRECTIONS)
+    assert report['link_rule']['changed'] == 6 and len(report['link_rule']['changed_answers']) == 5
+    assert report['reasons'] == ['link rule: 1 live link keys answer another file',
+                                 "link rule: 1 live link keys that answer another file are beyond the report's sample, "
+                                 'so no correction can name them', unmatched('link_key', K('F').hex(), 'F', 'G')]
+
+
+REPOINTED_GROUPS = [(name, 'documents changed for a shared key', 'the key now answers other documents', 1)
+                    for name in ('sources.parquet', 'urls.parquet')]
+
+
+def repointed(tmp_path, documents='AB', base=('a', 'b'), candidate=('', 'ab')):
+    """Lookup key K(a) and address https://example.test/a of document A now reach document B (ct-wscb)."""
+    pair = tmp_path / 'base', tmp_path / 'candidate'
+    for directory, rows in zip(pair, (base, candidate)):
+        release_dir(directory, list(documents), **addresses(list(rows)))
+    return pair
+
+
+def test_named_lookup_key_and_address_corrections_pass(tmp_path):
+    report, _ = corrected_gate(tmp_path, repointed(tmp_path), REPOINTED_GROUPS, [
+        correction('lookup_key', K('a').hex(), 'A', 'B'), correction('address', 'https://example.test/a', 'A', 'B')])
+    assert report['reasons'] == []
+    assert report['named_corrections']['lookup_key'] == dict(waived=1, keys=[K('a').hex()])
+    assert report['named_corrections']['address'] == dict(waived=1, keys=['https://example.test/a'])
+
+
+def test_a_correction_of_one_kind_does_not_waive_another_kind_with_the_same_key(tmp_path):
+    report, _ = corrected_gate(tmp_path, repointed(tmp_path), REPOINTED_GROUPS, [
+        correction('link_key', K('a').hex(), 'A', 'B'), correction('address', 'https://example.test/a', 'A', 'B')])
+    assert report['reasons'] == [f'link rule: 1 live lookup keys answer another file ({K("a").hex()})',
+                                 unmatched('link_key', K('a').hex(), 'A', 'B')]
+
+
+def test_a_key_answering_for_two_live_files_needs_a_correction_for_each(tmp_path):
+    """K(a) and its address were on live rows A and B; the candidate sends both to C. Naming only A's change leaves B's."""
+    pair = repointed(tmp_path, 'ABC', base=('a', 'ab', 'c'), candidate=('', 'b', 'ac'))
+    report, _ = corrected_gate(tmp_path, pair, REPOINTED_GROUPS, [
+        correction('lookup_key', K('a').hex(), 'A', 'C'),
+        correction('address', 'https://example.test/a', 'A', 'C'), correction('address', 'https://example.test/a', 'B', 'C')])
+    assert [(a['live_body'], a['candidate_bodies']) for a in report['link_rule']['lookup_changed_answers']] == [
+        (body('A'), [body('C')]), (body('B'), [body('C')])]
+    assert [r for r in report['reasons'] if not r.startswith('comparison:')] == [
+        f'link rule: 1 live lookup keys answer another file ({K("a").hex()})']
+    assert report['named_corrections']['address'] == dict(waived=1, keys=['https://example.test/a'])
+
+
+def test_the_sample_lists_a_key_whole_so_its_unnamed_live_file_is_seen(tmp_path, monkeypatch):
+    """A sample of one key still lists both of K(a)'s live rows; cut by rows, B's change would hide behind A's."""
+    from viewer_publication import release_comparison
+    monkeypatch.setattr(release_comparison.link_rule, '__defaults__', (1,))
+    pair = repointed(tmp_path, 'ABC', base=('a', 'a', 'c'), candidate=('', '', 'ac'))
+    report, _ = corrected_gate(tmp_path, pair, REPOINTED_GROUPS, [correction('lookup_key', K('a').hex(), 'A', 'C')])
+    assert [a['live_body'] for a in report['link_rule']['lookup_changed_answers']] == [body('A'), body('B')]
+    assert f'link rule: 1 live lookup keys answer another file ({K("a").hex()})' in report['reasons']
+
+
+def test_a_key_that_reaches_two_files_cannot_be_named_by_one(tmp_path):
+    pair = repointed(tmp_path, 'ABC', base=('a', 'b', 'c'), candidate=('', 'ab', 'ac'))
+    report, _ = corrected_gate(tmp_path, pair, REPOINTED_GROUPS, [correction('lookup_key', K('a').hex(), 'A', 'B')])
+    assert report['link_rule']['lookup_changed_answers'][0]['candidate_bodies'] == [body('B'), body('C')]
+    assert f'link rule: 1 live lookup keys answer another file ({K("a").hex()})' in report['reasons']
+    assert unmatched('lookup_key', K('a').hex(), 'A', 'B') in report['reasons']
+
+
+@pytest.mark.parametrize('case', ['missing', 'dangling', 'unchecked'])
+def test_no_correction_touches_a_vanished_key_a_dangling_successor_or_an_unchecked_rule(tmp_path, case):
+    successor = dict(dangling=K('Z')).get(case)
+    retired = None if case == 'missing' else [dict(link_key=K('B'), successor_key=successor, last_release_id='b' * 64, last_filename='B.pdf')]
+    pair = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(pair[0], ['A', 'B'])
+    release_dir(pair[1], ['A'], retired=retired, saved=None if case == 'unchecked' else ...)
+    # The record names B's key as a correction from B's file to A's: no finding can match it.
+    report, _ = corrected_gate(tmp_path, pair, PAIR_GROUPS, [correction('link_key', K('B').hex(), 'B', 'A')])
+    expected = dict(missing='link rule: 1 base link keys vanish', dangling='link rule: 1 successors are not published keys',
+                    unchecked='link rule: not checked: a release has no detail.saved_body')[case]
+    assert report['reasons'][0].startswith(expected)
+    assert unmatched('link_key', K('B').hex(), 'B', 'A') in report['reasons']
+
+
+MISSING = object()
+
+
+@pytest.mark.parametrize('field, value, message', [
+    ('note', 'extra', 'exactly the fields'),
+    ('decision', MISSING, 'exactly the fields'),
+    ('kind', 'body_key', 'kind must be one of'),
+    ('key', 'ABCDEF0123456789', 'printed as the report prints it'),
+    ('key', K('A').hex()[:15], 'printed as the report prints it'),
+    ('live_body', body('A')[:63], 'live_body of link_key'),
+    ('candidate_body', 'G' * 64, 'candidate_body of link_key'),
+    ('decision', ' ', 'needs its decision'),
+    ('tickets', [], 'A correction needs a ticket'),
+    ('tickets', ['CT-4NAX'], 'tickets must be ticket ids'),
+    ('tickets', ['ct-4nax', 'ct-zzzz'], 'no file in .*: ct-zzzz'),
+])
+def test_load_causes_refuses_a_malformed_correction(tmp_path, field, value, message):
+    entry = {k: v for k, v in dict(FUSED_CORRECTIONS[0], **{field: value}).items() if v is not MISSING}
+    with pytest.raises(ValueError, match=message):
+        record_for('a' * 64, 'b' * 64, tmp_path, corrections=[entry])
+
+
+def test_load_causes_refuses_two_corrections_of_one_finding(tmp_path):
+    first = FUSED_CORRECTIONS[0]
+    with pytest.raises(ValueError, match='Duplicate correction'):
+        record_for('a' * 64, 'b' * 64, tmp_path, corrections=[first, dict(first, candidate_body=body('F'))])
 
 
 def test_dangling_successor_refuses(tmp_path):
