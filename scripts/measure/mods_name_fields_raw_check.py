@@ -323,8 +323,9 @@ def judge(before, after, raw_root, given, family):
         return opening(text) in given
 
     def member_name(name, members):
-        """A name made only of words of the print's own <congMember> names ("Boxer", "Al Franken")."""
-        found = name_words(name)
+        """A name whose words of three letters or more are all words of the print's own <congMember> names ("Boxer",
+        "Al Franken"; the members' words are kept from three letters, as two-letter words judge nothing)."""
+        found = [w for w in name_words(name) if len(w) > 2]
         return bool(found) and set(found) <= members
 
     def names_document_only(line):
