@@ -1180,7 +1180,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "p1",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1192,7 +1192,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "p2",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1204,7 +1204,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1216,7 +1216,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "xm",
+          "stem": "report",
           "is_real_file": true
         }
       ],
@@ -1301,7 +1301,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "m1",
+          "stem": "shared",
           "is_real_file": true
         },
         {
@@ -1313,7 +1313,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "m2",
+          "stem": "shared",
           "is_real_file": true
         },
         {
@@ -1325,7 +1325,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x1",
+          "stem": "shared",
           "is_real_file": true
         },
         {
@@ -1337,7 +1337,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x2",
+          "stem": "shared",
           "is_real_file": true
         }
       ],
@@ -1400,7 +1400,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "p1",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1412,7 +1412,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "p2",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1424,7 +1424,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x1",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1436,7 +1436,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x2",
+          "stem": "report",
           "is_real_file": true
         }
       ],
@@ -1490,7 +1490,7 @@
           "entry_index": 2,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "old",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1502,7 +1502,7 @@
           "entry_index": 4,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "new",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1514,7 +1514,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x",
+          "stem": "report",
           "is_real_file": true
         }
       ],
@@ -1568,7 +1568,7 @@
           "entry_index": 0,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "a",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1580,7 +1580,7 @@
           "entry_index": 1,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "b",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -1592,7 +1592,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x",
+          "stem": "report",
           "is_real_file": true
         }
       ],
@@ -1646,7 +1646,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "zip",
+          "stem": "CHRG-1",
           "is_real_file": true
         },
         {
@@ -1658,7 +1658,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "pdf",
+          "stem": "CHRG-1",
           "is_real_file": true
         },
         {
@@ -1670,7 +1670,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "html",
+          "stem": "CHRG-1",
           "is_real_file": true
         },
         {
@@ -1775,7 +1775,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "zip",
+          "stem": "CHRG-1",
           "is_real_file": true
         },
         {
@@ -1787,7 +1787,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "a",
+          "stem": "CHRG-1",
           "is_real_file": true
         },
         {
@@ -1799,7 +1799,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "b",
+          "stem": "CHRG-1-err",
           "is_real_file": true
         }
       ],
@@ -1850,7 +1850,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "a",
+          "stem": "statement",
           "is_real_file": true
         },
         {
@@ -1862,7 +1862,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "b",
+          "stem": "statement",
           "is_real_file": true
         }
       ],
@@ -1969,7 +1969,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x",
+          "stem": "a",
           "is_real_file": true
         }
       ],
@@ -2015,7 +2015,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "p",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -2027,7 +2027,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/files/",
-          "stem": "x",
+          "stem": "report",
           "is_real_file": true
         }
       ],
@@ -2286,7 +2286,7 @@
           "entry_index": null,
           "fingerprint": "A",
           "directory": "https://fixture.test/c/",
-          "stem": "c",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -2310,7 +2310,7 @@
           "entry_index": null,
           "fingerprint": "A",
           "directory": "https://fixture.test/e/",
-          "stem": "e",
+          "stem": "report",
           "is_real_file": true
         },
         {
@@ -2322,7 +2322,7 @@
           "entry_index": null,
           "fingerprint": null,
           "directory": "https://fixture.test/z/",
-          "stem": "z",
+          "stem": "report",
           "is_real_file": true
         }
       ],
@@ -2421,6 +2421,352 @@
           ]
         ]
       }
+    },
+    {
+      "id": "listing-page-beside-several-pdfs",
+      "files": [
+        {
+          "source_id": "listing",
+          "body_sha": "listing",
+          "format": "html",
+          "context_url": "https://fixture.test/listing",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/events/",
+          "stem": "default",
+          "is_real_file": true
+        },
+        {
+          "source_id": "june",
+          "body_sha": "june",
+          "format": "pdf",
+          "context_url": "https://fixture.test/june",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/meetings/20260604/",
+          "stem": "HHRG-119-BA00-20260604-SD002",
+          "is_real_file": true
+        },
+        {
+          "source_id": "july",
+          "body_sha": "july",
+          "format": "pdf",
+          "context_url": "https://fixture.test/july",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/meetings/20260714/",
+          "stem": "HHRG-119-BA00-20260714-SD002",
+          "is_real_file": true
+        },
+        {
+          "source_id": "september",
+          "body_sha": "september",
+          "format": "pdf",
+          "context_url": "https://fixture.test/september",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/uploadedfiles/",
+          "stem": "hhrg-119-ba00-20260902-sd002",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "listing"
+          ],
+          [
+            "june"
+          ],
+          [
+            "july"
+          ],
+          [
+            "september"
+          ]
+        ],
+        "rendition_groups": []
+      },
+      "publisher_links": [
+        {
+          "source_id": "june",
+          "page_body": "page-event-1",
+          "context": "https://fixture.test/events/event-1",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "listing",
+          "page_body": "page-event-1",
+          "context": "https://fixture.test/events/event-1",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "july",
+          "page_body": "page-event-2",
+          "context": "https://fixture.test/events/event-2",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "listing",
+          "page_body": "page-event-2",
+          "context": "https://fixture.test/events/event-2",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "september",
+          "page_body": "page-event-3",
+          "context": "https://fixture.test/events/event-3",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "listing",
+          "page_body": "page-event-3",
+          "context": "https://fixture.test/events/event-3",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        }
+      ]
+    },
+    {
+      "id": "press-release-beside-one-pdf",
+      "files": [
+        {
+          "source_id": "release",
+          "body_sha": "release",
+          "format": "html",
+          "context_url": "https://fixture.test/release",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/news/",
+          "stem": "documentsingle",
+          "is_real_file": true
+        },
+        {
+          "source_id": "testimony",
+          "body_sha": "testimony",
+          "format": "pdf",
+          "context_url": "https://fixture.test/testimony",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/uploadedfiles/",
+          "stem": "testimony_secretary_06.04.2026",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "release"
+          ],
+          [
+            "testimony"
+          ]
+        ],
+        "rendition_groups": []
+      },
+      "publisher_links": [
+        {
+          "source_id": "testimony",
+          "page_body": "page-event-1",
+          "context": "https://fixture.test/events/event-1",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "release",
+          "page_body": "page-event-1",
+          "context": "https://fixture.test/events/event-1",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        }
+      ]
+    },
+    {
+      "id": "presentation-beside-a-testimony",
+      "files": [
+        {
+          "source_id": "slides",
+          "body_sha": "slides",
+          "format": "docx",
+          "context_url": "https://fixture.test/slides",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/uploadedfiles/",
+          "stem": "Appropriations Material 3.12.24",
+          "is_real_file": true
+        },
+        {
+          "source_id": "testimony",
+          "body_sha": "testimony",
+          "format": "pdf",
+          "context_url": "https://fixture.test/testimony",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/uploadedfiles/",
+          "stem": "Testimony_Witness 03.20.24",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "slides"
+          ],
+          [
+            "testimony"
+          ]
+        ],
+        "rendition_groups": []
+      },
+      "publisher_links": [
+        {
+          "source_id": "testimony",
+          "page_body": "page-hearing",
+          "context": "https://fixture.test/events/hearing",
+          "group_path": "html[1]/body[1]/ul[1]/li[1]"
+        },
+        {
+          "source_id": "slides",
+          "page_body": "page-hearing",
+          "context": "https://fixture.test/events/hearing",
+          "group_path": "html[1]/body[1]/ul[1]/li[1]"
+        }
+      ]
+    },
+    {
+      "id": "html-and-pdf-of-one-name-join",
+      "files": [
+        {
+          "source_id": "text",
+          "body_sha": "text",
+          "format": "html",
+          "context_url": "https://fixture.test/text",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/117/bills/hr5376/generated/",
+          "stem": "BILLS-117hr5376eas",
+          "is_real_file": true
+        },
+        {
+          "source_id": "print",
+          "body_sha": "print",
+          "format": "pdf",
+          "context_url": "https://fixture.test/print",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/117/bills/hr5376/",
+          "stem": "BILLS-117hr5376eas",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "text",
+            "print"
+          ]
+        ]
+      },
+      "publisher_links": [
+        {
+          "source_id": "print",
+          "page_body": "page-floor",
+          "context": "https://fixture.test/events/floor",
+          "group_path": "html[1]/body[1]/table[1]/tr[1]"
+        },
+        {
+          "source_id": "text",
+          "page_body": "page-floor",
+          "context": "https://fixture.test/events/floor",
+          "group_path": "html[1]/body[1]/table[1]/tr[1]"
+        }
+      ]
+    },
+    {
+      "id": "same-bytes-copies-merge-beside-a-listing-page",
+      "files": [
+        {
+          "source_id": "listing",
+          "body_sha": "listing",
+          "format": "html",
+          "context_url": "https://fixture.test/listing",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/events/",
+          "stem": "default",
+          "is_real_file": true
+        },
+        {
+          "source_id": "repository",
+          "body_sha": "statement",
+          "format": "pdf",
+          "context_url": "https://fixture.test/repository",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/meetings/20260902/",
+          "stem": "HHRG-119-BA00-20260902-SD002",
+          "is_real_file": true
+        },
+        {
+          "source_id": "committee",
+          "body_sha": "statement",
+          "format": "pdf",
+          "context_url": "https://fixture.test/committee",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/uploadedfiles/",
+          "stem": "hhrg-119-ba00-20260902-sd002",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "listing"
+          ],
+          [
+            "repository",
+            "committee"
+          ]
+        ],
+        "rendition_groups": []
+      },
+      "publisher_links": [
+        {
+          "source_id": "repository",
+          "page_body": "page-event-1",
+          "context": "https://fixture.test/events/event-1",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "listing",
+          "page_body": "page-event-1",
+          "context": "https://fixture.test/events/event-1",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "committee",
+          "page_body": "page-event-2",
+          "context": "https://fixture.test/events/event-2",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        },
+        {
+          "source_id": "listing",
+          "page_body": "page-event-2",
+          "context": "https://fixture.test/events/event-2",
+          "group_path": "html[1]/body[1]/table[1]/tr[2]"
+        }
+      ]
     }
   ],
   "links": [

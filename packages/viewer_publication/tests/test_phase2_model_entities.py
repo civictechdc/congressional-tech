@@ -2105,6 +2105,57 @@ def test_a_page_never_groups_itself_through_its_own_navigation_links(tmp_path):
     assert len(rows) == 2
 
 
+def test_a_page_listed_beside_a_file_is_not_one_of_its_formats(tmp_path):
+    """ct-h3jb (candidate a70ebc3d1466): each Financial Services event page has a table row with a
+    "here" link to that hearing's PDF and a "Full Committee" link to one listing page. The listing
+    page became every PDF's HTML version, so seven PDFs were one document and six could not be
+    opened. Files a publisher lists together are one document only when they also share a name."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    site = 'https://democrats-financialservices.house.gov'
+    listing_url = f'{site}/events/default.aspx?CategoryID=117403'
+    words = 'The committee considers legislation and holds hearings on housing and insurance. ' * 30
+    listing = (f'<html><head><title>Committee Events</title></head><body><main><p>{words}</p></main></body></html>').encode()
+    dates = ['20260604', '20260714', '20260915']
+    pdf_urls = [f'https://docs.house.gov/meetings/BA/BA00/{d}/1193{i}/HHRG-119-BA00-{d}-SD002.pdf' for i, d in enumerate(dates)]
+    pdfs = [f'%PDF-1.7\nMinority views for the hearing of {d}\n%%EOF\n'.encode() for d in dates]
+    events = [(f'{site}/events/eventsingle.aspx?EventID=41533{i}',
+               (f'<html><head><title>Hearing of {d}</title></head><body><main><p>Hearing {d}. {words}</p><table><tr><td>'
+                f'<a href="{listing_url}">Full Committee</a> Read the minority views <a href="{pdf_url}">here</a>'
+                f'</td></tr></table></main></body></html>').encode())
+              for i, (d, pdf_url) in enumerate(zip(dates, pdf_urls))]
+    # One bill text in two formats under one name, listed in one row: these are one document.
+    bill = 'https://www.congress.gov/117/bills/hr5376'
+    bill_pdf, bill_html = b'%PDF-1.7\nH.R. 5376 engrossed amendment Senate\n%%EOF\n', (
+        f'<html><head><title>H.R. 5376</title></head><body><pre>{"An Act to provide for reconciliation. " * 40}</pre></body></html>').encode()
+    floor = (f'<html><head><title>Bills This Week</title></head><body><main><p>{words}</p><table><tr><td>'
+             f'<a href="{bill}/BILLS-117hr5376eas.pdf">PDF</a> <a href="{bill}/generated/BILLS-117hr5376eas.html">HTML</a>'
+             f'</td></tr></table></main></body></html>').encode()
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(url=listing_url, data=listing, format='html'),
+        *[dict(url=url, data=data, format='html') for url, data in events],
+        *[dict(url=url, data=data, format='pdf', compress=False) for url, data in zip(pdf_urls, pdfs)],
+        dict(url='https://docs.house.gov/floor/Default.aspx', data=floor, format='html'),
+        dict(url=f'{bill}/BILLS-117hr5376eas.pdf', data=bill_pdf, format='pdf', compress=False),
+        dict(url=f'{bill}/generated/BILLS-117hr5376eas.html', data=bill_html, format='html')])
+    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+        parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
+        catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    details = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
+    links = {row['link_key']: row['list_row'] for row in pq.read_table(tmp_path / 'release/links.parquet').to_pylist()}
+    key = lambda data: hashlib.sha256(data).digest()[:8]
+    pdf_rows = [links[key(data)] for data in pdfs]
+    assert len(set(pdf_rows)) == 3 and links[key(listing)] not in pdf_rows
+    for row, data, url in zip(pdf_rows, pdfs, pdf_urls):
+        saved = details[row]
+        # Each link key answers its own file, with no page as its HTML version or its title.
+        assert saved['saved_body'] == hashlib.sha256(data).digest() and saved['filename'] == url.rsplit('/', 1)[1]
+        assert not saved['alternates'] and saved['title'] != 'Committee Events'
+    both = details[links[key(bill_pdf)]]
+    assert links[key(bill_html)] == links[key(bill_pdf)]
+    assert both['format'] == 'pdf' and [a['format'] for a in both['alternates']] == ['html']
+
+
 def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
     """ct-vq2a, ct-kwse (nightly ef4c1632): the saved copy is the newest fetch, but package, filename date
     and Congress come from every copy of the bytes, and only a GovInfo-form filename names a package;
