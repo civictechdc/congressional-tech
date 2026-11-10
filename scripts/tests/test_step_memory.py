@@ -85,7 +85,8 @@ def test_each_statement_gets_the_samples_inside_its_window_on_the_shared_clock(t
     assert big['pool_peak_gb'] is None and (big['pool_before_gb'], big['pool_after_gb']) == (2.0, 2.0)
     assert (rows['q1']['peak_physical_gb'], rows['q1']['start_physical_gb'], rows['q1']['rise_gb']) == (3.3, 1.0, 2.3)
     assert rows['short']['peak_physical_gb'] == 1.2
-    assert result['run_peak'] == dict(peak_physical_gb=9.04, peak_rss_gb=7.0, during=[dict(kind='output', name='big.parquet')])
+    assert result['run_peak'] == dict(peak_physical_gb=9.04, peak_rss_gb=7.0,
+        during=[dict(kind='output', name='big.parquet', pool_before_gb=2.0)])
     assert result['expect_gb'] == 9.1
     assert result['long_statements'] == dict(count=3, median_start_physical_gb=2.0, median_pool_before_gb=1.0)
 
