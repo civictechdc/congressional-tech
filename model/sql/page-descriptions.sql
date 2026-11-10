@@ -39,7 +39,8 @@ WITH docs AS (
  LEFT JOIN templated t ON t.body_sha=x.body_sha AND t.path=x.path
  CROSS JOIN threshold h
 ), ranked AS (
- SELECT c.*,row_number() OVER(PARTITION BY c.doc_key ORDER BY coalesce(f.number,99),c.path) AS choice
+ -- The value is the last key: two descriptions at one pointer of one body no longer fall to input order (ct-n5ec).
+ SELECT c.*,row_number() OVER(PARTITION BY c.doc_key ORDER BY coalesce(f.number,99),c.path,c.value) AS choice
  FROM candidates c LEFT JOIN page_signals f ON f.kind='description_format' AND regexp_like(c.format,f.pattern)
  WHERE NOT c.rejected
 )
