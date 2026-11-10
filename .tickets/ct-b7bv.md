@@ -27,3 +27,7 @@ Each of the four items is done or declined with a reason.
 **2026-11-10T14:52:36Z**
 
 2026-11-10 14:52Z item 3 decided: the heavy-slot.lock directory lock is retired. Five docspec-rs survey answers named it as a cost (seconds-long jobs waited 6 to 30 minutes) and it duplicates the watchdog's admission by measured free memory. Heavy jobs run under scripts/archive_watchdog.py with an honest --expect-gb and --start-available-gb 6; the one remaining rule is nothing heavy while a real nightly_publish.py runs. The orchestrator's own queued builds still pass through the directory until they finish, then it is removed.
+
+**2026-11-10T15:47:00Z**
+
+2026-11-10: the PATH uv shim bit again: the engine's full check failed once in its Python stage because the pyenv shim picked uv 0.6.10 offline; it passed whole with /opt/homebrew/bin first on PATH (congress-1's engine builder). Any brief that runs an engine check needs that PATH line beside the pinned Rust toolchain.
