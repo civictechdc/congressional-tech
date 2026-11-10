@@ -1,6 +1,6 @@
 ---
 id: ct-8m0e
-status: open
+status: in_progress
 deps: []
 links: [ct-x00f]
 created: 2026-11-10T18:08:24Z
@@ -17,3 +17,9 @@ The engine's one line writes output schemas from the optimized plan (ct-x00f). S
 
 A contract test that the six columns are marked required in their published files (it passes on today's engine before and after; its job is to fail if the one line is pinned without this change). The three expressions respelled; for each, the spelling used and why, after reading why IS TRUE failed for the name-rule change; if IS TRUE does not plan on a lake-backed step, the spelling that both plans there and stays non-null under the optimized plan. Proof on lake-backed inputs: packages/viewer_publication/tests/test_archive_selective.py and test_archive_publish_job.py pass; one full model-only identity build on pinned inputs through bm_make_spec.py and bm_execute.py gives the control's release id AND all 18 evidence files equal on the pinned engine. Fixture outputs byte-identical before and after on the pinned engine. On the one-line binary (run through its command line on a retained job, no pin edit): the six flags stay required. Independent review; one full lane or all six shards.
 
+
+## Notes
+
+**2026-11-10T19:23:06Z**
+
+2026-11-10: built as far as the machine allows on claude/dx-required-flags (base aef93461): 6bdace69 the contract test (packages/viewer_publication/tests/test_required_flags.py), 65845050 the three edits, all IS TRUE (around the whole CASE for filename_date_eligible). On the pinned engine the contract test passes before and after; with IS NOT DISTINCT FROM true planted on hidden it fails on all three files; one fixture build is byte-identical before and after (38 of 38 Parquet, 14 of 14 release files, release id equal). Independently reviewed: no must-fix, ship from all three views. The reviewer re-derived from DataFusion 53.1's source that the logical-against-physical schema check (physical_planner.rs:916-977) applies at an aggregate's input, which includes DISTINCT and UNION and a later statement reading the flag through a non-materialized step, and that none of the three steps reads its flag that way; source_filename_readings reads the lake table directly, so the lake-backed run is the confirming one. Values agree for every true, false and NULL input. Owed when the machine is free: the two lake-backed test files; the wider fixture before-and-after; a retained lake-backed job run on the one-line binary; the identity build with the release id and the 18 evidence files equal, plus true and false counts per flag and whether any hidden=true row exists. Operational note from the review: the edit moves the model definition hashes, so a retained publication intent refuses to resume (archive_controller.py:117); merge only when no publication is half-way. The same holds for any model change, ct-07wr included.

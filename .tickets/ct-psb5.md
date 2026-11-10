@@ -2,7 +2,7 @@
 id: ct-psb5
 status: in_progress
 deps: []
-links: [ct-01kq]
+links: [ct-01kq, ct-752r]
 created: 2026-11-10T17:00:45Z
 type: bug
 priority: 1
@@ -23,3 +23,7 @@ The hang is reproduced on purpose (a test that delivers the signal at the vulner
 **2026-11-10T17:12:34Z**
 
 2026-11-10 correction and more evidence: the hung watchdog (PID 40836) has TWO defunct children, never reaped (the first note said none; pgrep does not list them): 40844, the owned-group leader, and 40849, a helper started in the same second (refactor/watchdog-hang/wh_children_40836.txt). With the native stack (module code, a bound-method call, a lock acquire) that places the block at subprocess.run's 'with Popen' exit calling wait() for a helper ps (scripts/measure/process_rss.py:18 or :34, both with timeout=5), blocked on that Popen's own wait lock (subprocess.py:2050 in CPython 3.12.13). What left the lock held is NOT proven. The only leak found so far by two readers is the check right after acquire(False) at subprocess.py:2032 (and :1983), a window of a few bytecodes, which an independent reviewer judged too small to explain one hang in a few hundred signals. Leads for the fix's builder: the watchdog under test sits in pytest's process group and was orphaned, so the signal that hung it may have been a group signal at an arbitrary moment, or a second signal during cleanup. Also: the existing test (scripts/tests/test_archive_watchdog.py:172-175) does not kill its watchdog when it fails, which is how this one survived. The coordinator checked that this process has no entry in the shared registry, so it delays nobody. Fix approved on its own branch claude/dx-watchdog-signal, test first, with a reviewer who reads the signal handling specifically; brief: refactor/briefs/watchdog-signal.md.
+
+**2026-11-10T19:00:28Z**
+
+2026-11-10: fix built on claude/dx-watchdog-signal (c30094a5 failing tests, 20a71bef the fix, 1ce8d360 an exact test of the bound) and independently reviewed by a reader of the signal handling in both interpreters: no must-fix, ship from all three views. Cause as proven: the hung process's native stack matches a reproduction in which the old handler raises while subprocess holds a child's wait lock, taken with acquire(False) outside a try (CPython 3.12 subprocess.py:1983 and :2032; 3.15 :2180 and :2336); it does not prove which site, how many signals, or the rate, which stays unexplained. The hung process was killed at 18:27:45Z. A second round is being made from the review: the stop reason names the signal also when a group signal kills the in-flight ps or vm_stat (today the report would say IndexError); the three signals tested, not only TERM; the wait between passes wakes promptly on a recorded signal (time.sleep resumes after a handler that returns, so the stop began up to an interval later than before and a report could be lost more often where the watchdog itself is killed 2 s after the TERM); timeouts on the two untimed helper calls; a bounded test teardown. Still open by design: a signal after watch() returns and before the report is written can lose the report; admission is unchanged. Follow-up for the backfill loop and one shared recorder: ct-752r.
