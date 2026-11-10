@@ -45,7 +45,7 @@ def test_existing_table_is_resolved_before_receipt_payload_admission(tmp_path):
     jobs=[]
     class MissingNative:
         remote=None
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             jobs.append(json.loads(path.read_text()))
             return dict(table_operations=[dict(kind='resolve',name='captures',exists=False)])
     with pytest.raises(ValueError,match='captures table does not exist'):
@@ -67,7 +67,7 @@ def test_lost_append_ack_retry_skips_unavailable_raw_and_later_appends_only_new_
     inventory=tmp_path/'inventory.json';inventory.write_text(json.dumps(one))
     class LostAppendAck:
         def __getattr__(self,name):return getattr(engine,name)
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             result=engine.run_job(path)
             if any(op['kind']=='append' for op in json.loads(path.read_text()).get('table_operations',[])):
                 raise TimeoutError('native commit completed; acknowledgment lost')

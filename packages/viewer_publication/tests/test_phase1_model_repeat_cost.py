@@ -165,7 +165,7 @@ class _Capture:
     def __getattr__(self, name):
         return getattr(self.engine, name)
 
-    def run_job(self, path):
+    def run_job(self, path, log=None):
         shutil.copy(path, self.path)
         raise _Submitted
 

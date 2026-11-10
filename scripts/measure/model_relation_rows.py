@@ -7,7 +7,8 @@ RUN holds the build's model-scratch/job.json, steps.jsonl and model-spec.json. S
 take their logged rows (views and queries are never scanned and are left out); lake tables the total-records
 of their pinned snapshot; Parquet inputs their footers; spicy-regs tables the manifest;
 JSON-lines inputs their non-blank lines, read from model-spec's source file when the
-build's private copy is gone. An input it cannot count stops the script.
+build's private copy is gone. An input it cannot count stops the script, and so does a step
+log whose last line was cut short (`TornMetricLine`): its build did not finish.
 """
 import gzip
 import json
@@ -15,6 +16,8 @@ import sys
 from pathlib import Path
 
 import pyarrow.parquet as pq
+
+from docspec_client import metric_events
 
 
 def lines(path):
@@ -47,7 +50,7 @@ def relation_rows(run):
         manifest = json.loads(Path(spec['spicy_regs']['path']).read_text())
         spicy = {name: table['rows'] for name, table in manifest['tables'].items()}
     rows = {item['name']: input_rows(item, sources, spicy) for item in job['inputs']}
-    for event in map(json.loads, (run/'steps.jsonl').read_text().splitlines()):
+    for event in metric_events(run/'steps.jsonl', prefix=''):
         if event['event'] == 'step' and event['storage'] not in ('view', 'query'):
             rows[event['name']] = event['rows']
     head = (run/'head.txt').read_text().splitlines() if (run/'head.txt').exists() else []

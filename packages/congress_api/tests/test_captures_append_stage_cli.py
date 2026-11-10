@@ -106,7 +106,7 @@ def test_accepted_stage_append_survives_lost_ack_then_skips_a_missing_artifact(t
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     class LostAck:
         def __getattr__(self,name):return getattr(engine,name)
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             result=engine.run_job(path)
             if any(op['kind']=='append' for op in json.loads(path.read_text()).get('table_operations',[])):
                 raise TimeoutError('append committed; lost acknowledgment')

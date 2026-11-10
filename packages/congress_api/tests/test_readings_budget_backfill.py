@@ -247,7 +247,7 @@ def test_unavailable_native_current_lookup_refuses_before_body_work(tmp_path):
     args=inputs(tmp_path/'source');jobs=[]
     class UnavailableNative:
         remote=None
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             jobs.append(json.loads(path.read_text()))
             raise OSError('native current-table lookup unavailable')
     args['engine']=UnavailableNative()
@@ -264,7 +264,7 @@ def test_current_native_pin_is_bound_without_exporting_or_parsing_the_table(tmp_
     pin=dict(metadata_location='file:///fixture/immutable.metadata.json',
         table_uuid='11111111-1111-4111-8111-111111111111',snapshot=5,schema_id=0)
     class Native:
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             job=json.loads(Path(path).read_text())
             assert next(x for x in job['inputs'] if x['name']=='existing')==dict(kind='native_table',name='existing',**pin)
             return dict(queries=[dict(name=q['name'],data=[dict(n=0)]) for q in job['queries']])

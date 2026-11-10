@@ -220,7 +220,7 @@ def test_default_standalone_backfill_refreshes_remote_inventory_once(tmp_path):
     payload=b'opaque-native-parser-input';client=R2([(KEY,payload)])
     class EmptyWorkNative:
         remote=None
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             job=json.loads(path.read_text())
             selected=next(i for i in job['inputs'] if i['name']=='unreadable')['files']
             assert len(selected)==1 and selected[0]['key']==KEY
@@ -241,7 +241,7 @@ def test_daily_r2_decision_store_accepts_complete_qualified_snapshot_without_lis
     names=['captures','readings','filename_readings']
     class MissingNative:
         remote=None
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             jobs.append(json.loads(path.read_text()))
             return dict(table_operations=[dict(name=n,kind='resolve',exists=False) for n in names])
     spec=dict(work=str(tmp_path/'daily'),decided_at='2026-10-28T12:00:00Z',

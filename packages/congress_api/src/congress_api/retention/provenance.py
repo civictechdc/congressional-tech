@@ -335,6 +335,10 @@ def parquet_output(root,name,sql,order):
 
 
 def run_job(root,engine,*,inputs,steps,outputs,queries=()):
+    """Run one engine job in `root`, leaving `job.json`, the engine's stderr in `engine.log`, and `result.json`.
+
+    `engine.log` is this job's own metric lines and error text. The model build submits its job itself
+    (`viewer_publication.archive_format`) and keeps no such log yet (ct-zlj6)."""
     from congress_api.lake.model_sql import check_relations
     check_relations(inputs,steps)
     root=Path(root)
@@ -342,7 +346,7 @@ def run_job(root,engine,*,inputs,steps,outputs,queries=()):
     path=root/'job.json'
     path.write_text(json.dumps(dict(scratch=str(root/'native'),inputs=inputs,steps=steps,
                                    outputs=outputs,queries=list(queries)),separators=(',',':')))
-    result=engine.run_job(path)
+    result=engine.run_job(path,log=root/'engine.log')
     (root/'result.json').write_text(json.dumps(result,separators=(',',':')))
     return {query['name']:query['data'] for query in result.get('queries',[])}
 

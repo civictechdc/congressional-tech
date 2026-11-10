@@ -49,7 +49,7 @@ def test_native_review_join_keeps_published_selected_values(tmp_path):
 def test_mismatched_publication_is_refused_without_engine_call(tmp_path):
     reviews,descriptor,identities=inputs(tmp_path);reviews.write_text('{}')
     class Engine:
-        def run_job(self,*args):raise AssertionError('bad pins reached engine')
+        def run_job(self,*args,log=None):raise AssertionError('bad pins reached engine')
     with pytest.raises(ValueError,match='pinned|pins'):
         stage_reviews(reviews,descriptor,identities,output=tmp_path/'stage',engine=Engine(),decided_at=STAMP)
     assert not (tmp_path/'stage').exists()

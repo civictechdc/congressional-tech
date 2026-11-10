@@ -141,7 +141,7 @@ def test_native_drift_refuses_before_public_acceptance(tmp_path, target, mutatio
         source_revision = 'fixture'
         binary_sha256 = 'a'*64
         calls = 0
-        def run_job(self, path):
+        def run_job(self, path, log=None):
             self.calls += 1
             if self.calls == mutation_call:
                 changed = source if target == 'source' else authority
@@ -181,7 +181,7 @@ def test_missing_qualification_refuses_before_native_read(tmp_path):
     class UnopenedEngine:
         source_revision = 'fixture'
         binary_sha256 = 'a'*64
-        def run_job(self, path):
+        def run_job(self, path, log=None):
             raise AssertionError('Unqualified source reached native execution')
     with pytest.raises(ValueError, match='qualification'):
         stage_captures([dict(key='receipts/f/undated/one.gz',path=str(source))],

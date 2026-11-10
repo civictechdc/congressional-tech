@@ -49,7 +49,7 @@ def test_display_only_local_manifest_refuses_before_scheduler_file_access(tmp_pa
 def test_hand_built_seed_metadata_refuses_before_any_scheduler_effect(tmp_path,selected,entrypoint):
     from congress_api.acquisition.capture_scheduler import _url_binding,plan_queue,run_capture,cutoff_report
     class Never:
-        def run_job(self,*_):raise AssertionError('Seed reached native scheduling')
+        def run_job(self,*_,log=None):raise AssertionError('Seed reached native scheduling')
         def put(self,*_):raise AssertionError('Seed wrote raw data')
         def hop(self,*_,**__):raise AssertionError('Seed fetched a URL')
     native=Never();work=tmp_path/'work'

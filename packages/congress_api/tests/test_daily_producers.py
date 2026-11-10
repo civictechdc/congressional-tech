@@ -27,7 +27,7 @@ def spec(root):
 
 class NeverNative:
     remote=None
-    def run_job(self,path):raise AssertionError('Native job before validation')
+    def run_job(self,path,log=None):raise AssertionError('Native job before validation')
 
 
 @pytest.mark.parametrize('budget',[None,True,False,0,-1,1.5,'10'])
@@ -61,7 +61,7 @@ def test_daily_preflights_all_heads_without_creating_a_missing_table(tmp_path):
     jobs=[]
     class MissingNative:
         remote=None
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             job=json.loads(path.read_text());jobs.append(job)
             return dict(table_operations=[dict(name=n,kind='resolve',exists=False) for n in TABLES])
     with pytest.raises(ValueError,match='table does not exist'):
@@ -77,7 +77,7 @@ def test_complete_receipt_identity_reads_the_final_native_pin_only(tmp_path):
     from congress_api.lake.daily import _complete_receipt_keys
     pin=dict(metadata_location='file:///fixed.metadata.json',table_uuid='a'*32,snapshot=7,schema_id=0)
     class Native:
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             job=json.loads(path.read_text())
             assert job['inputs']==[dict(name='current_captures',kind='native_table',**pin)]
             assert job['outputs']==[]
@@ -397,7 +397,7 @@ def test_native_daily_refuses_captures_committed_after_its_parser_work(tmp_path)
     manifest=json.loads((staged/'ingested-receipts.json').read_text())
     class ConcurrentNative:
         def __getattr__(self,name):return getattr(engine,name)
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             if path.parent.name=='final-heads':
                 tables.append_rows(staged/'captures.parquet',engine=engine,
                     work=tmp_path/'late-append',catalog_root=value['catalog_root'],

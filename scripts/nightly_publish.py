@@ -150,6 +150,56 @@ def keep_small_json(output, evidence):
             shutil.copy2(path, target)
 
 
+ENGINE_LOG_CUT = b'[nightly] the start of this log was not kept; engine-logs.txt in this folder says how much\n'
+
+
+def keep_engine_logs(output, evidence):
+    """A failed candidate's engine logs: newest first, EVIDENCE_MAX_BYTES in all, and never an error.
+
+    The newest log is the failed job's. The log the bound runs out in keeps its tail, where the error is,
+    under one marker line; older ones are not kept. `engine-logs.txt` counts what was not kept and names
+    each log that could not be read. Keeping evidence must not be able to fail a retirement.
+    """
+    try:
+        logs, notes, kept, lost, lost_bytes, remaining = [], [], 0, 0, 0, EVIDENCE_MAX_BYTES
+        for path in output.rglob('engine.log'):
+            try:
+                status = path.stat()
+                logs.append((status.st_mtime_ns, str(path), status.st_size, path))
+            except OSError as error:
+                lost += 1
+                notes.append(f'not kept: {path.relative_to(output)}: {type(error).__name__}: {error.strerror or error}')
+        for _, _, size, path in sorted(logs, reverse=True):
+            name = path.relative_to(output)
+            keep = size if size <= remaining else max(remaining - len(ENGINE_LOG_CUT), 0)
+            if size and not keep:  # The bound is spent: this log and every older one go unkept.
+                remaining, lost, lost_bytes = 0, lost + 1, lost_bytes + size
+                continue
+            try:
+                target = evidence / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if keep == size:
+                    shutil.copy2(path, target)
+                    remaining -= size
+                else:
+                    with path.open('rb') as source, target.open('wb') as cut:
+                        source.seek(size - keep)
+                        cut.write(ENGINE_LOG_CUT + source.read(keep))
+                    remaining, lost_bytes = 0, lost_bytes + size - keep
+                    notes.append(f'cut: {name}: the last {keep} of {size} bytes kept')
+                kept += 1
+            except OSError as error:
+                lost, lost_bytes = lost + 1, lost_bytes + size
+                notes.append(f'not kept: {name}: {type(error).__name__}: {error.strerror or error}')
+        if kept or lost:
+            evidence.mkdir(parents=True, exist_ok=True)
+            (evidence / 'engine-logs.txt').write_text('\n'.join([
+                f'[nightly] engine logs: {kept} kept, {lost} not kept; {lost_bytes} bytes not kept', *notes]) + '\n',
+                encoding='utf-8')
+    except Exception as error:  # Not only OSError: nothing here may stop the retirement that follows.
+        print(f'nightly: engine logs not kept: {error!r}', file=sys.stderr)
+
+
 def daily_summary(candidate):
     report = candidate / 'archive-daily/daily-summary.json'
     if not report.is_file():
@@ -208,7 +258,7 @@ def only_cause_records(worktree, old, new):
     return bool(names)
 
 
-def archive_candidate(candidate, evidence):
+def archive_candidate(candidate, evidence, *, failed=False):
     # Detach the active name before cleanup. A stopped cleanup leaves an archive
     # under this run, never a partially deleted candidate eligible for resume.
     retired = candidate.rename(evidence.with_name(evidence.name + '-retiring'))
@@ -232,6 +282,8 @@ def archive_candidate(candidate, evidence):
             target = evidence / path.relative_to(retired)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
+    if failed:
+        keep_engine_logs(retired, evidence)
     shutil.rmtree(retired)
 
 
@@ -355,7 +407,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
                     if reason:
                         admit_job('fresh-candidate', 'publish', mode='publish-fresh')
                         summary['fresh_reason'] = reason
-                        archive_candidate(candidate, evidence / 'previous-candidate')
+                        archive_candidate(candidate, evidence / 'previous-candidate', failed=True)
                 def publish_step(name, *, initial=False):
                     resuming = recoverable(candidate)
                     admit_job(name.replace(' ', '-'), 'publish')

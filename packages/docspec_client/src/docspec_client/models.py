@@ -1,5 +1,5 @@
 """Typed models and specifications for the DocSpec client."""
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 import json
 from pathlib import Path
 import re
@@ -116,8 +116,39 @@ PRE_ADMISSION_ERROR_CODES = frozenset({
 })
 
 
+METRIC_PREFIX = '[docspec-metric] '
+
+
+class TornMetricLine(ValueError):
+    """The log's last line is a metric line cut short: its writer was stopped mid-line."""
+
+
+def metric_events(log: str | Path, *, prefix: str = METRIC_PREFIX) -> Iterator[dict[str, Any]]:
+    """Yield the engine's step, retain, release, output and query events from a kept stderr log.
+
+    Other text is skipped. A last line with no newline is an event if it parses; if it does not,
+    every whole event has been yielded and ``TornMetricLine`` tells the caller the log was cut
+    short. ``prefix=''`` reads a ``DOCSPEC_STEP_LOG`` file: the same events, one per line, no prefix.
+    """
+    with open(log, encoding='utf-8', errors='replace') as lines:
+        for line in lines:
+            whole = line.endswith('\n')
+            if not line.startswith(prefix) and (whole or not prefix.startswith(line)):
+                continue
+            try:
+                yield json.loads(line[len(prefix):])
+            except ValueError as error:
+                if whole:
+                    raise
+                raise TornMetricLine(f'{log}: last line cut short after {len(line)} characters') from error
+
+
 class DocSpecFailure(RuntimeError, OSError):
-    """Native refusal or host failure, retaining its original diagnostic."""
+    """Native refusal or host failure, retaining its original diagnostic.
+
+    The message says what failed first: the engine's own ``code: message`` when it reported
+    one on stdout, then its stderr without the metric lines. ``stderr`` keeps the whole stream.
+    """
 
     def __init__(self, command: Any, result: Any) -> None:
         self.command = tuple(command)
@@ -129,8 +160,9 @@ class DocSpecFailure(RuntimeError, OSError):
             report = json.loads(self.stdout)
         except (TypeError, ValueError):
             report = None
-        if isinstance(report, dict) and report.get('status') == 'failed' and isinstance(report.get('completed'), dict):
-            self.completed = report['completed']
+        failed = report if isinstance(report, dict) and report.get('status') == 'failed' else {}
+        if isinstance(failed.get('completed'), dict):
+            self.completed = failed['completed']
         self.status_code: int | None = None
         self.code: str | None = None
         self.pre_admission: bool | None = None
@@ -143,7 +175,11 @@ class DocSpecFailure(RuntimeError, OSError):
                 self.code = payload['code']
             if isinstance(payload.get('pre_admission'), bool):
                 self.pre_admission = payload['pre_admission']
-        super().__init__(self.stderr.strip() or f'DocSpec exited {self.returncode}')
+        reported = failed['error'] if isinstance(failed.get('error'), dict) else {}
+        lead = ': '.join(value for value in (reported.get('code'), reported.get('message')) if isinstance(value, str) and value)
+        said = ''.join(line for line in self.stderr.splitlines(keepends=True)
+                       if not line.startswith(METRIC_PREFIX)).strip()
+        super().__init__('\n'.join(filter(None, (lead, said))) or f'DocSpec exited {self.returncode}')
 
     @property
     def status(self) -> int | None:

@@ -19,7 +19,7 @@ class RecordingEngine:
         self.binary_sha256=native.binary_sha256 if native else 'a'*64
         self.jobs=[]
 
-    def run_job(self,path):
+    def run_job(self,path,log=None):
         job=json.loads(Path(path).read_text())
         if not job.get('table_operations'):
             assert self.native is not None

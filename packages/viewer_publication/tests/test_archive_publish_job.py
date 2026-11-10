@@ -220,7 +220,7 @@ def test_daily_budget_refuses_before_raw_inventory_or_cache_effects(tmp_path):
         def get_paginator(self,*_):raise AssertionError('Raw LIST before budget admission')
     class NeverNative:
         remote=None
-        def run_job(self,*_):raise AssertionError('Native work before budget admission')
+        def run_job(self,*_,log=None):raise AssertionError('Native work before budget admission')
     daily=dict(work=str(tmp_path/'daily'),decided_at='2026-10-28T12:00:00Z',catalog_root=str(tmp_path/'catalog'),
         tables={name:dict(namespace=['archive'],name=name) for name in ['captures','readings','filename_readings']},
         receipt_inventory=[],body_inventory=str(tmp_path/'unopened.parquet'),local_root=str(tmp_path/'raw'),
@@ -628,7 +628,7 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
         def __exit__(self,*_):self.native.close()
         def __getattr__(self,name):return getattr(self.native,name)
         def create_file(self,request):return self.upload.create_file(request)
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             job=json.loads(Path(path).read_text())
             if not job.get('table_operations'):return self.native.run_job(path)
             # Simulate the external catalog with an owned native local catalog.

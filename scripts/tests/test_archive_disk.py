@@ -283,3 +283,32 @@ def test_backfill_keeps_prior_work_and_retires_only_new_native_spill(tmp_path, m
     assert held.read_bytes() == b'expensive prior backfill'
     assert (old / 'result.json').read_bytes() == b'completed expensive phase'
     assert not (old / 'native').exists()
+
+
+def test_a_previous_attempt_that_is_not_resumed_leaves_its_engine_logs_and_a_published_one_does_not(tmp_path, monkeypatch):
+    """Only the driver's retirement of a failed candidate keeps engine logs (ct-zlj6)."""
+    worktree = tmp_path / 'checkout'
+    config = worktree / '.github/archive-jobs.json'; config.parent.mkdir(parents=True)
+    config.write_text(json.dumps(dict(publish=dict(spec='unused.json'))))
+    nightly_work = tmp_path / '.cache/archive-release/nightly'
+    failed = nightly_work / 'candidate/producer-proof/captures/q/engine.log'
+    failed.parent.mkdir(parents=True)
+    failed.write_bytes(b'Error: query: source open failed\n')
+    (nightly_work / 'candidate/commit').write_text('b' * 40 + '\n')  # another commit and no completed model: not resumed
+
+    def step(name, command, **_):
+        if name == 'publish':  # the fresh attempt's job writes its own log, then the night succeeds
+            (nightly_work / 'candidate/job').mkdir()
+            (nightly_work / 'candidate/job/engine.log').write_bytes(b'[docspec-metric] {"event":"step"}\n')
+    monkeypatch.setitem(nightly.DISK, 'admit', lambda *args, **kwargs: dict(status='admitted'))
+    monkeypatch.setitem(nightly.DISK, 'job_admission', lambda *args, **kwargs: dict(status='admitted'))
+    monkeypatch.setattr(nightly, 'main_checkout', lambda _: tmp_path)
+    monkeypatch.setattr(nightly, 'git', lambda *args, **kwargs: 'a' * 40 if args[0] == 'rev-parse' else '')
+    monkeypatch.setattr(nightly, 'publish_env', lambda *_: {})
+    monkeypatch.setattr(nightly, 'setup_roots', lambda *_: dict(work=tmp_path))
+    monkeypatch.setattr(nightly, 'step', step)
+    assert nightly.run(worktree, False) == 0
+    assert not (nightly_work / 'candidate').exists()
+    kept = {path.relative_to(nightly_work).parts[1:]: path.read_bytes() for path in nightly_work.rglob('engine.log')}
+    assert kept == {('previous-candidate', 'producer-proof', 'captures', 'q', 'engine.log'): b'Error: query: source open failed\n'}
+
