@@ -2,8 +2,8 @@
 
 `require_release_gates` runs `release_comparison.compare` on the local candidate and the
 fetched base (live) release, writes the report, then refuses unless
-  - the link rule finds no missing key, no dangling key and no live key answering another
-    file (no record can override it), and
+  - the link rule finds no missing key, no dangling key and no live link key, lookup key or
+    address answering another file (no record can override it), and
   - every non-verified group has a cause record entry with the exact count, and every
     entry names an actual group, bound to these two release IDs.
 The cause record is committed after a build, so the flow is build -> refuse with report ->
@@ -403,6 +403,9 @@ def verdict(report, causes):
     if rule['changed']:
         # ct-4qld: every key is named, up to the report's sample; the report has each one's two files.
         reasons.append(f'link rule: {rule["changed"]} live link keys answer another file ({", ".join(rule["changed_keys"])})')
+    for label, what in (('lookup', 'lookup keys'), ('address', 'addresses')):  # ct-wscb
+        if rule[f'{label}_changed']:
+            reasons.append(f'link rule: {rule[f"{label}_changed"]} live {what} answer another file ({", ".join(rule[f"{label}_changed_keys"])})')
     actual = {group_id(g): g['count'] for g in report['failing']}
     entries = {e['id']: e for e in (causes or {}).get('groups', [])}
     if causes is not None:

@@ -698,3 +698,77 @@ def test_a_release_without_saved_bodies_says_the_answer_check_did_not_run(tmp_pa
     _, result = run(tmp_path, prev, live)
     assert result['link_rule']['changed'] == 0
     assert result['cannot_see'] == ['link rule: a release has no detail.saved_body, so no live key was checked for answering another file']
+
+
+# ct-wscb: a live lookup key or address must reach a row serving the live file or one of the
+# live document's own files. Each test row is (link-key letters, saved letter, alternates,
+# address letters): address "a" is URL `u/a`, lookup key `key('a')`; "a/m" is member m of `u/a`.
+def addressed(directory, rows, recoveries=()):
+    sources, urls = [], []
+    for index, row in enumerate(rows):
+        for address in (row[3] if len(row) > 3 else '').split():
+            url, _, member = address.partition('/')
+            sources.append({'list_row': index, 'url': f'u/{url}', 'member_path': member or None})
+            urls.append({'lookup_key': key(url), 'list_row': index})
+    return release(directory, documents=[r[0] for r in rows], schemas=LINK_SCHEMAS, sources=sources, urls=urls,
+                   detail=[{'saved_body': body(r[1]), 'alternates': [{'body': body(a)} for a in r[2]]} for r in rows],
+                   recoveries=[{'list_row': row, 'body': body(letter), 'recovered_url': f'https://example.test/{letter}', 'kind': 'recovered_document'}
+                               for row, letter in recoveries])
+
+
+def addresses_changed(tmp_path, prev, live):
+    _, result = run(tmp_path, addressed(tmp_path / 'prev', **prev), addressed(tmp_path / 'live', **live))
+    rule = result['link_rule']
+    assert rule['ok'] == (not rule['missing'] and not rule['changed'] and not rule['lookup_changed'] and not rule['address_changed'])
+    assert rule['lookup_changed'] == len(rule['lookup_changed_keys']) and rule['address_changed'] == len(rule['address_changed_keys'])
+    return [bytes.fromhex(k).decode()[0] for k in rule['lookup_changed_keys']], rule['address_changed_keys']
+
+
+def test_fused_documents_whose_addresses_answer_the_surviving_file_are_named(tmp_path):
+    """a70ebc3d1466: each of six fused PDFs keeps its addresses and lookup keys, on a row that serves another file."""
+    prev = dict(rows=[(letter, letter, '', letter.lower()) for letter in 'ABCDEFG'])
+    live = dict(rows=[('ABCDEFGH', 'G', 'H', 'a b c d e f g')])
+    assert addresses_changed(tmp_path, prev, live) == (list('abcdef'), [f'u/{a}' for a in 'abcdef'])
+    answer = json.loads((tmp_path / 'out.json').read_text())['link_rule']['address_changed_answers'][0]
+    assert answer == {'key': 'u/a', 'live_row': 0, 'live_file': 'A', 'live_body': body('A').hex(),
+                      'candidate_rows': [0], 'candidate_files': ['ABCDEFGH']}
+    # The comparison's own shared-key groups see nothing: the merge leaves every key on "the same" document.
+    result = json.loads((tmp_path / 'out.json').read_text())
+    assert not any(g['group'] == 'documents changed for a shared key' for f in result['files'].values() for g in f['groups'])
+
+
+@pytest.mark.parametrize('prev,live', [
+    # The same file, on a row that moved.
+    (dict(rows=[('A', 'A', '', 'a'), ('B', 'B', '', 'b')]), dict(rows=[('B', 'B', '', 'b'), ('A', 'A', '', 'a')])),
+    # The live file became an alternate of its row, or stays as its recovery.
+    (dict(rows=[('A', 'A', '', 'a')]), dict(rows=[('AP', 'P', 'A', 'a')])),
+    (dict(rows=[('U', 'X', '', 'a')], recoveries=[(0, 'X')]), dict(rows=[('UY', 'Y', '', 'a')], recoveries=[(0, 'X')])),
+    # An address holds two editions: a new one beside the live one.
+    (dict(rows=[('A', 'A', '', 'a')]), dict(rows=[('A', 'A', '', 'a'), ('N', 'N', '', 'a')])),
+    # A wrong join split: the address of B, which the live row showed as A, reaches B's own row.
+    (dict(rows=[('AB', 'A', '', 'a b')]), dict(rows=[('A', 'A', '', 'a'), ('B', 'B', '', 'b')])),
+    # An archive member keeps its file.
+    (dict(rows=[('A', 'A', '', 'z/m.htm'), ('B', 'B', '', 'z/n.htm')]), dict(rows=[('B', 'B', '', 'z/n.htm'), ('A', 'A', '', 'z/m.htm')])),
+    # A key or address the candidate no longer publishes is the comparison's group, not this rule's.
+    (dict(rows=[('A', 'A', '', 'a b')]), dict(rows=[('A', 'A', '', 'a')])),
+    # A document the candidate removed: its address now shows only a newer edition. The removed
+    # row and its retired key are reported elsewhere; the address is not a second finding.
+    (dict(rows=[('A', 'A', '', 'a')]), dict(rows=[('N', 'N', '', 'a')])),
+])
+def test_a_live_address_that_still_reaches_its_file_passes(tmp_path, prev, live):
+    assert addresses_changed(tmp_path, prev, live) == ([], [])
+
+
+@pytest.mark.parametrize('prev,live,lookups,addresses', [
+    # An address re-pointed at a document that holds none of the live document's files.
+    (dict(rows=[('A', 'A', '', 'a'), ('B', 'B', '', 'b')]), dict(rows=[('A', 'A', ''), ('B', 'B', '', 'a b')]), ['a'], ['u/a']),
+    # The live file is recorded, but on a row the address does not reach.
+    (dict(rows=[('A', 'A', '', 'a'), ('B', 'B', '', 'b')]), dict(rows=[('A', 'A', ''), ('B', 'B', '', 'a b'), ('C', 'C', 'A')]), ['a'], ['u/a']),
+    # After a split the address lands on a file that was never the live document's.
+    (dict(rows=[('AB', 'A', '', 'a b'), ('C', 'C', '', 'c')]), dict(rows=[('A', 'A', '', 'a'), ('B', 'B', ''), ('C', 'C', '', 'b c')]), ['b'], ['u/b']),
+    # Two archive members swapped between documents: each is named with its member.
+    (dict(rows=[('A', 'A', '', 'z/m.htm'), ('B', 'B', '', 'z/n.htm')]), dict(rows=[('A', 'A', '', 'z/n.htm'), ('B', 'B', '', 'z/m.htm')]),
+     [], ['u/z member m.htm', 'u/z member n.htm']),
+])
+def test_a_live_address_that_reaches_another_file_is_named(tmp_path, prev, live, lookups, addresses):
+    assert addresses_changed(tmp_path, prev, live) == (lookups, addresses)

@@ -757,8 +757,8 @@ def changed_answers(d: Diff):
     served no file, so its keys have nothing to compare.
     Two hash anti-joins over the key pairs `documents` already built: O(link keys + served bodies).
     Cannot see: whether an alternate or recovery recorded on a row is truly the same document
-    (cae8e4ea34ec603a, ct-u9y4: two testimonies, one row; the saved_body value group reports it),
-    or a lookup key or address that answers another file (the `documents changed` groups).
+    (cae8e4ea34ec603a, ct-u9y4: two testimonies, one row; the saved_body value group reports it).
+    Lookup keys and addresses are judged by `changed_addresses`, which reads the `served` table.
     Returns False, with the limit stated, when a release's detail has no saved_body.
     """
     if not all('saved_body' in d.columns(side, 'detail') for side in d.dirs):
@@ -778,15 +778,64 @@ def changed_answers(d: Diff):
     return True
 
 
+ADDRESSED = {'urls': ('lookup_key',), 'sources': ('url', 'member_path')}  # what a reader follows to a document
+
+
+def changed_addresses(d: Diff, table):
+    """Table `rule_changed_<table>`: live lookup keys (`urls`) or addresses (`sources`) that the
+    candidate answers with another file (ct-wscb). Run after `changed_answers`.
+
+    A lookup key hashes a URL and an address is a URL (and archive member), so neither names a
+    body the way a link key does, and the release carries no body beside them. The live row
+    does: its saved body, and the bodies its own link keys name (the files that document
+    published). So a key or address that both releases publish, on a live row with a saved body
+    whose document the candidate still holds (one of its link keys is still a candidate link),
+    must reach at least one candidate row that serves the live saved body or a body one of the
+    live row's link keys names. These pass: the same file on any row (an address can hold
+    several editions, each its own row); the live file kept as an alternate or recovery; and,
+    after a wrong join is split, the half that holds one of the live document's own files.
+    This refuses: an address whose every row serves none of them, as when documents are fused
+    and one file survives (a70ebc3d1466: 12 lookup keys and 12 addresses of six PDFs).
+    A key or address the candidate no longer publishes is the comparison's `keys gone` or
+    `URLs gone` group, not judged here. Nor is a live document the candidate removed: its keys
+    are retired by the ledger, its row is a `removed rows` group, and its address may rightly
+    show only a newer edition (the removal notice lists it, §8.2). `moved` cannot see these: it maps live rows through
+    the document pairs, so a merge leaves every key on "the same" document.
+    Hash anti-joins over the rows of both tables and `served`: O(rows + served bodies + link keys).
+    Cannot see: which of a wrongly joined live document's files an address named (the capture
+    table knows, the release does not), so after a split an address sent to the wrong half
+    passes; nor whether a recorded alternate or recovery is the same document.
+    Returns False, with the limit stated, when either release lacks the table's columns.
+    """
+    fields = ADDRESSED[table]
+    if not all(d.has(side, table) and {'list_row', *fields} <= set(d.columns(side, table)) for side in d.dirs):
+        d.cannot_see.append(f'link rule: a release has no {table} with {", ".join(fields)}, so none was checked for answering another file')
+        return False
+    on = ' AND '.join(f'l.{f} IS NOT DISTINCT FROM p.{f}' for f in fields)
+    d.table(f'reach_{table}', f"""SELECT DISTINCT {','.join('l.' + f for f in fields)},s.body,s.named
+      FROM candidate_{table} l JOIN served s ON s.r=l.list_row""")
+    d.table(f'rule_changed_{table}', f"""SELECT {','.join('p.' + f for f in fields)},p.list_row pr,lower(hex(b.saved_body)) live_body
+      FROM base_{table} p JOIN base_detail b ON b.file_row_number=p.list_row
+      WHERE b.saved_body IS NOT NULL AND p.{fields[0]} IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pairs x WHERE x.pr=p.list_row)
+      AND EXISTS (SELECT 1 FROM candidate_{table} l WHERE {on})
+      AND NOT EXISTS (SELECT 1 FROM reach_{table} l WHERE {on} AND l.body=b.saved_body)
+      AND NOT EXISTS (SELECT 1 FROM reach_{table} l JOIN base_links k ON hex(k.link_key)=l.named
+                      WHERE {on} AND k.list_row=p.list_row)""")
+    return True
+
+
 def link_rule(d: Diff, sample=100):
     """Gate 2's publish check: no key published by the base or its ledger may vanish, and no
-    live key may answer another file.
+    live link key, lookup key or address may answer another file.
 
     missing: (base links ∪ base retired_links ∪ every named history release's links) minus
     (candidate links ∪ candidate retired_links).
     dangling: a candidate successor_key that is not a candidate link.
     changed: a live key the candidate answers with another file (`changed_answers`); each is
-    listed with the live and candidate file. No record overrides any of the three.
+    listed with the live and candidate file.
+    lookup_changed, address_changed: the same for lookup keys and addresses (`changed_addresses`).
+    No record overrides any of the five.
     Cannot see whether a successor is the right document, or keys outside links (lookup keys,
     event IDs, witness keys, bill IDs), which value groups and release notes cover.
     """
@@ -806,7 +855,8 @@ def link_rule(d: Diff, sample=100):
     for name in ('missing', 'dangling'):
         out[name] = d.one(f'SELECT count(*) FROM rule_{name}')
         out[name + '_keys'] = [r[0] for r in d.rows(f'SELECT k FROM rule_{name} ORDER BY k LIMIT {int(sample)}')]
-    out['changed'], out['changed_keys'], out['changed_answers'] = 0, [], []
+    for label in ('', 'lookup_', 'address_'):
+        out[label + 'changed'], out[label + 'changed_keys'], out[label + 'changed_answers'] = 0, [], []
     if changed_answers(d):
         out['changed'] = d.one('SELECT count(*) FROM rule_changed')
         name = lambda side: f'{side}_list' if 'filename' in d.columns(side, 'list') else '(SELECT NULL filename,NULL file_row_number)'
@@ -816,7 +866,22 @@ def link_rule(d: Diff, sample=100):
           LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=c.lr
           ORDER BY 1 LIMIT {int(sample)}""")]
         out['changed_keys'] = [a['key'] for a in out['changed_answers']]
-    out['ok'] = not out['missing'] and not out['dangling'] and not out['changed']
+        for table, label in (('urls', 'lookup'), ('sources', 'address')):
+            if not changed_addresses(d, table):
+                continue
+            # One name per key or address: the hex lookup key, or the URL with its archive member.
+            shown = ('lower(hex(c.lookup_key))' if table == 'urls' else
+                     "c.url||CASE WHEN c.member_path IS NULL THEN '' ELSE ' member '||c.member_path END")
+            on = ' AND '.join(f'l.{f} IS NOT DISTINCT FROM c.{f}' for f in ADDRESSED[table])
+            out[f'{label}_changed'] = d.one(f'SELECT count(DISTINCT {shown}) FROM rule_changed_{table} c')
+            fields = ('key', 'live_row', 'live_file', 'live_body', 'candidate_rows', 'candidate_files')
+            out[f'{label}_changed_answers'] = [dict(zip(fields, r)) for r in d.rows(f"""SELECT {shown},c.pr,any_value(pl.filename),c.live_body,
+                list_sort(list_distinct(list(l.list_row))),list_sort(list_distinct(list(ll.filename)))
+              FROM rule_changed_{table} c JOIN candidate_{table} l ON {on}
+              LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=l.list_row
+              GROUP BY 1,2,4 ORDER BY 1,2 LIMIT {int(sample)}""")]
+            out[f'{label}_changed_keys'] = sorted({a['key'] for a in out[f'{label}_changed_answers']})
+    out['ok'] = not any(out[name] for name in ('missing', 'dangling', 'changed', 'lookup_changed', 'address_changed'))
     return out
 
 
@@ -860,7 +925,8 @@ def main(argv=None):
         print(f'cannot see: {limit}', file=sys.stderr)
     rule = result['link_rule']
     if not rule['ok']:
-        print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling, {rule['changed']} answering another file", file=sys.stderr)
+        print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling; answering another file: {rule['changed']} link keys, "
+              f"{rule['lookup_changed']} lookup keys, {rule['address_changed']} addresses", file=sys.stderr)
     return 0 if result['ok'] else 1
 
 

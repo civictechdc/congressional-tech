@@ -212,7 +212,36 @@ def test_link_rule_passes_documents_that_keep_their_files(tmp_path):
         *((name, 'split rows', 'previous row had no member source', 1) for name in ('detail.parquet', 'list.parquet')), MOVED_LINKS])
     report = require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
     assert report['link_rule'] == dict(missing=0, missing_keys=[], dangling=0, dangling_keys=[], changed=0, changed_keys=[],
-                                       changed_answers=[], ok=True)
+                                       changed_answers=[], lookup_changed=0, lookup_changed_keys=[], lookup_changed_answers=[],
+                                       address_changed=0, address_changed_keys=[], address_changed_answers=[], ok=True)
+
+
+def addresses(rows):
+    """sources and urls tables: row i is reached by each letter of rows[i], as URL `https://example.test/<letter>` and lookup key K(letter)."""
+    pairs = [(i, letter) for i, letters in enumerate(rows) for letter in letters]
+    return dict(urls=pa.table({'lookup_key': pa.array([K(letter) for _, letter in pairs], pa.binary(8)),
+                               'list_row': pa.array([i for i, _ in pairs], pa.int32())}),
+                sources=pa.table({'list_row': pa.array([i for i, _ in pairs], pa.int32()),
+                                  'url': pa.array([f'https://example.test/{letter}' for _, letter in pairs], pa.string()),
+                                  'member_path': pa.array([None] * len(pairs), pa.string())}))
+
+
+def test_link_rule_refuses_a_repointed_address_even_with_record(tmp_path):
+    """ct-wscb: every link key still opens its own file; one address and its lookup key now reach another document."""
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, ['A', 'B'], saved='AB', **addresses(['a', 'b']))
+    release_dir(candidate, ['A', 'B'], saved='AB', **addresses(['', 'ab']))
+    causes = record_for(*ids((base, candidate)), tmp_path, groups=[
+        (name, 'documents changed for a shared key', 'the key now answers other documents', 1) for name in ('sources.parquet', 'urls.parquet')])
+    with pytest.raises(ValueError):
+        require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['reasons'] == [f'link rule: 1 live lookup keys answer another file ({K("a").hex()})',
+                                 'link rule: 1 live addresses answer another file (https://example.test/a)']
+    assert report['link_rule']['changed'] == 0 and not report['link_rule']['ok']
+    assert report['link_rule']['address_changed_answers'] == [dict(
+        key='https://example.test/a', live_row=0, live_file='A.pdf', live_body=(K('A') + bytes(24)).hex(),
+        candidate_rows=[1], candidate_files=['B.pdf'])]
 
 
 def test_dangling_successor_refuses(tmp_path):

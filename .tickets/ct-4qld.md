@@ -2,7 +2,7 @@
 id: ct-4qld
 status: in_progress
 deps: []
-links: []
+links: [ct-wscb]
 created: 2026-11-10T03:26:29Z
 type: bug
 priority: 1

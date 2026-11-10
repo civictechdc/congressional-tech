@@ -52,7 +52,15 @@ putting them in the release would force a second model run.
   or reach its own file when a wrong join is split. Anything else refuses the publish and
   names each key with its live and candidate file; like a vanished key, no cause record
   overrides it. It cannot tell whether an alternate or recovery recorded on a row is truly
-  the same document (ct-u9y4), and it does not judge lookup keys or addresses.
+  the same document (ct-u9y4).
+- **Lookups and addresses answer the same file (ct-wscb).** The same holds for every lookup
+  key (`urls.parquet`) and address (`sources.parquet`) of a live document the candidate
+  still holds. Neither names a body, so the test is: at least one row it reaches serves the
+  live row's saved body or a body one of the live row's own link keys names. An address may
+  hold several editions, and after a wrong join is split it may reach any of the live
+  document's own files. A key or address the candidate dropped, and a document it removed,
+  are reported as their own comparison groups. It cannot tell which file of a wrongly
+  joined live document an address named.
 
 ## Nightly publication (ct-ud0b)
 
