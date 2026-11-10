@@ -23,3 +23,7 @@ Each of the four items is done or declined with a reason.
 **2026-11-10T14:26:31Z**
 
 2026-11-10 14:27Z: pruned seven builder worktrees whose work the second stack carries (ct-document-roles, ct-recovery-identity, ct-name-rule, ct-m878-fold, ct-9j3z-gate-facts, ct-name-clash-apply, ct-u9y4-records); their branches are kept until the stack is on main. Left: wt/ct-next-release (first stack; a model build is running from it), wt/ct-next-release-2 (second stack), wt/ct-chc4-html-reader (body-text driver), wt/ct-thread1-unattended (Colima).
+
+**2026-11-10T14:52:36Z**
+
+2026-11-10 14:52Z item 3 decided: the heavy-slot.lock directory lock is retired. Five docspec-rs survey answers named it as a cost (seconds-long jobs waited 6 to 30 minutes) and it duplicates the watchdog's admission by measured free memory. Heavy jobs run under scripts/archive_watchdog.py with an honest --expect-gb and --start-available-gb 6; the one remaining rule is nothing heavy while a real nightly_publish.py runs. The orchestrator's own queued builds still pass through the directory until they finish, then it is removed.
