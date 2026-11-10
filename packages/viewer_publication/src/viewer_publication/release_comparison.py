@@ -214,7 +214,9 @@ def links(d: Diff):
 
 
 def documents(d: Diff):
-    d.table('pairs', 'SELECT DISTINCT p.list_row pr,l.list_row lr FROM base_links p JOIN candidate_links l USING(link_key)')
+    # One join of the two link tables serves the document pairs and the link rule's answer check.
+    d.table('key_pairs', 'SELECT p.link_key,p.list_row pr,l.list_row lr FROM base_links p JOIN candidate_links l USING(link_key)')
+    d.table('pairs', 'SELECT DISTINCT pr,lr FROM key_pairs')
     d.table('pn', 'SELECT pr,count(*) n FROM pairs GROUP BY 1')
     d.table('ln', 'SELECT lr,count(*) n FROM pairs GROUP BY 1')
     d.table('member_rows', 'SELECT DISTINCT list_row FROM base_sources WHERE member_path IS NOT NULL')
@@ -741,12 +743,50 @@ def write_removed_keys(d: Diff, path: Path):
     return len(rows)
 
 
+def changed_answers(d: Diff):
+    """Table `rule_changed`: live link keys that the candidate answers with another file (ct-4qld).
+
+    A key the live release and the candidate both publish must reach a candidate row that serves
+    either the live file (the live row's saved body) or the file the key names (a body whose
+    SHA-256 begins with the key, data model §8.2). A row serves its saved body, its alternates and
+    its recoveries. So these pass: the same saved file; the live file kept on the row as an
+    alternate or a recovery while another body became the saved one; and a key that reaches its
+    own file after a wrong join was split. This refuses: a key whose row serves neither, as when
+    several documents are fused and only one file survives (a70ebc3d1466: six PDFs, one row).
+    A retired key is the ledger's business and is not judged here. A live row with no saved body
+    served no file, so its keys have nothing to compare.
+    Two hash anti-joins over the key pairs `documents` already built: O(link keys + served bodies).
+    Cannot see: whether an alternate or recovery recorded on a row is truly the same document
+    (cae8e4ea34ec603a, ct-u9y4: two testimonies, one row; the saved_body value group reports it),
+    or a lookup key or address that answers another file (the `documents changed` groups).
+    Returns False, with the limit stated, when a release's detail has no saved_body.
+    """
+    if not all('saved_body' in d.columns(side, 'detail') for side in d.dirs):
+        d.cannot_see.append('link rule: a release has no detail.saved_body, so no live key was checked for answering another file')
+        return False
+    served = ['SELECT file_row_number r,saved_body body FROM candidate_detail']
+    if 'alternates' in d.columns('candidate', 'detail'):
+        served.append('SELECT file_row_number,unnest(alternates).body FROM candidate_detail')
+    if d.has('candidate', 'recoveries') and {'list_row', 'body'} <= set(d.columns('candidate', 'recoveries')):
+        served.append('SELECT list_row,body FROM candidate_recoveries')
+    d.table('served', f"SELECT DISTINCT r,body,left(hex(body),16) named FROM ({' UNION ALL '.join(served)}) WHERE body IS NOT NULL")
+    d.table('rule_changed', """SELECT lower(hex(k.link_key)) k,k.pr,k.lr,lower(hex(p.saved_body)) live_body
+      FROM key_pairs k JOIN base_detail p ON p.file_row_number=k.pr
+      WHERE p.saved_body IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM served s WHERE s.r=k.lr AND s.body=p.saved_body)
+      AND NOT EXISTS (SELECT 1 FROM served s WHERE s.r=k.lr AND s.named=hex(k.link_key))""")
+    return True
+
+
 def link_rule(d: Diff, sample=100):
-    """Gate 2's publish check: no key published by the base or its ledger may vanish.
+    """Gate 2's publish check: no key published by the base or its ledger may vanish, and no
+    live key may answer another file.
 
     missing: (base links ∪ base retired_links ∪ every named history release's links) minus
     (candidate links ∪ candidate retired_links).
-    dangling: a candidate successor_key that is not a candidate link. No record overrides either.
+    dangling: a candidate successor_key that is not a candidate link.
+    changed: a live key the candidate answers with another file (`changed_answers`); each is
+    listed with the live and candidate file. No record overrides any of the three.
     Cannot see whether a successor is the right document, or keys outside links (lookup keys,
     event IDs, witness keys, bill IDs), which value groups and release notes cover.
     """
@@ -766,7 +806,17 @@ def link_rule(d: Diff, sample=100):
     for name in ('missing', 'dangling'):
         out[name] = d.one(f'SELECT count(*) FROM rule_{name}')
         out[name + '_keys'] = [r[0] for r in d.rows(f'SELECT k FROM rule_{name} ORDER BY k LIMIT {int(sample)}')]
-    out['ok'] = not out['missing'] and not out['dangling']
+    out['changed'], out['changed_keys'], out['changed_answers'] = 0, [], []
+    if changed_answers(d):
+        out['changed'] = d.one('SELECT count(*) FROM rule_changed')
+        name = lambda side: f'{side}_list' if 'filename' in d.columns(side, 'list') else '(SELECT NULL filename,NULL file_row_number)'
+        fields = ('key', 'live_row', 'live_file', 'live_body', 'candidate_row', 'candidate_file', 'candidate_body')
+        out['changed_answers'] = [dict(zip(fields, r)) for r in d.rows(f"""SELECT c.k,c.pr,pl.filename,c.live_body,c.lr,ll.filename,lower(hex(ld.saved_body))
+          FROM rule_changed c JOIN candidate_detail ld ON ld.file_row_number=c.lr
+          LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=c.lr
+          ORDER BY 1 LIMIT {int(sample)}""")]
+        out['changed_keys'] = [a['key'] for a in out['changed_answers']]
+    out['ok'] = not out['missing'] and not out['dangling'] and not out['changed']
     return out
 
 
@@ -810,7 +860,7 @@ def main(argv=None):
         print(f'cannot see: {limit}', file=sys.stderr)
     rule = result['link_rule']
     if not rule['ok']:
-        print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling", file=sys.stderr)
+        print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling, {rule['changed']} answering another file", file=sys.stderr)
     return 0 if result['ok'] else 1
 
 

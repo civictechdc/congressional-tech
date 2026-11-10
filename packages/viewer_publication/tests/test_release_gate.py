@@ -17,12 +17,18 @@ K = lambda letter: (letter * 8).encode()
 SCOPE = {'version': 1, 'entries': []}
 
 
-def release_dir(root, documents, retired=None, *, scope=SCOPE, **extra_tables):
-    """A real, internally consistent release: documents are rows of link-key letters."""
+def release_dir(root, documents, retired=None, *, scope=SCOPE, saved=None, **extra_tables):
+    """A real, internally consistent release: documents are rows of link-key letters.
+
+    `saved` names each row's saved file by the letter of its body key (a link key is the first
+    8 bytes of its body's SHA-256); without it the release has no saved_body column."""
     root.mkdir(parents=True)
+    detail = {'link_key': pa.array([K(keys[0]) for keys in documents], pa.binary(8))}
+    if saved is not None:
+        detail['saved_body'] = pa.array([K(letter) + bytes(24) for letter in saved], pa.binary(32))
     tables = {
         'list': pa.table({'filename': [f'{keys}.pdf' for keys in documents]}),
-        'detail': pa.table({'link_key': pa.array([K(keys[0]) for keys in documents], pa.binary(8))}),
+        'detail': pa.table(detail),
         'links': pa.table({'link_key': pa.array([K(k) for keys in documents for k in keys], pa.binary(8)),
                            'list_row': pa.array([i for i, keys in enumerate(documents) for _ in keys], pa.int32())}),
         'urls': pa.table({'lookup_key': pa.array([], pa.binary(8)), 'list_row': pa.array([], pa.int32())}),
@@ -172,6 +178,41 @@ def test_link_rule_refuses_missing_base_key_even_with_record(tmp_path):
     causes = record_for(*ids((base, candidate)), tmp_path, groups=groups)
     with pytest.raises(ValueError, match='link rule: 1 base link keys vanish'):
         require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
+
+
+# The same keys on other rows: the links file's bytes change and no key or value does.
+MOVED_LINKS = ('links.parquet', 'changed bytes, no key or value difference found', 'unexplained', 0)
+
+
+def test_link_rule_refuses_fused_documents_even_with_record(tmp_path):
+    """ct-4qld, a70ebc3d1466: seven PDFs become one row, and six keys open the seventh's file."""
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, list('ABCDEFG'), saved='ABCDEFG')
+    release_dir(candidate, ['ABCDEFG'], saved='G')
+    named = ', '.join(K(letter).hex() for letter in 'ABCDEF')
+    with pytest.raises(ValueError, match=f'link rule: 6 live link keys answer another file \\({named}\\)'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json')
+    # A reviewed record for every group of the comparison does not override it.
+    causes = record_for(*ids((base, candidate)), tmp_path, groups=[
+        *((name, 'merged rows', 'previous rows now share one document', -6) for name in ('detail.parquet', 'list.parquet')), MOVED_LINKS])
+    with pytest.raises(ValueError) as refusal:
+        require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['reasons'] == [f'link rule: 6 live link keys answer another file ({named})']
+    assert report['reasons'][0] in str(refusal.value)
+    assert [(a['live_file'], a['candidate_file']) for a in report['link_rule']['changed_answers']] == [
+        (f'{letter}.pdf', 'ABCDEFG.pdf') for letter in 'ABCDEF']
+
+
+def test_link_rule_passes_documents_that_keep_their_files(tmp_path):
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, ['AB', 'C'], saved='AC')
+    release_dir(candidate, ['C', 'A', 'B'], saved='CAB')  # B, wrongly joined to A, reaches its own file
+    causes = record_for(*ids((base, candidate)), tmp_path, groups=[
+        *((name, 'split rows', 'previous row had no member source', 1) for name in ('detail.parquet', 'list.parquet')), MOVED_LINKS])
+    report = require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
+    assert report['link_rule'] == dict(missing=0, missing_keys=[], dangling=0, dangling_keys=[], changed=0, changed_keys=[],
+                                       changed_answers=[], ok=True)
 
 
 def test_dangling_successor_refuses(tmp_path):

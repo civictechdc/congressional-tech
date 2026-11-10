@@ -44,6 +44,15 @@ putting them in the release would force a second model run.
   different text (66 of the old bodies have none) and 1 has the same text but is a PDF the
   model does not fingerprint. 61 are ZIP-member keys lost to the D1 archive-member defect,
   to be rechecked on the rebuilt candidate.
+- **Links answer the same file (ct-4qld).** A link key that the live release and the
+  candidate both publish must reach a row that serves either the live file (the live row's
+  saved body) or the file the key names (a body whose SHA-256 begins with the key). A row
+  serves its saved body, its alternates and its recoveries. So a key may follow its file to
+  another row, keep its file as an alternate or recovery while another body is shown first,
+  or reach its own file when a wrong join is split. Anything else refuses the publish and
+  names each key with its live and candidate file; like a vanished key, no cause record
+  overrides it. It cannot tell whether an alternate or recovery recorded on a row is truly
+  the same document (ct-u9y4), and it does not judge lookup keys or addresses.
 
 ## Nightly publication (ct-ud0b)
 

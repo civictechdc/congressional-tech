@@ -623,3 +623,78 @@ def test_a_column_with_no_partner_stops_the_cache_refresh_proof(tmp_path):
     result = refresh(tmp_path, schemas=wider)
     assert counts(result, 'videos') == {('changed record_sha', PLAIN): 4, ('changed details_checked_at', PLAIN): 4}
     assert 'videos.transcript: new in the candidate; no base values to compare' in result['cannot_see']
+
+
+# ct-4qld: a live link key must reach a row that serves the live file or the file the key names.
+LINK_SCHEMAS = dict(SCHEMAS, detail=[('saved_body', B), ('alternates', pa.list_(pa.struct([('body', B)])))],
+                    recoveries=[('list_row', I), ('body', B), ('recovered_url', S), ('kind', S)])
+
+
+def body(letter):
+    """The file whose body key is `key(letter)`: a link key is the first 8 bytes of its body's SHA-256."""
+    return key(letter) + b'\0' * 24
+
+
+def served(directory, rows, recoveries=()):
+    """Each row is (link-key letters, saved body letter, alternate letters); a recovery is (row, body letter)."""
+    return release(directory, documents=[r[0] for r in rows], schemas=LINK_SCHEMAS,
+                   detail=[{'saved_body': body(r[1]), 'alternates': [{'body': body(a)} for a in (r[2] if len(r) > 2 else '')]} for r in rows],
+                   recoveries=[{'list_row': row, 'body': body(letter), 'recovered_url': f'https://example.test/{letter}', 'kind': 'recovered_document'}
+                               for row, letter in recoveries])
+
+
+def changed(tmp_path, prev, live):
+    _, result = run(tmp_path, prev, live)
+    assert result['link_rule']['changed'] == len(result['link_rule']['changed_keys']) == len(result['link_rule']['changed_answers'])
+    assert result['link_rule']['ok'] == (not result['link_rule']['changed']) and result['link_rule']['missing'] == 0
+    return [bytes.fromhex(k).decode()[0] for k in result['link_rule']['changed_keys']]
+
+
+def test_fused_documents_whose_keys_answer_the_surviving_file_are_named(tmp_path):
+    """a70ebc3d1466: seven PDFs joined through one listing page H; six can no longer be opened."""
+    prev = served(tmp_path / 'prev', [(letter, letter) for letter in 'ABCDEFG'])
+    live = served(tmp_path / 'live', [('ABCDEFGH', 'G', 'H')])
+    assert changed(tmp_path, prev, live) == list('ABCDEF')
+    answer = json.loads((tmp_path / 'out.json').read_text())['link_rule']['changed_answers'][0]
+    assert answer == {'key': key('A').hex(), 'live_row': 0, 'live_file': 'A', 'live_body': body('A').hex(),
+                      'candidate_row': 0, 'candidate_file': 'ABCDEFGH', 'candidate_body': body('G').hex()}
+
+
+@pytest.mark.parametrize('prev,live', [
+    # The same saved file, on a row that moved.
+    (dict(rows=[('A', 'A'), ('B', 'B')]), dict(rows=[('B', 'B'), ('A', 'A')])),
+    # Another format became the saved file; the live file is its recorded alternate.
+    (dict(rows=[('A', 'A')]), dict(rows=[('AP', 'P', 'A')])),
+    # cae8e4ea34ec603a: a link key U names no body. Its live file stays on the row as a recovery
+    # while a newly fetched body becomes the saved one.
+    (dict(rows=[('U', 'X')], recoveries=[(0, 'X'), (0, 'Y')]), dict(rows=[('UY', 'Y')], recoveries=[(0, 'X'), (0, 'Y')])),
+    # A wrong join split: B now reaches the file it names instead of A's.
+    (dict(rows=[('AB', 'A', 'B')]), dict(rows=[('A', 'A'), ('B', 'B')])),
+    # After a split the key's own file is an alternate of its new row.
+    (dict(rows=[('ABC', 'A', 'BC')]), dict(rows=[('A', 'A'), ('BC', 'B', 'C')])),
+])
+def test_a_live_key_that_still_reaches_its_file_passes(tmp_path, prev, live):
+    assert changed(tmp_path, served(tmp_path / 'prev', **prev), served(tmp_path / 'live', **live)) == []
+
+
+@pytest.mark.parametrize('prev,live,named', [
+    # A link key re-pointed at a document that does not hold the live file.
+    (dict(rows=[('U', 'X'), ('Y', 'Y')]), dict(rows=[('X', 'X'), ('UY', 'Y')]), ['U']),
+    # The live file is recorded, but as another row's recovery.
+    (dict(rows=[('U', 'X'), ('Y', 'Y')]), dict(rows=[('UY', 'Y'), ('Z', 'Z')], recoveries=[(1, 'X')]), ['U']),
+    # The key's own file is served, but by another row than the one the key reaches.
+    (dict(rows=[('A', 'A'), ('B', 'B')]), dict(rows=[('AB', 'B'), ('C', 'C', 'A')]), ['A']),
+    # The saved file was replaced by different bytes and the live file is nowhere on the row.
+    (dict(rows=[('U', 'X')]), dict(rows=[('U', 'Y')]), ['U']),
+])
+def test_a_live_key_that_reaches_another_file_is_named(tmp_path, prev, live, named):
+    assert changed(tmp_path, served(tmp_path / 'prev', **prev), served(tmp_path / 'live', **live)) == named
+
+
+def test_a_release_without_saved_bodies_says_the_answer_check_did_not_run(tmp_path):
+    bare = dict(SCHEMAS, detail=[('link_key', B)])
+    prev = release(tmp_path / 'prev', documents=['A', 'B'], schemas=bare, detail=[{'link_key': key('A')}, {'link_key': key('B')}])
+    live = release(tmp_path / 'live', documents=['AB'], schemas=bare, detail=[{'link_key': key('A')}])
+    _, result = run(tmp_path, prev, live)
+    assert result['link_rule']['changed'] == 0
+    assert result['cannot_see'] == ['link rule: a release has no detail.saved_body, so no live key was checked for answering another file']
