@@ -139,6 +139,38 @@
       "source": "Authored boundary: a page under a /help/ directory is a help article with its own name, not the site's help page"
     },
     {
+      "id": "page-signals:govinfo_content_details",
+      "registry": "page-signals",
+      "entry": "govinfo_content_details",
+      "value": "https://www.govinfo.gov/app/details/CHRG-118hhrg53014",
+      "expected": true,
+      "source": "Published release 619db5f9e08e: one of 34,588 GovInfo package Content Details pages published as a document (about 3 KB of site navigation, title 'Serial No. 118-1 - THE STATE OF THE AMERICAN ECONOMY: APPALACHIA - CHRG-118hhrg53014 | Content Details | GovInfo') beside the hearing's own PDF and HTML text (ct-m878)"
+    },
+    {
+      "id": "page-signals:govinfo_content_details_granule",
+      "registry": "page-signals",
+      "entry": "govinfo_content_details",
+      "value": "https://www.govinfo.gov/app/details/CHRG-116hhrg49571/CHRG-116hhrg49571-add1",
+      "expected": true,
+      "source": "Published release 619db5f9e08e: one of 238 granule Content Details pages, here an addendum's, published as a document beside CHRG-116hhrg49571-add1.pdf (ct-m878)"
+    },
+    {
+      "id": "page-signals:govinfo_content_details_file",
+      "registry": "page-signals",
+      "entry": "govinfo_content_details",
+      "value": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg53014/html/CHRG-118hhrg53014.htm",
+      "expected": false,
+      "source": "Authored boundary: the hearing's HTML text under /content/pkg/ is the file a Content Details page describes, never the page"
+    },
+    {
+      "id": "page-signals:govinfo_content_details_api",
+      "registry": "page-signals",
+      "entry": "govinfo_content_details",
+      "value": "https://api.govinfo.gov/packages/CHRG-118hhrg53014/summary",
+      "expected": false,
+      "source": "Authored boundary: the API's package summary is an API page (api_endpoint), not the Content Details page"
+    },
+    {
       "id": "formats:preference-pdf",
       "registry": "formats",
       "entry": "preference-pdf",

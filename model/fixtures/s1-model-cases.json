@@ -1256,6 +1256,66 @@
         "real_file": true
       },
       "source": "ct-aoxp boundary: a page whose last path segment is 'help' with no file extension (the Senate HELP committee) stays a document"
+    },
+    {
+      "id": "govinfo-content-details-page",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "govinfo-content-details-page",
+        "bytes": 61000,
+        "context_url": "https://www.govinfo.gov/app/details/CHRG-115hhrg24725",
+        "url": "https://www.govinfo.gov/app/details/CHRG-115hhrg24725",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "Serial No. 115-3 - THE NEXT FARM BILL - CHRG-115hhrg24725 | Content Details | GovInfo",
+        "heading": "Content Details",
+        "text_head": "Skip to main content Browse A to Z Category Date Committee Author About About Policies Authentication Digital Preservation History Agency Submission U.S. Government Information FDsys Retirement Developers",
+        "text_bytes": 2933,
+        "link_count": 91,
+        "link_text_bytes": 1028,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "wrapper",
+        "real_file": false
+      },
+      "source": "ct-m878: a GovInfo Content Details page describes the package's file and holds none of its text; reading facts of CHRG-115hhrg24725's page in 619db5f9e08e, published there as a document"
+    },
+    {
+      "id": "govinfo-package-text-is-a-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "govinfo-package-text-is-a-document",
+        "bytes": 152000,
+        "context_url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg53014/html/CHRG-118hhrg53014.htm",
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg53014/html/CHRG-118hhrg53014.htm",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "- THE STATE OF THE AMERICAN ECONOMY: APPALACHIA",
+        "heading": "",
+        "text_head": "[House Hearing, 118 Congress] [From the U.S. Government Publishing Office] THE STATE OF THE AMERICAN ECONOMY: APPALACHIA",
+        "text_bytes": 150000,
+        "link_count": 3,
+        "link_text_bytes": 40,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      },
+      "source": "ct-m878 boundary: the hearing's HTML text at GovInfo, the file its Content Details page describes, stays a document"
     }
   ],
   "groups": [
