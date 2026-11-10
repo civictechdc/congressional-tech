@@ -42,6 +42,9 @@ import time
 STOPPED = 99
 REFUSED = 98
 RAMP_SECONDS = 120
+# The longest the loop sleeps before it looks for a recorded signal again. A sleep resumes after a handler that
+# returns, so the wait between passes is taken in slices: 20 wake-ups a second, and nothing for a handler to lock.
+WAKE_SECONDS = 0.05
 HERE = Path(__file__).resolve().parent
 
 
@@ -185,8 +188,9 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
     youngest() says it is the youngest running job. The owned group is always stopped
     on the way out: a breach, a signal to the watchdog, or any error inside this loop.
 
-    The handler only records the signal; the loop reads the record once per pass, after
-    its sleep, so the job stops within one interval. A handler that raises does so at
+    The handler only records the signal; the loop reads the record between passes and
+    every WAKE_SECONDS of its wait, so the stop begins that soon after a signal, or when
+    the pass the signal landed in ends. A handler that raises does so at
     whatever instruction the main thread has reached, and inside the interpreter's own
     timed wait for a child that left the child's lock held: the next wait on it never
     returned, so the watchdog hung with its job running and no report (ct-psb5). A
@@ -230,8 +234,9 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
                               'the youngest running job stops first')
             if reason:
                 return STOPPED, peak, physical_peak, reason, time.monotonic() - started
-            if not received:  # a signal during the sample is acted on now, one during the sleep when it ends
-                time.sleep(interval)
+            waking = time.monotonic() + interval
+            while not received and (left := waking - time.monotonic()) > 0:
+                time.sleep(min(left, WAKE_SECONDS))
             if received:
                 return STOPPED, peak, physical_peak, signalled(), time.monotonic() - started
         return process.returncode, peak, physical_peak, None, time.monotonic() - started

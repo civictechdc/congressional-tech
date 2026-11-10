@@ -222,6 +222,19 @@ def test_a_signal_to_the_watchdog_stops_the_job(tmp_path, number):
     assert watchdog.returncode == 99 and 'signal' in report['stopped'] and 'signal' in stderr
 
 
+def test_a_signal_during_a_long_wait_between_passes_stops_the_job_long_before_the_wait_would_end(tmp_path):
+    """The same bound on a real clock and a real signal, loosely: the job's marker appears while the watchdog is in
+    its first ten-second wait, and a sleep that ran to its end would hold the stop for the rest of it."""
+    marker = tmp_path / 'job.pid'
+    watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)], '--interval', '10')
+    pid = wait_for(marker)
+    watchdog.terminate()
+    watchdog.communicate(timeout=30)
+    report = json.loads((tmp_path / 'report.json').read_text())
+    assert gone(pid) and watchdog.returncode == 99 and 'signal 15' in report['stopped']
+    assert report['seconds'] < 5, 'the stop waited for the ten-second sleep to end'
+
+
 # A watchdog made to receive a signal at one chosen instruction. Popen._wait(timeout) and Popen._internal_poll take
 # the child's _waitpid_lock with acquire(False) and only afterwards enter their try (CPython 3.12 subprocess.py:2032
 # and :1983; 3.15 has the same shape), so an exception a signal handler raises right there leaves the lock held, and
