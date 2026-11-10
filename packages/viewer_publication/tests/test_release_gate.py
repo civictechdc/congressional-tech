@@ -866,8 +866,8 @@ def test_a_line_in_a_receipt_the_candidate_did_not_read_is_not_counted(tmp_path)
      'recheck_meeting_date changed on an address the live release had scheduled'),
     (dict(candidate={F: state(F, 0)}), 'attempts are not the live count plus the new lines'),
     (dict(candidate={F: state(F, 2, FETCHED, 200, 'unchanged', None, 7 * DAY, datetime(2026, 10, 20).date())}),
-     'last_good_at was lost or moved without a stored new line'),
-    (dict(candidate={A: state(A, 1, FETCHED, 403, 'failed', FETCHED, 7 * DAY)}), 'last_good_at is not a stored new line'),
+     'last_good_at is not the later of the live value and the newest good new line'),
+    (dict(candidate={A: state(A, 1, FETCHED, 403, 'failed', FETCHED, 7 * DAY)}), 'last_good_at is not the newest good new line'),
     (dict(candidate={A: state(A, 1, FETCHED, 200, 'stored', None, 7 * DAY)}),
      'last_attempt, last_status or last_outcome is not the newest new line'),
     # No receipt implies a change with no new line (the 10 rows of 2026-11-10 were this).
@@ -930,5 +930,16 @@ def test_a_raw_line_must_request_the_address_its_capture_line_names(tmp_path, pl
     report = unattended(tmp_path, **plant)
     assert report['reasons'] and 'automatic_causes' not in report
     assert reason in report['automatic_reasons'], report['automatic_reasons']
+
+
+@pytest.mark.parametrize('line', [
+    dict(http_status=404),  # W12: stored, but a 404 is not a good fetch
+    dict(http_status=200, complete=False),  # W12b: stored, but incomplete
+])
+def test_last_good_at_moves_only_to_a_line_the_model_calls_a_good_fetch(tmp_path, line):
+    report = unattended(tmp_path, fetches={(NEW_RECEIPT, 3): dict(requested_url=A, sha256=BODY['Q'], outcome='stored', **line)},
+                        candidate={A: state(A, 1, FETCHED, line['http_status'], 'stored', FETCHED, 7 * DAY)})
+    assert report['reasons'] and 'automatic_causes' not in report
+    assert any(': last_good_at is not the newest good new line (first' in r for r in report['automatic_reasons']), report['automatic_reasons']
 
 

@@ -332,12 +332,13 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
 def _url_state_rules(base_columns, candidate_columns):
     """SQL giving one reason for a url_state row the new lines do not imply, NULL when they do.
 
-    Aliases: b (live row), c (candidate row), p (the address's new lines: n, and the times of those
-    that stored a body), x (its newest new line, and the interval the model's own band steps give it
-    with the candidate's published meeting date). Times compare as epoch microseconds. Every
+    Aliases: b (live row), c (candidate row), p (the address's new lines: n, and `good`, the time of
+    its newest line the model's own good-fetch steps call good), x (its newest new line, and the
+    interval the model's own band steps give it with the candidate's published meeting date).
+    Times compare as epoch microseconds. Every
     condition is written to be true or false, never NULL, so a missing value cannot pass a rule.
     """
-    n, stored_times = 'coalesce(p.n,0)', 'coalesce(p.stored,[]::BIGINT[])'
+    n = 'coalesce(p.n,0)'
     other = sorted((base_columns & candidate_columns) - set(URL_STATE_COLUMNS) - {'requested_url'})
     unset = [(f'{column} changed, which no receipt sets', f'c.{column} IS DISTINCT FROM b.{column}') for column in other]
     schedule = ('last_attempt', 'last_status', 'last_outcome', 'last_good_at', 'next_attempt_at', 'recheck_meeting_date')
@@ -346,7 +347,9 @@ def _url_state_rules(base_columns, candidate_columns):
               'AND c.last_outcome IS NOT DISTINCT FROM x.o')
     band = ('x.interval_seconds IS NOT NULL AND epoch_us(c.next_attempt_at) IS NOT DISTINCT FROM '
             'x.t+x.interval_seconds*1000000')
-    stored = f'list_contains({stored_times},epoch_us(c.last_good_at))'
+    # last_good_at as url-state.sql folds it: the later of the live value and the newest good line.
+    good = ('epoch_us(c.last_good_at) IS NOT DISTINCT FROM CASE WHEN p.good IS NULL THEN epoch_us(b.last_good_at) '
+            'ELSE greatest(p.good,coalesce(epoch_us(b.last_good_at),p.good)) END')
     has_pages = 'coalesce(len(c.linked_from),0)>0'
     wrong_band = 'next_attempt_at is not last_attempt plus the band of its published meeting date'
     # The band's date is anchored to the live release only where the live release had scheduled the
@@ -366,8 +369,7 @@ def _url_state_rules(base_columns, candidate_columns):
         ('the latest attempt moved without a later new line', f"""NOT {later} AND (c.last_attempt IS DISTINCT FROM b.last_attempt
             OR c.last_status IS DISTINCT FROM b.last_status OR c.last_outcome IS DISTINCT FROM b.last_outcome
             OR c.next_attempt_at IS DISTINCT FROM b.next_attempt_at)"""),
-        ('last_good_at was lost or moved without a stored new line', f"""NOT (c.last_good_at IS NOT DISTINCT FROM b.last_good_at
-            OR (c.last_good_at IS NOT NULL AND (b.last_good_at IS NULL OR c.last_good_at>b.last_good_at) AND {stored}))"""),
+        ('last_good_at is not the later of the live value and the newest good new line', f'NOT ({good})'),
         date,
         ('an address with attempts names linking pages', has_pages),
         (wrong_band, f'{later} AND NOT ({band})'),
@@ -376,7 +378,7 @@ def _url_state_rules(base_columns, candidate_columns):
         ('attempts are not its new lines', f'c.attempts IS DISTINCT FROM {n}'),
         ('the newest new line has no time', 'x.t IS NULL'),
         ('last_attempt, last_status or last_outcome is not the newest new line', f'NOT ({newest})'),
-        ('last_good_at is not a stored new line', f'c.last_good_at IS NOT NULL AND NOT {stored}'),
+        ('last_good_at is not the newest good new line', 'epoch_us(c.last_good_at) IS DISTINCT FROM p.good'),
         ('an address with attempts names linking pages', has_pages),
         (wrong_band, f'NOT ({band})')]
     queued = [('a queued address has new lines', f'{n}>0'),
@@ -411,7 +413,8 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
       fetched, before or now: at least one new line; attempts = live + new lines; when the newest
         new line is later than the live last_attempt (a tie refuses) it sets last_attempt,
         last_status and last_outcome, and next_attempt_at = last_attempt + its band; otherwise none
-        of those moves; last_good_at stays or moves forward to a new line that stored a body;
+        of those moves; last_good_at is the later of the live value and the newest new line the
+        model's own good-fetch steps (good-fetches.sql, url_state_good_lines) call good;
         recheck_meeting_date equals the live value when the live release had scheduled the address;
         linked_from is empty; every other column is unchanged.
       added with attempts: the same with no live values, so its meeting date is taken as published.
@@ -419,16 +422,14 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
         live page kept; each page the live row did not list must come from new receipts only.
       removed: refused. And every address with a new line must be among these rows.
     Cannot see: a wrong meeting association on a first schedule (no live value to keep; like any
-    value of an added row it is taken as published); whether a stored line was good (that
-    classification is the model's), so last_good_at may only move to a line that stored a body;
-    whether a page really links its queued address (the reading is the model's); a change to the
+    value of an added row it is taken as published); whether a page really links its queued address (the reading is the model's); a change to the
     fold or band code that touches only new lines (the gate runs the same code).
     Cost: one engine job over the new receipts' captures and one DuckDB join of the two url_state
     files on requested_url, O(rows).
     """
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import json_input, run_job
-    from viewer_publication.archive_model import REGISTRIES
+    from viewer_publication.archive_model import REGISTRIES, evidence_steps, source_steps
     from viewer_publication.archive_url_state import url_state_steps
     columns = {side: set(d.columns(side, 'url_state')) if d.has(side, 'url_state') else set() for side in ('base', 'candidate')}
     missing = [name for name in ('recheck_meeting_date', 'linked_from') if name not in columns['candidate']]
@@ -437,10 +438,13 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
     pq.write_table(pa.table({'receipt_key': pa.array(sorted(new_receipts), pa.string())}), work / 'new-receipts.parquet')
-    model = {step['name']: step for step in url_state_steps()}
+    # The model's own steps, by name: the fold, the good-fetch predicate and the band.
+    model = {step['name']: step for step in [*evidence_steps(), *source_steps(), *url_state_steps()]}
     registry = json.loads((Path(__file__).resolve().parents[4] / 'model/registries/recheck-intervals.json').read_text())
     steps = [dict(name='captures', sql='SELECT c.* FROM new_receipts n JOIN lake_captures c ON c.receipt_key=n.receipt_key', materialize=True),
-             model['url_state_lines'], model['url_state_latest'],
+             dict(name='capture_evidence', sql='SELECT * FROM captures'),
+             *(model[name] for name in ('good_archive_containers', 'good_fetches', 'good_fetch_contexts',
+                                        'url_state_lines', 'url_state_good_lines', 'url_state_latest')),
              dict(name='url_state_meeting_dates', sql="""SELECT requested_url,recheck_meeting_date AS meeting_date
                  FROM candidate_url_state WHERE recheck_meeting_date IS NOT NULL""", materialize=True),
              model['url_state_ages'], model['url_state_interval_candidates'], model['url_state_intervals']]
@@ -450,20 +454,18 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
         dict(name='candidate_url_state', kind='parquet', path=str((Path(candidate_dir) / 'url_state.parquet').resolve())),
         json_input(work, 'recheck_intervals', registry, **REGISTRIES['recheck_intervals'])], queries=[
         dict(name='lines', sql="""SELECT l.receipt_key,l.receipt_line,l.requested_url,arrow_cast(l.retrieved_at,'Int64') AS t,
-            (l.context_good OR s.receipt_key IS NOT NULL) AS stored FROM url_state_lines l LEFT JOIN (
-              SELECT DISTINCT receipt_key,receipt_line FROM captures
-              WHERE outcome IN ('stored','unchanged') AND sha256 IS NOT NULL) s
-            ON s.receipt_key=l.receipt_key AND s.receipt_line=l.receipt_line ORDER BY 1,2,3"""),
+            g.receipt_key IS NOT NULL AS good FROM url_state_lines l LEFT JOIN url_state_good_lines g
+            ON g.receipt_key=l.receipt_key AND g.receipt_line=l.receipt_line AND g.requested_url=l.requested_url ORDER BY 1,2,3"""),
         dict(name='newest', sql="""SELECT x.requested_url,arrow_cast(x.retrieved_at,'Int64') AS t,
             cast(x.http_status AS INT) AS s,x.outcome AS o,i.interval_seconds
             FROM url_state_latest x LEFT JOIN url_state_intervals i ON i.requested_url=x.requested_url""")])
     d.con.register('url_new_lines', pa.Table.from_pylist(result['lines'], schema=pa.schema([
-        ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('requested_url', pa.string()), ('t', pa.int64()), ('stored', pa.bool_())])))
+        ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('requested_url', pa.string()), ('t', pa.int64()), ('good', pa.bool_())])))
     d.con.register('url_newest', pa.Table.from_pylist(result['newest'], schema=pa.schema([
         ('requested_url', pa.string()), ('t', pa.int64()), ('s', pa.int32()), ('o', pa.string()), ('interval_seconds', pa.int64())])))
     common = sorted(columns['base'] & columns['candidate'] - {'requested_url'})
     d.table('url_rows', f"""WITH p AS (SELECT requested_url,count(*) AS n,
-          list(t) FILTER (WHERE stored AND t IS NOT NULL) AS stored FROM url_new_lines GROUP BY 1)
+          max(t) FILTER (WHERE good) AS good FROM url_new_lines GROUP BY 1)
         SELECT coalesce(c.requested_url,b.requested_url) AS url,b.requested_url IS NOT NULL AS live,
           c.requested_url IS NOT NULL AS present,c.attempts>0 AS attempted,b.linked_from AS live_pages,c.linked_from AS pages,
           {''.join(f'b.{column} IS DISTINCT FROM c.{column} AS "moved {column}",' for column in common if column in URL_STATE_COLUMNS)}

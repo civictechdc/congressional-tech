@@ -92,13 +92,14 @@ lines of the candidate's receipts outside the live set imply, folded by the mode
 grow by the new lines; the newest new line, when later than the live one (a tie refuses), sets
 the latest attempt, and `next_attempt_at` is its time plus the band of the published
 `recheck_meeting_date`, which must equal the live value where the live release had scheduled
-the address; `last_good_at` stays or moves forward to a new line that stored a body. A newly
+the address; `last_good_at` is the later of the live value and the newest new line the model's own
+good-fetch steps call good. A newly
 queued link's pages (`linked_from`) must each come only from new receipts, traced like a new
 document's body. A row that changed with no new line (a meeting link that moved), a meeting date
 that moved on a scheduled address, a removed address or any other column change still needs a
 record. An added attempted address no longer has to have supplied a new document: a failed or
 repeated fetch is still a fetch. Cannot see: a wrong meeting date on an address scheduled for
-the first time, whether a stored line was a good fetch, or whether a page really links its
+the first time, or whether a page really links its
 queued address; those are the model's.
 
 What it cannot see: a bug that adds only wrong rows from genuinely new receipts. A
