@@ -218,6 +218,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         first_captured is when the archive first fetched it, and date_kind its basis
         (captured, import_day, unknown). Neither is a page-update date, and only a meeting-sourced date is the hearing date.
         measure_key and witness_key match direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
+        document_kind also matches the words the release's schema lists as the same kind (list.parquet synonyms,
+        e.g. testimony and witness-statement).
         use the bill_hearing_transcripts, nomination_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         sort='archive' preserves archive order. sort='recent' or 'oldest' uses accepted dates by default;
         include_suspect and include_undated opt into those rows. Older releases keep literal dates and report unavailable qualification.

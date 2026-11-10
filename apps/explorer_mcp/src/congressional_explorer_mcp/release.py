@@ -30,6 +30,17 @@ def literal(value):
     return "'" + str(value).replace("'", "''") + "'"
 
 
+def kind_words(schema, kind):
+    """`kind` with every document_kind word the release's schema lists as the same kind (list.parquet synonyms, ct-isnv).
+
+    None for a release published before synonyms were; each reader then keeps its earlier behaviour.
+    """
+    listed = next((t for t in schema.get('files', []) if t.get('name') == 'list.parquet'), {})
+    if 'synonyms' not in listed:
+        return None
+    return next((list(words) for words in listed['synonyms'].get('document_kind[]', []) if kind in words), [kind])
+
+
 def stamp(path):
     stat = Path(path).stat()
     return [stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns]

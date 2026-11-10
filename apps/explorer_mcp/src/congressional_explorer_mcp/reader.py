@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 import duckdb
 from .models import (MAX_BYTES, ExplorerError, exact_scalar,
                      DocumentSearch, DocumentQuery, EntitySearch, EntityQuery, SqlQuery)
-from .release import encoded, quote, literal
+from .release import encoded, quote, literal, kind_words
 from .hearing_reader import HearingReader
 
 # Published display columns that text search reads, wherever a table has them.
@@ -321,7 +321,10 @@ class Reader(HearingReader, LegislativeReader):
         for column in ('congress', 'format'):
             if (value := getattr(query, column)) is not None:
                 conditions.append(f'l.{column}=?'); args.append(value)
-        for parameter, column in [('document_kind', 'document_kind'), ('committee_key', 'committee_keys'),
+        if query.document_kind is not None:
+            conditions.append('list_has_any(l.document_kind,?)')
+            args.append(kind_words(self.selection['controls']['schema'], query.document_kind) or [query.document_kind])
+        for parameter, column in [('committee_key', 'committee_keys'),
             ('meeting_key', 'meeting_keys'), ('measure_key', 'measure_keys'), ('witness_key', 'witness_keys'), ('bioguide_id', 'bioguide_ids')]:
             if (value := getattr(query, parameter)) is not None:
                 conditions.append(f'list_contains(l.{column},?)'); args.append(value)

@@ -1,7 +1,10 @@
 """Bounded hearing reads over the published relationships; no producer reconstruction."""
 from .hearing_models import HearingBundleQuery, TranscriptQuery
 from .models import ExplorerError, MAX_BYTES
-from .release import encoded, quote
+from .release import encoded, quote, kind_words
+
+# The fixed set this reader used before releases listed kind synonyms (ct-isnv); only those releases read it.
+EARLIER_TESTIMONY_KINDS = ['testimony', 'witness-statement', 'prepared-statement', 'witness-testimony']
 
 
 class HearingReader:
@@ -183,8 +186,9 @@ class HearingReader:
             {witness_roster} ORDER BY panel_order NULLS LAST,display_order NULLS LAST,witness_key''',[query.event_id])
         section('prepared_testimony','documents', '''SELECT '''+self.document_summary+''',l.witness_keys FROM "list" l JOIN detail d USING(list_row)
             WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,cast(? AS VARCHAR))
-              AND list_has_any(l.document_kind,['testimony','witness-statement','prepared-statement','witness-testimony'])
-            ORDER BY l.list_row''',[query.event_id])
+              AND list_has_any(l.document_kind,?)
+            ORDER BY l.list_row''',[query.event_id,
+            kind_words(self.selection['controls']['schema'],'witness-statement') or EARLIER_TESTIMONY_KINDS])
         if 'prepared_testimony' in result['sections']:
             self.document_rows(result['sections']['prepared_testimony'])
         for name,kind in [('official_transcripts','official'),('committee_transcripts','committee'),('captions','captions')]:
