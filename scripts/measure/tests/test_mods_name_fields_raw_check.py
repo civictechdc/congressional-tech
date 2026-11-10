@@ -151,8 +151,8 @@ def test_an_accepted_lost_word_does_not_cover_a_dropped_position_or_organization
     assert code == 1 and out['failed'] == {'words_lost': 1, 'stale_accept': 1}
 
 
-# ct-zs48 and ct-3aap: a joined line read as two people, and organizations' own documents typed as statements.
-RECORD_LINES = ['Hon. Eleanor Smith, of the District of Columbia.. Hon. Richard Roe, of Illinois',
+# ct-79j1 and ct-3aap: a joined line read as two people, and organizations' own documents typed as statements.
+RECORD_LINES = ['Eleanor Smith, Chair, Rural Committee.. Richard Roe, Superintendent, School District',
                 'Paralyzed Veterans of America, statement', 'Blinded Veterans Association, New York, Inc']
 
 
@@ -160,11 +160,11 @@ def typed(item, witness_type):
     return dict(item, witness_type=witness_type)
 
 
-RECORD_BEFORE = [occurrence('mods:witness[1]', 'Eleanor Smith', 'of the District of Columbia.. Hon. Richard Roe', 'of Illinois'),
+RECORD_BEFORE = [occurrence('mods:witness[1]', 'Eleanor Smith', 'Chair', 'Rural Committee.. Richard Roe, Superintendent, School District'),
                  typed(occurrence('mods:witness[2]', None, None, RECORD_LINES[1]), None),
                  typed(occurrence('mods:witness[3]', None, None, RECORD_LINES[2]), None)]
-RECORD_AFTER = [occurrence('mods:witness[1]', 'Eleanor Smith', 'of the District of Columbia'),
-                occurrence('mods:witness[1]/part[2]', 'Richard Roe', 'of Illinois'),
+RECORD_AFTER = [occurrence('mods:witness[1]', 'Eleanor Smith', 'Chair', 'Rural Committee'),
+                occurrence('mods:witness[1]/part[2]', 'Richard Roe', 'Superintendent', 'School District'),
                 typed(RECORD_BEFORE[1], 'statement_for_record'), RECORD_BEFORE[2]]
 
 
@@ -192,7 +192,9 @@ def test_an_added_row_that_is_not_a_split_a_person_typed_and_a_statement_left_a_
              RECORD_BEFORE[1], RECORD_AFTER[3]]
     write(tmp_path, before=RECORD_BEFORE, after=after, lines=RECORD_LINES)
     code, out = run(tmp_path)
-    assert code == 1 and out['failed'] == {'added': 1, 'type_unsupported': 1, 'words_lost': 1, 'record_as_witness': 1}
+    # The moved row's position prints no line, so its name is in no line either.
+    assert code == 1 and out['failed'] == {'added': 1, 'name_not_in_line': 1, 'type_unsupported': 1, 'words_lost': 1,
+                                           'record_as_witness': 1}
     assert [i['locator'] for i in out['record_as_witness']] == ['mods:witness[2]']
 
 
@@ -223,7 +225,8 @@ QUESTION_AFTER = [typed(occurrence('mods:witness[1]', 'Richard Roe', 'of Ohio'),
 def test_a_restored_heading_and_its_typed_asker_pass(tmp_path):
     write(tmp_path, before=QUESTION_BEFORE, after=QUESTION_AFTER, lines=QUESTION_LINES)
     code, out = run(tmp_path)
-    assert code == 0 and [i['locator'] for i in out['restored']] == ['mods:witness[1]']
+    # The heading's row is a Member the asking line prints in the House style, in order: an asker.
+    assert code == 0 and [i['locator'] for i in out['asker']] == ['mods:witness[1]'] and not out['restored']
     assert out['counts']['typed'] == 1
 
 
@@ -233,7 +236,7 @@ def test_an_asker_left_a_witness_and_a_witness_typed_as_an_asker_fail(tmp_path):
     # The heading that names Richard Roe publishes no row on either side, so no one shows him (member_unnamed).
     assert code == 1 and out['failed'] == {'question_asker_as_witness': 1, 'member_unnamed': 1}
     assert [i['locator'] for i in out['question_asker_as_witness']] == ['mods:witness[2]']
-    assert [(i['locator'], i['words']) for i in out['member_unnamed']] == [('mods:witness[1]', ['roe'])]
+    assert [(i['locator'], i['words']) for i in out['member_unnamed']] == [('mods:witness[1]', ['richard', 'roe'])]
     (tmp_path / 'raw').rename(tmp_path / 'raw-old')
     write(tmp_path, before=QUESTION_BEFORE, after=[*QUESTION_AFTER[:2], typed(QUESTION_BEFORE[1], 'record_material')],
           lines=QUESTION_LINES)
@@ -281,7 +284,7 @@ def test_a_faithful_reading_of_several_askers_passes(tmp_path):
     code, out = run(tmp_path)
     assert code == 0 and out['status'] == 'passed'
     assert [i['locator'] for i in out['split']] == ['mods:witness[2]/part[2]']
-    assert [i['locator'] for i in out['restored']] == ['mods:witness[3]']
+    assert [i['locator'] for i in out['asker']] == ['mods:witness[3]']
 
 
 @pytest.mark.parametrize('kind, flag, locator, missing', [
@@ -289,7 +292,7 @@ def test_a_faithful_reading_of_several_askers_passes(tmp_path):
     ('asker-dropped', 'member_unnamed', 'mods:witness[4]', ['lautenberg']),
     # (d) A restored heading named for its own words (no longer restored), or emptied of its asker.
     ('heading-as-name', 'added', 'mods:witness[3]', None),
-    ('name-emptied', 'member_unnamed', 'mods:witness[3]', ['smith']),
+    ('name-emptied', 'member_unnamed', 'mods:witness[3]', ['eleanor', 'smith']),
     # (e) The segment before "Chairman Richard Roe" read as the name.
     ('committee-segment', 'name_not_person', 'mods:witness[1]', None),
 ])
@@ -326,3 +329,85 @@ def test_a_planted_title_or_statement_left_a_witness_is_flagged(tmp_path, kind, 
     assert not out['record_as_witness']
     code, out = run(tmp_path, '--plant', kind)
     assert code == 1 and out['planted']['flagged'] and [i['locator'] for i in out['record_as_witness']] == [locator]
+
+
+# Round 3 (owner decisions 2026-11-10): one asker rule keyed on Member identity. The check reads asking lines by their
+# words and counts Members as words (the print's <congMember> families, words after a chamber title, a House-styled
+# "Hon." name), never by splitting a list.
+NEW_LINES = ['Hon. Eleanor Holmes Norton, a Delegate in Congress from the District of Columbia',
+             'Response to request arising during the hearing by: Hon. Richard Roe.......... 13,14 Hon. Eleanor Smith',
+             'Responses to additional questions from: Senators Roe and Lautenberg.....81,',
+             'Herrera Beutler, Hon. Jaime, Commissioner, Office of Things.......... Responses to additional questions '
+             'from: Senator Lautenberg']
+NEW_MEMBERS = ['Roe, Richard', 'Smith, Eleanor', 'Lautenberg, Frank R.']
+NEW_BEFORE = [occurrence('mods:witness[1]', 'Eleanor Holmes Norton', DELEGATE),
+              occurrence('mods:witness[4]', 'Jaime Herrera Beutler', 'Commissioner', 'Office of Things')]
+
+
+def asked(locator, name, order, kind='record_material', **more):
+    return dict(occurrence(locator, name, **more), witness_type=kind, display_order=order)
+
+
+NEW_AFTER = [dict(NEW_BEFORE[0], witness_type=None, display_order=1),
+             asked('mods:witness[2]', 'Richard Roe', 2), asked('mods:witness[2]/part[2]', 'Eleanor Smith', 3),
+             asked('mods:witness[3]', 'Roe', 4), asked('mods:witness[3]/part[2]', 'Lautenberg', 5),
+             dict(NEW_BEFORE[1], witness_type=None, display_order=6), asked('mods:witness[4]/part[2]', 'Lautenberg', 7)]
+
+
+def test_askers_on_asking_lines_pass_and_a_witness_beside_them_keeps_its_row(tmp_path):
+    """Each Member a request heading, a list of Senators or a witness's line names as an asker is a supported asker;
+    the witness whose entry carries the heading (a person who is not one of the line's Members) stays a witness, and
+    a Member Day line with no heading asks nothing."""
+    write(tmp_path, before=NEW_BEFORE, after=NEW_AFTER, lines=NEW_LINES, members=NEW_MEMBERS)
+    code, out = run(tmp_path)
+    assert code == 0 and out['status'] == 'passed'
+    assert [i['locator'] for i in out['asker']] == [
+        'mods:witness[2]', 'mods:witness[2]/part[2]', 'mods:witness[3]', 'mods:witness[3]/part[2]',
+        'mods:witness[4]/part[2]']
+
+
+def test_the_review_lines_published_as_one_witness_fail(tmp_path):
+    """Review round 2: a request heading naming two Members published as one witness named for the heading, a list of
+    Senators published as a witness named "Senators Roe", and a heading in capitals published as a witness."""
+    lines = [NEW_LINES[1], 'Senators Roe, Smith, and Lautenberg', 'QUESTIONS FROM HON. RICHARD ROE, HON. ELEANOR SMITH']
+    rows = [asked('mods:witness[1]', 'Response to request arising during the hearing by: Hon. Richard Roe', 1, None),
+            asked('mods:witness[2]', 'Senators Roe', 2, None, position='Smith'),
+            asked('mods:witness[3]', 'QUESTIONS FROM HON. RICHARD ROE', 3, None)]
+    write(tmp_path, before=rows, after=rows, lines=lines, members=NEW_MEMBERS)
+    code, out = run(tmp_path)
+    assert code == 1 and out['failed'] == {'question_asker_as_witness': 3, 'member_unnamed': 3}
+    assert [(i['locator'], i['words']) for i in out['member_unnamed']] == [
+        ('mods:witness[1]', ['smith']), ('mods:witness[2]', ['lautenberg', 'smith']), ('mods:witness[3]', ['smith'])]
+
+
+@pytest.mark.parametrize('kind, flag, locator, planted', [
+    # Review round 2's missed plant K3: a new asker written surname first.
+    ('reversed-asker', 'reorder_unsupported', 'mods:witness[2]', 'Roe Richard'),
+    # H1: two askers of one line exchange their names (display order no longer follows the print).
+    ('askers-swapped', 'order_unsupported', 'mods:witness[2]/part[2]', 'Richard Roe'),
+    # W1, W2: a real witness printed with "Hon." on a line that asks nothing, typed as an asker.
+    ('witness-as-asker', 'type_unsupported', 'mods:witness[1]', 'record_material'),
+    # L1, L3: a line's askers put back as one witness named for the heading.
+    ('heading-reverted', 'question_asker_as_witness', 'mods:witness[2]',
+     'Response to request arising during the hearing by: Hon. Richard Roe'),
+    # G1, G3, G5: an asker named by surname alone given a first name the line does not print.
+    ('given-added', 'name_not_in_line', 'mods:witness[3]', 'Bill Roe'),
+])
+def test_each_planted_asker_value_is_flagged_without_an_accept(tmp_path, kind, flag, locator, planted):
+    lines = [*NEW_LINES[:3], 'Herrera Beutler, Hon. Jaime, Commissioner, Office of Things']
+    write(tmp_path, before=NEW_BEFORE, after=NEW_AFTER[:6], lines=lines, members=NEW_MEMBERS)
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+    code, out = run(tmp_path, '--plant', kind)
+    assert code == 1 and out['planted']['flagged'] and out['planted']['planted'] == planted
+    assert locator in [i['locator'] for i in out[flag]]
+
+
+def test_a_witness_typed_as_an_asker_on_an_asking_line_fails(tmp_path):
+    """F1 (Hilton Kelley): the person whose entry carries a question heading is no asker; typed record material, it
+    fails on content (record material on an asking line must be nameless, a Member's, or on a line of names)."""
+    after = [*NEW_AFTER[:5], dict(NEW_AFTER[5], witness_type='record_material'), NEW_AFTER[6]]
+    write(tmp_path, before=NEW_BEFORE, after=after, lines=NEW_LINES, members=NEW_MEMBERS)
+    code, out = run(tmp_path)
+    assert code == 1 and out['failed'] == {'type_unsupported': 1}
+    assert [i['locator'] for i in out['type_unsupported']] == ['mods:witness[4]']
