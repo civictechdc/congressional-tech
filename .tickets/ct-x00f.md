@@ -2,7 +2,7 @@
 id: ct-x00f
 status: in_progress
 deps: []
-links: [ct-w564, ct-64t4, ct-i5u3, ct-0jgy]
+links: [ct-w564, ct-64t4, ct-i5u3, ct-0jgy, ct-exlx, ct-nild, ct-twfj]
 created: 2026-11-10T16:38:56Z
 type: task
 priority: 1
@@ -23,3 +23,7 @@ The engine's full check is green on the merged line (one line plus the final mem
 **2026-11-10T17:00:46Z**
 
 2026-11-10 read-only triage of the red one line (evidence refactor/one-line/ol_*): the engine's hosted CI runs no Rust tests; it builds the release binary and runs the pipeline's production-offline lane in six shards (linux-release.yml:33,109-110), so dr-z0vd's '3 engine failures, 33 suspected environment failures' are pipeline tests on the one-line binary, never itemised; the names need the hosted run's log. 'Raw receipt writers require a clean application tree' is a workflow layout fault: the qualify job rewrites the tracked pin file in the pipeline checkout (linux-release.yml:90-96) and retention/writer_identity.py:15-16 refuses any uncommitted file; the checkout is also shallow while gate-5 tests resolve old commits. Hosted CI triggers only on main and fix/**, so the integration branch dx/one-line gets a CI run and a Linux binary only when pushed under a fix/ name. Predicted, not yet run: output bytes change on the one line (export and materialize take their schema from the optimized plan; scratch steps lost their row-group row cap), which would make an equal release id impossible by design; tested first by running one local job on both binaries. Memory fix into the one line: one conflict, one hunk, in Budget::create (keep both sides). Correction recorded for the owner: the one line's lake copy (managed jobs) asks for 64 KiB per request, one file at a time; a 7 November trial took 952 s for 488 MiB, so as built it is slower than the remote reads it replaces. Plan: PLAN.md sections 'Owner decisions and the one-line program' (O1 to O7, Q1 to Q6); managed-jobs decision paper: root-cause/MANAGED-JOBS.md.
+
+**2026-11-10T17:12:34Z**
+
+2026-11-10 owner decisions relayed by the coordinator (second round): (1) the engine pin is 'decide after the byte test': the earlier 'move to the one line now' is suspended, not confirmed and not reversed; preparation on dx/one-line continues, nothing is pinned or qualified for the pipeline until the test's result is with the owner. The test: one job file on the pinned binary and on a dx/one-line binary, every output hashed, each difference explained (footer schema nullability, row-group boundaries, encodings, or values) with the commit that causes it and whether it could be removed and at what cost. (2) Managed jobs: staged move, option B; stage 1 (three engine fixes) may start on dx/one-line within the two-builder limit, after the byte test and the red-test triage: ct-exlx (field ids on reopened steps), ct-nild (the lake copy), ct-twfj (workspace records). The 36 hosted failures are named: 3 real (test_capture_comparison_memory.py: 'metadata_capacity: Parquet footer and enclosing page-index range exceed metadata allowance', a refusal that does not exist at the pin), 27 from the shallow checkout (git archive), 2 from the pin rewrite dirtying the tree, 3 probably the same two faults under another text, 1 a pipeline test that should skip on Linux (Apple Vision).

@@ -23,3 +23,7 @@ The script reproduces the report's figures on build c03c43da (run peak 10.28 GiB
 **2026-11-10T17:00:46Z**
 
 2026-11-10: built and independently reviewed (no must-fix); both review fixes are in (f7d1f75f, 7966a28d, ddaf7fb8 on claude/dx-step-memory): the report says which statement the highest reading FELL IN, and names the statements it overlaps when none spans it; bad input is refused with exit 2 or reported, never a traceback. 61 focused tests pass (partial); 21 planted wrong values each fail a test. Outstanding: the reviewer's confirmation of the fixes and one full lane. While this was built a hung watchdog was found: ct-psb5.
+
+**2026-11-10T17:12:34Z**
+
+2026-11-10: the reviewer confirmed both review fixes at ddaf7fb8: no must-fix, the three verdicts stand (ship), ready for its full lane (which waits for the release's lanes and build). Two small notes go to the run recorder (ct-0jgy), which edits the same script: a timeline sample whose epoch or read_seconds is null or a string still gives a TypeError traceback (scripts/measure/step_memory.py:81,128; the watchdog cannot write that today); two timelines concatenated at a line boundary are read as one run (a constant epoch-minus-seconds check would catch it).

@@ -17,3 +17,9 @@ W9 of the docspec-rs feedback refactor (.cache/archive-release/investigations/do
 
 On a local run of the pinned binary with the debug log on, the per-step table agrees with a hand count on three steps; a planted wrong value (a debug line moved to the neighbouring statement, an 'available' read after instead of before the acquisition) fails a test; the two-run comparison lists the steps whose floor, copies or memory moved; unreadable input is refused with exit 2, not a traceback; focused tests through the project runner; independent review; one full lane or all six shards.
 
+
+## Notes
+
+**2026-11-10T17:12:34Z**
+
+2026-11-10: also to fix here, from the review of ct-01kq (same script): refuse with exit 2 a timeline sample whose epoch or read_seconds is null or not a number (step_memory.py:81,128 give a TypeError traceback today); refuse two runs concatenated in one timeline (epoch minus seconds is constant within a run).
