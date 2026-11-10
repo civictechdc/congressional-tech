@@ -323,8 +323,8 @@ def model_plans(plans):
 def test_the_lake_captures_table_is_read_by_one_statement_the_first_retained_step(planned):
     job, plans = planned
     assert lake_readers(job, model_plans(plans), 'captures') == {'captures': 1}
-    first = job['steps'][0]
-    assert first['name'] == 'captures' and first.get('materialize') is True
+    # The whole table, as it is: a first step that filtered or projected it would change what every reader sees.
+    assert job['steps'][0] == dict(name='captures', sql='SELECT * FROM ' + lake_input(job, 'captures'), materialize=True)
 
 
 def test_lint_flags_a_planted_second_read_of_the_lake_captures_table(planned):
