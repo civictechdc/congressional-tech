@@ -88,3 +88,27 @@ Correction prepared and proved locally (claude/ct-u9y4-records; nothing written 
 - planted errors are flagged.
 
 **Open for the orchestrator:** run the writes (README part 3) outside a nightly. The gate then needs cause records for the 24 new rows and the 9 changed keys.
+
+**2026-11-10T14:23:27Z**
+
+Correction revised after the independent review (.cache/archive-release/investigations/recovery-records-20261110/review/REVIEW.md); README.md in that folder is current. This note supersedes the numbers in the previous note.
+
+**Baseline.** The previous note measured against rule 65453a82, which is not published. Against the published release 619db5f9e08e, measured per link key (effect-A.csv):
+- 30 dead links answer a different file;
+- 26 dead links leave 23 live rows (row 1472 is one);
+- 4 rows change their shown file in place;
+- 50 new rows (26 dead links plus 24 re-recorded files);
+- recoveries go from 12,632 to 12,587;
+- 0 keys lost, 0 files leave.
+
+Against the stack (effect-B.csv) the numbers are 9, 5 from 4 rows, 4, and 29 new rows. Both baselines end in the same state for all 93 keys. Do not use 9, 5 or 4 in a cause record when the gate compares against 619db5f9e08e.
+
+**Write.** 25 objects, down from 26:
+- 24 receipts (receipts alone give accepted rows, the same as import 839's undecided rows);
+- 1 provenance object, provenance/recoveries/20261110T130500+0000.jsonl: 69 rejections, 57,003 bytes, sha256 963463ab. decided_at is the owner's decision time, 13:05Z, and the notes are plain evidence statements.
+
+Write from a clean worktree at origin/main; the tools are byte-identical there.
+
+**Before the write.** A model-only build with the 24 capture rows and 24 filename readings appended to the pinned snapshots (scripts/rr_20_captures_input.py). Without the readings the model refuses with missing_filenames = 24. Then check the build against effect-A.csv with scripts/rr_21_check_build.py.
+
+**Undo.** It restores what readers see, not the rows: the 69 rows return with a new id and a decision id.
