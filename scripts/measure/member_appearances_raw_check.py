@@ -58,7 +58,7 @@ ROLE = re.compile(r'\b(chair\w*|ranking member|co-chair\w*|vice chair\w*)\b.*\b(
 OWN_NOMINEE = re.compile(r'(^|\|)\s*(nominee\b|nominated\b|to be\b|of [a-z .]+, to be\b)')
 OUTSIDE = re.compile(r'\b(former|retired|designate|state (senator|representative|senate|house|legislature)'
                      r'|legislature|general assembly|association|inc|llc|university|college|corporation|company|foundation'
-                     r'|institute|council|county|city of|clerk|staff\w*|counsel|of the senate)\b'
+                     r'|institute|council|county|city of|clerk|parliamentarian|staff\w*|counsel|of the senate)\b'
                      r'|\b(19|20)\d\d\s*[-–]\s*(19|20)\d\d\b|representative (of|for|to) ')
 SENATE_WORDS = re.compile(r'\bsenator\b|\bsenate\b')
 HOUSE_WORDS = re.compile(r'representative|congress(wo)?man|\bdelegate\b|resident commissioner|\bhouse\b|\(\w\w-(\d+|al|at large)\)|^rep\.?$')
@@ -82,8 +82,12 @@ def fold(text):
 
 
 def words(text):
-    text = re.sub(r'\([^)]*\)', ' ', fold(text)).split(',')[0]
-    return [w for w in re.split(r'[^a-z]+', text) if w and w not in HONORIFICS]
+    text = re.sub(r"['\u2019`]", '', re.sub(r'\([^)]*\)', ' ', (text or '').lower()))
+    text = fold(text).split(',')[0]
+    found = [w for w in re.split(r'[^a-z]+', text) if w and w not in HONORIFICS]
+    while len(found) > 2 and len(found[-1]) == 1:  # credentials split into letters: 'M.D.'
+        found.pop()
+    return found
 
 
 def first_names_agree(row_words, member_words, abbreviations=()):
@@ -130,19 +134,20 @@ def read_rows(con, witnesses, decisions, meetings, prints):
     title = 'coalesce(m.title,p.print_title)' if prints else 'm.title'
     member = ("d.outcome='member'" if decisions else "w.witness_type='member_appearance'")
     matched = ("d.decided_id" if decisions else "w.matched_bioguide_id")
-    rows = con.execute(f"""select w.witness_key,w.source,w.name,w.bioguide_id,
+    rows = con.execute(f"""select w.witness_key,w.source,w.name,w.bioguide_id,coalesce(w.superseded_by,w.witness_key) as person,
           concat_ws(' | ',w.position,w.organization,w.on_behalf_of,w.location) as fields,
           coalesce(cast(m.meeting_date as varchar),{held}) as dates,{title} as title,w.superseded_by is null as shown,
           coalesce(w.witness_type,'') in ('statement_for_record','member_statement','record_material') as record_entry,
           coalesce({member},false) as retyped,{matched} as matched
         from read_parquet('{witnesses}') w left join read_parquet('{meetings}') m using(event_id) {prints_join} {overlay}""").fetchall()
-    keys = ('witness_key', 'source', 'name', 'publisher_id', 'fields', 'dates', 'title', 'shown', 'record_entry', 'retyped', 'matched')
+    keys = ('witness_key', 'source', 'name', 'publisher_id', 'person', 'fields', 'dates', 'title', 'shown', 'record_entry', 'retyped', 'matched')
     return {r[0]: dict(zip(keys, r)) for r in rows}
 
 
 def stated(row):
     text = fold(row['fields'])
     states = {STATE_CODES[m] for m in STATE_PHRASE.findall(text)}
+    states |= {STATE_CODES[f.strip(' .,;:')] for f in text.split('|') if f.strip(' .,;:') in STATE_CODES}
     states |= {a or b for a, b in CODE_PHRASE.findall(row['fields'] or '')}
     chambers = set()
     if SENATE_WORDS.search(text):
@@ -186,6 +191,9 @@ def fits(row, names, spans, by_family):
 
 def judge(rows, decided, names, spans, by_family):
     flags, publisher, not_read = {}, Counter(), Counter()
+    # One appearance stated by several publishers (superseded_by): an office any of its rows states counts for all.
+    office_groups = {r.get('person') for r in rows.values()
+                     if OFFICE.search(fold(r['fields'])) or ROLE.search(fold(r['fields'])) or stated(r)[1]}
     for key, row in rows.items():
         if row['name'] is None:
             not_read['no name'] += 1; continue
@@ -224,7 +232,7 @@ def judge(rows, decided, names, spans, by_family):
             if OUTSIDE.search(text):
                 why.append('former, state legislature or outside words')
             states, chambers = stated(row)
-            if not (OFFICE.search(text) or ROLE.search(text) or states or chambers):
+            if not (OFFICE.search(text) or ROLE.search(text) or states or chambers or row.get('person') in office_groups):
                 why.append('no congressional office stated')
             if why:
                 flags[key] = 'retyped: ' + '; '.join(why)
