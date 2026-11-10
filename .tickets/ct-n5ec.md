@@ -17,3 +17,63 @@ Nightly 20261109T224443 failed at model step 172 base_normalized: charged 9.26 G
 
 Join audit test covers base_normalized. Old and new step output byte-identical ordered by doc_key. Engine test shows a sliced List build input is no longer charged per slice. Re-pinned engine passes the full lanes. A nightly passes base_normalized.
 
+
+## Notes
+
+**2026-11-10T00:45:14Z**
+
+SQL half done on branch claude/ct-base-normalized-joins (local commits, not pushed, not merged).
+
+Done
+- e8c4b8a5: the four trailing LEFT JOINs in model/sql/document-normalized.sql (rt, x, fc, bd) are now the four outer layers of the RIGHT JOIN nest, same join order, same single ON condition each. Select list unchanged. The fixture plan shows nine Right joins on component, each built on its one small relation.
+- 34a425bc: in model/sql/document-recovery-normalized.sql the two candidate subqueries name the distinct recovered-body set first, so the join no longer builds on captures (4.17M rows in the failed nightly) or on source_annotation_pages.
+- 9edeb7c9: test_phase1_model_join_audit.py refuses any Left, Right or Full join in base_normalized whose build input scans document_bodies or document_identities. It failed on the old SQL and passes on the new.
+- 7807109d: test_phase1_model_repeat_cost.py tracks every reader of the submitted job with a LEFT or FULL join whose left input is estimated at 100,000 rows or more (OUTER_BUILD_TRACKED, exact list). It flags the old base_normalized (4 joins, 349K rows) and not the new.
+- No pin moved. No tracked file holds the digest of either SQL file; the model profile hashes them at build time, so profile_sha256 changes, and a retained model intent from before the change is refused as "Model definitions changed", as intended.
+
+Not done
+- Byte identity at full size. Prepared, not run: scratch-sqlfix/sf-proof-dryrun-4 holds the failed nightly's job cut before base_normalized, with the new and old SQL as two steps, both exported ORDER BY doc_key. It needs a runtime that can read the five pinned lake tables in the raw bucket (the Mac remote runtime; 24 GiB, 2 threads, the limits the nightly ran under; the 14 GiB local limits allow only 6 GiB of scratch). About 8 to 9 minutes, about 10.5 GiB RSS. Rebuild it with sf-make-proof-job.py if the SQL changes again.
+- Row order of base_normalized changes. Of its five direct readers only model/sql/page-descriptions.sql:42 is order-sensitive (row_number ordered by format rank and path; a tie needs two descriptions at one path of one body, not checked on data). Readers further down were not audited one by one.
+- Engine fix, re-pin, full lanes, a nightly, and the runtime-limits decision are unchanged from the ticket body.
+
+Known offenders of the same shape (not rewritten here; ranked by estimated build rows; estimates come from an empty plan and the 2026-11-04 row fixture, "unmeasured" means the step is missing from that fixture and takes its largest input's rows; the line is the file's first LEFT JOIN, not necessarily the flagged one)
+
+| reader | where (first LEFT JOIN) | joins | est. build rows, set by | cols |
+|---|---|---|---|---|
+| recovery_candidates | model/sql/provenance-recovery-candidates.sql:9 | 3 | 4.1M, captures | 16 |
+| meeting_detail_evidence | model/sql/meeting-detail-evidence.sql:33 | 2 | 4.1M, congress_gov_routes (unmeasured) | 16 |
+| meeting_detail_observations | model/sql/meeting-detail-observations.sql:21 | 3 | 4.1M, meeting_detail_evidence (unmeasured) | 15 |
+| url_state_lines | packages/viewer_publication/src/viewer_publication/archive_url_state.py:31 | 2 | 4.1M, captures | 11 |
+| entity_profile_completeness (query) | packages/viewer_publication/src/viewer_publication/archive_model_profile.py:182 | 3 | 4.1M, captures | 5 |
+| recording_tracks | model/sql/recording-tracks.sql:12 | 1 | 2.8M, recording_track_candidates | 11 |
+| source_addresses | model/sql/source-addresses.sql:4 | 1 | 2.1M, source_files | 3 |
+| source_annotations | model/sql/source-annotations-final.sql:39 | 1 | 2.1M, source_files | 2 |
+| document_identities | model/sql/document-identities.sql:17 | 2 | 2.1M, document_members | 4 |
+| document_metadata | model/sql/document-metadata.sql:18 | 1 | 2.1M, document_members | 10 |
+| component_meeting_links | model/sql/component-meeting-links.sql:5 | 4 | 2.0M, document_metadata | 5 |
+| review_overrides | model/sql/reviews-review-overrides.sql:5 | 3 | 1.8M, document_identities | 5 |
+| model_url_keys | model/sql/url-keys.sql:22 | 1 | 1.7M, url_inputs | 1 |
+| page_dates | model/sql/page-dates.sql:5 | 1 | 1.4M, page_metadata_values (unmeasured) | 5 |
+| document_page_metadata | model/sql/document-page-metadata.sql:19 | 7 | 1.4M, html_metadata_readings (unmeasured) | 19 |
+| source_filename_readings | model/sql/source-annotations-filename.sql:99 | 1 | 1.4M, filename_readings | 27 |
+| source_url_keys | model/sql/url-keys.sql:22 | 1 | 1.3M, source_url_inputs | 1 |
+| document_packages | model/sql/document-packages.sql:44 | 2 | 569K, saved_files | 3 |
+| retired_links_export | model/sql/retired-links.sql:46 | 12 | 440K, prior_links | 6 |
+| bills_export | model/sql/entity-bills.sql:93 | 7 | 422K, spicy_congress_bills | 19 |
+| meetings_export | model/sql/entity-meetings.sql:33 | 9 | 374K, ordered | 31 |
+| page_descriptions | model/sql/page-descriptions.sql:36 | 4 | 356K, base_normalized | 8 |
+| document_page_metadata_entries | model/sql/document-page-metadata-entries.sql:17 | 5 | 356K, page_metadata_documents (unmeasured) | 15 |
+| source_members.parquet (export) | packages/viewer_publication/src/viewer_publication/archive_model.py:1330 | 1 | 356K, ordered | 6 |
+| model_invariants (query) | packages/viewer_publication/src/viewer_publication/archive_model.py:926 | 2 | 356K, ordered | 2 |
+| blank_filename_reasons (query) | packages/viewer_publication/src/viewer_publication/archive_model.py:573 | 1 | 356K, ordered | 2 |
+| source_annotation_pages | model/sql/source-annotations-pages.sql:9 | 2 | 313K, page_facts | 5 |
+| document_witness_keys | model/sql/document-witness-keys.sql:24 | 2 | 205K, document_witness_raw_matches | 3 |
+| witness_key_map | model/sql/witness-key-map.sql:70 | 1 | 177K, witness_key_priors (unmeasured) | 3 |
+| relationship_invariants (query) | packages/viewer_publication/src/viewer_publication/archive_schema.py:300 | 1 | 177K, witness_key_map_export (unmeasured) | 2 |
+| witness_key_current | model/sql/witness-key-current.sql:26 | 1 | 173K, appearance_records_resolved | 15 |
+| document_witness_url_matches | model/sql/document-witness-url-matches.sql:23 | 1 | 173K, appearance_records_resolved | 4 |
+| document_witness_meeting_witnesses | model/sql/document-witness-meeting-witnesses.sql:8 | 1 | 173K, appearance_records_resolved | 5 |
+| witnesses_export | packages/viewer_publication/src/viewer_publication/archive_model.py:847 | 1 | 173K, appearance_records_resolved | 20 |
+| coverage (query) | packages/viewer_publication/src/viewer_publication/archive_format.py:347 | 3 | 173K, witnesses_export | 7 |
+
+Also seen, not tracked: three RIGHT joins build on a large joined relation (source_url_normalized, source_annotation_publisher, source_input), and base_normalized's five inner joins build on the growing document row because the planner reorders inner joins.
