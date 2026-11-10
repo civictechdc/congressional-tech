@@ -72,10 +72,7 @@ def hearing_release(tmp_path,phase2,origin):
                 0::SMALLINT AS display_order,record_kind AS witness_type)
             FROM read_parquet({prior('witnesses')}) w,
                  unnest(['statement_for_record','member_statement','record_material']) t(record_kind)
-            WHERE w.witness_key='appearance-1'
-            UNION ALL SELECT w.* REPLACE('member-1' AS witness_key,334136::BIGINT AS event_id,9::SMALLINT AS display_order,
-                'member_appearance' AS witness_type,'A000001' AS matched_bioguide_id,'name_chamber' AS match_basis)
-            FROM read_parquet({prior('witnesses')}) w WHERE w.witness_key='appearance-1' ''')
+            WHERE w.witness_key='appearance-1' ''')
         # Use the published selected-text shape as a witness passage, including an ambiguous source association.
         write('detail',f'''SELECT *,
           CASE WHEN row_number() OVER()=2 THEN 'Prepared witness statement with original wording.' ELSE NULL END AS selected_text,
@@ -141,7 +138,7 @@ def test_hearing_tools_transcript_paging_cues_dossier_and_passage_roundtrips(tmp
                 assert len(encoded(bundle))<=128<<10
                 # A sitting Member stays in the roster by its tag; record entries do not (ct-kw85).
                 roster=(await call('get_hearing_bundle',event_id=334136,include=['witnesses'],limit=50))['sections']['witnesses']['rows']
-                assert [(w['witness_key'],w['matched_bioguide_id']) for w in roster if w['witness_type']=='member_appearance']==[('member-1','A000001')]
+                assert [(w['witness_key'],w['matched_bioguide_id']) for w in roster if w['witness_type']=='member_appearance']==[('member-appearance-1','A000001')]
                 assert not {w['witness_type'] for w in roster} & {'statement_for_record','member_statement','record_material'}
                 sparse=await call('get_hearing_bundle',event_id=103)
                 assert sparse['sections']['official_transcripts']['state']=='unknown'
