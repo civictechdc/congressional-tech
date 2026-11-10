@@ -17,3 +17,9 @@ Owner asked 2026-11-10 why the nightly takes so long. Measured from steps.jsonl 
 
 The repeated daily scans run once per night, or the reason they cannot is written here. The thread measurement is recorded with a decision. Each remaining item is done, declined with a reason, or split into its own ticket.
 
+
+## Notes
+
+**2026-11-10T13:39:21Z**
+
+2026-11-10 thread measurement (congress-1; .cache/archive-release/investigations/thread-measure-20261110/RESULT.md; 147-step prefix to base_normalized, pinned engine b0342a73, one run each, OCR at 8 workers alongside): 2 threads 444.1 s / 7.83 GiB, 4 threads 405.7 s / 7.94 GiB, 8 threads 423.0 s / 7.41 GiB, exports byte-identical. Item 3 is answered: engine threads are not the limit (4 is 9% faster than 2, 8 is slower than 4). Slowest steps are the same at every count: pinned_readings 29-32 s, link_inputs 17-20 s, appearance_url_inputs 18-20 s, placeholders 16 s. Unprofiled candidates: step results reach later queries through a one-partition streaming table, remote lake reads, single-threaded operators. Next cheap step if the model is to be faster: a sampling profile of pinned_readings and link_inputs.
