@@ -12,11 +12,12 @@ const RECORD_ENTRY_LABELS = new Map([
 ]);
 
 export const witnessRecordEntryLabel = (kind: string) => RECORD_ENTRY_LABELS.get(kind);
-// The Member a row names: the publisher's Bioguide ID, else the archive's match, which is name-matched unless its basis
-// is the publisher's ID.
+// The Member a row links to: the archive's match when it has one (the publisher's ID when that names a known Member,
+// else a name match, marked as such: a publisher typo such as KOOO395 stays published but is not linked), else the
+// publisher's ID as published.
 export const witnessMember = (w: any): { bioguide_id: string, name_matched: boolean } | null =>
-  w?.bioguide_id ? { bioguide_id: String(w.bioguide_id), name_matched: false }
-    : w?.matched_bioguide_id ? { bioguide_id: String(w.matched_bioguide_id), name_matched: w.match_basis !== 'publisher_id' } : null;
+  w?.matched_bioguide_id ? { bioguide_id: String(w.matched_bioguide_id), name_matched: w.match_basis !== 'publisher_id' }
+    : w?.bioguide_id ? { bioguide_id: String(w.bioguide_id), name_matched: false } : null;
 // A witness row's label: its name, else its record-entry kind, else the organization its line lists (a line that
 // names only an organization keeps its row with no name, ct-rg34), and the key only when nothing else is stated.
 export const witnessLabel = (w: any): string =>

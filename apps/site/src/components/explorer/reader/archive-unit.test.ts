@@ -287,6 +287,10 @@ test('a sitting Member keeps a Member tag in the hearing list, leaves the witnes
   assert.equal(rows.filter((w:any)=>!witnessRecordEntryLabel(w.witness_type)).length,1);
   assert.deepEqual(witnessMember(rows.find((w:any)=>w.witness_key==='matched')),{bioguide_id:member,name_matched:true});
   assert.deepEqual(witnessMember(table.witnesses[2]),{bioguide_id:member,name_matched:false});
+  // A publisher's typo stays published; the link goes to the matched Member.
+  assert.deepEqual(witnessMember({bioguide_id:'KOOO395',matched_bioguide_id:'K000395',match_basis:'name_chamber'}),
+    {bioguide_id:'K000395',name_matched:true});
+  assert.deepEqual(witnessMember({bioguide_id:'W000789'}),{bioguide_id:'W000789',name_matched:false});
   assert.deepEqual((await reader.listEntities('witnesses')).rows.map((w:any)=>w.witness_key),['outside']);
   const page=await reader.getMember(member);
   assert.deepEqual(page?.witness_records.map((w:any)=>w.witness_key).sort(),['matched','published']);
