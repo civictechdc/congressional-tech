@@ -561,13 +561,12 @@ def round5(tmp_path, after=ROUND5_AFTER, **more):
 
 
 def test_the_reading_changes_own_losses_pass_by_content_and_a_typed_answerer_is_judged(tmp_path):
-    """The document's text, "Accompanied By:" and a prose fragment shed, a Member's article typed a member's statement
-    and the answerer Rue listed: only the witness typing of the answerer Kulick where the published row was nameless
-    record material is left for a reviewer."""
+    """The document's text, "Accompanied By:" and a prose fragment shed, a Member's article typed a member's statement,
+    the answerer Rue listed, and the answerer Kulick, who testified (line 1), typed a witness where the published row
+    was nameless record material (round 6: an answerer who testified is a witness): all pass."""
     round5(tmp_path)
     code, out = run(tmp_path)
-    assert code == 1 and out['failed'] == {'type_unsupported': 1}
-    assert [(i['locator'], i['after']['witness_type']) for i in out['type_unsupported']] == [('mods:witness[2]', None)]
+    assert code == 0, out['failed']
     assert [i['locator'] for i in out['answerer']] == ['mods:witness[7]/part[2]']
     after = [ROUND5_AFTER[0], dict(ROUND5_AFTER[1], witness_type='record_material'), *ROUND5_AFTER[2:]]
     (tmp_path / 'raw').rename(tmp_path / 'raw-old')
@@ -588,3 +587,33 @@ def test_the_round5_plants_run_together_each_flagged(tmp_path):
         'answerer-mistyped': ('mods:witness[7]/part[2]', 'statement_for_record'),
         'document-cut': ('mods:witness[3]', 'Report, Arsenic and Old Laws'),
         'position-from-other-row': ('mods:witness[4]/part[2]', 'Commissioner')}
+
+
+# Round 6 (owner decisions 2026-11-10): an answerer is a witness when they testified, a statement for the record when
+# they answered only in writing; a Senator's prepared statement is a member's statement.
+ROUND6_LINES = ['Avalos, Hon. Edward M., Under Secretary, Marketing and Regulatory Programs',
+                'Submitted questions: Avalos, Hon. Edward M', 'Submitted questions: Ramaswamy, Ph.D., Sonny',
+                'Thomas, Hon. Craig, a U.S. Senator from the State of Wyoming, prepared statement']
+ROUND6_BEFORE = [asked('mods:witness[1]', 'Edward M. Avalos', 1, None, position='Under Secretary',
+                       organization='Marketing and Regulatory Programs'),
+                 asked('mods:witness[2]', 'Edward M Avalos', 2), asked('mods:witness[3]', 'Sonny Ramaswamy', 3, None),
+                 asked('mods:witness[4]', 'Craig Thomas', 4, None, position='a U.S. Senator from the State of Wyoming')]
+ROUND6_AFTER = [ROUND6_BEFORE[0], dict(ROUND6_BEFORE[1], witness_type=None),
+                dict(ROUND6_BEFORE[2], witness_type='statement_for_record'),
+                dict(ROUND6_BEFORE[3], witness_type='member_statement')]
+
+
+@pytest.mark.parametrize('before, after, flagged', [
+    (ROUND6_BEFORE, ROUND6_AFTER, []),
+    # Avalos testified (line 1): a statement for the record is wrong for him.
+    (ROUND6_BEFORE, [ROUND6_AFTER[0], dict(ROUND6_AFTER[1], witness_type='statement_for_record'), *ROUND6_AFTER[2:]],
+     ['mods:witness[2]']),
+    # Ramaswamy did not: a witness typed from record material is wrong for him.
+    ([*ROUND6_BEFORE[:2], dict(ROUND6_BEFORE[2], witness_type='record_material'), ROUND6_BEFORE[3]],
+     [*ROUND6_AFTER[:2], dict(ROUND6_AFTER[2], witness_type=None), ROUND6_AFTER[3]], ['mods:witness[3]']),
+])
+def test_an_answerers_type_follows_whether_they_testified(tmp_path, before, after, flagged):
+    write(tmp_path, before=before, after=after, lines=ROUND6_LINES, table=['Craig Thomas'])
+    code, out = run(tmp_path)
+    assert [i['locator'] for i in out['type_unsupported']] == flagged
+    assert code == (1 if flagged else 0), out['failed']
