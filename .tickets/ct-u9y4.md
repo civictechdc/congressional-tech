@@ -68,3 +68,23 @@ Run through the pinned engine on the published release's rows (`ri_10_native.out
 Also open: whether a recovery-only row should list its dead address in `sources` (6,169 rows list none today).
 
 **A full model build must confirm:** Bowman is two rows with the keys above; the 25 links of `rule-effect-after.csv` each have a row whose saved file is the "own row shows" body and whose recoveries include the "live row shows" body; no link key, lookup key or body key is missing and `link_rule` is ok; `recovery_documents_with_several_files` reports about 217 (same_text 31, text_differs 25, text_unread about 161); `unaccounted_merged_signal` is 0; the 25 "URLs gone" and 25 new recovery-only rows get a recorded cause. No model build was run.
+
+**2026-11-10T13:48:10Z**
+
+Correction prepared and proved locally (claude/ct-u9y4-records; nothing written to raw). Evidence, staged records and commands: .cache/archive-release/investigations/recovery-records-20261110/ (README.md first).
+
+**Mechanism.** No code change. A provenance recoveries record with kind rejected drops one (dead address, body) acceptance; a file goes under another address through a new retained_import receipt plus its decision (corpus_recovery.reconcile stage/import). Both tools exist; four tool files are identical to main.
+
+**Second reading** (Poppler, lxml, 3-gram and cosine, Tesseract OCR): 66 rows hold an unrelated file, the earlier 56 plus all 10 scans (OCR settles every scan). Every wrong acceptance came from webharvest-import-839-20261015. The only disagreement is the 10 scans (earlier: cannot tell). The 3 recordings stay undecided; the page-plus-file rows, editions and same-content rows are unchanged.
+
+**Correction set.** 69 rejections (one stage object, provenance/recoveries/20261110T210000+0000.jsonl). 58 distinct wrong files: 23 are live, and 11 are already the recovery of their own address. The other 24 are re-recorded under the harvest receipt's recorded address: 24 receipts plus one stage object, provenance/recoveries/20261110T210001+0000.jsonl. That makes 26 create-only objects; write the re-records first. An undo stage script is ready.
+
+**Proof** (model recovery SQL through the pinned engine on the release's 12,796 recovery rows; the rebuild of the release matches except 165 ZIP-wrapper or unrelated rows). Base to corrected:
+- the 69 pairs are removed and the 24 rows added, each alone on a new document;
+- 5 dead links leave the 4 live wrong-file rows (298088 x2, 302779, 348262, 356005) for rows of their own;
+- 4 documents switch from the wrong file to their own hearing print;
+- 0 link keys lost, 9 answer another file (all corrected), 0 files leave the release, 0 reviews touched;
+- under main's rule the result is the same on all 93 corrected links;
+- planted errors are flagged.
+
+**Open for the orchestrator:** run the writes (README part 3) outside a nightly. The gate then needs cause records for the 24 new rows and the 9 changed keys.
