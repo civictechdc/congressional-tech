@@ -2517,8 +2517,9 @@ def test_a_long_line_of_paged_askers_that_fails_to_match_does_not_backtrack():
     assert appearance_records._mods_askers_named("Senator Graham.....23, " * 13 + "Larson, Amy W., Esq.", {}, True) == (
         [], False, False)
     assert len(appearance_records._mods_askers_named("Senator Graham.....23, " * 13, {}, False)[0]) == 13
-    assert len(appearance_records._mods_askers_named(
-        "Responses to questions from " + "Senator Graham, " * 300 + "and Larson", {}, False)[0]) == 301
+    askers, only, _ = appearance_records._mods_askers_named(
+        "Responses to questions from " + "Senator Graham, " * 300 + "and Larson", {}, False)
+    assert (len(askers), only) == (300, False)  # "Larson" has no title: the line prints more than its askers
     assert time.perf_counter() - started < 1
 
 
