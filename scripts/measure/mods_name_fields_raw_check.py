@@ -318,31 +318,31 @@ def member_groups(line, families, *, near_title=False):
         for i in range(len(lowered) - size + 1):
             if tuple(lowered[i:i + size]) != family or not capital(marks[i][1]):
                 continue
-            titled = (any(lowered[t] in MEMBER_TITLES for t in range(max(i - 4, 0), i) if lowered[t])
-                      or i + size + 1 < len(marks) and marks[i + size][1] == ','
-                      and lowered[i + size + 1] in ('hon', 'honorable'))
+            first = (i + size + 1 < len(marks) and marks[i + size][1] == ','
+                     and lowered[i + size + 1] in ('hon', 'honorable'))  # "Akaka, Hon. Daniel K"
+            titled = first or any(lowered[t] in MEMBER_TITLES for t in range(max(i - 4, 0), i) if lowered[t])
             if not near_title or titled:
-                groups.append(around(i, i + size))
+                groups.append(set(family) if first else around(i, i + size))
     taken = set()  # positions of words a chamber title's run read as a Member's name
     for i, word in enumerate(lowered):
         kind_before, text_before = marks[i - 1] if i else ('mark', '')
         if word not in CHAMBER or kind_before == 'word' and (
                 plain(text_before) in ('of', 'the', 'state') or capital(text_before) and i - 1 not in taken):
             continue
-        plural, current = word in ('senators', 'representatives'), set()
+        plural, current, ended = word in ('senators', 'representatives'), set(), False
         for k in range(i + 1, len(marks)):
             kind, text = marks[k]
             low = plain(text)
-            if name_word(kind, text):
+            if name_word(kind, text) and not ended:
                 taken.add(k)
                 if len(low) > 1 and low not in SUFFIXES:
                     current.add(low)
-                if low in last_words and not (k + 1 < len(marks) and lowered[k + 1] in last_words):
-                    break  # the print's own Member ends the name
+                # The print's own Member ends the name: the list's item, or a titled name.
+                ended = low in last_words and not (k + 1 < len(marks) and lowered[k + 1] in last_words)
             elif plural and (text == ',' or low == 'and'):
                 groups.append(current)
-                current = set()
-            else:
+                current, ended = set(), False
+            elif not (ended and plural and name_word(kind, text)):
                 break
         groups.append(current)
     for i, word in enumerate(lowered):
@@ -407,8 +407,9 @@ def asking_lines(lines, families):
 
 
 def line_members(line, families, kind):
-    """The words of the Members a line names (member_groups), read near their titles on a heading line."""
-    return set().union(*member_groups(line, families, near_title=kind == 'heading') or [set()])
+    """The words of the Members a line names (member_groups); a <congMember> family name counts anywhere only on a
+    line of names alone, elsewhere near a Member title (a document or a witness can print a Member's surname)."""
+    return set().union(*member_groups(line, families, near_title=kind != 'list') or [set()])
 
 
 def in_order(name, line):
@@ -461,7 +462,7 @@ def judge(before, after, raw_root, given, family):
                 and (any(person(part) for part in parts[1:]) or names_document_only(line)))
 
     def reorder_supported(name):
-        return person(name) and family_word(name) in family
+        return person(name) and (family_word(name) in family or member_name(name, members))
 
     out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'split', 'restored', 'asker', 'not_read',
                                'bodies_only_before', 'bodies_only_after')}
@@ -499,8 +500,8 @@ def judge(before, after, raw_root, given, family):
             """A row the before side lacks that is a Member the asking line prints, in order."""
             name, line = b.get('name'), line_of(locator)
             return (b.get('witness_type') == 'record_material' and position(locator) in asking and bool(name)
-                    and set(map(plain, words(name))) <= set(map(plain, words(line))) and in_order(name, line)
-                    and a_member(name, locator))
+                    and set(map(plain, words(name))) <= set(map(plain, words(line)))
+                    and (in_order(name, line) or reorder_supported(name)) and a_member(name, locator))
 
         # Witness rows on an asking line, documents left a witness, and the order rows are shown in.
         by_line = {}
