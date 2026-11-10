@@ -138,6 +138,12 @@
     "sample_id": "page-signals:link_word_no_name"
   },
   {
+    "id": "link_word_bill_placeholder",
+    "kind": "link_word",
+    "pattern": "(?i)^(?:H\\.?\\s?R\\.?|S\\.)\\s*_+[.!:]*$",
+    "sample_id": "page-signals:link_word_bill_placeholder"
+  },
+  {
     "id": "description_templates",
     "kind": "description_template",
     "pattern": "^(?:official publications from the u[.]s[.] government publishing office|house committee on natural resources - democrats|education & workforce committee democrats|the house committee on science, space and technology|the house committee on transportation and infrastructure|the official website of|congressional website|the committee on energy and commerce is the oldest standing legislative committee)",
