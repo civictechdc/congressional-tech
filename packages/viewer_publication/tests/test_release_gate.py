@@ -282,7 +282,8 @@ def url_states(url, attempts):
 
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
-            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=False):
+            url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=False,
+            base_tables=None, candidate_tables=None):
     """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
     import gzip
     import os
@@ -296,8 +297,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     if other_entity:
         additions['meetings'] = pa.table({'event_id': [119123]})
         baseline['meetings'] = additions['meetings'].slice(0, 0)
-    release_dir(base, base_docs, **baseline)
-    release_dir(candidate, candidate_docs, retired=[], **additions)
+    release_dir(base, base_docs, **baseline, **(base_tables or {}))
+    release_dir(candidate, candidate_docs, retired=[], **additions, **(candidate_tables or {}))
     if filenames:
         pq.write_table(pa.table({'filename': filenames}), candidate / 'list.parquet')
         manifest = json.loads((candidate / 'manifest.json').read_text())
@@ -451,3 +452,55 @@ def test_an_added_link_key_on_an_existing_document_requires_review(tmp_path):
     report = json.loads(report_path.read_text())
     assert report['link_rule']['ok']
     assert report['automatic_reasons'] == ['automatic causes: 2 added link keys, 1 attached to new documents']
+
+
+# ct-syp1: a video cache refresh rewrites every citation of the cache file and nothing else.
+def video_tables(fetch, day, *, title='Hearing on oversight'):
+    file_sha = sha256(fetch.encode()).digest()
+    return dict(
+        channels=pa.table({'handle': ['@committee'], 'title': ['Committee'], 'record_sha': pa.array([file_sha], pa.binary())}),
+        videos=pa.table({'video_key': ['youtube:one'], 'handle': ['@committee'], 'title': [title],
+                         'details_checked_at': pa.array([datetime(2026, 11, day, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
+                         'record_sha': pa.array([file_sha], pa.binary())}),
+        recording_matches=pa.table({'match_id': ['m1'], 'video_key': ['youtube:one'],
+                                    'source_ref': ['video_records:' + file_sha.hex()]}))
+
+
+def no_additions(base, candidate, tmp_path):
+    from viewer_publication.release_gate import automatic_causes
+    return lambda report: automatic_causes(report, base, candidate, engine=None, captures=None,
+                                           live_receipt_keys=(), read_receipt=None, work=tmp_path / 'auto')
+
+
+def test_a_cache_refresh_alone_passes_unattended(tmp_path):
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, ['A'], **video_tables('fetch-1', 1))
+    release_dir(candidate, ['A'], **video_tables('fetch-2', 8))
+    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json',
+                                   automatic=no_additions(base, candidate, tmp_path))
+    assert report['reasons'] == [] and report['automatic_reasons'] == [] and report['failing'] == []
+    proven = {(name, g['group']): g['count'] for name, facts in report['files'].items() for g in facts['groups']}
+    assert proven == {('channels.parquet', 'changed record_sha'): 1, ('videos.parquet', 'changed record_sha'): 1,
+                      ('videos.parquet', 'changed details_checked_at'): 1, ('recording_matches.parquet', 'changed source_ref'): 1}
+
+
+def test_a_cache_refresh_beside_new_documents_passes_unattended(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], base_tables=video_tables('fetch-1', 1),
+                                         candidate_tables=video_tables('fetch-2', 8))
+    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert report['reasons'] == [] and {e['id'].split('|')[0] for e in report['automatic_causes']} == {
+        'list.parquet', 'detail.parquet', 'links.parquet', 'url_state.parquet'}
+
+
+def test_a_changed_title_beside_a_cache_refresh_refuses_unattended(tmp_path):
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, ['A'], **video_tables('fetch-1', 1))
+    release_dir(candidate, ['A'], **video_tables('fetch-2', 8, title='Hearing on something else'))
+    with pytest.raises(ValueError, match=r'no recorded cause for videos.parquet\|changed title\|value differs on matched key \(1\)'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json',
+                              automatic=no_additions(base, candidate, tmp_path))
+    report = json.loads((tmp_path / 'r.json').read_text())
+    # The changed row's own citation is not proven either; the channel's and the match's are.
+    assert sorted(g['file'] + '|' + g['group'] for g in report['failing']) == [
+        'videos.parquet|changed details_checked_at', 'videos.parquet|changed record_sha', 'videos.parquet|changed title']
+    assert any('videos.parquet|changed title' in reason for reason in report['automatic_reasons'])

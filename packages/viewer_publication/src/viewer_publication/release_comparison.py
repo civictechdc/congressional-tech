@@ -59,6 +59,7 @@ class Diff:
             self.history.append(name)
         self.link_causes = False
         self.witness_rekey = None  # set by rekeyed()
+        self.refetched = None  # set by refetched_files()
 
     def has(self, side, table):
         return bool(self.rows(f"SELECT 1 FROM duckdb_views() WHERE view_name='{side}_{table}'"))
@@ -551,9 +552,121 @@ def url_state(d: Diff):
     return out + d.changed('url_state', 'base_url_state p JOIN candidate_url_state l USING(requested_url)', exclude=set()), {}
 
 
+# ct-syp1: the weekly video cache refresh. `record_sha` (videos, channels) is the hash of the cache
+# FILE a row was read from, and `recording_matches.source_ref` cites it; the file embeds fetch
+# times, so a refresh rewrites every citation with no content change. Per table: its key and the
+# columns that only cite or date the fetch. Every other column is content, by exclusion, so a
+# column added later is content until someone lists it here. Content today:
+#   channels: channel_id, system_code, committee_label, role, title, custom_url,
+#     uploads_scan_complete, mapping_basis
+#   videos: handle, channel_id, system_code, title, source_description, published_at,
+#     video_published_at, duration_seconds, available, has_caption, stated_event_ids
+#   recording_matches: subject_kind, subject_id, event_id, package_id, video_key, url, basis,
+#     decision, score, recording_scope, status, note, meeting_links
+CITATIONS = {'channels': ('handle', ('record_sha',)), 'videos': ('video_key', ('record_sha', 'details_checked_at')),
+             'recording_matches': ('match_id', ('source_ref',))}
+CACHE_CHURN = 'cache file re-fetched: every content column equal on the row'
+CITATION_CHURN = "citation follows the video's record_sha: every other column equal on the row"
+CHURN_GROUPS = {('channels.parquet', 'changed record_sha', CACHE_CHURN), ('videos.parquet', 'changed record_sha', CACHE_CHURN),
+                ('videos.parquet', 'changed details_checked_at', CACHE_CHURN),
+                ('recording_matches.parquet', 'changed source_ref', CITATION_CHURN)}
+
+
+def _content_equal(d: Diff, table):
+    """SQL for "every content column equal" on aliases p and l, or None when the proof cannot run.
+
+    It cannot run when the published key is not the one named here or the two releases' columns
+    or types differ: a column with no partner has nothing to be equal to.
+    """
+    key, cited = CITATIONS[table]
+    if not (d.has('base', table) and d.has('candidate', table)) or d.identities.get(table, {}).get('fields') != [key]:
+        return None
+    types = d.arrow_types('base', table)
+    if types != d.arrow_types('candidate', table) or not {key, *cited} <= set(types):
+        return None
+    return ' AND '.join(f'p."{c}" IS NOT DISTINCT FROM l."{c}"' for c in types if c != key and c not in cited) or 'true'
+
+
+def refetched_files(d: Diff):
+    """Table `refetched_files(handle,o,n)`: channels whose cache file was replaced, old hash to new.
+
+    A channel row qualifies when its content is equal, both hashes are present and differ, and
+    over all matched channels its old file went to that one new file and the new file came from
+    that one old file. So a hash that is not a whole file's (one row re-pointed, two files folded
+    into one, a channel moved to a file the base already cites) qualifies nothing it touches.
+    False when the proof cannot run. One pass over channels (119 rows), built once.
+    """
+    if d.refetched is None:
+        same = _content_equal(d, 'channels')
+        d.refetched = same is not None
+        if d.refetched:
+            d.table('refetched_files', f"""WITH m AS (SELECT p.handle,p.record_sha o,l.record_sha n,({same}) same
+                FROM base_channels p JOIN candidate_channels l USING(handle)),
+              olds AS (SELECT o FROM m GROUP BY o HAVING count(DISTINCT n)=1),
+              news AS (SELECT n FROM m GROUP BY n HAVING count(DISTINCT o)=1)
+              SELECT DISTINCT handle,o,n FROM m JOIN olds USING(o) JOIN news USING(n) WHERE same AND o<>n""")
+    return d.refetched
+
+
+def cache_churn(table):
+    """The registry comparison, with the cache-refresh rows of a citation group proven (ct-syp1).
+
+    A row is proven only when nothing but its citation moved:
+      channels: see `refetched_files`.
+      videos: content equal; the row cites its own channel's file in both releases and that file
+        is a refetched one; `details_checked_at` is equal or later, never earlier or emptied.
+      recording_matches: every column but `source_ref` equal, and `source_ref` is
+        `video_records:` plus that video's `record_sha` in each release.
+    Proven rows become a `verified` group; the rest of the column's changed rows stay in the
+    unverified `value differs on matched key` group and still need a recorded cause, as does every
+    content column, added key and removed key. A row with any content change proves nothing, so
+    its citation change is counted with the unverified rows. Each proof is one more aggregate over
+    the matched rows the registry comparison already joins: O(rows), hash joins on the keys.
+    Cannot see: whether the new hash is the hash of a real file, or whether the file holds the
+    published values; only that every citation of one old file moved together to one new value.
+    """
+    def run(d: Diff):
+        groups, notes = generic(table)(d)
+        same = _content_equal(d, table)
+        if same is None:
+            return groups, notes
+        if table == 'recording_matches':
+            if not (d.has('base', 'videos') and d.has('candidate', 'videos')):
+                return groups, notes
+            cause = CITATION_CHURN
+            proven = d.rows(f"""SELECT count(*) FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id)
+              JOIN base_videos pv ON pv.video_key=p.video_key JOIN candidate_videos lv ON lv.video_key=l.video_key
+              WHERE {same} AND p.source_ref<>l.source_ref AND p.source_ref='video_records:'||lower(hex(pv.record_sha))
+              AND l.source_ref='video_records:'||lower(hex(lv.record_sha))""")[0]
+        elif not refetched_files(d):
+            return groups, notes
+        elif table == 'channels':
+            cause = CACHE_CHURN
+            proven = d.rows('SELECT count(*) FROM refetched_files')[0]
+        else:
+            cause = CACHE_CHURN
+            proven = d.rows(f"""SELECT count(*),count(*) FILTER (WHERE l.details_checked_at>p.details_checked_at)
+              FROM base_videos p JOIN candidate_videos l USING(video_key)
+              JOIN refetched_files f ON f.handle=l.handle AND f.o=p.record_sha AND f.n=l.record_sha
+              WHERE {same} AND (p.details_checked_at IS NOT DISTINCT FROM l.details_checked_at
+                                OR l.details_checked_at>p.details_checked_at)""")[0]
+        out = []
+        for g in groups:
+            column = g['group'].removeprefix('changed ')
+            n = proven[CITATIONS[table][1].index(column)] if g.get('value') and column in CITATIONS[table][1] else 0
+            if n:
+                out.append(dict(value_group(column, n), cause=cause, status='verified'))
+                g = dict(g, count=g['count'] - n)
+            if g['count'] or g.get('flag'):
+                out.append(g)
+        return out, notes
+    return run
+
+
 HANDLERS = {'list': document_file('list'), 'detail': document_file('detail'), 'links': links, 'urls': urls, 'sources': sources, 'meetings': meetings,
             'recoveries': recoveries,
-            'recordings': recordings, 'bills': bills, 'url_state': url_state, 'witnesses': witnesses, 'witness_key_map': witness_key_map}
+            'recordings': recordings, 'bills': bills, 'url_state': url_state, 'witnesses': witnesses, 'witness_key_map': witness_key_map,
+            **{table: cache_churn(table) for table in CITATIONS}}
 
 
 def account(d: Diff):

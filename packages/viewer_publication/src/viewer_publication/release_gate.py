@@ -27,7 +27,7 @@ import pyarrow.parquet as pq
 
 from congress_api.lake.receipt_metadata import document_status, document_status_sql
 
-from viewer_publication.release_comparison import ADDED_URL_STATE, ATTEMPTED_URLS
+from viewer_publication.release_comparison import ADDED_URL_STATE, ATTEMPTED_URLS, CHURN_GROUPS
 
 DIGEST = re.compile('[0-9a-f]{64}')
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
@@ -303,8 +303,11 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     groups = report['failing']
     if not report['link_rule']['ok']:
         return [], ['automatic causes: the link rule failed']
-    # Include already verified differences when deciding whether this is addition-only.
-    differences = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
+    # Include already verified differences when deciding whether this is addition-only, except
+    # the cache-refresh citations the comparison proved row by row (ct-syp1): they change no
+    # content, so they neither need this proof nor stop it.
+    differences = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']
+                   if group['status'] != 'verified' or (name, group['group'], group['cause']) not in CHURN_GROUPS]
     other = [g for g in differences if g.get('value') or g['count'] <= 0 or
              ((g['file'], g['group']) not in AUTOMATIC_GROUPS and
               (g['file'], g['group'], g['cause']) != ATTEMPTED_URL_GROUP)]

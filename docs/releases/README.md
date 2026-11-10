@@ -58,3 +58,24 @@ value, a split or merge, or a row that cannot be traced still needs a reviewed c
 What it cannot see: a bug that adds only wrong rows from genuinely new receipts. A
 code change that alters how new rows are built is invisible too, when no existing row
 changes. Gates 2-5 still run on every nightly candidate.
+
+## Video cache refresh (ct-syp1)
+
+`videos.record_sha` and `channels.record_sha` are the hash of the cache file a row was read
+from, `videos.details_checked_at` is when it was fetched, and a `recording_matches.source_ref`
+of the form `video_records:<hash>` cites the same file. The file embeds fetch times, so the
+weekly refresh rewrites all of them with no content change. The comparison proves such a row
+itself and reports it `verified`, so it needs no cause entry on any publish, reviewed or
+nightly:
+
+- a channel: every other column equal, and its old file went to one new file that came from
+  that old file only, over all channels;
+- a video: every column but those two equal, the row cites its own channel's file in both
+  releases, that channel passed the check above, and the check time is equal or later;
+- a match: every column but `source_ref` equal, and the citation is that video's
+  `record_sha` in each release.
+
+Everything else in these tables still needs a reviewed cause: a changed title, duration,
+description or any other column, an added or removed row, and the citation change on a row
+that changed anything else. What it cannot see: whether the new hash is a real file's, or
+whether that file holds the published values.

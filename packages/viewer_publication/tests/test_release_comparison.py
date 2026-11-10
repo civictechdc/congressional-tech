@@ -496,3 +496,130 @@ def test_null_urls_removed_from_the_candidate_are_not_reported_as_persisting(tmp
     groups = counts(result, 'sources')
     assert groups[('NULL url', 'defect: a published source address must not be null')] == -2
     assert not any('also present' in name for name, _ in groups)
+
+
+# ct-syp1: the weekly video cache refresh rewrites every citation of a cache file.
+TS = pa.timestamp('us', tz='UTC')
+VIDEO_SCHEMAS = dict(SCHEMAS, channels=[('handle', S), ('title', S), ('record_sha', B)],
+                     videos=[('video_key', S), ('handle', S), ('title', S), ('duration_seconds', I),
+                             ('details_checked_at', TS), ('record_sha', B)],
+                     recording_matches=[('match_id', S), ('video_key', S), ('basis', S), ('source_ref', S)])
+# Written out, not imported: a reworded cause changes every recorded group id.
+CHURN = 'cache file re-fetched: every content column equal on the row'
+CITED = "citation follows the video's record_sha: every other column equal on the row"
+PLAIN = 'value differs on matched key'
+
+
+def file_hash(name):
+    return sha256(name.encode()).digest()
+
+
+def cited(name):
+    return 'video_records:' + file_hash(name).hex()
+
+
+def video_release(directory, files, checked, *, change=None, schemas=VIDEO_SCHEMAS):
+    """Two cache files (`files` names this fetch of each) holding channels @a and @b, and @c; `api`
+    is a video read from an API record, which no refresh rewrites. `change(tables)` plants a value."""
+    from datetime import datetime, timezone
+    first, second = files
+    at = datetime(2026, 11, checked, tzinfo=timezone.utc)
+    video = lambda key, handle, source: dict(video_key=key, handle=handle, title=key, duration_seconds=60,
+                                             details_checked_at=at, record_sha=file_hash(source))
+    tables = dict(
+        channels=[dict(handle=h, title=h, record_sha=file_hash(f)) for h, f in (('@a', first), ('@b', first), ('@c', second))],
+        videos=[video('a1', '@a', first), video('a2', '@a', first), video('b1', '@b', first), video('c1', '@c', second),
+                dict(video('api', '@a', 'api-record'), details_checked_at=datetime(2026, 10, 1, tzinfo=timezone.utc))],
+        recording_matches=[dict(match_id='m1', video_key='a1', basis='video_states_event_id', source_ref=cited(first)),
+                           dict(match_id='m2', video_key='c1', basis='video_states_event_id', source_ref=cited(second)),
+                           dict(match_id='m3', video_key=None, basis='curated', source_ref='recording_decisions:d1')])
+    if change:
+        change(tables)
+    return release(directory, documents=['A'], schemas=schemas, **tables)
+
+
+def refresh(tmp_path, change=None, *, files=('new-1', 'new-2'), checked=8, schemas=VIDEO_SCHEMAS):
+    prev = video_release(tmp_path / 'prev', ('old-1', 'old-2'), 1)
+    live = video_release(tmp_path / 'live', files, checked, change=change, schemas=schemas)
+    _, result = run(tmp_path, prev, live)
+    return result
+
+
+def test_a_cache_refresh_that_changes_no_content_is_proven_without_a_record(tmp_path):
+    result = refresh(tmp_path)
+    assert counts(result, 'channels') == {('changed record_sha', CHURN): 3}
+    assert counts(result, 'videos') == {('changed record_sha', CHURN): 4, ('changed details_checked_at', CHURN): 4}
+    assert counts(result, 'recording_matches') == {('changed source_ref', CITED): 2}
+    assert result['ok'] and result['failing'] == []
+
+
+def row(tables, name, key):
+    return next(r for r in tables[name] if key in r.values())
+
+
+def plant(name, key, **values):
+    return lambda tables: row(tables, name, key).update(values)
+
+
+@pytest.mark.parametrize('change,table,expected', [
+    # A changed title or duration is its own group, and the row's citation is not proven either.
+    (plant('videos', 'a1', title='A new title'), 'videos',
+     {('changed record_sha', CHURN): 3, ('changed details_checked_at', CHURN): 3, ('changed record_sha', PLAIN): 1,
+      ('changed details_checked_at', PLAIN): 1, ('changed title', PLAIN): 1}),
+    (plant('videos', 'c1', duration_seconds=61), 'videos',
+     {('changed record_sha', CHURN): 3, ('changed details_checked_at', CHURN): 3, ('changed record_sha', PLAIN): 1,
+      ('changed details_checked_at', PLAIN): 1, ('changed duration_seconds', PLAIN): 1}),
+    # One row cites a hash that is not its channel's file.
+    (plant('videos', 'a2', record_sha=file_hash('not-a-file')), 'videos',
+     {('changed record_sha', CHURN): 3, ('changed details_checked_at', CHURN): 3, ('changed record_sha', PLAIN): 1,
+      ('changed details_checked_at', PLAIN): 1}),
+    # The check time went backwards or was emptied: an older file was read, not a newer one.
+    (plant('videos', 'b1', details_checked_at=None), 'videos',
+     {('changed record_sha', CHURN): 3, ('changed details_checked_at', CHURN): 3, ('changed record_sha', PLAIN): 1,
+      ('changed details_checked_at', PLAIN): 1}),
+    # An API-sourced row that now cites a cache file changed its source, not its file.
+    (plant('videos', 'api', record_sha=file_hash('new-1')), 'videos',
+     {('changed record_sha', CHURN): 4, ('changed details_checked_at', CHURN): 4, ('changed record_sha', PLAIN): 1}),
+    # A changed channel proves nothing for itself or for the videos that cite its file through it.
+    (plant('channels', '@a', title='Renamed'), 'channels', {('changed record_sha', CHURN): 2, ('changed record_sha', PLAIN): 1, ('changed title', PLAIN): 1}),
+    (plant('channels', '@a', title='Renamed'), 'videos',
+     {('changed record_sha', CHURN): 2, ('changed details_checked_at', CHURN): 2, ('changed record_sha', PLAIN): 2,
+      ('changed details_checked_at', PLAIN): 2}),
+    # A match re-pointed at another video, citing another video's file, or citing another decision.
+    (plant('recording_matches', 'm1', video_key='a2'), 'recording_matches',
+     {('changed source_ref', CITED): 1, ('changed source_ref', PLAIN): 1, ('changed video_key', PLAIN): 1}),
+    (plant('recording_matches', 'm1', source_ref=cited('new-2')), 'recording_matches',
+     {('changed source_ref', CITED): 1, ('changed source_ref', PLAIN): 1}),
+    (plant('recording_matches', 'm3', source_ref='recording_decisions:d2'), 'recording_matches',
+     {('changed source_ref', CITED): 2, ('changed source_ref', PLAIN): 1}),
+    # Added and removed rows are never part of the proof.
+    (lambda tables: tables['videos'].append(dict(tables['videos'][0], video_key='a3')), 'videos',
+     {('changed record_sha', CHURN): 4, ('changed details_checked_at', CHURN): 4, ('added keys', 'no evidence given'): 1}),
+    (lambda tables: tables['recording_matches'].pop(0), 'recording_matches',
+     {('changed source_ref', CITED): 1, ('removed keys', 'no evidence given'): -1}),
+])
+def test_a_planted_change_beside_a_cache_refresh_is_not_proven(tmp_path, change, table, expected):
+    result = refresh(tmp_path, change)
+    assert counts(result, table) == expected
+    assert not result['ok'] and {g['file'] for g in result['failing']} >= {f'{table}.parquet'}
+
+
+def test_an_earlier_check_time_is_not_a_refresh(tmp_path):
+    result = refresh(tmp_path, checked=1, change=lambda tables: [v.update(details_checked_at=v['details_checked_at'].replace(month=10))
+                                                                  for v in tables['videos'] if v['video_key'] != 'api'])
+    assert counts(result, 'videos') == {('changed record_sha', PLAIN): 4, ('changed details_checked_at', PLAIN): 4}
+
+
+def test_two_cache_files_folded_into_one_hash_prove_nothing(tmp_path):
+    result = refresh(tmp_path, files=('new-1', 'new-1'))
+    assert counts(result, 'channels') == {('changed record_sha', PLAIN): 3}
+    assert counts(result, 'videos') == {('changed record_sha', PLAIN): 4, ('changed details_checked_at', PLAIN): 4}
+    # A match's citation is judged against its own video's hash only; the video rows carry the finding.
+    assert counts(result, 'recording_matches') == {('changed source_ref', CITED): 2}
+
+
+def test_a_column_with_no_partner_stops_the_cache_refresh_proof(tmp_path):
+    wider = dict(VIDEO_SCHEMAS, videos=[*VIDEO_SCHEMAS['videos'], ('transcript', S)])
+    result = refresh(tmp_path, schemas=wider)
+    assert counts(result, 'videos') == {('changed record_sha', PLAIN): 4, ('changed details_checked_at', PLAIN): 4}
+    assert 'videos.transcript: new in the candidate; no base values to compare' in result['cannot_see']
