@@ -617,8 +617,9 @@ recovered copy := (owner, 2026-11-02) an original link whose recovered copy (dis
                   A link accepted with several recovered copies moves only through the copy
                   its own row would show (the first in the recovery order), or through
                   another of its copies whose text fingerprint equals that copy's; any other
-                  copy says nothing about where the link belongs, so a file fetched live
-                  elsewhere never changes which file a link's key answers (ct-u9y4)
+                  copy says nothing about where the link belongs, so the link's key always
+                  reaches a row holding the file the link shows, whatever else is fetched
+                  live (ct-u9y4)
 listed         := components with at least one real file or at least one recovery
 
 saved-file order := (format preference, unlisted formats after listed by name;

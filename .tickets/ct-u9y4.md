@@ -49,7 +49,7 @@ All 56 different-document rows hold a copy whose address shares only the file na
 
 **Cannot see.** Scans and recordings; a single-body row has nothing to compare against but the address's own words, so a wrong file with a plausible date passes; "same content" is judged on extracted text, so a changed figure or signature page is invisible; 30 of 3,696 leaves up to about 10% undetected at 95%.
 
-**Rule implemented.** A recovered copy that equals a live body used to move its dead link into that live document, whichever of the link's copies it was. Now the link moves only through the copy its own row would show (first in the recovery order), or through another of its copies with the same text fingerprint. A capture elsewhere can no longer change which file a link's key answers. Owner: `model/sql/provenance-recovered-copy-links.sql`.
+**Rule implemented.** A recovered copy that equals a live body used to move its dead link into that live document, whichever of the link's copies it was. Now the link moves only through the copy its own row would show (first in the recovery order), or through another of its copies with the same text fingerprint. The link's key then always reaches a row holding the file the link shows, whatever else is fetched live. Owner: `model/sql/provenance-recovered-copy-links.sql`.
 
 Run through the pinned engine on the published release's rows (`ri_10_native.out`): the old SQL reproduces the release (4,497 moved links, each URL key on the published row); the new SQL moves 4,469 and adds none. Of the 28 that stop moving, 3 see no change (the dead address is itself fetched live on that row) and 25 links return to rows of their own, out of 23 live rows:
 
