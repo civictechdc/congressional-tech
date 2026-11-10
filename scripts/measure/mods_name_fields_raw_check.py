@@ -37,7 +37,7 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``name_not_in_line``: a new or added name with a word its raw line lacks;
 - ``words_lost``: a changed occurrence that loses a word across name, position, organization and
   on_behalf_of (credentials such as "M.D." and titles such as "Hon." may go, as for every witness line; on an
-  asking line, so may its heading's words);
+  asking line, so may its heading's words; a word another row of the line now shows is not lost);
 - ``words_gained``: a changed occurrence that gains a word its raw line lacks;
 - ``person_left_in_organization``: a changed occurrence left without a name whose raw line still has a
   later segment opening with a known given name;
@@ -157,7 +157,7 @@ PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported'
 ASKING = {'question', 'questions', 'request', 'requests'}
 # The words of an asking line's heading, which are no person's.
 HEADING = ASKING | set('response responses answer answers submitted record hearing arising during written additional '
-                       'posthearing supplemental'.split())
+                       'posthearing supplemental information'.split())
 CHAMBER = {'senator', 'senators', 'sen', 'representative', 'representatives', 'rep', 'congressman', 'congresswoman',
            'delegate'}
 MEMBER_TITLES = CHAMBER | {'hon', 'honorable', 'chairman', 'chairwoman', 'ranking'}
@@ -622,9 +622,11 @@ def judge(before, after, raw_root, given, family):
                 out['unconfirmed'].append(item)
             old_words, new_words = bag(a), bag(b) + moved.get(locator, Counter())
             # On an asking line the heading's words are no one's: a row that was named for the heading may shed them.
-            shed = HEADING | MEMBER_TITLES | {'the', 'to', 'by', 'from', 'of', 'for', 'and', 'arising', 'following'} \
+            shed = HEADING | MEMBER_TITLES | {'member', 'the', 'to', 'by', 'from', 'of', 'for', 'and', 'following'} \
                 if position(locator) in asking else set()
-            lost = Counter({w: k for w, k in (old_words - new_words).items() if w not in shed})
+            # A word another row of the same line now shows (an asker appended at /part[2]) is not lost to a reader.
+            shown = {w for r in by_line.get(position(locator), []) if r is not b for w in bag(r)}
+            lost = Counter({w: k for w, k in (old_words - new_words).items() if w not in shed and w not in shown})
             if lost:
                 out['words_lost'].append(dict(item, words=sorted(lost.elements())))
             # A gained word must come from the raw line; a re-read may restore line text the old one dropped.
