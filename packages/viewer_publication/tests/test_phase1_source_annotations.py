@@ -43,7 +43,9 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     pages=[dict(body_hex='a'*64,status='completed',title='Reading title',heading='Heading A',content_date='2026-10-18',named_meetings=[]),
            dict(body_hex='b'*64,status='completed',title='',heading='Heading B',content_date='2026-10-19',named_meetings=[]),
            dict(body_hex='c'*64,status='completed',title='Metadata',heading=None,content_date=None,named_meetings=[999]),
-           dict(body_hex='d'*64,status='completed',title=' Email ',heading=None,content_date=None,named_meetings=[])]
+           dict(body_hex='d'*64,status='completed',title=' Email ',heading=None,content_date=None,named_meetings=[]),
+           # ct-ccsi: a title or heading with no letter names nothing (11 recovered pages were titled '{').
+           dict(body_hex='e'*64,status='completed',title='{',heading='404',content_date=None,named_meetings=[])]
     inputs.append(json_input(tmp_path,'page_inputs',pages,body_hex='Utf8',status='Utf8',title='Utf8',heading='Utf8',content_date='Utf8',named_meetings=list_of('Int64')))
     links=[dict(source_id='s1',doc_type='br',text='Hearing transcript',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-21T12:00:00Z',link_index=0,split_position=0),
            dict(source_id='s2',doc_type='br',text='PDF',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-21T12:00:00Z',link_index=1,split_position=0),
@@ -52,6 +54,11 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
            dict(source_id='s4',doc_type=None,text=' Download\n  PDF ',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-20T12:00:00Z',link_index=4,split_position=0),
            dict(source_id='s4',doc_type=None,text='Download XML (6KB)',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-20T12:00:00Z',link_index=6,split_position=0),
            dict(source_id='s4',doc_type=None,text='PDF (48.1 MB)',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-21T12:00:00Z',link_index=7,split_position=0),
+           # ct-ccsi: a bare number, a mark or "no. 3" is no title either, however early the page.
+           dict(source_id='s4',doc_type=None,text='12',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-19T12:00:00Z',link_index=8,split_position=0),
+           dict(source_id='s4',doc_type=None,text=' No. 3 ',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-19T12:00:00Z',link_index=9,split_position=0),
+           dict(source_id='s4',doc_type=None,text='.',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-19T12:00:00Z',link_index=10,split_position=0),
+           dict(source_id='s5',doc_type=None,text='_3',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-19T12:00:00Z',link_index=11,split_position=0),
            dict(source_id='s4',doc_type=None,text='Hearing on Rural Lands',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-23T12:00:00Z',link_index=5,split_position=0),
            dict(source_id='s3',doc_type=None,text='Hearing transcript',page_body='page',context='https://www.congress.gov/119/meeting/house/888',first_good_at='2026-10-21T12:00:00Z',link_index=2,split_position=0),
            dict(source_id='s3',doc_type=None,text='Later label',page_body='other',context='https://publisher.test/later',first_good_at='2026-10-22T12:00:00Z',link_index=0,split_position=0)]
@@ -80,6 +87,7 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     assert four['document_kind']==[] and four['facts']==[]
     assert four['title']==four['listing_title']=='Hearing on Rural Lands' and four['reading_title'] is None
     assert five['committee_keys']==['ssbk00'] and five['chambers']==['senate']
+    assert five['title'] is None and five['reading_title'] is None and five['listing_title'] is None
     assert result['unmapped']==[dict(code='UNKNOWN',n=1)]
 
 

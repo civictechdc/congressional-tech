@@ -9438,6 +9438,70 @@
       "source": "Authored boundary (red-g2): a version or file number is a title, not a format word"
     },
     {
+      "id": "page-signals:link_word_no_name",
+      "registry": "page-signals",
+      "entry": "link_word_no_name",
+      "value": "12",
+      "expected": true,
+      "source": "Published release 619db5f9e08e, list.parquet titles taken from link text: 194 with no letter (148 distinct, such as '12', '_3', '16-4', '19-26-03-26-19'), 61 of the form 'no. 3' and one '.'; every one has a filename (ct-ccsi)"
+    },
+    {
+      "id": "page-signals:link_word_no_name_ordinal",
+      "registry": "page-signals",
+      "entry": "link_word_no_name",
+      "value": "no. 3",
+      "expected": true,
+      "source": "Published release 619db5f9e08e: 61 documents titled 'no. 1' to 'no. 9' and 'no 4' from Financial Services amendment lists (bills-119-hres1007-s001213-amdt-1.pdf is 'no. 1')"
+    },
+    {
+      "id": "page-signals:link_word_no_name_mark",
+      "registry": "page-signals",
+      "entry": "link_word_no_name",
+      "value": ".",
+      "expected": true,
+      "source": "Published release 619db5f9e08e: one document titled '.' (ct-ccsi)"
+    },
+    {
+      "id": "page-signals:link_word_no_name_stem",
+      "registry": "page-signals",
+      "entry": "link_word_no_name",
+      "value": "19-26-03-26-19",
+      "expected": true,
+      "source": "Published release 619db5f9e08e: Senate Armed Services transcripts titled by their number and date, the filename stem (19-26-03-26-19.pdf)"
+    },
+    {
+      "id": "page-signals:link_word_no_name_named_number",
+      "registry": "page-signals",
+      "entry": "link_word_no_name",
+      "value": "Amendment No. 3",
+      "expected": false,
+      "source": "Authored boundary: a number after a name is part of the name"
+    },
+    {
+      "id": "page-signals:link_word_no_name_exhibit",
+      "registry": "page-signals",
+      "entry": "link_word_no_name",
+      "value": "Exhibit 3",
+      "expected": false,
+      "source": "Authored boundary (red-g2): an exhibit, appendix, version or file number is a title"
+    },
+    {
+      "id": "page-signals:link_word_no_name_word_no",
+      "registry": "page-signals",
+      "entry": "link_word_no_name",
+      "value": "No",
+      "expected": false,
+      "source": "Authored boundary: the word alone is not a numbering"
+    },
+    {
+      "id": "page-signals:link_word_no_name_other_script",
+      "registry": "page-signals",
+      "entry": "link_word_no_name",
+      "value": "\u4e2d\u6587",
+      "expected": false,
+      "source": "Authored boundary: letters of any script are a name (published title of A_HRC_WG6_4_CHN_2_C.pdf)"
+    },
+    {
       "id": "page-signals:description_templates",
       "registry": "page-signals",
       "entry": "description_templates",

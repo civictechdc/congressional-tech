@@ -456,6 +456,19 @@ def test_a_title_generic_by_either_rule_refuses(tmp_path):
     assert sorted(row['title'] for row in result['g']) == sorted(titles[:10])
 
 
+def test_a_title_with_no_name_in_it_refuses(tmp_path):
+    """ct-ccsi: a title with no letter, or a numbering word and a number, is a link word for the gate
+    as for the rule; a number after a name, and letters of any script, are a title."""
+    from viewer_publication.archive_model import GENERIC_TITLES_SQL, registry_inputs
+    titles = ['12', '_3', '.', '16-4', '$1.5', '19-26-03-26-19', 'no. 3', 'No 8', 'Number 12', 'nos. 3-5',
+              'Amendment No. 3', 'Exhibit 3', 'Version 2', 'No', 'H.R. 1', '中文', 'Number of Farms in 2022', None]
+    inputs = registry_inputs(tmp_path / 'registries') + [json_input(tmp_path, 'ordered', [dict(doc_key=str(i), title=t)
+        for i, t in enumerate(titles)], doc_key='Utf8', title='Utf8')]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
+        queries=[dict(name='g', sql=f'SELECT title FROM ({GENERIC_TITLES_SQL}) g ORDER BY title')])
+    assert sorted(row['title'] for row in result['g']) == sorted(titles[:10])
+
+
 def test_the_generic_title_gate_checks_the_titles_the_link_word_rule_keeps(tmp_path):
     """A page title longer than the rule's bound is a title, for the rule and the gate alike.
 

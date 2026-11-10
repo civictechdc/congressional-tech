@@ -2562,6 +2562,51 @@ def test_hhrg_slug_witness_matching_precedence_title_enrichment_and_meeting_prop
     assert jones_row['congress'] == 118
 
 
+def test_a_number_or_a_label_alone_is_not_a_title(tmp_path):
+    """ct-ccsi (release 619db5f9e08e): 268 newly captured event pages titled documents with their link
+    text: 111 bare numbers ("3", "no. 3"), 163 "Biography" and one ".". A text with no letter, or a
+    numbering word and a number, is a link word. A label alone takes the witness's name when the
+    document is one witness's; otherwise the filename shows. A named link text is still the title,
+    whichever page gives it."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    folder = 'https://docs.house.gov/meetings/AG/AG00/20230510/115901'
+    files = {name: (f'{folder}/{name}', f'%PDF-1.7\n{name}\n%%EOF\n'.encode()) for name in [
+        'HHRG-118-AG00-Bio-BrownR-20230510.pdf', 'Parker_Bio_05_10_23.pdf', 'garcia_testimony.pdf',
+        'BILLS-118-HR1-S000001-Amdt-3.pdf', 'BILLS-118-HR1-T000002-Amdt-4.pdf', 'figure-10.pdf', 'votes.pdf', 'rural-credit-report.pdf']}
+    link = lambda name, text: f'<li><a href="{files[name][0]}">{text}</a></li>'
+    words = 'Committee hearing witness documents and statements for rural credit. ' * 25
+    event = (f'<html><head><title>Committee Hearing</title></head><body><p>{words}</p><ul>'
+             + link('HHRG-118-AG00-Bio-BrownR-20230510.pdf', 'Biography') + link('Parker_Bio_05_10_23.pdf', 'Biography')
+             + link('garcia_testimony.pdf', 'Testimony') + link('BILLS-118-HR1-S000001-Amdt-3.pdf', 'no. 3')
+             + link('BILLS-118-HR1-T000002-Amdt-4.pdf', '4') + link('figure-10.pdf', '.') + link('votes.pdf', '16-4')
+             + link('rural-credit-report.pdf', 'Rural Credit Report No. 3') + '</ul></body></html>').encode()
+    # A later page names the fourth amendment; the first page's "4" must not outrank it.
+    markup = (f'<html><head><title>Markup Results</title></head><body><p>{"The committee considered amendments to the bill. " * 30}</p><ul>'
+              + link('BILLS-118-HR1-T000002-Amdt-4.pdf', 'Thompson Amendment on Loan Limits') + '</ul></body></html>').encode()
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(url='https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=7001', data=event, format='html', retrieved_at='2026-10-27T12:00:00Z'),
+        dict(url='https://agriculture.house.gov/news/markup-results', data=markup, format='html', retrieved_at='2026-10-28T12:00:00Z'),
+        *[dict(url=url, data=data, format='pdf', compress=False) for url, data in files.values()]])
+    meetings = [dict(record_sha='55' * 32, source='congress_gov', meetings=[dict(
+        event_id='115901', chamber='house', congress=118, session=1, updated='2023-05-10T14:00:00Z', title='House Farm Credit Hearing',
+        meeting_date='2023-05-10', meeting_type='Hearing', status='Scheduled', sittings=[],
+        committees=[dict(system_code='hsag00', name='House Agriculture')], subject_keys=[], transcript_jackets=[], videos=[])])]
+    appearances = [dict(record_sha='66' * 32, source='congress_gov', appearances=[dict(
+        event_id='115901', name_key='robert brown', name='Hon. Robert Brown', given_name='Robert', family_name='Brown',
+        honorific_prefix='Hon.', panel_order=1, display_order=1, document_urls=[])])]
+    build_release(**staged, meeting_records=meetings, appearance_records=appearances,
+        spicy_regs=spicy_input(spicy_committees=[dict(system_code='HSAG00', name='House Agriculture', chamber='House')]),
+        engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    titles = {row['filename']: row['title'] for row in pq.read_table(tmp_path / 'release/list.parquet').to_pylist() if row['format'] == 'pdf'}
+    assert titles == {
+        'HHRG-118-AG00-Bio-BrownR-20230510.pdf': 'Biography - Hon. Robert Brown',   # one witness's document: the label takes the name
+        'Parker_Bio_05_10_23.pdf': None, 'garcia_testimony.pdf': None,              # a label alone: the filename shows
+        'BILLS-118-HR1-S000001-Amdt-3.pdf': None, 'figure-10.pdf': None, 'votes.pdf': None,
+        'BILLS-118-HR1-T000002-Amdt-4.pdf': 'Thompson Amendment on Loan Limits',    # another page gives a name
+        'rural-credit-report.pdf': 'Rural Credit Report No. 3'}                     # a number inside a name is part of it
+
+
 def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     """ct-mj9f & ct-8cno: reconcile meetings.subject_keys across all 5 authoritative sources,
     publish bills.parquet with public_law_number/cosponsor_count/related_bills, and wire
