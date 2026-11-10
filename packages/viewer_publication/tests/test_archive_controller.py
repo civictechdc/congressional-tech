@@ -270,7 +270,7 @@ try:
         if not resume and boundary=='during_native':
             import signal,subprocess,time
             (root/'store.pickle').write_bytes(pickle.dumps(store))
-            def killed_native(path):
+            def killed_native(path,log=None):
                 job=json.loads(Path(path).read_text())
                 process=subprocess.Popen([*native._command(remote=True),'job','--spec',str(path)],
                     stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)

@@ -115,7 +115,7 @@ def test_raw_counter_directories_refuse_before_registration(tmp_path,operation):
     (partition/'nested.parquet').write_bytes(b'unpinned')
     class UnopenedEngine:
         source_revision='fixture';binary_sha256='a'*64
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             raise AssertionError('Unsupported directory reached native registration')
     engine=UnopenedEngine()
     with pytest.raises(ValueError,match='single.*file'):

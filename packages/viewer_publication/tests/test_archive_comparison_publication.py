@@ -87,7 +87,7 @@ def test_receipt_mutated_by_actual_model_refuses_all_successful_writes(tmp_path)
         model,held,report=native_capture_model(tmp_path,model,native)
         store=Store()
         class MutatingRuntime(Runtime):
-            def run_job(self,path):
+            def run_job(self,path,log=None):
                 result=self.native.run_job(path)
                 report.write_text(report.read_text()+'\n')
                 return result

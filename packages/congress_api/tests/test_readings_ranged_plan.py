@@ -130,7 +130,7 @@ def test_full_page_cache_is_removed_only_after_successful_readings_append(tmp_pa
     class CheckedNative:
         remote=None
         def __getattr__(self,name):return getattr(native,name)
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             job=json.loads(path.read_text())
             if any(op['kind']=='append' for op in job.get('table_operations',[])):
                 assert store._immutable_cache_path(key).is_file()

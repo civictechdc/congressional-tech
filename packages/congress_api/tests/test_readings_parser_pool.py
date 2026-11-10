@@ -76,7 +76,7 @@ def test_parallel_ranges_keep_main_thread_decisions_and_close_before_export(tmp_
     native=args['engine']
     class CheckedEngine:
         def __getattr__(self,name):return getattr(native,name)
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             assert state['closed']==state['created']
             return native.run_job(path)
     args['engine']=CheckedEngine()

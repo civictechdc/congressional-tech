@@ -15,7 +15,7 @@ TARGETS={name:dict(namespace=['archive'],name=name)
 class Native:
     remote=None
     def __init__(self,results=None,error=None):self.results=results;self.error=error;self.jobs=[]
-    def run_job(self,path):
+    def run_job(self,path,log=None):
         job=json.loads(path.read_text());self.jobs.append(job)
         if self.error:raise self.error
         return dict(table_operations=self.results if self.results is not None else
@@ -80,7 +80,7 @@ def test_receipt_and_filename_producers_bind_native_pins_without_export(tmp_path
 def test_reading_plan_binds_captures_and_existing_native_pins_directly(tmp_path):
     from congress_api.lake import readings
     class PlanNative:
-        def run_job(self,path):
+        def run_job(self,path,log=None):
             job=json.loads(path.read_text())
             for name in ['captures','existing']:
                 assert next(i for i in job['inputs'] if i['name']==name)==tables.table_input(name,PIN)
