@@ -262,13 +262,14 @@ test('default hearing, document and member views keep each current witness occur
 });
 
 test('a sitting Member keeps a Member tag in the hearing list, leaves the witness lists, and reaches their page name-matched (ct-kw85)',async()=>{
+  // 'matched' is a name alone at a Member Day hearing (match_basis member_day): it links like every name-matched row.
   const {createArchiveEntities,witnessMember,witnessRecordEntryLabel}=await import('./archive-entities.ts');
   const member='B001257';
   const table:Record<string,any[]>={
     witnesses:[
       {witness_key:'outside',superseded_by:null,event_id:200,name:'Dr. Ada Lovelace'},
       {witness_key:'matched',superseded_by:null,event_id:200,name:'The Honorable Gus Bilirakis',witness_type:'member_appearance',
-        matched_bioguide_id:member,match_basis:'name_chamber'},
+        matched_bioguide_id:member,match_basis:'member_day'},
       {witness_key:'published',superseded_by:null,event_id:201,name:'The Honorable Gus M. Bilirakis',bioguide_id:member,
         witness_type:'member_appearance',matched_bioguide_id:member,match_basis:'publisher_id'},
     ],
