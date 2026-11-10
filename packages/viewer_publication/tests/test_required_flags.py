@@ -13,8 +13,11 @@ is pinned while one of the three is spelled another way: on that line a fixture 
 (measured 2026-11-10 by one job file run on both binaries; ticket ct-8m0e names the evidence).
 
 IS TRUE suits these three and not saved-name-conflicts.sql because nothing later in their own statements
-reads them. The planner types IS TRUE nullable while the plan declares it not null, and refuses an
-aggregate whose input holds such a column; a retained step hands its readers the declared type.
+reads them. The planner types IS TRUE nullable while the plan declares it not null, and refuses any
+aggregate whose input holds such a column. GROUP BY, DISTINCT and UNION all plan as one, and so does a
+later statement that reads the flag through a step that is not materialized (a view is planned inside
+its reader). A retained step hands its readers the declared type, so use IS TRUE only for a flag in the
+last projection of a materialized step, and `IS NOT DISTINCT FROM true` for one read again before that.
 """
 import os
 
