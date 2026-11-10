@@ -2290,7 +2290,7 @@ def test_a_govinfo_landing_page_is_another_address_of_the_hearing_it_names(tmp_p
         key(pages[f'{GOVINFO}/app/details/{PARTS}']): (None, None)}
     reports = {q['name']: q['data'] for q in json.loads((tmp_path / 'after-model/result.json').read_text())['queries']}
     assert reports['unplaced_landing_pages'] == [dict(url=f'{GOVINFO}/app/details/{PARTS}')]
-    assert reports['landing_page_invariants'] == [dict(saved_landing_addresses=0, unaddressed_landing_pages=0)]
+    assert reports['landing_page_invariants'] == [dict(saved_landing_addresses=0, unaddressed_landing_pages=0, lost_landing_addresses=0)]
     # The publish gate's link rule: no key vanishes, and no live key, lookup key or address answers another file.
     rule = compare(tmp_path / 'before', tmp_path / 'after')['link_rule']
     assert rule['ok'], rule
@@ -2300,9 +2300,13 @@ def test_a_govinfo_landing_page_is_another_address_of_the_hearing_it_names(tmp_p
     # The role rule lost: every page stays a document saved at its details address.
     ('locator-signals.sql', "IN ('wrapper_url', 'landing_url')", "IN ('wrapper_url')", 'saved_landing_addresses', 4),
     # The fold lost: the three pages that name a saved file leave no address on it.
-    ('document-addresses.sql', 'FROM landing_pages l', 'FROM (SELECT * FROM landing_pages WHERE false) l', 'unaddressed_landing_pages', 3)])
+    ('document-addresses.sql', 'FROM landing_pages l', 'FROM (SELECT * FROM landing_pages WHERE false) l', 'unaddressed_landing_pages', 3),
+    # A page the fold never admits (here: its role is not exactly wrapper, as when a source mixes roles) is
+    # neither a document nor a landing page: all four addresses vanish, which unaddressed_landing_pages,
+    # starting from landing_pages, cannot see (review finding 3, 2026-11-10).
+    ('landing-page-files.sql', "m.record_role='wrapper'", "m.record_role='wrapper-never'", 'lost_landing_addresses', 4)])
 def test_a_lost_landing_rule_refuses_the_build(tmp_path, sql, sound, broken, invariant, count):
-    """Planted defects for the two landing-page invariants (ct-m878): each refuses before the manifest."""
+    """Planted defects for the three landing-page invariants (ct-m878): each refuses before the manifest."""
     from viewer_publication.archive_model import build_release
     from viewer_publication.archive_model_profile import ROOT, _definition_hashes
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
@@ -2318,6 +2322,45 @@ def test_a_lost_landing_rule_refuses_the_build(tmp_path, sql, sound, broken, inv
         build_release(**staged, engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model', root=root)
     reports = {q['name']: q['data'] for q in json.loads((tmp_path / 'model/result.json').read_text())['queries']}
     assert reports['landing_page_invariants'][0][invariant] == count
+
+
+def test_a_details_sub_page_that_is_no_govinfo_id_names_no_file_and_is_counted(tmp_path):
+    """Review finding 3 (2026-11-10): the landing rule accepts any path under /app/details/ and matches a
+    page's last segment to any host's file stem, so a sub-page that is no package or granule ID would attach
+    to an unrelated summary.pdf. Its stem must be a GovInfo ID (page signals govinfo_details_name). Such a
+    page then is neither a document nor a landing page: lost_landing_addresses counts its address."""
+    from congress_api.retention.provenance import json_input
+    from viewer_publication.archive_model import LANDING_PAGE_INVARIANTS, ROOT, registry_inputs
+    package = f'{GOVINFO}/app/details/{LANDED}'
+    members = [
+        dict(component='page', source_id='page', body_sha='1' * 64, source_url=package, filename=LANDED, record_role='wrapper', is_real_file=False, format='html'),
+        dict(component='sub', source_id='sub', body_sha='2' * 64, source_url=f'{package}/summary', filename='summary', record_role='wrapper', is_real_file=False, format='html'),
+        dict(component='hearing', source_id='pdf', body_sha='3' * 64, source_url=f'{GOVINFO}/content/pkg/{LANDED}/pdf/{LANDED}.pdf', filename=f'{LANDED}.pdf', record_role='document', is_real_file=True, format='pdf'),
+        dict(component='summary', source_id='other', body_sha='4' * 64, source_url='https://committee.house.gov/files/summary.pdf', filename='summary.pdf', record_role='document', is_real_file=True, format='pdf')]
+    for row in members:
+        row['first_fetched'] = '2026-10-01T12:00:00Z'
+    strings = dict(component='Utf8', source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8', record_role='Utf8', format='Utf8')
+    inputs = [i for i in registry_inputs(tmp_path / 'registries') if i['name'] in ('page_signals', 'formats')] + [
+        json_input(tmp_path, 'members', members, is_real_file='Boolean', first_fetched='Utf8', **strings),
+        json_input(tmp_path, 'publisher_links', [], page_body='Utf8', source_id='Utf8'),
+        json_input(tmp_path, 'capture_source_contexts', [dict(source_id='page', context_url=package, outcome='stored')],
+                   source_id='Utf8', context_url='Utf8', outcome='Utf8'),
+        json_input(tmp_path, 'document_identities', [dict(document_id=c, component=c) for c in ('hearing', 'summary')],
+                   document_id='Utf8', component='Utf8'),
+        # Published rows: each real file saved at its address, the package page an unsaved address of the hearing.
+        json_input(tmp_path, 'source_rows', [dict(doc_key='hearing', url=members[2]['source_url'], is_saved=True, member_path=None),
+            dict(doc_key='summary', url=members[3]['source_url'], is_saved=True, member_path=None),
+            dict(doc_key='hearing', url=package, is_saved=False, member_path=None)],
+            doc_key='Utf8', url='Utf8', is_saved='Boolean', member_path='Utf8')]
+    steps = [dict(name='document_members', sql="SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM members"),
+             dict(name='landing_page_files', sql=(ROOT / 'model/sql/landing-page-files.sql').read_text(), materialize=True),
+             dict(name='landing_pages', sql=(ROOT / 'model/sql/landing-pages.sql').read_text(), materialize=True)]
+    result = run_job(tmp_path / 'job', NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
+                     queries=[dict(name='files', sql='SELECT page_id,source_id FROM landing_page_files ORDER BY 1,2'),
+                              dict(name='pages', sql='SELECT source_id,component FROM landing_pages ORDER BY 1'), LANDING_PAGE_INVARIANTS])
+    assert result['files'] == [dict(page_id='page', source_id='pdf')]
+    assert result['pages'] == [dict(source_id='page', component='hearing')]
+    assert result['landing_page_invariants'] == [dict(saved_landing_addresses=0, unaddressed_landing_pages=0, lost_landing_addresses=1)]
 
 
 def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):

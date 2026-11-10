@@ -171,6 +171,46 @@
       "source": "Authored boundary: the API's package summary is an API page (api_endpoint), not the Content Details page"
     },
     {
+      "id": "page-signals:govinfo_details_name",
+      "registry": "page-signals",
+      "entry": "govinfo_details_name",
+      "value": "CHRG-118hhrg53014",
+      "expected": true,
+      "source": "Published release 619db5f9e08e: the last path segment of all 34,826 GovInfo Content Details pages is a package or granule ID; 34,586 are package IDs like this one (review finding 3, 2026-11-10)"
+    },
+    {
+      "id": "page-signals:govinfo_details_name_granule",
+      "registry": "page-signals",
+      "entry": "govinfo_details_name",
+      "value": "CHRG-116hhrg49571-add1",
+      "expected": true,
+      "source": "Published release 619db5f9e08e: one of 238 granule pages (an addendum)"
+    },
+    {
+      "id": "page-signals:govinfo_details_name_volume",
+      "registry": "page-signals",
+      "entry": "govinfo_details_name",
+      "value": "CHRG-109hhrg26292v1",
+      "expected": true,
+      "source": "Published release 619db5f9e08e: one of 2 package IDs with a joined volume suffix"
+    },
+    {
+      "id": "page-signals:govinfo_details_name_subpage",
+      "registry": "page-signals",
+      "entry": "govinfo_details_name",
+      "value": "summary",
+      "expected": false,
+      "source": "Authored boundary: a non-ID sub-page under /app/details/ names no file; it must not attach to another site's summary.pdf"
+    },
+    {
+      "id": "page-signals:govinfo_details_name_words",
+      "registry": "page-signals",
+      "entry": "govinfo_details_name",
+      "value": "related-documents",
+      "expected": false,
+      "source": "Authored boundary: hyphenated words without an upper-case GovInfo collection code are no package or granule ID"
+    },
+    {
       "id": "formats:preference-pdf",
       "registry": "formats",
       "entry": "preference-pdf",
