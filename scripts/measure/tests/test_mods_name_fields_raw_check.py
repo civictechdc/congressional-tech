@@ -605,6 +605,8 @@ ROUND6_AFTER = [ROUND6_BEFORE[0], dict(ROUND6_BEFORE[1], witness_type=None),
 
 @pytest.mark.parametrize('before, after, flagged', [
     (ROUND6_BEFORE, ROUND6_AFTER, []),
+    # A Senator's statement typed a statement for the record before is a member's statement now.
+    ([*ROUND6_BEFORE[:3], dict(ROUND6_BEFORE[3], witness_type='statement_for_record')], ROUND6_AFTER, []),
     # Avalos testified (line 1): a statement for the record is wrong for him.
     (ROUND6_BEFORE, [ROUND6_AFTER[0], dict(ROUND6_AFTER[1], witness_type='statement_for_record'), *ROUND6_AFTER[2:]],
      ['mods:witness[2]']),

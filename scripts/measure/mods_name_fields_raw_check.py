@@ -74,7 +74,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``type_unsupported``: a changed ``witness_type`` unless it goes from none to ``statement_for_record`` on an
   occurrence with no name, an organization, and a raw line that names a document anywhere (any of
   ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap); or to
-  ``member_statement`` for a row naming one of its line's Members on a line that names their statement or a paper
+  ``member_statement`` (from none or a statement for the record) for a row naming one of its line's Members on a line
+  that names their statement or a paper
   (``PAPERS``, a Member's submission); or, for a named person on an asking line who is not one of its Members, to
   none when they testified on a line of the print that asks nothing and to ``statement_for_record`` when they did not
   (an answerer); or it is ``record_material`` on an asking line for a row with no name, a Member's family
@@ -789,8 +790,8 @@ def judge(before, after, raw_root, given, family, serving=None):
             if b.get('witness_type') == 'member_statement':
                 # A Member's own statement or submission: the row names one of the line's Members and the line names
                 # their statement or a paper.
-                return (a.get('witness_type') is None and bool(b.get('name')) and a_member(b['name'], locator)
-                        and bool((PAPERS | {'statement', 'statements'}) & said))
+                return (a.get('witness_type') in (None, 'statement_for_record') and bool(b.get('name'))
+                        and a_member(b['name'], locator) and bool((PAPERS | {'statement', 'statements'}) & said))
             # An answerer on an asking line, a person who is not one of its Members: a witness when they testified on a
             # line of the print that asks nothing, a statement for the record when they did not.
             if (b.get('name') and position(locator) in asking and not a_member(b['name'], locator)
