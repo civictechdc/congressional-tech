@@ -623,9 +623,12 @@ GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
  WHERE g.pattern IS NOT NULL OR {GENERIC_TITLE_SQL}"""
 
 # ct-m878, refusing: no address a landing-URL rule matches is a published document's saved address
-# (judged on the published rows by the registry, apart from the role step); and every landing page
-# that names a saved file is an unsaved address of the document that took it. Its lookup keys come
-# from the same rows through lookup_extra. A page naming no file is metadata unplaced_landing_pages.
+# (judged on the published rows by the registry, apart from the role step); every landing page
+# that names a saved file is an unsaved address of the document that took it; and no landing-URL
+# address the fold never admitted (a role other than wrapper, no name, a last segment that is no
+# GovInfo ID) is lost: the last count starts from the members, not landing_pages, so it sees what the
+# rule left out (review finding 3). Its lookup keys come from the same rows through lookup_extra. A
+# page naming no file is metadata unplaced_landing_pages.
 LANDING_PAGE_INVARIANTS=dict(name='landing_page_invariants',sql="""SELECT
  (SELECT count(*) FROM (SELECT pattern FROM page_signals WHERE kind='landing_url') r
   JOIN source_rows s ON regexp_like(s.url,r.pattern) WHERE s.is_saved) AS saved_landing_addresses,
@@ -634,7 +637,10 @@ LANDING_PAGE_INVARIANTS=dict(name='landing_page_invariants',sql="""SELECT
   JOIN capture_source_contexts c ON c.source_id=l.source_id JOIN document_identities d ON d.component=l.component
   WHERE c.outcome NOT IN ('reference','saved-record') AND c.context_url IS NOT NULL) w
   LEFT ANTI JOIN (SELECT doc_key,url FROM source_rows WHERE member_path IS NULL AND NOT is_saved) h
-  ON h.doc_key=w.document_id AND h.url=w.url) AS unaddressed_landing_pages""")
+  ON h.doc_key=w.document_id AND h.url=w.url) AS unaddressed_landing_pages,
+ (SELECT count(*) FROM (SELECT DISTINCT m.source_url AS url FROM (SELECT pattern FROM page_signals WHERE kind='landing_url') r
+  JOIN document_members m ON regexp_like(m.source_url,r.pattern) LEFT ANTI JOIN landing_pages l ON l.source_id=m.source_id) d
+  LEFT ANTI JOIN source_rows s ON s.url=d.url) AS lost_landing_addresses""")
 
 
 # Owner, 2026-11-02 ("don't lose signal"): every recovered-copy link moved into a published document

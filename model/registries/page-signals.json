@@ -72,6 +72,12 @@
     "sample_id": "page-signals:govinfo_content_details"
   },
   {
+    "id": "govinfo_details_name",
+    "kind": "landing_name",
+    "pattern": "^[A-Z]+-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)*$",
+    "sample_id": "page-signals:govinfo_details_name"
+  },
+  {
     "id": "error_routes",
     "kind": "error_url",
     "pattern": "(?i)/(404|error|errors|notfound|not-found|page-not-found)(\\b|[/.?_-])|[?&]aspxerrorpath=",
