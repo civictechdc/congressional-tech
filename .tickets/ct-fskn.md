@@ -17,3 +17,9 @@ archive-jobs.yml runs the maintenance job on schedule (cron 17 7 * * 0). Schedul
 
 Either the schedule is removed until a maintenance binding is active, or the hosted job is given a measured maintenance budget (a checked-in hosted budget file or ARCHIVE_DISK_BUDGETS) and one scheduled or dispatched maintenance run finishes green. The choice and its reason are recorded here.
 
+
+## Notes
+
+**2026-11-10T00:32:21Z**
+
+2026-11-10: schedule trigger removed from archive-jobs.yml (workflow_dispatch stays) so the job stops failing every Sunday. Still to do before turning it back on, from the read-only architect review (.cache/archive-release/investigations/nightly-20261109T224443-base-normalized-memory/architect-review-20261110.md): a committed hosted budget that names 'maintenance'; fetch-depth: 0 for the ancestry check; current table names in model/jobs/maintenance.json (it lists two superseded tables and omits three, unverified here). Cost of no maintenance: readings sits at 1,907 files and 1,294 snapshots against a 256-file threshold (reviewer's count, unverified here). All five runs of this workflow have failed; maintenance itself was refused locally too.

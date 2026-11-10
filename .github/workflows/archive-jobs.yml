@@ -2,9 +2,9 @@ name: Archive publish, backfill and maintenance
 
 # The nightly publish runs on the owner's Mac (scripts/nightly_publish.py, owner decision
 # 2026-11-04); a hosted publish is a manual dispatch only, so the two never write together.
+# The weekly maintenance schedule is off until the hosted job has a measured disk budget for
+# `maintenance` (ct-fskn): every scheduled run was refused before doing any work.
 on:
-  schedule:
-    - cron: '17 7 * * 0'
   workflow_dispatch:
     inputs:
       operation:
