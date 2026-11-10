@@ -49,7 +49,8 @@ WITH fold(accented,plain) AS (
 ), tokened AS (
  SELECT *,array_except(string_to_array(regexp_replace(trim(regexp_replace(translate(regexp_replace(regexp_replace(
    split_part(regexp_replace(raw_folded,'\([^)]*\)',' ','g'),',',1),'[''’`]','','g'),'[^a-z .\-]+',' ','g'),'.-','  '),
-   '(\s+[a-z]){2,}\s*$','')),'\s+',' ','g'),' '),
+   -- Trailing initials are a witness's credentials ('M.D.'); in a Member's first names they are a nickname ('G.K.').
+   CASE WHEN part='name' THEN '(\s+[a-z]){2,}\s*$' ELSE '^$' END,'')),'\s+',' ','g'),' '),
   make_array('','mr','mrs','ms','miss','mx','dr','hon','honorable','the','rev','reverend','sen','senator','rep','representative','gen','general','lt','lieutenant','col','colonel','maj','major','adm','admiral','vadm','radm','ltg','mg','bg','vice','rear','capt','captain','sgt','sergeant','brigadier','chief','ambassador','secretary','judge','governor','mayor','professor','prof','commissioner','chairman','chairwoman','chair','ranking','member','congressman','congresswoman','delegate','jr','sr','ii','iii','iv','phd','md','mph','jd','rn','mba','dvm','esq','cpa','edd','dds','mpa','mpp','msw','ret','usa','usn','usaf','usmc','uscg','ussf')) AS toks
  FROM folded
 )
@@ -73,5 +74,5 @@ SELECT side,part,id,person,publisher_id,toks,abbreviated,
   WHEN regexp_like(full_text,'\b(member of (the )?(united states |u\.\s?s\.\s?)?congress|members? of congress)\b') THEN 'either' END AS chamber,
  -- A congressional role opening a field, with a full first name (witness_member_tiers): chair or ranking member of a
  -- committee, subcommittee, caucus, conference or congressional commission; a committee member; a leadership office.
- regexp_like(field_lines_folded,'(?m)^\W*(chair(man|woman|person)?|ranking (minority )?member|vice[- ]chair\w*|co-?chair\w*)\b[^|]*?(\|[^|]*?)?(\b(committee|subcommittee|caucus|conference)\b|\bcongressional[- ](\w+ )?commission\b)|\bmember of the (house |senate )?(permanent |special )?(select |joint )?committee\b|\b(speaker of the house|majority leader|minority leader|majority whip|minority whip|democratic leader|republican leader)\b') AS says_role
+ regexp_like(field_lines_folded,'(?m)^\W*(chair(man|woman|person)?|ranking (minority )?member|vice[- ]chair\w*|co-?chair\w*)\b[^|]*?(\|[^|]*?)?(\b(committee|subcommittee|caucus|conference)\b|\bcongressional[- ]+(\w+[- ]+)?commission\b)|\bmember of the (house |senate )?(permanent |special )?(select |joint )?committee\b|\b(speaker of the house|majority leader|minority leader|majority whip|minority whip|democratic leader|republican leader)\b') AS says_role
 FROM tokened
