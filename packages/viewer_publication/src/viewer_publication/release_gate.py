@@ -354,12 +354,9 @@ def _url_state_rules(base_columns, candidate_columns):
     wrong_band = 'next_attempt_at is not last_attempt plus the band of its published meeting date'
     # The band's date is anchored to the live release only where the live release had scheduled the
     # address; a first schedule has no live value to keep.
-    date = (('recheck_meeting_date changed on an address the live release had scheduled',
-             'b.attempts>0 AND c.recheck_meeting_date IS DISTINCT FROM b.recheck_meeting_date')
-            if 'recheck_meeting_date' in base_columns else
-            ('the live release publishes no recheck_meeting_date to compare with', 'b.attempts>0'))
-    pages = (('a page that linked a queued address is gone', 'NOT coalesce(list_has_all(c.linked_from,b.linked_from),false)')
-             if 'linked_from' in base_columns else ('the live release publishes no linked_from to compare with', 'true'))
+    date = ('recheck_meeting_date changed on an address the live release had scheduled',
+            'b.attempts>0 AND c.recheck_meeting_date IS DISTINCT FROM b.recheck_meeting_date')
+    pages = ('a page that linked a queued address is gone', 'NOT coalesce(list_has_all(c.linked_from,b.linked_from),false)')
     fetched = [
         ('changed with no new line', f'{n}=0'),
         ('attempts are not the live count plus the new lines', f'c.attempts IS DISTINCT FROM b.attempts+{n}'),
@@ -432,9 +429,13 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
     from viewer_publication.archive_model import REGISTRIES, evidence_steps, source_steps
     from viewer_publication.archive_url_state import url_state_steps
     columns = {side: set(d.columns(side, 'url_state')) if d.has(side, 'url_state') else set() for side in ('base', 'candidate')}
-    missing = [name for name in ('recheck_meeting_date', 'linked_from') if name not in columns['candidate']]
-    if missing or not columns['base']:
-        return [f'automatic causes: url_state cannot be traced: {"the live release has no url_state" if not missing else "the candidate publishes no " + ", ".join(missing)}'], {}, set(), []
+    # Both releases must publish both facts: the rules read the live and the candidate values. The first
+    # candidate with the columns meets a live release without them, once; it refuses here, plainly.
+    missing = [f'automatic causes: url_state cannot be traced: {name} publishes no {", ".join(absent)}'
+               for side, name in (('base', 'the live release'), ('candidate', 'the candidate'))
+               if (absent := [f for f in ('recheck_meeting_date', 'linked_from') if f not in columns[side]])]
+    if missing:
+        return missing, {}, set(), []
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
     pq.write_table(pa.table({'receipt_key': pa.array(sorted(new_receipts), pa.string())}), work / 'new-receipts.parquet')

@@ -878,8 +878,6 @@ def test_a_line_in_a_receipt_the_candidate_did_not_read_is_not_counted(tmp_path)
     (dict(candidate={U: state(U)}), 'a queued address names no linking page'),
     (dict(candidate={V: state(V, pages=[PAGE['N']])}), 'a page that linked a queued address is gone'),
     (dict(candidate={U: state(U, at=FETCHED, interval=7 * DAY, pages=[PAGE['N']])}), 'a queued address carries a schedule'),
-    (dict(live_columns=[n for n in URL_STATE.names if n != 'recheck_meeting_date']),
-     'the live release publishes no recheck_meeting_date to compare with'),
 ])
 def test_url_state_a_new_receipt_does_not_imply_refuses_unattended(tmp_path, plant, reason):
     report = unattended(tmp_path, **plant)
@@ -941,5 +939,26 @@ def test_last_good_at_moves_only_to_a_line_the_model_calls_a_good_fetch(tmp_path
                         candidate={A: state(A, 1, FETCHED, line['http_status'], 'stored', FETCHED, 7 * DAY)})
     assert report['reasons'] and 'automatic_causes' not in report
     assert any(': last_good_at is not the newest good new line (first' in r for r in report['automatic_reasons']), report['automatic_reasons']
+
+
+WITHOUT_FACTS = [n for n in URL_STATE.names if n not in ('recheck_meeting_date', 'linked_from')]
+
+
+BOTH_MISSING = 'automatic causes: url_state cannot be traced: the live release publishes no recheck_meeting_date, linked_from'
+
+
+@pytest.mark.parametrize('night,reason', [
+    (dict(live_columns=WITHOUT_FACTS), BOTH_MISSING),  # W10: the first night after the columns ship
+    (dict(live_columns=WITHOUT_FACTS, fetches={(NEW_RECEIPT, 1): None},  # W10b: and no address read again
+          candidate={F: state(F, 1, T0, 200, 'stored', T0, 7 * DAY, datetime(2026, 10, 20).date())}), BOTH_MISSING),
+    (dict(live_columns=[n for n in URL_STATE.names if n != 'recheck_meeting_date']),
+     'automatic causes: url_state cannot be traced: the live release publishes no recheck_meeting_date'),
+])
+def test_a_live_release_without_the_url_state_facts_refuses_with_one_reason(tmp_path, night, reason):
+    """This pair runs once in production: the first candidate with the columns against a live
+    release without them. It must refuse with a reason and write its report, never raise."""
+    report = unattended(tmp_path, **night)
+    assert 'automatic_causes' not in report and report['reasons']
+    assert [r for r in report['automatic_reasons'] if 'url_state' in r] == [reason]
 
 
