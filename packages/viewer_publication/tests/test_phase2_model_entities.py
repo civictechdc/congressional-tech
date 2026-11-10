@@ -2156,6 +2156,45 @@ def test_a_page_listed_beside_a_file_is_not_one_of_its_formats(tmp_path):
     assert both['format'] == 'pdf' and [a['format'] for a in both['alternates']] == ['html']
 
 
+def test_a_sites_help_page_is_not_a_document_of_the_meetings_that_link_it(tmp_path):
+    """ct-aoxp (release 619db5f9e08e): every House Committee Repository page carries a "Help" link in its
+    chrome, including the error page the site serves at a missing meeting file's address. The capture
+    job followed it, the help page became a document, and each error page's address gave it that
+    address's meeting: one document of 81 meetings. A site's help page is furniture, never a document."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    site = 'https://docs.house.gov'
+    help_url = f'{site}/committee/Help.aspx'
+    words = 'The committee will receive testimony on farm programs and rural development. ' * 30
+    chrome = f'<div id="footer"><a href="/committee/Help.aspx">Help</a></div>'
+    help_page = (f'<html><head><title>Help | Committee Repository | U.S. House of Representatives</title></head><body><main>'
+                 f'<p>{"This site holds committee documents. Use the calendar to find a meeting. " * 30}</p></main>{chrome}</body></html>').encode()
+    folder = f'{site}/meetings/AG/AG00/20260604/119301'
+    pdf_url, missing_url = f'{folder}/HHRG-119-AG00-Wstate-DoeJ-20260604.pdf', f'{folder}/HHRG-119-AG00-20260604-SD001.pdf'
+    pdf = b'%PDF-1.7\nStatement of Jane Doe on farm programs\n%%EOF\n'
+    event_url = f'{site}/Committee/Calendar/ByEvent.aspx?EventID=119301'
+    event = (f'<html><head><title>Hearing: Farm Programs | Committee Repository</title></head><body><main><p>{words}</p>'
+             f'<ul><li><a href="{pdf_url}">PDF</a></li></ul></main>{chrome}</body></html>').encode()
+    error_url = f'{site}/committee/Error/Error.aspx?Code=404'
+    error = (f'<html><head><title>Error | Committee Repository</title></head><body><main><p>{"The document you requested could not be found. " * 30}'
+             f'</p></main>{chrome}</body></html>').encode()
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(url=event_url, data=event, format='html'),
+        dict(url=pdf_url, data=pdf, format='pdf', compress=False),
+        dict(url=error_url, requested_url=missing_url, context_url=missing_url, data=error, format='html'),
+        dict(url=help_url, data=help_page, format='html')])
+    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+        parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
+        catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    details = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
+    links = {row['link_key'] for row in pq.read_table(tmp_path / 'release/links.parquet').to_pylist()}
+    addresses = {row['url'] for row in pq.read_table(tmp_path / 'release/sources.parquet').to_pylist()}
+    # The meeting page and the statement are the documents; the statement keeps its meeting.
+    assert sorted(row['filename'] for row in details) == ['ByEvent.aspx', 'HHRG-119-AG00-Wstate-DoeJ-20260604.pdf']
+    assert next(row for row in details if row['format'] == 'pdf')['meeting_keys'] == ['119301']
+    assert hashlib.sha256(help_page).digest()[:8] not in links and help_url not in addresses
+
+
 def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
     """ct-vq2a, ct-kwse (nightly ef4c1632): the saved copy is the newest fetch, but package, filename date
     and Congress come from every copy of the bytes, and only a GovInfo-form filename names a package;

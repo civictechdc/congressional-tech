@@ -115,6 +115,30 @@
       "source": "s2-site/sample.json p012"
     },
     {
+      "id": "page-signals:site_help_page",
+      "registry": "page-signals",
+      "entry": "site_help_page",
+      "value": "https://docs.house.gov/committee/Help.aspx",
+      "expected": true,
+      "source": "Published release 619db5f9e08e, sources row 286993 (bodies 58f225d6\u2026, c0a3d1b8\u2026): the House Committee Repository's help page, linked as 'Help' from 181 captured pages and published as a document of 81 meetings (ct-aoxp)"
+    },
+    {
+      "id": "page-signals:site_help_page_committee",
+      "registry": "page-signals",
+      "entry": "site_help_page",
+      "value": "https://www.senate.gov/committees/help",
+      "expected": false,
+      "source": "Authored boundary: 'help' as a last path segment with no file extension can name the HELP committee, so only a help page file (help.aspx, help.html) matches"
+    },
+    {
+      "id": "page-signals:site_help_page_govinfo",
+      "registry": "page-signals",
+      "entry": "site_help_page",
+      "value": "https://www.govinfo.gov/help/chrg",
+      "expected": false,
+      "source": "Authored boundary: a page under a /help/ directory is a help article with its own name, not the site's help page"
+    },
+    {
       "id": "formats:preference-pdf",
       "registry": "formats",
       "entry": "preference-pdf",

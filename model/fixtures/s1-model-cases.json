@@ -1165,6 +1165,97 @@
         "real_file": false
       },
       "source": "Same request/final addresses as 9230 with a neutral page: a file request that lands on an HTML page is not a real file"
+    },
+    {
+      "id": "site-help-page",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "site-help-page",
+        "bytes": 15105,
+        "context_url": "https://fixture.test/committee/Help.aspx",
+        "url": "https://fixture.test/committee/Help.aspx",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "Help | Committee Repository",
+        "heading": "",
+        "text_head": "Help. About this website. Finding committee documents. Contact the Clerk for assistance with this repository.",
+        "text_bytes": 1800,
+        "link_count": 12,
+        "link_text_bytes": 300,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "wrapper",
+        "real_file": false
+      },
+      "source": "ct-aoxp: a site's help page is furniture, linked from every page's chrome, never a document (shape of docs.house.gov/committee/Help.aspx, 15,105 bytes, published as a document of 81 meetings in 619db5f9e08e)"
+    },
+    {
+      "id": "file-request-redirected-to-help-page",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "file-request-redirected-to-help-page",
+        "bytes": 15105,
+        "context_url": "https://fixture.test/meetings/AG/AG00/20261020/119000/a.pdf",
+        "url": "https://fixture.test/committee/Help.aspx",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "Help | Committee Repository",
+        "heading": "",
+        "text_head": "Help. About this website. Finding committee documents. Contact the Clerk for assistance with this repository.",
+        "text_bytes": 1800,
+        "link_count": 12,
+        "link_text_bytes": 300,
+        "http_status": 200,
+        "requested_url": "https://fixture.test/meetings/AG/AG00/20261020/119000/a.pdf"
+      },
+      "expected": {
+        "record_role": "wrapper",
+        "real_file": false
+      },
+      "source": "ct-aoxp: the address that answered decides; a file request that lands on the help page is not the file"
+    },
+    {
+      "id": "help-committee-page-is-a-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "help-committee-page-is-a-document",
+        "bytes": 15105,
+        "context_url": "https://fixture.test/committees/help",
+        "url": "https://fixture.test/committees/help",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "Committee on Health, Education, Labor and Pensions",
+        "heading": "",
+        "text_head": "The committee will meet to consider pending nominations and legislation on health care and education.",
+        "text_bytes": 1800,
+        "link_count": 12,
+        "link_text_bytes": 300,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      },
+      "source": "ct-aoxp boundary: a page whose last path segment is 'help' with no file extension (the Senate HELP committee) stays a document"
     }
   ],
   "groups": [
