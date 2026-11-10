@@ -44,4 +44,6 @@ Run from the repository root with the locked environment, for example:
 
 **`model_relation_rows.py`** reads one retained model build (its submitted job, step log and model spec) and writes the rows of every relation it scanned. `packages/viewer_publication/tests/fixtures/model-relation-rows.json` is its output; the repeat-cost lint (`test_phase1_model_repeat_cost.py`) scores repeated plan scans with it. Regenerate it from a newer nightly-shaped build when relation sizes move, then update the lint's tracked scores.
 
+**`step_memory.py`** joins a watchdog timeline (`archive_watchdog.py --timeline`) to the engine's step log and prints the real memory of each statement, which statement the run's peak fell in, and the `--expect-gb` to start the job with next time. It needs only the standard library, so plain `python3` runs it.
+
 **`process_rss.py`** samples resident memory for a process and its children. The other measurements import it. You do not need to run it directly.
