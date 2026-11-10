@@ -8,28 +8,17 @@ assembly receipt passed 22GiB RSS without finishing; at 1024 it peaked at
 here, whatever batch rows its runtime configures. Remove the bound when the
 pinned engine passes docspec-rs ss-1rrn.
 """
-import json
 from pathlib import Path
 
 from congress_api.lake import captures
+from congress_api.retention import provenance
 
 STAGE_BATCH_ROWS=1024
 
 
 def bounded_engine(engine,directory):
-    """The same pinned runtime at no more than STAGE_BATCH_ROWS rows per batch.
-
-    A runtime without limits cannot run a native job at all, so it passes
-    through and the mapping's own admission refusals keep their order.
-    """
-    if getattr(engine,'limits',None) is None:return engine
-    limits=json.loads(engine.limits.read_text())
-    if type(limits.get('batch_rows')) is not int or limits['batch_rows']<=0:
-        raise ValueError('Capture staging requires positive native batch_rows')
-    if limits['batch_rows']<=STAGE_BATCH_ROWS:return engine
-    directory.mkdir(parents=True,exist_ok=True)
-    path=directory/'limits.json';path.write_text(json.dumps(dict(limits,batch_rows=STAGE_BATCH_ROWS),indent=2)+'\n')
-    return engine.with_limits(path)
+    """The same pinned runtime at no more than STAGE_BATCH_ROWS rows per batch."""
+    return provenance.bounded_engine(engine,directory,batch_rows=STAGE_BATCH_ROWS)
 
 
 def stage_captures(files,*,engine,work,**kwargs):

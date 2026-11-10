@@ -351,6 +351,24 @@ def run_job(root,engine,*,inputs,steps,outputs,queries=()):
     return {query['name']:query['data'] for query in result.get('queries',[])}
 
 
+def bounded_engine(engine,directory,**ceilings):
+    """The same pinned runtime with each named limit at most its ceiling; the derived `limits.json` sits in `directory`.
+
+    An engine already within every ceiling is returned as it is. A runtime without limits cannot run a
+    native job at all, so it passes through and the engine's own refusal keeps its order. Close a returned
+    engine that is not the one passed in."""
+    if getattr(engine,'limits',None) is None:return engine
+    limits=json.loads(Path(engine.limits).read_text())
+    for name in ceilings:
+        if type(limits.get(name)) is not int or limits[name]<=0:
+            raise ValueError(f'A bounded engine requires positive native {name}')
+    if all(limits[name]<=ceiling for name,ceiling in ceilings.items()):return engine
+    directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
+    path=directory/'limits.json'
+    path.write_text(json.dumps({**limits,**{name:min(limits[name],ceiling) for name,ceiling in ceilings.items()}},indent=2)+'\n')
+    return engine.with_limits(path)
+
+
 def parquet_records(path):
     import pyarrow.parquet as pq
     with pq.ParquetFile(path) as source:
