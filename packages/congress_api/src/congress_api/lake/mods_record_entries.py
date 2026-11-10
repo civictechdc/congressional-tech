@@ -1,68 +1,60 @@
 """Reviewed GovInfo MODS contents entries that do not establish witness attendance.
 
 Each entry binds a package and one-based witness locator to the SHA-256
-of the stripped original line. A supplied name is the person named in
-the entry; several names are Members who asked questions for the record
-jointly, each given a row, the second at `<locator>/part[2]`, the third at
-`/part[3]` and so on. The optional third value says how the entry reads:
-"record_material", a reviewed paper rather than a member's own statement;
-"document", a document the line names rather than a person (a title, or the
-testifying body's own statement), record_material with no name that keeps
-the line's `organization` reading; "askers", a line the rules still read,
-whose named Members asked questions the rules do not see, each appended as
-a record_material row at the line's next part. The original MODS retains
-the full text.
+of the stripped original line, and is the line's own reading: a supplied
+name is the person named in the entry; several names each get a row, the
+second at `<locator>/part[2]` and so on. The optional third value says how
+the entry reads: "record_material", a reviewed paper rather than a member's
+own statement; "document", a document the line names rather than a person
+(a title, or the testifying body's own statement), record_material with no
+name that keeps the line's `organization` reading. The Members a line names
+as askers are read by the asker rule in appearance_records
+(_mods_askers_named) and follow the entry's rows, so an entry names an asker
+only where that rule cannot decide. The original MODS retains the full text.
 
 Reviewed 2026-11-09 (ct-3aap, ct-zs48), all `record_material`: sixteen
 document titles a line prints alone or after their publisher ("Association of
 American Railroads, "AAR Calls for ..."", "Report of the National Surface
-Transportation ... Commission"); four dot-leader leftovers of a witness's
+Transportation ... Commission"), which keep their text in `organization`
+(owner decision 2026-11-10); and four dot-leader leftovers of a witness's
 prepared-statement entry ("Prepared Statement of ........ 300,", "Prepared
-statement..........213,"), kept as typed rows rather than dropped; and CHRG-114hhrg94806's Andre Carson and Peter A.
-DeFazio after Sarah Feinberg's testimony, the askers of the print's other
-question-for-the-record headings, listed here without one; and CHRG-115shrg25981's
-Patty Murray, an asker whose page numbers run into the next heading. Review r3
-adds the Senate Veterans' Affairs askers printed after a witness's entry as
-"Hon. Jon Tester......22,32 Hon. Roland W. Burris" and CHRG-113shrg80510's
-"Response to request arising during the hearing by: Hon. Richard Burr". A shape
-rule would mistype the real witnesses printed the same way ("Hon. Condoleeza
-Rice, Secretary ... ........285,"), so these are reviewed one by one.
+statement..........213,"), kept as typed rows rather than dropped.
 
-Owner decisions 2026-11-10: a question line that names several Members who
-asked names each (Tester with Burris, Begich and, twice, Moran; Brown with
-Manchin), CHRG-115shrg24586's heading "Response to posthearing questions
-submitted by: Hon. Jon Tester......49,55 Hon. Jerry Moran" among them (ct-gfo7
-item 2: it had published the heading as a name); and the sixteen document
-titles keep their text in `organization`, as before they were typed. A survey
-of all 35,020 MODS originals found the rest of that kind; the regular ones
-("Senators Boxer and Carper", "Senator Boxer Senator Inhofe", two paged askers
-on one line) are read by the question rule, and these are reviewed:
-CHRG-115shrg33409's four lists of Senators printed after witnesses with no
-heading; Patty Murray's line, which runs into the heading naming Bill Cassidy;
-CHRG-116shrg40570's and CHRG-112shrg86775's headings naming three askers, which
-had published as a witness's name; CHRG-115hhrg25242's heading naming Frank A.
-LoBiondo, who submitted questions on behalf of Paul Mitchell (both shown); and
-two lines whose witness keeps its row while the askers printed before it are
-appended (CHRG-106shrg66382's Inhofe and Smith before Jeff Sessions, and
-CHRG-107shrg83717's Jeffords and Leahy before Hilton Kelley). Members print by
-surname alone in a list of Senators, so their rows name them so.
+Askers the asker rule cannot decide (owner decisions 2026-11-10: a reader
+sees every Member who asked): one Member alone on a line with no question
+heading, as GPO prints them after a witness's entry, which is also how a
+Member's own entry prints ("Honorable Jim Bunning.....1,"): CHRG-114hhrg94806's
+Andre Carson and Peter A. DeFazio after Sarah Feinberg's testimony and
+CHRG-111shrg51121's "Hon. Mark Begich.....54, 58,"; Veterans' Affairs
+Senators printed with "Hon." only whom the print's <congMember> list omits
+(the rule declines a whole line when one name lacks a Member fact):
+Rockefeller and Jeffords under a question heading in three prints of the
+109th Congress, Joe Manchin III beside Sherrod Brown (CHRG-115shrg34881),
+and three headings "Response to request(s) arising during the hearing by:"
+naming Manchin with Hirono or Murray, or Bernard Sanders with Mark Begich
+(CHRG-114shrg94770, CHRG-115shrg35429, CHRG-113shrg81626);
+CHRG-112shrg86775's heading in capitals ("QUESTIONS FROM HON. AL FRANKEN, HON.
+RICHARD BLUMENTHAL, AND HON. TOM COBURN"), which the rule does not read;
+and CHRG-115hhrg25242's heading naming Frank A. LoBiondo, who
+submitted questions on behalf of Paul Mitchell (both shown; ct-gfo7 item 3).
+CHRG-107shrg83683 #9 is a document run into a heading: the entry names the
+document and the rule appends its asker, Jeffords.
 
-Owner decisions 2026-11-10 (ct-gfo7 items 3 and 4): CHRG-115hhrg25242's line is
-shown as submitted material naming both LoBiondo and Mitchell (above); and an
-organization's own statement is record material, not a statement for the
-record, when a witness of the same print testified for that organization:
-"The Federal Trade Commission, prepared statement" beside four FTC
-commissioners (CHRG-110shrg75166), "National Commission on Hunger, submitted
-report" beside its co-chairs (CHRG-114hhrg93962), and, found by a survey of all
-37 organization-only statements, the American Civil Liberties Union's
-statement beside its president Nadine Strossen (CHRG-107shrg81998). Each keeps
-its text in `organization`.
+Owner decision 2026-11-10 (ct-gfo7 item 4): an organization's own statement is
+record material, not a statement for the record, when a witness of the same
+print testified for that organization: "The Federal Trade Commission, prepared
+statement" beside four FTC commissioners (CHRG-110shrg75166), "National
+Commission on Hunger, submitted report" beside its co-chairs
+(CHRG-114hhrg93962), and, found by a survey of all 37 organization-only
+statements, the American Civil Liberties Union's statement beside its
+president Nadine Strossen (CHRG-107shrg81998). Each keeps its text in
+`organization`.
 """
 
 from typing import Literal
 
 Names = str | tuple[str, ...] | None
-RecordEntry = tuple[str, Names] | tuple[str, Names, Literal["record_material", "document", "askers"]]
+RecordEntry = tuple[str, Names] | tuple[str, Names, Literal["record_material", "document"]]
 
 MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-106hhrg55613': {
@@ -92,14 +84,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         20: ('a1cfe3e56a0d13ebf4c066338214a1407f2d24c4bc59724c24dceb99841c556a', None),
     },
     'CHRG-106shrg66376': {
-        17: ('f7efd85d4cb7c2c8af6fa2546a6108b12485e5095d6576ea14f6213cf7b1eb9b', 'Smith'),
         25: ('c0072a5d03d490de0212885e9a7eae2aed5758dd3ad2ec35f94c9b7d5cd3a694', 'Ella Wong-Ruskinko'),
     },
     'CHRG-106shrg66381': {
         26: ('cea4b6c24e32e60b55b1ece9c3dedeb722bb1aaf5f5dbe7b877dae6f8de7441c', None, 'record_material'),
-    },
-    'CHRG-106shrg66382': {
-        9: ('499f7fc61f653266fffc75a29ad9f2e7152b61349a073a3674adfce6b3296d50', ('Inhofe', 'Smith'), 'askers'),
     },
     'CHRG-106shrg73821': {
         19: ('ebaac7aca5d25b82c2825243fae3db6c93986b3ddd8d716b328752cfca9f4965', 'Paul Warner'),
@@ -130,7 +118,6 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         9: ('108a1c684d41b19e49af0be82d559020c163cd343e1405dc77c28f50a7d3a372', None),
     },
     'CHRG-107shrg83717': {
-        6: ('3a5967378feb74a175675af24f37841c92f5c3ba419671463340f1a51051e283', ('Jeffords', 'Leahy'), 'askers'),
         25: ('814b704f2cb2de804fa8df804a5349917a8b7a8e94921ee7da087bf69a68ddf1', None),
     },
     'CHRG-107shrg89642': {
@@ -170,8 +157,19 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-109hhrg29565': {
         3: ('c6d37563b7cbd3caafc255f118db8e98f49144163c788018dc12d16f2f36d6aa', None),
     },
+    'CHRG-109shrg20113': {
+        6: ('3d7eeb23558c05011ddb5d5eb60ecb625e0656bdbc6c224ff4ad6874538b7080', 'John D Rockefeller IV'),
+        7: ('bca414b74c29eae8b3641fb64518d7b295927db043f9698e4c7ea6992810088e', 'James M Jeffords'),
+    },
+    'CHRG-109shrg22412': {
+        4: ('3d7eeb23558c05011ddb5d5eb60ecb625e0656bdbc6c224ff4ad6874538b7080', 'John D Rockefeller IV'),
+        5: ('bca414b74c29eae8b3641fb64518d7b295927db043f9698e4c7ea6992810088e', 'James M Jeffords'),
+    },
     'CHRG-109shrg22551': {
         6: ('7cc18dca3203d43571e8a86c1ad95ac3d5a5026b19677799104b944af389ca20', None, 'document'),
+    },
+    'CHRG-109shrg22552': {
+        4: ('3d7eeb23558c05011ddb5d5eb60ecb625e0656bdbc6c224ff4ad6874538b7080', 'John D Rockefeller IV'),
     },
     'CHRG-109shrg37444': {
         4: ('c1524a77161b644431ace94a70b538fa9d0c40fc6a4d8ed3ec67d5688b29e0e6', None),
@@ -230,20 +228,12 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         5: ('9d260641607123e8c5849e5a3c064ea902aa9c9b0e812ba6fd2571fb79c5f8cc', None, 'document'),
         6: ('881eeda28c54c73b0f5712ca2c8137c31761d04c968a6d91220c8c89579bd89a', None, 'document'),
     },
-    'CHRG-111shrg47763': {
-        2: ('2c5b4414728a6d4f6fb5adff87f632062c8b41e063dbeb87a71d23db0fc9ad72',
-            ('Jon Tester', 'Roland W. Burris'), 'record_material'),
-    },
     'CHRG-111shrg51121': {
         2: ('00684bf42d469b94d532bcad2b8bcf79f7cda200e59446812425f43a7a68a851', 'Mark Begich', 'record_material'),
     },
     'CHRG-111shrg52162': {
         6: ('b6f369b7d66aa2d51eb6a5e49bd96bff3a65750646955c6f923a9ca4a55daf2d', None),
         7: ('7af23ea39cb80a0ad43508d37094d76e15d76a8e3c2a1c689cb2248f6e1f5f66', None),
-    },
-    'CHRG-111shrg64440': {
-        2: ('af274e4c95a5953397994ade14d576f6d96bb530cadc5bc307ded06d76bc8e90',
-            ('Jon Tester', 'Mark Begich'), 'record_material'),
     },
     'CHRG-111shrg68174': {
         3: ('fb6b185d9dd5a8e6e94849c1097a41b5ebb1cb0d6cafb26872d00487bbde84b5', 'Glenn F. Tilton'),
@@ -314,12 +304,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-113hhrg85873': {
         3: ('4fd06d69bf55f21f303ab5b6107242645b76a6cc51d55d04962a5df45d104d70', None),
     },
-    'CHRG-113shrg80510': {
-        2: ('e52b150a51bb82a540b35281c2602cd446b8c6935253a44fe4fe9dbf96ae6cef', 'Richard Burr', 'record_material'),
-        3: ('c46b121a566b47fb460da5f924708b67933dd1d27b5b5e5a94cd0553fe48956c', 'Jerry Moran', 'record_material'),
-    },
-    'CHRG-113shrg88369': {
-        6: ('f7075fa4ada87f99df81cd42c428812b9c20d751e065970ab8341c6a845f8170', None),
+    'CHRG-113shrg81626': {
+        3: ('8b5deb9e53c2f6dc86215da97f3f255c765e6f8ce343de3184dffe32986da451',
+            ('Bernard Sanders', 'Mark Begich'), 'record_material'),
     },
     'CHRG-114hhrg93069': {
         4: ('3882d9b193f6a097144d68149e66a539a0191b22a792eb390a1cd7796c44d743', None, 'document'),
@@ -349,6 +336,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-114shrg94274': {
         2: ('c9938097cc6447df2cdfac661cf536bdc95f4b470de9722f5220ee39a0f01e9e', 'Eugene Dodaro'),
     },
+    'CHRG-114shrg94770': {
+        2: ('182192401af1177daf6177ab2257256a2a025b386781d1efc8b67bf63e06851a',
+            ('Joe Manchin', 'Mazie Hirono'), 'record_material'),
+    },
     'CHRG-114shrg97368': {
         4: ('d646f835d493085e5bd7b0a1b3cd09b1c125c71cbd5962f5a7b915565525e12e', None, 'document'),
     },
@@ -356,28 +347,16 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         2: ('8e8e80c14aa8efd74682837c08390a1a726ec44c3336510f2e87475c28072f2c',
             ('Frank A. LoBiondo', 'Paul Mitchell'), 'record_material'),
     },
-    'CHRG-115shrg24586': {
-        3: ('86b0b2cc099e95d14eb67ec0994781b2c05b1e9faec057845fabe8de77afcc1a',
-            ('Jon Tester', 'Jerry Moran'), 'record_material'),
-        4: ('d93140033571f046aedaf33c589111bb2aa6016d29d781ce53f036a240ba7bab',
-            ('Jon Tester', 'Jerry Moran'), 'record_material'),
-    },
-    'CHRG-115shrg25981': {
-        4: ('527e535a4f89ea672523fe5972f4897408d7082e36d7727c62c394050db4adfc',
-            ('Patty Murray', 'Bill Cassidy'), 'record_material'),
-    },
     'CHRG-115shrg26915': {
         5: ('b27836ef058075b90e1a1d9efefd7f3d5e648f4da0bcb6be94aff16b2eedbd72', None, 'record_material'),
-    },
-    'CHRG-115shrg33409': {
-        2: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', ('Warner', 'Cotton', 'Tillis', 'Jones')),
-        4: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', ('Warner', 'Cotton', 'Tillis', 'Jones')),
-        6: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', ('Warner', 'Cotton', 'Tillis', 'Jones')),
-        8: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', ('Warner', 'Cotton', 'Tillis', 'Jones')),
     },
     'CHRG-115shrg34881': {
         5: ('c030adbf8f01de81a247dbfbec67727e0e3c657186f65c7733ea6a4488880316',
             ('Sherrod Brown', 'Joe Manchin III'), 'record_material'),
+    },
+    'CHRG-115shrg35429': {
+        2: ('01aed39836cf57e1d544cdb69cf9550750ae7e5a8fe899bb298dbeaa6a403317',
+            ('Patty Murray', 'Joe Manchin III'), 'record_material'),
     },
     'CHRG-115shrg57804': {
         6: ('b84f0982a08e4207738d802d274b2556ca23cf908c7d9a513c10e25bb465ef77', None),
@@ -390,10 +369,6 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     },
     'CHRG-116shrg39734': {
         4: ('6abeb975664b585397deb125ca9ce09dfcf0c227737d91d9270c589e3a885c0a', None, 'record_material'),
-    },
-    'CHRG-116shrg40570': {
-        2: ('43001738c8e1513e19740b17d61c393c67c9aff18540922c200e063f43a51b01',
-            ('Patty Murray', 'Jon Tester', 'Jerry Moran'), 'record_material'),
     },
     'CHRG-117hhrg49906': {
         73: ('90fad09498efeba8e1f7def4b216fe40478737e6790fff0f055b18d4763fa13a', 'Glenn Thompson'),

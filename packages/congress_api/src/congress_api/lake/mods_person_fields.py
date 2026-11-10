@@ -14,12 +14,12 @@ that listing context, separate companions, and printed headings.
 # the second reads at `<locator>/part[2]`. CHRG-113shrg89525 (ct-79j1): the
 # contents repeat Victor Joseph's entry without a page and run it into Michael K.
 # Abbott's, whose testimony (p. 24) and prepared statement (p. 54) are printed.
-# CHRG-114hhrg93258 (ct-zs48): under "Responses to questions for the record from
-# the following Representatives and Delegate", Delegate Eleanor Holmes Norton's
-# entry runs into Representative Daniel Lipinski's. CHRG-112shrg25114 (ct-zs48
-# review r3): the heading "Responses to additional questions from: Senator Boxer
-# Senator Inhofe" runs into witness Amy W. Larson's entry ("President and CEO,
-# National Waterways Conference"), which the label skip had dropped.
+# CHRG-112shrg25114 (ct-zs48 review r3): the heading "Responses to additional
+# questions from: Senator Boxer Senator Inhofe" runs into witness Amy W. Larson's
+# entry ("President and CEO, National Waterways Conference"), which the label
+# skip had dropped; the asker rule reads "Senator Inhofe Larson" as one name, so
+# only this split shows where her entry starts. Members run together under a
+# question heading are the asker rule's (appearance_records._mods_askers_named).
 # The split is unpacked into exactly two parts, so a separator must not hold a
 # capturing group (re.split would return it as a third part and the read would
 # raise); use lookarounds or (?:...) (ct-gfo7 item 6).
@@ -27,7 +27,6 @@ MODS_JOINED_LINES: dict[str, dict[int, tuple[str, str]]] = {
     'CHRG-112shrg25114': {3: ('95e6dad7aa730ea060fa4d98e50e4371fbd077860df8824481d9cc967cea445f',
                               r'(?<=Senator Inhofe) (?=Larson, Amy W\.)')},
     'CHRG-113shrg89525': {6: ('7fc2f30fbfe6c95cf115fcb4543b1327cf4d9b331087062880bfdcee89cb4f38', r'\.\. ')},
-    'CHRG-114hhrg93258': {10: ('150246912b937bae92fc14755c6e33403516411a11a97367dbdf3441a92e56e8', r'\.\. ')},
 }
 
 MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'CHRG-106hhrg57366': {9: ('7409e3e059e4a34a44b1d0051d29d0b52acbcdda5994016eb97ea4000ce610cc',
