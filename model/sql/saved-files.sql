@@ -26,4 +26,4 @@ SELECT * EXCLUDE(base_rank,saved_body,is_saved_body,body_stored,name_standing),r
   CASE WHEN is_saved_body THEN name_standing ELSE 0 END,
   is_saved_body AND NOT body_stored,base_rank) AS saved_rank
 FROM (SELECT r.*,r.body_sha IS NOT DISTINCT FROM r.saved_body AS is_saved_body,coalesce(n.standing,2) AS name_standing
- FROM saved_name_standing n RIGHT JOIN ranked r ON n.source_id=r.source_id)
+ FROM saved_name_standing n RIGHT JOIN ranked r ON n.component=r.component AND n.source_id=r.source_id)
