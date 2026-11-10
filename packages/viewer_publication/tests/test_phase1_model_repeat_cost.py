@@ -13,6 +13,11 @@ once, of (scans - 1) x rows, the extra row-scans the materialization audit ranke
 Rows are not in an empty plan: they come from fixtures/model-relation-rows.json, measured
 from one nightly-shaped build (scripts/measure/model_relation_rows.py regenerates it). A
 step missing from it is estimated at its largest input's rows.
+
+The same plans show which input each outer join builds on: the engine builds on the left
+(AGENTS.md), so a LEFT or FULL join whose left input is large holds that preserved relation in
+the hash table. That lint reads the logical plan, so it sees neither a statistics-driven swap
+over a raw table in the physical plan, nor column width, nor memory.
 """
 import collections
 import json
@@ -75,7 +80,54 @@ REGEX_REPEAT_TRACKED = {
     'meetings_export': 3,                 # current transcript/status plan; identical before the window repair
 }
 
-# New offenders the lint must catch, and one it must let through.
+#: Estimated rows at which the preserved input of an outer join may no longer be its build side.
+OUTER_BUILD_ROWS = 100_000
+# Readers with LEFT (or FULL) joins whose left input is estimated at OUTER_BUILD_ROWS or more, with
+# how many such joins each has. The engine builds every hash join on its left input (AGENTS.md), so
+# these hold the large preserved relation in the hash table and then emit its unmatched rows as one
+# batch; base_normalized exhausted the query pool that way (ct-n5ec). Fix one by writing
+# `small RIGHT JOIN large` and delete its entry. A reader that is not listed may have none.
+# Each note gives the largest estimated build, the relation that sets it and that build's widest
+# column count: hints for ranking from an empty plan, never measured memory.
+OUTER_BUILD_TRACKED = {
+    'recovery_candidates': 3,                  # 4.1M rows by captures, 16 cols
+    'meeting_detail_evidence': 2,              # 4.1M rows by congress_gov_routes (unmeasured: its largest input), 16 cols
+    'meeting_detail_observations': 3,          # 4.1M rows by meeting_detail_evidence (unmeasured: its largest input), 15 cols
+    'url_state_lines': 2,                      # 4.1M rows by captures, 11 cols
+    'entity_profile_completeness': 3,          # query; 4.1M rows by captures, 5 cols
+    'recording_tracks': 1,                     # 2.8M rows by recording_track_candidates, 11 cols
+    'source_addresses': 1,                     # 2.1M rows by source_files, 3 cols
+    'source_annotations': 1,                   # 2.1M rows by source_files, 2 cols
+    'document_identities': 2,                  # 2.1M rows by document_members, 4 cols
+    'document_metadata': 1,                    # 2.1M rows by document_members, 10 cols
+    'component_meeting_links': 4,              # 2.0M rows by document_metadata, 5 cols
+    'review_overrides': 3,                     # 1.8M rows by document_identities, 5 cols
+    'model_url_keys': 1,                       # 1.7M rows by url_inputs, 1 cols
+    'page_dates': 1,                           # 1.4M rows by page_metadata_values (unmeasured: its largest input), 5 cols
+    'document_page_metadata': 7,               # 1.4M rows by html_metadata_readings (unmeasured: its largest input), 19 cols
+    'source_filename_readings': 1,             # 1.4M rows by filename_readings, 27 cols
+    'source_url_keys': 1,                      # 1.3M rows by source_url_inputs, 1 cols
+    'document_packages': 2,                    # 569K rows by saved_files, 3 cols
+    'retired_links_export': 12,                # 440K rows by prior_links, 6 cols
+    'bills_export': 7,                         # 422K rows by spicy_congress_bills, 19 cols
+    'meetings_export': 9,                      # 374K rows by ordered, 31 cols
+    'page_descriptions': 4,                    # 356K rows by base_normalized, 8 cols
+    'document_page_metadata_entries': 5,       # 356K rows by page_metadata_documents (unmeasured: its largest input), 15 cols
+    'source_members.parquet': 1,               # export; 356K rows by ordered, 6 cols
+    'model_invariants': 2,                     # query; 356K rows by ordered, 2 cols
+    'blank_filename_reasons': 1,               # query; 356K rows by ordered, 2 cols
+    'source_annotation_pages': 2,              # 313K rows by page_facts, 5 cols
+    'document_witness_keys': 2,                # 205K rows by document_witness_raw_matches, 3 cols
+    'witness_key_map': 1,                      # 177K rows by witness_key_priors (unmeasured: its largest input), 3 cols
+    'relationship_invariants': 1,              # query; 177K rows by witness_key_map_export (unmeasured: its largest input), 2 cols
+    'witness_key_current': 1,                  # 173K rows by appearance_records_resolved, 15 cols
+    'document_witness_url_matches': 1,         # 173K rows by appearance_records_resolved, 4 cols
+    'document_witness_meeting_witnesses': 1,   # 173K rows by appearance_records_resolved, 5 cols
+    'witnesses_export': 1,                     # 173K rows by appearance_records_resolved, 20 cols
+    'coverage': 3,                             # query; 173K rows by witnesses_export, 7 cols
+}
+
+# New offenders the lint must catch, and ones it must let through.
 PLANTED = {
     'planted_cte_read_three_times': """WITH targets AS (
         SELECT page_body,target_url FROM resolved_links WHERE target_url IS NOT NULL)
@@ -88,11 +140,17 @@ PLANTED = {
         SELECT witness_key,superseded_by FROM witness_precedence WHERE superseded_by IS NOT NULL)
         SELECT witness_key FROM current UNION ALL SELECT superseded_by FROM current
         UNION ALL SELECT witness_key||superseded_by FROM current""",
+    'planted_left_join_built_on_large_relation': """SELECT l.page_body,w.superseded_by
+        FROM resolved_links l LEFT JOIN witness_precedence w ON l.target_url=w.witness_key""",
+    'planted_right_join_built_on_small_relation': """SELECT l.page_body,w.superseded_by
+        FROM witness_precedence w RIGHT JOIN resolved_links l ON l.target_url=w.witness_key""",
 }
 
 SCAN = re.compile(r'^\s*TableScan: (\S+)', re.M)
 JOIN = re.compile(r'^\s*\w+ Join: (.*)$', re.M)
 REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
+# A plan node line; a line of any other shape continues the expression above it.
+NODE = re.compile(r'^( *)([A-Z]\w*(?: Join)?)(?:: (\S*).*)?$')
 
 
 class _Submitted(Exception):
@@ -196,6 +254,45 @@ def offenders(job, plans):
             {name: joins for name, plan in plans.items() if (joins := repeated_regex_joins(plan))})
 
 
+def tree(plan):
+    """The logical plan as nested (kind, first word, inputs) nodes, by indentation."""
+    root = ('', '', [])
+    open_nodes = [(-1, root)]
+    for line in plan.splitlines():
+        if match := NODE.match(line):
+            node = (match[2], match[3] or '', [])
+            while open_nodes[-1][0] >= len(match[1]):
+                open_nodes.pop()
+            open_nodes[-1][1][2].append(node)
+            open_nodes.append((len(match[1]), node))
+    return root
+
+
+def estimated_rows(job, node):
+    """A plan node's rows, estimated: a scan's measured rows, the smaller input of an inner join, the
+    preserved input of an outer, semi or anti join, the sum of a union, otherwise the largest input."""
+    kind, name, inputs = node
+    if kind == 'TableScan':
+        return rows(job, name)
+    sizes = [estimated_rows(job, child) for child in inputs] or [0]
+    if kind == 'Inner Join':
+        return min(sizes)
+    if kind.endswith(' Join') and kind.startswith(('Left', 'Right')):
+        return sizes[0 if kind.startswith('Left') else -1]
+    return sum(sizes) if kind == 'Union' else max(sizes)
+
+
+def large_outer_builds(job, plan):
+    """Estimated build rows of each Left or Full join whose left input reaches OUTER_BUILD_ROWS."""
+    found, pending = [], [tree(plan)]
+    while pending:
+        kind, _name, inputs = pending.pop()
+        pending += inputs
+        if kind in ('Left Join', 'Full Join') and (size := estimated_rows(job, inputs[0])) >= OUTER_BUILD_ROWS:
+            found.append(size)
+    return found
+
+
 def model_plans(plans):
     return {name: plan for name, plan in plans.items() if name not in PLANTED}
 
@@ -257,3 +354,16 @@ def test_lint_passes_the_same_three_reads_over_a_small_relation(planned):
     assert score(job, plans['planted_small_cte_read_three_times'])[1] == {
         'witness_precedence': (3, MEASURED['rows']['witness_precedence'])}
     assert 'planted_small_cte_read_three_times' not in flagged and 'planted_small_cte_read_three_times' not in regex
+
+
+def test_only_tracked_readers_build_an_outer_join_on_a_large_preserved_relation(planned):
+    job, plans = planned
+    current = {name: len(builds) for name, plan in model_plans(plans).items() if (builds := large_outer_builds(job, plan))}
+    assert current == OUTER_BUILD_TRACKED, 'a fixed reader leaves the list; a new one names its small relation first'
+
+
+def test_lint_flags_a_planted_left_join_built_on_a_large_relation_and_passes_its_right_join(planned):
+    job, plans = planned
+    assert large_outer_builds(job, plans['planted_left_join_built_on_large_relation']) == [MEASURED['rows']['resolved_links']]
+    assert large_outer_builds(job, plans['planted_right_join_built_on_small_relation']) == []
+
