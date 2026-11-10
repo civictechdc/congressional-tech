@@ -17,3 +17,9 @@ Found 2026-11-10 by the all-live-link-keys check on release candidate 619db5f9 (
 
 Every multi-body recovery document is either shown to be one document (same text) or split, with counts. Bowman 2012 and 2018 are two rows. A release gate or model invariant flags a recovery document whose bodies differ in text.
 
+
+## Notes
+
+**2026-11-10T13:16:36Z**
+
+Owner decision 2026-11-10: correct the records. Mark the wrong acceptances in the recovery records and re-record each file under its own address (option 1 with re-recording), so each hidden file becomes its own document.

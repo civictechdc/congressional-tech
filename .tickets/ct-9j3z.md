@@ -38,3 +38,7 @@ Decide and build one of: (a) the publisher passes the gate, as pinned files besi
 **2026-11-10T07:19:12Z**
 
 2026-11-10: url_state is not the only thing that stops a capture night. By ct-ud0b's rule, additions on documents the live release already has also refuse the automatic proof, and last night had 201 such link keys, 1,038 addresses and 1,321 lookup-key rows (investigations/gate-rules-20261110/gc99-real-data.md), plus 2,953 sources rows whose link_text and listed_on were filled from newly read pages. Whether those can be traced to new receipts the same way is not measured here.
+
+**2026-11-10T13:16:36Z**
+
+Owner decision 2026-11-10: publish the missing facts. Add the meeting date behind each recheck band and the page behind each queued link to the release so the gate can prove next_attempt_at and queued rows.

@@ -1,6 +1,6 @@
 ---
 id: ct-xnn6
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T12:06:28Z
@@ -17,3 +17,9 @@ The first two scheduled runs of 2026-11-10 after the launch agent was switched b
 
 A run started by the launch agent completes the model and the publish step; its summary records the open-file limit it ran with; its wall time is close to a shell-started run; its folder holds steps.jsonl. The engine reports the OS error on a failed source open (engine follow-up, ct-n5ec's list).
 
+
+## Notes
+
+**2026-11-10T13:16:36Z**
+
+2026-11-10 fixed on main af1da283. Scheduled run 20261110T121530.896579Z through the reinstalled launch agent: status ok, exit 0, open_files 65536 in summary.json, publisher release_unchanged; 26.7 min in all (46 at Background priority), publish step 1,579 s, peak 11.20 GiB RSS; steps.jsonl present in the run folder. Engine follow-up (OS error on a failed source open) is built on docspec-rs fix/nested-slice-bytes, tracked under ct-n5ec.

@@ -17,3 +17,9 @@ Owner decision 2026-11-10 (questions dialog): adopt the broader name rule in the
 
 The rule is built and measured on a full model build, not simulated: renames against live with gains, losses and neutral counted; no document whose committee name and House name state different kinds takes the House name without a reading of the document that supports it; the 54 ct-yuf0 documents read as testimony; the rename list is reviewed like the 2026-11-10 one before it publishes.
 
+
+## Notes
+
+**2026-11-10T13:16:36Z**
+
+Owner decision 2026-11-10 on the 343 non-slot official names against a committee kind: 'Review them manually'. Each is read and decided per document; until then they stay as published (the built behaviour on claude/ct-name-rule).
