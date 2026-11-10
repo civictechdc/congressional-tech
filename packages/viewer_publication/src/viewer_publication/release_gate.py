@@ -2,13 +2,15 @@
 
 `require_release_gates` runs `release_comparison.compare` on the local candidate and the
 fetched base (live) release, writes the report, then refuses unless
-  - the link rule finds no missing key, no dangling key and no live link key, lookup key or
-    address answering another file (no record can override it), and
-  - every non-verified group has a cause record entry with the exact count, and every
-    entry names an actual group, bound to these two release IDs.
+  - the link rule finds no missing key, no dangling key and no check it could not run (no record
+    can override these), and no live link key, lookup key or address answering another file
+    unless the record names it, with its live and candidate body, as a correction (ct-4nax), and
+  - every non-verified group has a cause record entry with the exact count, every entry names
+    an actual group and every correction an actual finding, bound to these two release IDs.
 The cause record is committed after a build, so the flow is build -> refuse with report ->
 write record -> resume -> pass. The record's truth is not machine-checked: only its counts,
-binding and evidence custody are. See release_comparison for what the comparison cannot see.
+named bodies, binding and evidence custody are. See release_comparison for what the
+comparison cannot see.
 
 `prior_links` builds the retired-key ledger inputs (data model §8.2) from the base release
 and, when the base has no ledger, the explicitly named earlier releases.
@@ -30,6 +32,11 @@ from viewer_publication.release_comparison import ATTEMPTED_URLS, QUEUED_URLS
 
 DIGEST = re.compile('[0-9a-f]{64}')
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
+ROOT = Path(__file__).resolve().parents[4]  # the checkout running the gate
+TICKETS = ROOT / '.tickets'
+# ct-4nax: what a cause record's correction may name, as {kind: (field prefix in link_rule, plural)}.
+CORRECTED = {'link_key': ('', 'link keys'), 'lookup_key': ('lookup_', 'lookup keys'), 'address': ('address_', 'addresses')}
+CORRECTION_FIELDS = {'kind', 'key', 'live_body', 'candidate_body', 'decision', 'tickets'}
 LEDGER_FILES = ('manifest.json', 'links.parquet', 'detail.parquet', 'list.parquet', 'sources.parquet')
 PRIOR_LINKS = pa.schema([('link_key', pa.binary(8)), ('release_rank', pa.int16()), ('release_id', pa.string()),
                          ('list_row', pa.int32()), ('primary_key', pa.binary(8)), ('filename', pa.string())])
@@ -201,6 +208,50 @@ def fetch_base(read_release, release_id, work, link_history=(), *, previous_rele
     return base, prior, retired, history
 
 
+def _tickets(entry, name, *, needed_by=None):
+    """An entry's ticket ids; `needed_by` names the kind of entry that must have at least one."""
+    tickets = entry.get('tickets', [])
+    if not isinstance(tickets, list) or any(not isinstance(t, str) or TICKET.fullmatch(t) is None for t in tickets):
+        raise ValueError(f'Cause entry tickets must be ticket ids: {name}')
+    if needed_by and not tickets:
+        raise ValueError(f'{needed_by} needs a ticket: {name}')
+    return tickets
+
+
+def _corrections(record):
+    """Validate the record's `corrections` (ct-4nax): each names one link-rule finding exactly.
+
+    An entry is {kind, key, live_body, candidate_body, decision, tickets} and nothing else: kind is
+    one of CORRECTED, key is printed as the report prints it (16 hex for a link or lookup key, the
+    address otherwise), both bodies are SHA-256s, the decision says what was corrected and by which
+    permanent record, and every ticket is a file in this checkout's .tickets. One entry per
+    (kind, key, live body).
+    """
+    corrections = record.get('corrections', [])
+    if not isinstance(corrections, list):
+        raise ValueError('Cause record corrections must be a list')
+    seen = set()
+    for entry in corrections:
+        if not isinstance(entry, dict) or set(entry) != CORRECTION_FIELDS:
+            raise ValueError(f'A correction has exactly the fields {", ".join(sorted(CORRECTION_FIELDS))}: {entry}')
+        kind, key = entry['kind'], entry['key']
+        name = f'{kind} {key}'
+        if kind not in CORRECTED:
+            raise ValueError(f'Correction kind must be one of {", ".join(CORRECTED)}: {name}')
+        if not isinstance(key, str) or (re.fullmatch('[0-9a-f]{16}', key) is None if kind != 'address' else not key.strip()):
+            raise ValueError(f'Correction key must be printed as the report prints it: {name}')
+        for side in ('live_body', 'candidate_body'):
+            _sha(entry[side], f'Correction {side} of {name}')
+        if not isinstance(entry['decision'], str) or not entry['decision'].strip():
+            raise ValueError(f'A correction needs its decision: {name}')
+        missing = [t for t in _tickets(entry, name, needed_by='A correction') if not (TICKETS / f'{t}.md').is_file()]
+        if missing:
+            raise ValueError(f'Correction tickets have no file in {TICKETS}: {", ".join(missing)} ({name})')
+        if (kind, key, entry['live_body']) in seen:
+            raise ValueError(f'Duplicate correction: {name} from {entry["live_body"]}')
+        seen.add((kind, key, entry['live_body']))
+
+
 def load_causes(pin):
     """Read a pinned cause record and custody-check every evidence pin it names."""
     from congress_shared.custody import verify_local_file
@@ -212,6 +263,7 @@ def load_causes(pin):
         raise ValueError('Cause record requires version 1 and a groups list')
     for side in ('base_release_id', 'candidate_release_id'):
         _sha(record.get(side), f'Cause record {side}')
+    _corrections(record)
     seen = set()
     for entry in record['groups']:
         if not isinstance(entry, dict) or not isinstance(entry.get('id'), str) or entry['id'].count('|') < 2:
@@ -225,11 +277,7 @@ def load_causes(pin):
             raise ValueError(f'Cause entry disposition must be explained or accepted_defect: {entry["id"]}')
         if not isinstance(entry.get('cause'), str) or not entry['cause'].strip():
             raise ValueError(f'Cause entry requires a stated cause: {entry["id"]}')
-        tickets = entry.get('tickets', [])
-        if not isinstance(tickets, list) or any(not isinstance(t, str) or TICKET.fullmatch(t) is None for t in tickets):
-            raise ValueError(f'Cause entry tickets must be ticket ids: {entry["id"]}')
-        if entry['disposition'] == 'accepted_defect' and not tickets:
-            raise ValueError(f'An accepted defect needs a ticket: {entry["id"]}')
+        _tickets(entry, entry['id'], needed_by='An accepted defect' if entry['disposition'] == 'accepted_defect' else None)
         if entry['disposition'] == 'explained' and not entry.get('evidence'):
             # An explanation names what was read (raw lines, a query result) by pinned file.
             raise ValueError(f'An explained cause needs pinned evidence: {entry["id"]}')
@@ -681,28 +729,81 @@ def group_id(group):
     return f'{group["file"]}|{group["group"]}|{group["cause"]}'
 
 
+def named_corrections(rule, corrections):
+    """Split the link rule's changed answers into those a correction names and the rest (ct-4nax).
+
+    Owner decision 2026-11-10, "Accept named corrections": a live link key, lookup key or address
+    that answers another file passes only where the reviewed record names it as a correction: same
+    kind, same key, and both bodies equal to the report's (for a lookup key or address, every
+    candidate row it reaches shows that one file). Returns ({kind: waived keys}, {kind: refusal
+    reasons}, reasons for corrections that match nothing). A key with any unnamed answer is
+    refused; so is every key beyond the report's sample, which no entry can be matched against;
+    and an entry that waives nothing refuses the record, so a stale or padded list cannot pass.
+    One dictionary of corrections, one pass over the answers: O(findings + corrections).
+    The bodies compared are the gate's own comparison's, never the record's.
+    Cannot see: whether the candidate file is the right document, or whether a change was meant
+    at all. A list copied from the report passes; only the review stands between them. That is
+    the reviewed record's claim; ct-faan is the form that proves it from the published rejection
+    records.
+    """
+    named = {(c['kind'], c['key'], c['live_body']): c['candidate_body'] for c in corrections}
+    used, waived, refused = set(), {}, {}
+    for kind, (prefix, what) in CORRECTED.items():
+        answers, unnamed = rule[f'{prefix}changed_answers'], set()
+        for answer in answers:
+            name = (kind, answer['key'], answer['live_body'])
+            shown = [answer['candidate_body']] if kind == 'link_key' else answer['candidate_bodies']
+            if name in named and shown == [named[name]]:
+                used.add(name)
+            else:
+                unnamed.add(answer['key'])
+        listed = sorted({answer['key'] for answer in answers})
+        waived[kind] = [key for key in listed if key not in unnamed]
+        beyond = max(rule[f'{prefix}changed'] - len(listed), 0)
+        refused[kind] = []
+        if unnamed or beyond:
+            # ct-4qld, ct-wscb: every key is named, up to the report's sample; the report has its files.
+            keys = f' ({", ".join(sorted(unnamed))})' if unnamed else ''
+            refused[kind].append(f'link rule: {len(unnamed) + beyond} live {what} answer another file{keys}')
+        if beyond:
+            refused[kind].append(f'link rule: {beyond} live {what} that answer another file are beyond the '
+                                 f"report's sample, so no correction can name them")
+    # Whole bodies: a correction one character off must be told apart from the report's.
+    stale = [f'cause record: correction {kind} {key} from {live} to {named[kind, key, live]} matches no finding of the link rule'
+             for kind, key, live in sorted(set(named) - used)]
+    return waived, refused, stale
+
+
 def verdict(report, causes):
-    """Every reason the gates refuse, each naming the rule it broke."""
+    """Every reason the gates refuse, each naming the rule it broke.
+
+    A vanished key (missing), a successor that is not a published key (dangling) and a check that
+    could not run (unchecked) refuse whatever the record says: no record field touches them. A
+    link key, lookup key or address that answers another file refuses unless the record, bound to
+    this base and candidate, names it as a correction (`named_corrections`, ct-4nax). Also records
+    in report['named_corrections'] how many keys of each kind a correction let through, and which.
+    """
     reasons = []
     rule = report['link_rule']
+    bound = causes is not None and (causes['base_release_id'], causes['candidate_release_id']) == (
+        report['base_release'], report['candidate_release'])
+    waived, refused, stale = named_corrections(rule, causes.get('corrections', []) if bound else [])
+    report['named_corrections'] = {kind: dict(waived=len(keys), keys=keys) for kind, keys in waived.items()}
     if rule['missing']:
         reasons.append(f'link rule: {rule["missing"]} base link keys vanish (first {rule["missing_keys"][:5]})')
     if rule['dangling']:
         reasons.append(f'link rule: {rule["dangling"]} successors are not published keys (first {rule["dangling_keys"][:5]})')
-    if rule['changed']:
-        # ct-4qld: every key is named, up to the report's sample; the report has each one's two files.
-        reasons.append(f'link rule: {rule["changed"]} live link keys answer another file ({", ".join(rule["changed_keys"])})')
+    reasons += refused['link_key']
     for missing_input in rule['unchecked']:
         reasons.append(f'link rule: not checked: {missing_input}')
-    for label, what in (('lookup', 'lookup keys'), ('address', 'addresses')):  # ct-wscb
-        if rule[f'{label}_changed']:
-            reasons.append(f'link rule: {rule[f"{label}_changed"]} live {what} answer another file ({", ".join(rule[f"{label}_changed_keys"])})')
+    reasons += refused['lookup_key'] + refused['address']
     actual = {group_id(g): g['count'] for g in report['failing']}
     entries = {e['id']: e for e in (causes or {}).get('groups', [])}
     if causes is not None:
         for side, key in (('base', 'base_release'), ('candidate', 'candidate_release')):
             if causes[f'{side}_release_id'] != report[key]:
                 reasons.append(f'cause record: bound to {side} {causes[f"{side}_release_id"][:12]}, actual {report[key][:12]}')
+    reasons += stale
     for gid, count in sorted(actual.items()):
         if gid not in entries:
             reasons.append(f'comparison: no recorded cause for {gid} ({count})')
@@ -762,8 +863,16 @@ def render_notes(causes, base_dir, candidate_dir):
         lines += [f'- {item["statement"]} ({item["decision"]})' for item in identifiers]
         lines.append('')
     lines += ['## Links', '', f'{redirected} link keys from earlier releases now redirect to their current document. '
-              f'{removed} show a removal notice. 0 vanish.', '',
-              '## Row changes', '', '| File | Group | Cause | Count | Disposition | Tickets |', '| --- | --- | --- | --- | --- | --- |']
+              f'{removed} show a removal notice. 0 vanish.', '']
+    corrections = causes.get('corrections', [])
+    if corrections:
+        lines += [f'{len(corrections)} keys and addresses now answer another file on purpose, each named in the reviewed '
+                  'cause record with both files (ct-4nax):', '',
+                  '| Kind | Key | Live file | Now | Decision | Tickets |', '| --- | --- | --- | --- | --- | --- |']
+        lines += [f'| {c["kind"]} | `{c["key"]}` | `{c["live_body"][:12]}` | `{c["candidate_body"][:12]}` | {c["decision"]} | '
+                  f'{", ".join(c["tickets"])} |' for c in corrections]
+        lines.append('')
+    lines += ['## Row changes', '', '| File | Group | Cause | Count | Disposition | Tickets |', '| --- | --- | --- | --- | --- | --- |']
     for entry in causes['groups']:
         file, group, _ = entry['id'].split('|', 2)
         lines.append(f'| `{file}` | {group} | {entry["cause"]} | {entry["count"]} | {entry["disposition"]} | {", ".join(entry.get("tickets", []))} |')
@@ -789,7 +898,7 @@ def main(argv=None):
     notes.add_argument('--causes', type=Path, required=True)
     notes.add_argument('--base', type=Path, required=True)
     notes.add_argument('--candidate', type=Path, required=True)
-    notes.add_argument('--output-dir', type=Path, default=Path(__file__).resolve().parents[4] / 'docs/releases')
+    notes.add_argument('--output-dir', type=Path, default=ROOT / 'docs/releases')
     args = parser.parse_args(argv)
     try:
         if args.command == 'fetch':
@@ -801,9 +910,10 @@ def main(argv=None):
             if args.causes:
                 from congress_api.retention.provenance import file_pin
                 causes = load_causes(dict(path=str(args.causes), **file_pin(args.causes)))
-            require_release_gates(args.base, args.candidate, causes, report_path=args.output,
-                                  evidence_base=args.evidence_base, evidence_candidate=args.evidence_candidate)
-            print('release gates passed')
+            report = require_release_gates(args.base, args.candidate, causes, report_path=args.output,
+                                           evidence_base=args.evidence_base, evidence_candidate=args.evidence_candidate)
+            waived = ', '.join(f'{n["waived"]} {kind}' for kind, n in report.get('named_corrections', {}).items() if n['waived'])
+            print('release gates passed' + (f'; named corrections let through {waived}' if waived else ''))
             return 0
         from congress_api.retention.provenance import file_pin
         causes = load_causes(dict(path=str(args.causes), **file_pin(args.causes)))

@@ -785,7 +785,7 @@ def test_fused_documents_whose_addresses_answer_the_surviving_file_are_named(tmp
     assert addresses_changed(tmp_path, prev, live) == (list('abcdef'), [f'u/{a}' for a in 'abcdef'])
     answer = json.loads((tmp_path / 'out.json').read_text())['link_rule']['address_changed_answers'][0]
     assert answer == {'key': 'u/a', 'live_row': 0, 'live_file': 'A', 'live_body': body('A').hex(),
-                      'candidate_rows': [0], 'candidate_files': ['ABCDEFGH']}
+                      'candidate_rows': [0], 'candidate_files': ['ABCDEFGH'], 'candidate_bodies': [body('G').hex()]}
     # The comparison's own shared-key groups see nothing: the merge leaves every key on "the same" document.
     result = json.loads((tmp_path / 'out.json').read_text())
     assert not any(g['group'] == 'documents changed for a shared key' for f in result['files'].values() for g in f['groups'])

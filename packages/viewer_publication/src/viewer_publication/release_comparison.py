@@ -875,11 +875,16 @@ def link_rule(d: Diff, sample=100):
     (candidate links ∪ candidate retired_links).
     dangling: a candidate successor_key that is not a candidate link.
     changed: a live key the candidate answers with another file (`changed_answers`); each is
-    listed with the live and candidate file.
-    lookup_changed, address_changed: the same for lookup keys and addresses (`changed_addresses`).
+    listed with the live and candidate file and body.
+    lookup_changed, address_changed: the same for lookup keys and addresses (`changed_addresses`),
+    each listed with the bodies of every candidate row it reaches.
+    Each count is of keys; the answers list the first `sample` keys whole, so a count above the
+    keys listed means some were not listed.
     unchecked: why one of those three could not run (a column the rule reads is missing). The
     rule then fails: a check that did not run is never a pass.
-    No record overrides any of the six.
+    No record overrides missing, dangling or unchecked. A changed, lookup_changed or
+    address_changed key passes only where the reviewed cause record names it, with both bodies,
+    as a correction (`release_gate.verdict`, ct-4nax); `ok` here still reports it.
     demoted: keys whose live file is now only an alternate of the row. Not a refusal of the
     rule; `compare` turns the count into a comparison group that needs a recorded cause.
     Cannot see whether a successor is the right document, or keys outside links (lookup keys,
@@ -927,12 +932,16 @@ def link_rule(d: Diff, sample=100):
                      "c.url||CASE WHEN c.member_path IS NULL THEN '' ELSE ' member '||c.member_path END")
             on = ' AND '.join(f'l.{f} IS NOT DISTINCT FROM c.{f}' for f in ADDRESSED[table])
             out[f'{label}_changed'] = d.one(f'SELECT count(DISTINCT {shown}) FROM rule_changed_{table} c')
-            fields = ('key', 'live_row', 'live_file', 'live_body', 'candidate_rows', 'candidate_files')
+            # Every live row of the first `sample` keys, so a key is listed whole or not at all.
+            # candidate_bodies: the saved body of each row reached, null for a row with none.
+            fields = ('key', 'live_row', 'live_file', 'live_body', 'candidate_rows', 'candidate_files', 'candidate_bodies')
             out[f'{label}_changed_answers'] = [dict(zip(fields, r)) for r in d.rows(f"""SELECT {shown},c.pr,any_value(pl.filename),c.live_body,
-                list_sort(list_distinct(list(l.list_row))),list_sort(list_distinct(list(ll.filename)))
-              FROM rule_changed_{table} c JOIN candidate_{table} l ON {on}
+                list_sort(list_distinct(list(l.list_row))),list_sort(list_distinct(list(ll.filename))),
+                list_sort(array_agg(DISTINCT lower(hex(ld.saved_body))))
+              FROM rule_changed_{table} c JOIN candidate_{table} l ON {on} LEFT JOIN candidate_detail ld ON ld.file_row_number=l.list_row
               LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=l.list_row
-              GROUP BY 1,2,4 ORDER BY 1,2 LIMIT {int(sample)}""")]
+              WHERE {shown} IN (SELECT DISTINCT {shown} FROM rule_changed_{table} c ORDER BY 1 LIMIT {int(sample)})
+              GROUP BY 1,2,4 ORDER BY 1,2""")]
             out[f'{label}_changed_keys'] = sorted({a['key'] for a in out[f'{label}_changed_answers']})
     out['ok'] = not any(out[name] for name in ('missing', 'dangling', 'changed', 'lookup_changed', 'address_changed', 'unchecked'))
     return out
