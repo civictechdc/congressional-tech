@@ -8,8 +8,8 @@ sitting Members of one name, a nickname the members data holds, an abbreviated f
 'Representative of' an organization, a state commission chair with an initial, a state legislature, 'Rep.' alone,
 a district code, a name with nothing else, a seat's holder named only by family name (at large, and a district),
 a seat stated beside a state legislature, a bare initial in the members data (C. Cox) and in the row's own
-reading (JD Vance), an initial another sitting Member shares, 'ranking House Member', and 'Representatives in
-Congress'.
+reading (JD Vance), an initial another sitting Member shares, 'ranking House Member', 'Representatives in
+Congress', and a name alone at a Member Day hearing and at a Former Members Day hearing.
 """
 import os
 from pathlib import Path
@@ -84,6 +84,7 @@ MEETINGS = [
     (9024, '2016-01-12', 'Human rights in China'),
     (9025, '2006-06-14', 'Communications'),
     (9026, '2005-03-01', 'Textiles'),
+    (9027, '2019-05-01', 'Former Members Day Hearing: Speaking from Experience'),
 ]
 # witness_key: (source, event_id, package_id, name, position, organization, witness_type, bioguide_id, superseded_by)
 ROWS = {
@@ -130,6 +131,8 @@ ROWS = {
                              None, None, None),
     'representatives-in-congress': ('mods', 9025, None, 'F. James Sensenbrenner', 'Jr.',
                                     'a Representatives in Congress from the State of Wisconsin', None, None, None),
+    'member-day-name-alone': ('house_xml', 9001, None, 'The Honorable Ann Sitting', None, None, None, None, None),
+    'former-members-day-name-alone': ('house_xml', 9027, None, 'The Honorable Ann Sitting', None, None, None, None, None),
 }
 
 
@@ -198,6 +201,7 @@ def decided(result):
     ('initial-in-the-row', ('member', 'V000005', 'initial')),         # 'JD' is a first name here, not a credential
     ('ranking-house-member', ('member', 'W000007', 'name_role')),
     ('representatives-in-congress', ('member', 'S000005', 'name_state')),
+    ('member-day-name-alone', ('member', 'S000001', 'member_day')),
 ])
 def test_sitting_members_acting_officially_are_member_appearances(result, key, expected):
     assert decided(result)[key] == expected
@@ -206,7 +210,7 @@ def test_sitting_members_acting_officially_are_member_appearances(result, key, e
 @pytest.mark.parametrize('key', ['says-former-while-sitting', 'term-ended-without-the-word', 'non-member-namesake', 'no-term-dates',
                                  'prepared-statement', 'outside-witness', 'representative-of-an-organization',
                                  'initial-and-state-commission', 'state-legislature-by-name', 'name-and-nothing-else',
-                                 'seat-in-a-state-legislature'])
+                                 'seat-in-a-state-legislature', 'former-members-day-name-alone'])
 def test_these_stay_witnesses_or_statements(result, key):
     assert key not in decided(result)
 

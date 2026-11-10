@@ -13,6 +13,8 @@
 --  initial       the row states a congressional office and a state, and one side of the first name is a bare initial
 --                ('C. Cox', 'JD Vance') of the only Member sitting in that chamber and state with that family name and
 --                initial on the date (witness_member_decisions);
+--  member_day    the row is a name alone at a hearing whose title says Member Day (not 'Former Members Day') and its
+--                family and first name agree with exactly one Member sitting on the date;
 --  group         another row of the same appearance (witness_precedence) matched.
 -- The row's own words keep it a witness when it says former or gives a closed span of years, names a state
 -- legislature, a House or Senate officer or staffer, or 'Representative of' an organization. Several fitting Members

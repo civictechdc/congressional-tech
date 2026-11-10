@@ -10,7 +10,9 @@
 -- the person's own nomination ('to be ...', 'Nominee for', 'Nominated to be', or a nomination hearing whose title
 -- names both of their names), the chamber ('U.S. Senator', 'Representative(s) in Congress', '(NM-01)', 'Rep.' alone,
 -- 'Member of Congress'), a committee role ('ranking House Member' included), whether it may state a House seat ('3d
--- District', '(AR-2)', 'a Delegate'), and the words of its name and first field a seat's holder may be named by.
+-- District', '(AR-2)', 'a Delegate'), the words of its name and first field a seat's holder may be named by, and
+-- whether it is a name with no other field at a hearing whose title says Member Day ('Members' Day'; not 'Former
+-- Members Day').
 -- 'Representative of' or 'for' an organization is not the House. 'eligible' marks the rows the name and seat rules
 -- read: dated, without the publisher's ID of a known Member, and with no words that keep them witnesses.
 -- Its own step: the name, candidate, row, seat and decision steps read it.
@@ -64,6 +66,8 @@ WITH fold(accented,plain) AS (
  FROM folded
 ), facts AS (
 SELECT side,part,id,person,publisher_id,publisher_member,toks,abbreviated,
+ part='name' AND trim(fields)='' AND regexp_like(title_words,'\smembers?\s(s\s)?day\s')
+  AND NOT regexp_like(title_words,'\sformer\smembers?\s(s\s)?day\s') AS member_day_name_only,
  CASE WHEN part='name' THEN string_to_array(trim(regexp_replace(seat_text,'[^a-z]+',' ','g')),' ') END AS seat_words,
  regexp_like(full_text,'\d(st|nd|rd|th|d)? (congressional )?district\b|\bdistrict,? \d|\([a-z]{2}[- ](\d+|at[- ]large|al)\)|\bdelegate\b|resident commissioner|at[- ]large') AS seat_cue,
  CASE WHEN part='name' AND cardinality(toks)>=2 THEN toks[cast(cardinality(toks) AS BIGINT)] END AS family,

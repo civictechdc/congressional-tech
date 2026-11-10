@@ -26,12 +26,15 @@ family name and initial). It judges in both directions:
  - retyped: each other Member appearance must name, by one of the readings, the Member it is matched to, who must
    hold a term on the date that agrees with a state or chamber the row states, be the only sitting Member it names,
    not be the hearing's own nominee, and the row must state a congressional office, role or seat, or be at a Member
-   Day hearing, with no former, state-legislature or outside employer words; a flag names the Member(s) expected;
- - left: each shown row that is not one, has a date, states a congressional office or seat in a field or is at a
-   Member Day hearing, has no such words, and names exactly one sitting Member, is flagged as left a witness.
+   Day hearing, with no former, state-legislature or outside employer words; a flag names the Member(s) named.
+   A name alone at a Member Day hearing that also hears outside witnesses is flagged for reading: nothing in the
+   row tells a Member from an outside witness who shares the name, and this check cannot either;
+ - left: each shown row that is not one, has a date, states a congressional office or seat in a field or is a name
+   alone at a Member Day hearing that hears no outside witness, has no such words, and names exactly one sitting
+   Member, is flagged as left a witness.
 Rows not read are counted by reason (no name, record entries, no hearing date, superseded rows for the 'left' side).
-With --plant the nine planted wrong values below are laid over the decisions and each must raise a flag the baseline
-does not have (tests/test_member_appearances_raw_check.py plants the same kinds on hand rows).
+With --plant the ten planted wrong values below are laid over the decisions (one also renames its row) and each must
+raise a flag the baseline does not have (tests/test_member_appearances_raw_check.py plants the same kinds on hand rows).
 """
 import argparse
 from collections import Counter, defaultdict
@@ -85,6 +88,7 @@ SEATS = (  # (pattern, which group is the state, which the district); district N
     (re.compile(r'\b(' + STATE_NAMES + r')\b[^|]*\bat[- ]large\b'), 1, None),
 )
 MEMBER_DAY = re.compile(r"\bmembers?['\u2019]?s?\s+day\b")
+FORMER_MEMBERS_DAY = re.compile(r"\bformer\s+members?['\u2019]?s?\s+day\b")
 
 # The planted wrong values (reviews of c98dab56 and d8e1b039): release witness keys and the value laid over them.
 PLANTS = {
@@ -97,6 +101,10 @@ PLANTS = {
     'Member Day row naming only the Member left a witness (Dan Newhouse 2019)': ('0ad4c582d03b9bf2', None),
     'Member Day row stating only a seat left a witness (John R. Curtis, Utah, 3d District 2019)': ('79b0d948ee489e5a', None),
     'wrong one of two on a seat row (Mike Rogers, 3rd District, Alabama, to Mike Rogers of Michigan)': ('054887fc0e814102', 'R000572'),
+    # An outside witness listed by name alone at a Member Day hearing that also hears outside witnesses (Michael Stern,
+    # 2026-03-17), renamed to share a sitting Member's name and retyped as that Member.
+    "outside witness sharing a sitting Member's name at a Member Day hearing, retyped (renamed Mike Johnson)":
+        ('b0d3c472068029ec', 'J000299', dict(name='Mr. Mike Johnson')),
 }
 
 
@@ -180,6 +188,10 @@ class Reference:
         return found
 
 
+ROW_KEYS = ('witness_key', 'source', 'name', 'publisher_id', 'person', 'fields', 'dates', 'title', 'shown', 'record_entry',
+            'retyped', 'matched', 'basis', 'occasion')
+
+
 def read_rows(con, witnesses, decisions, meetings, prints):
     overlay = ''
     if decisions:
@@ -196,11 +208,10 @@ def read_rows(con, witnesses, decisions, meetings, prints):
           concat_ws(' | ',w.position,w.organization,w.on_behalf_of,w.location) as fields,
           coalesce(cast(m.meeting_date as varchar),{held}) as dates,{title} as title,w.superseded_by is null as shown,
           coalesce(w.witness_type,'') in ('statement_for_record','member_statement','record_material') as record_entry,
-          coalesce({member},false) as retyped,{matched} as matched,{basis} as basis
+          coalesce({member},false) as retyped,{matched} as matched,{basis} as basis,
+          coalesce(cast(w.event_id as varchar),w.package_id,w.witness_key) as occasion
         from read_parquet('{witnesses}') w left join read_parquet('{meetings}') m using(event_id) {prints_join} {overlay}""").fetchall()
-    keys = ('witness_key', 'source', 'name', 'publisher_id', 'person', 'fields', 'dates', 'title', 'shown', 'record_entry',
-            'retyped', 'matched', 'basis')
-    return {r[0]: dict(zip(keys, r)) for r in rows}
+    return {r[0]: dict(zip(ROW_KEYS, r)) for r in rows}
 
 
 def seats(row):
@@ -240,7 +251,8 @@ def own_nomination(row):
 
 
 def member_day(row):
-    return bool(MEMBER_DAY.search(fold(row['title'])))
+    title = fold(row['title'])
+    return bool(MEMBER_DAY.search(title)) and not FORMER_MEMBERS_DAY.search(title)
 
 
 def read_words(rows, ref):
@@ -261,6 +273,9 @@ def judge(rows, decided, ref):
     read_words(rows, ref)
     # One appearance stated by several publishers (superseded_by): an office any of its rows states counts for all.
     office_groups = {r['person'] for r in rows.values() if r['office']}
+    # Hearings that also hear outside witnesses: a named row with fields that names no sitting Member.
+    outside_heard = {r['occasion'] for r in rows.values()
+                     if r['name'] and r['fields'] and not r['record_entry'] and not r['found'] and not r['retyped']}
     for key, row in rows.items():
         if row['name'] is None:
             not_read['no name'] += 1; continue
@@ -301,10 +316,12 @@ def judge(rows, decided, ref):
                 why.append('former, state legislature or outside words')
             if not (row['office'] or row['states'] or row['member_day'] or row['person'] in office_groups):
                 why.append('no congressional office stated')
+            if row['member_day'] and not row['fields'] and row['occasion'] in outside_heard:
+                why.append('a name alone at a Member Day hearing that also hears outside witnesses')
             if why:
                 flags[key] = f'retyped: {"; ".join(why)} ({named}; matched {matched})'
-        elif row['shown'] and (row['office_field'] or row['member_day']) and not row['outside'] and not row['nominee'] \
-                and len(found) == 1:
+        elif row['shown'] and (row['office_field'] or (row['member_day'] and row['occasion'] not in outside_heard)) \
+                and not row['outside'] and not row['nominee'] and len(found) == 1:
             flags[key] = 'left a witness: names sitting ' + next(iter(found))
     not_read['superseded rows (not judged as left)'] = sum(1 for r in rows.values() if not r['shown'] and not r['retyped'])
     return flags, publisher, not_read
@@ -345,12 +362,16 @@ def cross_publisher(rows, decided, ref):
 def plant_results(rows, decided, baseline, plants, ref):
     """Lay each planted value over the decisions; it is caught when its row gets a flag the baseline lacks."""
     results = {}
-    for label, (key, value) in plants.items():
+    for label, (key, value, *renamed) in plants.items():
         if key not in rows:
             results[label] = 'not in these rows'; continue
         planted = dict(decided)
         planted[key] = (value is not None, value)
-        got, _publisher, _not_read = judge(rows, planted, ref)
+        planted_rows = rows
+        if renamed:  # a fresh row: its words are read again
+            planted_rows = dict(rows)
+            planted_rows[key] = {k: v for k, v in rows[key].items() if k in ROW_KEYS} | renamed[0]
+        got, _publisher, _not_read = judge(planted_rows, planted, ref)
         results[label] = ('caught: ' + got[key]) if got.get(key) and got.get(key) != baseline.get(key) else 'MISSED'
     return results
 

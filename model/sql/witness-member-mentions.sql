@@ -38,7 +38,8 @@ WITH states(name,code,territory) AS (VALUES ('alabama','AL',false),('alaska','AK
   array_agg(code||'-'||cast(district AS VARCHAR)) FILTER (WHERE district IS NOT NULL) AS seats
  FROM named GROUP BY witness_key
 )
-SELECT r.witness_key,r.person,r.chamber,r.says_role,r.says_nominee,r.seat_words,r.dates,
+SELECT r.witness_key,r.person,r.chamber,r.says_role,r.says_nominee,r.member_day_name_only,
+ r.seat_words,r.dates,
  coalesce(m.states,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS states,
  coalesce(m.legislature,false) AS names_legislature,coalesce(a.about_congress,true) AS about_congress,
  coalesce(m.seats,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS seats

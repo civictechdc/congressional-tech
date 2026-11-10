@@ -3,8 +3,9 @@
 Hand rows: a Member rightly retyped (Reyes), an outside witness with a sitting Senator's name (Johnson of Corning),
 the hearing's own nominee (Pompeo), a former Member (Campbell), a Member whose namesake also sits (French Hill beside
 Katie Hill), two Levins, two Mike Rogers told apart by a seat, Member Day rows naming only the Member or a seat, a
-seat's holder named only by family name (Pomeroy), a bare initial (C. Cox), the publisher's own IDs in both
-directions with another publisher's copy, and rows the check cannot read.
+seat's holder named only by family name (Pomeroy), a bare initial (C. Cox), a Member Day hearing that also hears an
+outside witness, the publisher's own IDs in both directions with another publisher's copy, and rows the check cannot
+read.
 """
 import importlib.util
 from pathlib import Path
@@ -35,13 +36,14 @@ MEMBERS = [  # bioguide, first, last, nickname, (term type, state, start, end, d
     ('R000572', 'Mike', 'Rogers', None, ('rep', 'MI', '2001-01-03', '2015-01-03', '8')),
     ('C000830', 'C.', 'Cox', None, ('rep', 'CA', '1989-01-03', '2005-08-02', '48')),
     ('P000422', 'Earl', 'Pomeroy', None, ('rep', 'ND', '1993-01-05', '2011-01-03', '0')),
+    ('J000299', 'Mike', 'Johnson', None, ('rep', 'LA', '2017-01-03', '2027-01-03', '4')),
 ]
 MEETINGS = [(1, '2007-05-01', 'Border security'), (2, '2013-09-24', 'Black carbon'),
             (3, '2017-01-12', 'Nomination of Mike Pompeo to be Director of the Central Intelligence Agency'),
             (4, '2017-07-07', 'Public lands'), (5, '2019-09-10', 'Banking'), (6, '2009-04-01', 'Trade'),
             (7, '2015-04-23', 'Health'), (8, '2025-02-05', 'Defense'), (9, None, 'Undated'), (10, '2019-09-11', 'Ferguson'),
             (11, '2019-09-20', 'Member Day Hearing'), (12, '2019-06-04', "Members' Day"), (13, '2013-07-09', 'Veterans care'),
-            (14, '2001-06-28', 'Trade with Russia'), (15, '2006-05-10', 'Farm policy')]
+            (14, '2001-06-28', 'Trade with Russia'), (15, '2006-05-10', 'Farm policy'), (16, '2026-03-17', 'Member Day')]
 # key: (source, event, name, position, organization, publisher id, witness type, published as member, matched)
 WITNESSES = {
     'reyes': ('mods', 1, 'Silvestre Reyes', 'a Representative in Congress from the State of Texas', None, None, None, True, 'R000170'),
@@ -60,6 +62,9 @@ WITNESSES = {
     'cox': ('mods', 14, 'Christopher Cox', 'a Representative in Congress from the State of California', None, None, None, True, 'C000830'),
     'pomeroy': ('mods', 15, 'Page Pomeroy', 'The Honorable Earl (ND-At Large)', 'Congressman, U.S. House of Representatives',
                 None, None, True, 'P000422'),
+    'outside-at-member-day': ('house_xml', 16, 'Mr. Kel McClanahan', 'Executive Director', 'National Security Counselors',
+                              None, None, False, None),
+    'namesake-at-member-day': ('house_xml', 16, 'Mr. Mike Johnson', None, None, None, None, False, None),
     'undated': ('mods', 9, 'Silvestre Reyes', 'a Representative in Congress from the State of Texas', None, None, None, False, None),
     'letter': ('mods', 1, 'Letter from the Sheriff', None, None, None, 'record_material', False, None),
 }
@@ -75,6 +80,7 @@ PLANTS = {
     'Member Day row naming only the Member left a witness': ('newhouse', None),
     'Member Day row stating only a seat left a witness': ('curtis', None),
     'wrong one of two on a seat row': ('rogers', 'R000572'),
+    'outside namesake at a Member Day hearing retyped': ('namesake-at-member-day', 'J000299'),
 }
 
 
@@ -147,6 +153,9 @@ def test_each_planted_wrong_value_is_flagged(tmp_path):
     assert results['Member Day row naming only the Member left a witness'] == 'caught: left a witness: names sitting N000189'
     assert results['Member Day row stating only a seat left a witness'] == 'caught: left a witness: names sitting C001114'
     assert results['wrong one of two on a seat row'].endswith('(names R000575; matched R000572)')
+    # Only because the hearing also hears an outside witness: the row alone cannot tell the namesake from the Member.
+    assert 'a name alone at a Member Day hearing that also hears outside witnesses' in results[
+        'outside namesake at a Member Day hearing retyped']
 
 
 def test_another_publishers_copy_is_graded_against_the_publisher_id(tmp_path):
