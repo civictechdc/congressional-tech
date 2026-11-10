@@ -2574,13 +2574,15 @@ def test_a_number_or_a_label_alone_is_not_a_title(tmp_path):
     files = {name: (f'{folder}/{name}', f'%PDF-1.7\n{name}\n%%EOF\n'.encode()) for name in [
         'HHRG-118-AG00-Bio-BrownR-20230510.pdf', 'Parker_Bio_05_10_23.pdf', 'garcia_testimony.pdf',
         'BILLS-118-HR1-S000001-Amdt-3.pdf', 'BILLS-118-HR1-T000002-Amdt-4.pdf', 'figure-10.pdf', 'votes.pdf', 'rural-credit-report.pdf']}
+    # A file whose address names nothing: with no filename to show, its label is all there is.
+    files[''] = ('https://agriculture.house.gov/?p=55', b'%PDF-1.7\nA statement served from a query address\n%%EOF\n')
     link = lambda name, text: f'<li><a href="{files[name][0]}">{text}</a></li>'
     words = 'Committee hearing witness documents and statements for rural credit. ' * 25
     event = (f'<html><head><title>Committee Hearing</title></head><body><p>{words}</p><ul>'
              + link('HHRG-118-AG00-Bio-BrownR-20230510.pdf', 'Biography') + link('Parker_Bio_05_10_23.pdf', 'Biography')
              + link('garcia_testimony.pdf', 'Testimony') + link('BILLS-118-HR1-S000001-Amdt-3.pdf', 'no. 3')
              + link('BILLS-118-HR1-T000002-Amdt-4.pdf', '4') + link('figure-10.pdf', '.') + link('votes.pdf', '16-4')
-             + link('rural-credit-report.pdf', 'Rural Credit Report No. 3') + '</ul></body></html>').encode()
+             + link('rural-credit-report.pdf', 'Rural Credit Report No. 3') + link('', 'Testimony') + '</ul></body></html>').encode()
     # A later page names the fourth amendment; the first page's "4" must not outrank it.
     markup = (f'<html><head><title>Markup Results</title></head><body><p>{"The committee considered amendments to the bill. " * 30}</p><ul>'
               + link('BILLS-118-HR1-T000002-Amdt-4.pdf', 'Thompson Amendment on Loan Limits') + '</ul></body></html>').encode()
@@ -2604,7 +2606,8 @@ def test_a_number_or_a_label_alone_is_not_a_title(tmp_path):
         'Parker_Bio_05_10_23.pdf': None, 'garcia_testimony.pdf': None,              # a label alone: the filename shows
         'BILLS-118-HR1-S000001-Amdt-3.pdf': None, 'figure-10.pdf': None, 'votes.pdf': None,
         'BILLS-118-HR1-T000002-Amdt-4.pdf': 'Thompson Amendment on Loan Limits',    # another page gives a name
-        'rural-credit-report.pdf': 'Rural Credit Report No. 3'}                     # a number inside a name is part of it
+        'rural-credit-report.pdf': 'Rural Credit Report No. 3',                     # a number inside a name is part of it
+        '': 'Testimony'}                                                            # no filename to show: the label stays
 
 
 def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
