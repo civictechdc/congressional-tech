@@ -271,37 +271,74 @@ def raw_lines(raw_root, digest):
 
 
 def tokens(line):
-    """A line's words and the marks between them, in order: ("word", text) or ("mark", text)."""
+    """A line's words and the marks between them, in order: ("word", text) or ("mark", text). A word keeps a single
+    period ("K.", "U.S.", "Hon."), never a dot leader ("Reed.........")."""
     return [('word', m.group()) if m.group()[0].isalpha() else ('mark', m.group())
-            for m in re.finditer(r"[A-Za-z][A-Za-z'’.-]*|\.{2,}|\d[\d,-]*|[,;:()]", line)]
+            for m in re.finditer(r"[A-Za-z](?:[A-Za-z'’-]|\.(?!\.))*|\.{2,}|\d[\d,-]*|[,;:()]", line)]
 
 
 def capital(text):
     return text[:1].isupper()
 
 
-def member_groups(line, families):
-    """The Members a line names, each as the set of its name words, counted three ways (none splits a list by its
-    separators): the print's <congMember> family names the line prints; the capitalised words after a chamber title
-    up to a lower-case word, a number or a mark (after a plural title a comma or "and" begins the next Member); and
-    the capitalised words after "Hon."/"Honorable" that "a Representative/Delegate ... in Congress from" or "of" a
-    State follows. Groups that share a word are one Member."""
+def name_word(kind, text):
+    """Can this token be part of a printed name: an initial ("A."), or a capitalised word that is no title and no
+    style word?"""
+    return kind == 'word' and capital(text) and (len(plain(text)) == 1 and text != 'A' or plain(text) not in MEMBER_TITLES
+                                                 and plain(text) not in LIST_WORDS)
+
+
+def member_groups(line, families, *, near_title=False):
+    """The Members a line names, each as the set of its name words (initials and suffixes aside), counted three ways,
+    none of which splits a list by its separators. (1) Each <congMember> family name the line prints capitalised, with
+    the capitalised words printed around it (with `near_title`, only when a Member title stands up to four words before
+    it, or ", Hon." right after it: on a heading line other names are a witness's or a footnote's). (2) After a chamber
+    title, the capitalised words up to a lower-case or style word, a number or a mark, and no further than a
+    <congMember> family name among them ("Senator Inhofe Larson, Amy W." names Inhofe); after a plural title a comma
+    or "and" begins the next Member. A title after "of", "State" or another capitalised word names a body or an office
+    ("House of Representatives", "Wyoming State Senator", "Sales Representatives", "U.S. Senator from") and counts for
+    none. (3) The name after "Hon."/"Honorable" (and a surname printed before it, "Donnelly, Hon. Joe") that "a
+    Representative/Delegate ... in Congress from" follows, or "of" a State that ends the entry ("Hon. Sam Graves, of
+    Missouri"; not "a Member of the Minnesota House"). Groups that share a word are one Member."""
     marks = tokens(line)
     lowered = [plain(text) if kind == 'word' else None for kind, text in marks]
+    last_words = {family[-1] for family in families}
+
+    def around(i, j):
+        """The name words printed before marks[i:j] and through it: a given name comes first, a suffix after."""
+        while i > 0 and name_word(*marks[i - 1]):
+            i -= 1
+        while j < len(marks) and lowered[j] in SUFFIXES:
+            j += 1
+        return {lowered[k] for k in range(i, j) if lowered[k] and len(lowered[k]) > 1 and lowered[k] not in SUFFIXES}
+
     groups = []
     for family in families:
-        for i in range(len(lowered) - len(family) + 1):
-            if tuple(lowered[i:i + len(family)]) == family:
-                groups.append(set(family))
+        size = len(family)
+        for i in range(len(lowered) - size + 1):
+            if tuple(lowered[i:i + size]) != family or not capital(marks[i][1]):
+                continue
+            titled = (any(lowered[t] in MEMBER_TITLES for t in range(max(i - 4, 0), i) if lowered[t])
+                      or i + size + 1 < len(marks) and marks[i + size][1] == ','
+                      and lowered[i + size + 1] in ('hon', 'honorable'))
+            if not near_title or titled:
+                groups.append(around(i, i + size))
+    taken = set()  # positions of words a chamber title's run read as a Member's name
     for i, word in enumerate(lowered):
-        if word not in CHAMBER:
+        kind_before, text_before = marks[i - 1] if i else ('mark', '')
+        if word not in CHAMBER or kind_before == 'word' and (
+                plain(text_before) in ('of', 'the', 'state') or capital(text_before) and i - 1 not in taken):
             continue
         plural, current = word in ('senators', 'representatives'), set()
-        for kind, text in marks[i + 1:]:
+        for k in range(i + 1, len(marks)):
+            kind, text = marks[k]
             low = plain(text)
-            if kind == 'word' and capital(text) and low not in MEMBER_TITLES:
+            if name_word(kind, text):
+                taken.add(k)
                 if len(low) > 1 and low not in SUFFIXES:
                     current.add(low)
+                if low in last_words and not (k + 1 < len(marks) and lowered[k + 1] in last_words):
+                    break  # the print's own Member ends the name
             elif plural and (text == ',' or low == 'and'):
                 groups.append(current)
                 current = set()
@@ -309,24 +346,28 @@ def member_groups(line, families):
                 break
         groups.append(current)
     for i, word in enumerate(lowered):
-        styled = (lowered[i:i + 3] == ['in', 'congress', 'from'] and i > 0 and lowered[i - 1] in (
-            'representative', 'delegate', 'commissioner') or word == 'of' and any(
-            tuple(w for w in lowered[i + 1:i + 1 + len(state) + 2] if w not in ('the', 'state'))[:len(state)] == state
-            for state in STATE_NAMES))
-        if not styled:
+        house = (lowered[i:i + 3] == ['in', 'congress', 'from'] and i > 0
+                 and lowered[i - 1] in ('representative', 'delegate', 'commissioner'))
+        state = word == 'of' and next((len(s) for s in STATE_NAMES if tuple(
+            w for w in lowered[i + 1:i + 1 + len(s) + 2] if w not in ('the', 'state'))[:len(s)] == s), 0)
+        if state:
+            # The State ends the entry ("of Indiana", "of New Jersey, submitted ...", "of the District of Columbia..").
+            rest = [k for k in range(i + 1, len(marks)) if lowered[k] not in ('the', 'state')]
+            after = rest[state] if len(rest) > state else None
+            state = after is None or marks[after][0] == 'mark' or lowered[after] == 'and'
+        if not (house or state):
             continue
-        back = i - (2 if word == 'in' else 0)
-        current = set()
-        for kind, text in reversed(marks[:max(back, 0)]):
-            low = plain(text)
-            if kind == 'word' and low in ('hon', 'honorable'):
-                groups.append(current)
-                break
-            if kind == 'word' and capital(text):
-                if len(low) > 1 and low not in SUFFIXES:
-                    current.add(low)
-            elif text != ',' and low != 'a':
-                break
+        at, current = (i - 2 if house else i) - 1, set()
+        if house and at >= 0 and lowered[at + 1] != 'a':
+            at += 1  # "Hon. X, Representative in Congress from" (no "a")
+        while at >= 0 and (name_word(*marks[at]) or marks[at][1] == ','):
+            if lowered[at] and len(lowered[at]) > 1 and lowered[at] not in SUFFIXES:
+                current.add(lowered[at])
+            at -= 1
+        if at >= 0 and lowered[at] in ('hon', 'honorable'):
+            if at >= 2 and marks[at - 1][1] == ',':
+                current |= around(at - 2, at - 1)  # the surname printed first
+            groups.append(current)
     merged = []
     for group in filter(None, groups):
         for other in [m for m in merged if m & group]:
@@ -340,8 +381,10 @@ def names_alone(line):
     """Does the line print names only: capitalised words, a Member's style and page numbers, no office, document or
     heading word?"""
     found = [(text, plain(text)) for kind, text in tokens(line) if kind == 'word']
-    return bool(found) and all((capital(text) or low in LIST_WORDS) and low not in NOT_PERSON
-                               for text, low in found)
+    # "U.S. Senator from North Carolina" is a Member's own entry, which a list of askers never prints.
+    own = re.search(r"\b(?:U\.\s?S\.|United States)\s+(?:Senator|Representative)\b", line, re.I)
+    return bool(found) and not own and all((capital(text) or low in LIST_WORDS) and low not in NOT_PERSON
+                                           for text, low in found)
 
 
 def asking_lines(lines, families):
@@ -352,11 +395,20 @@ def asking_lines(lines, families):
         if said & ASKING:
             found[n] = 'heading'
         elif names_alone(line):
-            groups = member_groups(line, families)
-            paged = bool(said & (CHAMBER | {'chairman', 'chairwoman', 'ranking'}) and re.search(r"\.{2,}\s*\d", line))
-            if found.get(n - 1) or groups and (said & {'senators', 'representatives'} or len(groups) > 1 or paged):
+            # With no asking line before it, a list must show its Members by title: a witness's surname can be a
+            # Member's ("Mrs. Sherry Keller, Conyers, GA").
+            groups = member_groups(line, families, near_title=True)
+            paged = bool(plain((words(line) or [''])[0]) in CHAMBER | {'chairman', 'chairwoman', 'ranking'}
+                         and re.search(r"\.{2,}\s*\d", line))
+            plural = re.match(r"\W*(?:Senators|Representatives)\s", line)
+            if found.get(n - 1) or groups and (plural or len(groups) > 1 or paged):
                 found[n] = 'list'
     return found
+
+
+def line_members(line, families, kind):
+    """The words of the Members a line names (member_groups), read near their titles on a heading line."""
+    return set().union(*member_groups(line, families, near_title=kind == 'heading') or [set()])
 
 
 def in_order(name, line):
@@ -427,21 +479,21 @@ def judge(before, after, raw_root, given, family):
             lines, members, member_families = [], set(), set()
         counts['bodies'] += 1
         asking = asking_lines(lines, member_families)
-        line_members = {n: set().union(*member_groups(lines[n - 1], member_families) or [set()])
-                        for n in range(1, len(lines) + 1) if n in asking or any(
-                            re.match(rf"mods:witness\[{n}\]", k) and v.get('witness_type') == 'record_material'
-                            for k, v in new.items())}
 
         def position(locator):
             index = re.match(r"mods:witness\[(\d+)\]", locator)
             return int(index.group(1)) if index else 0
+
+        recorded = {position(k) for k, v in new.items() if v.get('witness_type') == 'record_material'}
+        members_of = {n: line_members(lines[n - 1], member_families, asking.get(n))
+                      for n in range(1, len(lines) + 1) if n in asking or n in recorded}
 
         def line_of(locator):
             n = position(locator)
             return lines[n - 1] if 0 < n <= len(lines) else ''
 
         def a_member(name, locator):
-            return family_word(name) in line_members.get(position(locator), set())
+            return family_word(name) in members_of.get(position(locator), set())
 
         def asker(b, locator):
             """A row the before side lacks that is a Member the asking line prints, in order."""
@@ -478,10 +530,10 @@ def judge(before, after, raw_root, given, family):
                     out['order_unsupported'].append(dict(package=package, body=digest, locator=r['source_locator'],
                                                          line=lines[n - 1], after={f: r.get(f) for f in KEYED}))
         # Every Member an asking or record line names has a row naming them on that line.
-        for n in sorted(line_members):
+        for n in sorted(members_of):
             line = lines[n - 1]
             named = {plain(w) for r in by_line.get(n, []) for w in words(r.get('name'))}
-            if missing := line_members[n] - named:
+            if missing := members_of[n] - named:
                 rows = by_line.get(n, [])
                 out['member_unnamed'].append(dict(package=package, body=digest, locator=f'mods:witness[{n}]', line=line,
                                                   words=sorted(missing),
