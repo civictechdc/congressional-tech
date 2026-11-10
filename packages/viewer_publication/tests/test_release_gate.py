@@ -396,7 +396,8 @@ def url_states(url, attempts, pages=(K('P'),)):
 
 CAPTURES = pa.schema([('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()),
                       ('sha256', pa.binary(32)), ('requested_url', pa.string()), ('url', pa.string()),
-                      ('context_url', pa.string()), ('family', pa.string()), ('mode', pa.string()),
+                      ('context_url', pa.string()), ('member_path', pa.string()), ('expansion', pa.string()),
+                      ('family', pa.string()), ('mode', pa.string()),
                       ('complete', pa.bool_()), ('attempt', pa.int32()), ('outcome', pa.string()),
                       ('http_status', pa.int32()), ('fetch_outcome', pa.string()), ('fetch_http_status', pa.int32()),
                       ('retrieved_at', TS)])
@@ -404,7 +405,7 @@ CAPTURES = pa.schema([('receipt_key', pa.string()), ('receipt_line', pa.int32())
 
 def write_captures(rows, path):
     """The lake captures table's columns that the gate reads, with a fetch's usual defaults."""
-    defaults = dict(capture_index=0, url=None, context_url=None, family='documents', fetch_outcome=None,
+    defaults = dict(capture_index=0, url=None, context_url=None, member_path=None, expansion=None, family='documents', fetch_outcome=None,
                     fetch_http_status=None, retrieved_at=FETCHED)
     pq.write_table(pa.Table.from_pylist([{**defaults, **row} for row in rows], schema=CAPTURES), path)
 
@@ -751,12 +752,14 @@ def state(url, attempts=0, at=None, status=None, outcome=None, good=None, interv
                 linked_from=list(pages))
 
 
-def capture_night(tmp_path, *, base=None, candidate=None, drop=(), captures=(), raw_url=None, live_columns=None,
-                  extra_columns=None):
+def capture_night(tmp_path, *, base=None, candidate=None, drop=(), fetches=None, raw=None, live_columns=None,
+                  extra_columns=None, receipt_set=...):
     """Releases, captures and raw receipts for one capture night, as the gate's automatic callback.
 
-    `base`/`candidate` override rows by address; `drop` leaves addresses out of the candidate;
-    `captures` adds capture rows; `raw_url` rewrites one address in the raw receipt."""
+    `base`/`candidate` override rows by address; `drop` leaves addresses out of the candidate.
+    `fetches` overrides capture lines by (receipt, line), None removing one; `raw` overrides fields
+    of a raw line's record, None removing one. `receipt_set` is the candidate's receipt set (None:
+    not given)."""
     import gzip
     import os
     from docspec_client.client import NativeDatasets
@@ -788,32 +791,33 @@ def capture_night(tmp_path, *, base=None, candidate=None, drop=(), captures=(), 
         tables[0] = tables[0].select(live_columns)
     release_dir(tmp_path / 'base', ['A'], url_state=tables[0])
     release_dir(tmp_path / 'candidate', ['A'], url_state=tables[1])
-    fetches = [dict(receipt_key=LIVE, receipt_line=1, requested_url=F, sha256=BODY['F'], retrieved_at=T0, outcome='stored'),
-               dict(receipt_key=LIVE, receipt_line=2, requested_url='https://docs.house.gov/old-page', sha256=BODY['P'],
-                    retrieved_at=T0, outcome='stored', family='house/pages'),
-               dict(receipt_key=NEW_RECEIPT, receipt_line=1, requested_url=F, sha256=BODY['F'], outcome='unchanged'),
-               dict(receipt_key=NEW_RECEIPT, receipt_line=2, requested_url=Q, sha256=BODY['Q'], outcome='stored'),
-               dict(receipt_key=NEW_RECEIPT, receipt_line=3, requested_url=A, sha256=None, outcome='failed', http_status=403,
-                    complete=False),
-               dict(receipt_key=NEW_RECEIPT, receipt_line=4, requested_url=N, sha256=BODY['N'], outcome='stored', family='house/pages'),
-               *captures]
-    write_captures([dict(dict(mode='fetch', complete=True, attempt=0, http_status=200), **row) for row in fetches],
-                   tmp_path / 'captures.parquet')
-    lines = {}
-    for row in fetches:
-        url = raw_url.get(row['requested_url'], row['requested_url']) if raw_url else row['requested_url']
+    lines = {(LIVE, 1): dict(requested_url=F, sha256=BODY['F'], retrieved_at=T0, outcome='stored'),
+             (LIVE, 2): dict(requested_url='https://docs.house.gov/old-page', sha256=BODY['P'], retrieved_at=T0,
+                             outcome='stored', family='house/pages'),
+             (NEW_RECEIPT, 1): dict(requested_url=F, sha256=BODY['F'], outcome='unchanged'),
+             (NEW_RECEIPT, 2): dict(requested_url=Q, sha256=BODY['Q'], outcome='stored'),
+             (NEW_RECEIPT, 3): dict(requested_url=A, sha256=None, outcome='failed', http_status=403, complete=False),
+             (NEW_RECEIPT, 4): dict(requested_url=N, sha256=BODY['N'], outcome='stored', family='house/pages')}
+    lines.update(fetches or {})
+    rows = [dict(dict(mode='fetch', complete=True, attempt=0, http_status=200), receipt_key=key, receipt_line=line, **row)
+            for (key, line), row in sorted(lines.items()) if row is not None]
+    write_captures(rows, tmp_path / 'captures.parquet')
+    text = {}
+    for row in rows:
+        record = dict(mode='fetch', requested_url=row['requested_url'], outcome=row['outcome'])
+        record.update((raw or {}).get((row['receipt_key'], row['receipt_line']), {}))
         body = [dict(sha256=row['sha256'].hex())] if row.get('sha256') else []
-        lines.setdefault(row['receipt_key'], {})[row['receipt_line']] = json.dumps(dict(
-            record=dict(mode='fetch', requested_url=url, outcome=row['outcome']), captures=body))
-    raw = {key: gzip.compress(('\n'.join(by_line.get(i, '{}') for i in range(1, max(by_line) + 1)) + '\n').encode(), mtime=0)
-           for key, by_line in lines.items()}
+        text.setdefault(row['receipt_key'], {})[row['receipt_line']] = json.dumps(dict(
+            record={k: v for k, v in record.items() if v is not None}, captures=body))
+    blobs = {key: gzip.compress(('\n'.join(by_line.get(i, '{}') for i in range(1, max(by_line) + 1)) + '\n').encode(), mtime=0)
+             for key, by_line in text.items()}
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
 
     def automatic(report):
         return automatic_causes(report, tmp_path / 'base', tmp_path / 'candidate', engine=engine,
                                 captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
-                                live_receipt_keys=LIVE_RECEIPTS, read_receipt=raw.__getitem__, work=tmp_path / 'auto',
-                                candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT})
+                                live_receipt_keys=LIVE_RECEIPTS, read_receipt=blobs.__getitem__, work=tmp_path / 'auto',
+                                candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT} if receipt_set is ... else receipt_set)
     return tmp_path / 'base', tmp_path / 'candidate', automatic
 
 
@@ -848,8 +852,8 @@ LATER = 'receipts/documents/2026-11-04/later.jsonl.gz'
 
 def test_a_line_in_a_receipt_the_candidate_did_not_read_is_not_counted(tmp_path):
     """The lake holds receipts newer than the candidate; only the candidate's own set counts."""
-    report = unattended(tmp_path, captures=[dict(receipt_key=LATER, receipt_line=1, requested_url=F, sha256=BODY['F'],
-                                                 outcome='unchanged', retrieved_at=FETCHED + DAY)])
+    report = unattended(tmp_path, fetches={(LATER, 1): dict(requested_url=F, sha256=BODY['F'], outcome='unchanged',
+                                                         retrieved_at=FETCHED + DAY)})
     assert report['reasons'] == []
 
 
@@ -887,9 +891,9 @@ def test_url_state_a_new_receipt_does_not_imply_refuses_unattended(tmp_path, pla
     # The page behind a newly queued link must come from new receipts only.
     (dict(candidate={U: state(U, pages=[PAGE['P']])}), f'automatic causes: {LIVE} is already in the live release'),
     (dict(candidate={U: state(U, pages=[K('X')])}), "automatic causes: 1 queued link page keys have no capture to trace (first ['5858585858585858'])"),
-    (dict(raw_url={Q: Q + '?other'}), f'automatic causes: {NEW_RECEIPT}:2 does not name {Q} in raw'),
-    (dict(captures=[dict(receipt_key=NEW_RECEIPT, receipt_line=5, requested_url='https://www.govinfo.gov/w.pdf', outcome='failed',
-                         http_status=404)]),
+    (dict(raw={(NEW_RECEIPT, 2): dict(requested_url=Q + '?other')}),
+     f'automatic causes: {NEW_RECEIPT}:2 requests {Q}?other in raw, not {Q}'),
+    (dict(fetches={(NEW_RECEIPT, 5): dict(requested_url='https://www.govinfo.gov/w.pdf', outcome='failed', http_status=404)}),
      'automatic causes: url_state: 1 addresses with new lines have no row in the candidate'),
 ])
 def test_url_state_rows_that_raw_or_the_capture_table_do_not_bear_out_refuse_unattended(tmp_path, plant, reason):
@@ -906,3 +910,25 @@ def test_url_state_groups_no_receipt_sets_refuse_unattended(tmp_path, plant, gro
     report = unattended(tmp_path, **plant)
     assert report['reasons'] and 'automatic_causes' not in report
     assert any(f'url_state.parquet|{group}|' in r and 'is not an addition' in r for r in report['automatic_reasons'])
+
+
+
+# Review of ct-9j3z (investigations/next-release-review-20261110/gate/REVIEW.md): its constructed
+# candidates W2b, W4, W4b, W9, W10, W10b, W12, W12b, W13 and W14, and plants for the checks
+# no test pinned.
+@pytest.mark.parametrize('plant,reason', [
+    # W2b: the capture table puts Q's line on Z, its redirect target, which raw names only as `url`.
+    (dict(fetches={(NEW_RECEIPT, 2): dict(requested_url=Z, sha256=BODY['Q'], outcome='stored')},
+          raw={(NEW_RECEIPT, 2): dict(requested_url=Q, url=Z)},
+          candidate={Q: state(Q, pages=[PAGE['P']]), Z: state(Z, 2, FETCHED, 200, 'stored', FETCHED, 7 * DAY)}),
+     f'automatic causes: {NEW_RECEIPT}:2 requests {Q} in raw, not {Z}'),
+    # An older receipt shape with no requested_url (the mapping falls back to `_url`): refused, not guessed.
+    (dict(raw={(NEW_RECEIPT, 2): dict(requested_url=None, _url=Q)}),
+     f'automatic causes: {NEW_RECEIPT}:2 names no requested_url in raw, so it cannot be matched to {Q}'),
+])
+def test_a_raw_line_must_request_the_address_its_capture_line_names(tmp_path, plant, reason):
+    report = unattended(tmp_path, **plant)
+    assert report['reasons'] and 'automatic_causes' not in report
+    assert reason in report['automatic_reasons'], report['automatic_reasons']
+
+

@@ -263,30 +263,27 @@ AUTOMATIC_ADDITION_CAP = 250
 
 
 def _raw_line_facts(line):
-    """Body references and every string value of one raw receipt line.
+    """Body references and the request URL of one raw receipt line.
 
-    A url_state line is confirmed by its address appearing as a whole value anywhere in the line,
-    without a second copy of the capture mapping's field rules.
+    The request is the line's own `requested_url`, at the top or in its `record`, as the capture
+    mapping reads it first. A line whose only other URL is its redirect target therefore cannot
+    stand for that target (review W2b). A line with no `requested_url` names no request: older
+    shapes that carry the address elsewhere refuse rather than being matched loosely.
     """
     try:
         receipt = json.loads(line)
     except ValueError:
-        return set(), set()
+        return set(), None
     if not isinstance(receipt, dict):
-        return set(), set()
+        return set(), None
     entries = receipt.get('captures') or receipt.get('file_references')
     bodies = {entry['sha256'].lower() for entry in entries
               if isinstance(entry, dict) and isinstance(entry.get('sha256'), str)} if isinstance(entries, list) else set()
-    strings, stack = set(), [receipt]
-    while stack:
-        value = stack.pop()
-        if isinstance(value, str):
-            strings.add(value)
-        elif isinstance(value, dict):
-            stack.extend(value.values())
-        elif isinstance(value, list):
-            stack.extend(value)
-    return bodies, strings
+    record = receipt.get('record')
+    request = receipt.get('requested_url')
+    if not isinstance(request, str) and isinstance(record, dict):
+        request = record.get('requested_url')
+    return bodies, request if isinstance(request, str) else None
 
 
 def _captures_source(captures):
@@ -513,7 +510,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     in one night.
     url_state (ct-9j3z): every changed, added or removed row must be exactly what the lines of the
     candidate's receipts outside the live set imply (`url_state_proof`); each such line must be in
-    raw and name its address, and each page behind a newly queued link is traced like a new
+    raw with its own requested_url equal to the address, and each page behind a newly queued link is traced like a new
     document's body. This replaces ct-ud0b's rule that an added attempted address must have
     supplied a new document: a failed or repeated fetch is still a fetch.
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
@@ -610,8 +607,11 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
         elif row['sha'] not in line_facts(key, row['receipt_line'])[0]:
             reasons.append(f'automatic causes: {key}:{row["receipt_line"]} does not name body {row["sha"][:12]} in raw')
     for key, line, url in url_lines:
-        if url not in line_facts(key, line)[1]:
-            reasons.append(f'automatic causes: {key}:{line} does not name {url} in raw')
+        request = line_facts(key, line)[1]
+        if request is None:
+            reasons.append(f'automatic causes: {key}:{line} names no requested_url in raw, so it cannot be matched to {url}')
+        elif request != url:
+            reasons.append(f'automatic causes: {key}:{line} requests {request} in raw, not {url}')
     if reasons:
         return [], sorted(set(reasons))
     evidence = work / 'automatic-trace.json'

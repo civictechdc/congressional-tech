@@ -87,7 +87,8 @@ its title, date or meeting are right, so a large batch waits for a person.
 A capture night always changes `url_state` (attempt counts and times on fetched addresses,
 newly queued links). Since ct-9j3z each changed, added or removed row must be exactly what the
 lines of the candidate's receipts outside the live set imply, folded by the model's own
-`url_state_lines` over the capture table, each line in raw and naming its address: attempts
+`url_state_lines` over the capture table, each line in raw with its own `requested_url` equal to the address
+(a line without one refuses): attempts
 grow by the new lines; the newest new line, when later than the live one (a tie refuses), sets
 the latest attempt, and `next_attempt_at` is its time plus the band of the published
 `recheck_meeting_date`, which must equal the live value where the live release had scheduled
