@@ -1,8 +1,8 @@
 ---
 id: ct-fskn
-status: open
+status: closed
 deps: []
-links: [ct-9lxf]
+links: [ct-9lxf, ct-yndj]
 created: 2026-11-09T23:58:27Z
 type: bug
 priority: 2
@@ -23,3 +23,7 @@ Either the schedule is removed until a maintenance binding is active, or the hos
 **2026-11-10T00:32:21Z**
 
 2026-11-10: schedule trigger removed from archive-jobs.yml (workflow_dispatch stays) so the job stops failing every Sunday. Still to do before turning it back on, from the read-only architect review (.cache/archive-release/investigations/nightly-20261109T224443-base-normalized-memory/architect-review-20261110.md): a committed hosted budget that names 'maintenance'; fetch-depth: 0 for the ancestry check; current table names in model/jobs/maintenance.json (it lists two superseded tables and omits three, unverified here). Cost of no maintenance: readings sits at 1,907 files and 1,294 snapshots against a 256-file threshold (reviewer's count, unverified here). All five runs of this workflow have failed; maintenance itself was refused locally too.
+
+**2026-11-10T01:18:33Z**
+
+2026-11-10: closed on the first acceptance branch: the schedule is removed (dc5782dd, pushed in b3c937a8) and the reason is recorded above. Binding the job and running maintenance moved to ct-yndj.
