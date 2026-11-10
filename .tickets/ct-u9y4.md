@@ -112,3 +112,7 @@ Write from a clean worktree at origin/main; the tools are byte-identical there.
 **Before the write.** A model-only build with the 24 capture rows and 24 filename readings appended to the pinned snapshots (scripts/rr_20_captures_input.py). Without the readings the model refuses with missing_filenames = 24. Then check the build against effect-A.csv with scripts/rr_21_check_build.py.
 
 **Undo.** It restores what readers see, not the rows: the 69 rows return with a new id and a decision id.
+
+**2026-11-10T18:57:55Z**
+
+2026-11-10 18:57Z THE CORRECTION IS WRITTEN to the raw store (owner approval 'Go all the way if it matches'; writer commit aef93461, on origin/main): 24 receipts receipts/documents/2026-11-10/recovery-20261110T185720Z-07ed0bdf53ee-reconciled-<sha256>.jsonl.gz (run recovery-20261110T185720Z-07ed0bdf53ee; keys in investigations/recovery-records-20261110/correction/written-receipt-keys.txt) and one provenance object provenance/recoveries/20261110T130500+0000.jsonl (69 rejections). Read-only checks before and after both print ok: true (.cache/archive-release/release-20261110b/runs/). Nothing replaced. The publisher run that reads them follows.
