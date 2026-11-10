@@ -60,3 +60,15 @@ Round 4 (2026-11-10, owner decisions on the third review). MODS pin 63715237 -> 
 Measured on all 35,020 originals: round-4/m12/candidate-generation.parquet (mods 35,020 at 4b3a68a2, senate_page 9,818 at 9d48c0f6). Against published: 446 changed, 152 added, 0 removed. Against m11: 46 changed, 15 added, 0 removed.
 
 Raw check: members-table Member count (--members), members_merged, position_not_in_line, order_across_lines, answerer listing; batched plants. The third review's 15 plants: 15 caught. Built-in: 21 of 22 flagged in one run (split-untrimmed has no target). Accepts: 33 of 40 carried, 7 no longer flagged; 20 flags unsigned (round-4/m4-accept-candidates.json). Plants and accepts need a reviewer other than the author.
+
+**2026-11-10T21:11:20Z**
+
+Round 5 (2026-11-10, the fourth review's corrections). MODS pin 4b3a68a2 -> eb66bda7 (one bump: d3eed067 + 4ebdfc83); model_spec db041870 -> 34d57208, size 5551.
+
+Parser: (1) biography appendices by rule (_MODS_BIOGRAPHY_APPENDIX): 3 prints, 16 lines; 16 reviewed entries removed; 13 rows equal m12, the 3 first entries now record_material named Donald Scavia, Emil H. Frankel, Thomas W. Eagar. (2) A question heading and its askers after an entry are not the entry's (_mods_entry_before_heading): CHRG-112shrg21145 #3-5 position 'Commissioner', CHRG-117hhrg48796 #1-3 organization without the heading; 6 lines. (3) A Member's submitted article/summary/letter/report/editorial/op-ed/memorandum after the Member's style is member_statement (the existing type for a Member's submitted letter): Courtney and Scott (CHRG-114hhrg20236 #4, #6), Tierney (112hhrg73706 #11), Messer (113hhrg89535 #10). Hatch (107shrg81998 #45, 'a U.S. Senator from') is not read as a Member by the existing style rule and is unchanged. (4) The rest of the two transcripts: CHRG-109hhrg29389 14 lines and CHRG-115hhrg30357 #3, #6, #9, #10 nameless record_material (sha-bound); 30357's panel lines (#1, #2, #4, #7, #8, #11) name 14 witnesses and are unchanged.
+
+Measured on all 35,020 originals: round-5/m13/candidate-generation.parquet (mods 35,020 at eb66bda7, senate_page 9,818 at 9d48c0f6). Against published: 468 changed, 152 added, 0 removed. Against m12: 31 changed, 0 added, 0 removed.
+
+Raw check: every record_material row on an asking line judged; an added answerer's type judged; text_cut; position beside its own name; prose and reading-change losses read by content. The fourth review's 15 plants: 15 caught. Built-in: 25 of 26 flagged in one run (split-untrimmed has no target). Accepts: 44 of 49 carried, 5 no longer flagged; 8 flags unsigned: the 3 biography rows (words_lost, intended) and 5 'Submitted questions: X' rows (114hhrg99585 #6, #9, #13; 114hhrg96269 #2, #13) that reviewed entries of 9c9284a8 type record_material while 13 lines of the same shape read as witnesses: a decision for the owner.
+
+Not fixed: CHRG-110hhrg33608 #3, 111hhrg62589 #5, 113hhrg86394 #8 print no asker; the shared label reader (parsers/witness_names.py) misses '\*\' markers, a comma after the label and the singular 'question submitted for the record by'; their type waits on the pending answerer decision.
