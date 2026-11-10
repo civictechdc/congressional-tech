@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import time
@@ -18,6 +19,8 @@ SPEC.loader.exec_module(watchdog)
 
 
 STARTED = []
+# Each one the watchdog handles; left at its default, any of them would end it with no report.
+SIGNALS = pytest.mark.parametrize('number', [signal.SIGTERM, signal.SIGINT, signal.SIGHUP], ids=lambda number: number.name)
 
 
 @pytest.fixture(autouse=True)
@@ -207,25 +210,26 @@ def start(tmp_path, command, *flags, pass_fds=(), plant=()):
     return process
 
 
-def test_sigterm_to_the_watchdog_stops_the_job(tmp_path):
+@SIGNALS
+def test_a_signal_to_the_watchdog_stops_the_job(tmp_path, number):
     marker = tmp_path / 'job.pid'
     watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)])
     pid = wait_for(marker)
-    watchdog.terminate()
+    watchdog.send_signal(number)
     _, stderr = watchdog.communicate(timeout=30)
     assert gone(pid), 'the job outlived a TERM to its watchdog'
     report = json.loads((tmp_path / 'report.json').read_text())
     assert watchdog.returncode == 99 and 'signal' in report['stopped'] and 'signal' in stderr
 
 
-# A watchdog made to receive SIGTERM at one chosen instruction. Popen._wait(timeout) and Popen._internal_poll take
+# A watchdog made to receive a signal at one chosen instruction. Popen._wait(timeout) and Popen._internal_poll take
 # the child's _waitpid_lock with acquire(False) and only afterwards enter their try (CPython 3.12 subprocess.py:2032
 # and :1983; 3.15 has the same shape), so an exception a signal handler raises right there leaves the lock held, and
 # the next blocking wait on that child never returns. This stand-in lock sends the signal from inside that acquire:
 # `sampler` in the first timed wait for a `ps` once the job runs, `cleanup` in the poll that opens stop_owned.
 PLANT = r'''
 import importlib.util, os, pathlib, signal, subprocess, sys
-site, marker, fired, script = sys.argv[1:5]
+site, number, marker, fired, script = sys.argv[1:6]
 
 def due(child):
     if os.path.exists(fired):
@@ -245,7 +249,7 @@ class Signalling:
         if held and not blocking and due(self.child):
             self.child._waitpid_lock = self.lock
             pathlib.Path(fired).write_text(site)
-            os.kill(os.getpid(), signal.SIGTERM)
+            os.kill(os.getpid(), int(number))
         return held
     def release(self):
         self.lock.release()
@@ -262,20 +266,22 @@ spec = importlib.util.spec_from_file_location('planted_watchdog', script)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 subprocess.Popen = Planted
-raise SystemExit(module.main(sys.argv[5:]))
+raise SystemExit(module.main(sys.argv[6:]))
 '''
 
 
+@SIGNALS
 @pytest.mark.parametrize('site', ['sampler', 'cleanup'])
-def test_a_signal_at_the_instruction_that_holds_a_childs_wait_lock_still_stops_the_job_and_exits(tmp_path, private_state, site):
+def test_a_signal_at_the_instruction_that_holds_a_childs_wait_lock_still_stops_the_job_and_exits(tmp_path, private_state, site,
+                                                                                                 number):
     """ct-psb5. `sampler`: the handler used to raise into the sampler's `ps` wait, and the watchdog blocked for ever
     on that child's lock: job not stopped, no report, registry entry kept. `cleanup`: a second signal as the stop
     began used to abort it: exit 1 with a traceback and no report. Recorded and read by the loop, both are harmless."""
     marker, fired = tmp_path / 'job.pid', tmp_path / 'fired'
-    watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)], plant=(site, str(marker), str(fired)))
+    watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)], plant=(site, str(int(number)), str(marker), str(fired)))
     pid = wait_for(marker)
     if site == 'cleanup':
-        watchdog.terminate()
+        watchdog.send_signal(number)
     try:
         _, stderr = watchdog.communicate(timeout=30)
     except subprocess.TimeoutExpired:
@@ -283,14 +289,16 @@ def test_a_signal_at_the_instruction_that_holds_a_childs_wait_lock_still_stops_t
     assert fired.read_text() == site, 'the signal was never planted, so this run proved nothing'
     assert gone(pid), 'the job outlived a TERM to its watchdog'
     assert watchdog.returncode == 99, stderr
-    assert 'signal 15' in json.loads((tmp_path / 'report.json').read_text())['stopped'] and 'signal 15' in stderr
+    named = f'signal {int(number)}'
+    assert named in json.loads((tmp_path / 'report.json').read_text())['stopped'] and named in stderr
     assert list(private_state.glob('*.json')) == [], 'the stopped watchdog left its admission entry behind'
 
 
-def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing_once_the_stop_has_begun(monkeypatch, tmp_path):
+@SIGNALS
+def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing_once_the_stop_has_begun(monkeypatch, tmp_path,
+                                                                                                          number):
     """The loop reads the record once per pass, right after its sleep. Here the signal is the installed handler
     called from a stand-in sampler, sleep or stop, so each case is exact: no real signal, no process, no timing."""
-    import signal
     import types
 
     def watched(signal_during):
@@ -307,7 +315,10 @@ def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing
             events.append(through)
             if through == signal_during and 'signal' not in events:
                 events.append('signal')
-                signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
+                handler = signal.getsignal(number)
+                # Never call the handler pytest runs under: for SIGINT that would abort the whole session.
+                assert handler is not before[number], 'watch() does not handle this signal'
+                handler(int(number), None)
 
         class Readings:
             def __init__(self, _sampler):
@@ -321,17 +332,17 @@ def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing
         monkeypatch.setattr(watchdog, 'time', types.SimpleNamespace(monotonic=lambda: 0.0, sleep=lambda _seconds: passing('sleep')))
         monkeypatch.setattr(watchdog, 'sampler', types.SimpleNamespace(
             MemorySamples=Readings, start_owned=lambda command, **_: Job(), stop_owned=lambda _process: passing('stop')))
-        before = {number: signal.getsignal(number) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
+        before = {each: signal.getsignal(each) for each in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
         try:
             code, _, _, reason, _ = watchdog.watch(['job'], rss_gb=4, min_available_gb=0, min_disk_gb=0,
                                                    disk_root=tmp_path, interval=1)
-            assert {number: signal.getsignal(number) for number in before} == before, 'watch() kept its handlers'
+            assert {each: signal.getsignal(each) for each in before} == before, 'watch() kept its handlers'
         finally:  # a watch() that raises must not leave this pytest process with its handlers
-            for number, handler in before.items():
-                signal.signal(number, handler)
+            for each, handler in before.items():
+                signal.signal(each, handler)
         return code, reason, events
 
-    stopped = 'Interrupted: watchdog received signal 15'
+    stopped = f'Interrupted: watchdog received signal {int(number)}'
     assert watched('sample') == (99, stopped, ['poll', 'sample', 'signal', 'stop']), 'it slept on a signal it already had'
     assert watched('sleep') == (99, stopped, ['poll', 'sample', 'sleep', 'signal', 'stop']), 'it sampled again first'
     quiet = ['poll', 'sample', 'sleep', 'poll', 'sample', 'sleep', 'poll', 'stop']
