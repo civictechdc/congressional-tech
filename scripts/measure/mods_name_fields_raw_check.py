@@ -48,7 +48,9 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   on_behalf_of (credentials such as "M.D." and titles such as "Hon." may go, as for every witness line, and the
   label "Accompanied by"; on an asking line, so may its heading's words and a contents column's "Page"; a word
   another row of the line now shows is not lost, nor page numbers fused to a kept word, "EPA173-198"; a row whose
-  name opened in lower case, a fragment of prose, loses nothing when it comes to name no one);
+  name opened in lower case, a fragment of prose, loses nothing when it comes to name no one). A raw line that opens
+  in lower case is a fragment of prose run into the list: ``member_unnamed`` and ``person_left_in_organization`` do
+  not read it, and ``person_moved`` reads only names that open in capitals;
 - ``words_gained``: a changed occurrence that gains a word its raw line lacks;
 - ``person_left_in_organization``: a changed occurrence left without a name whose raw line still has a
   later segment opening with a known given name;
@@ -766,6 +768,8 @@ def judge(before, after, raw_root, given, family, serving=None):
         # Every Member an asking or record line names has a row naming them on that line.
         for n in sorted(judged):
             line = lines[n - 1]
+            if line[:1].islower():
+                continue  # a fragment of prose (transcript text run into the list) is no entry
             named = {plain(w) for r in by_line.get(n, []) for w in words(r.get('name'))}
             if missing := members_of[n] - named:
                 rows = by_line.get(n, [])
@@ -864,7 +868,8 @@ def judge(before, after, raw_root, given, family, serving=None):
             old_name, new_name = a.get('name'), b.get('name')
             reordered = bool(new_name) and not in_order(new_name, line)
             counts['no_name' if not new_name else 'reordered' if reordered else 'name_read'] += 1
-            if old_name and person(old_name) and not set(name_words(old_name)) <= set(name_words(new_name)):
+            if (old_name and old_name[:1].isupper() and person(old_name)
+                    and not set(name_words(old_name)) <= set(name_words(new_name))):
                 out['person_moved'].append(item)
             if new_name and not set(map(plain, words(new_name))) <= set(map(plain, words(line))):
                 out['name_not_in_line'].append(item)
@@ -884,7 +889,7 @@ def judge(before, after, raw_root, given, family, serving=None):
             # nor page numbers fused to a kept word ("EPA173-198" for "EPA").
             shown = {w for r in by_line.get(position(locator), []) if r is not b for w in bag(r)}
             lost = Counter({w: k for w, k in (old_words - new_words).items() if w not in shed and w not in shown
-                            and re.sub(r"\d+$", "", w) not in new_words})
+                            and not (re.search(r"\d$", w) and re.sub(r"\d+$", "", w) in new_words)})
             # A name that opens in lower case is a fragment of prose, no one's: a row that held one and now names no
             # one loses no person or affiliation.
             if not new_name and re.match(r"[a-z]", (old_name or '').strip()):
@@ -895,7 +900,7 @@ def judge(before, after, raw_root, given, family, serving=None):
             gained = Counter(w for w in (new_words - old_words).elements() if w not in {plain(x) for x in words(line)})
             if gained:
                 out['words_gained'].append(dict(item, words=sorted(gained.elements())))
-            if not new_name and any(person(s) for s in re.split(r'[,;:]', line)[1:]):
+            if not new_name and not line[:1].islower() and any(person(s) for s in re.split(r'[,;:]', line)[1:]):
                 out['person_left_in_organization'].append(item)
     return dict(counts), out
 

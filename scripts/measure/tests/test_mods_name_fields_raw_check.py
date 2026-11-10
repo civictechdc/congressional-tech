@@ -528,7 +528,9 @@ ROUND5_LINES = ['Kulick, John D., Chair, Standards Board',
                 'from Senator Boxer',
                 'Courtney, Hon. Joe, a Representative in Congress from the State of Connecticut: Hartford Courant article: '
                 'Coffeehouse opens',
-                'years ago, 199 staffers had clearances. In 2018, when I checked, there were 35',
+                # Transcript prose naming a person and a Member: no entry, no one missing from it.
+                'years ago, Richard Roe said 199 staffers had clearances. In 2018, when Senator Klobuchar checked, there '
+                'were 35',
                 'Questions from Senator Klobuchar to Dr. Rue', 'Rue, Dr. Penny, Vice President for Campus Life']
 ROUND5_MEMBERS = ['Klobuchar, Amy', 'Crapo, Mike', 'Boxer, Barbara']
 KULICK = asked('mods:witness[1]', 'John D. Kulick', 1, None, position='Chair', organization='Standards Board')
@@ -540,7 +542,8 @@ ROUND5_BEFORE = [KULICK, asked('mods:witness[2]', None, 2, 'record_material'),
                  asked('mods:witness[5]', 'Joe Courtney', 8, None,
                        position='a Representative in Congress from the State of Connecticut: Hartford Courant article: '
                                 'Coffeehouse opens'),
-                 asked('mods:witness[6]', 'years ago', 9, None, position='199 staffers had clearances. In 2018'), RUE]
+                 asked('mods:witness[6]', 'years ago', 9, None,
+                       position='Richard Roe said 199 staffers had clearances. In 2018'), RUE]
 ROUND5_AFTER = [KULICK, asked('mods:witness[2]', 'John D. Kulick', 3, None),
                 asked('mods:witness[2]/part[2]', 'Klobuchar', 2),
                 asked('mods:witness[3]', None, 4, organization='Report, Arsenic and Old Laws, NRDC'),
