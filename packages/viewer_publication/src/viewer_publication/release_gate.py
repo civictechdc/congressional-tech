@@ -28,7 +28,7 @@ import pyarrow.parquet as pq
 
 from congress_api.lake.receipt_metadata import document_status, document_status_sql
 
-from viewer_publication.release_comparison import ADDED_URL_STATE, ATTEMPTED_URLS, CHURN_GROUPS
+from viewer_publication.release_comparison import ADDED_URL_STATE, ATTEMPTED_URLS
 
 DIGEST = re.compile('[0-9a-f]{64}')
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
@@ -273,6 +273,49 @@ def _raw_document_proof(line):
     return bodies, url
 
 
+def _captures_source(captures):
+    return captures['path'] if captures.get('kind') == 'parquet' else {k: v for k, v in captures.items() if k != 'kind'}
+
+
+def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work):
+    """Reasons a citation-only change cannot pass without a person (ct-syp1); empty when it can.
+
+    The comparison shows only that the candidate is consistent with itself. Here every file hash
+    the candidate cites for the first time (`release_comparison.new_citations`) is looked up in
+    `captures`, which the candidate does not control: it must be the SHA-256 of a captured body,
+    and every receipt holding that body must be absent from the live release's receipt set. So a
+    made-up hash, and a file the live release could already have cited, both refuse.
+    One engine query joining about 70 hashes to captures; the evidence file lists each hash's
+    receipts. Cannot see: whether the file holds the published values, or the raw receipt line
+    (the capture mapping is trusted for the hash; documents are checked against raw).
+    """
+    from congress_api.lake.tables import table_input
+    from congress_api.retention.provenance import run_job
+    from viewer_publication.release_comparison import new_citations
+    cited = new_citations(base_dir, candidate_dir)
+    if not cited:
+        return ['automatic causes: citations moved, but the candidate cites no file the live release does not']
+    work = Path(work)
+    work.mkdir(parents=True, exist_ok=True)
+    pq.write_table(pa.table({'sha': cited}), work / 'cited-files.parquet')
+    rows = run_job(work / 'citations', engine, inputs=[table_input('captures', _captures_source(captures)),
+        dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet'))], steps=[], outputs=[],
+        queries=[dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
+            JOIN captures c ON lower(encode(c.sha256,'hex'))=k.sha WHERE c.sha256 IS NOT NULL ORDER BY 1,2""")])['files']
+    receipts = {}
+    for row in rows:
+        receipts.setdefault(row['sha'], []).append(row['receipt_key'])
+    reasons = []
+    for sha in cited:
+        if sha not in receipts:
+            reasons.append(f'automatic causes: cited file {sha[:16]} is not a body in the capture table')
+        for key in receipts.get(sha, []):
+            if key in held:
+                reasons.append(f'automatic causes: cited file {sha[:16]} was already read by the live release ({key})')
+    (work / 'citation-trace.json').write_text(json.dumps(dict(live_receipts=len(held), files=receipts), indent=1) + '\n')
+    return reasons
+
+
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work):
     """Cause entries for an addition-only difference whose every new row comes from new receipts.
 
@@ -296,22 +339,26 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     groups = report['failing']
     if not report['link_rule']['ok']:
         return [], ['automatic causes: the link rule failed']
-    # Include already verified differences when deciding whether this is addition-only, except
-    # the cache-refresh citations the comparison proved row by row (ct-syp1): they change no
-    # content, so they neither need this proof nor stop it.
-    differences = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']
-                   if group['status'] != 'verified' or (name, group['group'], group['cause']) not in CHURN_GROUPS]
+    # Include already verified differences when deciding whether this is addition-only. The
+    # citation-only groups (ct-syp1) change no content, so they do not stop this proof; they get
+    # their own check below, against the capture table.
+    every = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
+    differences = [g for g in every if not g.get('citation_only')]
     other = [g for g in differences if g.get('value') or g['count'] <= 0 or
              ((g['file'], g['group']) not in AUTOMATIC_GROUPS and
               (g['file'], g['group'], g['cause']) != ATTEMPTED_URL_GROUP)]
     if other:
         return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
-    if not differences:
+    if len(every) == 0:
         return [], []
     held = set(live_receipt_keys)
     if not held:
         # With nothing to be absent from, every receipt would count as new.
         return [], ['automatic causes: the live release has no receipt set to compare with']
+    if len(every) > len(differences):
+        reasons = cited_files_are_new(base_dir, candidate_dir, engine=engine, captures=captures, held=held, work=Path(work) / 'cited')
+        if reasons or not differences:
+            return [], reasons
     d = Diff(Path(base_dir), Path(candidate_dir))
     d.documents = documents(d)
     d.table('added_documents', 'SELECT file_row_number::INT r FROM candidate_list ANTI JOIN pairs ON file_row_number=lr')
@@ -338,7 +385,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
     pq.write_table(pa.table({'prefix': keys}), work / 'added-keys.parquet')
-    source = captures['path'] if captures.get('kind') == 'parquet' else {k: v for k, v in captures.items() if k != 'kind'}
+    source = _captures_source(captures)
     request_column = (f", CASE WHEN c.mode='fetch' AND c.complete AND coalesce(c.attempt,0)=0 "
                       f"AND c.outcome IN ('stored','unchanged') AND {document_status_sql('c.http_status')} "
                       "THEN c.requested_url END AS requested_url") if url_additions else ''

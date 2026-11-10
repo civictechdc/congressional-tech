@@ -505,7 +505,7 @@ VIDEO_SCHEMAS = dict(SCHEMAS, channels=[('handle', S), ('title', S), ('record_sh
                              ('details_checked_at', TS), ('record_sha', B)],
                      recording_matches=[('match_id', S), ('video_key', S), ('basis', S), ('source_ref', S)])
 # Written out, not imported: a reworded cause changes every recorded group id.
-CHURN = 'cache file re-fetched: every content column equal on the row'
+CHURN = 'only the file citation moved: every content column equal on the row'
 CITED = "citation follows the video's record_sha: every other column equal on the row"
 PLAIN = 'value differs on matched key'
 
@@ -616,6 +616,37 @@ def test_two_cache_files_folded_into_one_hash_prove_nothing(tmp_path):
     assert counts(result, 'videos') == {('changed record_sha', PLAIN): 4, ('changed details_checked_at', PLAIN): 4}
     # A match's citation is judged against its own video's hash only; the video rows carry the finding.
     assert counts(result, 'recording_matches') == {('changed source_ref', CITED): 2}
+
+
+# The independent review's cases (investigations/gate-rules-20261110/review/REVIEW.md).
+@pytest.mark.parametrize('files', [
+    ('old-2', 'old-1'),  # P4e: two files swapped
+    ('old-2', 'new-2'),  # P4d: one file's rows now cite another channel's old file
+])
+def test_a_citation_the_live_release_already_holds_is_not_a_refresh(tmp_path, files):
+    result = refresh(tmp_path, files=files)
+    moved = 1 if files[1] == 'new-2' else 0  # channel @c and its video still went to a hash nobody cited
+    assert counts(result, 'channels') == {k: v for k, v in {('changed record_sha', CHURN): moved, ('changed record_sha', PLAIN): 3 - moved}.items() if v}
+    assert counts(result, 'videos') == {k: v for k, v in {
+        ('changed record_sha', CHURN): moved, ('changed details_checked_at', CHURN): moved,
+        ('changed record_sha', PLAIN): 4 - moved, ('changed details_checked_at', PLAIN): 4 - moved}.items() if v}
+
+
+def test_a_check_time_in_the_future_is_not_a_refresh(tmp_path):
+    """P6/E4: every check date set to 2099. A check is a past event; the gate's clock bounds it."""
+    result = refresh(tmp_path, change=lambda tables: [v.update(details_checked_at=v['details_checked_at'].replace(year=2099))
+                                                      for v in tables['videos'] if v['video_key'] != 'api'])
+    assert counts(result, 'videos') == {('changed record_sha', PLAIN): 4, ('changed details_checked_at', PLAIN): 4}
+    assert counts(result, 'channels') == {('changed record_sha', CHURN): 3}
+
+
+def test_the_check_time_bound_is_the_moment_of_comparison(tmp_path):
+    from datetime import datetime, timezone
+    prev = video_release(tmp_path / 'prev', ('old-1', 'old-2'), 1)
+    live = video_release(tmp_path / 'live', ('new-1', 'new-2'), 8)
+    proven = lambda now: {g['group'] for g in release_diff.compare(prev, live, now=now)['files']['videos.parquet']['groups'] if g['status'] == 'verified'}
+    assert proven(datetime(2026, 11, 8, tzinfo=timezone.utc)) == {'changed record_sha', 'changed details_checked_at'}
+    assert proven(datetime(2026, 11, 7, 23, 59, tzinfo=timezone.utc)) == set()
 
 
 def test_a_column_with_no_partner_stops_the_cache_refresh_proof(tmp_path):

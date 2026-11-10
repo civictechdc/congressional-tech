@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from datetime import datetime, timezone
 import gzip
 import hashlib
 import io
@@ -37,8 +38,10 @@ ATTEMPTED_URLS = 'new attempts'
 
 
 class Diff:
-    def __init__(self, base: Path, candidate: Path, history=()):
+    def __init__(self, base: Path, candidate: Path, history=(), now=None):
         self.dirs = {'base': base, 'candidate': candidate}
+        # The gate's own clock: the one time in a comparison that the candidate does not supply.
+        self.now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
         self.manifest = {s: json.loads((d / 'manifest.json').read_text()) for s, d in self.dirs.items()}
         self.entry = {s: {f['name']: f for f in m['files']} for s, m in self.manifest.items()}
         self.con = duckdb.connect()
@@ -567,15 +570,13 @@ def url_state(d: Diff):
 #     decision, score, recording_scope, status, note, meeting_links
 CITATIONS = {'channels': ('handle', ('record_sha',)), 'videos': ('video_key', ('record_sha', 'details_checked_at')),
              'recording_matches': ('match_id', ('source_ref',))}
-CACHE_CHURN = 'cache file re-fetched: every content column equal on the row'
-CITATION_CHURN = "citation follows the video's record_sha: every other column equal on the row"
-CHURN_GROUPS = {('channels.parquet', 'changed record_sha', CACHE_CHURN), ('videos.parquet', 'changed record_sha', CACHE_CHURN),
-                ('videos.parquet', 'changed details_checked_at', CACHE_CHURN),
-                ('recording_matches.parquet', 'changed source_ref', CITATION_CHURN)}
+# The causes say what was checked, which is the two releases against each other and nothing else.
+CITATION_MOVED = 'only the file citation moved: every content column equal on the row'
+CITATION_FOLLOWS = "citation follows the video's record_sha: every other column equal on the row"
 
 
 def _content_equal(d: Diff, table):
-    """SQL for "every content column equal" on aliases p and l, or None when the proof cannot run.
+    """SQL for "every content column equal" on aliases p and l, or None when the check cannot run.
 
     It cannot run when the published key is not the one named here or the two releases' columns
     or types differ: a column with no partner has nothing to be equal to.
@@ -590,42 +591,74 @@ def _content_equal(d: Diff, table):
 
 
 def refetched_files(d: Diff):
-    """Table `refetched_files(handle,o,n)`: channels whose cache file was replaced, old hash to new.
+    """Table `refetched_files(handle,o,n)`: channels whose cited file hash was replaced, old to new.
 
-    A channel row qualifies when its content is equal, both hashes are present and differ, and
-    over all matched channels its old file went to that one new file and the new file came from
-    that one old file. So a hash that is not a whole file's (one row re-pointed, two files folded
-    into one, a channel moved to a file the base already cites) qualifies nothing it touches.
-    False when the proof cannot run. One pass over channels (119 rows), built once.
+    A channel row qualifies when its content is equal, both hashes are present and differ, over
+    all matched channels its old hash went to that one new hash and the new hash came from that
+    one old hash, and the base release cites the new hash nowhere (not for a channel, not for a
+    video). So one row re-pointed, two files folded into one, two files swapped, and a row that
+    now cites another channel's old file each qualify nothing they touch.
+    False when the check cannot run. One pass over channels (119 rows), built once.
     """
     if d.refetched is None:
         same = _content_equal(d, 'channels')
         d.refetched = same is not None
         if d.refetched:
+            cited = ['SELECT record_sha FROM base_channels']
+            if d.has('base', 'videos') and 'record_sha' in d.columns('base', 'videos'):
+                cited.append('SELECT record_sha FROM base_videos')
             d.table('refetched_files', f"""WITH m AS (SELECT p.handle,p.record_sha o,l.record_sha n,({same}) same
                 FROM base_channels p JOIN candidate_channels l USING(handle)),
               olds AS (SELECT o FROM m GROUP BY o HAVING count(DISTINCT n)=1),
-              news AS (SELECT n FROM m GROUP BY n HAVING count(DISTINCT o)=1)
-              SELECT DISTINCT handle,o,n FROM m JOIN olds USING(o) JOIN news USING(n) WHERE same AND o<>n""")
+              news AS (SELECT n FROM m GROUP BY n HAVING count(DISTINCT o)=1),
+              cited AS (SELECT DISTINCT record_sha FROM ({' UNION ALL '.join(cited)}) WHERE record_sha IS NOT NULL)
+              SELECT DISTINCT handle,o,n FROM m JOIN olds USING(o) JOIN news USING(n)
+              WHERE same AND o<>n AND n NOT IN (SELECT record_sha FROM cited)""")
     return d.refetched
 
 
-def cache_churn(table):
-    """The registry comparison, with the cache-refresh rows of a citation group proven (ct-syp1).
+def new_citations(base_dir, candidate_dir):
+    """Hex of every `record_sha` the candidate's channels and videos cite that the base's do not.
 
-    A row is proven only when nothing but its citation moved:
+    The unattended gate checks each against the capture table (release_gate): a file the
+    candidate cites for the first time must be a body some new receipt delivered. O(rows), 67k.
+    """
+    import pyarrow.parquet as pq
+    def cited(directory):
+        found = set()
+        for table in ('channels', 'videos'):
+            path = Path(directory) / f'{table}.parquet'
+            if path.exists() and 'record_sha' in pq.read_schema(path).names:
+                found.update(v for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
+        return found
+    return sorted(v.hex() for v in cited(candidate_dir) - cited(base_dir))
+
+
+def cache_churn(table):
+    """The registry comparison, with the rows of a citation group on which nothing else moved set
+    apart as `verified` (ct-syp1).
+
+    What is checked is the candidate against the live release, never a raw file:
       channels: see `refetched_files`.
-      videos: content equal; the row cites its own channel's file in both releases and that file
-        is a refetched one; `details_checked_at` is equal or later, never earlier or emptied.
+      videos: content equal; the row cites its own channel's file in both releases and that
+        channel qualified; `details_checked_at` is equal, or later than the live value and not
+        later than the moment of comparison (a check is a past event; the gate's clock is the
+        one time the candidate does not supply).
       recording_matches: every column but `source_ref` equal, and `source_ref` is
         `video_records:` plus that video's `record_sha` in each release.
-    Proven rows become a `verified` group; the rest of the column's changed rows stay in the
-    unverified `value differs on matched key` group and still need a recorded cause, as does every
-    content column, added key and removed key. A row with any content change proves nothing, so
-    its citation change is counted with the unverified rows. Each proof is one more aggregate over
-    the matched rows the registry comparison already joins: O(rows), hash joins on the keys.
-    Cannot see: whether the new hash is the hash of a real file, or whether the file holds the
-    published values; only that every citation of one old file moved together to one new value.
+    Such rows become a `verified` group flagged `citation_only`; the rest of the column's
+    changed rows stay in the unverified `value differs on matched key` group and still need a
+    recorded cause, as does every content column, added key and removed key. A row with any
+    content change qualifies for nothing, so its citation change is counted with the
+    unverified rows. Each check is one more aggregate over the matched rows the registry
+    comparison already joins: O(rows), hash joins on the keys.
+    The limit, stated plainly: this is self-consistency of what the candidate says about
+    itself. A made-up hash applied consistently to every row of one old file is `verified`
+    here, because the comparison reads two releases and no file. It does not show that a
+    refresh happened, that the new hash is any file's, or that the file holds the published
+    values. The unattended gate closes the first two against the capture table, which the
+    candidate does not control (`release_gate.cited_files_are_new`); a reviewed publish has
+    this check and a person.
     """
     def run(d: Diff):
         groups, notes = generic(table)(d)
@@ -635,29 +668,29 @@ def cache_churn(table):
         if table == 'recording_matches':
             if not (d.has('base', 'videos') and d.has('candidate', 'videos')):
                 return groups, notes
-            cause = CITATION_CHURN
-            proven = d.rows(f"""SELECT count(*) FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id)
+            cause = CITATION_FOLLOWS
+            checked = d.rows(f"""SELECT count(*) FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id)
               JOIN base_videos pv ON pv.video_key=p.video_key JOIN candidate_videos lv ON lv.video_key=l.video_key
               WHERE {same} AND p.source_ref<>l.source_ref AND p.source_ref='video_records:'||lower(hex(pv.record_sha))
               AND l.source_ref='video_records:'||lower(hex(lv.record_sha))""")[0]
         elif not refetched_files(d):
             return groups, notes
         elif table == 'channels':
-            cause = CACHE_CHURN
-            proven = d.rows('SELECT count(*) FROM refetched_files')[0]
+            cause = CITATION_MOVED
+            checked = d.rows('SELECT count(*) FROM refetched_files')[0]
         else:
-            cause = CACHE_CHURN
-            proven = d.rows(f"""SELECT count(*),count(*) FILTER (WHERE l.details_checked_at>p.details_checked_at)
+            cause = CITATION_MOVED
+            later = f"(l.details_checked_at>p.details_checked_at AND l.details_checked_at<=TIMESTAMPTZ '{d.now.isoformat()}')"
+            checked = d.rows(f"""SELECT count(*),count(*) FILTER (WHERE l.details_checked_at>p.details_checked_at)
               FROM base_videos p JOIN candidate_videos l USING(video_key)
               JOIN refetched_files f ON f.handle=l.handle AND f.o=p.record_sha AND f.n=l.record_sha
-              WHERE {same} AND (p.details_checked_at IS NOT DISTINCT FROM l.details_checked_at
-                                OR l.details_checked_at>p.details_checked_at)""")[0]
+              WHERE {same} AND (p.details_checked_at IS NOT DISTINCT FROM l.details_checked_at OR {later})""")[0]
         out = []
         for g in groups:
             column = g['group'].removeprefix('changed ')
-            n = proven[CITATIONS[table][1].index(column)] if g.get('value') and column in CITATIONS[table][1] else 0
+            n = checked[CITATIONS[table][1].index(column)] if g.get('value') and column in CITATIONS[table][1] else 0
             if n:
-                out.append(dict(value_group(column, n), cause=cause, status='verified'))
+                out.append(dict(value_group(column, n), cause=cause, status='verified', citation_only=True))
                 g = dict(g, count=g['count'] - n)
             if g['count'] or g.get('flag'):
                 out.append(g)
@@ -885,15 +918,18 @@ def link_rule(d: Diff, sample=100):
     return out
 
 
-def compare(base, candidate, *, evidence_base=None, evidence_candidate=None, record_digest=(), removed_keys=None, history=()):
-    """Compare two local release directories; the report is the gate's only input."""
+def compare(base, candidate, *, evidence_base=None, evidence_candidate=None, record_digest=(), removed_keys=None, history=(), now=None):
+    """Compare two local release directories; the report is the gate's only input.
+
+    `now` is the moment of comparison (default: the clock), the upper bound for a check time.
+    """
     if bool(evidence_base) != bool(evidence_candidate):
         raise ValueError('--evidence-base and --evidence-candidate go together')
-    d = Diff(Path(base), Path(candidate), history)
+    d = Diff(Path(base), Path(candidate), history, now)
     flips = add_evidence(d, evidence_base, evidence_candidate) if evidence_base else None
     files = account(d)
     result = {'base_release': d.manifest['base']['release_id'], 'candidate_release': d.manifest['candidate']['release_id'],
-              'capture_flips': flips, 'files': files, 'link_rule': link_rule(d), 'cannot_see': d.cannot_see,
+              'compared_at': d.now.isoformat(), 'capture_flips': flips, 'files': files, 'link_rule': link_rule(d), 'cannot_see': d.cannot_see,
               'inputs': [digest(p) for p in [evidence_base, evidence_candidate, *record_digest] if p]}
     if removed_keys:
         result['removed_keys_written'] = write_removed_keys(d, removed_keys)

@@ -353,7 +353,7 @@ def url_states(url, attempts):
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
             url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=False,
-            base_tables=None, candidate_tables=None, also_held=None):
+            base_tables=None, candidate_tables=None, also_held=None, cache_files=()):
     """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
     import gzip
     import os
@@ -364,6 +364,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     failure_url = 'https://www.govinfo.gov/failed-copy.pdf'
     baseline = dict(url_state=states.slice(0, 0))
     additions = dict(url_state=pa.concat_tables([states, url_states(failure_url, 1)]) if failed_duplicate else states)
+    if list(candidate_docs) == list(base_docs):
+        additions['url_state'] = states.slice(0, 0)  # no new document, so no newly attempted address
     if other_entity:
         additions['meetings'] = pa.table({'event_id': [119123]})
         baseline['meetings'] = additions['meetings'].slice(0, 0)
@@ -389,12 +391,15 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     if also_held:
         # The same body was also captured by a receipt the live release read.
         capture_rows.append(dict(capture_rows[0], receipt_key=also_held, receipt_line=7))
+    # Cache files the pipeline captured: (file hash, receipt key).
+    capture_rows += [dict(receipt_key=key, receipt_line=1, sha256=file_sha, requested_url=None, mode='fetch', complete=True,
+                          attempt=0, outcome='stored', http_status=200) for file_sha, key in cache_files]
     pq.write_table(pa.Table.from_pylist(capture_rows, schema=pa.schema([
         ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('sha256', pa.binary(32)),
         ('requested_url', pa.string()), ('mode', pa.string()), ('complete', pa.bool_()),
         ('attempt', pa.int32()), ('outcome', pa.string()), ('http_status', pa.int32()),
     ])), tmp_path / 'captures.parquet')
-    sha = next(iter(bodies.values())).hex() if raw_names_body else '0' * 64
+    sha = next(iter(bodies.values()), b'').hex() if raw_names_body else '0' * 64
     line = dict(record=dict(mode='fetch', outcome='stored', requested_url=raw_url, url=raw_url,
                             http_status=200, retrieved_at=FETCHED.isoformat(), content=dict(sha256=sha)),
                 captures=[dict(pointer=['content', 'body'], sha256=sha,
@@ -549,52 +554,81 @@ def test_an_added_link_key_on_an_existing_document_requires_review(tmp_path):
 
 
 # ct-syp1: a video cache refresh rewrites every citation of the cache file and nothing else.
-def video_tables(fetch, day, *, title='Hearing on oversight'):
-    file_sha = sha256(fetch.encode()).digest()
+CACHE_RECEIPT = 'receipts/pipeline-data/2026-11-08/refresh.jsonl.gz'
+
+
+def cache_file(fetch):
+    return sha256(fetch.encode()).digest()
+
+
+def video_tables(fetch, day, *, title='Hearing on oversight', year=2026):
+    file_sha = cache_file(fetch)
     return dict(
         channels=pa.table({'handle': ['@committee'], 'title': ['Committee'], 'record_sha': pa.array([file_sha], pa.binary())}),
         videos=pa.table({'video_key': ['youtube:one'], 'handle': ['@committee'], 'title': [title],
-                         'details_checked_at': pa.array([datetime(2026, 11, day, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
+                         'details_checked_at': pa.array([datetime(year, 11, day, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
                          'record_sha': pa.array([file_sha], pa.binary())}),
         recording_matches=pa.table({'match_id': ['m1'], 'video_key': ['youtube:one'],
                                     'source_ref': ['video_records:' + file_sha.hex()]}))
 
 
-def no_additions(base, candidate, tmp_path):
-    from viewer_publication.release_gate import automatic_causes
-    return lambda report: automatic_causes(report, base, candidate, engine=None, captures=None,
-                                           live_receipt_keys=(), read_receipt=None, work=tmp_path / 'auto')
+def refreshed(tmp_path, *, documents=('A',), captured=(('fetch-2', CACHE_RECEIPT),), live_receipts=LIVE_RECEIPTS, **candidate):
+    """The gate's unattended callback for a release whose cache file went from fetch-1 to fetch-2;
+    `captured` lists the cache files the capture table holds, each with its receipt."""
+    return nightly(tmp_path, ['A'], list(documents), base_tables=video_tables('fetch-1', 1),
+                   candidate_tables=video_tables('fetch-2', 8, **candidate), live_receipts=live_receipts,
+                   cache_files=[(cache_file(fetch), key) for fetch, key in captured])
 
 
 def test_a_cache_refresh_alone_passes_unattended(tmp_path):
-    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
-    release_dir(base, ['A'], **video_tables('fetch-1', 1))
-    release_dir(candidate, ['A'], **video_tables('fetch-2', 8))
-    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json',
-                                   automatic=no_additions(base, candidate, tmp_path))
+    base, candidate, automatic = refreshed(tmp_path)
+    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert report['reasons'] == [] and report['automatic_reasons'] == [] and report['failing'] == []
     proven = {(name, g['group']): g['count'] for name, facts in report['files'].items() for g in facts['groups']}
     assert proven == {('channels.parquet', 'changed record_sha'): 1, ('videos.parquet', 'changed record_sha'): 1,
                       ('videos.parquet', 'changed details_checked_at'): 1, ('recording_matches.parquet', 'changed source_ref'): 1}
+    assert json.loads((tmp_path / 'auto/cited/citation-trace.json').read_text())['files'] == {cache_file('fetch-2').hex(): [CACHE_RECEIPT]}
 
 
 def test_a_cache_refresh_beside_new_documents_passes_unattended(tmp_path):
-    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], base_tables=video_tables('fetch-1', 1),
-                                         candidate_tables=video_tables('fetch-2', 8))
+    base, candidate, automatic = refreshed(tmp_path, documents=('A', 'N'))
     report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert report['reasons'] == [] and {e['id'].split('|')[0] for e in report['automatic_causes']} == {
         'list.parquet', 'detail.parquet', 'links.parquet', 'url_state.parquet'}
 
 
 def test_a_changed_title_beside_a_cache_refresh_refuses_unattended(tmp_path):
-    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
-    release_dir(base, ['A'], **video_tables('fetch-1', 1))
-    release_dir(candidate, ['A'], **video_tables('fetch-2', 8, title='Hearing on something else'))
+    base, candidate, automatic = refreshed(tmp_path, title='Hearing on something else')
     with pytest.raises(ValueError, match=r'no recorded cause for videos.parquet\|changed title\|value differs on matched key \(1\)'):
-        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json',
-                              automatic=no_additions(base, candidate, tmp_path))
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     report = json.loads((tmp_path / 'r.json').read_text())
     # The changed row's own citation is not proven either; the channel's and the match's are.
     assert sorted(g['file'] + '|' + g['group'] for g in report['failing']) == [
         'videos.parquet|changed details_checked_at', 'videos.parquet|changed record_sha', 'videos.parquet|changed title']
     assert any('videos.parquet|changed title' in reason for reason in report['automatic_reasons'])
+
+
+# The independent review's end-to-end cases (review/REVIEW.md, E1 and E4): a release that is
+# consistent with itself is not thereby true.
+@pytest.mark.parametrize('captured,live_receipts,reason', [
+    # E1: the cited hash is made up; the capture table has no such body.
+    ((), LIVE_RECEIPTS, f'automatic causes: cited file {cache_file("fetch-2").hex()[:16]} is not a body in the capture table'),
+    # The file sits in a receipt the live release read: it could have been cited then.
+    ((('fetch-2', sorted(LIVE_RECEIPTS)[0]),), LIVE_RECEIPTS,
+     f'automatic causes: cited file {cache_file("fetch-2").hex()[:16]} was already read by the live release ({sorted(LIVE_RECEIPTS)[0]})'),
+    # No live receipt set: nothing can be new to it.
+    ((('fetch-2', CACHE_RECEIPT),), set(), 'automatic causes: the live release has no receipt set to compare with'),
+])
+def test_a_consistent_citation_no_new_receipt_delivered_refuses_unattended(tmp_path, captured, live_receipts, reason):
+    base, candidate, automatic = refreshed(tmp_path, captured=captured, live_receipts=live_receipts)
+    with pytest.raises(ValueError):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['failing'] == [] and report['reasons'] == report['automatic_reasons'] == [reason]
+
+
+def test_a_check_date_in_the_future_refuses_unattended(tmp_path):
+    """E4: every citation consistent and the check date set to 2099."""
+    base, candidate, automatic = refreshed(tmp_path, year=2099)
+    with pytest.raises(ValueError, match=r'no recorded cause for videos.parquet\|changed details_checked_at'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)

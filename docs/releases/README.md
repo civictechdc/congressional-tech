@@ -91,18 +91,25 @@ changes. Gates 2-5 still run on every nightly candidate.
 `videos.record_sha` and `channels.record_sha` are the hash of the cache file a row was read
 from, `videos.details_checked_at` is when it was fetched, and a `recording_matches.source_ref`
 of the form `video_records:<hash>` cites the same file. The file embeds fetch times, so the
-weekly refresh rewrites all of them with no content change. The comparison proves such a row
-itself and reports it `verified`, so it needs no cause entry on any publish, reviewed or
-nightly:
+weekly refresh rewrites all of them with no content change. The comparison sets such a row
+apart as `verified`, so it needs no cause entry:
 
-- a channel: every other column equal, and its old file went to one new file that came from
-  that old file only, over all channels;
+- a channel: every other column equal, its old file went to one new file that came from that
+  old file only, over all channels, and the live release cites the new hash nowhere;
 - a video: every column but those two equal, the row cites its own channel's file in both
-  releases, that channel passed the check above, and the check time is equal or later;
+  releases, that channel passed the check above, and the check time is equal, or later than
+  the live value and not later than the moment of comparison;
 - a match: every column but `source_ref` equal, and the citation is that video's
   `record_sha` in each release.
 
 Everything else in these tables still needs a reviewed cause: a changed title, duration,
 description or any other column, an added or removed row, and the citation change on a row
-that changed anything else. What it cannot see: whether the new hash is a real file's, or
-whether that file holds the published values.
+that changed anything else.
+
+That check compares the candidate with the live release and reads no file, so it shows only
+that the candidate is consistent with itself: a made-up hash applied to every row of one old
+file would pass it. The nightly, which has no person, therefore also looks up every file hash
+the candidate cites for the first time in the capture table: it must be a captured body, and
+every receipt holding it must be absent from the live release's receipt set. A reviewed
+publish has the comparison and the reviewer. Neither can see whether the file holds the
+published values.
