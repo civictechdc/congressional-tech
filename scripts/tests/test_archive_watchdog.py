@@ -137,7 +137,7 @@ def test_admission_waits_out_a_reader_that_fails_and_refuses_by_name_if_it_never
         def read(*args):
             calls.append(1)
             if len(calls) <= times:
-                raise subprocess.TimeoutExpired([reader], 5)
+                raise watchdog.ReadingFailed(f'{reader}: TimeoutExpired')
             return answer(*args)
         return read
 
@@ -171,6 +171,39 @@ def test_admission_waits_out_a_reader_that_fails_and_refuses_by_name_if_it_never
     printed = capsys.readouterr().err
     assert code == 98 and 'vm_stat: TimeoutExpired 1 time' in printed and printed.count('\n') == 1
     assert not marker.exists() and list(private_state.glob('*.json')) == []
+
+
+def test_only_a_reader_that_fails_is_waited_out_in_admission_the_registry_and_the_arithmetic_fail_at_once(monkeypatch, tmp_path,
+                                                                                                           private_state):
+    """As on main: an unwritable state folder or a malformed entry is an error to show now, not an hour of retries
+    ending in a refusal that blames the free-memory reader."""
+    registry = watchdog.Registry(private_state)
+    me = dict(pid=os.getpid(), started=None, queued=time.time(), admitted=None, expect_gb=1.0, command=['job'])
+    other = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
+    try:
+        with monkeypatch.context() as patched:  # undone before the real watchdog below, which needs the real ones
+            patched.setattr(watchdog, 'available_gb', lambda: 30.0)
+            patched.setattr(watchdog.time, 'sleep', lambda seconds: pytest.fail('admission waited on an error that is not a reading'))
+            with monkeypatch.context() as unwritable:
+                unwritable.setattr(registry, 'put', lambda entry: (_ for _ in ()).throw(PermissionError(13, 'Permission denied')))
+                with pytest.raises(PermissionError):
+                    watchdog.admit(registry, dict(me), headroom=1.0, wait_seconds=60)
+            # Another session's entry with no expect_gb: admissible() cannot add it up.
+            registry.put(dict(pid=other.pid, started=watchdog.start_times([other.pid])[other.pid], queued=0, admitted=time.time()))
+            with pytest.raises(KeyError):
+                watchdog.admit(registry, dict(me), headroom=1.0, wait_seconds=60)
+    finally:
+        other.kill()
+        other.wait()
+        registry.drop(other.pid)
+    if os.geteuid() == 0:
+        return  # root writes where it likes: there is no unwritable folder to try
+    private_state.chmod(0o500)
+    try:
+        result = run(tmp_path, '--rss-gb', '4', '--wait-seconds', '4', command=[sys.executable, '-c', 'pass'])
+    finally:
+        private_state.chmod(0o700)
+    assert result.returncode == 1 and 'PermissionError' in result.stderr and 'refused to start' not in result.stderr
 
 
 def test_a_high_kill_limit_does_not_delay_a_small_job(tmp_path):
@@ -450,7 +483,7 @@ def test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_t
 
         def read():
             if next(passes, '.') == 'x':
-                raise subprocess.TimeoutExpired('vm_stat', 5)
+                raise watchdog.ReadingFailed('vm_stat: TimeoutExpired')
             return then
         return read
 
@@ -594,7 +627,7 @@ def test_a_reader_that_does_not_answer_is_abandoned_at_its_time_limit(tmp_path, 
     shim(tmp_path, monkeypatch, reader, 'exec sleep 8')
     monkeypatch.setattr(watchdog, 'READER_SECONDS', 0.3, raising=False)
     began = time.monotonic()
-    with pytest.raises(subprocess.TimeoutExpired):
+    with pytest.raises(watchdog.ReadingFailed, match=f'^{reader}: TimeoutExpired$'):
         watchdog.available_gb() if reader == 'vm_stat' else watchdog.start_times([os.getpid()])
     assert time.monotonic() - began < 5
 
@@ -608,7 +641,7 @@ def test_a_ps_that_died_is_a_failed_reading_not_a_finding_that_every_job_is_dead
     registry = watchdog.Registry(tmp_path / 'state')
     registry.put(dict(entry(os.getpid(), 0, 1, admitted=time.time()), started=watchdog.start_times([os.getpid()])[os.getpid()]))
     shim(tmp_path, monkeypatch, 'ps', 'kill -INT $$')
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(watchdog.ReadingFailed, match='^ps: CalledProcessError$'):
         registry.live()
     assert [path.name for path in (tmp_path / 'state').glob('*.json')] == [f'{os.getpid()}.json']
 

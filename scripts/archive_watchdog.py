@@ -29,6 +29,7 @@ sample (seconds, RSS, physical, free disk) to <report>.timeline.jsonl.
 import argparse
 from contextlib import contextmanager
 import fcntl
+import functools
 import importlib.util
 import json
 import os
@@ -47,8 +48,6 @@ RAMP_SECONDS = 120
 WAKE_SECONDS = 0.05
 # How long this file waits for vm_stat or ps to answer: the limit the sampler gives its own ps calls.
 READER_SECONDS = 5
-# What available_gb and start_times raise when a reader dies, is slow or answers nonsense.
-READING_ERRORS = (OSError, subprocess.SubprocessError, LookupError, ValueError)
 HERE = Path(__file__).resolve().parent
 
 
@@ -63,17 +62,30 @@ def _load(name, path):
 sampler = _load('archive_watchdog_sampler', HERE / 'measure/process_rss.py')
 
 
-def failed_reading(error):
-    """`vm_stat: TimeoutExpired`: the reader a failed reading came from, when the error names one, and how it failed."""
-    source = getattr(error, 'cmd', None) or getattr(error, 'filename', None) or 'unreadable answer'
-    return f'{source if isinstance(source, (str, bytes, os.PathLike)) else source[0]}: {type(error).__name__}'
+class ReadingFailed(Exception):
+    """`vm_stat: TimeoutExpired`: a reader died, did not answer in READER_SECONDS or answered nonsense.
 
-
-def available_gb():
-    """Memory the machine can still hand out, or None where that is not knowable.
-
-    Raises when the reader fails, dies or does not answer in READER_SECONDS: no reading is not a reading.
+    No reading is not a reading. Admission skips a round on it and the loop a pass; nothing else
+    that goes wrong there, the registry's files or the arithmetic, is ever taken for one.
     """
+
+
+def reads(reader):
+    """Mark a function that asks `reader`: whatever fails inside it leaves as ReadingFailed."""
+    def marked(ask):
+        @functools.wraps(ask)
+        def asking(*args):
+            try:
+                return ask(*args)
+            except (OSError, subprocess.SubprocessError, LookupError, ValueError) as error:
+                raise ReadingFailed(f'{reader}: {type(error).__name__}') from error
+        return asking
+    return marked
+
+
+@reads('vm_stat' if sys.platform == 'darwin' else '/proc/meminfo')
+def available_gb():
+    """Memory the machine can still hand out, or None where that is not knowable."""
     if sys.platform == 'darwin':
         text = subprocess.run(['vm_stat'], capture_output=True, text=True, check=True, timeout=READER_SECONDS).stdout
         page = int(text.split('page size of ')[1].split()[0])
@@ -106,13 +118,14 @@ def floor_victim(entries):
     return max(running, key=lambda entry: (entry['admitted'], entry['pid']))['pid'] if running else None
 
 
+@reads('ps')
 def start_times(pids):
     """Each live process's start time as ps prints it; a PID absent from the result is dead.
 
     A PID alone is not an identity: once a watchdog dies its number can name another
     process, so an entry counts only while its PID still has the start time it recorded.
-    Raises when ps dies or does not answer in READER_SECONDS: read as "none of them is
-    alive", a ps that was killed would have every entry in the registry deleted.
+    A ps that died is a failed reading: read as "none of them is alive", it would have
+    every entry in the registry deleted.
     """
     if not pids:
         return {}
@@ -202,9 +215,8 @@ def admit(registry, me, *, headroom, wait_seconds):
                 registry.put(me)
             refusal = (f'refused to start; measured free memory {available:.1f} GiB, less what started jobs and earlier '
                        f'waiters still need, did not cover {me["expect_gb"]} GiB plus {headroom} GiB')
-        except READING_ERRORS as error:
-            what = failed_reading(error)
-            failed[what] = failed.get(what, 0) + 1
+        except ReadingFailed as error:  # only that: a registry or arithmetic error shows at once, as it always did
+            failed[str(error)] = failed.get(str(error), 0) + 1
             refusal = 'refused to start; free memory could not be read: ' + ', '.join(
                 f'{what} {count} {"time" if count == 1 else "times"}' for what, count in failed.items())
         if time.monotonic() >= deadline:
@@ -266,12 +278,11 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
                     available = available_gb()
                     squeezed = available is not None and available < min_available_gb and youngest()
                     blind = 0
-                except READING_ERRORS as error:
+                except ReadingFailed as error:
                     # A gap for this pass, as sampler.MemorySamples treats a failed sample; the third in a row stops the job.
                     blind += 1
                     if blind >= 3:
-                        raise RuntimeError('Three consecutive readings of free memory failed, the last '
-                                           + failed_reading(error)) from error
+                        raise RuntimeError(f'Three consecutive readings of free memory failed, the last {error}') from error
                     squeezed = False
                 if squeezed:
                     reason = (f'machine memory available {available:.1f} GiB under {min_available_gb} GiB; '
