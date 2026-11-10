@@ -30,7 +30,7 @@ REGISTRIES={
     'bill_package_evidence':dict(id='Utf8',package_id='Utf8',pdf_sha='Utf8',source_urls=list_of('Utf8'),
         package_disposition='Utf8',rejected_package_ids=list_of('Utf8'),excluded_measure_keys=list_of('Utf8'),
         supported_measure_keys=list_of('Utf8'),evidence='Utf8'),
-    'saved_name_decisions':dict(body_sha='Utf8',decision='Utf8',evidence='Utf8'),
+    'saved_name_decisions':dict(body_sha='Utf8',decision='Utf8',official_name='Utf8',committee_name='Utf8',evidence='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
 }
 
@@ -472,27 +472,47 @@ def registry_inputs(directory,*,root=ROOT):
             value=value.get('entries')
         if not isinstance(value,list) or any(not isinstance(row,dict) for row in value):
             raise ValueError('Registry must contain records: '+name)
-        if name=='bill_package_evidence':
-            _validate_bill_evidence(value)
+        REVIEWED_REGISTRIES.get(name,lambda rows:None)(value)
         inputs.append(json_input(directory,name,value,**fields))
     return inputs
 
 
-def _validate_bill_evidence(rows):
-    """Refuse ambiguous reviewed decisions before native policy selection."""
-    ids=set();bodies=set()
+def _refuse_ambiguous_reviews(rows,label,sha_field,key,invalid):
+    """Refuse ambiguous reviewed decisions before native policy selection: one row per lowercase sha256 body,
+    each with evidence and valid by its registry's own rule."""
+    bodies=set()
     for row in rows:
+        sha=row.get(sha_field)
+        if (not isinstance(sha,str) or re.fullmatch('[0-9a-f]{64}',sha) is None or sha in bodies
+                or not row.get('evidence') or invalid(row)):
+            raise ValueError(f'Invalid or duplicate reviewed {label}: '+str(row.get(key)))
+        bodies.add(sha)
+
+
+def _validate_bill_evidence(rows):
+    ids=set()
+    def invalid(row):
         disposition=row.get('package_disposition')
-        if (not row.get('id') or row['id'] in ids or row.get('pdf_sha') in bodies
-                or re.fullmatch('[0-9a-f]{64}',row.get('pdf_sha','')) is None
-                or not row.get('evidence') or not row.get('source_urls')
-                or disposition not in ('support','withhold')
-                or (disposition=='support') != bool(row.get('package_id'))
-                or any(not isinstance(row.get(field),list) or any(not isinstance(v,str) or not v for v in row[field])
-                       for field in ('source_urls','rejected_package_ids','excluded_measure_keys','supported_measure_keys'))
-                or set(row['excluded_measure_keys']) & set(row['supported_measure_keys'])):
-            raise ValueError('Invalid or duplicate reviewed bill evidence: '+str(row.get('id')))
-        ids.add(row['id']);bodies.add(row['pdf_sha'])
+        bad=(not row.get('id') or row['id'] in ids or not row.get('source_urls')
+             or disposition not in ('support','withhold')
+             or (disposition=='support') != bool(row.get('package_id'))
+             or any(not isinstance(row.get(field),list) or any(not isinstance(v,str) or not v for v in row[field])
+                    for field in ('source_urls','rejected_package_ids','excluded_measure_keys','supported_measure_keys'))
+             or bool(set(row['excluded_measure_keys']) & set(row['supported_measure_keys'])))
+        ids.add(row.get('id'))
+        return bad
+    _refuse_ambiguous_reviews(rows,'bill evidence','pdf_sha','id',invalid)
+
+
+def _validate_saved_name_decisions(rows):
+    """A mistyped decision would act as undecided (saved-name-standing.sql), and a decision is met only by a
+    name the review read: each side records one name or a ' | ' list of names."""
+    names=lambda value:isinstance(value,str) and all(name and name.strip()==name and '|' not in name for name in value.split(' | '))
+    _refuse_ambiguous_reviews(rows,'name decision','body_sha','body_sha',lambda row:row.get('decision') not in
+        ('official','committee','undecided','neither') or not names(row.get('official_name')) or not names(row.get('committee_name')))
+
+
+REVIEWED_REGISTRIES={'bill_package_evidence':_validate_bill_evidence,'saved_name_decisions':_validate_saved_name_decisions}
 
 
 def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False,recovered_copies=False):
@@ -753,6 +773,12 @@ CONTRADICTED_OFFICIAL_SAVED_NAMES_SQL="SELECT count(*) FROM saved_name_conflicts
 # fetch moved the document to other bytes, and its names fall back to the rules until it is reviewed again.
 SAVED_NAME_DECISIONS_UNUSED=dict(name='saved_name_decisions_unused',sql="""SELECT count(*) AS entries
  FROM saved_name_decisions v LEFT ANTI JOIN (SELECT body_sha FROM saved_files WHERE saved_rank=1) s ON s.body_sha=v.body_sha""")
+# Reviewed name decisions whose saved body leads under none of the names the review read (review finding 2):
+# a newer copy under an unread name of the decided class, or a third name saved-file order chose for an
+# undecided body. The decision needs a new read. The registry (about 90 rows) is the hash build side.
+SAVED_NAME_DECISIONS_UNMET=dict(name='saved_name_decisions_unmet',sql="""SELECT count(*) AS entries
+ FROM saved_name_decisions v JOIN (SELECT body_sha,filename FROM saved_files WHERE saved_rank=1) s ON s.body_sha=v.body_sha
+ WHERE NOT array_has(string_to_array(v.official_name||' | '||v.committee_name,' | '),s.filename)""")
 
 # Meeting-record doc-url literals that are no http(s) address get no URL key (model-url-inputs.sql)
 # and so cannot reach invalid_url_keys; this counts them instead of refusing the release.
@@ -1399,7 +1425,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         # The recorded disposition (ct-m878): a landing page that names no saved file has no document;
         # its link key retires with a plain notice. Two multi-part GovInfo packages in 619db5f9e08e.
         dict(name='unplaced_landing_pages',sql="SELECT DISTINCT page_url AS url FROM landing_pages WHERE component IS NULL ORDER BY 1"),
-        SAVED_NAME_KINDS,SAVED_NAME_DECISIONS_UNUSED,
+        SAVED_NAME_KINDS,SAVED_NAME_DECISIONS_UNUSED,SAVED_NAME_DECISIONS_UNMET,
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
         UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,RECOVERY_FILE_AGREEMENT,FILENAME_BOTH_NAMES,

@@ -678,8 +678,10 @@ filename       := the saved file's effective filename; saved-file order picks th
                   `saved-name-decisions.json` keys by its SHA-256 each body no rule
                   settles as read and says which name leads, or that the reading could not
                   decide; a reviewed body takes its decision instead of any rule, and an
-                  undecided one keeps saved-file order (query saved_name_decisions_unused
-                  counts entries no saved body matches). A contradicted official name in neither keeps
+                  undecided one keeps saved-file order (the loader refuses an unknown
+                  decision or a missing name; query saved_name_decisions_unused counts entries
+                  no saved body matches, saved_name_decisions_unmet entries whose saved body
+                  leads under none of the names the review read). A contradicted official name in neither keeps
                   saved-file order, as do two official names of different kinds with no
                   committee name; a reading of the bytes would settle both, and no PDF
                   reading is a model input yet (`pdf_text`, §6.6). The saved body never changes. Because the
