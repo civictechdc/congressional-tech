@@ -240,25 +240,14 @@ def load_causes(pin):
 
 
 # ct-ud0b (owner decision 2026-11-02): nightly publication without a person when every
-# difference is a new row traced to receipts newer than the live release. These are the
+# difference is a new row traced to receipts the live release did not read. These are the
 # only groups that can receive an automatic cause; anything else still needs a record.
 AUTOMATIC_GROUPS = {('list.parquet', 'added rows'), ('detail.parquet', 'added rows'), ('links.parquet', 'added keys'),
                     ('urls.parquet', 'keys new'), ('urls.parquet', 'keys with more rows'),
                     ('sources.parquet', 'new URLs'), ('sources.parquet', 'member rows added'),
                     ('sources.parquet', 'same-URL rows added')}
 ATTEMPTED_URL_GROUP = ('url_state.parquet', 'added URLs', ATTEMPTED_URLS)
-AUTOMATIC_CAUSE = "addition traced to receipts newer than the live release's newest dated receipt (automatic, ct-ud0b)"
-DATED = re.compile(r'/(\d{4}-\d{2}-\d{2})/')
-
-
-def _receipt_day(key):
-    match = DATED.search(key)
-    if match:
-        try:
-            return date.fromisoformat(match.group(1))
-        except ValueError:
-            pass
-    return None
+AUTOMATIC_CAUSE = "addition traced to receipts absent from the live release's receipt set (automatic, ct-ud0b)"
 
 
 def _raw_document_proof(line):
@@ -290,8 +279,11 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     a candidate row none of whose link keys an earlier release published. Its body keys are
     joined to `captures` (the capture mapping, not the archive model) to find the receipt
     lines holding those bodies. Each line is then read from raw: its key must be outside the
-    live release's receipt set and dated after the newest dated receipt, and the line itself must
-    name the body's SHA-256. Link, source and lookup additions must sit on new documents only.
+    live release's receipt set, and the line itself must name the body's SHA-256. The set is the
+    live release's own input record (every key its captures were read from), so "new" is by key,
+    whatever the key's date: a backlog read oldest first is new without being recent (ct-gc99).
+    Every capture line of a new document must qualify, so a body the live release also read
+    is not new. Link, source and lookup additions must sit on new documents only.
     Every attempt for an added URL needs a fresh receipt line that supplied the new document.
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
     new row whose receipts are new while the code that made it changed; the other gates still run.
@@ -315,11 +307,10 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
         return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
     if not differences:
         return [], []
-    live = sorted(live_receipt_keys)
-    live_dates = [day for key in live if (day := _receipt_day(key)) is not None]
-    if not live_dates:
-        return [], ['automatic causes: the live release has no dated receipt set to compare with']
-    cutoff = max(live_dates)
+    held = set(live_receipt_keys)
+    if not held:
+        # With nothing to be absent from, every receipt would count as new.
+        return [], ['automatic causes: the live release has no receipt set to compare with']
     d = Diff(Path(base_dir), Path(candidate_dir))
     d.documents = documents(d)
     d.table('added_documents', 'SELECT file_row_number::INT r FROM candidate_list ANTI JOIN pairs ON file_row_number=lr')
@@ -361,17 +352,13 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     untraced = [k for k in keys if k not in traced]
     if untraced:
         reasons.append(f'automatic causes: {len(untraced)} new document keys have no capture to trace (first {untraced[:3]})')
-    held = set(live)
     raw = {}
     named = {}
     attempts = {url: set() for url in url_additions}
     for row in lines:
         key = row['receipt_key']
-        day = _receipt_day(key)
         if key in held:
             reasons.append(f'automatic causes: {key} is already in the live release')
-        elif day is None or day <= cutoff:
-            reasons.append(f'automatic causes: {key} is not dated after the live release ({cutoff})')
         else:
             if key not in raw:
                 with gzip.open(BytesIO(read_receipt(key)), 'rt') as stream:
@@ -393,7 +380,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if reasons:
         return [], sorted(set(reasons))
     evidence = work / 'automatic-trace.json'
-    evidence.write_text(json.dumps(dict(cutoff=cutoff, live_receipts=len(live), undated_live_receipts=len(live)-len(live_dates), lines=lines, url_attempts={url: sorted(matches) for url, matches in attempts.items()}), indent=1, default=str) + '\n')
+    evidence.write_text(json.dumps(dict(live_receipts=len(held), new_receipts=len(raw), lines=lines, url_attempts={url: sorted(matches) for url, matches in attempts.items()}), indent=1, default=str) + '\n')
     from congress_api.retention.provenance import file_pin
     pin = dict(path=str(evidence), **file_pin(evidence))
     return [dict(id=group_id(g), count=g['count'], disposition='explained', cause=AUTOMATIC_CAUSE,

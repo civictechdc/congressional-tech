@@ -283,7 +283,7 @@ def url_states(url, attempts):
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
             url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=False,
-            base_tables=None, candidate_tables=None):
+            base_tables=None, candidate_tables=None, also_held=None):
     """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
     import gzip
     import os
@@ -316,6 +316,9 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     if failed_duplicate:
         capture_rows.append(dict(capture_rows[0], receipt_line=2, requested_url=failure_url,
                                  outcome='failed', http_status=403))
+    if also_held:
+        # The same body was also captured by a receipt the live release read.
+        capture_rows.append(dict(capture_rows[0], receipt_key=also_held, receipt_line=7))
     pq.write_table(pa.Table.from_pylist(capture_rows, schema=pa.schema([
         ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('sha256', pa.binary(32)),
         ('requested_url', pa.string()), ('mode', pa.string()), ('complete', pa.bool_()),
@@ -349,21 +352,39 @@ def test_additions_from_new_receipts_pass_unattended(tmp_path, nested):
     assert {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys', 'added URLs'}
     trace = json.loads((tmp_path / 'auto/automatic-trace.json').read_text())
     assert trace['url_attempts'] == {REQUEST: [[NEW_RECEIPT, 1]]}
-    assert trace['undated_live_receipts'] == 1
+    assert (trace['live_receipts'], trace['new_receipts']) == (2, 1)
 
 
-@pytest.mark.parametrize('receipt,rule', [
-    (sorted(LIVE_RECEIPTS)[0], 'is already in the live release'),
-    (UNDATED_LIVE_RECEIPT, 'is already in the live release'),
-    ('receipts/documents/2026-10-30/older.jsonl.gz', 'is not dated after the live release'),
-    ('receipts/documents/undated/assemble.jsonl.gz', 'is not dated after the live release'),
-    ('receipts/documents/2026-11-31/bad-date.jsonl.gz', 'is not dated after the live release'),
-])
-def test_an_added_row_from_an_old_receipt_refuses(tmp_path, receipt, rule):
+# ct-gc99: new means absent from the live release's receipt set, whatever the key's date. A
+# backlog read oldest first is older than the live release's newest receipt and still new.
+BACKLOG_RECEIPTS = ['receipts/documents/2026-10-30/older.jsonl.gz', 'receipts/documents/undated/assemble.jsonl.gz',
+                    'receipts/documents/2026-11-31/bad-date.jsonl.gz']
+
+
+@pytest.mark.parametrize('receipt', BACKLOG_RECEIPTS)
+def test_additions_from_a_backlog_receipt_pass_unattended(tmp_path, receipt):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], receipt=receipt)
+    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert report['reasons'] == [] and {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys', 'added URLs'}
+    assert json.loads((tmp_path / 'auto/automatic-trace.json').read_text())['url_attempts'] == {REQUEST: [[receipt, 1]]}
+
+
+@pytest.mark.parametrize('receipt', [sorted(LIVE_RECEIPTS)[0], UNDATED_LIVE_RECEIPT])
+def test_an_added_row_from_a_receipt_the_live_release_read_refuses(tmp_path, receipt):
     base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], receipt=receipt)
     with pytest.raises(ValueError, match='no recorded cause'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
-    assert any(rule in reason for reason in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
+    assert any('is already in the live release' in reason for reason in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
+
+
+@pytest.mark.parametrize('receipt', [NEW_RECEIPT, BACKLOG_RECEIPTS[0]])
+def test_a_body_the_live_release_also_read_is_not_new(tmp_path, receipt):
+    held = sorted(LIVE_RECEIPTS)[0]
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], receipt=receipt, also_held=held)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['automatic_reasons'] == [f'automatic causes: {held} is already in the live release'] and 'automatic_causes' not in report
 
 
 def test_a_raw_line_that_does_not_name_the_body_refuses(tmp_path):
@@ -373,8 +394,9 @@ def test_a_raw_line_that_does_not_name_the_body_refuses(tmp_path):
     assert any('does not name body' in r for r in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
 
 
-def test_a_changed_value_refuses_even_beside_new_rows(tmp_path):
-    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], filenames=['A-renamed.pdf', 'N.pdf'])
+@pytest.mark.parametrize('receipt', [NEW_RECEIPT, BACKLOG_RECEIPTS[0]])
+def test_a_changed_value_refuses_even_beside_new_rows(tmp_path, receipt):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], filenames=['A-renamed.pdf', 'N.pdf'], receipt=receipt)
     with pytest.raises(ValueError, match='changed filename'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
     assert any('is not an addition' in r for r in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
@@ -421,11 +443,13 @@ def test_automatic_policy_refuses_a_verified_scope_removal(tmp_path):
     assert report['failing'] == [] and report['reasons'] == report['automatic_reasons']
 
 
-def test_no_dated_live_receipt_refuses(tmp_path):
-    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], live_receipts={UNDATED_LIVE_RECEIPT})
+def test_an_empty_live_receipt_set_refuses(tmp_path):
+    # Nothing to be absent from: every receipt would count as new.
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], live_receipts=set())
     with pytest.raises(ValueError, match='no recorded cause'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
-    assert 'no dated receipt' in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'][0]
+    assert json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'] == [
+        'automatic causes: the live release has no receipt set to compare with']
 
 
 def test_a_second_document_hash_in_raw_notes_does_not_ride_an_eligible_attempt(tmp_path):

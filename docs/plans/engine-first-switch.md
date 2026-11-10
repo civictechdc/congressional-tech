@@ -108,7 +108,8 @@ Owner decisions of 2026-11-01 and 2026-11-02 (`cef-96wc`, `ct-tk10`, `ct-ud0b`,
    in `docs/releases/` render from the gates' cause records.
 6. After the fixed release, the daily job publishes without a person only when
    every difference is an added row traced, through raw receipts, to receipts
-   newer than the live release. Any changed or removed value waits for a
+   the live release did not read (by key, ct-gc99; first built as "newer than
+   the live release" by date). Any changed or removed value waits for a
    reviewed cause record. It cannot see a bug that only adds wrong rows; the
    other four gates still run.
 7. The old Explorer retires right after live acceptance, with no overlap

@@ -49,11 +49,16 @@ putting them in the release would force a second model run.
 
 The daily publish (`model/jobs/publish.json`, `automatic_causes: true`) can explain a
 difference without a person only when every difference is a new row and every new row is
-traced to receipts newer than the live release. A new row is a new document, or a source
+traced to receipts the live release did not read. A new row is a new document, or a source
 or lookup row on one. Each new document's body is joined to `captures`, and each receipt
-line is read from raw. The receipt key must be outside the live release's receipt set and
-dated after the newest of them, and the line must name the body. Any changed or removed
-value, a split or merge, or a row that cannot be traced still needs a reviewed cause record.
+line is read from raw. The receipt key must be outside the live release's receipt set (the
+key list its input record names, `inputs/receipts/<sha256>.json.gz`), and the line must name
+the body. The key's date does not matter (ct-gc99): the daily reads a backlog oldest first,
+so its receipts are new to the release without being newer than it. Every capture line of a
+new document must qualify, so a body the live release also read is not new. Any changed or
+removed value, a split or merge, a new key or address on a document the live release has, a
+recovered document (its key is a link, not a body), or a row that cannot be traced still
+needs a reviewed cause record.
 
 What it cannot see: a bug that adds only wrong rows from genuinely new receipts. A
 code change that alters how new rows are built is invisible too, when no existing row
