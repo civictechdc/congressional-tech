@@ -89,7 +89,7 @@ def test_each_statement_gets_the_samples_inside_its_window_on_the_shared_clock(t
     assert (rows['q1']['peak_physical_gb'], rows['q1']['start_physical_gb'], rows['q1']['rise_gb']) == (3.3, 1.0, 2.3)
     assert rows['short']['peak_physical_gb'] == 1.2
     assert result['run_peak'] == dict(peak_physical_gb=9.04, peak_rss_gb=7.0, seconds=WATCHDOG_LEAD + 3.25,
-        during=[dict(kind='output', name='big.parquet', pool_before_gb=2.0)])
+        during=[dict(kind='output', name='big.parquet', pool_before_gb=2.0)], overlaps=[])
     assert result['expect_gb'] == 9.1
     assert result['long_statements'] == dict(count=3, median_start_physical_gb=2.0, median_pool_before_gb=1.0)
 
@@ -103,14 +103,19 @@ def test_a_statement_between_two_samples_is_unattributed_not_given_a_neighbours_
 
 
 def test_a_sample_whose_reading_began_before_the_statement_is_not_that_statements(tmp_path, capsys):
-    """The 3.25 s sample, the run's peak, was read from 3.21 s; a statement that starts at 3.22 s did not make it."""
+    """The 3.25 s sample, the run's peak, was read from 3.21 s; a statement that starts at 3.22 s did not make all
+    of it, so the peak fell in no statement. The report still says which statements that reading overlaps."""
     events = [statement('a', 1.0, 3.0, before=1, after=2), statement('late.parquet', 3.22, 6.0, before=2, after=2, event='output')]
     result, rows = report(capsys, *write(tmp_path, events=events))
     late = rows['late.parquet']
     assert (late['samples'], late['peak_physical_gb'], late['start_physical_gb'], late['rise_gb']) == (11, 2.2, 3.0, -0.8)
-    assert result['run_peak'] == dict(peak_physical_gb=9.04, peak_rss_gb=7.0, seconds=WATCHDOG_LEAD + 3.25, during=[])
+    assert result['run_peak'] == dict(peak_physical_gb=9.04, peak_rss_gb=7.0, seconds=WATCHDOG_LEAD + 3.25, during=[],
+        overlaps=[dict(kind='output', name='late.parquet', pool_before_gb=2.0)])
     assert step_memory.main(write(tmp_path, events=events)) == 0
-    assert 'at timeline second 5.75, outside every attributed statement' in capsys.readouterr().out
+    assert ('the highest reading, at timeline second 5.75, fell in no statement; it overlaps output late.parquet (pool 2.00 GiB)'
+            in capsys.readouterr().out)
+    assert step_memory.main(write(tmp_path, events=events[:1])) == 0
+    assert 'fell in no statement; it overlaps none' in capsys.readouterr().out
 
 
 def test_a_timeline_without_epoch_is_refused_until_the_caller_gives_the_offset(tmp_path, capsys):
@@ -123,7 +128,9 @@ def test_a_timeline_without_epoch_is_refused_until_the_caller_gives_the_offset(t
     assert rows['short']['samples'] == 3 and rows['short']['peak_physical_gb'] is None
     assert result['unattributed'] == {'under 1 s with a hand-given offset': 2}
     assert step_memory.main([*paths, '--offset-seconds', str(WATCHDOG_LEAD + FIRST_START)]) == 0
-    assert 'statements under 1 s are not attributed' in capsys.readouterr().out
+    text = capsys.readouterr().out
+    assert 'statements under 1 s are not attributed' in text
+    assert 'per-statement figures move with that offset; the run peak and --expect-gb do not' in text
 
 
 def test_an_offset_beside_an_exact_clock_or_a_log_from_another_run_is_refused(tmp_path, capsys):
@@ -138,10 +145,10 @@ def test_engine_stderr_lines_read_like_the_step_log_and_unreadable_ones_are_coun
     plain, _ = report(capsys, *write(tmp_path))
     paths = write(tmp_path, prefix='2026-11-02T17:11:35.4707128Z E   [docspec-metric] ')
     with open(paths[0], 'a') as log:
-        log.write('Traceback (most recent call last):\n[docspec-metric] {"event":"step","name":"cut off\n')
+        log.write('Traceback (most recent call last):\n[docspec-metric] {"event":"step","name":"cut off\n[docspec-metric] 5\n')
     logged, _ = report(capsys, *paths)
     assert logged['statements'] == plain['statements'] and logged['run_peak'] == plain['run_peak']
-    assert (plain['unreadable_metric_lines'], logged['unreadable_metric_lines']) == (0, 1)
+    assert (plain['unreadable_metric_lines'], logged['unreadable_metric_lines']) == (0, 2)
 
 
 def test_a_failed_sample_is_dropped_rather_than_read_as_zero_memory(tmp_path, capsys):
@@ -150,10 +157,41 @@ def test_a_failed_sample_is_dropped_rather_than_read_as_zero_memory(tmp_path, ca
     assert (rows['q1']['start_physical_gb'], rows['q1']['rise_gb']) == (1.0, 2.3)
 
 
-def test_the_text_report_names_the_peak_statement_and_the_figure_to_start_with(tmp_path, capsys):
+def test_a_step_log_without_pool_figures_still_reports_memory(tmp_path, capsys):
+    bare = [{key: value for key, value in event.items() if not key.startswith('pool_')} for event in EVENTS]
+    result, rows = report(capsys, *write(tmp_path, events=bare))
+    assert (rows['a']['peak_physical_gb'], rows['a']['pool_before_gb'], rows['a']['pool_after_gb'], rows['a']['pool_peak_gb']) == (
+        5.0, None, None, None)
+    assert result['long_statements'] == dict(count=3, median_start_physical_gb=2.0, median_pool_before_gb=None)
+    assert step_memory.main([*write(tmp_path, events=bare), '--top', '1']) == 0
+    text = capsys.readouterr().out
+    assert 'the highest reading fell in output big.parquet\n' in text and 'median physical 2.00 GiB, no pool figures' in text
+    assert text.splitlines()[-1].split() == ['9.04', '+6.04', '7.00', '-', '-', '-', '2.9', 'output', 'big.parquet']
+
+
+def test_a_timeline_cut_off_at_its_last_line_is_used_and_said_so_and_other_bad_input_is_refused(tmp_path, capsys):
+    """A timeline read while its job still runs ends in a part-written line; anything else unreadable is not guessed at."""
+    plain, _ = report(capsys, *write(tmp_path))
+    paths = write(tmp_path)
+    with open(paths[1], 'a') as samples:
+        samples.write('{"seconds": 10.75, "epo')
+    running, _ = report(capsys, *paths)
+    assert (plain['torn_last_line'], running['torn_last_line'], running['samples']) == (False, True, 33)
+    assert running['statements'] == plain['statements'] and running['run_peak'] == plain['run_peak']
+    assert step_memory.main(paths) == 0
+    assert 'the last timeline line was cut off' in capsys.readouterr().out
+    with open(paths[1], 'a') as samples:
+        samples.write('\n' + json.dumps(timeline()[-1]) + '\n')
+    assert 'timeline line 34' in refusal(capsys, *paths)
+    nameless = [{key: value for key, value in EVENTS[0].items() if key != 'name'}, *EVENTS[1:]]
+    assert 'name' in refusal(capsys, *write(tmp_path, events=nameless))
+    assert 'missing.jsonl' in refusal(capsys, str(tmp_path / 'missing.jsonl'), write(tmp_path)[1])
+
+
+def test_the_text_report_names_the_statement_the_peak_fell_in_and_the_figure_to_start_with(tmp_path, capsys):
     assert step_memory.main([*write(tmp_path), '--top', '2']) == 0
     text = capsys.readouterr().out
-    assert 'run peak: 9.04 GiB physical, 7.00 GiB RSS, during output big.parquet (pool 2.00 GiB)' in text
+    assert 'run peak: 9.04 GiB physical, 7.00 GiB RSS; the highest reading fell in output big.parquet (pool 2.00 GiB)' in text
     assert '--expect-gb 9.1' in text and '1 of 5 statements unattributed' in text
     table = text.split('top 2 ')[1].splitlines()[2:4]
     assert [line.split()[-2:] for line in table] == [['output', 'big.parquet'], ['step', 'a']]
