@@ -432,6 +432,7 @@ def _auxiliary():
             cast(NULL AS BOOLEAN) AS is_current FROM committee_input""", ['system_code'], ['chamber', 'committee_type', 'parent_system_code']),
         ('url_state', f"""SELECT cast(NULL AS VARCHAR) AS requested_url,cast(0 AS INT) AS attempts,
             {TS} AS last_attempt,cast(NULL AS SMALLINT) AS last_status,cast(NULL AS VARCHAR) AS last_outcome,
-            {TS} AS last_good_at,{TS} AS next_attempt_at WHERE false""", ['requested_url'], ['last_outcome']),
+            {TS} AS last_good_at,{TS} AS next_attempt_at,cast(NULL AS DATE) AS recheck_meeting_date,
+            array_slice(make_array(arrow_cast(NULL,'FixedSizeBinary(8)')),1,0) AS linked_from WHERE false""", ['requested_url'], ['last_outcome']),
     ]
 

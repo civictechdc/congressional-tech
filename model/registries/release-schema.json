@@ -1769,6 +1769,18 @@
           "type": "timestamp<microsecond,UTC>",
           "meaning": "Next scheduled fetch time",
           "nullable": true
+        },
+        {
+          "name": "recheck_meeting_date",
+          "type": "date32",
+          "meaning": "Meeting date the recheck band was aged against: the address's earliest linked meeting, else the date in its docs.house.gov /meetings/ path; null when neither is known (the family's shortest band applies) and on a queued row",
+          "nullable": true
+        },
+        {
+          "name": "linked_from",
+          "type": "list<fixed[8]>",
+          "meaning": "Every read page that links a queued address, as page keys (the first 8 bytes of the page body's SHA-256, the link-key form) in key order; empty on an address with attempts",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -1783,7 +1795,8 @@
         "kind": "primary_key"
       },
       "notes": {
-        "requested_url": "Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue."
+        "requested_url": "Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue.",
+        "linked_from": "A page key resolves in links.parquet only when the page is itself a listed document; wrapper and listing pages are kept as evidence, not listed. Published, with recheck_meeting_date, so the release gate can trace a scheduling change to the receipts that caused it (ct-9j3z)."
       },
       "nullability": "Nullability transcribes data model \u00a77.7."
     },

@@ -63,14 +63,16 @@ def url_state_steps(*,root=ROOT,recovery_policy=None):
             '^([0-9]{4})([0-9]{2})([0-9]{2})$','$1-$2-$3') AS DATE)) AS meeting_date
             FROM meetings m RIGHT JOIN url_state_latest l ON l.requested_url=m.requested_url)
             SELECT *,cast((date_part('epoch',cast(retrieved_at AS DATE))-date_part('epoch',meeting_date))/86400 AS BIGINT) AS age_days FROM dated"""),
-        ('interval_candidates',"""SELECT a.requested_url,i.id,i.interval_seconds
+        ('interval_candidates',"""SELECT a.requested_url,i.id,i.interval_seconds,a.meeting_date
             FROM recheck_intervals i JOIN url_state_ages a ON a.family=i.family
             WHERE a.age_days IS NULL OR ((i.min_age_days IS NULL OR a.age_days>=i.min_age_days)
               AND (i.max_age_days IS NULL OR a.age_days<i.max_age_days))"""),
         # One grouping, no join: the first band by (interval_seconds,id) carries the smallest interval.
         # A count joined back as a hash-join build is charged once per emitted slice of the grouped
         # values (5.3 GB for 118 MB at 1.17M URLs) and exhausted the 14 GiB model pool here.
-        ('intervals',"""SELECT requested_url,min(interval_seconds) AS interval_seconds,count(*) AS matches
+        # meeting_date is one value per URL; it is published so the release gate can check the band (ct-9j3z).
+        ('intervals',"""SELECT requested_url,min(interval_seconds) AS interval_seconds,count(*) AS matches,
+            min(meeting_date) AS meeting_date
             FROM url_state_interval_candidates GROUP BY requested_url"""),
         ('page_contexts',"""SELECT DISTINCT encode(g.sha256,'hex') AS page_body,g.context_url,g.member_path
             FROM good_fetch_contexts g JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
@@ -88,15 +90,21 @@ def url_state_steps(*,root=ROOT,recovery_policy=None):
              ON regexp_like(l.target_url,s.pattern)
             ) ON e.family=s.family AND regexp_like(l.target_url,e.pattern)
             WHERE e.family IS NULL"""),
-        ('queue_literals',"""SELECT k.url_key,min(l.target_url) AS url FROM resolved_link_targets l
+        ('queue_links',"""SELECT DISTINCT k.url_key,l.target_url,p.page_body FROM resolved_link_targets l
             JOIN (SELECT * FROM url_state_page_contexts WHERE page_body IS NOT NULL AND context_url IS NOT NULL) p
               ON (l.page_body IS NOT DISTINCT FROM p.page_body) AND (l.context_url IS NOT DISTINCT FROM p.context_url)
               AND (l.member_path IS NOT DISTINCT FROM p.member_path)
             JOIN (SELECT * FROM model_url_keys WHERE url IS NOT NULL) k ON (l.target_url IS NOT DISTINCT FROM k.url)
             JOIN (SELECT * FROM url_state_scoped_targets WHERE target_url IS NOT NULL) s ON (l.target_url IS NOT DISTINCT FROM s.target_url)
             WHERE l.target_member_path IS NULL AND k.error IS NULL AND k.url_key IS NOT NULL
-            AND NOT EXISTS(SELECT 1 FROM url_state_fetched_keys f WHERE f.url_key=k.url_key)
-            GROUP BY k.url_key"""),
+            AND NOT EXISTS(SELECT 1 FROM url_state_fetched_keys f WHERE f.url_key=k.url_key)"""),
+        ('queue_literals',"""SELECT url_key,min(target_url) AS url FROM url_state_queue_links GROUP BY url_key"""),
+        # Every page behind a queued key, as page keys (the link-key form: the body SHA-256's first
+        # 8 bytes), published so the release gate can trace each to its receipts (ct-9j3z).
+        # Distinct pairs first, then one list per key: no per-group distinct set.
+        ('queue_pages',"""SELECT url_key,array_agg(page_key ORDER BY page_key) AS linked_from FROM (
+            SELECT DISTINCT url_key,arrow_cast(decode(substr(page_body,1,16),'hex'),'FixedSizeBinary(8)') AS page_key
+            FROM url_state_queue_links) GROUP BY url_key"""),
         ('public_urls',"""SELECT requested_url AS url FROM url_state_latest UNION SELECT url FROM url_state_queue_literals"""),
         ('query_parts',"""WITH queries AS (
             SELECT url,CASE WHEN strpos(split_part(url,'#',1),'?')>0

@@ -768,17 +768,17 @@ Every list and fold column MUST be written in a fixed order: structs by their fi
 
 ### 7.7 `url_state`
 
-One row per requested URL, plus the queue: `requested_url` string, `attempts` int32, `last_attempt` ts nullable, `last_status` int16 nullable, `last_outcome` dict nullable, `last_good_at` ts nullable, `next_attempt_at` ts nullable.
+One row per requested URL, plus the queue: `requested_url` string, `attempts` int32, `last_attempt` ts nullable, `last_status` int16 nullable, `last_outcome` dict nullable, `last_good_at` ts nullable, `next_attempt_at` ts nullable, `recheck_meeting_date` date nullable, `linked_from` list<fsb(8)>. The last two are published so the release gate can prove a capture night's changes from the receipts new to it (ct-9j3z).
 
 - Excludes `reference` and `saved-record` rows before counting attempts or selecting the latest state; those records cannot shadow a real acquisition.
 - `fetch_outcome` is `stored` only when the item has a final document body (attempt 0, non-empty, status 2xx other than 202 or unstated); a provider envelope over an empty origin does not count.
 - Aggregated per requested URL over distinct `(receipt_key, receipt_line)`, so a fetch line counts once for each requested address however many bodies it references. Its `retrieved_at` is the latest non-null retained entry time on that line. Final `fetch_http_status`/`fetch_outcome` values must agree within that fetch; attempt-level body status and completeness may differ.
 - The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status`/`last_outcome` from `fetch_http_status`/`fetch_outcome`. `last_good_at` is the `retrieved_at` of its latest eligible body acquisition (§7.3). Recovery rows MUST NOT appear. A valid prior body followed by a final failure does not hide that final scheduling failure.
 - **`next_attempt_at`:**
-  - in phase 1, `last_attempt` plus the family's recheck interval for every outcome; `Retry-After` stays in raw and is not a bulk model input; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
+  - in phase 1, `last_attempt` plus the family's recheck interval for every outcome; `Retry-After` stays in raw and is not a bulk model input; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters. That date is `recheck_meeting_date`, null when neither exists.
   - null, and so due now, when `last_attempt` is null (about 25,500 requested URLs today, nearly all from two undated backfill shapes).
 - **The queue:** every resolved URL target from a good-fetched page that is not an `error_response` (wrapper pages included), that matches the capture-scope registry, and whose `url_key` matches no `mode = fetch` row's requested or final URL (archive-member targets are not fetchable).
-  - Each `url_key` adds one row under its byte-wise least target, with its credential parameters removed (`url_state` is public), `attempts = 0` and a null `next_attempt_at`.
+  - Each `url_key` adds one row under its byte-wise least target, with its credential parameters removed (`url_state` is public), `attempts = 0`, a null `next_attempt_at` and `recheck_meeting_date`, and in `linked_from` the key (first 8 bytes of the body SHA-256) of every page above that links any target of that `url_key`, once each in key order. A fetched row's `linked_from` is empty.
 - 1,158,426 rows plus the queue, *est.* 10 MB.
 
 ### 7.8 `recoveries`

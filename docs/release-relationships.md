@@ -610,10 +610,13 @@ Identity: `requested_url` (primary_key; published identifier).
 | `last_outcome` | `dict` | yes | Latest attempt outcome |
 | `last_good_at` | `timestamp<microsecond,UTC>` | yes | Latest good fetch time |
 | `next_attempt_at` | `timestamp<microsecond,UTC>` | yes | Next scheduled fetch time |
+| `recheck_meeting_date` | `date32` | yes | Meeting date the recheck band was aged against: the address's earliest linked meeting, else the date in its docs.house.gov /meetings/ path; null when neither is known (the family's shortest band applies) and on a queued row |
+| `linked_from` | `list<fixed[8]>` | no | Every read page that links a queued address, as page keys (the first 8 bytes of the page body's SHA-256, the link-key form) in key order; empty on an address with attempts |
 
 Nullability: Nullability transcribes data model §7.7. A required column is refused at write time.
 
 - `requested_url`: Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue.
+- `linked_from`: A page key resolves in links.parquet only when the page is itself a listed document; wrapper and listing pages are kept as evidence, not listed. Published, with recheck_meeting_date, so the release gate can trace a scheduling change to the receipts that caused it (ct-9j3z).
 
 Outgoing: `capture_request_address`.
 

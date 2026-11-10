@@ -95,6 +95,10 @@ def run_state(tmp_path,change=None,queries=()):
         rows[1].update(requested_url=BASE+'second-report.pdf',url=BASE+'second-report.pdf',context_url=BASE+'second-report.pdf',
             http_status=404,fetch_http_status=404,outcome='failed',fetch_outcome='failed',complete=False,body_hex=None)
     if change=='collision':targets.append((url+'?api_key=example',None,'b'*64))
+    if change=='second_page':
+        # A listing page links the same queued address, twice.
+        rows.append(row(21,BASE+'listing.html',body_hex='a1'*32,record_role='wrapper'))
+        targets += [(BASE+'new.pdf?token=example&x=1',None,'a1'*32)]*2
     if change=='split_and_migrated':
         mods_url='https://www.govinfo.gov/metadata/pkg/CHRG-119shrg62381/mods.xml'
         rows.extend([
@@ -105,8 +109,9 @@ def run_state(tmp_path,change=None,queries=()):
             row(14,BASE+'migrated.pdf',retrieved_at='2026-09-28T11:00:00Z',
                 http_status=None,outcome='stored',complete=True,body_hex='e'*64),
         ])
+    pages={'c'*64:'error.html','a1'*32:'listing.html'}
     links=[dict(target_url=target,target_member_path=member,page_body=body,
-        context_url=BASE+('error.html' if body=='c'*64 else 'wrapper.html'),member_path=None) for target,member,body in targets]
+        context_url=BASE+pages.get(body,'wrapper.html'),member_path=None) for target,member,body in targets]
     inputs=registry_inputs(tmp_path/'registries')
     inputs.append(json_input(tmp_path,'fixture_captures',rows,receipt_key='Utf8',receipt_line='Int32',capture_index='Int32',
         attempt='Int32',mode='Utf8',requested_url='Utf8',url='Utf8',context_url='Utf8',member_path='Utf8',family='Utf8',retrieved_at='Utf8',
@@ -169,6 +174,34 @@ def test_url_state_line_grain_bands_and_clean_scoped_queue(tmp_path):
     assert [r['requested_url'] for r in queued]==[BASE+'caption.vtt?key=constant',BASE+'new.pdf?x=1']
     assert all(r['last_attempt'] is None and r['next_attempt_at'] is None for r in queued)
     assert BASE+'retained.pdf' not in states
+
+
+FACTS=dict(name='facts',sql="""SELECT requested_url,cast(recheck_meeting_date AS VARCHAR) AS meeting_date,linked_from,
+    arrow_typeof(recheck_meeting_date) AS date_type,arrow_typeof(linked_from) AS pages_type FROM url_state ORDER BY requested_url""")
+
+
+@pytest.mark.parametrize('change',[None,'second_page'])
+def test_url_state_publishes_the_meeting_date_its_band_used_and_the_pages_behind_a_queued_link(tmp_path,change):
+    """ct-9j3z: the release gate checks next_attempt_at and queued rows against these two facts."""
+    result=run_state(tmp_path,change,queries=[FACTS])
+    assert not any(result['url_state_invariants'][0].values())
+    facts={r['requested_url']:r for r in result['facts']}
+    assert all(r['date_type']=='Date32' and r['pages_type'].startswith('List(') and 'FixedSizeBinary(8)' in r['pages_type']
+               for r in result['facts'])
+    # The band's date: a meeting date the model joined, else the docs.house.gov path date, else none.
+    assert facts[BASE+'report.pdf']['meeting_date']=='2026-10-10'
+    assert facts['https://docs.house.gov/meetings/AG/AG03/20200101/456/old.pdf']['meeting_date']=='2020-01-01'
+    assert facts[BASE+'tie.pdf']['meeting_date']=='2026-11-01'
+    assert facts['https://unknown-date.test/a']['meeting_date'] is None
+    attempted=[r for r in result['facts'] if r['requested_url'] not in (BASE+'caption.vtt?key=constant',BASE+'new.pdf?x=1')]
+    assert attempted and all(r['linked_from']==[] for r in attempted)
+    # A queued row has no schedule, so no band date; it names every read page linking any spelling
+    # of its key, once each, in key order. The error page that also links an address does not count.
+    wrapper,listing='b'*16,'a1'*8  # the job returns binary values as hex
+    assert facts[BASE+'caption.vtt?key=constant']=={**facts[BASE+'caption.vtt?key=constant'],'meeting_date':None,'linked_from':[wrapper]}
+    assert facts[BASE+'new.pdf?x=1']['meeting_date'] is None
+    assert facts[BASE+'new.pdf?x=1']['linked_from']==([listing,wrapper] if change else [wrapper])
+    assert BASE+'error-only.pdf' not in facts
 
 
 @pytest.mark.parametrize(('change','field'),[('unknown_family','unknown_families'),('line_conflict','conflicting_lines'),('collision','sanitization_collisions')])
