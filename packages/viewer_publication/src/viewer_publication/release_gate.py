@@ -403,16 +403,18 @@ def _url_state_rules():
 
 # The capture columns the gate's one engine job reads: the model's fold, good-fetch and band steps
 # (url_state_lines, good-archive-containers.sql, good-fetches.sql, url_state_good_lines) and the
-# body trace. The capture input is scanned once, for these only (17 of its 42 columns).
+# body trace. The capture input is scanned once, for these only (17 of its 42 columns); a night
+# with no url_state proof reads the trace's three.
 CAPTURE_COLUMNS = ('receipt_key', 'receipt_line', 'capture_index', 'mode', 'outcome', 'family', 'requested_url',
                    'context_url', 'member_path', 'attempt', 'http_status', 'complete', 'fetch_http_status',
                    'fetch_outcome', 'retrieved_at', 'sha256', 'expansion')
+TRACE_COLUMNS = ('receipt_key', 'receipt_line', 'sha256')
 
 
 def capture_job(work, engine, captures, *, keys, new_receipts=(), candidate_state=None):
     """One engine job and one scan of the capture input, for the trace and the url_state proof.
 
-    The scan keeps only CAPTURE_COLUMNS of the rows in `new_receipts` or holding a body whose first
+    The scan keeps only CAPTURE_COLUMNS (TRACE_COLUMNS with no url_state part) of the rows in `new_receipts` or holding a body whose first
     16 hex digits are in `keys`; both small sides are hash-built and the capture input is probed
     once. Returns `trace`: the receipt lines of every traced body, in every receipt (a body the
     live release also read must show), and, given `candidate_state` (the candidate's url_state
@@ -429,7 +431,8 @@ def capture_job(work, engine, captures, *, keys, new_receipts=(), candidate_stat
     inputs = [table_input('lake_captures', _captures_source(captures)),
               dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')),
               dict(name='traced_keys', kind='parquet', path=str(work / 'traced-keys.parquet'))]
-    steps = [dict(name='capture_rows', materialize=True, sql=f"""SELECT {','.join('c.' + c for c in CAPTURE_COLUMNS)},
+    columns = CAPTURE_COLUMNS if candidate_state is not None else TRACE_COLUMNS
+    steps = [dict(name='capture_rows', materialize=True, sql=f"""SELECT {','.join('c.' + c for c in columns)},
         n.receipt_key IS NOT NULL AS new_line,k.prefix
         FROM traced_keys k RIGHT JOIN (new_receipts n RIGHT JOIN lake_captures c ON c.receipt_key=n.receipt_key)
           ON k.prefix=substr(lower(encode(c.sha256,'hex')),1,16)
