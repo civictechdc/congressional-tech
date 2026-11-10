@@ -9,7 +9,9 @@ WITH captured AS (
  THEN min(CASE WHEN outcome NOT IN ('reference','saved-record') THEN cast(import_date AS DATE) END) END AS in_archive_since,
  coalesce(bool_or(fidelity='exact-bytes'),false) AS exact_bytes,
  max(media_type) AS media_type,
- bool_or(member_path IS NOT NULL) AS archive_member
+ bool_or(member_path IS NOT NULL) AS archive_member,
+ -- A capture of this file put its bytes in the archive; 'unchanged' found them already held (ct-f7hp).
+ coalesce(bool_or(outcome='stored'),false) AS body_stored
  FROM capture_sources GROUP BY source_id,body_sha,filename,source_url
 ), originals AS (
  SELECT DISTINCT encode(sha256(json_array(cast(NULL AS VARCHAR),f.filename,f.source_url)),'hex') AS source_id,
@@ -20,7 +22,7 @@ WITH captured AS (
  cast(NULL AS DATE) AS in_archive_since,
  false AS exact_bytes,
  cast(NULL AS VARCHAR) AS media_type,
- false AS archive_member
+ false AS archive_member,false AS body_stored
  FROM current_recoveries r JOIN effective_filenames f ON f.input_id='recovery:'||r.id
 ) , all_sources AS (
  SELECT * FROM captured UNION ALL SELECT * FROM originals
@@ -32,5 +34,6 @@ SELECT source_id,body_sha,filename,source_url,max(format) AS format,
  CASE WHEN min(first_fetched) IS NULL THEN min(in_archive_since) END AS in_archive_since,
  coalesce(bool_or(exact_bytes),false) AS exact_bytes,
  max(media_type) AS media_type,
- coalesce(bool_or(archive_member),false) AS archive_member
+ coalesce(bool_or(archive_member),false) AS archive_member,
+ coalesce(bool_or(body_stored),false) AS body_stored
 FROM all_sources GROUP BY source_id,body_sha,filename,source_url

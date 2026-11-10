@@ -287,9 +287,10 @@ def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
                   format='pdf',exact_bytes=True,first_fetched='2026-10-25T12:00:00Z',is_real_file=True),
              dict(component='ctx',source_id='addressed',body_sha='9'*64,filename='P.pdf',source_url='https://www.govinfo.gov/content/pkg/P/pdf/P.pdf',
                   format='pdf',exact_bytes=True,first_fetched='2026-10-20T12:00:00Z',is_real_file=True)]
-    for row in members: row['archive_member']=row['source_id']=='member'
+    for row in members: row.update(archive_member=row['source_id']=='member',body_stored=True)
     inputs=[json_input(tmp_path,'members',members,component='Utf8',source_id='Utf8',body_sha='Utf8',filename='Utf8',
-                       source_url='Utf8',format='Utf8',exact_bytes='Boolean',first_fetched='Utf8',is_real_file='Boolean',archive_member='Boolean'),
+                       source_url='Utf8',format='Utf8',exact_bytes='Boolean',first_fetched='Utf8',is_real_file='Boolean',archive_member='Boolean',
+                       body_stored='Boolean'),
             json_input(tmp_path,'formats',[dict(id='pdf',kind='preference',value='pdf',rank=1),dict(id='xml',kind='preference',value='xml',rank=3)],
                        id='Utf8',kind='Utf8',value='Utf8',rank='Int32')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
