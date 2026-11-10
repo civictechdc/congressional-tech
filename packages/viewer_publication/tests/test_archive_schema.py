@@ -75,7 +75,25 @@ def test_release_availability_keeps_unavailable_definitions_and_identity():
     assert published['schema_version'] == 1 and published['relationships_version'] == 1
 
 
+def test_release_publishes_kind_synonyms_for_readers_to_filter_as_one():
+    """ct-isnv: the House guide titles one type 'Written Witness Testimony or Witness Statement'.
+    The site and the MCP read this from each release's schema.json and filter the words as one kind."""
+    listed = next(t for t in build_schema(['list.parquet']) ['files'] if t['name'] == 'list.parquet')
+    assert listed['synonyms'] == {'document_kind[]': [['witness-statement', 'testimony']]}
+    assert 'synonyms' not in next(t for t in build_schema()['files'] if t['name'] == 'detail.parquet')
+
+
+def _synonyms(schema, value):
+    next(t for t in schema['files'] if t['name'] == 'list.parquet')['synonyms'] = value
+
+
 @pytest.mark.parametrize('mutation,expected', [
+    (lambda s: _synonyms(s, {'not_a_field[]': [['a', 'b']]}), 'Unknown synonym field'),
+    (lambda s: _synonyms(s, {'document_kind[]': [['testimony']]}), 'Invalid synonyms'),
+    (lambda s: _synonyms(s, {'document_kind[]': [['testimony', '']]}), 'Invalid synonyms'),
+    (lambda s: _synonyms(s, {'document_kind[]': [['testimony', 'testimony']]}), 'Invalid synonyms'),
+    (lambda s: _synonyms(s, {'document_kind[]': [['witness-statement', 'testimony'], ['testimony', 'statement']]}), 'Invalid synonyms'),
+    (lambda s: _synonyms(s, {'document_kind[]': 'testimony'}), 'Invalid synonyms'),
     (lambda s: s['relationships'][0]['source'].update(fields=['not_a_field']), 'Unknown field path'),
     (lambda s: s['relationships'][0]['target'].update(table='absent'), 'Unknown relationship table'),
     (lambda s: s['relationships'].append(deepcopy(s['relationships'][0])), 'Duplicate relationship'),
