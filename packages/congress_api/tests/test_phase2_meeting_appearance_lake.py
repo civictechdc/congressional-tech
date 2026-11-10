@@ -2568,8 +2568,10 @@ def test_members_who_asked_jointly_each_get_a_record_row(package, index, line, n
                                             for i, (locator, name) in enumerate(zip(_parts(index, len(names)), names))]
     assert [a["name_key"] for a in found[index - 1:]] == [appearance_records.normalize_name_key(n) for n in names]
 
-    # The reading needs the reviewed package, position and exact original line.
-    for other, before, text in [("CHRG-000shrg00000", index - 1, line), (package, index + 1, line),
+    # The reading needs the reviewed package, position and exact original line (CHRG-115shrg33409 prints the same
+    # line at four reviewed positions, so the probe takes a position the package has no entry at).
+    elsewhere = next(n for n in range(index + 1, 999) if n not in mods_record_entries.MODS_RECORD_ENTRIES[package])
+    for other, before, text in [("CHRG-000shrg00000", index - 1, line), (package, elsewhere - 1, line),
                                 (package, index - 1, line + " and others")]:
         rows = appearance_records.extract_mods_appearances(_mods_lines(*[""] * before, text), package_id=other)
         assert names[1] not in [a["name"] for a in rows] and not any("/part[" in a["source_locator"] for a in rows)
