@@ -29,6 +29,7 @@ import json
 import os
 import plistlib
 import re
+import resource
 import runpy
 import shutil
 import subprocess
@@ -39,7 +40,26 @@ from pathlib import Path
 
 LABEL = 'ai.spicygov.archive-nightly'
 EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
+# launchd starts an agent with 256 open files. The model's engine holds scratch files for retained step
+# results, its spill directory, the release's output files and the lake readers at once, and the first
+# scheduled run to reach the end of the model failed on a late input open (2026-11-10, 'source open failed').
+FILE_LIMIT = 65536
 DISK = runpy.run_path(str(Path(__file__).with_name('archive_disk.py')))
+
+
+def raise_file_limit(target=FILE_LIMIT):
+    """Raise the soft open-file limit to `target` (or the hard limit, if lower); children inherit it.
+
+    Returns (soft before, soft after). Never lowers a limit and never raises the hard one."""
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    wanted = target if hard == resource.RLIM_INFINITY else min(target, hard)
+    if soft != resource.RLIM_INFINITY and soft < wanted:
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (wanted, hard))
+        except (ValueError, OSError):
+            # macOS refuses a soft limit above kern.maxfilesperproc even under an unlimited hard limit.
+            resource.setrlimit(resource.RLIMIT_NOFILE, (min(wanted, 10240), hard))
+    return soft, resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 
 
 def run_owned(command, **options):
@@ -265,8 +285,11 @@ def run(worktree, prepare_only, *, lock_fd=None):
     head = git('rev-parse', 'HEAD', cwd=worktree)
     env = publish_env(main, worktree)
     env['RUNNER_TEMP'] = str(evidence)
+    # One step log per run, beside its other evidence: the engine appends to this path and a passing
+    # run otherwise leaves no step sizes or times.
+    env.setdefault('DOCSPEC_STEP_LOG', str(evidence / 'steps.jsonl'))
     python = worktree / '.venv/bin/python'
-    summary = dict(started=stamp, commit=head, worktree=str(worktree))
+    summary = dict(started=stamp, commit=head, worktree=str(worktree), open_files=raise_file_limit()[1])
     candidate = nightly / 'candidate'
     changed = candidate / 'inputs-changed.json'
     backfill = worktree / 'output/archive-backfill'
@@ -431,7 +454,10 @@ def install(main, hour, minute):
         StartCalendarInterval=dict(Hour=hour, Minute=minute),
         StandardOutPath=str(logs / 'launchd.out.log'),
         StandardErrorPath=str(logs / 'launchd.err.log'),
-        ProcessType='Background',
+        # Standard, not Background: a background agent runs at priority 4 on the efficiency cores, which
+        # made the scheduled build take 46 minutes against 25 from a shell (2026-11-10).
+        ProcessType='Standard',
+        SoftResourceLimits=dict(NumberOfFiles=FILE_LIMIT),
     )
     target = Path.home() / 'Library/LaunchAgents' / f'{LABEL}.plist'
     target.write_bytes(plistlib.dumps(agent))
@@ -455,6 +481,9 @@ def main(argv=None):
     main_root = main_checkout(here)
     if args.install:
         return install(main_root, args.hour, args.minute)
+    before, after = raise_file_limit()
+    if before != after:
+        print(f'nightly: open-file limit raised from {before} to {after}', file=sys.stderr)
     worktree = main_root / '.claude/worktrees/nightly'
     lock_path = main_root / '.cache/archive-release/nightly/lock'
     if args.lock_fd is not None:
