@@ -112,3 +112,7 @@ branch. Current commits: 02c4656f guard, 9946246a join order, 2ae32ba5 recovery 
   missing. Rebuild, re-pin and full gate follow the release.
 - Open: whether the fallback to the remote runtime limits (24 GiB engine limit above the 14 GB
   watchdog; `publish-model.json` names a missing runtime file) is intended.
+
+**2026-11-10T03:26:46Z**
+
+2026-11-10 from the orchestrator session: release build 20261110T011925Z at 8c3a3cae completed the model (base_normalized 357,443 rows in 11.5 s) and stopped at the release-cause gate with 96 groups. Five cause clusters were drafted and cross-reviewed (.cache/archive-release/release-20261110/causes/). The owner chose to fix the page-plus-PDF join and the saved-copy filename swap before publishing, so candidate a70ebc3d1466 is not published. Follow-up tickets filed from the reviews: ct-4qld (gate link rule), ct-6mvl and ct-wy4c (witness rows), ct-sh1i (rosters), ct-syp1, ct-p5m8, ct-yizl, ct-6qgg, ct-ywz2 (video and recordings), ct-mt88 and ct-gc99 (late receipts and the automatic cause), ct-fa2h (Senate Energy 403s), ct-aoxp (Help.aspx), ct-ccsi (weak titles).
