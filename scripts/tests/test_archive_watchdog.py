@@ -177,13 +177,18 @@ def test_only_a_reader_that_fails_is_waited_out_in_admission_the_registry_and_th
                                                                                                            private_state):
     """As on main: an unwritable state folder or a malformed entry is an error to show now, not an hour of retries
     ending in a refusal that blames the free-memory reader."""
+    import types
+
     registry = watchdog.Registry(private_state)
     me = dict(pid=os.getpid(), started=None, queued=time.time(), admitted=None, expect_gb=1.0, command=['job'])
     other = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
     try:
         with monkeypatch.context() as patched:  # undone before the real watchdog below, which needs the real ones
             patched.setattr(watchdog, 'available_gb', lambda: 30.0)
-            patched.setattr(watchdog.time, 'sleep', lambda seconds: pytest.fail('admission waited on an error that is not a reading'))
+            # A stand-in for the watchdog's own `time`, never the real module: the interpreter's wait for a `ps`
+            # sleeps through that one too (subprocess.py:2046), and a patch there would fail this test falsely.
+            patched.setattr(watchdog, 'time', types.SimpleNamespace(monotonic=time.monotonic, time=time.time, sleep=lambda seconds: (
+                pytest.fail('admission waited on an error that is not a reading'))))
             with monkeypatch.context() as unwritable:
                 unwritable.setattr(registry, 'put', lambda entry: (_ for _ in ()).throw(PermissionError(13, 'Permission denied')))
                 with pytest.raises(PermissionError):
