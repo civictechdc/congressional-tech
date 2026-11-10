@@ -21,3 +21,9 @@ To settle first: for a document recovered from a WARC, which body does `detail.s
 - The pointer's `warc_unwrapped` count equals rows actually exported.
 - Slice re-measure: 96 WARC rows accounted for.
 
+
+## Notes
+
+**2026-11-10T00:01:58Z**
+
+2026-11-10 settled from the 1/16 slice and release-prep detail.parquet (read-only): detail.saved_body never names a WARC envelope (0 of 96 slice envelope SHAs). Recovered documents (saved_kind=recovery, 6,359 docs, 6,102 bodies) are saved under their own body SHA and already get text under it: 376 of the 391 in the slice have a row (pdf_text 285, html_text 70, xml_text 21; 15 have none, not yet explained). So recovery text is NOT missing from the export. The 96 warc rows are a different population: web-page payloads read out of envelopes; only 9 share exact text with a saved original HTML body. Open question narrowed to: which list rows do those 96 envelopes belong to, and is their payload wanted as document text at all. If not, drop 'warc' from FORMAT_PARSERS (saves the reads) and remove warc_unwrapped from the pointer.
