@@ -1,0 +1,19 @@
+---
+id: ct-jcnd
+status: open
+deps: []
+links: []
+created: 2026-11-10T14:57:27Z
+type: task
+priority: 2
+assignee: mikewolfd
+tags: [model, review]
+---
+# Next-release model review: follow-ups that do not block the release
+
+From .cache/archive-release/investigations/next-release-review-20261110/model/REVIEW.md (verdict: ship after one named check, no code fix first). (1) The reviewed name registry can be overridden silently: archive_model.py loads only body_sha, decision and evidence, so a new copy of the decided bytes under a new name of the decided class can lead unreviewed while saved_name_decisions_unused stays 0; a typo'd decision acts as undecided. Fix: load the recorded names, add a count saved_name_decisions_unmet, validate at load. (2) A GovInfo details page that is neither a document nor a landing page would vanish uncounted (0 rows today): add a third invariant and anchor the stem to a GovInfo ID shape. (3) The recovered-copy rule restates the recovery display order (provenance-recovered-copy-links.sql against saved-recoveries.sql): one owner, and a test where the newest copy is a ZIP. (4) The title-label regex exists in two versions (4 copies and 2 copies): one title_label kind in page-signals. (5) generic_titles' letterless class comes only from the rule's own pattern; the slot-family list is written three times. (6) Rule-text mismatch in name standing, 0 rows today. (7) Cosmetic: 67 'H.R. ___' placeholder titles; one filename used as a title. (8) model-relation-rows.json lacks the four new steps: regenerate from the all-in build. (9) House transcript names now decide meeting outcomes and are judged by kind, not date: see the note on ct-fk4w.
+
+## Acceptance Criteria
+
+Each item is fixed with a test, or declined with a reason, or split out.
+
