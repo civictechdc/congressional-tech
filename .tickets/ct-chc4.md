@@ -25,3 +25,9 @@ Related, not the same: the model already selects a page's main content (`detail.
 - CT vendored wheel moved to that release; `html_text` version bumped; HTML-only re-read of the slice.
 - Re-measured: saved HTML texts containing script or CSS content is 0 of 2,929 (or each remaining one named).
 
+
+## Notes
+
+**2026-11-10T00:33:12Z**
+
+2026-11-10 from the spicy-stack session (ss-uxon, branch claude/ss-uxon-html-nontext d37f71a3 fix + 4eeb94e9 release 0.84.0, local, full gate running, not yet reviewed): htm now drops script, style, noscript and template content. Measured no text change for xml, uslm, txt and pdf (208/4/21/121 bodies, 0 changed). CT re-read scope is html_text AND warc: reading_versions.py declares warc by the IDs it routes to, and all 96 slice warc readings have an html payload carrying script or CSS. xml_text and pdf_text stay. After the re-read, list bodies whose new text is far shorter than the old (an unclosed script/style element drops the rest of the document; 0 of 1,600 sampled bodies had one; 10 challenge-style pages became near-empty).
