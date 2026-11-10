@@ -98,6 +98,32 @@ syncs the lock, prepares the historical object and runs doctor/inventory. The
 devcontainer uses the same sync and checks. Native lane success still requires
 reviewing pytest's reported skips.
 
+## One engine query, no job file
+
+`query` runs one statement through the pinned engine on the local runtime above,
+so a check or a proof is written in the model's own SQL dialect, not DuckDB's:
+
+```bash
+python scripts/dev.py query --table cited=cited.parquet --table captures=<candidate>/archive-model/evidence/capture_evidence.parquet \
+  "SELECT k.sha, c.receipt_key FROM cited k JOIN captures c ON lower(encode(c.sha256, 'hex')) = k.sha"
+python scripts/dev.py query --file model/sql/<file>.sql --table <relation>=<file>.parquet --explain
+```
+
+Each `--table NAME=PATH` binds a Parquet file, or the exact table pin a `.json`
+file holds (`metadata_location`, `table_uuid`, `snapshot`, `schema_id`). Only a pin
+on this machine binds: a production lake pin is on the object store and needs the
+remote runtime and its credentials, which `query` refuses to open. `--explain`
+prints the logical and physical plans and runs nothing. Rows print tab-separated,
+`NULL` for null, binary as lowercase hex and columns in name order (the engine
+returns each row as a map); `--json` prints the engine's JSON. The engine gets
+2 GiB of memory (`--memory-gib`, never more than the runtime allows) and a result
+must fit the runtime's `max_metadata_bytes`. Nothing is written: the job has no
+steps or outputs, and the engine plans no DDL or DML in a query. The job folder is
+temporary; `--work DIR` keeps `job.json`, `limits.json` and `engine.log`. From
+Python, `congress_api.retention.provenance.query(engine, sql, tables)` and
+`explain(...)` do the same with any engine. Large inputs still run under the
+watchdog (AGENTS.md).
+
 ## Reading version changes
 
 The lake keys reading rows by body digest, parser, and the declared version in
