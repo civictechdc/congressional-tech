@@ -46,7 +46,11 @@ SELECT side,id,person,publisher_id,toks,
  regexp_like(field_text,'\b(clerk|chief administrative officer|sergeant at arms|doorkeeper|parliamentarian|legislative counsel|law revision counsel|inspector general|chaplain|historian|secretary of the senate|staff\w*|counsel|office of (the )?(senator|representative|congress\w*))\b') AS says_officer,
  regexp_like(field_text,'(^|\|\s*)(nominee (to be|for)\b|(of [a-z .]+, )?to be\b)')
   OR (regexp_like(title,'nominat','i') AND cardinality(toks)>=2
-   AND strpos(' '||regexp_replace(translate(lower(title),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'[^a-z]+',' ','g')||' ',' '||toks[cast(cardinality(toks) AS BIGINT)]||' ')>0) AS says_nominee,
+   -- The nomination hearing names this person, given and family name: a Member introducing a namesake is not it.
+   AND strpos(' '||regexp_replace(translate(lower(title),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'[^a-z]+',' ','g')||' ',' '||toks[cast(cardinality(toks) AS BIGINT)]||' ')>0
+   AND (strpos(' '||regexp_replace(translate(lower(title),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'[^a-z]+',' ','g')||' ',' '||toks[1]||' ')>0
+    OR (cardinality(toks)>=3 AND length(toks[1])=1
+     AND strpos(' '||regexp_replace(translate(lower(title),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'[^a-z]+',' ','g')||' ',' '||toks[2]||' ')>0))) AS says_nominee,
  CASE WHEN regexp_like(full_text,'\bsenator\b|\bunited states senate\b|\bu\.\s?s\.\s?senate\b') THEN 'senate'
   WHEN regexp_like(translate(lower(name_lines),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'(?m)\brepresentative in congress\b|\b(u\.\s?s\.|united states|us)\s+(house of )?representatives?\b|\bcongress(wo)?man\b|\bdelegate (in|to|from|of|for)\b|\bresident commissioner\b|^\W*representative\b|\brepresentative\s*(\(|from\b)|\bcongressional district\b') THEN 'house'
   WHEN regexp_like(full_text,'\b(member of (the )?(united states |u\.\s?s\.\s?)?congress|members? of congress)\b') THEN 'either' END AS chamber,
