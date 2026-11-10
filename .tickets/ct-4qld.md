@@ -1,6 +1,6 @@
 ---
 id: ct-4qld
-status: in_progress
+status: closed
 deps: []
 links: [ct-wscb]
 created: 2026-11-10T03:26:29Z
@@ -39,3 +39,7 @@ Cannot see: whether an alternate or recovery recorded on a row is truly the same
 - Fail closed (point 8). The reviewer switched the rule off by dropping saved_body from the candidate plus a hand record. Now a missing input (detail.saved_body, or the urls and sources columns the lookup and address rule reads) is listed in link_rule.unchecked, the rule is not ok, and the gate refuses with 'link rule: not checked: ...' whatever the record says. On the real unpublished candidate with saved_body dropped and a record naming every failing group, that is the one reason left. Gate test fixtures now carry saved_body like every real release; their assertions did not change.
 - Demoted keys (point 9). A key whose live file is now only an alternate of a row that shows another body still passes the rule, since a correct rendition join looks the same, but is no longer silent: link_rule.demoted and demoted_keys list it with both files, and compare adds the group links.parquet | live file now an alternate | the key reaches a row whose saved file is another body, unverified, so it needs a recorded cause and stops an unattended night. Real data (review-4qld-real-data.md): unpublished a70ebc3d1466 13 keys, the same 13 a plain-Python recount names, 12 of them a documentsingle.aspx or eventslisting.aspx page now behind a PDF (all wrong joins by ct-h3jb); published 619db5f9e08e 0. A live file kept only as a recovery (cae8e4ea34ec603a) is not in this group; detail.parquet changed saved_body already reports it.
 - Correct splits are not refused: on the published candidate the link-key rule and the lookup and address rule (ct-wscb) name nothing, with 6 link keys, 11 lookup-key rows and 6 address rows reaching another of the live document's own files.
+
+**2026-11-10T08:22:19Z**
+
+2026-11-10: on main as of e6c1865c after two independent review passes (push as is, no blocker; leftovers in ct-xyo9) and six green shards plus storage-loopback on the branch tip. Real-data proofs: .cache/archive-release/investigations/gate-rules-20261110/README.md and review/REVIEW.md.

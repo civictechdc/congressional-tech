@@ -1,6 +1,6 @@
 ---
 id: ct-gc99
-status: in_progress
+status: closed
 deps: []
 links: [ct-9j3z, ct-ud0b]
 created: 2026-11-10T03:26:30Z
@@ -41,3 +41,7 @@ Cannot see, unchanged: a bug that adds only wrong rows from new receipts. New wi
 - Receipt reads (point 5). Confirmed: the proof read raw receipts through the publication client, which must keep total_max_attempts 1. publish_candidate now takes receipt_client, and the job passes the same retrying read client the daily uses for bodies (configure_read_retries, five attempts on GET), so one transient error among thousands of reads no longer ends the night.
 - Retired ledger (point 4). Not changed, with evidence: the gate already refuses. A key published again must leave the ledger (the export refuses a key in both), which makes a retired_links removed-keys group, and that group is not an addition, so the automatic proof stops at its first check. The new test test_a_removed_document_that_comes_back_is_not_a_new_document plants the reviewer's case and passes before and after (review-gc99-tests-before.log).
 - The real function on the real pair (point 7, investigations/gate-rules-20261110/gc99-real-automatic-causes.md). require_release_gates with automatic_causes as publish_candidate wires it, the pinned local engine, the candidate's capture evidence (4,176,147 rows) in place of the lake table, and the live release's own receipt list (24,342 keys, fetched from the public origin and confirmed by its content address; it equals the stand-in set of the first proof). Output: no entries; 94 reasons of the form 'X is not an addition that can be traced', because the release changed values. Shown only the addition and citation groups, the same function answers: 731 added documents, more than the 250 one unattended night may add; 1038 sources rows were added to existing documents; 1321 urls rows were added to existing documents; 945 added link keys, 744 attached to new documents. These equal the offline table (1,038, 1,321, and 729 + 15 = 744). It returns before its document trace whenever a reason stands, so the trace query and the raw reads have still not run on real data: the private raw bucket is not readable here, and production may hold a second input record under the live prefix that could not be listed.
+
+**2026-11-10T08:22:19Z**
+
+2026-11-10: on main as of e6c1865c after two independent review passes (push as is, no blocker; leftovers in ct-xyo9) and six green shards plus storage-loopback on the branch tip. Real-data proofs: .cache/archive-release/investigations/gate-rules-20261110/README.md and review/REVIEW.md.

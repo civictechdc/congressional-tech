@@ -1,6 +1,6 @@
 ---
 id: ct-wscb
-status: in_progress
+status: closed
 deps: []
 links: [ct-4qld, ct-xyo9]
 created: 2026-11-10T07:05:20Z
@@ -35,3 +35,7 @@ Cannot see: which of a wrongly joined live document's files an address named (th
 **2026-11-10T07:53:59Z**
 
 2026-11-10: after the review of ct-4qld the rule fails closed. If urls or sources lacks the columns it reads, or detail has no saved_body, link_rule.unchecked says so and the gate refuses. Re-proved on the published candidate after that change: 0 lookup keys and 0 addresses named, the 11 lookup-key rows and 6 address rows of correct splits pass (review-4qld-real-data.md, wscb-real-data.md).
+
+**2026-11-10T08:22:19Z**
+
+2026-11-10: on main as of e6c1865c after two independent review passes (push as is, no blocker; leftovers in ct-xyo9) and six green shards plus storage-loopback on the branch tip. Real-data proofs: .cache/archive-release/investigations/gate-rules-20261110/README.md and review/REVIEW.md.

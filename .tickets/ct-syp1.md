@@ -1,6 +1,6 @@
 ---
 id: ct-syp1
-status: in_progress
+status: closed
 deps: []
 links: [ct-xyo9]
 created: 2026-11-10T03:26:30Z
@@ -44,3 +44,7 @@ Cannot see: whether the new hash is a real file's or the file holds the publishe
 Real pair (investigations/gate-rules-20261110/review-syp1-real-data.md): the verified counts are unchanged (119, 6,621, 67,318, 67,064). cited_files_are_new run with the real function and the pinned engine on the candidate's capture evidence (4,176,147 rows) and the live release's own receipt list: 52 newly cited files, all 52 are captured bodies, in 156 receipts under pipeline-data/2026-11-08, none in the live set; no reason returned. All five reviewer plants on the real live release are refused.
 
 Still not checked: the raw receipt line for a cited file (the capture mapping is trusted for the hash), and whether the file holds the published values. A reviewed publish does not run the capture-table check as a refusal; it has the reviewer. The reviewer's note stands that 18 videos (17 API records) cite a file that is not their channel's: when those move, they are not verified and need a person.
+
+**2026-11-10T08:22:19Z**
+
+2026-11-10: on main as of e6c1865c after two independent review passes (push as is, no blocker; leftovers in ct-xyo9) and six green shards plus storage-loopback on the branch tip. Real-data proofs: .cache/archive-release/investigations/gate-rules-20261110/README.md and review/REVIEW.md.
