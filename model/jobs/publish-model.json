@@ -107,8 +107,8 @@
   },
   "recovery_requirements": {
     "acceptance_policy": "recovery-identity-v1",
-    "path": "inputs/recovery-requirements-ct-rie2-20261107.parquet",
-    "sha256": "7bdd3b999f18b62c78632a35149547cc8a773945be0a55d79d85df5b0fb61ad7",
-    "size": 1431
+    "path": "inputs/recovery-requirements-ct-l7uh-duke-20261109.parquet",
+    "sha256": "9e7d07e1949986b356c2955b8eb0af75b0e76c129c7e70509ae8942eacafa9d0",
+    "size": 2807
   }
 }
