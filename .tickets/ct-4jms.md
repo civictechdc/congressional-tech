@@ -133,3 +133,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-10T13:27:30Z**
 
 2026-11-10: the Mac nightly publisher is back on its schedule (05:30 local) and proven unattended: run 20261110T121530.896579Z, status ok, release_unchanged (ct-xnn6). Hosted scheduled capture is still off: the repository lacks the two capture secrets (ARCHIVE_CAPTURE_R2_ACCESS_KEY_ID, ARCHIVE_CAPTURE_R2_SECRET_ACCESS_KEY), which only the owner can create; then 'gh workflow enable capture-archive.yml'. The owner chose 'Both automatic' for capture and publishing on 2026-11-10.
+
+**2026-11-10T13:54:46Z**
+
+2026-11-10 owner decision (questions dialog, about 13:55Z): 'Just use the local keys' for the two hosted capture secrets, i.e. the same storage key pair the Mac nightly uses (fields DOCSPEC_S3_ACCESS_KEY_ID and DOCSPEC_S3_SECRET_ACCESS_KEY of the remote runtime's credentials file). The orchestrator does not handle secret values, so the owner runs the two 'gh secret set' commands; the workflow is then enabled (it is disabled_manually; ARCHIVE_CAPTURE_ENABLED is already true). Follow-up worth doing later: a narrower capture-only key, since the hosted job then holds the nightly's key.
