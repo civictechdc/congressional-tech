@@ -2,6 +2,8 @@
 import os
 from pathlib import Path
 
+import pytest
+
 from congress_api.retention.provenance import json_input,list_of,run_job,struct
 from docspec_client.client import NativeDatasets
 
@@ -562,12 +564,82 @@ def test_the_reviewed_name_decisions_are_keyed_by_saved_bytes_and_hold_the_undec
     import json,re
     from collections import Counter
     from viewer_publication.archive_model import REGISTRIES
-    assert REGISTRIES['saved_name_decisions']==dict(body_sha='Utf8',decision='Utf8',evidence='Utf8')
+    assert REGISTRIES['saved_name_decisions']==dict(body_sha='Utf8',decision='Utf8',official_name='Utf8',committee_name='Utf8',evidence='Utf8')
     rows=json.loads((ROOT/'model/registries/saved-name-decisions.json').read_text())
     assert all(re.fullmatch('[0-9a-f]{64}',row['body_sha']) and row['evidence'] and row['official_name'] and row['committee_name']
                for row in rows)
     assert len({row['body_sha'] for row in rows})==len(rows)
     assert Counter(row['decision'] for row in rows)==dict(committee=50,official=15,undecided=25,neither=1)
+
+
+def test_the_name_decisions_registry_is_refused_at_load_when_a_decision_could_act_unread(tmp_path):
+    """Review finding 2 (2026-11-10): a mistyped decision acted as undecided, and the recorded names were
+    never loaded. The loader refuses each planted failure, as it does the reviewed bill evidence."""
+    import json,shutil
+    from copy import deepcopy
+    from viewer_publication.archive_model import registry_inputs
+    rows=json.loads((ROOT/'model/registries/saved-name-decisions.json').read_text())
+    for mutate in (
+        lambda r: r[0].update(decision='comittee'),            # a typo acted as undecided
+        lambda r: r[0].update(decision=None),
+        lambda r: r[0].update(committee_name=None),            # nothing to meet the decision with
+        lambda r: r[0].update(official_name=''),
+        lambda r: r[0].update(committee_name='a.pdf | '),      # an empty name in a list
+        lambda r: r[0].update(official_name='a.pdf |b.pdf'),  # a list joined without the separator's spaces
+        lambda r: r.append(deepcopy(r[0])),                    # one body, two decisions
+        lambda r: r[0].update(body_sha=r[0]['body_sha'].upper()),
+        lambda r: r[0].update(evidence=''),
+    ):
+        root=tmp_path/str(len(list(tmp_path.iterdir())))
+        shutil.copytree(ROOT/'model/registries',root/'model/registries')
+        bad=deepcopy(rows); mutate(bad)
+        (root/'model/registries/saved-name-decisions.json').write_text(json.dumps(bad))
+        with pytest.raises(ValueError,match='reviewed name decision'):
+            registry_inputs(root/'inputs',root=root)
+    assert any(i['name']=='saved_name_decisions' for i in registry_inputs(tmp_path/'real'))
+
+
+def test_a_decision_led_by_a_name_the_review_never_read_is_counted(tmp_path):
+    """Review finding 2: the standing gives every name of the decided class standing 1, so a newer copy of
+    the decided bytes under a name the review never read leads unreviewed, while saved_name_decisions_unused
+    stays 0. saved_name_decisions_unmet counts each decision whose saved body's leading filename is none of
+    its recorded names (a ' | ' list). Planted: that newer copy, and an undecided body saved-file order leads
+    by a third name (as SLW_311_xml.pdf leads body 3d1434b5 on c03c43da)."""
+    from viewer_publication.archive_model import SAVED_NAME_DECISIONS_UNMET,SAVED_NAME_DECISIONS_UNUSED
+    site='https://committee.house.gov/doc/'
+    early,middle,late='2026-10-01T12:00:00Z','2026-10-12T12:00:00Z','2026-10-31T00:11:00Z'
+    said,members={},[]
+    def member(component,source_id,body,filename,fetched,official,families):
+        members.append(dict(component=component,source_id=source_id,body_sha=body*64,filename=filename,source_url=site+source_id,
+            format='pdf',exact_bytes=True,first_fetched=fetched,is_real_file=True,archive_member=False,body_stored=True))
+        said[source_id]=(official,families)
+    member('renamed','bill','1','BILLS-118000rh.pdf',early,True,['legislation'])
+    member('renamed','read','1','BILL-TO-BILL.pdf',middle,False,['bill-comparison'])
+    member('renamed','unread','1','Comparison-v2.pdf',late,False,['bill-comparison'])
+    member('met','amdt','2','BILLS-119-0-S001195-Amdt-1-U9.pdf',early,True,['amendment'])
+    member('met','letter','2','VE-Letter-AINS.pdf',late,False,['letter'])
+    member('third','official','3','BILLS-1145033ih.pdf',early,True,['legislation'])
+    member('third','ans','3','HR-5033-ANS.pdf',middle,False,['amendment'])
+    member('third','slw','3','SLW_311_xml.pdf',late,False,[])
+    member('listed','one','4','hearing_notice.pdf',early,False,['notice'])
+    member('listed','two','4','HHRG-115-SM00-20180117-CPg.pdf',late,True,['committee-document'])
+    decisions=[dict(body_sha='1'*64,decision='committee',official_name='BILLS-118000rh.pdf',committee_name='BILL-TO-BILL.pdf',evidence='planted'),
+               dict(body_sha='2'*64,decision='official',official_name='BILLS-119-0-S001195-Amdt-1-U9.pdf',committee_name='VE-Letter-AINS.pdf',evidence='planted'),
+               dict(body_sha='3'*64,decision='undecided',official_name='BILLS-1145033ih.pdf',committee_name='HR-5033-ANS.pdf',evidence='planted'),
+               dict(body_sha='4'*64,decision='undecided',official_name='HHRG-115-SM00-20180117-CPg.pdf',committee_name='notice.pdf | hearing_notice.pdf',evidence='planted'),
+               dict(body_sha='5'*64,decision='official',official_name='gone.pdf',committee_name='gone_too.pdf',evidence='planted')]
+    inputs=[json_input(tmp_path,'members',members,component='Utf8',source_id='Utf8',body_sha='Utf8',filename='Utf8',
+                       source_url='Utf8',format='Utf8',exact_bytes='Boolean',first_fetched='Utf8',is_real_file='Boolean',
+                       archive_member='Boolean',body_stored='Boolean'),
+            json_input(tmp_path,'formats',[dict(id='pdf',kind='preference',value='pdf',rank=1)],id='Utf8',kind='Utf8',value='Utf8',rank='Int32'),
+            _name_readings(tmp_path,members,said),_name_decisions(tmp_path,decisions)]
+    result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,steps=_saved_file_steps(),outputs=[],
+        queries=[dict(name='lead',sql='SELECT component,filename FROM saved_files WHERE saved_rank=1 ORDER BY component'),
+                 SAVED_NAME_DECISIONS_UNMET,SAVED_NAME_DECISIONS_UNUSED])
+    assert {row['component']:row['filename'] for row in result['lead']}=={'renamed':'Comparison-v2.pdf','met':'BILLS-119-0-S001195-Amdt-1-U9.pdf',
+        'third':'SLW_311_xml.pdf','listed':'HHRG-115-SM00-20180117-CPg.pdf'}
+    assert result['saved_name_decisions_unmet']==[dict(entries=2)]
+    assert result['saved_name_decisions_unused']==[dict(entries=1)]
 
 
 def test_a_document_named_by_an_unlisted_copy_keeps_the_link_text_of_its_listed_copy(tmp_path):
