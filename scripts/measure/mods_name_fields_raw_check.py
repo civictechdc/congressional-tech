@@ -1,24 +1,25 @@
 """Judge a MODS re-read of witness name fields against the raw lines and other publishers' names (ct-rg34).
 
     mods_name_fields_raw_check.py --before GEN.parquet --after GEN.parquet --raw-root BODIES
-        --people WITNESSES.parquet --output OUT.json [--accept REVIEWED.json]
-        [--plant person-moved|reversed-name|previous-segment|split-untrimmed|typed-organization|asker-as-witness]
+        --people WITNESSES.parquet --output OUT.json [--accept REVIEWED.json] [--plant KIND]
 
 The re-read under test moves an organization out of a witness name ("American Legion" alone, or before
 the person: "Vietnam Veterans of America, Richard F. Weidman, ...") and joins a surname written first to its
-given name ("Torres Small, Hon. Xochitl, ..."). ``--before`` and ``--after`` are appearance generations
+given name ("Torres Small, Hon. Xochitl, ..."); it also types record entries and names the Members who asked
+questions for the record (ct-3aap, ct-zs48). ``--before`` and ``--after`` are appearance generations
 (appearance_records rows); only ``mods`` rows are read. ``--raw-root`` holds the retained bodies as
-``<sha[:2]>/<sha>.gz``; each body's ``<witness>`` lines are read here with ElementTree. ``--people`` is a
-published witnesses table: the first and last words of the names the *other* sources state (Congress.gov,
-House XML, Senate pages, never MODS) are the given and family names this check knows. The rule reads
-organization words, separators and titles; this check reads only which words other publishers use as
-people's given and family names, and the raw line's words.
+``<sha[:2]>/<sha>.gz``; each body's ``<witness>`` lines and ``<congMember>`` names are read here with
+ElementTree. ``--people`` is a published witnesses table: the first and last words of the names the *other*
+sources state (Congress.gov, House XML, Senate pages, never MODS) are the given and family names this check
+knows. The rule reads organization words, separators and titles; this check reads which words other publishers
+use as people's given and family names, the print's own ``<congMember>`` names, and the raw line's words.
 
 Both directions, per occurrence key (body, locator); every flag fails the check:
 
 - an occurrence or a body on one side only (``added``, ``removed``, ``unpaired_bodies``), except a line the
-  before side read no occurrence for at all, now kept with a supported type and a name its raw line holds
-  (listed under ``restored``);
+  before side read no occurrence for at all, now kept at its own locator with a supported type and, if named, a
+  person's name its raw line holds: one opening with a known given name or made of the print's ``<congMember>``
+  words (listed under ``restored``). Every further part of a line (``/part[3]`` on) is ``added``;
 - ``person_moved``: a changed name that opens with a known given name and whose words the new name lacks;
 - ``name_not_in_line``: a new name with a word its raw line lacks;
 - ``words_lost``: a changed occurrence that loses a word across name, position, organization and
@@ -29,30 +30,42 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``reorder_unsupported``: a new name whose words are not in the raw line in that order (a surname joined to
   its given name) and that does not open with a known given name and end with a known family name;
 - ``name_not_person``: a new name that is a place (a U.S. state, or a segment the raw line follows with a
-  state), or that opens with no known given name while a later segment of its raw line opens with one;
+  state), or that opens with no known given name, is not made of the print's ``<congMember>`` words, and either
+  a later segment of its raw line opens with a known given name (a committee title such as "Chairman" before it
+  aside) or the line names a document and no person;
 - ``split_unsupported``: an added ``<locator>/part[2]`` (a joined line read as two people, ct-zs48) unless its
   parent occurrence is on both sides with the same name, the words the parent loses are exactly the words the
   new occurrence holds, and the new name is in the raw line in order, opening with a known given name and ending
-  with a known family name. Any other added occurrence fails as ``added``. A passing split is listed under
-  ``split`` and its parent's moved words are not counted as lost;
+  with a known family name. A passing split is listed under ``split`` and its parent's moved words are not
+  counted as lost;
 - ``type_unsupported``: a changed ``witness_type`` unless it goes from none to ``statement_for_record`` on an
   occurrence with no name, an organization, and a raw line that names a document anywhere (any of
   ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap); or it
   is ``record_material`` on a line a question-for-the-record list covers (``question_context``);
 - ``question_asker_as_witness``: any after occurrence, changed or not, left a witness (no type) on a line a
-  question-for-the-record list covers: a heading naming who asked, or a Member listed under it.
+  question-for-the-record list covers: a heading naming who asked, or a Member listed under it;
+- ``member_unnamed``: a line a question list covers, or one holding a ``record_material`` occurrence, that names
+  a Member no occurrence of that line names, by a count the rule does not make: the family names of the print's
+  own ``<congMember>`` entries found in the line, and the last capitalised word after each Member title or of
+  each item of a "Senators A, B and C" list (``titled_members``). Reported at the line's locator with the
+  family words left unnamed;
+- ``record_as_witness``: any after occurrence, changed or not, typed a witness (no type) that names no one, on a
+  raw line that names no person and names a document (``DOCUMENTS``), quotes a title or prints a date: a
+  document's title or an organization's own statement left a witness. The rule types titles by a reviewed list and
+  statements by a document word ending the line; it reads no quotation or date.
 
-``--accept`` names flagged occurrences a person has read and accepted, each as ``{"body", "locator",
-"flag", "after", "reason"}``, where ``after`` holds the four new fields the person read (name, position,
-organization, on_behalf_of); they are reported under ``accepted`` instead of failing. An accept covers only
-those values and the occurrence's honorific, witness_type, bioguide_id and display_order (``KEYED``): any
-other new value under the same flag (a dropped position or organization included) fails, and an accepted entry
-the run no longer flags fails as ``stale_accept``. Reviewed entries (MODS_RECORD_ENTRIES titles and the askers
-listed without a heading) are typed by a person, not by a rule this check reads, so they are accepted here. Listed for a person to read, without failing: ``unconfirmed``
-new names that open with no known given name; ``residual`` unchanged names that open with no known given name
-on a raw line with a later segment that does; ``untyped_record`` occurrences left with no name and no type
-whose raw line names a document and no person (what the typing rule leaves). Bodies that are missing or do not
-parse are listed in ``not_read`` and still compared without a line.
+``--accept`` names flagged occurrences a person has read and accepted, each as ``{"body", "locator", "flag",
+"after", "line_sha256", "reason", "reviewed_by"}``: ``after`` holds the new values the person read,
+``line_sha256`` the sha256 of the stripped raw line they read, ``reason`` what the line is, in their words, and
+``reviewed_by`` who read it. Only a signed entry (all three set) counts; the others are listed under
+``unsigned_accept`` and cover nothing. An accept covers only that line and the occurrence's name, position,
+organization, on_behalf_of, honorific, witness_type, bioguide_id and display_order (``KEYED``): any other new
+value under the same flag fails, and a signed entry the run no longer flags fails as ``stale_accept``. Accepts are
+written per row by the person who read it, never generated from the parser's reviewed lists, so a pass on a
+reviewed row is a person agreeing with the raw line, not the list agreeing with itself. Listed for a person to
+read, without failing: ``unconfirmed`` new names that open with no known given name; ``residual`` unchanged
+names that open with no known given name on a raw line with a later segment that does. Bodies that are missing or
+do not parse are listed in ``not_read`` and still compared without a line.
 
 What it cannot see: it cannot tell an organization from a person whose given name other publishers do not
 state twice. Such new names land in ``unconfirmed`` (132 on the 2026-11-08 run), which never fails; a swap of
@@ -67,6 +80,13 @@ reading shares the rule's idea of a list (a heading, then Member-only lines), th
 named by title alone in a list ("Hon. Sam Graves, of Missouri") counts as an asker on the title, so it cannot
 tell an asker from a Member who testified in a list that follows a question heading without a break. A titled,
 paged line ("Senator Graham.......23,") is read in the rule's own shape and counts only on known names.
+``member_unnamed`` reads Member titles as the rule does; its ``<congMember>`` half is the independent one, and
+a Member printed without a title who is not a ``<congMember>`` of the print is not counted. It does not read
+lines with no record occurrence outside a question list, so an asker run into a witness's entry ("Commissioner
+Responses to additional questions from Senator Boxer") is not counted; a family name that is also a common word
+("Long Island") counts on a record line. A named row typed a witness on a title line passes unless the name fails
+``name_not_person``. ``record_as_witness`` misses a title that prints no document word, quotation or date ("Our
+Projects, DOE, Loan Programs Office", 1 of the 16 reviewed titles).
 
 ``--plant`` writes one wrong value the rule could produce on the after side, and the check must flag it,
 accepted or not: ``person-moved`` moves an unchanged person's name into the organization
@@ -75,11 +95,18 @@ accepted or not: ``person-moved`` moves an unchanged person's name into the orga
 (``name_not_person``); ``split-untrimmed`` leaves a split's parent holding the second person's words
 (``split_unsupported``); ``typed-organization`` types an organization alone whose line names no document
 (``type_unsupported``); ``asker-as-witness`` leaves a Member listed under a question heading as a witness
-(``question_asker_as_witness``).
+(``question_asker_as_witness``); ``asker-dropped`` drops one of several Members a record line names as askers
+(``member_unnamed``); ``title-as-witness`` and ``statement-as-witness`` type a nameless record row holding an
+organization (a document's title, an organization's statement) as a witness (``record_as_witness``);
+``heading-as-name`` names a restored question heading for its own text before the colon (``added``);
+``name-emptied`` empties a restored heading's asker (``member_unnamed``); ``committee-segment`` replaces a Member
+read after a committee title ("...from: Chairman Michael B. Enzi") with the segment before it
+(``name_not_person``).
 """
 import argparse
 from collections import Counter
 import gzip
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -91,14 +118,28 @@ FIELDS = ('name', 'position', 'organization', 'on_behalf_of')
 TITLES = set('the hon honorable mr mrs ms miss dr prof professor rev reverend senator sen representative rep ambassador '
              'general gen admiral adm colonel col lieutenant lt major maj captain capt sergeant sgt commander brigadier vice rear '
              'master rabbi sister pastor esq'.split())
+# A committee title before a Member's name ("Chairman Michael B. Enzi", "Ranking Member Bernard Sanders") is not part of
+# the name. Read only in names, never as a credential a field may shed.
+COMMITTEE = {'chairman', 'chairwoman', 'ranking', 'member'}
 SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'iv'}
 KEYED = (*FIELDS, 'honorific', 'witness_type', 'bioguide_id', 'display_order')
 FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'words_lost', 'words_gained',
          'person_left_in_organization', 'reorder_unsupported', 'name_not_person', 'split_unsupported',
-         'type_unsupported', 'question_asker_as_witness')
+         'type_unsupported', 'question_asker_as_witness', 'member_unnamed', 'record_as_witness')
 PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported', 'previous-segment': 'name_not_person',
           'split-untrimmed': 'split_unsupported', 'typed-organization': 'type_unsupported',
-          'asker-as-witness': 'question_asker_as_witness'}
+          'asker-as-witness': 'question_asker_as_witness', 'asker-dropped': 'member_unnamed',
+          'title-as-witness': 'record_as_witness', 'statement-as-witness': 'record_as_witness', 'heading-as-name': 'added',
+          'name-emptied': 'member_unnamed', 'committee-segment': 'name_not_person'}
+# A Member title before a name, as a contents line prints it ("Hon. Jon Tester", "SENATOR X", "Senators Boxer and
+# Carper", "Ranking Member Bernard Sanders"); a plural title opens a list of surnames.
+MEMBER_MENTION = re.compile(r"(?<![\w.])(hon\.|honorable|senators?|representatives?|delegate|chairman|chairwoman"
+                            r"|ranking member)\s+", re.I)
+# Words that end a Member's name in a contents line, besides punctuation, page numbers and lowercase words.
+NAME_STOP = {'questions', 'question', 'responses', 'response', 'answers', 'submitted', 'from', 'to', 'by', 'of', 'and'}
+# What a document's title prints and an organization's name does not: a quotation, or a date.
+QUOTED = re.compile(r"\"|''|``")
+DATED = re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(?:\d{1,2},\s*)?\d{4}\b")
 # Words that name a document submitted for the record, read anywhere in a line.
 DOCUMENTS = set('statement statements letter letters memorandum memo article articles paper papers report reports '
                 'attachment attachments testimony comments submission summary excerpt study analysis editorial '
@@ -137,7 +178,8 @@ def plain(word):
 
 def name_words(text):
     """A name's words without titles, suffixes and initials ("Hon. J. Robert Hunter Jr." -> robert hunter)."""
-    return [w for w in map(plain, words(text)) if w and w not in TITLES and w not in SUFFIXES and len(w) > 1]
+    return [w for w in map(plain, words(text))
+            if w and w not in TITLES and w not in COMMITTEE and w not in SUFFIXES and len(w) > 1]
 
 
 def opening(text):
@@ -173,17 +215,50 @@ def generation(path):
 
 
 def raw_print(raw_root, digest):
-    """A body's <witness> lines, and the words of the Members its <congMember> entries name."""
+    """A body's <witness> lines; the words of the Members its <congMember> entries name; and each such Member's
+    family name, as words (from the "Surname, Given" authority name, else the last word of "Given Surname")."""
     path = Path(raw_root) / digest[:2] / f'{digest}.gz'
     root = ET.fromstring(gzip.decompress(path.read_bytes()))
     lines = [''.join(el.itertext()) for el in root.iter() if el.tag.rsplit('}', 1)[-1] == 'witness']
-    members = {plain(w) for el in root.iter() if el.tag.rsplit('}', 1)[-1] == 'congMember'
-               for name in el.iter() if name.tag.rsplit('}', 1)[-1] == 'name' for w in words(name.text) if len(plain(w)) > 2}
-    return lines, members
+    members, families = set(), set()
+    for el in root.iter():
+        if el.tag.rsplit('}', 1)[-1] != 'congMember':
+            continue
+        names = {name.get('type'): name.text or '' for name in el.iter() if name.tag.rsplit('}', 1)[-1] == 'name'}
+        members |= {plain(w) for text in names.values() for w in words(text) if len(plain(w)) > 2}
+        lnf, fnf = names.get('authority-lnf', ''), names.get('authority-fnf', '')
+        family = lnf.split(',')[0] if ',' in lnf else ' '.join(fnf.split()[-1:])
+        family = tuple(plain(w) for w in family.split() if plain(w))
+        if family and len(family[-1]) > 2:
+            families.add(family)
+    return lines, members, families
 
 
 def raw_lines(raw_root, digest):
     return raw_print(raw_root, digest)[0]
+
+
+def titled_members(line):
+    """The family word of each Member a line names after a Member title, read without the rule: the last capitalised
+    word after the title, before punctuation, a dot leader, a page number, a lowercase or stop word or the next title;
+    after a plural title ("Senators Boxer and Carper"), the last word of each item of the list."""
+    found = set()
+    mentions = list(MEMBER_MENTION.finditer(line))
+    for k, mention in enumerate(mentions):
+        rest = line[mention.end():mentions[k + 1].start() if k + 1 < len(mentions) else len(line)]
+        rest = re.split(r"[;:()]|\.{2,}|\d", rest, maxsplit=1)[0]
+        plural = mention.group(1).lower() in ('senators', 'representatives')
+        items = re.split(r",\s*(?:and\s+)?|\s+and\s+", rest) if plural else rest.split(',')[:1]
+        for item in items:
+            run = []
+            for word in item.split():
+                if not word[0].isupper() or plain(word) in NAME_STOP:
+                    break
+                run.append(plain(word))
+            run = [w for w in run if len(w) > 1 and w not in SUFFIXES]
+            if run:
+                found.add(run[-1])
+    return found
 
 
 def question_context(lines, known):
@@ -247,11 +322,22 @@ def judge(before, after, raw_root, given, family):
     def person(text):
         return opening(text) in given
 
+    def member_name(name, members):
+        """A name made only of words of the print's own <congMember> names ("Boxer", "Al Franken")."""
+        found = name_words(name)
+        return bool(found) and set(found) <= members
+
     def names_document_only(line):
         found = {plain(w) for w in words(line)}
         return bool(DOCUMENTS & found) and not CIVIL & found and not any(person(s) for s in line_segments(line))
 
-    def not_person(name, line):
+    def reads_as_document(line):
+        """A line that names no person and names a document, quotes a title or prints a date."""
+        found = {plain(w) for w in words(line)}
+        return (bool(DOCUMENTS & found or QUOTED.search(line) or DATED.search(line)) and not CIVIL & found
+                and not any(person(s) for s in line_segments(line)))
+
+    def not_person(name, line, members):
         parts = line_segments(line)
         key = name.strip().lower()
         if key in STATES:
@@ -259,9 +345,13 @@ def judge(before, after, raw_root, given, family):
         for i, part in enumerate(parts[:-1]):
             if part.lower() == key and parts[i + 1].lower() in STATES:
                 return True
-        return not person(name) and any(person(part) for part in parts[1:])
+        # A name made of the print's own <congMember> names is a Member's ("Al Franken"); a line that names a
+        # document and no person names no one ("Summary of Selected Counter-Terrorism Initiatives, by the National
+        # Academies").
+        return (not person(name) and not member_name(name, members)
+                and (any(person(part) for part in parts[1:]) or names_document_only(line)))
 
-    out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'untyped_record', 'split', 'restored', 'not_read',
+    out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'split', 'restored', 'not_read',
                                'bodies_only_before', 'bodies_only_after')}
     counts = Counter()
     out['bodies_only_before'] = sorted(before.keys() - after.keys())
@@ -270,11 +360,11 @@ def judge(before, after, raw_root, given, family):
         package, old = before[digest]
         new = after[digest][1]
         try:
-            lines, members = raw_print(raw_root, digest)
+            lines, members, member_families = raw_print(raw_root, digest)
         except (OSError, ET.ParseError, EOFError) as error:
             # Named, and still compared: with no raw line, any changed name is reported as not in its line.
             out['not_read'].append(dict(body=digest, package=package, error=type(error).__name__))
-            lines, members = [], set()
+            lines, members, member_families = [], set(), set()
         counts['bodies'] += 1
         covered = question_context(lines, given | family | members)
 
@@ -287,11 +377,32 @@ def judge(before, after, raw_root, given, family):
             return lines[n - 1] if 0 < n <= len(lines) else ''
 
         # Both directions of the question-list reading: a listed asker or heading left as a witness, and a line
-        # typed record material by the question rule outside any list this check reads.
+        # typed record material by the question rule outside any list this check reads. A row typed a witness that
+        # names no one on a line that reads as a document (record_as_witness) is a title or a statement, not an
+        # organization that testified ("American Legion" stays a witness).
+        by_line = {}
         for locator, b in sorted(new.items()):
+            by_line.setdefault(position(locator), []).append(b)
+            item = dict(package=package, body=digest, locator=locator, line=line_of(locator),
+                        after={f: b.get(f) for f in KEYED})
             if covered.get(position(locator)) and b.get('witness_type') is None:
-                out['question_asker_as_witness'].append(dict(package=package, body=digest, locator=locator,
-                                                             line=line_of(locator), after={f: b.get(f) for f in KEYED}))
+                out['question_asker_as_witness'].append(item)
+            if b.get('witness_type') is None and not b.get('name') and reads_as_document(line_of(locator)):
+                out['record_as_witness'].append(item)
+        # Every Member a question or record line names has a row naming them on that line, counted without the rule:
+        # by the line's own Member titles and by the print's <congMember> family names (member_unnamed).
+        for n in sorted(by_line.keys() | covered.keys()):
+            rows, line = by_line.get(n, []), lines[n - 1] if 0 < n <= len(lines) else ''
+            if not line or not (covered.get(n) or any(r.get('witness_type') == 'record_material' for r in rows)):
+                continue
+            named = {plain(w) for r in rows for w in words(r.get('name'))}
+            text = [plain(w) for w in words(line) if plain(w)]
+            required = titled_members(line) | {f[-1] for f in member_families
+                                               if any(text[i:i + len(f)] == list(f) for i in range(len(text)))}
+            if required - named:
+                out['member_unnamed'].append(dict(package=package, body=digest, locator=f'mods:witness[{n}]', line=line,
+                                                  words=sorted(required - named),
+                                                  after={f: [r.get(f) for r in rows] for f in ('name', 'witness_type')}))
 
         def type_supported(a, b, line, locator):
             if b.get('witness_type') == 'record_material':
@@ -304,12 +415,14 @@ def judge(before, after, raw_root, given, family):
             item = dict(package=package, body=digest, locator=locator)
             parent = SPLIT.fullmatch(locator)
             if not parent:
-                # A line the old reading dropped, now kept: its raw line must exist, hold the new name, and its
-                # type must be supported like any other.
+                # A line the old reading dropped, now kept at its own locator: its raw line must exist and hold the
+                # new name, the name must be a person's (not heading text that happens to be in the line), and its
+                # type must be supported like any other. Any further part of a line (/part[3] on) is added.
                 b, line = new[locator], line_of(locator)
                 item.update(line=line, after={f: b.get(f) for f in KEYED})
-                if (line and not any(position(k) == position(locator) for k in old)
-                        and (not b.get('name') or set(map(plain, words(b['name']))) <= set(map(plain, words(line))))
+                if ('/part[' not in locator and line and not any(position(k) == position(locator) for k in old)
+                        and (not b.get('name') or (set(map(plain, words(b['name']))) <= set(map(plain, words(line)))
+                                                   and (person(b['name']) or member_name(b['name'], members))))
                         and type_supported({}, b, line, locator)):
                     out['restored'].append(item)
                 else:
@@ -340,8 +453,6 @@ def judge(before, after, raw_root, given, family):
                 counts['typed'] += 1
                 if not type_supported(a, b, line, locator):
                     out['type_unsupported'].append(item)
-            elif not b.get('name') and not b.get('witness_type') and names_document_only(line):
-                out['untyped_record'].append(item)
             if all(a.get(f) == b.get(f) for f in FIELDS):
                 segments = [s for s in line.split(',')[1:] if s.strip()]
                 if a.get('name') and not person(a['name']) and any(person(s) for s in segments):
@@ -357,7 +468,7 @@ def judge(before, after, raw_root, given, family):
                 out['name_not_in_line'].append(item)
             if reordered and not (person(new_name) and name_words(new_name)[-1] in family):
                 out['reorder_unsupported'].append(item)
-            if new_name and not_person(new_name, line):
+            if new_name and not_person(new_name, line, members):
                 out['name_not_person'].append(item)
             if new_name and not person(new_name):
                 out['unconfirmed'].append(item)
@@ -384,6 +495,48 @@ def plant(kind, before, after, given, family, raw_root):
         return found[int(index.group(1)) - 1] if index and int(index.group(1)) <= len(found) else ''
 
     for digest in sorted(before.keys() & after.keys()):
+        old, new = before[digest][1], after[digest][1]
+        if kind == 'asker-dropped':
+            # One of several Members a line names as askers dropped: the last further part of a record line.
+            for locator in sorted(new, key=lambda k: (len(k), k), reverse=True):
+                base = re.fullmatch(r"(mods:witness\[\d+\])/part\[\d+\]", locator)
+                if (base and new[locator].get('name') and new[locator].get('witness_type') == 'record_material'
+                        and (new.get(base.group(1)) or {}).get('witness_type') == 'record_material'):
+                    gone = new.pop(locator)
+                    return dict(kind=kind, body=digest, locator=base.group(1), name=gone['name'], planted=f'{locator} dropped')
+            continue
+        if kind in ('title-as-witness', 'statement-as-witness'):
+            # A nameless record row typed a witness: a document title (record material holding its organization text)
+            # or an organization's own statement.
+            want = 'record_material' if kind == 'title-as-witness' else 'statement_for_record'
+            for locator, b in sorted(new.items()):
+                if b.get('witness_type') == want and not b.get('name') and b.get('organization'):
+                    new[locator] = dict(b, witness_type=None)
+                    return dict(kind=kind, body=digest, locator=locator, name=b['organization'], planted=None)
+            continue
+        if kind in ('heading-as-name', 'name-emptied'):
+            # A line the before side read no row for, now kept as a named record (a restored question heading): its
+            # name replaced by the heading's own words, or emptied.
+            for locator, b in sorted(new.items()):
+                line = lines(digest, locator)
+                if ('/part[' in locator or not b.get('name') or b.get('witness_type') != 'record_material' or ':' not in line
+                        or any(k.split('/')[0] == locator for k in old)):
+                    continue
+                new[locator] = dict(b, name=line.rpartition(':')[0].strip() if kind == 'heading-as-name' else None)
+                return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=new[locator]['name'])
+            continue
+        if kind == 'committee-segment':
+            # A Member read after a committee title ("...from: Chairman Michael B. Enzi") replaced by the segment
+            # before that title.
+            for locator, a in sorted(old.items()):
+                b = new.get(locator)
+                parts = line_segments(lines(digest, locator)) if b and b.get('name') else []
+                at = next((k for k, part in enumerate(parts) if k and re.match(r"(?:Chairman|Chairwoman|Ranking Member)\s", part)
+                           and set(name_words(b['name'])) <= {plain(w) for w in words(part)}), None)
+                if at and parts[at - 1] != a.get('name'):
+                    new[locator] = dict(b, name=parts[at - 1])
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=parts[at - 1])
+            continue
         if kind == 'asker-as-witness':
             # A Member listed under a question heading (not the heading itself) left as a witness.
             for locator, b in sorted(after[digest][1].items()):
@@ -429,9 +582,14 @@ def plant(kind, before, after, given, family, raw_root):
     raise SystemExit(f'no occurrence to plant {kind} on')
 
 
-def accept_key(body, locator, flag, after):
-    """An accept is bound to the occurrence, the flag and every new field the reviewer read (``KEYED``)."""
-    return (body, locator, flag, *((after or {}).get(f) for f in KEYED))
+def accept_key(body, locator, flag, after, line_sha256):
+    """An accept is bound to the occurrence, the flag, every new field the reviewer read (``KEYED``) and the raw
+    line they read (its sha256)."""
+    return (body, locator, flag, json.dumps([(after or {}).get(f) for f in KEYED], default=str), line_sha256)
+
+
+def line_digest(line):
+    return hashlib.sha256((line or '').strip().encode()).hexdigest()
 
 
 def main(argv=None):
@@ -449,15 +607,20 @@ def main(argv=None):
     planted = plant(args.plant, before, after, given, family, args.raw_root) if args.plant else None
     counts, out = judge(before, after, args.raw_root, given, family)
     accepts = json.loads(args.accept.read_text()) if args.accept else []
-    reviewed = {accept_key(a['body'], a['locator'], a['flag'], a['after']): a for a in accepts}
+    # An accept counts only once a reviewer has signed it (reviewed_by) with a reason, on the raw line they read.
+    signed = [a for a in accepts if a.get('reviewed_by') and a.get('reason') and a.get('line_sha256')]
+    out['unsigned_accept'] = [a for a in accepts if a not in signed]
+    reviewed = {accept_key(a['body'], a['locator'], a['flag'], a['after'], a['line_sha256']): a for a in signed}
     out['accepted'], seen = [], set()
     for flag in FLAGS:
         kept = []
         for item in out[flag]:
-            key = accept_key(item['body'], item['locator'], flag, item.get('after') or {})
+            item['line_sha256'] = line_digest(item.get('line'))
+            key = accept_key(item['body'], item['locator'], flag, item.get('after') or {}, item['line_sha256'])
             if key in reviewed and not (planted and (item['body'], item['locator']) == (planted['body'], planted['locator'])):
                 seen.add(key)
-                out['accepted'].append(dict(item, flag=flag, reason=reviewed[key]['reason']))
+                out['accepted'].append(dict(item, flag=flag, reason=reviewed[key]['reason'],
+                                            reviewed_by=reviewed[key]['reviewed_by']))
             else:
                 kept.append(item)
         out[flag] = kept

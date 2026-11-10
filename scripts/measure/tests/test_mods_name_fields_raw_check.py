@@ -1,5 +1,6 @@
 """The MODS name-fields raw check passes a faithful re-read and flags each planted wrong value, in both directions."""
 import gzip
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -36,9 +37,11 @@ AFTER = [occurrence('mods:witness[1]', None, None, 'American Legion'),
          occurrence('mods:witness[4]', 'Jaime Herrera Beutler', WASHINGTON)]
 
 
-def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES):
+def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES, members=()):
     body = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
-            + ''.join(f'<witness>{line}</witness>' for line in lines) + '</extension></mods>').encode()
+            + ''.join(f'<witness>{line}</witness>' for line in lines)
+            + ''.join(f'<congMember role="COMMMEMBER"><name type="authority-lnf">{m}</name></congMember>' for m in members)
+            + '</extension></mods>').encode()
     (tmp_path / 'raw' / DIGEST[:2]).mkdir(parents=True)
     (tmp_path / 'raw' / DIGEST[:2] / f'{DIGEST}.gz').write_bytes(gzip.compress(body))
     for name, appearances in (('before', before), ('after', after)):
@@ -102,16 +105,21 @@ def fields(item):
     return {f: item[f] for f in ('name', 'position', 'organization', 'on_behalf_of')}
 
 
+def signed(locator, flag, after, line, reviewed_by='a reviewer'):
+    """An accept as a person writes it: the values and the raw line they read, a reason, and who read it."""
+    return dict(body=DIGEST, locator=locator, flag=flag, after=after, reason='read', reviewed_by=reviewed_by,
+                line_sha256=hashlib.sha256(line.strip().encode()).hexdigest())
+
+
 def test_a_reviewed_flag_is_accepted_and_an_accept_the_run_no_longer_flags_fails(tmp_path):
     left = occurrence('mods:witness[2]', None, None, 'Vietnam Veterans of America, Richard F. Weidman')
     write(tmp_path, after=[AFTER[0], left, *AFTER[2:]])
-    accept = [dict(body=DIGEST, locator='mods:witness[2]', flag=flag, after=fields(left), reason='read')
-              for flag in ('words_lost', 'person_left_in_organization')]
+    accept = [signed('mods:witness[2]', flag, fields(left), LINES[1]) for flag in ('words_lost', 'person_left_in_organization')]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 0 and [(i['locator'], i['flag']) for i in out['accepted']] == [
         ('mods:witness[2]', 'words_lost'), ('mods:witness[2]', 'person_left_in_organization')]
-    stale = accept + [dict(body=DIGEST, locator='mods:witness[1]', flag='person_moved', after=fields(AFTER[0]), reason='read')]
+    stale = accept + [signed('mods:witness[1]', 'person_moved', fields(AFTER[0]), LINES[0])]
     (tmp_path / 'accept.json').write_text(json.dumps(stale))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 1 and out['failed'] == {'stale_accept': 1}
@@ -121,7 +129,7 @@ def test_an_accept_covers_only_the_value_read(tmp_path):
     """A later wrong value under the same flag and occurrence is not covered by an earlier accept."""
     after = [*AFTER[:3], occurrence('mods:witness[4]', 'Washington', WASHINGTON)]
     write(tmp_path, after=after)
-    accept = [dict(body=DIGEST, locator='mods:witness[4]', flag='name_not_person', after=fields(AFTER[3]), reason='read')]
+    accept = [signed('mods:witness[4]', 'name_not_person', fields(AFTER[3]), LINES[3])]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 1 and out['failed'] == {'name_not_person': 1, 'words_lost': 1, 'stale_accept': 1}
@@ -132,7 +140,7 @@ def test_an_accepted_lost_word_does_not_cover_a_dropped_position_or_organization
     """Same name, same flag: dropping a whole position or organization on an accepted row still fails."""
     read = occurrence('mods:witness[2]', 'Richard F. Weidman', 'Director for Policy', 'Vietnam Veterans of America')
     write(tmp_path, after=[AFTER[0], read, *AFTER[2:]])
-    accept = [dict(body=DIGEST, locator='mods:witness[2]', flag='words_lost', after=fields(read), reason='read')]
+    accept = [signed('mods:witness[2]', 'words_lost', fields(read), LINES[1])]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 0 and [i['flag'] for i in out['accepted']] == ['words_lost']
@@ -165,7 +173,7 @@ def test_a_split_that_moves_the_second_persons_words_and_a_typed_document_pass(t
     code, out = run(tmp_path)
     assert code == 0 and out['status'] == 'passed'
     assert [i['locator'] for i in out['split']] == ['mods:witness[1]/part[2]']
-    assert out['counts']['typed'] == 1 and not out['words_lost'] and not out['untyped_record']
+    assert out['counts']['typed'] == 1 and not out['words_lost'] and not out['record_as_witness']
 
 
 @pytest.mark.parametrize('kind, flag, locator', [
@@ -179,13 +187,13 @@ def test_each_planted_split_or_type_is_flagged(tmp_path, kind, flag, locator):
     assert [i['locator'] for i in out[flag]] == [locator]
 
 
-def test_an_added_row_that_is_not_a_split_a_person_typed_and_an_untyped_document_are_seen(tmp_path):
+def test_an_added_row_that_is_not_a_split_a_person_typed_and_a_statement_left_a_witness_are_seen(tmp_path):
     after = [typed(RECORD_AFTER[0], 'statement_for_record'), dict(RECORD_AFTER[1], source_locator='mods:witness[4]'),
              RECORD_BEFORE[1], RECORD_AFTER[3]]
     write(tmp_path, before=RECORD_BEFORE, after=after, lines=RECORD_LINES)
     code, out = run(tmp_path)
-    assert code == 1 and out['failed'] == {'added': 1, 'type_unsupported': 1, 'words_lost': 1}
-    assert [i['locator'] for i in out['untyped_record']] == ['mods:witness[2]']
+    assert code == 1 and out['failed'] == {'added': 1, 'type_unsupported': 1, 'words_lost': 1, 'record_as_witness': 1}
+    assert [i['locator'] for i in out['record_as_witness']] == ['mods:witness[2]']
 
 
 def test_an_accept_is_bound_to_the_type(tmp_path):
@@ -193,7 +201,7 @@ def test_an_accept_is_bound_to_the_type(tmp_path):
     after = [*RECORD_AFTER[:3], typed(RECORD_BEFORE[2], 'statement_for_record')]
     write(tmp_path, before=RECORD_BEFORE, after=after, lines=RECORD_LINES)
     read = {f: after[3].get(f) for f in check.KEYED}
-    accept = [dict(body=DIGEST, locator='mods:witness[3]', flag='type_unsupported', after=read, reason='read')]
+    accept = [signed('mods:witness[3]', 'type_unsupported', read, RECORD_LINES[2])]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 0 and [i['flag'] for i in out['accepted']] == ['type_unsupported']
@@ -222,8 +230,10 @@ def test_a_restored_heading_and_its_typed_asker_pass(tmp_path):
 def test_an_asker_left_a_witness_and_a_witness_typed_as_an_asker_fail(tmp_path):
     write(tmp_path, before=QUESTION_BEFORE, after=QUESTION_BEFORE, lines=QUESTION_LINES)
     code, out = run(tmp_path)
-    assert code == 1 and out['failed'] == {'question_asker_as_witness': 1}
+    # The heading that names Richard Roe publishes no row on either side, so no one shows him (member_unnamed).
+    assert code == 1 and out['failed'] == {'question_asker_as_witness': 1, 'member_unnamed': 1}
     assert [i['locator'] for i in out['question_asker_as_witness']] == ['mods:witness[2]']
+    assert [(i['locator'], i['words']) for i in out['member_unnamed']] == [('mods:witness[1]', ['roe'])]
     (tmp_path / 'raw').rename(tmp_path / 'raw-old')
     write(tmp_path, before=QUESTION_BEFORE, after=[*QUESTION_AFTER[:2], typed(QUESTION_BEFORE[1], 'record_material')],
           lines=QUESTION_LINES)
@@ -236,3 +246,83 @@ def test_a_planted_asker_left_a_witness_is_flagged(tmp_path):
     code, out = run(tmp_path, '--plant', 'asker-as-witness')
     assert code == 1 and out['planted']['flagged'] and out['planted']['locator'] == 'mods:witness[2]'
     assert out['failed'] == {'question_asker_as_witness': 1}
+
+
+def test_an_unsigned_accept_or_one_read_on_another_line_covers_nothing(tmp_path):
+    """An accept counts only once a reviewer has signed it, on the raw line they read; one generated without a
+    reviewer, or whose line digest is another line's, leaves the flag failing."""
+    left = occurrence('mods:witness[2]', None, None, 'Vietnam Veterans of America, Richard F. Weidman')
+    write(tmp_path, after=[AFTER[0], left, *AFTER[2:]])
+    accept = [signed('mods:witness[2]', 'words_lost', fields(left), LINES[1], reviewed_by=None),
+              signed('mods:witness[2]', 'person_left_in_organization', fields(left), LINES[0])]
+    (tmp_path / 'accept.json').write_text(json.dumps(accept))
+    code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
+    assert code == 1 and out['failed'] == {'words_lost': 1, 'person_left_in_organization': 1, 'stale_accept': 1}
+    assert [a['flag'] for a in out['unsigned_accept']] == ['words_lost'] and not out['accepted']
+
+
+# Round 2 (ct-zs48, ct-3aap review): every Member a question line names has a row; a restored heading names a
+# person; a committee title is not a name; a document's title or an organization's statement left a witness fails.
+ASKER_LINES = ['Questions and Answers (Post-Hearing) from: Chairman Richard Roe.......... 36,',
+               'Hon. Eleanor Smith.............. 22,32 Hon. Jaime Herrera Beutler',
+               'Responses to questions for the record from the following Representatives: Hon. Eleanor Smith, of Texas',
+               'Senators Roe and Lautenberg........81,']
+ASKER_BEFORE = [typed(occurrence('mods:witness[1]', 'Richard Roe'), 'record_material'),
+                typed(occurrence('mods:witness[2]', 'Eleanor Smith', 'Hon. Jaime Herrera Beutler'), 'record_material'),
+                typed(occurrence('mods:witness[4]', 'Roe'), 'record_material'),
+                typed(occurrence('mods:witness[4]/part[2]', 'Lautenberg'), 'record_material')]
+ASKER_AFTER = [ASKER_BEFORE[0], typed(occurrence('mods:witness[2]', 'Eleanor Smith'), 'record_material'),
+               typed(occurrence('mods:witness[2]/part[2]', 'Jaime Herrera Beutler'), 'record_material'),
+               typed(occurrence('mods:witness[3]', 'Eleanor Smith', 'of Texas'), 'record_material'), *ASKER_BEFORE[2:]]
+
+
+def test_a_faithful_reading_of_several_askers_passes(tmp_path):
+    write(tmp_path, before=ASKER_BEFORE, after=ASKER_AFTER, lines=ASKER_LINES, members=['Lautenberg, Frank R.'])
+    code, out = run(tmp_path)
+    assert code == 0 and out['status'] == 'passed'
+    assert [i['locator'] for i in out['split']] == ['mods:witness[2]/part[2]']
+    assert [i['locator'] for i in out['restored']] == ['mods:witness[3]']
+
+
+@pytest.mark.parametrize('kind, flag, locator, missing', [
+    # (a) One of two Members a line names as askers dropped (the last further part: Lautenberg).
+    ('asker-dropped', 'member_unnamed', 'mods:witness[4]', ['lautenberg']),
+    # (d) A restored heading named for its own words (no longer restored), or emptied of its asker.
+    ('heading-as-name', 'added', 'mods:witness[3]', None),
+    ('name-emptied', 'member_unnamed', 'mods:witness[3]', ['smith']),
+    # (e) The segment before "Chairman Richard Roe" read as the name.
+    ('committee-segment', 'name_not_person', 'mods:witness[1]', None),
+])
+def test_each_planted_asker_value_is_flagged(tmp_path, kind, flag, locator, missing):
+    write(tmp_path, before=ASKER_BEFORE, after=ASKER_AFTER, lines=ASKER_LINES, members=['Lautenberg, Frank R.'])
+    code, out = run(tmp_path, '--plant', kind)
+    assert code == 1 and out['planted']['flagged'] and out['planted']['locator'] == locator
+    assert [i['locator'] for i in out[flag]] == [locator]
+    if missing:
+        assert out[flag][0]['words'] == missing
+
+
+def test_a_member_named_only_by_the_prints_own_members_list_is_counted(tmp_path):
+    """The <congMember> half of member_unnamed sees a Member the line prints without a title."""
+    lines = [*ASKER_LINES[:3], 'Roe and Lautenberg........81,']
+    after = [*ASKER_AFTER[:4], typed(occurrence('mods:witness[4]', 'Roe'), 'record_material')]
+    write(tmp_path, before=ASKER_BEFORE[:3], after=after, lines=lines, members=['Lautenberg, Frank R.'])
+    code, out = run(tmp_path)
+    assert [(i['locator'], i['words']) for i in out['member_unnamed']] == [('mods:witness[4]', ['lautenberg'])]
+
+
+TITLE_LINES = ['Association of American Railroads, "AAR Calls for Safety"', 'Paralyzed Veterans of America, statement',
+               'Blinded Veterans Association, New York, Inc']
+TITLE_BEFORE = [typed(occurrence(f'mods:witness[{n}]', None, None, line), None) for n, line in enumerate(TITLE_LINES, 1)]
+TITLE_AFTER = [typed(TITLE_BEFORE[0], 'record_material'), typed(TITLE_BEFORE[1], 'statement_for_record'), TITLE_BEFORE[2]]
+
+
+@pytest.mark.parametrize('kind, locator', [('title-as-witness', 'mods:witness[1]'), ('statement-as-witness', 'mods:witness[2]')])
+def test_a_planted_title_or_statement_left_a_witness_is_flagged(tmp_path, kind, locator):
+    """(b, c) A document's title (quoted) or an organization's statement typed a witness fails; an organization alone
+    that testified ("Blinded Veterans Association, New York, Inc") stays a witness."""
+    write(tmp_path, before=TITLE_BEFORE, after=TITLE_AFTER, lines=TITLE_LINES)
+    code, out = run(tmp_path)
+    assert not out['record_as_witness']
+    code, out = run(tmp_path, '--plant', kind)
+    assert code == 1 and out['planted']['flagged'] and [i['locator'] for i in out['record_as_witness']] == [locator]
