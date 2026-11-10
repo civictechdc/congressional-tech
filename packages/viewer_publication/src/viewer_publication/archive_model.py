@@ -629,7 +629,9 @@ GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
 # that names a saved file is an unsaved address of the document that took it; and no landing-URL
 # address the fold never admitted (a role other than wrapper, no name, a last segment that is no
 # GovInfo ID) is lost: the last count starts from the members, not landing_pages, so it sees what the
-# rule left out (review finding 3). Its lookup keys come from the same rows through lookup_extra. A
+# rule left out (review finding 3). An error page or an unread page (no role) at such an address is
+# no landing page by the general role rules, which url_state and the reading counts see, so it is
+# not counted. Its lookup keys come from the same rows through lookup_extra. A
 # page naming no file is metadata unplaced_landing_pages.
 LANDING_PAGE_INVARIANTS=dict(name='landing_page_invariants',sql="""SELECT
  (SELECT count(*) FROM (SELECT pattern FROM page_signals WHERE kind='landing_url') r
@@ -641,7 +643,8 @@ LANDING_PAGE_INVARIANTS=dict(name='landing_page_invariants',sql="""SELECT
   LEFT ANTI JOIN (SELECT doc_key,url FROM source_rows WHERE member_path IS NULL AND NOT is_saved) h
   ON h.doc_key=w.document_id AND h.url=w.url) AS unaddressed_landing_pages,
  (SELECT count(*) FROM (SELECT DISTINCT m.source_url AS url FROM (SELECT pattern FROM page_signals WHERE kind='landing_url') r
-  JOIN document_members m ON regexp_like(m.source_url,r.pattern) LEFT ANTI JOIN landing_pages l ON l.source_id=m.source_id) d
+  JOIN document_members m ON regexp_like(m.source_url,r.pattern) AND m.record_role<>'error_response'
+  LEFT ANTI JOIN landing_pages l ON l.source_id=m.source_id) d
   LEFT ANTI JOIN source_rows s ON s.url=d.url) AS lost_landing_addresses""")
 
 
