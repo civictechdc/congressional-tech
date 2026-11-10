@@ -2,7 +2,7 @@
 -- URL-dependent rules remain separate from facts about a response body.
 WITH rules AS (
     SELECT kind, pattern FROM page_signals
-    WHERE kind IN ('error_url', 'api_endpoint', 'feed_url', 'wrapper_url') AND pattern IS NOT NULL
+    WHERE kind IN ('error_url', 'api_endpoint', 'feed_url', 'wrapper_url', 'landing_url') AND pattern IS NOT NULL
     UNION ALL
     SELECT 'file_shape' AS kind, pattern FROM file_shapes
 )
@@ -16,9 +16,9 @@ SELECT c.url, c.requested_url, c.member_path,
           OR coalesce(regexp_like(c.requested_url, r.pattern), false) ELSE false END) AS error_response,
     bool_or(CASE WHEN r.kind = 'feed_url'
         THEN coalesce(regexp_like(c.url, r.pattern), false) ELSE false END) AS feed,
-    -- An address whose page only leads elsewhere, such as a site's help page (ct-aoxp), judged by
-    -- the address that answered.
-    bool_or(CASE WHEN r.kind = 'wrapper_url'
+    -- An address whose page only leads elsewhere, such as a site's help page (ct-aoxp) or a landing
+    -- page that describes one file (ct-m878, landing-pages.sql), judged by the address that answered.
+    bool_or(CASE WHEN r.kind IN ('wrapper_url', 'landing_url')
         THEN coalesce(regexp_like(c.url, r.pattern), false) ELSE false END) AS wrapper,
     bool_or(CASE WHEN r.kind = 'file_shape'
         THEN coalesce(regexp_like(coalesce(c.member_path, c.url), r.pattern), false)

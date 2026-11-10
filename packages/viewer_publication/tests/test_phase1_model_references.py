@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 
+from congress_api.lake.model_sql import model_steps
 from congress_api.retention.provenance import json_input,list_of,run_job
 from docspec_client.client import NativeDatasets
 
@@ -52,7 +53,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         json_input(tmp_path,'current_recoveries',[],id='Utf8',original_url='Utf8',
             recovered_filename='Utf8',kind='Utf8'),
         json_input(tmp_path,'url_variants',[],canonical_url='Utf8',variant_url='Utf8'),
-        json_input(tmp_path,'publisher_links',[],source_id='Utf8',context_url='Utf8'),
+        json_input(tmp_path,'publisher_links',[],source_id='Utf8',context_url='Utf8',page_body='Utf8'),
         json_input(tmp_path,'page_facts',[],body_sha='Binary',status='Utf8',named_meetings=list_of('Int64')),
         json_input(tmp_path,'resolved_links',[],target_url='Utf8'),
         # House XML meeting records list these same literals as doc-url (raw: HHRG108501,
@@ -74,6 +75,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         dict(name='source_endpoints',sql=(ROOT/'model/sql/source-endpoints.sql').read_text(),materialize=True),
         dict(name='document_members',sql='SELECT *,source_id AS component FROM source_files',materialize=True),
         dict(name='recovered_copy_members',sql='SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS VARCHAR) AS component WHERE false'),
+        *model_steps(['landing-pages'],provided={'document_members','publisher_links','page_signals','formats'},materialize=True),
         dict(name='document_addresses',sql=(ROOT/'model/sql/document-addresses.sql').read_text(),materialize=True)]
     for name in ('addresses','meetings'):
         steps.append(dict(name='source_annotation_'+name,

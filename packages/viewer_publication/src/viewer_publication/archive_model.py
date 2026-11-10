@@ -601,6 +601,21 @@ GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
   ON length(o.title)<=64 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)
  WHERE g.pattern IS NOT NULL OR {GENERIC_TITLE_SQL}"""
 
+# ct-m878, refusing: no address a landing-URL rule matches is a published document's saved address
+# (judged on the published rows by the registry, apart from the role step); and every landing page
+# that names a saved file is an unsaved address of the document that took it. Its lookup keys come
+# from the same rows through lookup_extra. A page naming no file is metadata unplaced_landing_pages.
+LANDING_PAGE_INVARIANTS=dict(name='landing_page_invariants',sql="""SELECT
+ (SELECT count(*) FROM (SELECT pattern FROM page_signals WHERE kind='landing_url') r
+  JOIN source_rows s ON regexp_like(s.url,r.pattern) WHERE s.is_saved) AS saved_landing_addresses,
+ (SELECT count(*) FROM (
+  SELECT DISTINCT d.document_id,c.context_url AS url FROM landing_pages l
+  JOIN capture_source_contexts c ON c.source_id=l.source_id JOIN document_identities d ON d.component=l.component
+  WHERE c.outcome NOT IN ('reference','saved-record') AND c.context_url IS NOT NULL) w
+  LEFT ANTI JOIN (SELECT doc_key,url FROM source_rows WHERE member_path IS NULL AND NOT is_saved) h
+  ON h.doc_key=w.document_id AND h.url=w.url) AS unaddressed_landing_pages""")
+
+
 # Owner, 2026-11-02 ("don't lose signal"): every recovered-copy link moved into a published document
 # (recovered_copy_members) keeps, on that document, its address (sources), its link key (links), its
 # lookup address and every recovery row of its URL, and each value its own annotation gives: shown
@@ -1164,7 +1179,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += [dict(name='filename_conflicts',sql=FILENAME_CONFLICTS_SQL,materialize=True)]
-    steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-name-standing','saved-files','saved-name-conflicts','document-alternates',
+    steps += _sql_steps(['document-members','archive-container-links','landing-page-files','landing-pages','document-bodies','document-identities','saved-name-standing','saved-files','saved-name-conflicts','document-alternates',
         'document-version-keys','document-versions','document-bill-decisions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
         'document-rendition-titles','recovered-copy-fills','document-filename-facts'],root=root)
     steps += package_link_steps(root=root)
@@ -1373,6 +1388,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     meta_queries=[input_receipts_query(),probe_selectors_query(root=root),
         # The recorded disposition: a ZIP with no expanded contents stays a document, listed here.
         dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
+        # The recorded disposition (ct-m878): a landing page that names no saved file has no document;
+        # its link key retires with a plain notice. Two multi-part GovInfo packages in 619db5f9e08e.
+        dict(name='unplaced_landing_pages',sql="SELECT DISTINCT page_url AS url FROM landing_pages WHERE component IS NULL ORDER BY 1"),
         SAVED_NAME_KINDS,
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
@@ -1450,7 +1468,11 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         ]
     if prepared.get('explorer_inputs'):meta_queries+=meta_explorer
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
-        lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
+        # A real file's copy URLs, and a landing page's (ct-m878: its request URL too) on the document it names.
+        lookup_extra="""SELECT o.list_row,a.url FROM source_addresses a JOIN (
+            SELECT source_id,component FROM document_members WHERE is_real_file
+            UNION ALL SELECT source_id,component FROM landing_pages WHERE component IS NOT NULL) m ON a.source_id=m.source_id
+            JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key""",
         metadata_queries=meta_queries,origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
         entity_digests=prepared.get('entity_digests'),
@@ -1512,7 +1534,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                     UNION SELECT substr(left_node,3,16) AS prefix FROM body_review_edges WHERE left_node IS NOT NULL
                     UNION SELECT substr(right_node,3,16) AS prefix FROM body_review_edges WHERE right_node IS NOT NULL
                 ) rev ON substr(o.bh,1,16)=rev.prefix
-            ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}""")]+explorer_diagnostics+url_state_diagnostics()+completeness_checks(
+            ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}"""),
+            LANDING_PAGE_INVARIANTS]+explorer_diagnostics+url_state_diagnostics()+completeness_checks(
             catalog_version=catalog_version,
             include_entities=bool(prepared.get('include_entities')),
             meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
