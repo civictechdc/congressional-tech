@@ -47,3 +47,7 @@ Six shards and storage-loopback pass on the stack. A full model build outside th
 **2026-11-10T16:42:13Z**
 
 2026-11-10 16:35Z the full stack (claude/ct-next-release-2 at 39131226: first stack + GovInfo fold-in + gate facts and their review fixes + MODS 35e24dae + reading-version equivalence + name-clash rules + model review fixes incl. kind synonyms) PASSES lanes: six production-offline shards exit 0 and storage-loopback (full lane) exit 0 (.cache/archive-release/lanes-ct-next-release-2-39131226/). The rebuild of record started 16:35:49Z (release-next/build-final-2, same pinned inputs and ledger as build-final).
+
+**2026-11-10T17:03:57Z**
+
+2026-11-10 16:51Z REBUILD OF RECORD for the stack at 39131226: release 2f6a6f9ae94c (release-next/build-final-2). Against the previous all-in build the only differences are the intended ones: changed titles 1,230 -> 1,168 (the 69 'H.R. ___' placeholder titles no longer appear) and schema.json now carries kind synonyms; all other 63 groups identical; link rule 0 missing, 0 dangling, 30 link keys and 38 lookup keys answer another file; the 93 corrected links verified by file identity; lost_landing_addresses 0, generic_titles 0. 16:59Z a third stack (claude/ct-next-release-3, 5df2e4c9 = the second stack plus the MODS asker rule, 11 commits; model_spec pin 26f1edc4 verified against publish-model.json's bytes; MODS fingerprint 63715237) started lanes; its build (release-next/build-final-3) follows with MODS rows from round-3/m11 (35,020 rows at the new fingerprint).
