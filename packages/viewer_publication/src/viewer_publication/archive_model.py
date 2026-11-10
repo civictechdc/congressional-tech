@@ -919,11 +919,19 @@ def meeting_records_have_document_references(path):
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false"""
-WITNESSES_SQL='SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_locator,r.context_key,r.event_id,r.package_id,r.page_url,r.name,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,r.witness_type,r.testified,r.bioguide_id,p.superseded_by FROM appearance_records_resolved r LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key'
+# A sitting Member acting officially is published as witness_type member_appearance (ct-kw85): the archive's
+# classification replaces the source's for those rows, whose own value stays in the appearance record.
+WITNESSES_SQL=('SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_locator,r.context_key,r.event_id,r.package_id,r.page_url,'
+    'r.name,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,'
+    "CASE WHEN m.outcome='member' THEN 'member_appearance' ELSE r.witness_type END AS witness_type,"
+    'r.testified,r.bioguide_id,p.superseded_by,m.matched_bioguide_id,m.match_basis '
+    'FROM witness_members m RIGHT JOIN (witness_precedence p RIGHT JOIN appearance_records_resolved r ON p.witness_key=r.witness_key) '
+    'ON m.witness_key=r.witness_key')
 
 
 def appearance_steps(*,root=ROOT):
-    """Witness URLs, their keys, then the resolved appearances (one owner for the full and frozen builds)."""
+    """Witness URLs, their keys, then the resolved appearances (one owner for the full and frozen builds), and which
+    of them are sitting Members of Congress (ct-kw85), after precedence and read only by the exports."""
     app_url_inputs_sql="""WITH selected_app_records AS (
         SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
             r.context_url,r.appearances
@@ -978,7 +986,8 @@ def appearance_steps(*,root=ROOT):
         dict(name='appearance_capture_contexts',sql=(Path(root)/'model/sql/appearance-capture-contexts.sql').read_text(),materialize=True),
         dict(name='appearance_observations',sql=(Path(root)/'model/sql/appearance-observations.sql').read_text(),materialize=True),
         dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(
-        ['witness-precedence','witness-key-current','witness-key-priors','witness-key-map'],root=root)
+        ['witness-precedence','witness-key-current','witness-key-priors','witness-key-map',
+         'member-terms','witness-member-facts','witness-members'],root=root)
 
 
 def package_link_steps(*,root=ROOT):
@@ -1396,7 +1405,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             dict(name='caption_resources',sql=(Path(root)/'model/sql/caption-resources.sql').read_text(),materialize=True),
             dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True)]
         auxiliary += [
-            ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id']),
+            ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id','match_basis']),
             ('witness_key_map','SELECT old_key,witness_key,status,basis,candidate_keys,occasion,source FROM witness_key_map',['old_key'],['occasion','source','status','basis']),
             ('recordings','SELECT * FROM recordings_entity',['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
             ('caption_resources','SELECT * FROM caption_resources',['video_key','track_body','ordinal'],['suffix','format','status']),

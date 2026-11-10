@@ -69,9 +69,13 @@ WITH observations AS (
 ), stated_documents AS (
  SELECT DISTINCT event_id FROM meeting_document_urls
 ), witness_counts AS (
- -- Superseded rows point to the selected person; record material contributes no witness count.
+ -- Superseded rows point to the selected person; record material and sitting Members (ct-kw85) contribute no witness count.
  SELECT event_id,count(*) AS n FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
-  AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material') GROUP BY event_id
+  AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material','member_appearance') GROUP BY event_id
+), member_only AS (
+ -- The meeting's stated list names Members of Congress and no outside witness: empty, not unstated.
+ SELECT DISTINCT event_id FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
+  AND witness_type='member_appearance'
 ), witness_states AS (
  SELECT event_id,max(CASE WHEN collection_state='unresolved' THEN 2 WHEN collection_state='empty' THEN 1 ELSE 0 END) AS rank
  FROM (
@@ -100,16 +104,17 @@ WITH observations AS (
  ) AS unrelated(event_id,package_id)
  RIGHT ANTI JOIN meeting_transcript_links l ON l.event_id=unrelated.event_id AND l.package_id=unrelated.package_id
  JOIN witnesses_export w ON w.package_id=l.package_id AND w.event_id IS NULL AND w.name IS NOT NULL
-  AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material')
+  AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material','member_appearance')
 ), witness_rows AS (
  SELECT e.event_id,'witnesses' AS aspect,
-  CASE WHEN c.n IS NOT NULL THEN 'present' WHEN s.rank=2 THEN 'unresolved' WHEN s.rank=1 THEN 'empty'
+  CASE WHEN c.n IS NOT NULL THEN 'present' WHEN s.rank=2 THEN 'unresolved' WHEN mo.event_id IS NOT NULL OR s.rank=1 THEN 'empty'
        WHEN u.event_id IS NOT NULL OR (e.chamber='senate' AND s.event_id IS NULL) THEN 'unknown' ELSE 'not_stated' END AS state,
   'appearance_records' AS basis,cast(coalesce(c.n,0) AS INT) AS count,
-  CASE WHEN c.n IS NOT NULL OR s.rank IN (1,2) THEN NULL WHEN u.event_id IS NOT NULL THEN 'package_witnesses_unattached'
+  CASE WHEN c.n IS NOT NULL OR s.rank=2 THEN NULL WHEN mo.event_id IS NOT NULL THEN 'member_appearances_only'
+       WHEN s.rank=1 THEN NULL WHEN u.event_id IS NOT NULL THEN 'package_witnesses_unattached'
        WHEN e.chamber='senate' AND s.event_id IS NULL THEN 'senate_page_links_pending' END AS reason
  FROM meetings_export e LEFT JOIN witness_counts c ON e.event_id=c.event_id LEFT JOIN witness_states s ON e.event_id=s.event_id
-  LEFT JOIN unattached_package_witnesses u ON e.event_id=u.event_id
+  LEFT JOIN unattached_package_witnesses u ON e.event_id=u.event_id LEFT JOIN member_only mo ON e.event_id=mo.event_id
 ), recording_and_caption_rows AS (
  SELECT event_id,unnest(make_array(
   named_struct('aspect',aspect,'state',state,'basis',basis,'count',count,'reason',reason),
