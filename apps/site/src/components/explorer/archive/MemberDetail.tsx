@@ -125,6 +125,7 @@ export function MemberDetail({
               ?<button type="button" className="explorer-text-button" onClick={()=>onHearing(ev)}>{h.title||`Hearing ${ev}`}</button>
               :<span>{h.title||`Hearing ${ev}`}</span>}
             {h.meeting_date&&<span className="archive-source-meta"> · {day(h.meeting_date)}</span>}
+            {h.name_matched&&<span className="archive-source-meta"> · name-matched</span>}
           </li>;
         })}
       </ul>
