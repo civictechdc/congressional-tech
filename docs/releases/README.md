@@ -84,25 +84,27 @@ needs a reviewed cause record. So does a night that adds more than 250 documents
 (`AUTOMATIC_ADDITION_CAP`): the proof shows where an added document came from, never that
 its title, date or meeting are right, so a large batch waits for a person.
 
-A capture night always changes `url_state` (attempt counts and times on fetched addresses,
-newly queued links). Since ct-9j3z each changed, added or removed row must be exactly what the
-lines of the candidate's receipts outside the live set imply, folded by the model's own
-`url_state_lines` over the capture table, each line in raw with its own `requested_url` equal to the address
-(a line without one refuses): attempts
-grow by the new lines; the newest new line, when later than the live one (a tie refuses), sets
-the latest attempt, and `next_attempt_at` is its time plus the band of the published
-`recheck_meeting_date`, which must equal the live value where the live release had scheduled
-the address; `last_good_at` is the later of the live value and the newest new line the model's own
-good-fetch steps call good. A newly
-queued link's pages (`linked_from`) must each come only from new receipts, traced like a new
-document's body. A row that changed with no new line (a meeting link that moved), a meeting date
-that moved on a scheduled address, a removed address or any other column change still needs a
-record. An added attempted address no longer has to have supplied a new document: a failed or
-repeated fetch is still a fetch. Cannot see: a wrong meeting date on an address scheduled for
-the first time, or whether a page really links its queued address; those are the model's. So
-one unattended night may schedule at most 500 addresses for the first time with a meeting date
-(`AUTOMATIC_FIRST_SCHEDULE_CAP`, beside the document cap). On 2026-11-10's pair at least 663 did,
-630 of them from the one 2026-11-08 capture day, so this cap stops a night like that one.
+A capture night always changes `url_state` (attempt counts and times on fetched addresses, newly
+queued links). Since ct-9j3z each changed, added or removed row must be exactly what the lines
+of the candidate's receipts outside the live set imply, folded by the model's own
+`url_state_lines` over the capture table, each line in raw with its own `requested_url` equal to
+the address (a line without one refuses): attempts grow by the new lines; the newest new line,
+when later than the live one (a tie refuses), sets the latest attempt, and `next_attempt_at` is
+its time plus the band of the published `recheck_meeting_date`, which must equal the live value
+where the live release had scheduled the address; `last_good_at` is the later of the live value
+and the newest new line the model's own good-fetch steps call good. A newly queued link's pages
+(`linked_from`) must each come only from new receipts, traced like a new document's body. A row
+that changed with no new line (a meeting link that moved), a meeting date that moved on a
+scheduled address, a removed address or any other column change still needs a record. An added
+attempted address no longer has to have supplied a new document: a failed or repeated fetch is
+still a fetch. Cannot see: a wrong meeting date on an address scheduled for the first time, or
+whether a page really links its queued address; those are the model's. So one unattended night
+may schedule at most 500 addresses for the first time with a meeting date
+(`AUTOMATIC_FIRST_SCHEDULE_CAP`, beside the document cap). On 2026-11-10's pair at least 663
+did, 630 of them from the one 2026-11-08 capture day, so this cap stops a night like that one. A
+line's time, status and outcome are the capture table's (raw is read for the request URL and
+bodies only); an added row's other columns, such as `capture_disposition`, are not checked; a
+receipt that replays an older line under a new key counts as one more attempt.
 
 What it cannot see: a bug that adds only wrong rows from genuinely new receipts. A
 code change that alters how new rows are built is invisible too, when no existing row

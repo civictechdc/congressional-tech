@@ -492,7 +492,11 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     Cannot see: a wrong meeting association on a first schedule (no live value to keep; like any
     value of an added row it is taken as published); whether a page really links its queued
     address (the reading is the model's); a change to the fold or band code that touches only new
-    lines (the gate runs the same code).
+    lines (the gate runs the same code). Taken from the capture table, not raw: a line's time,
+    status and outcome (raw is read for the request URL and bodies only; review W7). Unchecked on
+    an added row: its other columns, such as capture_disposition (W8). A new receipt that replays
+    an older line under a new key counts as one more attempt; only a replay of the newest line is
+    caught, by the tie rule (W6).
     Cost: the two url_state files are joined once here (O(rows), about 1.2M), keeping only the
     changed and added rows, each side as a struct; then `capture_job`, one scan of the capture
     input. The comparison joins the same two files once more on its own connection.
