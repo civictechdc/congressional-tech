@@ -325,7 +325,7 @@ def test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_t
     clock only the sleep advances, so every case is exact: no real signal, no process, no timing."""
     import types
 
-    def watched(signal_during, *, after=0.0, failing=False):
+    def watched(signal_during, *, after=0.0, failing=False, passes=2, free=lambda: None, youngest=lambda: True):
         events, clock, slept, at = [], [0.0], [], {}
 
         class Job:
@@ -333,7 +333,7 @@ def test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_t
 
             def poll(self):
                 events.append('poll')
-                return None if events.count('poll') <= 2 else 7
+                return None if events.count('poll') <= passes else 7
 
         def passing(through):
             if events[-1] != through:
@@ -362,14 +362,14 @@ def test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_t
             slept.append(seconds)
             clock[0] += seconds
 
-        monkeypatch.setattr(watchdog, 'available_gb', lambda: None)
+        monkeypatch.setattr(watchdog, 'available_gb', free)
         monkeypatch.setattr(watchdog, 'time', types.SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
         monkeypatch.setattr(watchdog, 'sampler', types.SimpleNamespace(
             MemorySamples=Readings, start_owned=lambda command, **_: Job(), stop_owned=lambda _process: passing('stop')))
         before = {each: signal.getsignal(each) for each in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
         try:
-            code, _, _, reason, _ = watchdog.watch(['job'], rss_gb=4, min_available_gb=0, min_disk_gb=0,
-                                                   disk_root=tmp_path, interval=interval)
+            code, _, _, reason, _ = watchdog.watch(['job'], rss_gb=4, min_available_gb=1, min_disk_gb=0,
+                                                   disk_root=tmp_path, interval=interval, youngest=youngest)
             assert {each: signal.getsignal(each) for each in before} == before, 'watch() kept its handlers'
         finally:  # a watch() that raises must not leave this pytest process with its handlers
             for each, handler in before.items():
@@ -388,6 +388,23 @@ def test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_t
     outcome, _, slept = watched(None)
     assert outcome == (7, None, quiet) and sum(slept) == pytest.approx(2 * interval), 'an undisturbed wait is one interval'
     assert watched('stop')[0] == (7, None, [*quiet, 'signal']), 'a signal during the stop changed the outcome'
+
+    def stuck(times, then=None):
+        """A free-memory reading that fails `times` in a row, as a reader past its time limit does."""
+        calls = []
+
+        def read():
+            calls.append(1)
+            if len(calls) <= times:
+                raise subprocess.TimeoutExpired('vm_stat', 5)
+            return then
+        return read
+
+    blind = 'RuntimeError: Three consecutive readings of free memory failed'
+    assert watched(None, free=stuck(2), passes=3)[0] == (7, None, [*quiet[:-1], 'sample', 'sleep', 'poll', 'stop']), (
+        'two passes without the reading are gaps, like two failed samples')
+    assert watched(None, free=stuck(3), passes=4)[0][:2] == (99, blind), 'the third in a row stops the job'
+    assert watched(None, free=lambda: 0.5, youngest=stuck(3), passes=4)[0][:2] == (99, blind), 'so does not knowing who is youngest'
 
 
 def test_sigkill_to_the_watchdog_keeps_the_lock_until_the_job_stops(tmp_path):
@@ -467,6 +484,41 @@ def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
     assert value['exit_code'] == 7 and value['stopped'] is None and value['peak_physical_gb'] > 0
     samples = [json.loads(line) for line in report.with_suffix('.timeline.jsonl').read_text().splitlines()]
     assert samples and set(samples[0]) == {'seconds', 'rss_gb', 'physical_gb', 'free_disk_gb'}
+
+
+def shim(tmp_path, monkeypatch, name, body):
+    """Put a stand-in for one system reader first on PATH."""
+    (tmp_path / 'bin').mkdir(exist_ok=True)
+    (tmp_path / 'bin' / name).write_text(f'#!/bin/sh\n{body}\n')
+    (tmp_path / 'bin' / name).chmod(0o755)
+    monkeypatch.setenv('PATH', f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
+
+
+@pytest.mark.parametrize('reader', ['vm_stat', 'ps'])
+def test_a_reader_that_does_not_answer_is_abandoned_at_its_time_limit(tmp_path, monkeypatch, reader):
+    """Both ran with no limit. A handler that raised used to break a stuck one; now only this limit does."""
+    if reader == 'vm_stat' and sys.platform != 'darwin':
+        pytest.skip('free memory comes from /proc/meminfo here, with no reader to wait for')
+    shim(tmp_path, monkeypatch, reader, 'exec sleep 8')
+    monkeypatch.setattr(watchdog, 'READER_SECONDS', 0.3, raising=False)
+    began = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        watchdog.available_gb() if reader == 'vm_stat' else watchdog.start_times([os.getpid()])
+    assert time.monotonic() - began < 5
+
+
+def test_a_ps_that_died_is_a_failed_reading_not_a_finding_that_every_job_is_dead(tmp_path, monkeypatch):
+    """A signal to the whole group kills the `ps` the registry has running. Its empty output read as `no such
+    process` would delete every other job's admission entry; a PID that is really gone still reads as gone."""
+    ended = subprocess.Popen([sys.executable, '-c', 'pass'])
+    ended.wait()
+    assert watchdog.start_times([ended.pid]) == {}
+    registry = watchdog.Registry(tmp_path / 'state')
+    registry.put(dict(entry(os.getpid(), 0, 1, admitted=time.time()), started=watchdog.start_times([os.getpid()])[os.getpid()]))
+    shim(tmp_path, monkeypatch, 'ps', 'kill -INT $$')
+    with pytest.raises(subprocess.CalledProcessError):
+        registry.live()
+    assert [path.name for path in (tmp_path / 'state').glob('*.json')] == [f'{os.getpid()}.json']
 
 
 def test_a_term_ignoring_grandchild_is_killed(tmp_path):
