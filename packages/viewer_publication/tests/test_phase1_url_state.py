@@ -196,7 +196,7 @@ def test_url_state_publishes_the_meeting_date_its_band_used_and_the_pages_behind
     attempted=[r for r in result['facts'] if r['requested_url'] not in (BASE+'caption.vtt?key=constant',BASE+'new.pdf?x=1')]
     assert attempted and all(r['linked_from']==[] for r in attempted)
     # A queued row has no schedule, so no band date; it names every read page linking any spelling
-    # of its key, once each, in key order. The error page that also links an address does not count.
+    # of its key, once each, in key order. An address linked only from an error page is not queued.
     wrapper,listing='b'*16,'a1'*8  # the job returns binary values as hex
     assert facts[BASE+'caption.vtt?key=constant']=={**facts[BASE+'caption.vtt?key=constant'],'meeting_date':None,'linked_from':[wrapper]}
     assert facts[BASE+'new.pdf?x=1']['meeting_date'] is None
