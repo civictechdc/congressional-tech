@@ -389,22 +389,23 @@ def test_the_stop_begins_within_a_twentieth_of_a_second_of_the_signal_whatever_t
     assert outcome == (7, None, quiet) and sum(slept) == pytest.approx(2 * interval), 'an undisturbed wait is one interval'
     assert watched('stop')[0] == (7, None, [*quiet, 'signal']), 'a signal during the stop changed the outcome'
 
-    def stuck(times, then=None):
-        """A free-memory reading that fails `times` in a row, as a reader past its time limit does."""
-        calls = []
+    def reading(pattern, then=None):
+        """One reading per pass: `x` fails, as a reader past its time limit does; anything else answers `then`."""
+        passes = iter(pattern)
 
         def read():
-            calls.append(1)
-            if len(calls) <= times:
+            if next(passes, '.') == 'x':
                 raise subprocess.TimeoutExpired('vm_stat', 5)
             return then
         return read
 
     blind = 'RuntimeError: Three consecutive readings of free memory failed'
-    assert watched(None, free=stuck(2), passes=3)[0] == (7, None, [*quiet[:-1], 'sample', 'sleep', 'poll', 'stop']), (
+    assert watched(None, free=reading('xx'), passes=3)[0] == (7, None, [*quiet[:-1], 'sample', 'sleep', 'poll', 'stop']), (
         'two passes without the reading are gaps, like two failed samples')
-    assert watched(None, free=stuck(3), passes=4)[0][:2] == (99, blind), 'the third in a row stops the job'
-    assert watched(None, free=lambda: 0.5, youngest=stuck(3), passes=4)[0][:2] == (99, blind), 'so does not knowing who is youngest'
+    assert watched(None, free=reading('xx.xx'), passes=6)[0][:2] == (7, None), 'a reading in between starts the count again'
+    assert watched(None, free=reading('xxx'), passes=4)[0][:2] == (99, blind), 'the third in a row stops the job'
+    assert watched(None, free=lambda: 0.5, youngest=reading('xxx', True), passes=4)[0][:2] == (99, blind), (
+        'so does not knowing who is youngest')
 
 
 def test_sigkill_to_the_watchdog_keeps_the_lock_until_the_job_stops(tmp_path):
@@ -486,41 +487,6 @@ def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
     assert samples and set(samples[0]) == {'seconds', 'rss_gb', 'physical_gb', 'free_disk_gb'}
 
 
-def shim(tmp_path, monkeypatch, name, body):
-    """Put a stand-in for one system reader first on PATH."""
-    (tmp_path / 'bin').mkdir(exist_ok=True)
-    (tmp_path / 'bin' / name).write_text(f'#!/bin/sh\n{body}\n')
-    (tmp_path / 'bin' / name).chmod(0o755)
-    monkeypatch.setenv('PATH', f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
-
-
-@pytest.mark.parametrize('reader', ['vm_stat', 'ps'])
-def test_a_reader_that_does_not_answer_is_abandoned_at_its_time_limit(tmp_path, monkeypatch, reader):
-    """Both ran with no limit. A handler that raised used to break a stuck one; now only this limit does."""
-    if reader == 'vm_stat' and sys.platform != 'darwin':
-        pytest.skip('free memory comes from /proc/meminfo here, with no reader to wait for')
-    shim(tmp_path, monkeypatch, reader, 'exec sleep 8')
-    monkeypatch.setattr(watchdog, 'READER_SECONDS', 0.3, raising=False)
-    began = time.monotonic()
-    with pytest.raises(subprocess.TimeoutExpired):
-        watchdog.available_gb() if reader == 'vm_stat' else watchdog.start_times([os.getpid()])
-    assert time.monotonic() - began < 5
-
-
-def test_a_ps_that_died_is_a_failed_reading_not_a_finding_that_every_job_is_dead(tmp_path, monkeypatch):
-    """A signal to the whole group kills the `ps` the registry has running. Its empty output read as `no such
-    process` would delete every other job's admission entry; a PID that is really gone still reads as gone."""
-    ended = subprocess.Popen([sys.executable, '-c', 'pass'])
-    ended.wait()
-    assert watchdog.start_times([ended.pid]) == {}
-    registry = watchdog.Registry(tmp_path / 'state')
-    registry.put(dict(entry(os.getpid(), 0, 1, admitted=time.time()), started=watchdog.start_times([os.getpid()])[os.getpid()]))
-    shim(tmp_path, monkeypatch, 'ps', 'kill -INT $$')
-    with pytest.raises(subprocess.CalledProcessError):
-        registry.live()
-    assert [path.name for path in (tmp_path / 'state').glob('*.json')] == [f'{os.getpid()}.json']
-
-
 def test_a_term_ignoring_grandchild_is_killed(tmp_path):
     marker = tmp_path / 'grandchild.pid'
     leader = (f"import pathlib,subprocess,sys,time\nsubprocess.Popen([sys.executable,'-c',{sleeper(marker, ignore_term=True)!r}])\n"
@@ -555,6 +521,41 @@ def test_stopping_an_owned_job_gives_its_term_handler_the_grace_period(tmp_path)
     assert ready.exists()
     process_rss.stop_owned(child)
     assert done.read_text() == 'clean', "the job's TERM handler was cut off by the group KILL"
+
+
+def shim(tmp_path, monkeypatch, name, body):
+    """Put a stand-in for one system reader first on PATH."""
+    (tmp_path / 'bin').mkdir(exist_ok=True)
+    (tmp_path / 'bin' / name).write_text(f'#!/bin/sh\n{body}\n')
+    (tmp_path / 'bin' / name).chmod(0o755)
+    monkeypatch.setenv('PATH', f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
+
+
+@pytest.mark.parametrize('reader', ['vm_stat', 'ps'])
+def test_a_reader_that_does_not_answer_is_abandoned_at_its_time_limit(tmp_path, monkeypatch, reader):
+    """Both ran with no limit. A handler that raised used to break a stuck one; now only this limit does."""
+    if reader == 'vm_stat' and sys.platform != 'darwin':
+        pytest.skip('free memory comes from /proc/meminfo here, with no reader to wait for')
+    shim(tmp_path, monkeypatch, reader, 'exec sleep 8')
+    monkeypatch.setattr(watchdog, 'READER_SECONDS', 0.3, raising=False)
+    began = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        watchdog.available_gb() if reader == 'vm_stat' else watchdog.start_times([os.getpid()])
+    assert time.monotonic() - began < 5
+
+
+def test_a_ps_that_died_is_a_failed_reading_not_a_finding_that_every_job_is_dead(tmp_path, monkeypatch):
+    """A signal to the whole group kills the `ps` the registry has running. Its empty output read as `no such
+    process` would delete every other job's admission entry; a PID that is really gone still reads as gone."""
+    ended = subprocess.Popen([sys.executable, '-c', 'pass'])
+    ended.wait()
+    assert watchdog.start_times([ended.pid]) == {}
+    registry = watchdog.Registry(tmp_path / 'state')
+    registry.put(dict(entry(os.getpid(), 0, 1, admitted=time.time()), started=watchdog.start_times([os.getpid()])[os.getpid()]))
+    shim(tmp_path, monkeypatch, 'ps', 'kill -INT $$')
+    with pytest.raises(subprocess.CalledProcessError):
+        registry.live()
+    assert [path.name for path in (tmp_path / 'state').glob('*.json')] == [f'{os.getpid()}.json']
 
 
 def test_jobs_from_every_worktree_share_one_admission_state(monkeypatch):

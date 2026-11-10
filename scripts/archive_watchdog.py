@@ -45,6 +45,8 @@ RAMP_SECONDS = 120
 # The longest the loop sleeps before it looks for a recorded signal again. A sleep resumes after a handler that
 # returns, so the wait between passes is taken in slices: 20 wake-ups a second, and nothing for a handler to lock.
 WAKE_SECONDS = 0.05
+# How long this file waits for vm_stat or ps to answer: the limit the sampler gives its own ps calls.
+READER_SECONDS = 5
 HERE = Path(__file__).resolve().parent
 
 
@@ -60,9 +62,12 @@ sampler = _load('archive_watchdog_sampler', HERE / 'measure/process_rss.py')
 
 
 def available_gb():
-    """Memory the machine can still hand out, or None where that is not knowable."""
+    """Memory the machine can still hand out, or None where that is not knowable.
+
+    Raises when the reader fails, dies or does not answer in READER_SECONDS: no reading is not a reading.
+    """
     if sys.platform == 'darwin':
-        text = subprocess.run(['vm_stat'], capture_output=True, text=True).stdout
+        text = subprocess.run(['vm_stat'], capture_output=True, text=True, check=True, timeout=READER_SECONDS).stdout
         page = int(text.split('page size of ')[1].split()[0])
         pages = sum(int(line.split(':')[1].strip().rstrip('.')) for line in text.splitlines()
                     if line.startswith(('Pages free', 'Pages inactive', 'Pages speculative', 'Pages purgeable')))
@@ -98,12 +103,16 @@ def start_times(pids):
 
     A PID alone is not an identity: once a watchdog dies its number can name another
     process, so an entry counts only while its PID still has the start time it recorded.
+    Raises when ps dies or does not answer in READER_SECONDS: read as "none of them is
+    alive", a ps that was killed would have every entry in the registry deleted.
     """
     if not pids:
         return {}
-    rows = subprocess.run(['ps', '-o', 'pid=,lstart=', '-p', ','.join(map(str, pids))],
-                          capture_output=True, text=True).stdout.splitlines()
-    return {int(row.split(None, 1)[0]): ' '.join(row.split()[1:]) for row in rows if row.strip()}
+    listed = subprocess.run(['ps', '-o', 'pid=,lstart=', '-p', ','.join(map(str, pids))],
+                            capture_output=True, text=True, timeout=READER_SECONDS)
+    if listed.returncode not in (0, 1):  # 1 is its answer when none of the PIDs exists
+        raise subprocess.CalledProcessError(listed.returncode, listed.args, listed.stdout, listed.stderr)
+    return {int(row.split(None, 1)[0]): ' '.join(row.split()[1:]) for row in listed.stdout.splitlines() if row.strip()}
 
 
 class Registry:
@@ -206,6 +215,7 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
 
     old = {number: signal.signal(number, record) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
     memory = sampler.MemorySamples(sampler)
+    blind = 0  # passes in a row without a free-memory reading
     peak = physical_peak = 0.0
     started = time.monotonic()
     process = None
@@ -228,8 +238,17 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
             elif free_disk < min_disk_gb:
                 reason = f'free disk under {min_disk_gb} GiB'
             else:
-                available = available_gb()
-                if available is not None and available < min_available_gb and youngest():
+                try:
+                    available = available_gb()
+                    squeezed = available is not None and available < min_available_gb and youngest()
+                    blind = 0
+                except (OSError, subprocess.SubprocessError, LookupError, ValueError) as error:
+                    # A gap for this pass, as sampler.MemorySamples treats a failed sample; the third in a row stops the job.
+                    blind += 1
+                    if blind >= 3:
+                        raise RuntimeError('Three consecutive readings of free memory failed') from error
+                    squeezed = False
+                if squeezed:
                     reason = (f'machine memory available {available:.1f} GiB under {min_available_gb} GiB; '
                               'the youngest running job stops first')
             if reason:
