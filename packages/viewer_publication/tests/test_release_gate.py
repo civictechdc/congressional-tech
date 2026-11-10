@@ -962,3 +962,24 @@ def test_a_live_release_without_the_url_state_facts_refuses_with_one_reason(tmp_
     assert [r for r in report['automatic_reasons'] if 'url_state' in r] == [reason]
 
 
+def test_more_first_schedules_with_a_meeting_date_than_one_unattended_night_may_add_refuses(tmp_path, monkeypatch):
+    """W4 and W4b pass by design: a first schedule's meeting date has no live value to keep. So, like
+    added documents, one unattended night may take at most so many; Q is the fixture's one."""
+    from viewer_publication import release_gate
+    monkeypatch.setattr(release_gate, 'AUTOMATIC_FIRST_SCHEDULE_CAP', 0)
+    report = unattended(tmp_path)
+    assert report['automatic_reasons'] == [
+        'automatic causes: 1 first schedules with a meeting date, more than the 0 one unattended night may add']
+    monkeypatch.setattr(release_gate, 'AUTOMATIC_FIRST_SCHEDULE_CAP', 1)
+    assert unattended(tmp_path / 'within')['reasons'] == []
+
+
+@pytest.mark.parametrize('plant', [
+    dict(candidate={Q: state(Q, 1, FETCHED, 200, 'stored', FETCHED, 365 * DAY, datetime(2020, 1, 1).date())}),  # W4
+    dict(candidate={A: state(A, 1, FETCHED, 403, 'failed', None, 365 * DAY, datetime(2020, 1, 1).date())}),  # W4b
+])
+def test_a_first_schedules_meeting_date_is_taken_as_published_within_the_cap(tmp_path, plant):
+    """The stated limit, pinned: a made-up meeting date on a first schedule passes."""
+    assert unattended(tmp_path, **plant)['reasons'] == []
+
+

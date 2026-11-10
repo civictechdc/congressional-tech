@@ -99,8 +99,10 @@ document's body. A row that changed with no new line (a meeting link that moved)
 that moved on a scheduled address, a removed address or any other column change still needs a
 record. An added attempted address no longer has to have supplied a new document: a failed or
 repeated fetch is still a fetch. Cannot see: a wrong meeting date on an address scheduled for
-the first time, or whether a page really links its
-queued address; those are the model's.
+the first time, or whether a page really links its queued address; those are the model's. So
+one unattended night may schedule at most 500 addresses for the first time with a meeting date
+(`AUTOMATIC_FIRST_SCHEDULE_CAP`, beside the document cap). On 2026-11-10's pair at least 663 did,
+630 of them from the one 2026-11-08 capture day, so this cap stops a night like that one.
 
 What it cannot see: a bug that adds only wrong rows from genuinely new receipts. A
 code change that alters how new rows are built is invisible too, when no existing row

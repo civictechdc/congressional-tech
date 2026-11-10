@@ -254,12 +254,24 @@ URL_STATE_GROUPS = {*(('changed ' + column, 'value differs on matched key') for 
 AUTOMATIC_CAUSE = "addition traced to receipts absent from the live release's receipt set (automatic, ct-ud0b)"
 URL_STATE_CAUSE = ("every row is what the lines of receipts absent from the live release's receipt set imply "
                    "(automatic, ct-9j3z)")
-# The proof shows where an added document came from, never that its title, date or meeting are
-# right: values of added rows have no live partner to compare with. So one unattended night may
-# add at most this many documents; more waits for a person. Chosen from the two nights measured
-# (ct-gc99): the one capture day in release 619db5f9e08e added 151, its week-old backlog 567
-# more (731 with recoveries). 250 passes the first with room and stops the second.
+# Unattended caps: where the proof shows where a value came from but not that it is right, one
+# night may take at most so many such values; more waits for a person. Checked by `over_cap`.
+# Documents: values of added rows have no live partner to compare with. Chosen from the two nights
+# measured (ct-gc99): the one capture day in release 619db5f9e08e added 151, its week-old backlog
+# 567 more (731 with recoveries). 250 passes the first with room and stops the second.
 AUTOMATIC_ADDITION_CAP = 250
+# First schedules with a meeting date (ct-9j3z): an address fetched for the first time has no live
+# meeting date to keep, so the band's date is taken as published. 500 is the coordinator's
+# decision of 2026-11-10, made from an estimate of about 360. Measured since on that night's pair:
+# at least 663 of 5,325 first schedules carried a date (a band longer than the shortest), 630 of
+# them among the 1,132 the 2026-11-08 capture day fetched and 33 among the 4,193 from the
+# 2026-10-31 backlog. So 500 stops a capture day like 2026-11-08.
+AUTOMATIC_FIRST_SCHEDULE_CAP = 500
+
+
+def over_cap(count, what, cap):
+    """The one refusal for an unattended cap: empty while `count` is within `cap`."""
+    return [f'automatic causes: {count} {what}, more than the {cap} one unattended night may add'] if count > cap else []
 
 
 def _raw_line_facts(line):
@@ -414,7 +426,8 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
         model's own good-fetch steps (good-fetches.sql, url_state_good_lines) call good;
         recheck_meeting_date equals the live value when the live release had scheduled the address;
         linked_from is empty; every other column is unchanged.
-      added with attempts: the same with no live values, so its meeting date is taken as published.
+      added with attempts: the same with no live values, so its meeting date is taken as published;
+        at most AUTOMATIC_FIRST_SCHEDULE_CAP such first schedules carrying a date in one night.
       queued (added, or queued in both): no new line, no schedule, at least one linking page, every
         live page kept; each page the live row did not list must come from new receipts only.
       removed: refused. And every address with a new line must be among these rows.
@@ -469,6 +482,7 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
           max(t) FILTER (WHERE good) AS good FROM url_new_lines GROUP BY 1)
         SELECT coalesce(c.requested_url,b.requested_url) AS url,b.requested_url IS NOT NULL AS live,
           c.requested_url IS NOT NULL AS present,c.attempts>0 AS attempted,b.linked_from AS live_pages,c.linked_from AS pages,
+          c.attempts>0 AND coalesce(b.attempts,0)=0 AND c.recheck_meeting_date IS NOT NULL AS dated_first_schedule,
           {''.join(f'b.{column} IS DISTINCT FROM c.{column} AS "moved {column}",' for column in common if column in URL_STATE_COLUMNS)}
           {_url_state_rules(columns['base'], columns['candidate'])} AS reason
         FROM base_url_state b FULL JOIN candidate_url_state c ON c.requested_url=b.requested_url
@@ -478,6 +492,8 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
           OR {' OR '.join(f'b.{column} IS DISTINCT FROM c.{column}' for column in common)}""")
     reasons = [f'automatic causes: url_state: {count} rows: {reason} (first {urls})' for reason, count, urls in d.rows(
         'SELECT reason,count(*),list(url ORDER BY url)[1:3] FROM url_rows WHERE reason IS NOT NULL GROUP BY 1 ORDER BY 1')]
+    dated = d.one('SELECT count(*) FROM url_rows WHERE dated_first_schedule')
+    reasons += over_cap(dated, 'first schedules with a meeting date', AUTOMATIC_FIRST_SCHEDULE_CAP)
     unaccounted = d.one('SELECT count(*) FROM (SELECT DISTINCT requested_url FROM url_new_lines) ANTI JOIN url_rows ON url=requested_url')
     if unaccounted:
         reasons.append(f'automatic causes: url_state: {unaccounted} addresses with new lines have no row in the candidate')
@@ -487,6 +503,7 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
     summary[f'added URLs: {ATTEMPTED_URLS}'] = list(d.rows(f'{counts}NOT live AND attempted')[0])
     summary[f'added URLs: {QUEUED_URLS}'] = list(d.rows(f'{counts}NOT live AND NOT attempted')[0])
     summary['removed URLs'] = list(d.rows(f'{counts}NOT present')[0])
+    summary['first schedules with a meeting date'] = [dated, AUTOMATIC_FIRST_SCHEDULE_CAP]
     pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(pages) AS k FROM url_rows WHERE present AND NOT attempted)
         ANTI JOIN (SELECT url,unnest(live_pages) AS k FROM url_rows WHERE live AND live_pages IS NOT NULL) USING(url,k)""")}
     return reasons, summary, pages, [(r['receipt_key'], r['receipt_line'], r['requested_url']) for r in result['lines']]
@@ -550,8 +567,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     d.documents = documents(d)
     d.table('added_documents', 'SELECT file_row_number::INT r FROM candidate_list ANTI JOIN pairs ON file_row_number=lr')
     added = d.one('SELECT count(*) FROM added_documents')
-    if added > AUTOMATIC_ADDITION_CAP:
-        reasons.append(f'automatic causes: {added} added documents, more than the {AUTOMATIC_ADDITION_CAP} one unattended night may add')
+    reasons += over_cap(added, 'added documents', AUTOMATIC_ADDITION_CAP)
     for table, fields in (('sources', 'url,member_path'), ('urls', 'lookup_key')):
         if d.has('candidate', table) and d.has('base', table):
             stray = d.one(f"""SELECT count(*) FROM (SELECT list_row,{fields} FROM candidate_{table}
