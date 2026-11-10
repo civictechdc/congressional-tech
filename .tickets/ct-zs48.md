@@ -1,6 +1,6 @@
 ---
 id: ct-zs48
-status: open
+status: in_progress
 deps: []
 links: [ct-79j1]
 created: 2026-11-08T20:05:51Z
@@ -14,3 +14,9 @@ tags: [congress_api, mods, witnesses]
 
 Found by the ct-79j1 survey (2026-11-08): witness 10 of CHRG-114hhrg93258 joins 'Hon. Eleanor Holmes Norton …' and 'Hon. Daniel Lipinski …' on one MODS line. Apply the same reviewed joined-line split as ct-79j1 (MODS_JOINED_LINES keyed by package, witness position and line SHA-256, second part at mods:witness[10]/part[2]), with a focused test on the real bytes, then re-run the MODS generation through the reviewed activation path.
 
+
+## Notes
+
+**2026-11-10T13:27:10Z**
+
+2026-11-10 (session congress-1): branch claude/ct-mods-zs48-3aap rebased onto main (08413328), then c9ca5b14 added both joint askers and the organization text on the 16 reviewed titles (owner decisions: 'Show both senators', 'Title plus the organization', MODS branch 'in the next release'). Independent review (opus xhigh): confirmed with corrections; recount exact (202 rows in 59 prints: 177 changed, 25 added, 0 removed); all 18 stale-accept rows read from raw lines are right. Corrections in progress on the branch: every multi-Member asker line in the 35,020 originals (CHRG-115shrg35700 #6, CHRG-111shrg21635 #7, 25981 #4, 25114 #3 were missed), five raw-check gaps with built-in plants, and three further owner decisions from ct-gfo7 (LoBiondo line shown with both names; FTC and Hunger Commission rows become record material; build the Member Day rule now). Still owed before activation: a second independent confirmation of the new plants, the reading-version drift decision, full lanes, regenerating the appearance table at the new pin.

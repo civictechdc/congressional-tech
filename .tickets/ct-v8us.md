@@ -1,0 +1,19 @@
+---
+id: ct-v8us
+status: open
+deps: []
+links: []
+created: 2026-11-10T13:26:44Z
+type: task
+priority: 3
+assignee: mikewolfd
+tags: [model, gate, meetings]
+---
+# meetings.outcome_source_reference stores a release-local row number: 516 rows differ at every release for no reason
+
+Found 2026-11-10 in the release 619db5f9e08e difference review (.cache/archive-release/release-20261110/causes-2/reference/). For a committee_transcript outcome the column stores the transcript's list_row, which is valid only inside one release. Any release that adds documents shifts it: 516 of the 520 changed rows were pure renumbering (offsets -144 to +1,170), each old and new row holding the same file name and sharing a link key; the 11-08 release recorded the same 516 for the same reason. Each release therefore needs a hand-written cause for a non-change.
+
+## Acceptance Criteria
+
+The reference is stored or compared through a release-stable key (the link key, as the gate already does for transcripts), so an unchanged meeting produces no difference; one release comparison shows zero renumbering rows.
+

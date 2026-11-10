@@ -17,3 +17,9 @@ Follow-up to ct-rg34, from the release cause review 2026-11-10 (.cache/archive-r
 
 The 21 rows and the Tower row read correctly; the count of MODS rows with an organization in position and an empty organization is measured before and after on the full table; a raw check judges a sample from the raw line in both directions with a planted wrong value caught.
 
+
+## Notes
+
+**2026-11-10T13:27:10Z**
+
+2026-11-10 (session congress-1): from the witness recount, a one-row difference between a recount of named, unsuperseded witnesses and meeting_coverage on meeting 102621 exists in both the live and the new release; the change between releases is the same. Unexplained, low priority.

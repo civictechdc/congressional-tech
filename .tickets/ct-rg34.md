@@ -1,6 +1,6 @@
 ---
 id: ct-rg34
-status: in_progress
+status: closed
 deps: []
 links: [ct-79j1, ct-3aap]
 created: 2026-11-09T00:27:36Z
@@ -32,3 +32,7 @@ About 1,200 current mods witness rows in release 630164505301 carry an organizat
 **2026-11-09T03:56:08Z**
 
 2026-11-08 correction after second review of 46563fb8: the earlier note's '250 row-by-row accepts' overstated the review. 245 of the 250 are pattern accepts written from five templates (organization-first 57, page-heading-or-credential 105, dated-record-entry 4, surname-joined 78, name-unchanged 1); 5 carry their own reason. Each accept now names its basis. Two template texts were false and are reworded: person_moved rows (Land Trust Alliance, Dow Chemical, Kelly Services, Virginia Department of Social Services) are flagged because the old name opens with a known given word, not because the organization is named for a person; Gary M. Baker's name_not_person flag comes from the 'MA' after the name, not an unknown given name. Accepts are now bound to all four new fields, so a dropped position or organization on an accepted row fails. MODS pin unchanged (54aa28e3).
+
+**2026-11-10T13:27:10Z**
+
+2026-11-10 (session congress-1): live in archive release 619db5f9e08e (published 05:35Z, MODS pin 8a0023a9). Release review of all 2,738 changed witness rows against the raw lines (causes-2/witness, review-C): better 2,655, neutral 60 (organization-only lines), name fixed but organization lost 21, worse 1, wrong before and after 1; 299 rows no longer show rank or credentials. Follow-ups are their own tickets: ct-6mvl (organization lands in position, Tower, C. Richard, 146 'Page' names, about 350 untouched lines), ct-wy4c (rank and credentials in their own field, owner decision). Closing.

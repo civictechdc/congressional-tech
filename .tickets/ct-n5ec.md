@@ -1,6 +1,6 @@
 ---
 id: ct-n5ec
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T00:20:04Z
@@ -116,3 +116,7 @@ branch. Current commits: 02c4656f guard, 9946246a join order, 2ae32ba5 recovery 
 **2026-11-10T03:26:46Z**
 
 2026-11-10 from the orchestrator session: release build 20261110T011925Z at 8c3a3cae completed the model (base_normalized 357,443 rows in 11.5 s) and stopped at the release-cause gate with 96 groups. Five cause clusters were drafted and cross-reviewed (.cache/archive-release/release-20261110/causes/). The owner chose to fix the page-plus-PDF join and the saved-copy filename swap before publishing, so candidate a70ebc3d1466 is not published. Follow-up tickets filed from the reviews: ct-4qld (gate link rule), ct-6mvl and ct-wy4c (witness rows), ct-sh1i (rosters), ct-syp1, ct-p5m8, ct-yizl, ct-6qgg, ct-ywz2 (video and recordings), ct-mt88 and ct-gc99 (late receipts and the automatic cause), ct-fa2h (Senate Energy 403s), ct-aoxp (Help.aspx), ct-ccsi (weak titles).
+
+**2026-11-10T13:27:10Z**
+
+2026-11-10 (session congress-1) closing summary. Done and verified: (1) cause: four trailing LEFT JOINs in document-normalized.sql built on the 351K-row document relation and the engine charged each slice of a join's unmatched batch for its whole parent; the model ran on a 12 GiB pool from the Mac remote runtime, not 7 GiB. (2) SQL fix 9946246a with guards 02c4656f and 2236b7b6, recovery subquery flips 2ae32ba5, description tie-break b441f29d, on main since 8c3a3cae. (3) Byte identity at full size: old and new base_normalized export sha256 e0e0d6fe406b…458ece, 357,443 rows. (4) base_normalized passed in three full builds (01:19Z, 04:39Z, 11:12Z) and in the first green scheduled nightly (12:15Z, release_unchanged); release 619db5f9e08e published 05:35Z. (5) The driver keeps a candidate across a cause-record commit (b9ad4bef). Acceptance line 'engine test shows a sliced List build input is no longer charged per slice' is met locally (docspec-rs 0654157 and later); the re-pin moves to ct-w564. The runtime-limits question moves to ct-64t4, the lint gaps and the 38 remaining steps to ct-i5u3, the tie siblings to ct-w08x. Closing on that split.
