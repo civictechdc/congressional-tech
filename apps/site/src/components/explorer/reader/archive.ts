@@ -9,6 +9,7 @@ import {withVerifiedBytes} from './startup.ts';
 import {rangeFile, type ByteRange} from './range-file.ts';
 import {yieldToMessages, scanBatchRows} from './cooperative.ts';
 import {createArchiveEntities} from './archive-entities.ts';
+import {kindSynonymSets,withKindSynonyms} from './kind-synonyms.ts';
 
 const hex = (value: Uint8Array) => [...value].map(v=>v.toString(16).padStart(2,'0')).join('');
 const digest = async (value: Uint8Array<ArrayBuffer>) => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', value)));
@@ -316,12 +317,23 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,meetingCoverage,
     entityHasColumn:async(name,column)=>(await table(name+'.parquet',true)).names.includes(column)});
 
+  const schema=async()=>JSON.parse(new TextDecoder().decode(await verified('schema.json')));
+  // Kind words the release lists as one kind (ct-isnv): read once, retried after a failed read.
+  let kindSets:Promise<string[][]>|undefined;
+  const kindSynonyms=()=>kindSets??=schema().then(kindSynonymSets,()=>{kindSets=undefined;return [];});
+  const prepareQuery=async(rawQuery: any)=>{
+    const prepared=await entityStore.prepareQuery(rawQuery);
+    const kinds=prepared.query.document_kind;
+    if(Array.isArray(kinds)&&kinds.length)prepared.query.document_kind=withKindSynonyms(kinds,await kindSynonyms());
+    return prepared;
+  };
+
   const reader={releaseId,manifest,metrics,count,
     has:(name: string)=>files.has(name+'.parquet')||shards.has(name),
     async search(rawQuery: any={},signal?: AbortSignal){
       signal?.throwIfAborted();const offset=rawQuery.offset??0,limit=rawQuery.limit??100;
       if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000)throw new Error('Invalid archive page.');
-      const {query,allowedRows}=await entityStore.prepareQuery(rawQuery);
+      const {query,allowedRows}=await prepareQuery(rawQuery);
       const selected:number[]=[];let total=0;
       const dateSorted=query.sort==='document_date'||query.sort==='first_captured';
       const filenameSorted=query.sort==='filename';
@@ -375,7 +387,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       return {total,rows:pageRows.map(row),offset,next:offset+limit<total?offset+limit:null};
     },
     async facets(rawQuery: any={},signal?: AbortSignal){
-      const {query,allowedRows}=await entityStore.prepareQuery(rawQuery);
+      const {query,allowedRows}=await prepareQuery(rawQuery);
       const result=Object.fromEntries(facetFields.map(name=>[name,Object.create(null)])) as Record<string,Record<string,number>>;
       const parsed=parseSearchText(query.text);
       for(let i=0;i<count;i++){
@@ -416,7 +428,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     async lookupRows(url: string,rawQuery: any={},signal?: AbortSignal){
       signal?.throwIfAborted();const offset=rawQuery.offset??0,limit=rawQuery.limit??100;
       if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000)throw new Error('Invalid archive page.');
-      const {query,allowedRows}=await entityStore.prepareQuery(rawQuery);
+      const {query,allowedRows}=await prepareQuery(rawQuery);
       const emptyText=parseSearchText('');
       const found=(await reader.lookup(url)).filter(item=>matches(item.list_row,query,emptyText,allowedRows));
       if(query.sort==='document_date')found.sort((a,b)=>(date(b.document_date)??'').localeCompare(date(a.document_date)??'')||captures(a,b));else found.sort(captures);
@@ -446,7 +458,8 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     retired,
     witnessKeyMap,
     locate,
-    schema:async()=>JSON.parse(new TextDecoder().decode(await verified('schema.json'))),
+    schema,
+    kindSynonyms,
     async openSaved(detail: any){
       const saved=savedCopy(detail,options.rawBase??new URL('/',pointerUrl).href);
       if(saved.compressedDownload||detail.saved_suffix!=='.gz')return saved;

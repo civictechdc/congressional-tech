@@ -29,6 +29,7 @@ import {
   formatMeasure,
 } from './archive-metadata.ts';
 import {RequestMessage,useRequest,integer} from '../view/request-state.tsx';
+import {canonicalKind,mergeKindFacets} from '../reader/kind-synonyms.ts';
 
 const pageSize=30;
 const missingResults={status:'error',message:''} as const;
@@ -132,6 +133,8 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   const [info,retryInfo]=useRequest(signal=>client.request('info',{},signal),[client]);
   const allFacets:any[]=info.status==='ready'?info.value.facets??[]:[];
   const committeesCatalog:any[]=info.status==='ready'?info.value.committees??[]:[];
+  const kindSets:string[][]=info.status==='ready'?info.value.kindSynonyms??[]:[];
+  const selectedKind=canonicalKind(nav.kind,kindSets);
   const entityCounts:Record<string,number>|undefined=info.status==='ready'?info.value.entityCounts:undefined;
   const totalDocs:number|undefined=info.status==='ready'?info.value.count:undefined;
   const committeeFacets=allFacets.filter(item=>item.facet==='committee_keys');
@@ -285,8 +288,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     .filter(item=>item.facet==='congress'&&Number(item.value)>=100)
     .sort((a,b)=>Number(b.value)-Number(a.value));
   const committeeGroups=buildCommitteeGroups(committeeFacets,committeesCatalog);
-  const kinds=allFacets
-    .filter(item=>item.facet==='document_kind')
+  const kinds=mergeKindFacets(allFacets.filter(item=>item.facet==='document_kind'),kindSets)
     .sort((a,b)=>Number(b.count)-Number(a.count)||String(a.value).localeCompare(String(b.value)));
   const formats=allFacets
     .filter(item=>item.facet==='format')
@@ -301,7 +303,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.congress&&{label:congressLabel(nav.congress)||`Congress ${nav.congress}`,clear:()=>filter({congress:''})},
     nav.chamber&&{label:`Chamber: ${nav.chamber.charAt(0).toUpperCase()+nav.chamber.slice(1)}`,clear:()=>filter({chamber:''})},
     (isDocTab||nav.tab!=='committees')&&nav.committee&&{label:committeeLabel(nav.committee,committeesCatalog,nav.congress||undefined),clear:()=>filter({committee:''})},
-    isDocTab&&nav.kind&&{label:documentKindLabel(nav.kind),clear:()=>filter({kind:''})},
+    isDocTab&&nav.kind&&{label:documentKindLabel(selectedKind),clear:()=>filter({kind:''})},
     isDocTab&&nav.hearing&&{label:shortHearingTitle?`Hearing: ${shortHearingTitle}`:`Hearing ${nav.hearing}`,clear:()=>filter({hearing:''})},
     isDocTab&&nav.subject&&{label:formatMeasure(nav.subject),clear:()=>filter({subject:''})},
     nav.tab==='subjects'&&nav.subjectKind&&{label:nav.subjectKind==='bills'?'Legislation only':'Nominations only',clear:()=>filter({subjectKind:''})},
@@ -382,7 +384,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         {committeeGroups.subItems.length>0&&<optgroup label="Subcommittees">{committeeGroups.subItems.map(item=><option key={item.value} value={item.value}>{item.label} ({integer(item.count)})</option>)}</optgroup>}
       </select></label>}
       {isDocTab&&<>
-        <label><span>Document type</span><select value={nav.kind} onChange={event=>filter({kind:event.target.value})}><option value="">All document types</option>{kinds.map((item:any)=><option key={item.value} value={item.value}>{documentKindLabel(item.value)} ({integer(Number(item.count))})</option>)}</select></label>
+        <label><span>Document type</span><select value={selectedKind} onChange={event=>filter({kind:event.target.value})}><option value="">All document types</option>{kinds.map((item:any)=><option key={item.value} value={item.value}>{documentKindLabel(item.value)} ({integer(Number(item.count))})</option>)}</select></label>
         <ArchiveFormatFilter options={formats} value={nav.format} onChange={format=>filter({format})}/>
         <label><span>Order</span><select value={effectiveSort} onChange={event=>filter({sort:event.target.value==='document_date'?'':event.target.value})}><option value="document_date">Document date, newest first</option><option value="first_captured">Capture date, newest first</option><option value="filename">Filename (A–Z)</option></select></label>
       </>}

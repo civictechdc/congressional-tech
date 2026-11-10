@@ -29,14 +29,14 @@ self.onmessage=async({data})=>{
     const args=data.payload??{};let result;
     switch(request.pathname){
       case '/info':{
-        const committees=await reader.committees().catch(()=>[]);
+        const [committees,kindSynonyms]=await Promise.all([reader.committees().catch(()=>[]),reader.kindSynonyms()]);
         const entityCounts:Record<string,number>={};
         for(const f of reader.manifest.files??[]){
           if(typeof f?.name==='string'&&f.name.endsWith('.parquet')&&Number.isSafeInteger(f.rows)){
             entityCounts[f.name.slice(0,-8)]=f.rows;
           }
         }
-        result={releaseId:reader.releaseId,count:reader.count,facets:reader.manifest.facet_counts,committees,entityCounts,files:reader.manifest.files};
+        result={releaseId:reader.releaseId,count:reader.count,facets:reader.manifest.facet_counts,kindSynonyms,committees,entityCounts,files:reader.manifest.files};
         break;
       }
       case '/search':{
