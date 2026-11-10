@@ -77,3 +77,38 @@ Known offenders of the same shape (not rewritten here; ranked by estimated build
 | coverage (query) | packages/viewer_publication/src/viewer_publication/archive_format.py:347 | 3 | 173K, witnesses_export | 7 |
 
 Also seen, not tracked: three RIGHT joins build on a large joined relation (source_url_normalized, source_annotation_publisher, source_input), and base_normalized's five inner joins build on the growing document row because the planner reorders inner joins.
+
+## 2026-11-10 proof, lanes, review (session congress-1)
+
+Commit hashes cited in the note above are from before the move onto dc5782dd and are on no
+branch. Current commits: 02c4656f guard, 9946246a join order, 2ae32ba5 recovery subqueries,
+2236b7b6 whole-model lint, b441f29d description tie-break.
+
+- Byte identity, full size: old and new `base_normalized` export the same bytes, sha256
+  e0e0d6fe406b4556f3587a441fae0aab549b9a5ad0fa833065ab778c48458ece, 357,443 rows and distinct
+  doc_keys each, on the failed nightly's job (83be9f32, 147 ancestor steps). 465 s, peak 9.00 GiB
+  RSS. New SQL's largest join build 224.0 MB (EXPLAIN ANALYZE, 25 joins). The old SQL also
+  completed here, as it did on 14 earlier runs: the failure is marginal. Evidence:
+  `.cache/archive-release/investigations/nightly-20261109T224443-base-normalized-memory/scratch-sqlfix/sf-proof-dryrun-4/`.
+  It cannot see steps after `base_normalized`, and it predates b441f29d.
+- b441f29d adds the value as the last key of the description pick (`page-descriptions.sql`). No
+  tie was shown or ruled out on data; count `(body_sha, path)` repeats in `page_metadata_values`
+  on the next finished candidate. Reviewer: `page-dates.sql:3`,
+  `document-page-metadata-entries.sql:42` and `document-page-metadata.sql:39,47` have the same
+  theoretical tie; `archive_format.py:168` orders every later reader by unique `doc_key`.
+- Lanes on b441f29d: production-offline six shards, all `exit 0`, 12,341 passed; storage-loopback
+  (full lane) exit 0, 35 passed. Logs: `.cache/archive-release/lanes-ct-n5ec-b441f29d/`.
+- Independent review: ship with should-fixes. Rows unchanged (bag comparison, planted wrong
+  rewrite caught). Open should-fixes, not done here:
+  1. The lint's `NODE` regex (`test_phase1_model_repeat_cost.py:153`) drops plan lines with
+     nothing after the colon; parsed fully it finds 129 joins in 38 readers, not 93 in 35, and it
+     ignores semi/anti/mark joins. `OUTER_BUILD_TRACKED` is exact only against the lint itself.
+  2. The recovery subquery flips (2ae32ba5) have no guard.
+- Engine (docspec-rs `fix/nested-slice-bytes`, 0654157, local): mechanism reproduced in a test
+  (second join build charged 1.74 GB for 159 MB; 109 MB after). Reviewer: nested-loop join build,
+  cross join, round-robin repartition and sort-merge buffers are still charged per slice; better
+  to wrap the output of hash joins that emit build rows at the end. The step log's
+  `charged_bytes` is the retained result, not peak pool reservation; a per-step peak metric is
+  missing. Rebuild, re-pin and full gate follow the release.
+- Open: whether the fallback to the remote runtime limits (24 GiB engine limit above the 14 GB
+  watchdog; `publish-model.json` names a missing runtime file) is intended.
