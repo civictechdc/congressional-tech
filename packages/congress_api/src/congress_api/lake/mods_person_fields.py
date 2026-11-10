@@ -20,6 +20,9 @@ that listing context, separate companions, and printed headings.
 # review r3): the heading "Responses to additional questions from: Senator Boxer
 # Senator Inhofe" runs into witness Amy W. Larson's entry ("President and CEO,
 # National Waterways Conference"), which the label skip had dropped.
+# The split is unpacked into exactly two parts, so a separator must not hold a
+# capturing group (re.split would return it as a third part and the read would
+# raise); use lookarounds or (?:...) (ct-gfo7 item 6).
 MODS_JOINED_LINES: dict[str, dict[int, tuple[str, str]]] = {
     'CHRG-112shrg25114': {3: ('95e6dad7aa730ea060fa4d98e50e4371fbd077860df8824481d9cc967cea445f',
                               r'(?<=Senator Inhofe) (?=Larson, Amy W\.)')},
@@ -700,6 +703,12 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
                            {'on_behalf_of': None,
                             'organization': 'U.S. Coast Guard',
                             'position': 'Assistant Commandant for Human Resources'})},
+ 'CHRG-115shrg24586': {2: ('d82ea61f779c6c89fdcf87da87626f60ed7c55dd4a941bb545828ba0f76cbaa1',
+                           {'honorific': None,
+                            'name': 'David J. Shulkin',
+                            'on_behalf_of': None,
+                            'organization': 'U.S. Department of Veterans Affairs',
+                            'position': 'Nominee, Secretary'})},
  'CHRG-115shrg26594': {3: ('88b09a189b12dc78be7dccacf6c53bff2c51378614eb6fda1717ca70b1c4f230',
                            {'organization': 'Xcel Energy',
                             'position': 'Chairman, President, and Chief Executive Officer'})},

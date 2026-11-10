@@ -29,6 +29,10 @@ Review follow-up (owner 2026-11-09, reviewed list): 16 document titles typed rec
 
 Rebased with ct-zs48 onto main after ct-an6o; final MODS pin 6a4a9765. Reviewed list now 16 titles + 4 dot-leader 'Prepared statement......NN,' leftovers (CHRG-116shrg39734 4, CHRG-115shrg26915 5, CHRG-106shrg66381 26, CHRG-110shrg55921 3) + 3 headingless askers.
 
+**2026-11-10T12:21:00Z**
+
+Owner decision 2026-11-10 (organization on titles), MODS pin 0b58c1a2 -> e39e365b: the sixteen reviewed title rows (MODS_TITLE_RECORD_ENTRIES) stay record_material and keep the line as the reader puts it in organization, exactly the text the activated generation behind release 619db5f9e08e holds (pin 8a0023a9; 16 of 16 equal, so against it they now differ in witness_type only; the model's own output for these rows was not built). There is no title field in the schema, so title and publisher share organization, as on an organization's letter ('National Restaurant Association, letter, dated Sept. 8, 2014'); three of the sixteen name no organization at all (both Project Labor Agreements and 'Summary of Goals and Projects, December 20, 2010'), and four show fewer words than their raw line, as the live reading already does ('DOE', '(SEJ)', 'Prepared Statement of', and the second title run into CHRG-108shrg92386 #5). The four dot-leader leftovers and the reviewed askers keep no field. Controls: packages/congress_api/tests/fixtures/source_models/mods-record-titles.json (line from the original, organization from the published generation).
+
 **2026-11-10T13:27:10Z**
 
 2026-11-10 (session congress-1): see ct-zs48 for the branch state. The 16 reviewed title rows keep their line in organization (no title field exists; three name no organization). Owner decision 2026-11-10: the FTC and National Commission on Hunger rows become record_material.

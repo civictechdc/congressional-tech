@@ -2,8 +2,11 @@
 
 Each entry binds a package and one-based witness locator to the SHA-256
 of the stripped original line. A supplied name is the person named in
-the entry. The optional third value distinguishes a reviewed paper from
-a member's own statement. The original MODS retains the full text.
+the entry; two names are two Members who asked jointly, each given a row,
+the second at `<locator>/part[2]`. The optional third value distinguishes
+a reviewed paper from a member's own statement. An entry listed in
+`MODS_TITLE_RECORD_ENTRIES` keeps the line's `organization` reading. The
+original MODS retains the full text.
 
 Reviewed 2026-11-09 (ct-3aap, ct-zs48), all `record_material`: sixteen
 document titles a line prints alone or after their publisher ("Association of
@@ -15,16 +18,23 @@ DeFazio after Sarah Feinberg's testimony, the askers of the print's other
 question-for-the-record headings, listed here without one; and CHRG-115shrg25981's
 Patty Murray, an asker whose page numbers run into the next heading. Review r3
 adds the Senate Veterans' Affairs askers printed after a witness's entry as
-"Hon. Jon Tester......22,32 Hon. Roland W. Burris" (the first asker is named;
-the raw line keeps the second) and CHRG-113shrg80510's "Response to request
-arising during the hearing by: Hon. Richard Burr". A shape rule would mistype
-the real witnesses printed the same way ("Hon. Condoleeza Rice, Secretary ...
-........285,"), so these are reviewed one by one.
+"Hon. Jon Tester......22,32 Hon. Roland W. Burris" and CHRG-113shrg80510's
+"Response to request arising during the hearing by: Hon. Richard Burr". A shape
+rule would mistype the real witnesses printed the same way ("Hon. Condoleeza
+Rice, Secretary ... ........285,"), so these are reviewed one by one.
+
+Owner decisions 2026-11-10: the five lines that name two Members who asked
+jointly (Tester with Burris, Begich and, twice, Moran; Brown with Manchin) name
+both, CHRG-115shrg24586's heading "Response to posthearing questions submitted
+by: Hon. Jon Tester......49,55 Hon. Jerry Moran" among them (ct-gfo7 item 2: it
+had published the heading as a name); and the sixteen document titles keep
+their text in `organization`, as before they were typed.
 """
 
 from typing import Literal
 
-RecordEntry = tuple[str, str | None] | tuple[str, str | None, Literal["record_material"]]
+Names = str | tuple[str, str] | None
+RecordEntry = tuple[str, Names] | tuple[str, Names, Literal["record_material"]]
 
 MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-106hhrg55613': {
@@ -185,7 +195,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         6: ('881eeda28c54c73b0f5712ca2c8137c31761d04c968a6d91220c8c89579bd89a', None, 'record_material'),
     },
     'CHRG-111shrg47763': {
-        2: ('2c5b4414728a6d4f6fb5adff87f632062c8b41e063dbeb87a71d23db0fc9ad72', 'Jon Tester', 'record_material'),
+        2: ('2c5b4414728a6d4f6fb5adff87f632062c8b41e063dbeb87a71d23db0fc9ad72',
+            ('Jon Tester', 'Roland W. Burris'), 'record_material'),
     },
     'CHRG-111shrg51121': {
         2: ('00684bf42d469b94d532bcad2b8bcf79f7cda200e59446812425f43a7a68a851', 'Mark Begich', 'record_material'),
@@ -195,7 +206,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         7: ('7af23ea39cb80a0ad43508d37094d76e15d76a8e3c2a1c689cb2248f6e1f5f66', None),
     },
     'CHRG-111shrg64440': {
-        2: ('af274e4c95a5953397994ade14d576f6d96bb530cadc5bc307ded06d76bc8e90', 'Jon Tester', 'record_material'),
+        2: ('af274e4c95a5953397994ade14d576f6d96bb530cadc5bc307ded06d76bc8e90',
+            ('Jon Tester', 'Mark Begich'), 'record_material'),
     },
     'CHRG-111shrg68174': {
         3: ('fb6b185d9dd5a8e6e94849c1097a41b5ebb1cb0d6cafb26872d00487bbde84b5', 'Glenn F. Tilton'),
@@ -298,7 +310,10 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         4: ('d646f835d493085e5bd7b0a1b3cd09b1c125c71cbd5962f5a7b915565525e12e', None, 'record_material'),
     },
     'CHRG-115shrg24586': {
-        3: ('86b0b2cc099e95d14eb67ec0994781b2c05b1e9faec057845fabe8de77afcc1a', 'Jon Tester', 'record_material'),
+        3: ('86b0b2cc099e95d14eb67ec0994781b2c05b1e9faec057845fabe8de77afcc1a',
+            ('Jon Tester', 'Jerry Moran'), 'record_material'),
+        4: ('d93140033571f046aedaf33c589111bb2aa6016d29d781ce53f036a240ba7bab',
+            ('Jon Tester', 'Jerry Moran'), 'record_material'),
     },
     'CHRG-115shrg25981': {
         4: ('527e535a4f89ea672523fe5972f4897408d7082e36d7727c62c394050db4adfc', 'Patty Murray', 'record_material'),
@@ -313,7 +328,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         8: ('542b1a37b2d7a93472e2f427774f5b98a4db212bef3af1f3254d5f1bc85f9d07', None),
     },
     'CHRG-115shrg34881': {
-        5: ('c030adbf8f01de81a247dbfbec67727e0e3c657186f65c7733ea6a4488880316', 'Sherrod Brown', 'record_material'),
+        5: ('c030adbf8f01de81a247dbfbec67727e0e3c657186f65c7733ea6a4488880316',
+            ('Sherrod Brown', 'Joe Manchin III'), 'record_material'),
     },
     'CHRG-115shrg57804': {
         6: ('b84f0982a08e4207738d802d274b2556ca23cf908c7d9a513c10e25bb465ef77', None),
@@ -346,3 +362,14 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
 # The MODS line joins his roster entry to Robert Brandewie's prepared statement.
 # https://www.govinfo.gov/content/pkg/CHRG-109hhrg28454/pdf/CHRG-109hhrg28454.pdf
 MODS_MIXED_RECORD_ENTRIES = frozenset({("CHRG-109hhrg28454", 5)})
+
+# The sixteen reviewed document titles (ct-3aap). Their row keeps the line as the reader puts it in
+# `organization`, the title and the publisher it names ("Association of American Railroads, "AAR Calls for
+# ...""), as an organization's letter or statement does; typing them had emptied the field (owner decision
+# 2026-11-10). The four dot-leader leftovers and the askers above are not titles and keep no field.
+MODS_TITLE_RECORD_ENTRIES = frozenset({
+    ("CHRG-106shrg77325", 6), ("CHRG-107shrg89642", 6), ("CHRG-108shrg92386", 5), ("CHRG-109shrg22551", 6),
+    ("CHRG-110hhrg44215", 9), ("CHRG-110shrg52887", 16), ("CHRG-111hhrg55850", 5), ("CHRG-111hhrg55850", 6),
+    ("CHRG-112hhrg64533", 2), ("CHRG-112hhrg64533", 3), ("CHRG-112jhrg85228", 8), ("CHRG-112jhrg85228", 10),
+    ("CHRG-112shrg85232", 3), ("CHRG-113hhrg80816", 3), ("CHRG-114hhrg93069", 4), ("CHRG-114shrg97368", 4),
+})

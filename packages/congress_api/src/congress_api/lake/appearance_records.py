@@ -49,7 +49,7 @@ from ..parsers.senate_page import witness_occurrences as senate_witness_occurren
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
 from .mods_person_fields import MODS_JOINED_LINES, MODS_PERSON_FIELDS
-from .mods_record_entries import MODS_MIXED_RECORD_ENTRIES, MODS_RECORD_ENTRIES
+from .mods_record_entries import MODS_MIXED_RECORD_ENTRIES, MODS_RECORD_ENTRIES, MODS_TITLE_RECORD_ENTRIES
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
@@ -1033,6 +1033,12 @@ _MODS_ORGANIZATION_DOCUMENT = re.compile(
 # Inhofe Larson, Amy W., Esq., ...") keeps its reading. After it, a line that is an asker alone continues the list;
 # any other line ends it. An asker's own contents line, page numbers included ("Senator Graham..........23,"),
 # is record material wherever it stands.
+# Three readings meet a question heading, in this order (ct-gfo7 item 6). This one takes a heading that names only
+# its askers: a record_material row named for the one asker, and the start of the list. The "responses to ...
+# questions ... by/from" clause of _RECORD_OPENING takes a heading this one declines because more text follows its
+# askers, and types it statement_for_record. The label skips in extract_mods_observation then drop such a line
+# when what was read as its name opens with a label word ("Responses to ...", "Answers to ..."), so it publishes
+# no row, unless MODS_JOINED_LINES or MODS_RECORD_ENTRIES reviewed it.
 _MODS_QUESTION_HEADING = re.compile(
     r"^\W*(?:(?:(?:written|additional|supplemental) )?(?:responses?|answers?) to (?:[\w()-]+ )*?questions?"
     r"|questions and answers)\b[^:]*:\s*(?P<tail>.*)$", re.I)
@@ -1460,15 +1466,24 @@ def extract_mods_observation(
         if reviewed and sha256(cleaned_line.encode()).hexdigest() == reviewed[0]:
             after_question = False
             entry_type = "member_statement" if _MEMBER_STATEMENT.search(cleaned_line) else "record_material"
-            raw_rows.append(
-                {
-                    "source_locator": source_locator,
-                    "name": reviewed[1],
-                    "witness_type": reviewed[2] if len(reviewed) == 3 else entry_type,
-                    "display_order": len(raw_rows) + 1,
-                    "document_links": [],
-                }
-            )
+            # Two Members who asked jointly each get a row, the second at /part[2] as on a joined line. A
+            # reviewed document title keeps the line's organization reading, as an organization's letter does.
+            names = reviewed[1] if isinstance(reviewed[1], tuple) else (reviewed[1],)
+            kept = {}
+            if (resolved_pkg, idx) in MODS_TITLE_RECORD_ENTRIES:
+                fields = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
+                kept = {"organization": _opt_str(fields.get("organization"))}
+            for part, name in enumerate(names, start=1):
+                raw_rows.append(
+                    {
+                        "source_locator": source_locator if part == 1 else f"{source_locator}/part[{part}]",
+                        "name": name,
+                        **kept,
+                        "witness_type": reviewed[2] if len(reviewed) == 3 else entry_type,
+                        "display_order": len(raw_rows) + 1,
+                        "document_links": [],
+                    }
+                )
             if (resolved_pkg, idx) not in MODS_MIXED_RECORD_ENTRIES:
                 continue
             cleaned_line = re.split(r"\.{4,}", cleaned_line, maxsplit=1)[1].strip()

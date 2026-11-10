@@ -37,7 +37,7 @@ from congress_api.acquisition import house_fallback
 from congress_api.acquisition import meetings as meetings_acq
 from congress_api.acquisition import senate as senate_acq
 from congress_api.acquisition.fetcher import CaptureScope, Fetcher
-from congress_api.lake import appearance_records, appearances, meeting_records, meetings, tables
+from congress_api.lake import appearance_records, appearances, meeting_records, meetings, mods_record_entries, tables
 from congress_api.models.raw_fetch import Transfer
 from congress_api.parsers.house_xml import (
     HOUSE_MEETING_PREFIXES,
@@ -2475,6 +2475,21 @@ def test_a_member_listed_alone_is_an_asker_only_after_a_question_heading(line):
                                               after_question=True) is None
 
 
+def test_a_member_printed_right_under_a_question_heading_reads_as_an_asker():
+    """ct-gfo7 item 5, a known limit: the list under a question heading is read from each line's shape, so a Member
+    who testified and is printed in a Member's style directly under such a heading would be typed record material
+    (and the raw check would count the same line an asker). No print had that shape on 2026-11-09 (0 of 35,019; the
+    31 lines typed by the carried list alone are askers). The list ends at the first line that is not a Member
+    alone, so a Member after it is a witness again. A change to either half should be deliberate."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(
+        "Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana",
+        "Hon. Jane Doe, a Representative in Congress from the State of Ohio",
+        "Doe, Hon. Jane",
+        "Hon. Joseph H. Boardman, President and Chief Executive Officer, Amtrak: Testimony",
+        "Hon. Jane Doe, a Representative in Congress from the State of Ohio"), package_id="CHRG-000hhrg00000")
+    assert [a["witness_type"] for a in found] == ["record_material"] * 3 + [None, None]
+
+
 def test_a_long_line_of_paged_askers_that_fails_to_match_does_not_backtrack():
     """Review r3: the paged-asker pattern took 0.5 s at ten "Senator X.....NN," groups and four times longer per
     group when the line then failed; it runs on every MODS line. Thirteen groups make a returning pattern fail this
@@ -2498,7 +2513,8 @@ def test_reviewed_askers_and_a_heading_run_into_a_witness():
         "Hawthorne, Kara, Director, Office of Rural Health",
         "Hon. Jon Tester............................................ 22,32 Hon. Roland W. Burris"),
         package_id="CHRG-111shrg47763")
-    assert [(a["name"], a["witness_type"]) for a in found] == [("Kara Hawthorne", None), ("Jon Tester", "record_material")]
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        ("Kara Hawthorne", None), ("Jon Tester", "record_material"), ("Roland W. Burris", "record_material")]
     found = appearance_records.extract_mods_appearances(_mods_lines(
         "Curtis, Stephen A., P.E., M.ASCE, Board Member and At-Large Director, American Society of Civil Engineers",
         "Sullivan, Terry, State Director, Rhode Island Chapter, The Nature Conservancy",
@@ -2507,6 +2523,66 @@ def test_reviewed_askers_and_a_heading_run_into_a_witness():
     assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["witness_type"]) for a in found[2:]] == [
         ("mods:witness[3]", None, None, None, "record_material"),
         ("mods:witness[3]/part[2]", "Amy W. Larson", "President and CEO", "National Waterways Conference, Inc", None)]
+
+
+@pytest.mark.parametrize("package,index,line,first,second", [
+    ("CHRG-111shrg47763", 2, "Hon. Jon Tester............................................ 22,32 Hon. Roland W. Burris",
+     "Jon Tester", "Roland W. Burris"),
+    ("CHRG-111shrg64440", 2, "Hon. Jon Tester..........................................34,41,42 Hon. Mark Begich",
+     "Jon Tester", "Mark Begich"),
+    ("CHRG-115shrg24586", 3, "Hon. Jon Tester............................................ 16,32 Hon. Jerry Moran",
+     "Jon Tester", "Jerry Moran"),
+    ("CHRG-115shrg24586", 4, "Response to posthearing questions submitted by: Hon. Jon Tester"
+     "............................................ 49,55 Hon. Jerry Moran", "Jon Tester", "Jerry Moran"),
+    ("CHRG-115shrg34881", 5, "Hon. Sherrod Brown......................................... 47,50 Hon. Joe Manchin III",
+     "Sherrod Brown", "Joe Manchin III"),
+])
+def test_two_members_who_asked_jointly_each_get_a_record_row(package, index, line, first, second):
+    """Owner decision 2026-11-10: a contents line naming two Members who asked questions for the record jointly
+    names both, the second at /part[2], as record material. Each line is the print's own, bound by its SHA-256 in
+    MODS_RECORD_ENTRIES; the fourth is the heading ct-gfo7 item 2 found published as a name."""
+    entry = mods_record_entries.MODS_RECORD_ENTRIES[package][index]
+    assert entry == (hashlib.sha256(line.encode()).hexdigest(), (first, second), "record_material")
+    assert all(word in line for name in (first, second) for word in name.split())
+    locator = f"mods:witness[{index}]"
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
+    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["witness_type"], a["display_order"])
+            for a in found[index - 1:]] == [(locator, first, None, None, "record_material", index),
+                                            (locator + "/part[2]", second, None, None, "record_material", index + 1)]
+    assert [a["name_key"] for a in found[index - 1:]] == [appearance_records.normalize_name_key(n) for n in (first, second)]
+
+    # The reading needs the reviewed package, position and exact original line.
+    for other, before, text in [("CHRG-000shrg00000", index - 1, line), (package, index + 1, line),
+                                (package, index - 1, line + " and others")]:
+        rows = appearance_records.extract_mods_appearances(_mods_lines(*[""] * before, text), package_id=other)
+        assert second not in [a["name"] for a in rows] and not any("/part[" in a["source_locator"] for a in rows)
+
+
+def test_reviewed_document_titles_keep_their_text_in_organization():
+    """Owner decision 2026-11-10 (ct-3aap): the sixteen reviewed document titles are record material and keep in
+    `organization` the text the activated generation holds for them, the title and the publisher it names, as an
+    organization's letter or statement does. Each control's line is the print's own and its organization is that
+    generation's (pin 8a0023a9); the dot-leader leftovers and the reviewed askers keep no field."""
+    controls = json.loads((Path(__file__).parent / "fixtures/source_models/mods-record-titles.json").read_text())
+    entries = mods_record_entries.MODS_RECORD_ENTRIES
+    assert {(c["package"], int(c["locator"][13:-1])) for c in controls} == mods_record_entries.MODS_TITLE_RECORD_ENTRIES
+    assert len(controls) == 16
+    for control in controls:
+        package, index, line = control["package"], int(control["locator"][13:-1]), control["source_literal"]
+        assert entries[package][index] == (hashlib.sha256(line.encode()).hexdigest(), None, "record_material")
+        row = appearance_records.build_appearance_record_row(
+            _sha(line), "mods", _mods_lines(*[""] * (index - 1), line), package_id=package)
+        item = row["appearances"][index - 1]
+        assert (item["source_locator"], item["name"], item["position"], item["organization"], item["on_behalf_of"],
+                item["witness_type"]) == (control["locator"], None, None, control["organization"], None, "record_material")
+        # Off its reviewed position the line is read by the rules alone, as before it was reviewed.
+        unreviewed = appearance_records.extract_mods_appearances(_mods_lines(*[""] * index, line), package_id=package)
+        assert unreviewed[index]["organization"] == control["organization"]
+        assert unreviewed[index]["witness_type"] != "record_material"
+    for package, index in [("CHRG-116shrg39734", 4), ("CHRG-106shrg66381", 26), ("CHRG-110shrg55921", 3),
+                           ("CHRG-115shrg26915", 5)]:
+        assert entries[package][index][1:] == (None, "record_material")
+        assert (package, index) not in mods_record_entries.MODS_TITLE_RECORD_ENTRIES
 
 
 def test_a_question_block_ends_at_the_first_line_that_is_not_an_asker():
