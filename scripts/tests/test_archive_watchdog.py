@@ -17,11 +17,26 @@ watchdog = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(watchdog)
 
 
+STARTED = []
+
+
 @pytest.fixture(autouse=True)
 def private_state(tmp_path, monkeypatch):
     """Every watchdog these tests start shares a private admission state, never the machine's."""
     monkeypatch.setenv('ARCHIVE_WATCHDOG_STATE', str(tmp_path / 'state'))
     return tmp_path / 'state'
+
+
+@pytest.fixture(autouse=True)
+def no_watchdog_outlives_its_test():
+    """A failing test used to leave its watchdog running: one hung on a signal and was found two and a half hours
+    later (ct-psb5). Killed, a watchdog's job goes with it: the owned group's leader sees its starter die."""
+    yield
+    while STARTED:
+        process = STARTED.pop()
+        if process.poll() is None:
+            process.kill()
+        process.communicate()
 HOLD = "import time\nb=bytearray({size}*1024*1024)\nfor i in range(0,len(b),4096):b[i]=1\ntime.sleep(60)\n"
 
 
@@ -159,10 +174,13 @@ def sleeper(marker, *, ignore_term=False):
     return head + f"import os,pathlib,time;pathlib.Path({str(marker)!r}).write_text(str(os.getpid()));time.sleep(60)"
 
 
-def start(tmp_path, command, *flags, pass_fds=()):
-    return subprocess.Popen([sys.executable, str(WATCHDOG), '--rss-gb', '4', '--min-disk-gb', '0', '--min-available-gb', '0',
+def start(tmp_path, command, *flags, pass_fds=(), plant=()):
+    process = subprocess.Popen([sys.executable, *(('-c', PLANT, *plant) if plant else ()), str(WATCHDOG),
+        '--rss-gb', '4', '--min-disk-gb', '0', '--min-available-gb', '0',
         '--interval', '0.1', '--report', str(tmp_path / 'report.json'), *flags, '--', *command],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, pass_fds=pass_fds)
+    STARTED.append(process)
+    return process
 
 
 def test_sigterm_to_the_watchdog_stops_the_job(tmp_path):
@@ -174,6 +192,75 @@ def test_sigterm_to_the_watchdog_stops_the_job(tmp_path):
     assert gone(pid), 'the job outlived a TERM to its watchdog'
     report = json.loads((tmp_path / 'report.json').read_text())
     assert watchdog.returncode == 99 and 'signal' in report['stopped'] and 'signal' in stderr
+
+
+# A watchdog made to receive SIGTERM at one chosen instruction. Popen._wait(timeout) and Popen._internal_poll take
+# the child's _waitpid_lock with acquire(False) and only afterwards enter their try (CPython 3.12 subprocess.py:2032
+# and :1983; 3.15 has the same shape), so an exception a signal handler raises right there leaves the lock held, and
+# the next blocking wait on that child never returns. This stand-in lock sends the signal from inside that acquire:
+# `sampler` in the first timed wait for a `ps` once the job runs, `cleanup` in the poll that opens stop_owned.
+PLANT = r'''
+import importlib.util, os, pathlib, signal, subprocess, sys
+site, marker, fired, script = sys.argv[1:5]
+
+def due(child):
+    if os.path.exists(fired):
+        return False
+    if site == 'sampler':
+        return child.args[0] == 'ps' and os.path.exists(marker)
+    frame = sys._getframe(2)
+    while frame is not None and frame.f_code.co_name != '_cleanup_child':
+        frame = frame.f_back
+    return frame is not None
+
+class Signalling:
+    def __init__(self, child, lock):
+        self.child, self.lock = child, lock
+    def acquire(self, blocking=True, timeout=-1):
+        held = self.lock.acquire(blocking, timeout)
+        if held and not blocking and due(self.child):
+            self.child._waitpid_lock = self.lock
+            pathlib.Path(fired).write_text(site)
+            os.kill(os.getpid(), signal.SIGTERM)
+        return held
+    def release(self):
+        self.lock.release()
+    __enter__ = acquire
+    def __exit__(self, *_):
+        self.lock.release()
+
+class Planted(subprocess.Popen):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._waitpid_lock = Signalling(self, self._waitpid_lock)
+
+spec = importlib.util.spec_from_file_location('planted_watchdog', script)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+subprocess.Popen = Planted
+raise SystemExit(module.main(sys.argv[5:]))
+'''
+
+
+@pytest.mark.parametrize('site', ['sampler', 'cleanup'])
+def test_a_signal_at_the_instruction_that_holds_a_childs_wait_lock_still_stops_the_job_and_exits(tmp_path, private_state, site):
+    """ct-psb5. `sampler`: the handler used to raise into the sampler's `ps` wait, and the watchdog blocked for ever
+    on that child's lock: job not stopped, no report, registry entry kept. `cleanup`: a second signal as the stop
+    began used to abort it: exit 1 with a traceback and no report. Recorded and read by the loop, both are harmless."""
+    marker, fired = tmp_path / 'job.pid', tmp_path / 'fired'
+    watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)], plant=(site, str(marker), str(fired)))
+    pid = wait_for(marker)
+    if site == 'cleanup':
+        watchdog.terminate()
+    try:
+        _, stderr = watchdog.communicate(timeout=30)
+    except subprocess.TimeoutExpired:
+        pytest.fail(f'the watchdog had not exited 30 s after its signal; planted: {fired.exists()}')
+    assert fired.read_text() == site, 'the signal was never planted, so this run proved nothing'
+    assert gone(pid), 'the job outlived a TERM to its watchdog'
+    assert watchdog.returncode == 99, stderr
+    assert 'signal 15' in json.loads((tmp_path / 'report.json').read_text())['stopped'] and 'signal 15' in stderr
+    assert list(private_state.glob('*.json')) == [], 'the stopped watchdog left its admission entry behind'
 
 
 def test_sigkill_to_the_watchdog_keeps_the_lock_until_the_job_stops(tmp_path):
