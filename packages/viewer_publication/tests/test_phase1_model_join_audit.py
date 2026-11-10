@@ -5,7 +5,7 @@ import re
 
 from archive_job_fixture import real_model_spec
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_model import LAKE_CAPTURES
+from viewer_publication.archive_model import CAPTURES_INPUT
 from viewer_publication.archive_model_job import execute, validate_spec
 
 
@@ -31,8 +31,8 @@ def test_every_model_join_has_a_native_fixture_plan_and_wide_rows_stream(tmp_pat
     value, _digest, _html = real_model_spec(tmp_path)
     assert execute(validate_spec(value, base=tmp_path))['status'] == 'built'
     spec = json.loads((tmp_path/'model/job.json').read_text())
-    # The job's lake inputs name files held only while it ran; the job binds captures as LAKE_CAPTURES.
-    lake = {LAKE_CAPTURES: 'captures', 'readings': 'readings', 'filename_readings': 'filename_readings'}
+    # The job's lake inputs name files held only while it ran; the job binds captures as CAPTURES_INPUT.
+    lake = {CAPTURES_INPUT: 'captures', 'readings': 'readings', 'filename_readings': 'filename_readings'}
     for item in spec['inputs']:
         if item['name'] in lake:
             item['path'] = value[lake[item['name']]]['path']

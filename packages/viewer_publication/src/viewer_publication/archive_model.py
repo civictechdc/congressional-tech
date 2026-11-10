@@ -1196,12 +1196,13 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
-#: The lake table's name in the full model job, whose first step `captures` retains it.
-LAKE_CAPTURES='lake_captures'
+#: The lake table's binding in the full model job, whose first step `captures` retains it
+#: (the `<name>_input` idiom of `recovery_requirements_input`).
+CAPTURES_INPUT='captures_input'
 
 
 def retained_captures(inputs):
-    """Bind the lake `captures` as LAKE_CAPTURES and return the step that retains it as `captures`.
+    """Bind the lake `captures` as CAPTURES_INPUT and return the step that retains it as `captures`.
 
     Every statement that names a lake table reads it again from the object store: 31 statements
     named `captures` 42 times and took 414 s of an 867 s build. Read once into a retained step,
@@ -1209,8 +1210,8 @@ def retained_captures(inputs):
     job and every other caller of the step factories keep their own `captures` binding. Final
     queries read the step, so it lives to the end of the job.
     """
-    return ([dict(item,name=LAKE_CAPTURES) if item['name']=='captures' else item for item in inputs],
-        dict(name='captures',sql='SELECT * FROM '+LAKE_CAPTURES,materialize=True))
+    return ([dict(item,name=CAPTURES_INPUT) if item['name']=='captures' else item for item in inputs],
+        dict(name='captures',sql='SELECT * FROM '+CAPTURES_INPUT,materialize=True))
 
 
 def build_prepared_release(prepared,*,engine,output,root=ROOT):
