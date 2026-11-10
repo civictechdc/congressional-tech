@@ -24,7 +24,9 @@ the limit before the stop; the machine-floor check covers what other processes u
 The job runs under the shared owned-process trampoline (scripts/measure/process_rss.py):
 TERM/INT/HUP to the watchdog stop the job, and if the watchdog itself is killed the
 job's group leader notices and kills the group. --timeline writes one JSON line per
-sample (seconds, RSS, physical, free disk) to <report>.timeline.jsonl.
+sample (seconds, RSS, physical, free disk, and the wall-clock epoch at which the reading
+ended with how long it took) to <report>.timeline.jsonl; scripts/measure/step_memory.py
+joins that to the engine's step log.
 """
 import argparse
 from contextlib import contextmanager
@@ -260,13 +262,16 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
         pass_fds = () if hold_fd is None else (hold_fd,)
         process = sampler.start_owned(command, pass_fds=pass_fds)
         while process.poll() is None:
+            reading = time.monotonic()
             observed = memory.sample(process.pid)
             rss, physical = (value / 2**30 for value in observed) if observed else (0.0, 0.0)
             peak, physical_peak = max(peak, rss), max(physical_peak, physical)
             free_disk = shutil.disk_usage(disk_root).free / 2**30
             if timeline is not None:
-                timeline.write(json.dumps(dict(seconds=round(time.monotonic() - started, 3), rss_gb=round(rss, 3),
-                    physical_gb=round(physical, 3), free_disk_gb=round(free_disk, 1))) + '\n')
+                now = time.monotonic()
+                timeline.write(json.dumps(dict(seconds=round(now - started, 3), epoch=round(time.time(), 3),
+                    read_seconds=round(now - reading, 3), rss_gb=round(rss, 3), physical_gb=round(physical, 3),
+                    free_disk_gb=round(free_disk, 1))) + '\n')
                 timeline.flush()
             reason = None
             if max(rss, physical) > rss_gb:

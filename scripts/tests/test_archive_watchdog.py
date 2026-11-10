@@ -1,6 +1,7 @@
 """The watchdog admits on measured free memory, stops a real runaway by its real RSS, kills descendants,
 and records the peak."""
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -8,6 +9,7 @@ import signal
 import subprocess
 import sys
 import time
+import types
 
 import pytest
 
@@ -569,6 +571,7 @@ def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
     marker = tmp_path / 'job.pid'
     report = tmp_path / 'a/b/r.json'
     code = f"import os,pathlib,sys,time;pathlib.Path({str(marker)!r}).write_text(str(os.getpid()));time.sleep(0.5);sys.exit(7)"
+    began = time.time()
     result = subprocess.run([sys.executable, str(WATCHDOG), '--rss-gb', '4', '--min-disk-gb', '0', '--min-available-gb', '0',
         '--interval', '0.1', '--report', str(report), '--timeline', '--', sys.executable, '-c', code],
         capture_output=True, text=True, timeout=60)
@@ -577,7 +580,54 @@ def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
     value = json.loads(report.read_text())
     assert value['exit_code'] == 7 and value['stopped'] is None and value['peak_physical_gb'] > 0
     samples = [json.loads(line) for line in report.with_suffix('.timeline.jsonl').read_text().splitlines()]
-    assert samples and set(samples[0]) == {'seconds', 'rss_gb', 'physical_gb', 'free_disk_gb'}
+    assert samples and set(samples[0]) == {'seconds', 'epoch', 'read_seconds', 'rss_gb', 'physical_gb', 'free_disk_gb'}
+    # The wall clock at which each reading ended, on the clock engine step events carry, and how long the reading
+    # took: scripts/measure/step_memory.py gives a sample only to a statement that spans its whole reading.
+    assert all(0 < sample['read_seconds'] <= sample['seconds'] for sample in samples)
+    assert began <= samples[0]['epoch'] <= samples[-1]['epoch'] <= time.time()
+    started = [sample['epoch'] - sample['seconds'] for sample in samples]
+    assert max(started) - min(started) < 0.05
+
+
+def test_a_timeline_sample_is_stamped_where_its_reading_ended_with_how_long_it_took(monkeypatch, tmp_path):
+    """step_memory gives a sample only to a statement that spans its reading, so the stamp is the reading's end.
+    The real-job tests see a stamp misplaced by less than one reading only when a reading lands on a statement
+    boundary, so not on every run; a clock that only the reading and the sleep advance sees it every time."""
+    class Clock:
+        now = 0.0
+        monotonic = staticmethod(lambda: Clock.now)
+        time = staticmethod(lambda: 1000.0 + Clock.now)
+
+        @staticmethod
+        def sleep(seconds):
+            Clock.now += seconds
+
+    class Job:
+        pid, returncode, polls = 1, 0, 0
+
+        def poll(self):
+            self.polls += 1
+            return None if self.polls <= 3 else 0
+
+    class Readings:
+        def __init__(self, _sampler):
+            pass
+
+        def sample(self, _pid):
+            Clock.now += 0.07
+            return 2**30, 2 * 2**30
+
+    monkeypatch.setattr(watchdog, 'time', Clock)
+    monkeypatch.setattr(watchdog, 'available_gb', lambda: None)
+    monkeypatch.setattr(watchdog, 'sampler', types.SimpleNamespace(
+        MemorySamples=Readings, start_owned=lambda command, **_: Job(), stop_owned=lambda process: None))
+    written = io.StringIO()
+    code, peak, physical_peak, reason, _ = watchdog.watch(['job'], rss_gb=4, min_available_gb=0, min_disk_gb=0,
+        disk_root=tmp_path, interval=0.25, timeline=written)
+    assert (code, peak, physical_peak, reason) == (0, 1.0, 2.0, None)
+    samples = [json.loads(line) for line in written.getvalue().splitlines()]
+    assert [(sample['seconds'], sample['epoch'], sample['read_seconds']) for sample in samples] == [
+        (0.07, 1000.07, 0.07), (0.39, 1000.39, 0.07), (0.71, 1000.71, 0.07)]
 
 
 def test_a_term_ignoring_grandchild_is_killed(tmp_path):
