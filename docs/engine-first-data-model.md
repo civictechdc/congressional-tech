@@ -398,7 +398,7 @@ A **registry** is a versioned list a rule depends on.
 | Registry | Holds | Used by | Versioned by |
 |---|---|---|---|
 | file shapes | Regular expressions over the locator that mark a link as pointing at a file | `real_files` (§7.3) | profile |
-| page signals | Kinds: *link word*, whole link texts and prefixes that say what a link does, never a title (§7.5); *error word*, generic error words for a title or heading, such as "not found", and body markers of challenge and soft-error pages; *error URL*, URL patterns that only ever serve error or placeholder pages; *wrapper marker*, text markers of download-wrapper pages, such as "download will begin shortly"; *wrapper URL*, addresses whose page only leads elsewhere and is never a document, such as a site's help page (ct-aoxp); *threshold*, the near-empty text size and a listing page's minimum link count and link-text percent; *source-record root*, XML roots of metadata records, such as METS, MODS and PREMIS; *API endpoint*, URL patterns of API JSON, such as api.congress.gov; *feed root*, XML roots and URL patterns of feeds and sitemaps | record roles (§7.3); feed roots also `listed_on` (§7.10) | profile |
+| page signals | Kinds: *link word*, whole link texts and prefixes that say what a link does, and texts that name nothing (no letter, or "no. 3"), never a title (§7.5); *error word*, generic error words for a title or heading, such as "not found", and body markers of challenge and soft-error pages; *error URL*, URL patterns that only ever serve error or placeholder pages; *wrapper marker*, text markers of download-wrapper pages, such as "download will begin shortly"; *wrapper URL*, addresses whose page only leads elsewhere and is never a document, such as a site's help page (ct-aoxp); *threshold*, the near-empty text size and a listing page's minimum link count and link-text percent; *source-record root*, XML roots of metadata records, such as METS, MODS and PREMIS; *API endpoint*, URL patterns of API JSON, such as api.congress.gov; *feed root*, XML roots and URL patterns of feeds and sitemaps | record roles (§7.3); feed roots also `listed_on` (§7.10) | profile |
 | URL rules | Kinds: *wrapper*, redirect and archive wrapper patterns; *strip*, tracker parameters on any host, such as `utm_*`, and page-state parameters on named hosts, such as congress.gov `q`; *repair*, repairs of malformed links, such as `ttps://` and concatenated URLs | `url_key` and link targets (§7.2) | profile |
 | archive layouts | Containers whose layout mirrors their server directory: a container URL pattern, a member path pattern whose first segment is the container's name, and the prefix members are published under; GovInfo `content/pkg/P.zip` holds `P/html/P.htm` and `P/pdf/P.pdf`, published at `content/pkg/P/html/P.htm` (its `mods.xml` is published elsewhere, so it is not listed) | an archive member's second endpoint (§7.5 `same_text`) | profile |
 | formats | Kinds: *preference*, the document formats in order, PDF first; *generic stem*, filename stems never grouped, such as `index` and `download` | saved file, alternates and renditions (§7.5) | profile |
@@ -668,6 +668,16 @@ title          := the applying title_override (§7.9), else the saved file's rea
                   Committee On Aging", 71); a recovery-only document takes its
                   recovered body's reading title, else its original link's text. The
                   model invariant `generic_titles` is 0. `sources.link_text` stays as written.
+                  A text with no letter ("12", "_3", ".", "16-4"), or a numbering word and a
+                  number ("no. 3"), is a link word too; a number after a name ("Exhibit 3",
+                  "Amendment No. 3") is part of the name (ct-ccsi).
+                  A label alone ("Testimony", "Witness Statement", "Biography", "Truth in
+                  Testimony Form") names no document: a named title from any of the sources
+                  above comes first; else the label takes the name of the document's one
+                  witness ("Biography - Hon. Robert Brown", [[PHASE-2]] §2); else null, and the
+                  label stays only when the document has no filename to show (ct-ccsi).
+                  A recovery-only document keeps a lone label as its title (none in
+                  619db5f9e08e); its SQL holds its own copy of the label list.
 witness_keys   := [[PHASE-2]] §2; empty in phase 1
 version_keys   := for each edition-ambiguous endpoint holding one of its real bodies, the hex
                   of the first 8 bytes of SHA-256 of the compact JSON [url_key(context_url),

@@ -4,16 +4,17 @@
 -- first and the document row streams past it; an outer join built on that row exhausted the pool (ct-n5ec).
 SELECT d.document_id AS doc_key,true AS body_expected,
  CASE WHEN coalesce(s.filename,'')='' THEN coalesce(x.filename,s.filename) ELSE s.filename END AS filename,
- CASE
-  WHEN wk.witness_name IS NOT NULL THEN coalesce(
-   CASE WHEN NOT regexp_like(trim(a.reading_title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN a.reading_title END,
-   CASE WHEN NOT regexp_like(trim(a.listing_title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN a.listing_title END,
-   CASE WHEN NOT regexp_like(trim(rt.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN rt.title END,
-   CASE WHEN NOT regexp_like(trim(x.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN x.title END,
-   CASE WHEN coalesce(a.reading_title,a.listing_title,rt.title,x.title) IS NOT NULL THEN coalesce(a.reading_title,a.listing_title,rt.title,x.title)||' - '||wk.witness_name END
-  )
-  ELSE coalesce(a.reading_title,a.listing_title,rt.title,x.title)
- END AS title,
+ -- A label alone ("Testimony", "Biography") names no document (ct-ccsi): a named title from any source
+ -- comes first; else the label takes the witness's name; with no witness the filename shows instead,
+ -- and the label stays only when there is no filename to show.
+ coalesce(
+  CASE WHEN NOT regexp_like(trim(a.reading_title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|biography|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN a.reading_title END,
+  CASE WHEN NOT regexp_like(trim(a.listing_title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|biography|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN a.listing_title END,
+  CASE WHEN NOT regexp_like(trim(rt.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|biography|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN rt.title END,
+  CASE WHEN NOT regexp_like(trim(x.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|biography|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN x.title END,
+  CASE WHEN wk.witness_name IS NOT NULL THEN coalesce(a.reading_title,a.listing_title,rt.title,x.title)||' - '||wk.witness_name
+   WHEN coalesce(nullif(s.filename,''),x.filename,'')='' THEN coalesce(a.reading_title,a.listing_title,rt.title,x.title) END
+ ) AS title,
  CASE WHEN coalesce(array_length(a.document_kind),0)=0 THEN coalesce(x.document_kind,a.document_kind) ELSE a.document_kind END AS document_kind,
  CASE WHEN coalesce(array_length(a.document_family),0)=0 THEN coalesce(x.document_family,a.document_family) ELSE a.document_family END AS document_family,
  array_sort(array_distinct(array_concat(m.committee_keys,coalesce(ml.committee_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS committee_keys,
