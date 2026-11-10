@@ -68,7 +68,7 @@ def test_old_release_does_not_reconstruct_relationships(tmp_path):
 
 def test_every_recipe_executes_and_has_the_declared_result_grain(reader):
     expected = dict(bill_documents=1, bill_hearing_transcripts=1, hearing_documents=1, hearing_dossier=1,
-                    witness_documents=1, witness_transcripts=1, witness_by_any_key=1,
+                    witness_documents=1, witness_transcripts=1, witness_by_any_key=1, member_appearances=1,
                     committee_roster=1, nomination_transcripts=1, bill_votes=1, nomination_votes=1,
                     recording_tracks=1, document_editions=1, meeting_recordings=1, channel_unmatched_videos=1, coverage_counts=1, research_recent_bills=0, research_pending_nominations=0, research_hearings_by_committee=0, research_legislation_by_subject=1)
     doc_recipes = {'bill_documents', 'bill_hearing_transcripts', 'hearing_documents',

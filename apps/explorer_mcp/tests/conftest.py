@@ -69,12 +69,15 @@ def phase2(tmp_path_factory):
             'Alex Smith' AS name,'Director' AS position,'Transit Lab' AS organization,
             NULL::VARCHAR AS on_behalf_of,NULL::VARCHAR AS location,'Panel A' AS panel,
             1::SMALLINT AS panel_order,i::SMALLINT AS display_order,'public' AS witness_type,
-            true AS testified,NULL::VARCHAR AS bioguide_id,NULL::VARCHAR AS superseded_by FROM range(1,3) t(i)
+            true AS testified,NULL::VARCHAR AS bioguide_id,NULL::VARCHAR AS superseded_by,
+            NULL::VARCHAR AS matched_bioguide_id,NULL::VARCHAR AS match_basis FROM range(1,3) t(i)
             UNION ALL
             SELECT * FROM (VALUES
-                ('0001497931f99cd1','page:1',NULL::BIGINT,NULL::VARCHAR,NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,1::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR,NULL::VARCHAR),
-                ('0000b43c099edbc2','package:1',NULL::BIGINT,'CHRG-118hhrg1',NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,2::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR,NULL::VARCHAR),
-                ('mods-appearance-1','package:2',335321::BIGINT,'CHRG-118hhrg1',NULL::VARCHAR,'A. Smith','Director','Transit Lab',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,1::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR,'appearance-1')
+                ('0001497931f99cd1','page:1',NULL::BIGINT,NULL::VARCHAR,NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,1::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR),
+                ('0000b43c099edbc2','package:1',NULL::BIGINT,'CHRG-118hhrg1',NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,2::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR),
+                ('mods-appearance-1','package:2',335321::BIGINT,'CHRG-118hhrg1',NULL::VARCHAR,'A. Smith','Director','Transit Lab',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,1::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR,'appearance-1',NULL::VARCHAR,NULL::VARCHAR),
+                -- A sitting Member acting officially, matched by name and term dates (ct-kw85).
+                ('member-appearance-1','package:9',NULL::BIGINT,'CHRG-118hhrg9',NULL::VARCHAR,'The Honorable Sam Example','Member of Congress',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,1::SMALLINT,'member_appearance',NULL::BOOLEAN,NULL::VARCHAR,NULL::VARCHAR,'A000001','name_chamber')
             )""")
         write('witness_key_map', """SELECT 'old-appearance-1' AS old_key,'appearance-1' AS witness_key,
             'unambiguous' AS status,'occurrence' AS basis,[]::VARCHAR[] AS candidate_keys,

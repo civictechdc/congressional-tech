@@ -179,6 +179,8 @@ class HearingReader:
             result['sections']['meeting']=dict(state='present',rows=[meeting],has_more=False)
         section('committees','committees', '''SELECT c.*,mc.role FROM meetings m,unnest(m.committees) u(mc),committees c
             WHERE m.event_id=? AND mc.system_code=c.system_code ORDER BY c.system_code,mc.role''',[query.event_id])
+        # Record entries leave the roster; a sitting Member acting officially stays in it as witness_type member_appearance
+        # (ct-kw85), while the witnesses coverage count holds only outside witnesses.
         witness_roster = "AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material')" if (
             'witness_type' in self.schemas.get('witnesses',{})
         ) else ''

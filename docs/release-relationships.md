@@ -1578,7 +1578,7 @@ Requires: `witnesses`, `members`.
 
 Result: One shown Member appearance of this Member.
 
-Parameters, in order: `bioguide_id` (example `B001257`).
+Parameters, in order: `bioguide_id` (example `A000001`).
 
 ```sql
 SELECT w.matched_bioguide_id,m.name AS member,w.witness_key,w.occasion,w.event_id,w.package_id,w.name,w.position,

@@ -4583,7 +4583,7 @@
       "parameters": [
         {
           "name": "bioguide_id",
-          "example": "B001257"
+          "example": "A000001"
         }
       ],
       "sql": "SELECT w.matched_bioguide_id,m.name AS member,w.witness_key,w.occasion,w.event_id,w.package_id,w.name,w.position,\n  w.match_basis,w.match_basis<>'publisher_id' AS name_matched\nFROM witnesses w LEFT JOIN members m ON m.bioguide_id=w.matched_bioguide_id\nWHERE w.matched_bioguide_id=? AND w.superseded_by IS NULL ORDER BY w.event_id NULLS LAST,w.package_id,w.witness_key LIMIT 100",
