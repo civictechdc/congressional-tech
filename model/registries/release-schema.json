@@ -1049,7 +1049,7 @@
           "name": "witness_type",
           "type": "dict",
           "nullable": true,
-          "meaning": "Source witness classification; for GovInfo prints, statement_for_record or member_statement marks an entry that is a statement, not a witness"
+          "meaning": "Witness classification: the source's (house_xml's own witness type), for GovInfo prints statement_for_record, member_statement or record_material when the entry is a statement, not a witness, and member_appearance when the archive matched a sitting Member of Congress acting officially (matched_bioguide_id, match_basis). For member_appearance rows this is the archive's classification and replaces the source's value, which stays in the appearance record (appearance_records lake, witness_type) and the raw source body (record_sha)"
         },
         {
           "name": "testified",
@@ -1061,13 +1061,25 @@
           "name": "bioguide_id",
           "type": "dict",
           "nullable": true,
-          "meaning": "Bioguide identifier when the witness is a Member of Congress"
+          "meaning": "Bioguide identifier the publisher states for the witness (house_xml); never inferred"
         },
         {
           "name": "superseded_by",
           "type": "string",
           "nullable": true,
           "meaning": "witness_key of the same person stated on the same meeting by a higher-ranked source (source priority, then record); null for the row to show"
+        },
+        {
+          "name": "matched_bioguide_id",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "Member of Congress the archive matched to a member_appearance row, holding office on the hearing date: the publisher's Bioguide ID, or the stated name and term dates (see match_basis); null on every other row"
+        },
+        {
+          "name": "match_basis",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "How matched_bioguide_id was found: publisher_id (the source's Bioguide ID); name_state, name_chamber or name_role (family and given name, a term covering the hearing date, and the row's own state, chamber or committee role); family_state or family_chamber (no Member has the given name; the family name and the stated chamber single out one sitting Member); group (another source's row of the same appearance matched). Every basis but publisher_id is name-matched"
         }
       ],
       "gaps": [],
@@ -1082,7 +1094,8 @@
         "kind": "primary_key"
       },
       "notes": {
-        "occasion": "meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances."
+        "occasion": "meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances.",
+        "witness_type": "A sitting Member of Congress acting officially is a Member appearance, not a witness (ct-kw85): witness_type member_appearance, kept in the hearing's list with that label and left out of witness counts. A name match needs the row's own state, chamber or committee role; several fitting Members, a former Member, a state legislator, a congressional employee and the hearing's own nominee stay witnesses."
       },
       "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
@@ -2390,7 +2403,7 @@
         {
           "name": "reason",
           "type": "dict",
-          "meaning": "Why a state holds, when known: recording_decision_unresolved_or_conflicting, package_context_only, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions)",
+          "meaning": "Why a state holds, when known: recording_decision_unresolved_or_conflicting, package_context_only, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, member_appearances_only (an empty witness list whose stated rows are all Member appearances), package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions)",
           "nullable": true
         }
       ],
@@ -3306,10 +3319,31 @@
           "bioguide_id"
         ]
       },
-      "meaning": "Published Bioguide identification of a witness who is a member; never infer by name.",
+      "meaning": "Bioguide identification the publisher states for a witness (house_xml); bioguide_id is never inferred. A name-matched Member is a different relationship, witness_matched_member.",
       "cardinality": "many-to-one",
       "nullable": true,
       "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "witness_matched_member",
+      "source": {
+        "table": "witnesses",
+        "fields": [
+          "matched_bioguide_id"
+        ]
+      },
+      "target": {
+        "table": "members",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "meaning": "The sitting Member of Congress a member_appearance row is, as the archive matched it: the publisher's Bioguide ID, or inferred from the stated name, the row's own state, chamber or committee role and the term dates (match_basis says which). Inferred matches are labelled name-matched; ambiguous names stay unmatched.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "required",
       "match": "equal",
       "scope": "selected release"
     },
@@ -4533,6 +4567,30 @@
       "notes": [
         "No row: the key is unknown, or witness_key_map states it ambiguous (candidate_keys) or unresolved.",
         "Never resolves by name."
+      ]
+    },
+    {
+      "id": "member_appearances",
+      "title": "Hearings where a Member of Congress appeared as a Member",
+      "dialect": "duckdb",
+      "requires": [
+        "witnesses",
+        "members"
+      ],
+      "relationships": [
+        "witness_matched_member"
+      ],
+      "parameters": [
+        {
+          "name": "bioguide_id",
+          "example": "B001257"
+        }
+      ],
+      "sql": "SELECT w.matched_bioguide_id,m.name AS member,w.witness_key,w.occasion,w.event_id,w.package_id,w.name,w.position,\n  w.match_basis,w.match_basis<>'publisher_id' AS name_matched\nFROM witnesses w LEFT JOIN members m ON m.bioguide_id=w.matched_bioguide_id\nWHERE w.matched_bioguide_id=? AND w.superseded_by IS NULL ORDER BY w.event_id NULLS LAST,w.package_id,w.witness_key LIMIT 100",
+      "result_row": "One shown Member appearance of this Member",
+      "notes": [
+        "name_matched rows were identified by name and term dates, not by the publisher; bioguide_id stays the publisher's alone.",
+        "A Member whose rows name no state, chamber or role, or share a name with another sitting Member, is not listed."
       ]
     },
     {

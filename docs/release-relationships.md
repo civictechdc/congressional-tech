@@ -337,16 +337,19 @@ Identity: `witness_key` (primary_key; published identifier).
 | `panel` | `string` | yes | Panel heading or label |
 | `panel_order` | `int16` | yes | 1-based panel order within the occasion |
 | `display_order` | `int16` | yes | 1-based witness display order within the occasion or panel |
-| `witness_type` | `dict` | yes | Source witness classification; for GovInfo prints, statement_for_record or member_statement marks an entry that is a statement, not a witness |
+| `witness_type` | `dict` | yes | Witness classification: the source's (house_xml's own witness type), for GovInfo prints statement_for_record, member_statement or record_material when the entry is a statement, not a witness, and member_appearance when the archive matched a sitting Member of Congress acting officially (matched_bioguide_id, match_basis). For member_appearance rows this is the archive's classification and replaces the source's value, which stays in the appearance record (appearance_records lake, witness_type) and the raw source body (record_sha) |
 | `testified` | `boolean` | yes | Whether the witness testified |
-| `bioguide_id` | `dict` | yes | Bioguide identifier when the witness is a Member of Congress |
+| `bioguide_id` | `dict` | yes | Bioguide identifier the publisher states for the witness (house_xml); never inferred |
 | `superseded_by` | `string` | yes | witness_key of the same person stated on the same meeting by a higher-ranked source (source priority, then record); null for the row to show |
+| `matched_bioguide_id` | `dict` | yes | Member of Congress the archive matched to a member_appearance row, holding office on the hearing date: the publisher's Bioguide ID, or the stated name and term dates (see match_basis); null on every other row |
+| `match_basis` | `dict` | yes | How matched_bioguide_id was found: publisher_id (the source's Bioguide ID); name_state, name_chamber or name_role (family and given name, a term covering the hearing date, and the row's own state, chamber or committee role); family_state or family_chamber (no Member has the given name; the family name and the stated chamber single out one sitting Member); group (another source's row of the same appearance matched). Every basis but publisher_id is name-matched |
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `occasion`: meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances.
+- `witness_type`: A sitting Member of Congress acting officially is a Member appearance, not a witness (ct-kw85): witness_type member_appearance, kept in the hearing's list with that label and left out of witness counts. A name match needs the row's own state, chamber or committee role; several fitting Members, a former Member, a state legislator, a congressional employee and the hearing's own nominee stay witnesses.
 
-Outgoing: `witness_meeting`, `witness_transcript_documents`, `witness_member`, `witness_package`, `witness_page`.
+Outgoing: `witness_meeting`, `witness_transcript_documents`, `witness_member`, `witness_matched_member`, `witness_package`, `witness_page`.
 
 Incoming: `witness_submitted_documents`, `witness_key_map_successor`, `witness_key_map_candidates`.
 
@@ -472,7 +475,7 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 
 Outgoing: `member_lis`, `member_opensecrets`, `member_govtrack`, `member_icpsr`, `member_wikidata`, `member_fec`.
 
-Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`, `committee_record_sponsor`, `ballot_member`.
+Incoming: `document_members`, `witness_member`, `witness_matched_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`, `committee_record_sponsor`, `ballot_member`.
 
 ## `rosters` — Committee and subcommittee seats across published Congresses
 
@@ -811,7 +814,7 @@ Identity: `event_id, aspect` (primary_key; published identifier).
 | `state` | `dict` | no | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
 | `basis` | `dict` | no | Which relation states it |
 | `count` | `int32` | no | Rows behind present |
-| `reason` | `dict` | yes | Why a state holds, when known: recording_decision_unresolved_or_conflicting, package_context_only, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions) |
+| `reason` | `dict` | yes | Why a state holds, when known: recording_decision_unresolved_or_conflicting, package_context_only, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, member_appearances_only (an empty witness list whose stated rows are all Member appearances), package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions) |
 
 Nullability: The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known. A required column is refused at write time.
 
@@ -1077,9 +1080,15 @@ many-to-many; match: `equal`; nullable: true; resolution: `unresolved_allowed`. 
 
 ### `witness_member`
 
-`witnesses.bioguide_id` → `members.bioguide_id`. Published Bioguide identification of a witness who is a member; never infer by name.
+`witnesses.bioguide_id` → `members.bioguide_id`. Bioguide identification the publisher states for a witness (house_xml); bioguide_id is never inferred. A name-matched Member is a different relationship, witness_matched_member.
 
 many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: selected release.
+
+### `witness_matched_member`
+
+`witnesses.matched_bioguide_id` → `members.bioguide_id`. The sitting Member of Congress a member_appearance row is, as the archive matched it: the publisher's Bioguide ID, or inferred from the stated name, the row's own state, chamber or committee role and the term dates (match_basis says which). Inferred matches are labelled name-matched; ambiguous names stay unmatched.
+
+many-to-one; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
 
 ### `committee_parent`
 
@@ -1562,6 +1571,25 @@ JOIN witnesses w ON w.witness_key=coalesce(m.witness_key,k.key)
 No row: the key is unknown, or witness_key_map states it ambiguous (candidate_keys) or unresolved.
 
 Never resolves by name.
+
+### `member_appearances` — Hearings where a Member of Congress appeared as a Member
+
+Requires: `witnesses`, `members`.
+
+Result: One shown Member appearance of this Member.
+
+Parameters, in order: `bioguide_id` (example `B001257`).
+
+```sql
+SELECT w.matched_bioguide_id,m.name AS member,w.witness_key,w.occasion,w.event_id,w.package_id,w.name,w.position,
+  w.match_basis,w.match_basis<>'publisher_id' AS name_matched
+FROM witnesses w LEFT JOIN members m ON m.bioguide_id=w.matched_bioguide_id
+WHERE w.matched_bioguide_id=? AND w.superseded_by IS NULL ORDER BY w.event_id NULLS LAST,w.package_id,w.witness_key LIMIT 100
+```
+
+name_matched rows were identified by name and term dates, not by the publisher; bioguide_id stays the publisher's alone.
+
+A Member whose rows name no state, chamber or role, or share a name with another sitting Member, is not listed.
 
 ### `committee_roster` — Committee members for a published Congress
 
