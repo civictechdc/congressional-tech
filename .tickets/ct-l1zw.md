@@ -23,3 +23,7 @@ Fix on branch claude/ct-l1zw-m7sy: routeWhileOpen (apps/site/scripts/archive-bro
 **2026-11-08T20:01:35Z**
 
 2026-11-08 closed: routeWhileOpen guards fetch/fulfill after page or context teardown and rethrows on open pages (c0319370, merged with 5c7de195). 15/15 consecutive archive-contract runs passed; validate-explorer green on the branch (run 42516117742). The original flake was seen once in CI and never reproduced locally.
+
+**2026-11-10T23:48:54Z**
+
+2026-11-10 23:22Z the guarded teardown race recurred in hosted validation run 42918580313 (attempt 1, 'route.fulfill: Fetch response has been disposed' at apps/site/scripts/archive-browser.mjs:35 via routeArchiveOrigin, step 'Require the archive contract against native hand releases'); the rerun passed. So tornDown() still misses a case: likely a worker request whose frame() throws (it returns false and the error is rethrown) while the context is closing. Check the context's close as well as the page's.
