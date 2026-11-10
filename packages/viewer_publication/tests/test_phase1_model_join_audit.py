@@ -1,16 +1,20 @@
 """Inspect every native model join without executing corpus-sized work."""
 import json
 import os
+import re
 
 from archive_job_fixture import real_model_spec
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model_job import execute, validate_spec
 
 
-def build_children(plan):
+def build_children(plan, join_types=None):
+    """Each join's build (first) input, optionally for the named native join types only."""
     lines = plan.splitlines()
     for index, line in enumerate(lines):
         if 'HashJoinExec:' not in line and 'NestedLoopJoinExec:' not in line:
+            continue
+        if join_types and re.search(r'join_type=(\w+)', line).group(1) not in join_types:
             continue
         first = lines[index+1]
         indent = len(first)-len(first.lstrip())
@@ -63,6 +67,17 @@ def test_every_model_join_has_a_native_fixture_plan_and_wide_rows_stream(tmp_pat
             assert not any(field in build for field in fields), name+'\n'+build
             if name != 'capture_source_names':
                 assert 'HashJoinExec:' not in build and 'NestedLoopJoinExec:' not in build, name+'\n'+build
+
+    # base_normalized ran out of query memory while four trailing LEFT JOINs built on the whole
+    # document row (ct-n5ec). No outer join may build on it, recognized by either scan below.
+    # The recovery half builds on its few recovered-only rows, whose scan also reads has_real.
+    plan = plans['base_normalized']
+    document_row = ['projection=[component, link_bodies]', 'projection=[component, document_id]']
+    assert all(scan in plan for scan in document_row), plan
+    outer = list(build_children(plan, join_types={'Left', 'Right', 'Full'}))
+    assert outer, plan
+    for build in outer:
+        assert not any(scan in build for scan in document_row), 'base_normalized\n'+build
 
     registry_fields = {'id', 'kind', 'host_pattern', 'pattern', 'replacement', 'decoder',
                        'basis', 'document_kind'}
