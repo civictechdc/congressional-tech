@@ -2246,19 +2246,20 @@ def test_printed_hearing_date_and_conflicting_bill_packages_reach_the_export(tmp
 
 
 def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
-    """red-g F1: a rendition's <title> fills a title only when no listing label names the document."""
+    """red-g F1: a rendition's <title> fills a title only when no listing label names the document.
+    The HTML shares the PDF's name: a page merely listed beside a PDF is not its rendition (ct-h3jb)."""
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     base = 'https://appropriations.house.gov/files'
     words = 'The subcommittee received the appendix tables for fiscal year spending. ' * 30
     listing = (f'<html><head><title>Hearing documents</title></head><body><p>{words}</p><ul>'
-               f'<li><a href="{base}/appendix-d.pdf">Appendix D</a> <a href="https://appropriations.house.gov/news/appendix-d-text">HTML</a></li>'
+               f'<li><a href="{base}/appendix-d.pdf">Appendix D</a> <a href="{base}/html/appendix-d.html">HTML</a></li>'
                f'</ul></body></html>').encode()
     html = ('<html><head><title>Press release headline</title></head><body><main><article><h1>Appendix D</h1><p>'
             + 'Table D-1 lists obligations by account and fiscal year for the subcommittee. ' * 40 + '</p></article></main></body></html>').encode()
     pdf = b'%PDF-1.7\nAppendix D tables\n%%EOF\n'
     staged = _stage_raw_fixture(tmp_path, engine, [dict(url='https://appropriations.house.gov/hearing', data=listing, format='html'),
-        dict(url=f'https://appropriations.house.gov/news/appendix-d-text', data=html, format='html'), dict(url=f'{base}/appendix-d.pdf', data=pdf, format='pdf', compress=False)])
+        dict(url=f'{base}/html/appendix-d.html', data=html, format='html'), dict(url=f'{base}/appendix-d.pdf', data=pdf, format='pdf', compress=False)])
     build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
         parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
         catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
