@@ -2,6 +2,7 @@
 import gzip
 import hashlib
 import importlib.util
+from datetime import date
 import json
 from pathlib import Path
 
@@ -37,17 +38,28 @@ AFTER = [occurrence('mods:witness[1]', None, None, 'American Legion'),
          occurrence('mods:witness[4]', 'Jaime Herrera Beutler', WASHINGTON)]
 
 
-def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES, members=()):
-    body = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
-            + ''.join(f'<witness>{line}</witness>' for line in lines)
-            + ''.join(f'<congMember role="COMMMEMBER"><name type="authority-lnf">{m}</name></congMember>' for m in members)
-            + '</extension></mods>').encode()
-    (tmp_path / 'raw' / DIGEST[:2]).mkdir(parents=True)
-    (tmp_path / 'raw' / DIGEST[:2] / f'{DIGEST}.gz').write_bytes(gzip.compress(body))
-    for name, appearances in (('before', before), ('after', after)):
+def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES, members=(), table=(), prints=()):
+    """One print (DIGEST) of the 118th Congress, an unreadable body, and `prints` more as (digest, lines, members,
+    before, after); `table` names the Members serving in the 118th by the members table."""
+    for digest, print_lines, print_members, _, _ in ((DIGEST, lines, members, None, None), *prints):
+        body = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension><congress>118</congress>'
+                + ''.join(f'<witness>{line}</witness>' for line in print_lines)
+                + ''.join(f'<congMember role="COMMMEMBER"><name type="authority-lnf">{m}</name></congMember>'
+                          for m in print_members)
+                + '</extension></mods>').encode()
+        (tmp_path / 'raw' / digest[:2]).mkdir(parents=True, exist_ok=True)
+        (tmp_path / 'raw' / digest[:2] / f'{digest}.gz').write_bytes(gzip.compress(body))
+    for side, appearances in ((3, before), (4, after)):
         rows = [dict(source='mods', record_sha=bytes.fromhex(DIGEST), package_id='CHRG-1', appearances=appearances),
                 dict(source='mods', record_sha=bytes.fromhex('cd' * 32), package_id='CHRG-2', appearances=[])]
-        pq.write_table(pa.Table.from_pylist(rows), tmp_path / f'{name}.parquet')
+        rows += [dict(source='mods', record_sha=bytes.fromhex(p[0]), package_id=f'CHRG-{p[0][:2]}', appearances=p[side])
+                 for p in prints]
+        pq.write_table(pa.Table.from_pylist(rows), tmp_path / f"{'before' if side == 3 else 'after'}.parquet")
+    term = dict(chamber='house', state='OH', district=1, party='I', start=date(2023, 1, 3), end=date(2025, 1, 3))
+    old = dict(term, start=date(1993, 1, 5), end=date(1995, 1, 3))
+    pq.write_table(pa.Table.from_pylist([dict(bioguide_id='X', name='Nobody Here', terms=[old])]
+                                        + [dict(bioguide_id=f'T{i}', name=n, terms=[term]) for i, n in enumerate(table)]),
+                   tmp_path / 'members.parquet')
     people = [dict(source=s, name=n) for s in ('congress_gov', 'house_xml')
               for n in ('Richard Roe', 'Eleanor Smith', 'Hon. Jaime Herrera Beutler')]
     people.append(dict(source='mods', name='American Legion'))  # MODS names never teach a name
@@ -57,7 +69,7 @@ def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES, members=()):
 def run(tmp_path, *extra):
     args = ['--before', str(tmp_path / 'before.parquet'), '--after', str(tmp_path / 'after.parquet'),
             '--raw-root', str(tmp_path / 'raw'), '--people', str(tmp_path / 'people.parquet'),
-            '--output', str(tmp_path / 'out.json'), *extra]
+            '--members', str(tmp_path / 'members.parquet'), '--output', str(tmp_path / 'out.json'), *extra]
     code = check.main(args)
     return code, json.loads((tmp_path / 'out.json').read_text())
 
@@ -79,7 +91,7 @@ def test_a_faithful_reread_passes_and_names_the_unreadable_body(tmp_path):
 def test_each_planted_wrong_value_is_flagged(tmp_path, kind, flags, locator, planted):
     write(tmp_path)
     code, out = run(tmp_path, '--plant', kind)
-    assert code == 1 and out['planted']['flagged'] and out['planted']['planted'] == planted
+    assert code == 1 and out['planted'][0]['flagged'] and out['planted'][0]['planted'] == planted
     assert out['failed'] == flags
     assert all([i['locator'] for i in out[flag]] == [locator] for flag in flags)
 
@@ -183,7 +195,7 @@ def test_a_split_that_moves_the_second_persons_words_and_a_typed_document_pass(t
 def test_each_planted_split_or_type_is_flagged(tmp_path, kind, flag, locator):
     write(tmp_path, before=RECORD_BEFORE, after=RECORD_AFTER, lines=RECORD_LINES)
     code, out = run(tmp_path, '--plant', kind)
-    assert code == 1 and out['planted']['flagged'] and out['failed'] == {flag: 1}
+    assert code == 1 and out['planted'][0]['flagged'] and out['failed'] == {flag: 1}
     assert [i['locator'] for i in out[flag]] == [locator]
 
 
@@ -192,9 +204,9 @@ def test_an_added_row_that_is_not_a_split_a_person_typed_and_a_statement_left_a_
              RECORD_BEFORE[1], RECORD_AFTER[3]]
     write(tmp_path, before=RECORD_BEFORE, after=after, lines=RECORD_LINES)
     code, out = run(tmp_path)
-    # The moved row's position prints no line, so its name is in no line either.
+    # The moved row's line prints nothing, so its name and its position are in no line either.
     assert code == 1 and out['failed'] == {'added': 1, 'name_not_in_line': 1, 'type_unsupported': 1, 'words_lost': 1,
-                                           'record_as_witness': 1}
+                                           'record_as_witness': 1, 'position_not_in_line': 1}
     assert [i['locator'] for i in out['record_as_witness']] == ['mods:witness[2]']
 
 
@@ -247,7 +259,7 @@ def test_an_asker_left_a_witness_and_a_witness_typed_as_an_asker_fail(tmp_path):
 def test_a_planted_asker_left_a_witness_is_flagged(tmp_path):
     write(tmp_path, before=QUESTION_BEFORE, after=QUESTION_AFTER, lines=QUESTION_LINES)
     code, out = run(tmp_path, '--plant', 'asker-as-witness')
-    assert code == 1 and out['planted']['flagged'] and out['planted']['locator'] == 'mods:witness[2]'
+    assert code == 1 and out['planted'][0]['flagged'] and out['planted'][0]['locator'] == 'mods:witness[2]'
     assert out['failed'] == {'question_asker_as_witness': 1}
 
 
@@ -299,7 +311,7 @@ def test_a_faithful_reading_of_several_askers_passes(tmp_path):
 def test_each_planted_asker_value_is_flagged(tmp_path, kind, flag, locator, missing):
     write(tmp_path, before=ASKER_BEFORE, after=ASKER_AFTER, lines=ASKER_LINES, members=['Lautenberg, Frank R.'])
     code, out = run(tmp_path, '--plant', kind)
-    assert code == 1 and out['planted']['flagged'] and out['planted']['locator'] == locator
+    assert code == 1 and out['planted'][0]['flagged'] and out['planted'][0]['locator'] == locator
     assert [i['locator'] for i in out[flag]] == [locator]
     if missing:
         assert out[flag][0]['words'] == missing
@@ -328,7 +340,7 @@ def test_a_planted_title_or_statement_left_a_witness_is_flagged(tmp_path, kind, 
     code, out = run(tmp_path)
     assert not out['record_as_witness']
     code, out = run(tmp_path, '--plant', kind)
-    assert code == 1 and out['planted']['flagged'] and [i['locator'] for i in out['record_as_witness']] == [locator]
+    assert code == 1 and out['planted'][0]['flagged'] and [i['locator'] for i in out['record_as_witness']] == [locator]
 
 
 # Round 3 (owner decisions 2026-11-10): one asker rule keyed on Member identity. The check reads asking lines by their
@@ -400,7 +412,7 @@ def test_each_planted_asker_value_is_flagged_without_an_accept(tmp_path, kind, f
     code, out = run(tmp_path)
     assert code == 0, out['failed']
     code, out = run(tmp_path, '--plant', kind)
-    assert code == 1 and out['planted']['flagged'] and out['planted']['planted'] == planted
+    assert code == 1 and out['planted'][0]['flagged'] and out['planted'][0]['planted'] == planted
     assert locator in [i['locator'] for i in out[flag]]
 
 
@@ -412,3 +424,83 @@ def test_a_witness_typed_as_an_asker_on_an_asking_line_fails(tmp_path):
     code, out = run(tmp_path)
     assert code == 1 and out['failed'] == {'type_unsupported': 1}
     assert [i['locator'] for i in out['type_unsupported']] == ['mods:witness[4]']
+
+
+# Round 4 (owner decisions 2026-11-10 on the third review): answerers beside askers, Members counted a second time from
+# the members table, Members merged into one row, a position the line does not print, and display order across lines.
+ROUND4_LINES = ['Hon. Jane Doe, a Representative in Congress from the State of Ohio',
+                'Response to request arising during the hearing by: Hon. Richard Roe....... 13 Hon. Joe Doe',
+                'Questions from Senator Lautenberg to Jaime Herrera Beutler and Dr. Moe',
+                'Kerr, Mark, Director, Office of Things', 'Moe, Dr. Anne, Professor, College of Things',
+                'Poe, Edgar, Director, Office of Ravens']
+ROUND4_BEFORE = [asked('mods:witness[1]', 'Jane Doe', 1, None, position='a Representative in Congress from the State of Ohio'),
+                 asked('mods:witness[4]', 'Mark Kerr', 7, None, position='Director', organization='Office of Things'),
+                 asked('mods:witness[5]', 'Anne Moe', 8, None, position='Professor', organization='College of Things'),
+                 asked('mods:witness[6]', 'Edgar Poe', 9, None, position='Director', organization='Office of Ravens')]
+ROUND4_AFTER = [ROUND4_BEFORE[0], asked('mods:witness[2]', 'Richard Roe', 2), asked('mods:witness[2]/part[2]', 'Joe Doe', 3),
+                asked('mods:witness[3]', 'Lautenberg', 4), asked('mods:witness[3]/part[2]', 'Jaime Herrera Beutler', 5, None),
+                asked('mods:witness[3]/part[3]', 'Moe', 6, None), *ROUND4_BEFORE[1:]]
+# Joe Doe, Jane Doe and Lautenberg serve in the 118th by the members table; the print's <congMember> list names Roe.
+ROUND4_TABLE = ['Richard Roe', 'Joseph Doe', 'Frank Lautenberg', 'Jane Doe']
+
+
+def round4(tmp_path, after=ROUND4_AFTER, table=ROUND4_TABLE, **more):
+    write(tmp_path, before=ROUND4_BEFORE, after=after, lines=ROUND4_LINES, members=['Roe, Richard'], table=table, **more)
+
+
+def test_answerers_beside_askers_and_members_the_list_omits_pass(tmp_path):
+    """An answerer on an asking line, a person who is not one of its Members, is listed beside the askers ("Dr. Moe"
+    by the civil title, Herrera Beutler by two printed words); Joe Doe, whom the print's list omits, is an asker by the
+    members table."""
+    round4(tmp_path)
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+    assert [i['locator'] for i in out['answerer']] == ['mods:witness[3]/part[2]', 'mods:witness[3]/part[3]']
+    assert [i['locator'] for i in out['asker']] == ['mods:witness[2]', 'mods:witness[2]/part[2]', 'mods:witness[3]']
+
+
+@pytest.mark.parametrize('row, flag', [
+    # The reviewer's "roster-gap-reverted": a Member the print's list omits, left a witness.
+    (asked('mods:witness[2]/part[2]', 'Joe Doe', 3, None), 'question_asker_as_witness'),
+    # The reviewer's "merged": two Members in one row.
+    (asked('mods:witness[2]/part[2]', 'Richard Roe and Joe Doe', 3), 'members_merged'),
+])
+def test_members_the_list_omits_and_merged_members_are_seen(tmp_path, row, flag):
+    """Only the members table counts Joe Doe (the print's list names Roe alone, and "Hon." is any official's): with a
+    table that names no one serving, the flag is not raised."""
+    after = [*ROUND4_AFTER[:2], row, *ROUND4_AFTER[3:]]
+    round4(tmp_path, after=after)
+    code, out = run(tmp_path)
+    assert code == 1 and [i['locator'] for i in out[flag]] == [row['source_locator']]
+    (tmp_path / 'raw').rename(tmp_path / 'raw-old')
+    round4(tmp_path, after=after, table=())
+    code, out = run(tmp_path)
+    assert not out[flag]
+
+
+def test_a_position_the_line_does_not_print_and_order_across_lines_fail(tmp_path):
+    """The reviewer's "wrong-chamber" and "rotate-across-lines", written by hand."""
+    after = [dict(ROUND4_AFTER[0], position='a Senator in Congress from the State of Ohio'), *ROUND4_AFTER[1:7],
+             dict(ROUND4_AFTER[7], display_order=9), dict(ROUND4_AFTER[8], display_order=8)]
+    round4(tmp_path, after=after)
+    code, out = run(tmp_path)
+    assert code == 1 and out['failed'] == {'position_not_in_line': 1, 'order_across_lines': 1}
+    assert [i['locator'] for i in out['position_not_in_line']] == ['mods:witness[1]']
+    assert [i['locator'] for i in out['order_across_lines']] == ['mods:witness[6]']
+
+
+def test_the_plants_run_together_each_on_its_own_print(tmp_path):
+    """Plants for each blind spot the third review found, batched in one run, each on its own print, each flagged."""
+    kinds = ['members-merged', 'wrong-chamber', 'rotate-across-lines', 'roster-gap-reverted', 'roster-gap-dropped']
+    prints = [(f'{n:02x}' * 32, ROUND4_LINES, ['Roe, Richard'], ROUND4_BEFORE, ROUND4_AFTER) for n in range(1, len(kinds))]
+    round4(tmp_path, prints=prints)
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+    code, out = run(tmp_path, '--plant', *kinds)
+    assert code == 1 and [p['kind'] for p in out['planted']] == kinds
+    assert len({p['body'] for p in out['planted']}) == len(kinds) and all(p['flagged'] for p in out['planted'])
+    assert {p['kind']: p['locator'] for p in out['planted']} == {
+        'members-merged': 'mods:witness[2]', 'wrong-chamber': 'mods:witness[1]', 'rotate-across-lines': 'mods:witness[5]',
+        'roster-gap-reverted': 'mods:witness[3]', 'roster-gap-dropped': 'mods:witness[2]'}
+    code, out = run(tmp_path, '--plant', 'split-untrimmed')
+    assert out['planted'] == [dict(kind='split-untrimmed', body=None, locator=None, name=None, planted=None, flagged=None)]
