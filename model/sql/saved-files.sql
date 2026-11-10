@@ -4,7 +4,7 @@
 -- source with neither never leads one that has either, so the published address
 -- never goes blank), then by name standing (saved-name-standing.sql): an
 -- official name no committee name contradicts, then a committee name that
--- states a kind beside an official name (ct-h8dr, ct-yuf0), then one whose
+-- states a kind beside a House slot name (ct-h8dr, ct-yuf0), then one whose
 -- capture stored these bytes: a file whose captures only found the archive
 -- already holding them (body_stored false, a later fetch of the same bytes at
 -- another address) cannot rename the document or replace what its name says
