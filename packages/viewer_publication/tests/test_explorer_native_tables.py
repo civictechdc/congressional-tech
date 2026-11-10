@@ -56,7 +56,8 @@ def tables(tmp_path_factory):
              ELSE array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
               'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) END AS transcripts
             FROM (SELECT 1001 AS event_id,'house' AS chamber UNION ALL SELECT 1002,'house' UNION ALL SELECT 1003,'house' UNION ALL SELECT 1004,'house' UNION ALL SELECT 1005,'house'
-             UNION ALL SELECT 1006,'house' UNION ALL SELECT 1007,'house' UNION ALL SELECT 1008,'senate' UNION ALL SELECT 1009,'house' UNION ALL SELECT 1010,'house' UNION ALL SELECT 1011,'house')""", materialize=True),
+             UNION ALL SELECT 1006,'house' UNION ALL SELECT 1007,'house' UNION ALL SELECT 1008,'senate' UNION ALL SELECT 1009,'house' UNION ALL SELECT 1010,'house' UNION ALL SELECT 1011,'house'
+             UNION ALL SELECT 1012,'house' UNION ALL SELECT 1013,'house')""", materialize=True),
         dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-sibling',1007 UNION ALL SELECT 'CHRG-no-verdict',1007 UNION ALL SELECT 'CHRG-unattached',1010 UNION ALL SELECT 'CHRG-qualified',1002 UNION ALL SELECT 'CHRG-qualified',1004""", materialize=True),
         dict(name='package_mods_facts', sql="""SELECT 'CHRG-unattached' AS package_id,arrow_cast(make_array(cast(9999 AS BIGINT)),'List(Int64)') AS named_meetings
             UNION ALL SELECT 'CHRG-unlinked',arrow_cast(make_array(cast(1011 AS BIGINT)),'List(Int64)')""", materialize=True),
@@ -73,12 +74,16 @@ def tables(tmp_path_factory):
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='ordered', sql="SELECT arrow_cast(make_array('1001'),'List(Utf8)') AS meeting_keys", materialize=True),
         # 1001 shows Jane once: the print's Jane is superseded by the meeting's own row, and a letter for the
-        # record is a statement, not a witness.
+        # record is a statement, not a witness. 1012 lists only a sitting Member, 1013 a Member and an outside
+        # witness (ct-kw85).
         dict(name='witnesses_export', sql="""SELECT cast(1001 AS BIGINT) AS event_id,'Jane' AS name,cast(NULL AS VARCHAR) AS package_id,
             cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
             UNION ALL SELECT 1001 AS event_id,'Jane' AS name,'CHRG-x' AS package_id,cast(NULL AS VARCHAR) AS witness_type,'abc' AS superseded_by
             UNION ALL SELECT 1001 AS event_id,'Letter of support' AS name,'CHRG-x' AS package_id,'statement_for_record' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
-            UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Joe' AS name,'CHRG-unattached' AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by""", materialize=True),
+            UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Joe' AS name,'CHRG-unattached' AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
+            UNION ALL SELECT 1012,'The Honorable Ann Member',cast(NULL AS VARCHAR),'member_appearance',cast(NULL AS VARCHAR)
+            UNION ALL SELECT 1013,'The Honorable Ben Member',cast(NULL AS VARCHAR),'member_appearance',cast(NULL AS VARCHAR)
+            UNION ALL SELECT 1013,'Cal Outside',cast(NULL AS VARCHAR),cast(NULL AS VARCHAR),cast(NULL AS VARCHAR)""", materialize=True),
         dict(name='recordings_export', sql="SELECT 'youtube:unmatched' AS video_key,make_array(1) AS tracks", materialize=True),
         dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
     ]
@@ -172,7 +177,7 @@ def test_disputed_negative_verdict_is_unresolved_with_its_evidence(tables):
 
 def test_coverage_is_meetings_times_aspects_and_states_stay_distinct(tables):
     found = rows(tables, 'meeting_coverage')
-    assert len(found) == 11 * 5
+    assert len(found) == 13 * 5
     assert state(tables, 1001, 'witnesses') == 'present'
     assert next(r['count'] for r in found if r['event_id'] == 1001 and r['aspect'] == 'witnesses') == 1
     assert state(tables, 1002, 'witnesses') == 'empty'
@@ -201,9 +206,17 @@ def reason(work, event, aspect):
     (1004, 'captions', 'unknown', 'recording_link_pending'),
     (1009, 'transcript', 'present', 'captions,committee_transcript'),
     (1001, 'documents', 'present', None),
+    (1012, 'witnesses', 'empty', 'member_appearances_only'),
+    (1013, 'witnesses', 'present', None),
 ])
 def test_held_but_unlinked_evidence_is_unknown_never_not_stated(tables, event, aspect, expected, why):
     assert (state(tables, event, aspect), reason(tables, event, aspect)) == (expected, why)
+
+
+def test_members_of_congress_are_not_counted_as_witnesses(tables):
+    # A meeting whose list names only sitting Members has no outside witness: empty, never not_stated (ct-kw85).
+    counts = {r['event_id']: r['count'] for r in rows(tables, 'meeting_coverage') if r['aspect'] == 'witnesses'}
+    assert counts[1012] == 0 and counts[1013] == 1
 
 
 def test_a_package_whose_mods_names_another_meeting_settles_nothing_here(tables):
@@ -228,7 +241,7 @@ def test_recipes_run_under_duckdb(tables):
         recipes = {r['id']: r for r in schema['recipes']}
         assert db.execute(recipes['channel_unmatched_videos']['sql'], ['@A']).fetchall()[0][0] == 'youtube:unmatched'
         assert db.execute(recipes['meeting_recordings']['sql'], [LINKED]).fetchall()
-        assert dict(db.execute(recipes['coverage_counts']['sql'], ['witnesses']).fetchall())['empty'] == 1
+        assert dict(db.execute(recipes['coverage_counts']['sql'], ['witnesses']).fetchall())['empty'] == 2
 
 
 def test_videos_channels_and_committee_records_from_lake_rows(tmp_path):
