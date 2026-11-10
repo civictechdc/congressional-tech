@@ -47,7 +47,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``words_lost``: a changed occurrence that loses a word across name, position, organization and
   on_behalf_of (credentials such as "M.D." and titles such as "Hon." may go, as for every witness line, and the
   label "Accompanied by"; on an asking line, so may its heading's words and a contents column's "Page"; a word
-  another row of the line now shows is not lost, nor page numbers fused to a kept word, "EPA173-198"; a row whose
+  the row or another row of the line still shows is not lost (a name printed again in a heading, "... for Damon
+  Stevens", may go), nor page numbers fused to a kept word, "EPA173-198"; a row whose
   name opened in lower case, a fragment of prose, loses nothing when it comes to name no one). A raw line that opens
   in lower case is a fragment of prose run into the list: ``member_unnamed`` and ``person_left_in_organization`` do
   not read it, and ``person_moved`` reads only names that open in capitals;
@@ -888,8 +889,9 @@ def judge(before, after, raw_root, given, family, serving=None):
             # A word another row of the same line now shows (an asker appended at /part[2]) is not lost to a reader,
             # nor page numbers fused to a kept word ("EPA173-198" for "EPA").
             shown = {w for r in by_line.get(position(locator), []) if r is not b for w in bag(r)}
-            lost = Counter({w: k for w, k in (old_words - new_words).items() if w not in shed and w not in shown
-                            and not (re.search(r"\d$", w) and re.sub(r"\d+$", "", w) in new_words)})
+            fused = lambda w: re.search(r"\d$", w) and re.sub(r"\d+$", "", w) in new_words  # noqa: E731
+            lost = Counter({w: k for w, k in (old_words - new_words).items()
+                            if w not in shed and w not in shown and w not in new_words and not fused(w)})
             # A name that opens in lower case is a fragment of prose, no one's: a row that held one and now names no
             # one loses no person or affiliation.
             if not new_name and re.match(r"[a-z]", (old_name or '').strip()):
