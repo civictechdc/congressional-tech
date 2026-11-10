@@ -1,21 +1,24 @@
--- ct-kw85: how each sitting candidate's term agrees with the row's own words. Tier 1: the row names the term's state
--- (and a chamber, a role, or only Congress and places); 2: it names the term's chamber, or Congress, and no state; 3:
--- it opens a field with a congressional role, names no state, and its first name agrees in full. A row that names a
--- state legislature, or a state no candidate's term holds, has no tier. Its own step: witness_member_decisions reads it twice.
-WITH row_facts AS (
- SELECT f.id AS witness_key,f.chamber,f.says_role,m.states,m.names_legislature,m.about_congress
- FROM witness_member_mentions m JOIN witness_member_facts f ON f.id=m.witness_key AND f.side='witness'
-), agreement AS (
- SELECT c.witness_key,c.bioguide_id,c.strict,c.full_name,bool_or(array_has(r.states,c.state)) AS state_match,
-  bool_or(c.chamber=r.chamber) AS chamber_match
- FROM row_facts r JOIN witness_member_candidates c ON c.witness_key=r.witness_key
- GROUP BY c.witness_key,c.bioguide_id,c.strict,c.full_name
+-- ct-kw85: how each sitting candidate's term agrees with the row's own words, in one pass. For a candidate whose
+-- first name agrees (witness_member_candidates.agrees), tier 1: the row names the term's state (and a chamber, a role,
+-- or only Congress and places); 2: it names the term's chamber, or Congress, and no state; 3: it opens a field with a
+-- congressional role, names no state, and its first name agrees in full. For any other candidate, tier 5, the
+-- initial rule's pool: the row names the term's state and a chamber that is the term's ('Member of Congress' is
+-- either). A row that names a state legislature, or a state no candidate's term holds, has no tier.
+WITH agreement AS (
+ SELECT c.witness_key,c.bioguide_id,c.strict,c.agrees,c.full_name,c.initial,
+  bool_or(array_has(m.states,c.state)) AS state_match,bool_or(c.chamber=m.chamber) AS chamber_match,
+  bool_or(array_has(m.states,c.state) AND (m.chamber='either' OR c.chamber=m.chamber)) AS office_state_match,
+  max(m.chamber) AS chamber,bool_or(m.says_role) AS says_role,bool_or(m.names_legislature) AS names_legislature,
+  bool_or(m.about_congress) AS about_congress,max(cardinality(m.states)) AS states
+ FROM witness_member_mentions m JOIN witness_member_candidates c ON c.witness_key=m.witness_key
+ GROUP BY c.witness_key,c.bioguide_id,c.strict,c.agrees,c.full_name,c.initial
 )
-SELECT a.witness_key,a.bioguide_id,a.strict,
- CASE WHEN r.names_legislature THEN NULL
-  WHEN a.state_match THEN CASE WHEN r.chamber IS NOT NULL OR r.says_role OR r.about_congress THEN 1 END
-  WHEN cardinality(r.states)>0 THEN NULL
-  WHEN r.chamber IN ('senate','house') THEN CASE WHEN a.chamber_match THEN 2 END
-  WHEN r.chamber='either' THEN 2
-  WHEN r.says_role AND a.full_name THEN 3 END AS tier
-FROM row_facts r JOIN agreement a ON a.witness_key=r.witness_key
+SELECT witness_key,bioguide_id,strict,initial,
+ CASE WHEN names_legislature THEN NULL
+  WHEN NOT agrees THEN CASE WHEN office_state_match THEN 5 END
+  WHEN state_match THEN CASE WHEN chamber IS NOT NULL OR says_role OR about_congress THEN 1 END
+  WHEN states>0 THEN NULL
+  WHEN chamber IN ('senate','house') THEN CASE WHEN chamber_match THEN 2 END
+  WHEN chamber='either' THEN 2
+  WHEN says_role AND full_name THEN 3 END AS tier
+FROM agreement

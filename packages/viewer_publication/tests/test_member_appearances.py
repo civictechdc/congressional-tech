@@ -6,7 +6,10 @@ introducing a nominee, a sponsor before another chamber's committee, a former Me
 term alone), a non-Member with a sitting Member's name, a Member with no term dates, the hearing's own nominee, two
 sitting Members of one name, a nickname the members data holds, an abbreviated first name with a former namesake,
 'Representative of' an organization, a state commission chair with an initial, a state legislature, 'Rep.' alone,
-a district code, and a name with nothing else.
+a district code, a name with nothing else, a seat's holder named only by family name (at large, and a district),
+a seat stated beside a state legislature, a bare initial in the members data (C. Cox) and in the row's own
+reading (JD Vance), an initial another sitting Member shares, 'ranking House Member', and 'Representatives in
+Congress'.
 """
 import os
 from pathlib import Path
@@ -18,8 +21,8 @@ from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model import WITNESSES_SQL
 
 ROOT = Path(__file__).parents[3]
-STEPS = ('member-terms', 'witness-member-facts', 'witness-member-candidates', 'witness-member-mentions', 'witness-member-tiers',
-         'witness-member-decisions', 'witness-members')
+STEPS = ('member-terms', 'witness-member-facts', 'witness-member-names', 'witness-member-candidates', 'witness-member-rows',
+         'witness-member-mentions', 'witness-member-seats', 'witness-member-tiers', 'witness-member-decisions', 'witness-members')
 
 # bioguide, first, last, nickname, term type, state, start, end
 MEMBERS = [
@@ -44,7 +47,16 @@ MEMBERS = [
     ('D000003', 'Rodney', 'Davis', None, 'rep', 'IL', '2013-01-03', '2023-01-03'),
     ('H000003', 'Debra', 'Haaland', 'Deb', 'rep', 'NM', '2019-01-03', '2021-03-16'),
     ('T000003', 'Glenn', 'Thompson', None, 'rep', 'PA', '2009-01-06', '2027-01-03'),
+    ('P000003', 'Earl', 'Pomeroy', None, 'rep', 'ND', '1993-01-05', '2011-01-03'),
+    ('C000004', 'J.', 'Correa', None, 'rep', 'CA', '2017-01-03', '2027-01-03'),
+    ('C000005', 'C.', 'Cox', None, 'rep', 'CA', '1989-01-03', '2005-08-02'),
+    ('V000005', 'James David', 'Vance', 'J.D.', 'sen', 'OH', '2023-01-03', '2029-01-03'),
+    ('W000005', 'J.', 'Walker', None, 'rep', 'NC', '2001-01-03', '2011-01-03'),
+    ('W000006', 'James', 'Walker', None, 'rep', 'NC', '2001-01-03', '2011-01-03'),
+    ('W000007', 'Timothy', 'Walz', None, 'rep', 'MN', '2007-01-04', '2019-01-03'),
+    ('S000005', 'F.', 'Sensenbrenner', None, 'rep', 'WI', '1979-01-15', '2021-01-03'),
 ]
+DISTRICTS = {'P000003': 0, 'C000004': 46}  # House seats the seat rule reads; 0 is at large
 MEETINGS = [
     (9001, '2023-03-01', "Members' Day Hearing"),
     (9002, '2019-05-01', 'Hearing on H.R. 1'),
@@ -65,6 +77,13 @@ MEETINGS = [
     (9017, '2020-03-10', 'Member Day'),
     (9018, '2019-07-16', 'H.R. 2414'),
     (9019, '2023-03-01', 'Committee Funding'),
+    (9020, '2006-05-10', 'Farm policy'),
+    (9021, '2019-04-30', 'Veterans'),
+    (9022, '2001-06-28', 'Trade with Russia'),
+    (9023, '2023-03-09', 'Rail safety'),
+    (9024, '2016-01-12', 'Human rights in China'),
+    (9025, '2006-06-14', 'Communications'),
+    (9026, '2005-03-01', 'Textiles'),
 ]
 # witness_key: (source, event_id, package_id, name, position, organization, witness_type, bioguide_id, superseded_by)
 ROWS = {
@@ -98,6 +117,19 @@ ROWS = {
     'prepared-statement': ('mods', 9001, None, 'Ann Sitting', 'a Representative in Congress from Texas, prepared statement', None,
                            'member_statement', None, None),
     'outside-witness': ('congress_gov', 9001, None, 'Dr. Ada Lovelace', 'Professor', 'University', None, None, None),
+    'seat-at-large': ('mods', 9020, None, 'Page Pomeroy', 'The Honorable Earl (ND-At Large)', 'Congressman, U.S. House of Representatives',
+                      None, None, None),
+    'seat-district': ('mods', 9021, None, 'Lou Correa', 'U.S. House of Representatives', '46th District; California', None, None, None),
+    'seat-in-a-state-legislature': ('mods', 9021, None, 'Juan Correa', 'Member, 46th District', 'California Assembly', None, None, None),
+    'initial-in-members-data': ('mods', 9022, None, 'Christopher Cox', 'a Representative in Congress from the State of California',
+                                None, None, None, None),
+    'initial-in-the-row': ('senate_page', 9023, None, 'JD Vance', 'United States Senator', 'The State of Ohio', None, None, None),
+    'initial-another-member-shares': ('mods', 9026, None, 'John Walker', 'a Representative in Congress from North Carolina', None,
+                                      None, None, None),
+    'ranking-house-member': ('mods', 9024, None, 'Timothy J. Walz', 'ranking House Member', 'Congressional-Executive Commission on China',
+                             None, None, None),
+    'representatives-in-congress': ('mods', 9025, None, 'F. James Sensenbrenner', 'Jr.',
+                                    'a Representatives in Congress from the State of Wisconsin', None, None, None),
 }
 
 
@@ -108,7 +140,7 @@ def result(tmp_path_factory):
     inputs = [
         json_input(work, 'spicy_members', [dict(bioguide_id=b, name_first=f, name_last=l, name_nickname=n) for b, f, l, n, *_ in MEMBERS],
                    bioguide_id='Utf8', name_first='Utf8', name_last='Utf8', name_nickname='Utf8'),
-        json_input(work, 'spicy_member_terms', [dict(bioguide_id=b, term_type=t, term_state=s, term_district=None, term_party=None,
+        json_input(work, 'spicy_member_terms', [dict(bioguide_id=b, term_type=t, term_state=s, term_district=DISTRICTS.get(b), term_party=None,
                                                      term_start=start, term_end=end) for b, _f, _l, _n, t, s, start, end in MEMBERS],
                    bioguide_id='Utf8', term_type='Utf8', term_state='Utf8', term_district='Int32', term_party='Utf8',
                    term_start='Utf8', term_end='Utf8'),
@@ -160,6 +192,12 @@ def decided(result):
     ('rep-alone', ('member', 'D000003', 'name_chamber')),
     ('district-code', ('member', 'H000003', 'name_state')),
     ('introducing-a-namesake', ('member', 'B000002', 'name_state')),  # the title names James Namesake, not Brian
+    ('seat-at-large', ('member', 'P000003', 'seat')),                 # a garbled heading: no first name to agree
+    ('seat-district', ('member', 'C000004', 'seat')),                 # J. Luis Correa: the members data has no 'Luis'
+    ('initial-in-members-data', ('member', 'C000005', 'initial')),
+    ('initial-in-the-row', ('member', 'V000005', 'initial')),         # 'JD' is a first name here, not a credential
+    ('ranking-house-member', ('member', 'W000007', 'name_role')),
+    ('representatives-in-congress', ('member', 'S000005', 'name_state')),
 ])
 def test_sitting_members_acting_officially_are_member_appearances(result, key, expected):
     assert decided(result)[key] == expected
@@ -167,7 +205,8 @@ def test_sitting_members_acting_officially_are_member_appearances(result, key, e
 
 @pytest.mark.parametrize('key', ['says-former-while-sitting', 'term-ended-without-the-word', 'non-member-namesake', 'no-term-dates',
                                  'prepared-statement', 'outside-witness', 'representative-of-an-organization',
-                                 'initial-and-state-commission', 'state-legislature-by-name', 'name-and-nothing-else'])
+                                 'initial-and-state-commission', 'state-legislature-by-name', 'name-and-nothing-else',
+                                 'seat-in-a-state-legislature'])
 def test_these_stay_witnesses_or_statements(result, key):
     assert key not in decided(result)
 
@@ -178,6 +217,8 @@ def test_the_hearings_own_nominee_stays_a_witness(result):
 
 def test_two_sitting_members_of_one_name_resolve_to_no_match(result):
     assert decided(result)['two-sitting-rogers'] == ('ambiguous', None, None)
+    # J. Walker and James Walker sit for North Carolina: an initial singles out no one.
+    assert decided(result)['initial-another-member-shares'] == ('ambiguous', None, None)
 
 
 def test_the_export_retypes_only_member_rows_and_never_writes_bioguide_id(result):

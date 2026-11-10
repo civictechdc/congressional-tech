@@ -987,8 +987,8 @@ def appearance_steps(*,root=ROOT):
         dict(name='appearance_observations',sql=(Path(root)/'model/sql/appearance-observations.sql').read_text(),materialize=True),
         dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(
         ['witness-precedence','witness-key-current','witness-key-priors','witness-key-map',
-         'member-terms','witness-member-facts','witness-member-candidates','witness-member-mentions','witness-member-tiers',
-         'witness-member-decisions','witness-members'],root=root)
+         'member-terms','witness-member-facts','witness-member-names','witness-member-candidates','witness-member-rows',
+         'witness-member-mentions','witness-member-seats','witness-member-tiers','witness-member-decisions','witness-members'],root=root)
 
 
 def package_link_steps(*,root=ROOT):

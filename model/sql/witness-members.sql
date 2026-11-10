@@ -7,6 +7,12 @@
 --  name_chamber  ...whose covering term's chamber the row names ('U.S. Senator', 'Representative in Congress',
 --                '(NM-01)', 'Rep.'), or Congress ('Member of Congress'), and no state;
 --  name_role     ...the row opens a field with a congressional role, names no state, and the first name agrees in full;
+--  seat          the row states a House seat (a state and district, a state at large, or a territory's Delegate or
+--                Resident Commissioner) and a word of its name or first field is the family name of the Member
+--                holding that seat on the date (witness_member_seats);
+--  initial       the row states a congressional office and a state, and one side of the first name is a bare initial
+--                ('C. Cox', 'JD Vance') of the only Member sitting in that chamber and state with that family name and
+--                initial on the date (witness_member_decisions);
 --  group         another row of the same appearance (witness_precedence) matched.
 -- The row's own words keep it a witness when it says former or gives a closed span of years, names a state
 -- legislature, a House or Senate officer or staffer, or 'Representative of' an organization. Several fitting Members
