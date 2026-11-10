@@ -1,4 +1,5 @@
 """Append-only provenance records and pinned, local-only import stages."""
+from contextlib import nullcontext
 from datetime import datetime
 from hashlib import file_digest, sha256
 import json
@@ -367,6 +368,33 @@ def bounded_engine(engine,directory,**ceilings):
     path=directory/'limits.json'
     path.write_text(json.dumps({**limits,**{name:min(limits[name],ceiling) for name,ceiling in ceilings.items()}},indent=2)+'\n')
     return engine.with_limits(path)
+
+
+QUERY_MEMORY_BYTES=2<<30
+
+
+def query(engine,sql,tables,*,memory_bytes=QUERY_MEMORY_BYTES,work=None):
+    """Rows of one read-only statement over `tables`, each name bound to a Parquet path or an exact table pin.
+
+    A throwaway `run_job`: no steps and no outputs, and the engine plans no DDL or DML in a job query, so
+    nothing is written outside the job's folder. Engine memory is lowered to `memory_bytes`; the result is
+    bounded by the runtime's `max_metadata_bytes`. Rows are the engine's JSON: keys in name order, binary as
+    lowercase hex, timestamps as RFC 3339 text. `work` keeps the job (`job.json`, `limits.json`,
+    `engine.log`, `result.json`); otherwise a temporary folder is removed on return. A pin is read through
+    whatever object connection `engine` has: none for a local runtime."""
+    from congress_api.lake.tables import table_input
+    inputs=[table_input(name,source) for name,source in tables.items()]
+    with nullcontext(work) if work is not None else TemporaryDirectory(prefix='docspec-query-') as root:
+        bounded=bounded_engine(engine,root,memory_bytes=memory_bytes)
+        try:
+            return run_job(root,bounded,inputs=inputs,steps=[],outputs=[],queries=[dict(name='query',sql=sql)])['query']
+        finally:
+            if bounded is not engine:bounded.close()
+
+
+def explain(engine,sql,tables,**options):
+    """The engine's plans for `sql`, keyed by plan type (`logical_plan`, `physical_plan`); nothing is run."""
+    return {row['plan_type']:row['plan'] for row in query(engine,'EXPLAIN '+sql,tables,**options)}
 
 
 def parquet_records(path):
