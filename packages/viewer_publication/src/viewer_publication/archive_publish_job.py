@@ -501,7 +501,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             spec['_model_identity'].require(spec['model_spec']['path'])
             target_identity.require(spec['targets']['path'])
             client=storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1})
-            selected_model=spec['_model'];keys=spec['receipt_keys'];provenance=spec['provenance'];verified=None;daily=None
+            selected_model=spec['_model'];keys=spec['receipt_keys'];provenance=spec['provenance'];verified=None;daily=None;reads=None
             from congress_api.lake.producer_records import ProducerRecords
             anchors={}
             for name,pin in spec.get('producers',{}).items():
@@ -548,6 +548,13 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=dict(spec['run'],site_targets=site_targets),
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
+            if spec.get('automatic_causes'):
+                # The automatic proof reads one raw receipt per new receipt key; a transient error on
+                # one of thousands of GETs must retry, never end the night (ct-gc99).
+                if reads is None:
+                    from congress_api.retention.r2 import configure_read_retries
+                    reads=configure_read_retries(storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1}))
+                options['receipt_client']=reads
             if spec.get('_nightly'):
                 options['daily_summary_sha256']=daily['daily_summary_sha256']
                 if spec.get('resume'):

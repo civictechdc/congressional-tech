@@ -75,7 +75,9 @@ so its receipts are new to the release without being newer than it. Every captur
 new document must qualify, so a body the live release also read is not new. Any changed or
 removed value, a split or merge, a new key or address on a document the live release has, a
 recovered document (its key is a link, not a body), or a row that cannot be traced still
-needs a reviewed cause record.
+needs a reviewed cause record. So does a night that adds more than 250 documents
+(`AUTOMATIC_ADDITION_CAP`): the proof shows where an added document came from, never that
+its title, date or meeting are right, so a large batch waits for a person.
 
 A capture night always changes `url_state` (attempt counts and times on fetched addresses,
 newly queued links), and those changes are not automatic yet. The history columns can be

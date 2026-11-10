@@ -505,7 +505,15 @@ def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_p
         write_input_receipts(NativeArchiveStore(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'seed'),
             live,old['input_digest'],old,['receipts/documents/2026-11-01/live.jsonl.gz'])
         body=b'N'*8+sha256(b'N').digest()[:24];receipt='receipts/documents/2026-11-03/nightly.jsonl.gz'
-        store.objects[receipt]=gzip.compress((json.dumps(dict(captures=[dict(sha256=body.hex())]))+'\n').encode(),mtime=0)
+        # Raw receipts are read through their own client (the job's retrying reader), never the
+        # single-attempt publication client: the receipt exists only there.
+        class Receipts:
+            raw={receipt:gzip.compress((json.dumps(dict(captures=[dict(sha256=body.hex())]))+'\n').encode(),mtime=0)}
+            read=[]
+            def get_object(self,*,Bucket,Key):
+                from io import BytesIO
+                assert Bucket=='derived-fixture';self.read.append(Key);return dict(Body=BytesIO(self.raw[Key]))
+        receipts=Receipts()
         pq.write_table(pa.table({'receipt_key':[receipt],'receipt_line':pa.array([1],pa.int32()),'sha256':pa.array([body],pa.binary(32))}),tmp_path/'captures.parquet')
         artifacts,_=real_release(tmp_path/'next',['A','B','N'],retired=[])
         value,keys=record(run={'id':'nightly'})
@@ -514,8 +522,8 @@ def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_p
         result=publish_candidate(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'publish',**artifacts,
             input_record=value,receipt_keys=keys,pointer=pointer,expected_etag=etag,public_origin='https://archive.example.test',
             contract=passed,canary=passed,base_release=tmp_path/'base-release',
-            automatic_captures=dict(kind='parquet',path=str(tmp_path/'captures.parquet')))
-    assert result['status']=='published'
+            automatic_captures=dict(kind='parquet',path=str(tmp_path/'captures.parquet')),receipt_client=receipts)
+    assert result['status']=='published' and receipts.read==[receipt]
     report=json.loads((tmp_path/'publish/release-gate.json').read_text())
     assert report['automatic_causes'] and all(e['tickets']==['ct-ud0b'] for e in report['automatic_causes'])
 

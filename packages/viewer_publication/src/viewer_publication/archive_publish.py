@@ -470,7 +470,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
                       base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None,
-                      selected_pointer_reconciled=False):
+                      selected_pointer_reconciled=False,receipt_client=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -478,6 +478,9 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
     probe adapters are injected; no model or admission policy callback is accepted.
     Gates 1 and 2 (release_gate) compare the candidate with `base_release`, the
     fetched copy of the pinned live release, before any contract, upload or flip.
+    `receipt_client` reads raw receipts for the automatic proof (one GET per new receipt,
+    thousands on a backlog night); the job passes a client whose reads retry, since `client`
+    must keep a single attempt for its writes.
     """
     require_publication_client(client)
     started=perf_counter();failure=None
@@ -548,7 +551,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             entries,_=kept_input_records(store,[live])
             held={key for entry in entries for key in entry['receipt_keys']}
             def read_receipt(key):
-                body=client.get_object(Bucket=bucket,Key=key)['Body']
+                body=(receipt_client or client).get_object(Bucket=bucket,Key=key)['Body']
                 try:return body.read()
                 finally:body.close()
             automatic=lambda report:automatic_causes(report,base_release,Path(release),engine=engine,

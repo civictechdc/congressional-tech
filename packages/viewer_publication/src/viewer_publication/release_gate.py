@@ -249,6 +249,12 @@ AUTOMATIC_GROUPS = {('list.parquet', 'added rows'), ('detail.parquet', 'added ro
                     ('sources.parquet', 'same-URL rows added')}
 ATTEMPTED_URL_GROUP = ('url_state.parquet', 'added URLs', ATTEMPTED_URLS)
 AUTOMATIC_CAUSE = "addition traced to receipts absent from the live release's receipt set (automatic, ct-ud0b)"
+# The proof shows where an added document came from, never that its title, date or meeting are
+# right: values of added rows have no live partner to compare with. So one unattended night may
+# add at most this many documents; more waits for a person. Chosen from the two nights measured
+# (ct-gc99): the one capture day in release 619db5f9e08e added 151, its week-old backlog 567
+# more (731 with recoveries). 250 passes the first with room and stops the second.
+AUTOMATIC_ADDITION_CAP = 250
 
 
 def _raw_document_proof(line):
@@ -322,13 +328,17 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     Returns (entries, reasons); entries is empty unless every check passes. A new document is
     a candidate row none of whose link keys an earlier release published. Its body keys are
     joined to `captures` (the capture mapping, not the archive model) to find the receipt
-    lines holding those bodies. Each line is then read from raw: its key must be outside the
+    lines holding those bodies. A key the live release retired is absent from its links too, but
+    a document that comes back is not new: published again, its key leaves the ledger, and that
+    `retired_links` group is not an addition, so the proof stops above. Each line is then read
+    from raw: its key must be outside the
     live release's receipt set, and the line itself must name the body's SHA-256. The set is the
     live release's own input record (every key its captures were read from), so "new" is by key,
     whatever the key's date: a backlog read oldest first is new without being recent (ct-gc99).
     Every capture line of a new document must qualify, so a body the live release also read
     is not new. Link, source and lookup additions must sit on new documents only.
     Every attempt for an added URL needs a fresh receipt line that supplied the new document.
+    At most AUTOMATIC_ADDITION_CAP documents may be added this way in one night.
     Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
     new row whose receipts are new while the code that made it changed; the other gates still run.
     """
@@ -362,6 +372,9 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     d = Diff(Path(base_dir), Path(candidate_dir))
     d.documents = documents(d)
     d.table('added_documents', 'SELECT file_row_number::INT r FROM candidate_list ANTI JOIN pairs ON file_row_number=lr')
+    added = d.one('SELECT count(*) FROM added_documents')
+    if added > AUTOMATIC_ADDITION_CAP:
+        reasons.append(f'automatic causes: {added} added documents, more than the {AUTOMATIC_ADDITION_CAP} one unattended night may add')
     for table, fields in (('sources', 'url,member_path'), ('urls', 'lookup_key')):
         if d.has('candidate', table) and d.has('base', table):
             stray = d.one(f"""SELECT count(*) FROM (SELECT list_row,{fields} FROM candidate_{table}

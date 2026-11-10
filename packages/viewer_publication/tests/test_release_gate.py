@@ -353,7 +353,7 @@ def url_states(url, attempts):
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
             url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=False,
-            base_tables=None, candidate_tables=None, also_held=None, cache_files=()):
+            base_tables=None, candidate_tables=None, also_held=None, cache_files=(), base_retired=None):
     """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
     import gzip
     import os
@@ -369,7 +369,7 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     if other_entity:
         additions['meetings'] = pa.table({'event_id': [119123]})
         baseline['meetings'] = additions['meetings'].slice(0, 0)
-    release_dir(base, base_docs, **baseline, **(base_tables or {}))
+    release_dir(base, base_docs, retired=base_retired, **baseline, **(base_tables or {}))
     release_dir(candidate, candidate_docs, retired=[], **additions, **(candidate_tables or {}))
     if filenames:
         pq.write_table(pa.table({'filename': filenames}), candidate / 'list.parquet')
@@ -516,6 +516,34 @@ def test_automatic_policy_refuses_a_verified_scope_removal(tmp_path):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'nightly.json', automatic=automatic)
     report = json.loads((tmp_path / 'nightly.json').read_text())
     assert report['failing'] == [] and report['reasons'] == report['automatic_reasons']
+
+
+def test_a_removed_document_that_comes_back_is_not_a_new_document(tmp_path):
+    """Review of ct-gc99: the live release shows a removal notice for N; an old, never-read receipt
+    brings N back. Its key is absent from the live links, and it is not new: a key published again
+    leaves the ledger, and that group is not an addition. (This held before the review; the test pins it.)"""
+    notice = [dict(link_key=K('N'), successor_key=None, last_release_id='b' * 64, last_filename='N.pdf')]
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], receipt=BACKLOG_RECEIPTS[0], base_retired=notice)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['link_rule']['ok'] and 'automatic_causes' not in report
+    assert report['automatic_reasons'] == [
+        'automatic causes: retired_links.parquet|removed keys|no evidence given (-1) is not an addition that can be traced']
+
+
+def test_more_added_documents_than_one_unattended_night_may_add_refuses(tmp_path, monkeypatch):
+    from viewer_publication import release_gate
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'])
+    monkeypatch.setattr(release_gate, 'AUTOMATIC_ADDITION_CAP', 0)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'] == [
+        'automatic causes: 1 added documents, more than the 0 one unattended night may add']
+    monkeypatch.setattr(release_gate, 'AUTOMATIC_ADDITION_CAP', 1)
+    assert require_release_gates(base, candidate, None, report_path=tmp_path / 'r2.json', automatic=automatic)['reasons'] == []
+    monkeypatch.undo()
+    assert 150 < release_gate.AUTOMATIC_ADDITION_CAP < 567  # passes the capture day measured, stops the backlog measured
 
 
 def test_an_empty_live_receipt_set_refuses(tmp_path):
