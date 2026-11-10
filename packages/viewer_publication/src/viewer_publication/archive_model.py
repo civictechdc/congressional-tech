@@ -1237,9 +1237,11 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += _sql_steps(PAGE_METADATA_STEPS,root=root)
     from viewer_publication.archive_format import PAGE_COLUMNS,PAGE_DEFAULTS
     page=','.join(f'coalesce(pm.{c},{PAGE_DEFAULTS[c]}) AS {c}' if c in ('publisher_labels','page_metadata') else f'pm.{c}' for c in PAGE_COLUMNS)
+    # hidden is IS TRUE, not coalesce(..., false): same values, and the column stays required when an
+    # engine types it from the optimized plan (test_required_flags.py).
     steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
         coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
-        coalesce(r.hidden,false) AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
+        r.hidden IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
         CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
         CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source,{page}
         FROM document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
