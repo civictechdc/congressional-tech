@@ -38,7 +38,7 @@ AFTER = [occurrence('mods:witness[1]', None, None, 'American Legion'),
          occurrence('mods:witness[4]', 'Jaime Herrera Beutler', WASHINGTON)]
 
 
-def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES, members=(), table=(), prints=()):
+def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES, members=(), table=(), prints=(), people=()):
     """One print (DIGEST) of the 118th Congress, an unreadable body, and `prints` more as (digest, lines, members,
     before, after); `table` names the Members serving in the 118th by the members table."""
     for digest, print_lines, print_members, _, _ in ((DIGEST, lines, members, None, None), *prints):
@@ -61,7 +61,7 @@ def write(tmp_path, before=BEFORE, after=AFTER, lines=LINES, members=(), table=(
                                         + [dict(bioguide_id=f'T{i}', name=n, terms=[term]) for i, n in enumerate(table)]),
                    tmp_path / 'members.parquet')
     people = [dict(source=s, name=n) for s in ('congress_gov', 'house_xml')
-              for n in ('Richard Roe', 'Eleanor Smith', 'Hon. Jaime Herrera Beutler')]
+              for n in ('Richard Roe', 'Eleanor Smith', 'Hon. Jaime Herrera Beutler', *people)]
     people.append(dict(source='mods', name='American Legion'))  # MODS names never teach a name
     pq.write_table(pa.Table.from_pylist(people), tmp_path / 'people.parquet')
 
@@ -83,7 +83,8 @@ def test_a_faithful_reread_passes_and_names_the_unreadable_body(tmp_path):
 
 
 @pytest.mark.parametrize('kind, flags, locator, planted', [
-    ('person-moved', {'person_moved': 1}, 'mods:witness[3]', None),
+    # The name moved into the organization also leaves the organization stopping inside its segment.
+    ('person-moved', {'person_moved': 1, 'text_cut': 1}, 'mods:witness[3]', None),
     ('reversed-name', {'reorder_unsupported': 1, 'name_not_person': 1}, 'mods:witness[4]', 'Beutler Jaime Herrera'),
     # The organization before the person read as the name: it also loses the person's words.
     ('previous-segment', {'name_not_person': 1, 'words_lost': 1}, 'mods:witness[2]', 'Vietnam Veterans of America'),
@@ -126,11 +127,13 @@ def signed(locator, flag, after, line, reviewed_by='a reviewer'):
 def test_a_reviewed_flag_is_accepted_and_an_accept_the_run_no_longer_flags_fails(tmp_path):
     left = occurrence('mods:witness[2]', None, None, 'Vietnam Veterans of America, Richard F. Weidman')
     write(tmp_path, after=[AFTER[0], left, *AFTER[2:]])
-    accept = [signed('mods:witness[2]', flag, fields(left), LINES[1]) for flag in ('words_lost', 'person_left_in_organization')]
+    accept = [signed('mods:witness[2]', flag, fields(left), LINES[1])
+              for flag in ('words_lost', 'person_left_in_organization', 'text_cut')]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
     assert code == 0 and [(i['locator'], i['flag']) for i in out['accepted']] == [
-        ('mods:witness[2]', 'words_lost'), ('mods:witness[2]', 'person_left_in_organization')]
+        ('mods:witness[2]', 'words_lost'), ('mods:witness[2]', 'person_left_in_organization'),
+        ('mods:witness[2]', 'text_cut')]
     stale = accept + [signed('mods:witness[1]', 'person_moved', fields(AFTER[0]), LINES[0])]
     (tmp_path / 'accept.json').write_text(json.dumps(stale))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
@@ -144,7 +147,9 @@ def test_an_accept_covers_only_the_value_read(tmp_path):
     accept = [signed('mods:witness[4]', 'name_not_person', fields(AFTER[3]), LINES[3])]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
-    assert code == 1 and out['failed'] == {'name_not_person': 1, 'words_lost': 1, 'stale_accept': 1}
+    # The wrong name also leaves the position printed before any word of it.
+    assert code == 1 and out['failed'] == {'name_not_person': 1, 'words_lost': 1, 'stale_accept': 1,
+                                           'position_not_in_line': 1}
 
 
 @pytest.mark.parametrize('dropped', ['position', 'organization'])
@@ -272,7 +277,9 @@ def test_an_unsigned_accept_or_one_read_on_another_line_covers_nothing(tmp_path)
               signed('mods:witness[2]', 'person_left_in_organization', fields(left), LINES[0])]
     (tmp_path / 'accept.json').write_text(json.dumps(accept))
     code, out = run(tmp_path, '--accept', str(tmp_path / 'accept.json'))
-    assert code == 1 and out['failed'] == {'words_lost': 1, 'person_left_in_organization': 1, 'stale_accept': 1}
+    # An organization reading that stops inside its segment also cuts the line's text short.
+    assert code == 1 and out['failed'] == {'words_lost': 1, 'person_left_in_organization': 1, 'stale_accept': 1,
+                                           'text_cut': 1}
     assert [a['flag'] for a in out['unsigned_accept']] == ['words_lost'] and not out['accepted']
 
 
@@ -282,6 +289,8 @@ ASKER_LINES = ['Questions and Answers (Post-Hearing) from: Chairman Richard Roe.
                'Hon. Eleanor Smith.............. 22,32 Hon. Jaime Herrera Beutler',
                'Responses to questions for the record from the following Representatives: Hon. Eleanor Smith, of Texas',
                'Senators Roe and Lautenberg........81,']
+# The chairman is a Member by the members table (the print's list names Lautenberg alone).
+ASKER_PRINT = dict(lines=ASKER_LINES, members=['Lautenberg, Frank R.'], table=['Richard Roe'])
 ASKER_BEFORE = [typed(occurrence('mods:witness[1]', 'Richard Roe'), 'record_material'),
                 typed(occurrence('mods:witness[2]', 'Eleanor Smith', 'Hon. Jaime Herrera Beutler'), 'record_material'),
                 typed(occurrence('mods:witness[4]', 'Roe'), 'record_material'),
@@ -292,7 +301,7 @@ ASKER_AFTER = [ASKER_BEFORE[0], typed(occurrence('mods:witness[2]', 'Eleanor Smi
 
 
 def test_a_faithful_reading_of_several_askers_passes(tmp_path):
-    write(tmp_path, before=ASKER_BEFORE, after=ASKER_AFTER, lines=ASKER_LINES, members=['Lautenberg, Frank R.'])
+    write(tmp_path, before=ASKER_BEFORE, after=ASKER_AFTER, **ASKER_PRINT)
     code, out = run(tmp_path)
     assert code == 0 and out['status'] == 'passed'
     assert [i['locator'] for i in out['split']] == ['mods:witness[2]/part[2]']
@@ -309,7 +318,7 @@ def test_a_faithful_reading_of_several_askers_passes(tmp_path):
     ('committee-segment', 'name_not_person', 'mods:witness[1]', None),
 ])
 def test_each_planted_asker_value_is_flagged(tmp_path, kind, flag, locator, missing):
-    write(tmp_path, before=ASKER_BEFORE, after=ASKER_AFTER, lines=ASKER_LINES, members=['Lautenberg, Frank R.'])
+    write(tmp_path, before=ASKER_BEFORE, after=ASKER_AFTER, **ASKER_PRINT)
     code, out = run(tmp_path, '--plant', kind)
     assert code == 1 and out['planted'][0]['flagged'] and out['planted'][0]['locator'] == locator
     assert [i['locator'] for i in out[flag]] == [locator]
@@ -321,7 +330,7 @@ def test_a_member_named_only_by_the_prints_own_members_list_is_counted(tmp_path)
     """The <congMember> half of member_unnamed sees a Member the line prints without a title."""
     lines = [*ASKER_LINES[:3], 'Roe and Lautenberg........81,']
     after = [*ASKER_AFTER[:4], typed(occurrence('mods:witness[4]', 'Roe'), 'record_material')]
-    write(tmp_path, before=ASKER_BEFORE[:3], after=after, lines=lines, members=['Lautenberg, Frank R.'])
+    write(tmp_path, before=ASKER_BEFORE[:3], after=after, **dict(ASKER_PRINT, lines=lines))
     code, out = run(tmp_path)
     assert [(i['locator'], i['words']) for i in out['member_unnamed']] == [('mods:witness[4]', ['lautenberg'])]
 
@@ -507,3 +516,72 @@ def test_the_plants_run_together_each_on_its_own_print(tmp_path):
         'roster-gap-reverted': 'mods:witness[3]', 'roster-gap-dropped': 'mods:witness[2]'}
     code, out = run(tmp_path, '--plant', 'split-untrimmed')
     assert out['planted'] == [dict(kind='split-untrimmed', body=None, locator=None, name=None, planted=None, flagged=None)]
+
+
+# Round 5 (the fourth review): record material on an asking line whether or not its type changed, an added answerer's
+# type, a document's text cut short, a position taken from another row, the reading change's own lost words, and a
+# Member's submission.
+ROUND5_LINES = ['Kulick, John D., Chair, Standards Board',
+                'Questions submitted by Senator Klobuchar for John D. Kulick, Ph.D',
+                'Report, Arsenic and Old Laws, NRDC..........267-285 Responses to additional questions from: Senator Crapo',
+                'Accompanied By:.............. Svinicki, Hon. Kristine L., Commissioner Responses to additional questions '
+                'from Senator Boxer',
+                'Courtney, Hon. Joe, a Representative in Congress from the State of Connecticut: Hartford Courant article: '
+                'Coffeehouse opens',
+                'years ago, 199 staffers had clearances. In 2018, when I checked, there were 35',
+                'Questions from Senator Klobuchar to Dr. Rue', 'Rue, Dr. Penny, Vice President for Campus Life']
+ROUND5_MEMBERS = ['Klobuchar, Amy', 'Crapo, Mike', 'Boxer, Barbara']
+KULICK = asked('mods:witness[1]', 'John D. Kulick', 1, None, position='Chair', organization='Standards Board')
+RUE = asked('mods:witness[8]', 'Penny Rue', 13, None, position='Vice President for Campus Life')
+ROUND5_BEFORE = [KULICK, asked('mods:witness[2]', None, 2, 'record_material'),
+                 asked('mods:witness[3]', 'Arsenic and Old Laws Report', 4, None),
+                 asked('mods:witness[4]', 'Accompanied By:', 6, None, position='Svinicki',
+                       organization='Hon. Kristine L., Commissioner Responses to additional questions from Senator Boxer'),
+                 asked('mods:witness[5]', 'Joe Courtney', 8, None,
+                       position='a Representative in Congress from the State of Connecticut: Hartford Courant article: '
+                                'Coffeehouse opens'),
+                 asked('mods:witness[6]', 'years ago', 9, None, position='199 staffers had clearances. In 2018'), RUE]
+ROUND5_AFTER = [KULICK, asked('mods:witness[2]', 'John D. Kulick', 3, None),
+                asked('mods:witness[2]/part[2]', 'Klobuchar', 2),
+                asked('mods:witness[3]', None, 4, organization='Report, Arsenic and Old Laws, NRDC'),
+                asked('mods:witness[3]/part[2]', 'Crapo', 5),
+                asked('mods:witness[4]', 'Kristine L. Svinicki', 6, None, position='Commissioner'),
+                asked('mods:witness[4]/part[2]', 'Boxer', 7),
+                dict(ROUND5_BEFORE[4], witness_type='member_statement'),
+                asked('mods:witness[6]', None, 9), asked('mods:witness[7]', 'Klobuchar', 10),
+                asked('mods:witness[7]/part[2]', 'Rue', 11, None), RUE]
+
+
+def round5(tmp_path, after=ROUND5_AFTER, **more):
+    write(tmp_path, before=ROUND5_BEFORE, after=after, lines=ROUND5_LINES, members=ROUND5_MEMBERS,
+          people=('Kristine Svinicki', 'John Kulick'), **more)
+
+
+def test_the_reading_changes_own_losses_pass_by_content_and_a_typed_answerer_is_judged(tmp_path):
+    """The document's text, "Accompanied By:" and a prose fragment shed, a Member's article typed a member's statement
+    and the answerer Rue listed: only the witness typing of the answerer Kulick where the published row was nameless
+    record material is left for a reviewer."""
+    round5(tmp_path)
+    code, out = run(tmp_path)
+    assert code == 1 and out['failed'] == {'type_unsupported': 1}
+    assert [(i['locator'], i['after']['witness_type']) for i in out['type_unsupported']] == [('mods:witness[2]', None)]
+    assert [i['locator'] for i in out['answerer']] == ['mods:witness[7]/part[2]']
+    after = [ROUND5_AFTER[0], dict(ROUND5_AFTER[1], witness_type='record_material'), *ROUND5_AFTER[2:]]
+    (tmp_path / 'raw').rename(tmp_path / 'raw-old')
+    round5(tmp_path, after=after)
+    code, out = run(tmp_path)
+    # The fourth review's missed plant P2a: the same answerer typed record material, the published row's own type.
+    assert [(i['locator'], i['after']['witness_type']) for i in out['type_unsupported']] == [
+        ('mods:witness[2]', 'record_material')]
+
+
+def test_the_round5_plants_run_together_each_flagged(tmp_path):
+    kinds = ['answerer-mistyped', 'document-cut', 'position-from-other-row']
+    prints = [(f'{n:02x}' * 32, ROUND5_LINES, ROUND5_MEMBERS, ROUND5_BEFORE, ROUND5_AFTER) for n in range(1, len(kinds))]
+    round5(tmp_path, prints=prints)
+    code, out = run(tmp_path, '--plant', *kinds)
+    assert [p['kind'] for p in out['planted']] == kinds and all(p['flagged'] for p in out['planted'])
+    assert {p['kind']: (p['locator'], p['planted']) for p in out['planted']} == {
+        'answerer-mistyped': ('mods:witness[7]/part[2]', 'statement_for_record'),
+        'document-cut': ('mods:witness[3]', 'Report, Arsenic and Old Laws'),
+        'position-from-other-row': ('mods:witness[4]/part[2]', 'Commissioner')}

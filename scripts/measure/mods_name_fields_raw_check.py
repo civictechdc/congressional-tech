@@ -45,8 +45,10 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``person_moved``: a changed name that opens with a known given name and whose words the new name lacks;
 - ``name_not_in_line``: a new or added name with a word its raw line lacks;
 - ``words_lost``: a changed occurrence that loses a word across name, position, organization and
-  on_behalf_of (credentials such as "M.D." and titles such as "Hon." may go, as for every witness line; on an
-  asking line, so may its heading's words; a word another row of the line now shows is not lost);
+  on_behalf_of (credentials such as "M.D." and titles such as "Hon." may go, as for every witness line, and the
+  label "Accompanied by"; on an asking line, so may its heading's words and a contents column's "Page"; a word
+  another row of the line now shows is not lost, nor page numbers fused to a kept word, "EPA173-198"; a row whose
+  name opened in lower case, a fragment of prose, loses nothing when it comes to name no one);
 - ``words_gained``: a changed occurrence that gains a word its raw line lacks;
 - ``person_left_in_organization``: a changed occurrence left without a name whose raw line still has a
   later segment opening with a known given name;
@@ -68,9 +70,13 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   words are not counted as lost;
 - ``type_unsupported``: a changed ``witness_type`` unless it goes from none to ``statement_for_record`` on an
   occurrence with no name, an organization, and a raw line that names a document anywhere (any of
-  ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap); or it
-  is ``record_material`` on an asking line for a row with no name, a Member's family word, or on a line of names
-  alone;
+  ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap); or to
+  ``member_statement`` for a row naming one of its line's Members on a line that names a paper (``PAPERS``, a
+  Member's submission); or it is ``record_material`` on an asking line for a row with no name, a Member's family
+  word, on a line of names alone, or on a line naming a paper, or with no name where the before row held prose (a
+  name opening in lower case). Every ``record_material`` row on an asking line is
+  held to that, its type changed or not; and an added row typed a statement on an asking line for a person who
+  testified on a line that asks nothing fails (an answerer who testified answers as a witness);
 - ``question_asker_as_witness``: any after occurrence, changed or not, left a witness (no type) or a member's
   statement on an asking line,
   unless it names a person who is not one of the line's Members: two name words or more the line prints, none a
@@ -82,7 +88,11 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``members_merged``: a row of such a line whose name names two of its Members or more ("Boxer and Carper"),
   reported with the line's Member count and its rows naming exactly one Member;
 - ``position_not_in_line``: a new or changed position whose words the raw line does not print in that order, next
-  to each other ("a Senator in Congress from ..." on a Representative's line);
+  to each other ("a Senator in Congress from ..." on a Representative's line), or prints only before its row's name
+  or after another row's name ("Commissioner" given to the Senator who asked the Commissioner);
+- ``text_cut``: a new or changed nameless row whose text stops inside the segment of the raw line it starts in, a
+  word following it before a dot leader, page numbers, a question heading or the line's end ("Report, Arsenic and
+  Old Laws" on "Report, Arsenic and Old Laws, NRDC.......267-285 Responses ...");
 - ``record_as_witness``: any after occurrence, changed or not, typed a witness (no type) that names no one, on a
   raw line that names no person and names a document (``DOCUMENTS``), quotes a title or prints a date: a
   document's title or an organization's own statement left a witness. The rule types titles by a reviewed list and
@@ -114,7 +124,9 @@ name other publishers do not state twice (that split fails, for a person to acce
 Member the print's ``<congMember>`` list omits, but not one printed by a nickname ("Tom Coburn" for Thomas), by
 family name alone ("Senator Boxer", which the title count sees), nor from another Congress; and it counts as a Member
 a witness whose name agrees with a serving Member's ("Peter Welch" of the auto dealers in the 114th, "Jess
-Stonestreet Jackson" for Jesse Jackson). ``position_not_in_line`` reads contiguity only: a position copied
+Stonestreet Jackson" for Jesse Jackson). ``text_cut`` reads a nameless row's text only, and stops at numbers, so a
+date dropped from a document's text passes; a position copied from another row passes when the line prints it after
+the row's own name too. ``position_not_in_line`` reads contiguity only: a position copied
 from another segment of the same line passes. Display order is judged against printed order, never against the
 before side. A line of names alone under an asking line counts as asking, so a Member who
 testified and is printed alone right under a question heading counts as an asker (the rule's known limit, ct-gfo7
@@ -148,7 +160,10 @@ the second (``members_merged``); ``wrong-chamber`` gives a Representative's posi
 (``position_not_in_line``); ``rotate-across-lines`` rotates the display order of three one-row lines
 (``order_across_lines``); ``roster-gap-reverted`` types back as a witness an asker the print's ``<congMember>`` list
 omits and the members table counts (``question_asker_as_witness``), and ``roster-gap-dropped`` drops one that is a
-further part of its line (``member_unnamed``).
+further part of its line (``member_unnamed``); ``answerer-to-record`` types as record material a named witness on an
+asking line whose before row there was nameless record material, and ``answerer-mistyped`` types an added answerer
+who testified as a statement (both ``type_unsupported``); ``document-cut`` cuts a document's text at its last comma
+(``text_cut``); ``position-from-other-row`` gives an asker another row's position (``position_not_in_line``).
 """
 import argparse
 from collections import Counter, defaultdict
@@ -174,7 +189,7 @@ KEYED = (*FIELDS, 'honorific', 'witness_type', 'bioguide_id', 'display_order')
 FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'words_lost', 'words_gained',
          'person_left_in_organization', 'reorder_unsupported', 'order_unsupported', 'order_across_lines',
          'name_not_person', 'split_unsupported', 'type_unsupported', 'question_asker_as_witness', 'member_unnamed',
-         'members_merged', 'position_not_in_line', 'record_as_witness')
+         'members_merged', 'position_not_in_line', 'text_cut', 'record_as_witness')
 PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported', 'previous-segment': 'name_not_person',
           'split-untrimmed': 'split_unsupported', 'typed-organization': 'type_unsupported',
           'asker-as-witness': 'question_asker_as_witness', 'asker-dropped': 'member_unnamed',
@@ -184,7 +199,9 @@ PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported'
           'witness-as-asker': 'type_unsupported', 'heading-reverted': 'question_asker_as_witness',
           'given-added': 'name_not_in_line', 'members-merged': 'members_merged', 'wrong-chamber': 'position_not_in_line',
           'rotate-across-lines': 'order_across_lines', 'roster-gap-reverted': 'question_asker_as_witness',
-          'roster-gap-dropped': 'member_unnamed'}
+          'roster-gap-dropped': 'member_unnamed', 'answerer-to-record': 'type_unsupported',
+          'answerer-mistyped': 'type_unsupported', 'document-cut': 'text_cut',
+          'position-from-other-row': 'position_not_in_line'}
 # Words that make a line ask: what was asked or requested, read anywhere in the line, in any case.
 ASKING = {'question', 'questions', 'request', 'requests'}
 # The words of an asking line's heading, which are no person's.
@@ -202,7 +219,11 @@ DATED = re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*
 # Words that name a document submitted for the record, read anywhere in a line.
 DOCUMENTS = set('statement statements letter letters memorandum memo article articles paper papers report reports '
                 'attachment attachments testimony comments submission summary excerpt study analysis editorial '
-                'resolution petition exhibit packet'.split())
+                'resolution petition exhibit packet biography biographies'.split())
+# A person's own paper in the record, which their testimony words are not.
+PAPERS = DOCUMENTS - {'statement', 'statements', 'testimony', 'comments'}
+# Words a heading that follows a document's text opens with.
+HEADING_OPENING = {'response', 'responses', 'answer', 'answers', 'question', 'questions'}
 CIVIL = {'hon', 'honorable', 'mr', 'mrs', 'ms', 'dr'}
 # Words of an office, which a witness's entry has and a Member's style in a question list does not.
 OFFICES = set('director president secretary administrator chief officer counsel manager deputy assistant executive '
@@ -609,12 +630,20 @@ def judge(before, after, raw_root, given, family, serving=None):
                      for n in range(1, len(lines) + 1) if n in asking or n in recorded}
         members_of = {n: set().union(*groups) if groups else set() for n, groups in groups_of.items()}
 
+        def members_at(n):
+            """The Members line n names by either count, read for any line a type is judged on."""
+            if n not in members_of and 0 < n <= len(lines):
+                members_of[n] = set().union(*merge(member_groups(lines[n - 1], member_families, near_title=True)
+                                                   + table_groups(lines[n - 1], serving_now)) or [set()])
+            return members_of.get(n, set())
+        judged = set(members_of)  # the lines member_unnamed reads: asking or holding record material
+
         def line_of(locator):
             n = position(locator)
             return lines[n - 1] if 0 < n <= len(lines) else ''
 
         def a_member(name, locator):
-            return family_word(name) in members_of.get(position(locator), set())
+            return family_word(name) in members_at(position(locator))
 
         # Family words of the print's witnesses on lines that ask nothing ("Penny Rue" for "Dr. Rue" on an asking line).
         testified = {family_word(r.get('name')) for k, r in new.items()
@@ -640,6 +669,45 @@ def judge(before, after, raw_root, given, family, serving=None):
             return (b.get('witness_type') in (None, 'statement_for_record') and position(locator) in asking
                     and bool(name) and in_order(name, line_of(locator)) and someone(name, locator))
 
+        def record_supported(b, locator):
+            """record_material on an asking line: nameless, a Member's, on a line of names alone, or a person's own
+            paper the line names ("... Biography")."""
+            n, name = position(locator), b.get('name')
+            return n in asking and (not name or a_member(name, locator) or asking[n] == 'list'
+                                    or bool(PAPERS & {plain(w) for w in words(line_of(locator))}))
+
+        def beside_name(b, locator):
+            """Is a row's position printed after its own name, with no other row's name between them?"""
+            if not b.get('name') or not b.get('position'):
+                return True
+            said = [plain(w) for w in words(line_of(locator)) if plain(w)]
+            phrase = [plain(w) for w in words(b['position']) if plain(w)]
+            starts = [i for i in range(len(said) - len(phrase) + 1) if said[i:i + len(phrase)] == phrase]
+            own = [i for i, w in enumerate(said) if w == family_word(b['name'])]
+            others = {family_word(r.get('name')) for r in new.values() if r is not b and r.get('name')
+                      and position(r['source_locator']) == position(locator)} - {family_word(b['name']), None}
+            between = [i for i, w in enumerate(said) if w in others]
+            return not own or any(f < s and not any(f < o < s for o in between) for f in own for s in starts)
+
+        def cut_short(b, line):
+            """Does a nameless row's text stop inside the segment of the raw line it starts in (a word follows it before
+            a dot leader, page numbers, a question heading or the line's end)?"""
+            text = b.get('organization')
+            if b.get('name') or not text:
+                return False
+            marks = tokens(line)
+            said = [(i, plain(t)) for i, (kind, t) in enumerate(marks) if kind == 'word' and plain(t)]
+            phrase = [w for w in map(plain, words(text)) if w and w[0].isalpha()]
+            for s in range(len(said) - len(phrase) + 1) if phrase else ():
+                if [w for _, w in said[s:s + len(phrase)]] == phrase:
+                    for kind, token in marks[said[s + len(phrase) - 1][0] + 1:]:
+                        if kind == 'word':
+                            return plain(token) not in HEADING_OPENING
+                        if token not in ',;:()':
+                            return False
+                    return False
+            return False
+
         def asker(b, locator):
             """A row the before side lacks that is a Member the asking line prints, in order."""
             name, line = b.get('name'), line_of(locator)
@@ -647,13 +715,18 @@ def judge(before, after, raw_root, given, family, serving=None):
                     and set(map(plain, words(name))) <= set(map(plain, words(line)))
                     and (in_order(name, line) or reorder_supported(name)) and a_member(name, locator))
 
-        # Witness rows on an asking line, documents left a witness, and the order rows are shown in.
+        # Witness rows on an asking line, record material on one (whether its type changed or not), documents left a
+        # witness, and the order rows are shown in.
         by_line = {}
         for locator, b in sorted(new.items()):
             by_line.setdefault(position(locator), []).append(b)
             line = line_of(locator)
             item = dict(package=package, body=digest, locator=locator, line=line,
                         after={f: b.get(f) for f in KEYED})
+            if (b.get('witness_type') == 'record_material' and position(locator) in asking
+                    and (old.get(locator) or {}).get('witness_type') == 'record_material'
+                    and not record_supported(b, locator)):
+                out['type_unsupported'].append(item)
             if (position(locator) in asking and b.get('witness_type') in (None, 'member_statement')
                     and not someone(b.get('name'), locator)):
                 out['question_asker_as_witness'].append(item)
@@ -691,7 +764,7 @@ def judge(before, after, raw_root, given, family, serving=None):
                                                       line=lines[n - 1], after={f: r.get(f) for f in KEYED},
                                                       members=len(groups), rows_naming_one=sum(k == 1 for _, k in rows)))
         # Every Member an asking or record line names has a row naming them on that line.
-        for n in sorted(members_of):
+        for n in sorted(judged):
             line = lines[n - 1]
             named = {plain(w) for r in by_line.get(n, []) for w in words(r.get('name'))}
             if missing := members_of[n] - named:
@@ -702,8 +775,13 @@ def judge(before, after, raw_root, given, family, serving=None):
 
         def type_supported(a, b, line, locator):
             if b.get('witness_type') == 'record_material':
-                return position(locator) in asking and (not b.get('name') or a_member(b['name'], locator)
-                                                        or asking[position(locator)] == 'list')
+                # ... or a row that held a fragment of prose (a name opening in lower case) and now names no one.
+                prose = bool(re.match(r"[a-z]", (a.get('name') or '').strip()))
+                return record_supported(b, locator) or (not b.get('name') and prose)
+            if b.get('witness_type') == 'member_statement':
+                # A Member's own submission: the row names one of the line's Members and the line names a paper.
+                return (a.get('witness_type') is None and bool(b.get('name')) and a_member(b['name'], locator)
+                        and bool(PAPERS & {plain(w) for w in words(line)}))
             return (a.get('witness_type') is None and b.get('witness_type') == 'statement_for_record'
                     and not b.get('name') and b.get('organization') and names_document_only(line))
 
@@ -718,8 +796,14 @@ def judge(before, after, raw_root, given, family, serving=None):
             item = dict(package=package, body=digest, locator=locator)
             b, line = new[locator], line_of(locator)
             item.update(line=line, after={f: b.get(f) for f in KEYED})
-            if b.get('position') and not in_order(b['position'], line):
+            if b.get('position') and not (in_order(b['position'], line) and beside_name(b, locator)):
                 out['position_not_in_line'].append(item)
+            if cut_short(b, line):
+                out['text_cut'].append(item)
+            if (b.get('witness_type') == 'statement_for_record' and position(locator) in asking
+                    and family_word(b.get('name')) in testified):
+                out['type_unsupported'].append(item)  # an answerer who testified answers as a witness
+                continue
             if asker(b, locator):
                 out['asker'].append(item)
                 continue
@@ -766,8 +850,11 @@ def judge(before, after, raw_root, given, family, serving=None):
                 counts['typed'] += 1
                 if not type_supported(a, b, line, locator):
                     out['type_unsupported'].append(item)
-            if b.get('position') and a.get('position') != b['position'] and not in_order(b['position'], line):
+            if (b.get('position') and a.get('position') != b['position']
+                    and not (in_order(b['position'], line) and beside_name(b, locator))):
                 out['position_not_in_line'].append(item)
+            if a.get('organization') != b.get('organization') and cut_short(b, line):
+                out['text_cut'].append(item)
             if all(a.get(f) == b.get(f) for f in FIELDS):
                 segments = [s for s in line.split(',')[1:] if s.strip()]
                 if a.get('name') and not person(a['name']) and any(person(s) for s in segments):
@@ -788,12 +875,20 @@ def judge(before, after, raw_root, given, family, serving=None):
             if new_name and not person(new_name):
                 out['unconfirmed'].append(item)
             old_words, new_words = bag(a), bag(b) + moved.get(locator, Counter())
-            # On an asking line the heading's words are no one's: a row that was named for the heading may shed them.
-            shed = HEADING | MEMBER_TITLES | {'member', 'the', 'to', 'by', 'from', 'of', 'for', 'and', 'following'} \
-                if position(locator) in asking else set()
-            # A word another row of the same line now shows (an asker appended at /part[2]) is not lost to a reader.
+            # On an asking line the heading's words are no one's: a row that was named for the heading may shed them,
+            # and a contents column's "Page". "Accompanied by:" is a label any line may shed.
+            shed = HEADING | MEMBER_TITLES | {'member', 'the', 'to', 'by', 'from', 'of', 'for', 'and', 'following',
+                                              'page'} if position(locator) in asking else set()
+            shed |= {'accompanied'}
+            # A word another row of the same line now shows (an asker appended at /part[2]) is not lost to a reader,
+            # nor page numbers fused to a kept word ("EPA173-198" for "EPA").
             shown = {w for r in by_line.get(position(locator), []) if r is not b for w in bag(r)}
-            lost = Counter({w: k for w, k in (old_words - new_words).items() if w not in shed and w not in shown})
+            lost = Counter({w: k for w, k in (old_words - new_words).items() if w not in shed and w not in shown
+                            and re.sub(r"\d+$", "", w) not in new_words})
+            # A name that opens in lower case is a fragment of prose, no one's: a row that held one and now names no
+            # one loses no person or affiliation.
+            if not new_name and re.match(r"[a-z]", (old_name or '').strip()):
+                lost = Counter()
             if lost:
                 out['words_lost'].append(dict(item, words=sorted(lost.elements())))
             # A gained word must come from the raw line; a re-read may restore line text the old one dropped.
@@ -841,6 +936,48 @@ def plant(kind, before, after, given, family, raw_root, serving=None, taken=()):
         if digest in taken:
             continue
         old, new = before[digest][1], after[digest][1]
+        asks = lambda locator: bool(ASKING & {plain(w) for w in words(lines(digest, locator))})  # noqa: E731
+        if kind == 'answerer-to-record':
+            # A named witness row on an asking line typed record material where the before side's row was nameless
+            # record material, so the type does not change (the fourth review's Kulick case).
+            for locator, b in sorted(new.items()):
+                a = old.get(locator) or {}
+                if (b.get('witness_type') is None and b.get('name') and a.get('witness_type') == 'record_material'
+                        and not a.get('name') and asks(locator)):
+                    new[locator] = dict(b, witness_type='record_material')
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted='record_material')
+            continue
+        if kind == 'answerer-mistyped':
+            # An added answerer who testified on a line of the print that asks nothing, typed a statement.
+            witnesses = {family_word(r.get('name')) for k, r in old.items()
+                         if r.get('name') and r.get('witness_type') is None and not asks(k)}
+            for locator, b in sorted(new.items()):
+                if (locator not in old and b.get('witness_type') is None and b.get('name') and asks(locator)
+                        and family_word(b['name']) in witnesses):
+                    new[locator] = dict(b, witness_type='statement_for_record')
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted='statement_for_record')
+            continue
+        if kind == 'document-cut':
+            # A document's printed text cut at its last comma ("Report, Arsenic and Old Laws, NRDC" -> "..., Old Laws").
+            for locator, b in sorted(new.items()):
+                text = b.get('organization') or ''
+                if (not b.get('name') and b.get('witness_type') == 'record_material' and ', ' in text
+                        and in_order(text, lines(digest, locator)) and text.rsplit(', ', 1)[1][:1].isalpha()):
+                    new[locator] = dict(b, organization=text.rsplit(', ', 1)[0])
+                    return dict(kind=kind, body=digest, locator=locator, name=text,
+                                planted=new[locator]['organization'])
+            continue
+        if kind == 'position-from-other-row':
+            # An asker given the position another row of its line prints (the fourth review's Boxer/Svinicki case).
+            for locator, b in sorted(new.items()):
+                if b.get('witness_type') != 'record_material' or not b.get('name') or b.get('position'):
+                    continue
+                other = next((r for k, r in sorted(new.items()) if r is not b and base(k) == base(locator)
+                              and r.get('position') and r.get('name')), None)
+                if other and in_order(other['position'], lines(digest, locator)):
+                    new[locator] = dict(b, position=other['position'])
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=other['position'])
+            continue
         if kind == 'members-merged':
             # Two askers of one line read as one row ("Boxer and Carper"), the second row dropped.
             for locator, b in sorted(new.items()):
