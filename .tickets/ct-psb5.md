@@ -1,6 +1,6 @@
 ---
 id: ct-psb5
-status: open
+status: in_progress
 deps: []
 links: [ct-01kq]
 created: 2026-11-10T17:00:45Z
