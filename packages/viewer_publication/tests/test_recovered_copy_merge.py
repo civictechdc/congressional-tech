@@ -30,6 +30,13 @@ DEAD_B2 = DEM + 'download/?id=E5E09AD6-3AD2-4777-A5D6-9A0B01E81097'
 DEAD_EXCERPT = DEM + 'uploadedfiles/didonato_hearing_excerpt.pdf'
 COMMITTEE_PAGE = DEM + 'hearings/building-a-talent-marketplace'
 DOCS_PAGE = 'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=118730'
+OVERSIGHT = 'https://oversightdemocrats.house.gov/imo/media/doc/'
+BOWMAN_DEAD = OVERSIGHT + 'documents/Bowman%20Testimony.pdf'
+BOWMAN_2012 = OVERSIGHT + 'Bowman%20Testimony.pdf'
+BOWMAN_2018 = DEM + 'imo/media/doc/Bowman%20Testimony.pdf'
+DEAD_C = DEM + 'download/?id=0C3A54D1-52B1-4E0B-9E0D-6B7C1B2F4A10'
+COPY_C = DOCS + 'HHRG-119-ED13-Wstate-RussellD-20251210.pdf'
+EARLIER, LATER = '2026-10-15T05:44:38Z', '2026-10-15T14:00:50Z'
 WORDS = 'The subcommittee heard testimony on learning and employment records and talent marketplaces. ' * 30
 
 
@@ -38,48 +45,39 @@ def _page(title, links):
     return f'<html><head><title>{title}</title></head><body><main><p>{WORDS}</p><ul>{items}</ul></main></body></html>'.encode()
 
 
-def _release(tmp_path):
+def _entry(raw, content, fmt):
+    compress = fmt == 'html'
+    stored = gzip.compress(content, mtime=0) if compress else content
+    digest = hashlib.sha256(content).hexdigest()
+    suffix = '.gz' if compress else ''
+    path = raw / f'bodies/sha256/{digest[:2]}/{digest}{suffix}'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(stored)
+    return dict(sha256=digest, bytes=len(content), media_type='text/html' if compress else 'application/pdf', fidelity='exact-bytes',
+        sniffed_format=fmt, sniff_version=readings.current_version('sniff'), intact=True if fmt == 'pdf' else None,
+        stored_suffix=suffix, stored_bytes=len(stored), stored_md5=hashlib.md5(stored).hexdigest())
+
+
+def _fetch(raw, url, content=None, fmt='html', status=200):
+    return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents',
+        outcome='stored' if content else 'failed', requested_url=url, url=url, response_headers={}, http_status=status,
+        complete=True, retrieved_at='2026-10-12T14:25:11Z', captures=[_entry(raw, content, fmt)] if content else [])
+
+
+def _recovered(raw, original, content, category, copy_url, imported_at='2026-10-15T14:00:50Z'):
+    return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='retained_import', family='documents',
+        outcome='saved', requested_url=copy_url, url=copy_url, response_headers={}, http_status=200, complete=True,
+        retrieved_at='2026-10-15T13:43:02Z', source_associations=[dict(original_url=original, basis='user_accepted_url_variant')],
+        recovery_evidence=dict(original_url=original, imported_at=imported_at, match_basis='user_accepted_url_variant',
+            acquisition=dict(prior_access_category=category, recovered_url=copy_url, source='user_accepted_recovery')),
+        captures=[_entry(raw, content, 'pdf')])
+
+
+def _build(tmp_path, lines, decided):
+    """A release from receipt lines and (original, content, kind, copy_url) recovery decisions."""
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     raw = tmp_path / 'raw'
-    pdf_a = b'%PDF-1.7\nTestimony of Greg DiDonato before the Subcommittee\n%%EOF\n'
-    pdf_b = b'%PDF-1.7\nTestimony of Scott Cheney before the Subcommittee\n%%EOF\n'
-    committee = _page('Building a Talent Marketplace | Democrats', [(DEAD_A, 'Testimony of Greg DiDonato'),
-        (DEAD_B1, 'Testimony of Scott Cheney'), (DEAD_B2, 'Cheney written testimony'), (DEAD_EXCERPT, 'DiDonato hearing excerpt')])
-    docs = _page('Committee Repository', [(COPY_A, 'Mr. Greg DiDonato, EBSCOed (Testimony)')])
-
-    def entry(content, fmt):
-        compress = fmt == 'html'
-        stored = gzip.compress(content, mtime=0) if compress else content
-        digest = hashlib.sha256(content).hexdigest()
-        suffix = '.gz' if compress else ''
-        path = raw / f'bodies/sha256/{digest[:2]}/{digest}{suffix}'
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(stored)
-        return dict(sha256=digest, bytes=len(content), media_type='text/html' if compress else 'application/pdf', fidelity='exact-bytes',
-            sniffed_format=fmt, sniff_version=readings.current_version('sniff'), intact=True if fmt == 'pdf' else None,
-            stored_suffix=suffix, stored_bytes=len(stored), stored_md5=hashlib.md5(stored).hexdigest())
-
-    def fetch(url, content=None, fmt='html', status=200):
-        return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents',
-            outcome='stored' if content else 'failed', requested_url=url, url=url, response_headers={}, http_status=status,
-            complete=True, retrieved_at='2026-10-12T14:25:11Z', captures=[entry(content, fmt)] if content else [])
-
-    def recovered(original, content, category, copy_url):
-        return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='retained_import', family='documents',
-            outcome='saved', requested_url=copy_url, url=copy_url, response_headers={}, http_status=200, complete=True,
-            retrieved_at='2026-10-15T13:43:02Z', source_associations=[dict(original_url=original, basis='user_accepted_url_variant')],
-            recovery_evidence=dict(original_url=original, imported_at='2026-10-15T14:00:50Z', match_basis='user_accepted_url_variant',
-                acquisition=dict(prior_access_category=category, recovered_url=copy_url, source='user_accepted_recovery')),
-            captures=[entry(content, 'pdf')])
-
-    lines = [fetch(COMMITTEE_PAGE, committee), fetch(DOCS_PAGE, docs), fetch(COPY_A, pdf_a, 'pdf'), fetch(COPY_B, pdf_b, 'pdf'),
-        *(fetch(url, status=410) for url in (DEAD_A, DEAD_B1, DEAD_B2, DEAD_EXCERPT)),
-        recovered(DEAD_A, pdf_a, 'recovered_document', COPY_A),
-        # Two dead links whose recovered copy is the same published body (the Cheney case).
-        recovered(DEAD_B1, pdf_b, 'recovered_document', COPY_B), recovered(DEAD_B2, pdf_b, 'recovered_document', COPY_B),
-        # Same bytes, but the link asked for an excerpt of the hearing record: not a copy, its own document.
-        recovered(DEAD_EXCERPT, pdf_a, 'requested_content_in_official_hearing', COPY_A)]
     receipt = raw / 'receipts/documents/2026-10-15/slice.jsonl.gz'
     receipt.parent.mkdir(parents=True, exist_ok=True)
     encoded = gzip.compress(''.join(json.dumps(r) + '\n' for r in lines).encode(), mtime=0)
@@ -89,9 +87,7 @@ def _release(tmp_path):
     decisions = tmp_path / 'recoveries.jsonl'
     decisions.write_text(''.join(json.dumps(dict(id=f'decision-{i}', body_sha256=hashlib.sha256(content).hexdigest(), original_url=original,
         recovered_filename=None, recovered_url=copy_url, kind=kind, identity_note=None, decided_at='2026-10-27T15:46:39Z', supersedes=None,
-        recovery_record_version=2)) + '\n' for i, (original, content, kind, copy_url) in enumerate([
-            (DEAD_A, pdf_a, 'recovered_document', COPY_A), (DEAD_B1, pdf_b, 'recovered_document', COPY_B),
-            (DEAD_B2, pdf_b, 'recovered_document', COPY_B), (DEAD_EXCERPT, pdf_a, 'requested_content_in_official_hearing', COPY_A)])))
+        recovery_record_version=2)) + '\n' for i, (original, content, kind, copy_url) in enumerate(decided)))
     recovery_files = [dict(key='provenance/recoveries/fixture.jsonl', path=str(decisions))]
     captures = stage_captures([dict(key=receipt.relative_to(raw).as_posix(), path=str(receipt), qualification=str(pin))],
         engine=engine, work=tmp_path / 'stage') / 'captures.parquet'
@@ -110,7 +106,24 @@ def _release(tmp_path):
     release = tmp_path / 'release'
     read = lambda name: pq.read_table(release / f'{name}.parquet').to_pylist()
     return {name: read(name) for name in ('detail', 'links', 'urls', 'sources', 'recoveries')}, \
-        json.loads((tmp_path / 'model/result.json').read_text()), (pdf_a, pdf_b)
+        json.loads((tmp_path / 'model/result.json').read_text())
+
+
+def _release(tmp_path):
+    raw = tmp_path / 'raw'
+    pdf_a = b'%PDF-1.7\nTestimony of Greg DiDonato before the Subcommittee\n%%EOF\n'
+    pdf_b = b'%PDF-1.7\nTestimony of Scott Cheney before the Subcommittee\n%%EOF\n'
+    committee = _page('Building a Talent Marketplace | Democrats', [(DEAD_A, 'Testimony of Greg DiDonato'),
+        (DEAD_B1, 'Testimony of Scott Cheney'), (DEAD_B2, 'Cheney written testimony'), (DEAD_EXCERPT, 'DiDonato hearing excerpt')])
+    docs = _page('Committee Repository', [(COPY_A, 'Mr. Greg DiDonato, EBSCOed (Testimony)')])
+    decided = [(DEAD_A, pdf_a, 'recovered_document', COPY_A), (DEAD_B1, pdf_b, 'recovered_document', COPY_B),
+        (DEAD_B2, pdf_b, 'recovered_document', COPY_B), (DEAD_EXCERPT, pdf_a, 'requested_content_in_official_hearing', COPY_A)]
+    lines = [_fetch(raw, COMMITTEE_PAGE, committee), _fetch(raw, DOCS_PAGE, docs), _fetch(raw, COPY_A, pdf_a, 'pdf'), _fetch(raw, COPY_B, pdf_b, 'pdf'),
+        *(_fetch(raw, url, status=410) for url in (DEAD_A, DEAD_B1, DEAD_B2, DEAD_EXCERPT)),
+        # Two dead links whose recovered copy is the same published body (the Cheney case).
+        *(_recovered(raw, original, content, kind, copy_url) for original, content, kind, copy_url in decided)]
+    files, result = _build(tmp_path, lines, decided)
+    return files, result, (pdf_a, pdf_b)
 
 
 def _url_key(url):
@@ -154,6 +167,96 @@ def test_a_recovered_copy_is_another_address_of_the_published_document(tmp_path)
     # committee page's DiDonato title differ from the shown title and stay on their links.
     assert (merged['title_filled'], merged['title_conflicting']) == (1, 2)
     assert details[b]['title'] == 'Cheney written testimony'
+
+
+def test_a_link_is_an_address_only_of_the_file_its_own_row_shows(tmp_path):
+    """ct-u9y4. One dead address was accepted with two recovered files that are different documents:
+    Terry Bowman's 2012 Oversight testimony, from the same site, and his 2018 Education and
+    Workforce testimony, the same file name on another committee's site. Once the 2018 file was
+    fetched live the dead Oversight link became an address of it, and the link's key (published as
+    cae8e4ea34ec603a) answered the 2018 file where it had answered the 2012 one. A link moves into
+    a live document only through the file its own row shows, the first in the recovery order."""
+    raw = tmp_path / 'raw'
+    t2012 = b'%PDF-1.7\nTestimony of Terry Bowman before the Committee on Oversight, February 8, 2012\n%%EOF\n'
+    t2018 = b'%PDF-1.7\nTestimony of Terry Bowman, Health, Employment, Labor and Pensions, April 26, 2018\n%%EOF\n'
+    statement = b'%PDF-1.7\nTestimony of Deb Russell before the Subcommittee\n%%EOF\n'
+    draft = b'%PDF-1.7\nAn earlier draft kept under the same link\n%%EOF\n'
+    lines = [_fetch(raw, BOWMAN_2018, t2018, 'pdf'), _fetch(raw, COPY_C, statement, 'pdf'),
+        *(_fetch(raw, url, status=410) for url in (BOWMAN_DEAD, DEAD_C)),
+        _recovered(raw, BOWMAN_DEAD, t2012, 'recovered_document', BOWMAN_2012, LATER),
+        _recovered(raw, BOWMAN_DEAD, t2018, 'recovered_document', BOWMAN_2018, EARLIER),
+        # The same shape where the shown file is the live one: the link is that document's address,
+        # whatever else was accepted for it.
+        _recovered(raw, DEAD_C, statement, 'recovered_document', COPY_C, LATER),
+        _recovered(raw, DEAD_C, draft, 'recovered_document', DEAD_C, EARLIER)]
+    files, result = _build(tmp_path, lines, [(BOWMAN_DEAD, t2012, 'recovered_document', BOWMAN_2012)])
+    details = files['detail']
+    sha = lambda content: hashlib.sha256(content).digest()
+    links = {r['link_key']: r['list_row'] for r in files['links']}
+    shown = lambda list_row: (details[list_row]['saved_kind'], details[list_row]['saved_body'])
+    served = lambda list_row: {r['body'] for r in files['recoveries'] if r['list_row'] == list_row}
+    addresses = lambda list_row: {r['url'] for r in files['sources'] if r['list_row'] == list_row}
+
+    # Two rows, and each key answers its own file: the link's the 2012 testimony, the body key the 2018 one.
+    link, live = links[_url_key(BOWMAN_DEAD)], links[sha(t2018)[:8]]
+    assert link != live
+    assert shown(link) == ('recovery', sha(t2012)) and shown(live) == ('original', sha(t2018))
+    # The dead address is no address of the live file; it still resolves, to its own row (a
+    # recovery-only row lists no source addresses, data model 7.8).
+    assert addresses(live) == {BOWMAN_2018} and addresses(link) == set()
+    lookup = hashlib.sha256(('lookup:' + BOWMAN_DEAD.removeprefix('https://')).encode()).digest()[:8]
+    assert [r['list_row'] for r in files['urls'] if r['lookup_key'] == lookup] == [link]
+    # Nothing published is dropped: the link's row still serves both files accepted for it.
+    assert served(link) == {sha(t2012), sha(t2018)} and served(live) == set()
+
+    # A link whose shown file is the live document stays merged, with both of its recoveries.
+    merged = links[_url_key(DEAD_C)]
+    assert merged == links[sha(statement)[:8]] and shown(merged) == ('original', sha(statement))
+    assert {DEAD_C, COPY_C} <= addresses(merged) and served(merged) == {sha(statement), sha(draft)}
+    assert [d['saved_kind'] for d in details].count('recovery') == 1
+    queries = {q['name']: q['data'] for q in result['queries']}
+    assert queries['model_invariants'][0]['unaccounted_merged_signal'] == 0
+    # Both rows hold two different recovered files whose text the model has not read (PDFs): reported per build.
+    assert queries['recovery_documents_with_several_files'] == [dict(agreement='text_unread', documents=2)]
+
+
+def test_a_link_moves_through_its_shown_copy_or_one_with_the_same_text(tmp_path):
+    """The recovered-copy links step alone (ct-u9y4). Per dead link: the copies in the recovery order,
+    which of them is a published body, and their text fingerprints. Only bodies named here move a link."""
+    from congress_api.retention.provenance import json_input
+    from viewer_publication.archive_provenance import recovered_copy_steps
+    body = lambda name: hashlib.sha256(name.encode()).hexdigest()
+    cases = {  # link: its recoveries as (body, kind, imported_at, published, fingerprint), then the bodies that move it
+        'one-copy': ([('a', 'recovered_document', LATER, True, None)], ['a']),
+        # Bowman: the shown copy is not published; the published one is a different file (PDFs carry no fingerprint).
+        'two-documents': ([('x', 'recovered_document', LATER, False, None), ('y', 'recovered_document', EARLIER, True, None)], []),
+        'shown-copy-published': ([('p', 'recovered_document', LATER, True, None), ('q', 'recovered_document', EARLIER, False, None)], ['p']),
+        # Two captures of one page: other bytes, the same text.
+        'same-text': ([('s1', 'recovered_document', LATER, False, 'f1'), ('s2', 'recovered_document', EARLIER, True, 'f1')], ['s2']),
+        'other-text': ([('t1', 'recovered_document', LATER, False, 'f2'), ('t2', 'recovered_document', EARLIER, True, 'f3')], []),
+        # A newer excerpt is not a copy and does not outrank the one recovered copy.
+        'excerpt-beside-copy': ([('e1', 'requested_content_in_official_hearing', LATER, False, None), ('e2', 'recovered_document', EARLIER, True, None)], ['e2']),
+        'recording': ([('r1', 'full_recording_recovered', LATER, True, None)], ['r1']),
+    }
+    recoveries = [dict(id=f'{link}-{i}', kind=kind, original_url=DEM + link, body_sha=body(name), bytes=10, imported_at=at,
+        receipt_key='receipts/documents/2026-10-15/slice.jsonl.gz', receipt_line=n, capture_index=0)
+        for n, (link, i, (name, kind, at, _published, _print)) in enumerate((link, i, row) for link, (rows, _) in cases.items() for i, row in enumerate(rows))]
+    files = [dict(source_id='link:' + link, body_sha=None, source_url=DEM + link, filename=link, is_real_file=False) for link in cases] + \
+        [dict(source_id='file:' + name, body_sha=body(name), source_url=DOCS + name, filename=name, is_real_file=True)
+         for rows, _ in cases.values() for name, _kind, _at, published, _print in rows if published]
+    inputs = [
+        json_input(tmp_path, 'model_recovery_rows', recoveries, id='Utf8', kind='Utf8', original_url='Utf8', body_sha='Utf8', bytes='Int64',
+            imported_at='Utf8', receipt_key='Utf8', receipt_line='Int32', capture_index='Int32'),
+        json_input(tmp_path, 'effective_filenames', [dict(input_id='recovery:' + r['id'], filename=r['original_url'][len(DEM):]) for r in recoveries],
+            input_id='Utf8', filename='Utf8'),
+        json_input(tmp_path, 'source_files', files, source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8', is_real_file='Boolean'),
+        json_input(tmp_path, 'body_evidence', [dict(body_sha=r['body_sha'], original_size=10) for r in recoveries], body_sha='Utf8', original_size='Int64'),
+        json_input(tmp_path, 'body_fingerprints', [dict(body_sha=body(name), fingerprint=mark) for rows, _ in cases.values()
+            for name, _kind, _at, _published, mark in rows if mark], body_sha='Utf8', fingerprint='Utf8')]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=recovered_copy_steps(), outputs=[],
+        queries=[dict(name='moved', sql='SELECT source_id,body_sha FROM recovered_copy_links ORDER BY 1,2')])
+    assert [(r['source_id'], r['body_sha']) for r in result['moved']] == \
+        sorted(('link:' + link, body(name)) for link, (_rows, moves) in cases.items() for name in moves)
 
 
 @pytest.mark.parametrize('adjudicated', [False, True])
