@@ -779,7 +779,7 @@ One row per requested URL, plus the queue: `requested_url` string, `attempts` in
   - null, and so due now, when `last_attempt` is null (about 25,500 requested URLs today, nearly all from two undated backfill shapes).
 - **The queue:** every resolved URL target from a good-fetched page that is not an `error_response` (wrapper pages included), that matches the capture-scope registry, and whose `url_key` matches no `mode = fetch` row's requested or final URL (archive-member targets are not fetchable).
   - Each `url_key` adds one row under its byte-wise least target, with its credential parameters removed (`url_state` is public), `attempts = 0`, a null `next_attempt_at` and `recheck_meeting_date`, and in `linked_from` the key (first 8 bytes of the body SHA-256) of every page above that links any target of that `url_key`, once each in key order. A fetched row's `linked_from` is empty.
-- 1,158,426 rows plus the queue, *est.* 10 MB.
+- 1,158,426 rows plus the queue, *est.* 10 MB; 17.9 MB measured on 2026-11-10 (1,200,609 rows), and about 0.6 MB more with `recheck_meeting_date` and `linked_from` (ct-9j3z).
 
 ### 7.8 `recoveries`
 
