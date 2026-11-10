@@ -23,6 +23,7 @@ Rules ([[PHASE-2]] §1.3 & [[DATA-MODEL]] §3, §7.2):
 from __future__ import annotations
 
 from hashlib import sha256
+import itertools
 import json
 import re
 import unicodedata
@@ -49,7 +50,7 @@ from ..parsers.senate_page import witness_occurrences as senate_witness_occurren
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
 from .mods_person_fields import MODS_JOINED_LINES, MODS_PERSON_FIELDS
-from .mods_record_entries import MODS_MIXED_RECORD_ENTRIES, MODS_RECORD_ENTRIES, MODS_TITLE_RECORD_ENTRIES
+from .mods_record_entries import MODS_MIXED_RECORD_ENTRIES, MODS_RECORD_ENTRIES
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
@@ -202,7 +203,9 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_TITLED_ASKER",
         "_MODS_ASKER",
         "_MODS_PAGED_ASKERS",
-        "_MODS_ASKER_TITLE",
+        "_MODS_NEXT_ASKER",
+        "_MODS_COMMITTEE_TITLE",
+        "_mods_askers",
         "_mods_question",
         "mods_question_entry",
         "_MODS_REPRESENTATIVE",
@@ -223,6 +226,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_PAGE_GIVEN",
         "_mods_surname_first",
         "_mods_witness_fields",
+        "_mods_record_rows",
         "extract_mods_observation",
         "extract_mods_appearances",
         *_TABLE_SYMBOLS,
@@ -1034,7 +1038,7 @@ _MODS_ORGANIZATION_DOCUMENT = re.compile(
 # any other line ends it. An asker's own contents line, page numbers included ("Senator Graham..........23,"),
 # is record material wherever it stands.
 # Three readings meet a question heading, in this order (ct-gfo7 item 6). This one takes a heading that names only
-# its askers: a record_material row named for the one asker, and the start of the list. The "responses to ...
+# its askers: a record_material row for each asker (_mods_askers), and the start of the list. The "responses to ...
 # questions ... by/from" clause of _RECORD_OPENING takes a heading this one declines because more text follows its
 # askers, and types it statement_for_record. The label skips in extract_mods_observation then drop such a line
 # when what was read as its name opens with a label word ("Responses to ...", "Answers to ..."), so it publishes
@@ -1054,8 +1058,26 @@ _MODS_ASKER = re.compile(
 # Possessive: the name word can also take the dots of its leader, and on a long line of several askers that then
 # fails to match, every split of every leader was tried (0.5 s at ten askers, x4 per asker; ct-zs48 review r2).
 _MODS_PAGED_ASKERS = re.compile(rf"(?:(?:{_MODS_TITLED_ASKER})\s*+\.{{2,}}+\s*+\d[\d,\s-]*+)++")
-# A heading naming two askers ("...: Senator Boxer Senator Inhofe") has no one name to read.
-_MODS_ASKER_TITLE = re.compile(r"(?<![\w.])(?:Senator|Hon\.|Honorable)\s+[A-Z]")
+# Members who asked jointly (owner decision 2026-11-10: a reader sees each). A heading's askers or an asker line
+# can name several, each opening with a title ("Senator Boxer Senator Inhofe", "Ranking Member Bernard
+# Sanders.....332 Senator Kamala D. Harris.....39,"), or as a list of Senators by surname ("Senators Boxer and
+# Carper", "Senators Brown, Warner, Van Hollen, Cortez Masto, and Jones"). Text that does not open with a title
+# ("Akaka, Hon. Daniel K") is one asker.
+_MODS_NEXT_ASKER = re.compile(r"\s+(?=(?:Senators?|Chairman|Chairwoman|Ranking Member|Representative|Hon\.|Honorable)\s+[A-Z])")
+_MODS_COMMITTEE_TITLE = re.compile(r"^(?:Chairman|Chairwoman|Ranking Member)\s+")
+
+
+def _mods_askers(text: str) -> list[str]:
+    """Each asker a question heading's tail or an asker line names, as text to read for a name, without its
+    committee title or page numbers; [] when it names none."""
+    text = re.sub(r"\s*\.{2,}\s*[\d,\s-]*", " ", text).strip()
+    pieces = _MODS_NEXT_ASKER.split(text) if _MODS_NEXT_ASKER.match(" " + text) else [text]
+    askers = []
+    for piece in filter(None, (_MODS_COMMITTEE_TITLE.sub("", re.sub(r"[\s,]+(?:and)?$", "", p)) for p in pieces)):
+        senators = re.fullmatch(r"Senators\s+(.+)", piece)
+        askers += ([f"Senator {name}" for name in re.split(r",\s*(?:and\s+)?|\s+and\s+", senators[1]) if name]
+                   if senators else [piece])
+    return askers
 
 
 def _mods_question(line: str, after_question: bool = False) -> tuple[bool, str | None]:
@@ -1330,6 +1352,14 @@ def _mods_witness_fields(
     return parsed
 
 
+def _mods_record_rows(names: Sequence[str | None], locators: Iterable[str], witness_type: str, display_order: int,
+                      **kept: str | None) -> list[dict[str, Any]]:
+    """A reviewed entry's rows, one per name, at the line's next locators, in order from `display_order`."""
+    return [{"source_locator": locator, "name": name, **kept, "witness_type": witness_type,
+             "display_order": display_order + i, "document_links": []}
+            for i, (name, locator) in enumerate(zip(names, locators))]
+
+
 def extract_mods_observation(
     payload: bytes | str | Mapping[str, Any] | ModsDocument,
     *,
@@ -1461,39 +1491,31 @@ def extract_mods_observation(
     after_question = False
     for idx, w_line in enumerate(raw_witness_lines, start=1):
         cleaned_line = (w_line or "").strip()
-        source_locator = f"mods:witness[{idx}]"
+        # A line's first row reads at its locator; a joined line's second entry at /part[2]; every further row the
+        # line yields (a Member who asked jointly) at the next part.
+        parts = (f"mods:witness[{idx}]" + (f"/part[{n}]" if n > 1 else "") for n in itertools.count(1))
         reviewed = reviewed_entries.get(idx)
-        if reviewed and sha256(cleaned_line.encode()).hexdigest() == reviewed[0]:
+        reviewed = reviewed if reviewed and sha256(cleaned_line.encode()).hexdigest() == reviewed[0] else None
+        names = () if reviewed is None else reviewed[1] if isinstance(reviewed[1], tuple) else (reviewed[1],)
+        how = reviewed[2] if reviewed and len(reviewed) == 3 else None
+        if reviewed and how != "askers":
             after_question = False
             entry_type = "member_statement" if _MEMBER_STATEMENT.search(cleaned_line) else "record_material"
-            # Two Members who asked jointly each get a row, the second at /part[2] as on a joined line. A
-            # reviewed document title keeps the line's organization reading, as an organization's letter does.
-            names = reviewed[1] if isinstance(reviewed[1], tuple) else (reviewed[1],)
+            # A reviewed document title keeps the line's organization reading, as an organization's letter does.
             kept = {}
-            if (resolved_pkg, idx) in MODS_TITLE_RECORD_ENTRIES:
+            if how == "title":
                 fields = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
                 kept = {"organization": _opt_str(fields.get("organization"))}
-            for part, name in enumerate(names, start=1):
-                raw_rows.append(
-                    {
-                        "source_locator": source_locator if part == 1 else f"{source_locator}/part[{part}]",
-                        "name": name,
-                        **kept,
-                        "witness_type": reviewed[2] if len(reviewed) == 3 else entry_type,
-                        "display_order": len(raw_rows) + 1,
-                        "document_links": [],
-                    }
-                )
+            raw_rows += _mods_record_rows(names, parts, "record_material" if how == "title" else how or entry_type,
+                                          len(raw_rows) + 1, **kept)
             if (resolved_pkg, idx) not in MODS_MIXED_RECORD_ENTRIES:
                 continue
             cleaned_line = re.split(r"\.{4,}", cleaned_line, maxsplit=1)[1].strip()
-            source_locator += "/part[2]"
-        segments = [(source_locator, cleaned_line)]
+        segments = [cleaned_line]
         joined = MODS_JOINED_LINES.get(resolved_pkg or "", {}).get(idx)
         if joined and sha256(cleaned_line.encode()).hexdigest() == joined[0]:
-            first, second = re.split(joined[1], cleaned_line, maxsplit=1)
-            segments = [(source_locator, first.strip()), (source_locator + "/part[2]", second.strip())]
-        for source_locator, cleaned_line in segments:
+            segments = [part.strip() for part in re.split(joined[1], cleaned_line, maxsplit=1)]
+        for source_locator, cleaned_line in [(next(parts), segment) for segment in segments]:
             if not cleaned_line:
                 after_question = False
                 raw_rows.append(
@@ -1506,14 +1528,15 @@ def extract_mods_observation(
                 )
                 continue
             question, tail = _mods_question(cleaned_line, after_question)
-            if tail is None:
-                parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
-            else:  # a question heading is read for the one asker it names, without a committee title
-                asker = re.sub(r"^(?:Chairman|Chairwoman|Ranking Member)\s+", "", tail)
-                one = asker and not asker.startswith("Senators ") and len(_MODS_ASKER_TITLE.findall(asker)) < 2
-                parsed = _mods_witness_fields(asker) if one else {}
-            w_name = _opt_str(parsed.get("name"))
-            kind = mods_entry_kind(cleaned_line, w_name, _opt_str(parsed.get("organization")), question=question)
+            # A question heading is read for each asker it names (one nameless row when it names none), and an asker
+            # line that names several for each of them; any other line is read whole.
+            askers = _mods_askers(cleaned_line if tail is None else tail) if question else []
+            if tail is None and len(askers) < 2:
+                readings = [_mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)]
+            else:
+                readings = [_mods_witness_fields(asker) for asker in askers] or [{}]
+            w_name = _opt_str(readings[0].get("name"))
+            kind = mods_entry_kind(cleaned_line, w_name, _opt_str(readings[0].get("organization")), question=question)
             after_question = question
             # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4). A
             # question heading or asker is kept as record material, never skipped as a label.
@@ -1524,22 +1547,25 @@ def extract_mods_observation(
                 for phrase in ("answers to questions", "printed hearing record", "submitted for the record")
             ):
                 continue
-            nk = normalize_name_key(w_name)
-            bg = member_bioguides.get(nk) if nk else None
-            raw_rows.append(
-                {
-                    "source_locator": source_locator,
-                    "name": w_name,
-                    "honorific": _opt_str(parsed.get("honorific")),
-                    "position": _opt_str(parsed.get("position")),
-                    "organization": _opt_str(parsed.get("organization")),
-                    "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
-                    "bioguide_id": bg,
-                    "witness_type": kind,
-                    "display_order": len(raw_rows) + 1,
-                    "document_links": [],
-                }
-            )
+            for parsed, source_locator in zip(readings, itertools.chain([source_locator], parts)):
+                w_name = _opt_str(parsed.get("name"))
+                nk = normalize_name_key(w_name)
+                raw_rows.append(
+                    {
+                        "source_locator": source_locator,
+                        "name": w_name,
+                        "honorific": _opt_str(parsed.get("honorific")),
+                        "position": _opt_str(parsed.get("position")),
+                        "organization": _opt_str(parsed.get("organization")),
+                        "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
+                        "bioguide_id": member_bioguides.get(nk) if nk else None,
+                        "witness_type": kind,
+                        "display_order": len(raw_rows) + 1,
+                        "document_links": [],
+                    }
+                )
+        if how == "askers":
+            raw_rows += _mods_record_rows(names, parts, "record_material", len(raw_rows) + 1)
 
     appearances = preserve_appearances(raw_rows, default_source="mods")
     return {
