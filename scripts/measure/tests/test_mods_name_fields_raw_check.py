@@ -430,7 +430,7 @@ def test_a_witness_typed_as_an_asker_on_an_asking_line_fails(tmp_path):
 # the members table, Members merged into one row, a position the line does not print, and display order across lines.
 ROUND4_LINES = ['Hon. Jane Doe, a Representative in Congress from the State of Ohio',
                 'Response to request arising during the hearing by: Hon. Richard Roe....... 13 Hon. Joe Doe',
-                'Questions from Senator Lautenberg to Jaime Herrera Beutler and Dr. Moe',
+                'Questions from Senator Frank Lautenberg to Jaime Herrera Beutler and Dr. Moe',
                 'Kerr, Mark, Director, Office of Things', 'Moe, Dr. Anne, Professor, College of Things',
                 'Poe, Edgar, Director, Office of Ravens']
 ROUND4_BEFORE = [asked('mods:witness[1]', 'Jane Doe', 1, None, position='a Representative in Congress from the State of Ohio'),
@@ -438,10 +438,11 @@ ROUND4_BEFORE = [asked('mods:witness[1]', 'Jane Doe', 1, None, position='a Repre
                  asked('mods:witness[5]', 'Anne Moe', 8, None, position='Professor', organization='College of Things'),
                  asked('mods:witness[6]', 'Edgar Poe', 9, None, position='Director', organization='Office of Ravens')]
 ROUND4_AFTER = [ROUND4_BEFORE[0], asked('mods:witness[2]', 'Richard Roe', 2), asked('mods:witness[2]/part[2]', 'Joe Doe', 3),
-                asked('mods:witness[3]', 'Lautenberg', 4), asked('mods:witness[3]/part[2]', 'Jaime Herrera Beutler', 5, None),
+                asked('mods:witness[3]', 'Frank Lautenberg', 4), asked('mods:witness[3]/part[2]', 'Jaime Herrera Beutler', 5, None),
                 asked('mods:witness[3]/part[3]', 'Moe', 6, None), *ROUND4_BEFORE[1:]]
-# Joe Doe, Jane Doe and Lautenberg serve in the 118th by the members table; the print's <congMember> list names Roe.
-ROUND4_TABLE = ['Richard Roe', 'Joseph Doe', 'Frank Lautenberg', 'Jane Doe']
+# Joe Doe, Jane Doe and Frank Lautenberg serve in the 118th by the members table; the print's <congMember> list
+# names Roe.
+ROUND4_TABLE = ['Richard Roe', 'Joe Doe', 'Frank Lautenberg', 'Jane Doe']
 
 
 def round4(tmp_path, after=ROUND4_AFTER, table=ROUND4_TABLE, **more):
@@ -462,6 +463,8 @@ def test_answerers_beside_askers_and_members_the_list_omits_pass(tmp_path):
 @pytest.mark.parametrize('row, flag', [
     # The reviewer's "roster-gap-reverted": a Member the print's list omits, left a witness.
     (asked('mods:witness[2]/part[2]', 'Joe Doe', 3, None), 'question_asker_as_witness'),
+    # ... or left as a member's statement, as the published generation typed some askers.
+    (asked('mods:witness[2]/part[2]', 'Joe Doe', 3, 'member_statement'), 'question_asker_as_witness'),
     # The reviewer's "merged": two Members in one row.
     (asked('mods:witness[2]/part[2]', 'Richard Roe and Joe Doe', 3), 'members_merged'),
 ])

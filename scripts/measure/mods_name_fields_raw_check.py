@@ -28,8 +28,8 @@ splitting a list: each ``<congMember>`` family name the line prints (any case); 
 ends a name (after a plural title a comma or "and" starts the next Member); and the capitalised words after
 "Hon."/"Honorable" that the House style follows ("a Representative in Congress from", "of <a State>"). They are
 counted a second time from a fact the rule never reads, the members table: each run of capitalised name words that
-ends in the family name of a Member serving in the print's Congress, its given name (when printed) of that Member's
-initial ("Rockefeller IV, Hon. John D" in the 109th). Groups of either count that share a word are one Member.
+ends in the family name of a Member serving in the print's Congress and prints a given name agreeing with theirs, in
+the run or after a surname printed first ("Rockefeller IV, Hon. John D" in the 109th). Groups of either count that share a word are one Member.
 
 Both directions, per occurrence key (body, locator); every flag fails the check:
 
@@ -71,7 +71,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap); or it
   is ``record_material`` on an asking line for a row with no name, a Member's family word, or on a line of names
   alone;
-- ``question_asker_as_witness``: any after occurrence, changed or not, left a witness (no type) on an asking line,
+- ``question_asker_as_witness``: any after occurrence, changed or not, left a witness (no type) or a member's
+  statement on an asking line,
   unless it names a person who is not one of the line's Members: two name words or more the line prints, none a
   heading, document or office word; or a name the line prints after "Mr.", "Ms.", "Mrs." or "Dr."; or the family
   name of a witness on a line of the print that asks nothing; and in each case a family word that is no Member's
@@ -110,9 +111,10 @@ it is not an independent measure of places. It reads a document word anywhere in
 reads one ending the line, so a line naming a document inside an organization's name and ending in one passes on
 either reading. It does not judge honorific or bioguide_id changes, nor a split whose second person has a given
 name other publishers do not state twice (that split fails, for a person to accept). The members table sees a
-Member the print's ``<congMember>`` list omits, but not one printed by a given name of another initial than the
-table's ("Dick Durbin" for Richard), nor one from another Congress; and it counts a witness who shares a serving
-Member's family name and initial as a Member. ``position_not_in_line`` reads contiguity only: a position copied
+Member the print's ``<congMember>`` list omits, but not one printed by a nickname ("Tom Coburn" for Thomas), by
+family name alone ("Senator Boxer", which the title count sees), nor from another Congress; and it counts as a Member
+a witness whose name agrees with a serving Member's ("Peter Welch" of the auto dealers in the 114th, "Jess
+Stonestreet Jackson" for Jesse Jackson). ``position_not_in_line`` reads contiguity only: a position copied
 from another segment of the same line passes. Display order is judged against printed order, never against the
 before side. A line of names alone under an asking line counts as asking, so a Member who
 testified and is printed alone right under a question heading counts as an asker (the rule's known limit, ct-gfo7
@@ -267,8 +269,8 @@ def congress_on(day):
 
 def serving_members(members_path):
     """Members by the Congress they served in, from a published members table (``name`` "Given Family", ``terms`` with
-    ``start`` and ``end`` dates): {congress: {family words: given-name initials}}, the family being the name's last
-    word and its last two ("Van Hollen"), suffixes aside. A fact the rule never reads."""
+    ``start`` and ``end`` dates): {congress: {family words: given names}}, the family being the name's last word and
+    its last two ("Van Hollen"), suffixes aside. A fact the rule never reads."""
     serving = defaultdict(lambda: defaultdict(set))
     for row in pq.read_table(members_path, columns=['name', 'terms']).to_pylist():
         said = [w for w in map(plain, words(row['name'])) if w and w not in SUFFIXES]
@@ -279,39 +281,50 @@ def serving_members(members_path):
                 continue
             for n in range(congress_on(term['start']), congress_on(term['end'] - timedelta(days=1)) + 1):
                 for size in (1, 2):
-                    serving[n][tuple(said[-size:])].add(said[0][0])
+                    serving[n][tuple(said[-size:])].add(said[0])
     return serving
 
 
 def name_runs(text):
     """The runs of name words a text prints (capitalised words and initials; a title, a style word or a mark ends a
-    run), each as plain words without suffixes."""
-    runs, current = [], []
-    for kind, word in tokens(text) + [('mark', '')]:
+    run), each as (plain words without suffixes, the given name printed after it when the run is a surname printed
+    first: "Rockefeller IV, Hon. John D" -> john)."""
+    marks, runs, current = tokens(text) + [('mark', '')], [], []
+    for i, (kind, word) in enumerate(marks):
         if name_word(kind, word):
             current.append(plain(word))
-        elif current:
-            runs.append([w for w in current if w and w not in SUFFIXES])
-            current = []
-    return [run for run in runs if run]
+            continue
+        run = [w for w in current if w and w not in SUFFIXES]
+        current = []
+        if not run:
+            continue
+        k = i + 1 if word == ',' else len(marks)
+        k += k < len(marks) and plain(marks[k][1]) in ('hon', 'honorable')
+        given = plain(marks[k][1]) if len(run) == 1 and k < len(marks) and name_word(*marks[k]) else None
+        runs.append((run, given))
+    return runs
 
 
-def table_member(run, serving):
-    """Does a run of name words end in the family name of a Member serving in the print's Congress, its first word
-    (when the run prints a given name) sharing that Member's initial ("Tom Coburn" for Thomas; not "Dick Durbin")?"""
-    if len(run[-1]) < 2:
-        return False
+def table_member(run, serving, given=None):
+    """Does a run of name words name a Member serving in the print's Congress: its last word (or two) their family
+    name, and its first word (or the given name printed after a surname printed first) agreeing with their given name
+    (one initial, and one a prefix of the other or three letters shared: "Bernie" for Bernard; not "Tom" for Thomas)?
+    A family name printed with no given name names no one here."""
+    def agrees(printed, official):
+        return printed[0] == official[0] and (len(printed) == 1 or printed.startswith(official)
+                                              or official.startswith(printed) or printed[:3] == official[:3])
     for size in (2, 1):
-        initials = serving.get(tuple(run[-size:])) if len(run) >= size else None
-        if initials and (len(run) == size or run[0][0] in initials):
+        names = serving.get(tuple(run[-size:])) if len(run) >= size and len(run[-1]) > 1 else None
+        printed = run[0] if len(run) > size else given
+        if names and printed and any(agrees(printed, official) for official in names):
             return True
     return False
 
 
 def table_groups(line, serving):
-    """The Members a line names by the members table: each run of name words that is a serving Member's name, as the
-    set of its words (initials aside)."""
-    return [{w for w in run if len(w) > 1} for run in name_runs(line) if table_member(run, serving)] if serving else []
+    """The Members a line names by the members table, each as the set of its name's words (initials aside)."""
+    return [{w for w in run if len(w) > 1} | ({given} if given and len(given) > 1 else set())
+            for run, given in name_runs(line) if table_member(run, serving, given)] if serving else []
 
 
 def merge(groups):
@@ -641,7 +654,8 @@ def judge(before, after, raw_root, given, family, serving=None):
             line = line_of(locator)
             item = dict(package=package, body=digest, locator=locator, line=line,
                         after={f: b.get(f) for f in KEYED})
-            if position(locator) in asking and b.get('witness_type') is None and not someone(b.get('name'), locator):
+            if (position(locator) in asking and b.get('witness_type') in (None, 'member_statement')
+                    and not someone(b.get('name'), locator)):
                 out['question_asker_as_witness'].append(item)
             if b.get('witness_type') is None and not b.get('name') and reads_as_document(line):
                 out['record_as_witness'].append(item)
@@ -666,9 +680,11 @@ def judge(before, after, raw_root, given, family, serving=None):
                                                           line=line_of(r['source_locator']),
                                                           after={f: r.get(f) for f in KEYED}, shown_before=shown_before))
             shown_before = max([shown_before, *(r['display_order'] for r in rows if r.get('display_order') is not None)])
-        # Members against rows: a row names one Member at most, and a line naming k Members has k rows naming one each.
+        # Members against rows: a row names one Member at most (each run of its name's words naming one of the line's
+        # Members counts once), and a line naming k Members has k rows naming one each.
         for n, groups in sorted(groups_of.items()):
-            rows = [(r, sum(1 for g in groups if set(name_words(r.get('name'))) & g)) for r in by_line.get(n, [])]
+            rows = [(r, sum(1 for run, _ in name_runs(r.get('name') or '') if any(set(run) & g for g in groups)))
+                    for r in by_line.get(n, [])]
             for r, named in rows:
                 if named > 1:
                     out['members_merged'].append(dict(package=package, body=digest, locator=r['source_locator'],
@@ -792,12 +808,20 @@ def judge(before, after, raw_root, given, family, serving=None):
 def plant(kind, before, after, given, family, raw_root, serving=None, taken=()):
     """Write one wrong value the rule could produce on the after side, on a body no other plant of the run took;
     None when no occurrence fits."""
+    printed = {}
+
+    def read(digest):
+        """A body's raw print, read once per run."""
+        if digest not in printed:
+            try:
+                printed[digest] = raw_print(raw_root, digest)
+            except (OSError, ET.ParseError, EOFError):
+                printed[digest] = None
+        return printed[digest]
+
     def lines(digest, locator):
         index = re.match(r"mods:witness\[(\d+)\]", locator)
-        try:
-            found = raw_lines(raw_root, digest)
-        except (OSError, ET.ParseError, EOFError):
-            return ''
+        found = (read(digest) or [[]])[0]
         return found[int(index.group(1)) - 1] if index and int(index.group(1)) <= len(found) else ''
 
     def base(locator):
@@ -806,15 +830,12 @@ def plant(kind, before, after, given, family, raw_root, serving=None, taken=()):
     def roster_gap(digest, locator, b):
         """A record_material row naming a Member the members table counts in the print's Congress whom the print's
         own <congMember> list omits."""
-        if b.get('witness_type') != 'record_material' or not b.get('name'):
+        if b.get('witness_type') != 'record_material' or not b.get('name') or not read(digest):
             return False
-        try:
-            found, _, families, congress = raw_print(raw_root, digest)
-        except (OSError, ET.ParseError, EOFError):
-            return False
-        run = name_runs(b['name'])
-        return (bool(run) and family_word(b['name']) not in {f[-1] for f in families}
-                and table_member(run[-1], (serving or {}).get(congress) or {}))
+        _, _, families, congress = read(digest)
+        runs = name_runs(b['name'])
+        return (bool(runs) and family_word(b['name']) not in {f[-1] for f in families}
+                and table_member(runs[-1][0], (serving or {}).get(congress) or {}, runs[-1][1]))
 
     for digest in sorted(before.keys() & after.keys()):
         if digest in taken:
@@ -974,9 +995,12 @@ def plant(kind, before, after, given, family, raw_root, serving=None, taken=()):
                 return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=new[locator]['name'])
             continue
         if kind == 'split-untrimmed':
+            # A joined line read as two people: the second person's words are the ones the parent lost.
             for locator in sorted(new.keys() - old.keys()):
                 parent = SPLIT.fullmatch(locator)
-                if parent and parent.group(1) in old and new.get(locator, {}).get('witness_type') != 'record_material':
+                if (parent and parent.group(1) in old and parent.group(1) in new
+                        and new[locator].get('witness_type') != 'record_material'
+                        and bag(new[locator]) and bag(new[locator]) == bag(old[parent.group(1)]) - bag(new[parent.group(1)])):
                     wrong = dict(old[parent.group(1)])
                     new[parent.group(1)] = wrong
                     return dict(kind=kind, body=digest, locator=locator, name=new[locator]['name'],
