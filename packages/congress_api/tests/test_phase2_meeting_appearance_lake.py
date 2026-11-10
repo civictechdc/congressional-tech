@@ -2813,7 +2813,8 @@ def test_a_question_line_naming_several_askers_reads_each(lines, index, names):
      "the Director of National Intelligence: Questions From Chairman Bennie G. Thompson for Damon Stevens", (),
      [("Damon Stevens", None, 2), ("Bennie G. Thompson", "record_material", 3)]),
     ("Responses by Robert Raben, Assistant Attorney General to additional questions from Senator Smith", (),
-     [("Responses by Robert Raben", None, 2), ("Smith", "record_material", 3)]),
+     # Round 6: the official a written-answer line names, with no testimony row of their own, answered in writing.
+     [("Responses by Robert Raben", "statement_for_record", 2), ("Smith", "record_material", 3)]),
 ])
 def test_askers_printed_inside_another_entry_follow_its_row(line, members, rows):
     """Owner decision 2026-11-10: a line that prints askers inside another entry (a witness's, a document's) keeps that
