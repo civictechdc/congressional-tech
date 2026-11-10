@@ -1083,6 +1083,7 @@
         }
       ],
       "gaps": [
+        "Sitting Members the rules cannot read stay witnesses: on the 2026-11-10 release, at least 99 shown rows, of which about 31 state an office but give a first name the members data does not hold (initial-only or middle-name Members such as T. Slade Gorton or J. French Hill, typos such as 'Partick' Leahy), 13 are print headings garbled into names, 5 state a role the rules do not read, 49 give a name alone at an ordinary hearing, and 1 a name with another Member's state at a Member Day hearing; about 20 more are question-and-answer lines of committee Members.",
         "member_day cannot tell a sitting Member from an outside witness of the same name listed by name alone at a Member Day hearing: nothing in the row says which, and Member Day hearings sometimes also hear outside witnesses ('Member Day and Outside Witnesses', 'Public Witness Testimony'). Such a namesake would be published as that Member; none was found in this release.",
         "The congressional commissions in model/registries/congressional-commissions.json carry statute citations marked unverified until checked against the law's text."
       ],
