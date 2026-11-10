@@ -377,7 +377,8 @@ def test_the_review_lines_published_as_one_witness_fail(tmp_path):
     code, out = run(tmp_path)
     assert code == 1 and out['failed'] == {'question_asker_as_witness': 3, 'member_unnamed': 3}
     assert [(i['locator'], i['words']) for i in out['member_unnamed']] == [
-        ('mods:witness[1]', ['smith']), ('mods:witness[2]', ['lautenberg', 'smith']), ('mods:witness[3]', ['smith'])]
+        ('mods:witness[1]', ['eleanor', 'smith']), ('mods:witness[2]', ['lautenberg', 'smith']),
+        ('mods:witness[3]', ['eleanor', 'smith'])]
 
 
 @pytest.mark.parametrize('kind, flag, locator, planted', [
