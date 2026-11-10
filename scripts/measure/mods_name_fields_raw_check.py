@@ -42,7 +42,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
 - ``person_left_in_organization``: a changed occurrence left without a name whose raw line still has a
   later segment opening with a known given name;
 - ``reorder_unsupported``: a new or restored name whose words are not in the raw line in that order (a surname
-  joined to its given name) and that does not open with a known given name and end with a known family name;
+  joined to its given name) and that does not open with a known given name and end with a known family name or a
+  family name of the print's ``<congMember>`` entries;
 - ``order_unsupported``: on a line with two named rows or more, rows whose display order does not follow where
   their family names stand in the raw line (any row, changed or not);
 - ``name_not_person``: a new name that is a place (a U.S. state, or a segment the raw line follows with a
@@ -462,7 +463,8 @@ def judge(before, after, raw_root, given, family):
                 and (any(person(part) for part in parts[1:]) or names_document_only(line)))
 
     def reorder_supported(name):
-        return person(name) and (family_word(name) in family or member_name(name, members))
+        # Ends in a family name: one other publishers state, or a <congMember>'s of the print ("Daniel K Akaka").
+        return person(name) and (family_word(name) in family or family_word(name) in {f[-1] for f in member_families})
 
     out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'split', 'restored', 'asker', 'not_read',
                                'bodies_only_before', 'bodies_only_after')}
@@ -711,7 +713,8 @@ def plant(kind, before, after, given, family, raw_root):
                 said = name_words(b.get('name'))
                 if b.get('witness_type') != 'record_material' or locator in old or not said:
                     continue
-                if kind == 'reversed-asker' and len(said) > 1 and len((b['name']).split()) == 2:
+                if (kind == 'reversed-asker' and len(said) > 1 and len(b['name'].split()) == 2
+                        and in_order(b['name'], lines(digest, locator))):
                     given_part, surname = b['name'].split()
                     new[locator] = dict(b, name=f'{surname} {given_part}')
                 elif kind == 'given-added' and len(b['name'].split()) == 1:
@@ -782,7 +785,7 @@ def plant(kind, before, after, given, family, raw_root):
             elif kind == 'previous-segment' and at and opening(line_parts[at - 1]) not in given and parts and parts[0] in given:
                 wrong = dict(b, name=line_parts[at - 1])
             elif (kind == 'reversed-name' and b and b != a and len(parts) > 1 and parts[0] in given
-                  and parts[-1] in family and parts[-1] not in given):
+                  and parts[-1] in family and parts[-1] not in given and in_order(b['name'], lines(digest, locator))):
                 given_part, surname = b['name'].rsplit(' ', 1)
                 wrong = dict(b, name=f'{surname} {given_part}')
             else:
