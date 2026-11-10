@@ -201,11 +201,11 @@ def sleeper(marker, *, ignore_term=False):
     return head + f"import os,pathlib,time;pathlib.Path({str(marker)!r}).write_text(str(os.getpid()));time.sleep(60)"
 
 
-def start(tmp_path, command, *flags, pass_fds=(), plant=()):
+def start(tmp_path, command, *flags, pass_fds=(), plant=(), own_group=False):
     process = subprocess.Popen([sys.executable, *(('-c', PLANT, *plant) if plant else ()), str(WATCHDOG),
         '--rss-gb', '4', '--min-disk-gb', '0', '--min-available-gb', '0',
         '--interval', '0.1', '--report', str(tmp_path / 'report.json'), *flags, '--', *command],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, pass_fds=pass_fds)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, pass_fds=pass_fds, start_new_session=own_group)
     STARTED.append(process)
     return process
 
@@ -227,6 +227,8 @@ def test_a_signal_to_the_watchdog_stops_the_job(tmp_path, number):
 # and :1983; 3.15 has the same shape), so an exception a signal handler raises right there leaves the lock held, and
 # the next blocking wait on that child never returns. This stand-in lock sends the signal from inside that acquire:
 # `sampler` in the first timed wait for a `ps` once the job runs, `cleanup` in the poll that opens stop_owned.
+# `group` is the other way a signal arrives, a Ctrl-C or a stop aimed at the whole process group: it is sent to
+# the watchdog's group as soon as the free-memory reader has started, so that reader dies of it as well.
 PLANT = r'''
 import importlib.util, os, pathlib, signal, subprocess, sys
 site, number, marker, fired, script = sys.argv[1:6]
@@ -261,6 +263,11 @@ class Planted(subprocess.Popen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._waitpid_lock = Signalling(self, self._waitpid_lock)
+        reader = 'vm_stat' if sys.platform == 'darwin' else 'ps'
+        if site == 'group' and self.args[0] == reader and os.path.exists(marker) and not os.path.exists(fired):
+            assert os.getpgrp() == os.getpid(), 'this watchdog must lead its own group, or the signal reaches pytest'
+            pathlib.Path(fired).write_text(site)
+            os.killpg(os.getpgrp(), int(number))
 
 spec = importlib.util.spec_from_file_location('planted_watchdog', script)
 module = importlib.util.module_from_spec(spec)
@@ -271,14 +278,16 @@ raise SystemExit(module.main(sys.argv[6:]))
 
 
 @SIGNALS
-@pytest.mark.parametrize('site', ['sampler', 'cleanup'])
-def test_a_signal_at_the_instruction_that_holds_a_childs_wait_lock_still_stops_the_job_and_exits(tmp_path, private_state, site,
-                                                                                                 number):
+@pytest.mark.parametrize('site', ['sampler', 'cleanup', 'group'])
+def test_a_planted_signal_still_stops_the_job_and_the_report_names_it(tmp_path, private_state, site, number):
     """ct-psb5. `sampler`: the handler used to raise into the sampler's `ps` wait, and the watchdog blocked for ever
     on that child's lock: job not stopped, no report, registry entry kept. `cleanup`: a second signal as the stop
-    began used to abort it: exit 1 with a traceback and no report. Recorded and read by the loop, both are harmless."""
+    began used to abort it: exit 1 with a traceback and no report. Recorded and read by the loop, both are harmless.
+    `group`: the pass that received the signal also lost its free-memory reader to it, and the report must still
+    give the signal as the reason, not the reader's failure."""
     marker, fired = tmp_path / 'job.pid', tmp_path / 'fired'
-    watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)], plant=(site, str(int(number)), str(marker), str(fired)))
+    watchdog = start(tmp_path, [sys.executable, '-c', sleeper(marker)], plant=(site, str(int(number)), str(marker), str(fired)),
+                     own_group=site == 'group')
     pid = wait_for(marker)
     if site == 'cleanup':
         watchdog.send_signal(number)
@@ -301,7 +310,7 @@ def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing
     called from a stand-in sampler, sleep or stop, so each case is exact: no real signal, no process, no timing."""
     import types
 
-    def watched(signal_during):
+    def watched(signal_during, failing=False):
         events = []
 
         class Job:
@@ -326,6 +335,8 @@ def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing
 
             def sample(self, _pid):
                 passing('sample')
+                if failing:
+                    raise RuntimeError('the signal took the sampler too')
                 return 2**30, 2**30
 
         monkeypatch.setattr(watchdog, 'available_gb', lambda: None)
@@ -344,6 +355,8 @@ def test_a_recorded_signal_stops_the_job_within_one_interval_and_changes_nothing
 
     stopped = f'Interrupted: watchdog received signal {int(number)}'
     assert watched('sample') == (99, stopped, ['poll', 'sample', 'signal', 'stop']), 'it slept on a signal it already had'
+    assert watched('sample', failing=True) == (99, stopped, ['poll', 'sample', 'signal', 'stop']), 'the signal is the reason'
+    assert watched(None, failing=True) == (99, 'RuntimeError: the signal took the sampler too', ['poll', 'sample', 'stop'])
     assert watched('sleep') == (99, stopped, ['poll', 'sample', 'sleep', 'signal', 'stop']), 'it sampled again first'
     quiet = ['poll', 'sample', 'sleep', 'poll', 'sample', 'sleep', 'poll', 'stop']
     assert watched(None) == (7, None, quiet)
