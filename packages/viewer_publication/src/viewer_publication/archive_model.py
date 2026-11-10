@@ -609,8 +609,10 @@ FROM blank b LEFT JOIN seen s ON s.doc_key=b.doc_key"""
 # A title that is only format, size and download words, checked apart from the page-signals
 # link_word registry that the title rule uses: delete a small vocabulary and every non-letter, and
 # nothing may remain. "PDF (48.1 MB)" and "Download XML (6KB)" are generic; "Overview" is not.
-GENERIC_TITLE_SQL="""(o.title IS NOT NULL AND regexp_like(o.title,'[A-Za-z]') AND regexp_replace(lower(o.title),
- '(download|view|click|here|link|pdf|zip|xml|html?|docx?|txt|json|csv|xlsx?|pptx?|kb|mb|gb|bytes?)|[^a-z]','','g')='')"""
+# A title with no letter in any script is no title, whatever its length (review finding 7: that class
+# came only from the rule's own link_word_no_name pattern).
+GENERIC_TITLE_SQL="""(o.title IS NOT NULL AND (NOT regexp_like(o.title,'\\p{L}') OR regexp_like(o.title,'[A-Za-z]') AND regexp_replace(lower(o.title),
+ '(download|view|click|here|link|pdf|zip|xml|html?|docx?|txt|json|csv|xlsx?|pptx?|kb|mb|gb|bytes?)|[^a-z]','','g')=''))"""
 
 # Listed documents whose title is a link word by the page-signals registry (the rule titles use)
 # or by GENERIC_TITLE_SQL (an independent small vocabulary): either one refuses the release.
