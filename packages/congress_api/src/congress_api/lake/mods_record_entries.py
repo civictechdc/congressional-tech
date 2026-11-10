@@ -58,6 +58,12 @@ those fragments came from (CHRG-109hhrg29389 #1-9 and #11-15; CHRG-115hhrg30357
 and stay) is record_material with no name too, #9 and #10 typed so explicitly
 since their prose names Members ("Congressman Ryan's district").
 
+Round 6 (owner decision 2026-11-10): the answerer a written-answer line names
+("Submitted questions: Avalos, Hon. Edward M") is read by the answerer rule, as
+their own testimony row's type or a statement for the record; the five
+entries that typed those lines record_material (CHRG-114hhrg96269 #2 and #13,
+CHRG-114hhrg99585 #6, #9 and #13) are gone.
+
 Owner decision 2026-11-10 (ct-gfo7 item 4): an organization's own statement is
 record material, not a statement for the record, when a witness of the same
 print testified for that organization: "The Federal Trade Commission, prepared
@@ -357,17 +363,8 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         9: ('8b3705e13bcd877c7e0c670cfe5a19774e60b11ea7d0057a8e05698c3aa16b16', 'Andre Carson', 'record_material'),
         10: ('a415850d34c059d4e7f51fef85e1208c853889097d8d58f223e384a53be6dc3f', 'Peter A. DeFazio', 'record_material'),
     },
-    'CHRG-114hhrg96269': {
-        2: ('682824679f8f0f5ed8cd774cd88282f11a846d6907605a8bf403d78e7d6843ae', 'Alexis Taylor'),
-        13: ('ffb76f9cca6a2d1aee4acf3250ca5034edeef6d7e44940b5c08d7206e300833c', 'Edward M Avalos'),
-    },
     'CHRG-114hhrg98359': {
         22: ('afb2f393f470baee8c43bcee90c9991b5d3508300bd8130a4f0c51bf975ec206', 'Peter Weber'),
-    },
-    'CHRG-114hhrg99585': {
-        6: ('26f346a7e954733d826682511825a711cea166262c5b36a67686fee397cb06c5', 'Robert Bonnie'),
-        9: ('682824679f8f0f5ed8cd774cd88282f11a846d6907605a8bf403d78e7d6843ae', 'Alexis Taylor'),
-        13: ('ffb76f9cca6a2d1aee4acf3250ca5034edeef6d7e44940b5c08d7206e300833c', 'Edward M Avalos'),
     },
     'CHRG-114hhrg99853': {
         35: ('7696891183014b4cc8059d06b1b5b478d5d9e1f6850d5d024e19853e264b2136', 'Jim Costa'),

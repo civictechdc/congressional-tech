@@ -213,6 +213,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_ANSWERER",
         "_MODS_ASKED_FOR",
         "_MODS_PERSON",
+        "_MODS_WRITTEN_ANSWER",
         "_MODS_SUFFIX",
         "_mods_roster",
         "_mods_member",
@@ -1017,7 +1018,8 @@ _PACKAGE_ID_IN_URL_RE = re.compile(r"\b(CHRG-\d+[hsj]hrg\d+)\b", re.IGNORECASE)
 
 _MEMBER_STATEMENT = re.compile(
     r"\b(?:a representative in congress|a delegate (?:in congress )?from|resident commissioner|congress(?:man|woman)\b"
-    r"|united states house of representatives|member of congress|a (?:united states )?senator from)", re.I)
+    r"|united states house of representatives|member of congress|a (?:united states |u\.\s?s\.\s+)?senator from)",
+    re.I)
 # Explicit record entries only (red-f3): something submitted for the record by someone who did not testify. A
 # witness's own entries, their prepared statement or their answers to submitted questions, mark that they
 # testified (D4 gate); a name a parser cannot read is not evidence of a statement.
@@ -1080,8 +1082,12 @@ _MODS_ORGANIZATION_DOCUMENT = re.compile(
 # What else the line prints keeps its reading (a witness's entry before or after the askers, a document run into the
 # heading) and the askers follow it. The answerer the line names ("... to Caitlin Thompson, Ph.D", "for Mr.
 # Martynuska from", "questions submitted for the record to: Dr. Rue") keeps or gains a row of their own beside the
-# askers (owner decision 2026-11-10, "show both the asker and the answerer"): typed as the print's other row for that
-# person, else as the line's own reading types the row that named them, else a witness; never record material.
+# askers (owner decision 2026-11-10, "show both the asker and the answerer"). So does the official a written-answer
+# line names ("Submitted questions: Avalos, Hon. Edward M", "Responses by Robert Raben, ...", "Answers from Caroline
+# Beteta, ..."). An answerer with a testimony row of their own in the print is typed as that row; one with none
+# answered only in writing, a statement for the record (owner decision 2026-11-10, round 6); never record material.
+_MODS_WRITTEN_ANSWER = re.compile(r"^\W*(?:submitted questions:\s|(?:responses?|answers?)\s+(?:by|from)\s+(?=[A-Z]))",
+                                  re.I)
 _MODS_HON = r"(?:The Honorable|Honorable|Hon\.)"
 _MODS_CHAMBER_TITLE = r"(?:Senator|Sen\.|Representative|Rep\.|Congress(?:man|woman)|Delegate)"
 _MODS_COMMITTEE_TITLE = r"(?:Chairman|Chairwoman|Ranking Member)"
@@ -1698,7 +1704,7 @@ def extract_mods_observation(
         }
 
     raw_rows: list[dict[str, Any]] = []
-    answering: list[tuple[dict[str, Any], str | None]] = []  # answerer rows, with the type of the row that named them
+    answering: list[dict[str, Any]] = []  # answerer rows, typed once the whole print is read
 
     def row(locator: str, parsed: Mapping[str, Any], kind: str | None) -> dict[str, Any]:
         w_name = _opt_str(parsed.get("name"))
@@ -1709,9 +1715,9 @@ def extract_mods_observation(
                 "bioguide_id": member_bioguides.get(nk) if nk else None, "witness_type": kind, "document_links": []}
 
     def emit(found: list[tuple[int, dict[str, Any]]], askers: Sequence[tuple[int, str]], parts: Iterator[str],
-             answerers: Sequence[tuple[int, str]] = (), lead: tuple[str, str | None] | None = None) -> None:
+             answerers: Sequence[tuple[int, str]] = (), lead: str | None = None) -> None:
         """A line's rows: what it reads as (`found`, at their locators); then, at the line's next locators, the
-        answerer the line's own reading named (`lead`: that reading's name and type, the row a reader saw) first, each
+        answerer the line's own reading named (`lead`: that reading's name, the row a reader saw) first, each
         Member it names as an asker, and each other answerer, when no row of the line names them yet; numbered for
         display in printed order. Answerers are typed once the whole print is read."""
         named = {normalize_name_key(r.get("name")) for _, r in found} - {""}
@@ -1722,7 +1728,7 @@ def extract_mods_observation(
                 name = _opt_str(fields.get("name"))
                 if name and (is_name(name) or re.match(r"(?:Mr|Ms|Mrs|Dr|Hon)\.\s+[A-Z]", person)):
                     people.append((at + max(text.find(person), 0), fields))
-        lead_words = set(re.findall(r"[\w'’-]+", (lead or ("", None))[0].lower()))
+        lead_words = set(re.findall(r"[\w'’-]+", (lead or "").lower()))
         leading = next((p for p in people if _mods_family(p[1].get("name")) in lead_words), None)
         queue = ([("answerer", leading)] if leading else []) + [
             ("asker", (at, _mods_witness_fields(text))) for at, text in askers] + [
@@ -1733,7 +1739,7 @@ def extract_mods_observation(
             named.add(nk)
             r = row(next(parts), fields, "record_material" if role == "asker" else None)
             if role == "answerer":
-                answering.append((r, lead[1] if lead and leading and fields is leading[1] else None))
+                answering.append(r)
             found.append((at, r))
         for n, (_, r) in enumerate(sorted(found, key=lambda item: item[0]), start=len(raw_rows) + 1):
             r["display_order"] = n
@@ -1807,17 +1813,17 @@ def extract_mods_observation(
             elif not only and not skip:
                 at = cleaned_line.find((w_name or "").split()[-1]) if w_name else 0
                 found.append((max(at, 0), row(source_locator, parsed, kind)))
-            lead = (w_name, kind) if only and askers and w_name and not skip else None
+                if w_name and _MODS_WRITTEN_ANSWER.match(cleaned_line):
+                    answering.append(found[-1][1])
+            lead = w_name if only and askers and w_name and not skip else None
             emit(found, askers, itertools.chain([] if found else [source_locator], parts), answerers, lead)
 
-    # An answerer is typed as the print's other row for the same person (a witness who testified), else as the row of
-    # its line that named them before the rule, else as a witness answering; never as record material.
-    answerer_rows = [r for r, _ in answering]
-    for r, named_kind in answering:
-        same = next((o for o in raw_rows if o.get("name") and all(o is not a for a in answerer_rows)
+    # An answerer is typed as their own testimony row in the print (another row of the same person), else as a
+    # statement for the record: they answered only in writing. Never as record material.
+    for r in answering:
+        same = next((o for o in raw_rows if o.get("name") and all(o is not a for a in answering)
                      and o.get("witness_type") != "record_material" and _mods_same_person(o["name"], r["name"])), None)
-        r["witness_type"] = (same.get("witness_type") if same
-                             else "statement_for_record" if named_kind == "statement_for_record" else None)
+        r["witness_type"] = same.get("witness_type") if same else "statement_for_record"
 
     appearances = preserve_appearances(raw_rows, default_source="mods")
     return {

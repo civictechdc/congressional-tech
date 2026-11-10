@@ -2603,36 +2603,37 @@ WITNESS = "Witness, Jane, Director, Office of Things"
 
 
 @pytest.mark.parametrize("context,line,members,rows", [
-    # Owner decision 2026-11-10 ("show both the asker and the answerer"). The answerer printed nowhere else in the print
-    # keeps the type of the row that named them before the rule (CHRG-111shrg58333: a statement for the record).
+    # Owner decisions 2026-11-10 ("show both the asker and the answerer"; round 6, "Statement for the record"). An
+    # answerer with no testimony row of their own in the print answered only in writing (CHRG-111shrg58333).
     ([], "Response to post-hearing questions submitted by Hon. Daniel K. Akaka to Caitlin Thompson, Ph.D",
      ("Daniel K. Akaka",), [("Caitlin Thompson", "statement_for_record", 2), ("Daniel K. Akaka", "record_material", 1)]),
     # An answerer who testified is typed as their own row (CHRG-113shrg88369's John D. Kulick, a witness).
     (["Kulick, John D., Ph.D., Chair, Standards Board"], "Questions submitted by Senator Grassley for John D. Kulick, Ph.D",
      (), [("John D. Kulick", None, 3), ("Grassley", "record_material", 2)]),
+    # Of four answerers, the one who testified is a witness; the three the print shows nowhere else answered in writing.
     (["Brookman, Justin, Director, Project on Consumer Privacy"],
      "Questions from Hon. Richard Blumenthal to Justin Brookman, Alan Davidson, Ashkan Soltani, and Guy ``Bud'' Tribble",
      ("Richard Blumenthal",), [("Justin Brookman", None, 3), ("Richard Blumenthal", "record_material", 2),
-                               ("Alan Davidson", None, 4), ("Ashkan Soltani", None, 5), ("Guy ``Bud'' Tribble", None, 6)]),
-    # Answerers the line names after its asker, before it, or after "questions submitted for the record to:"; one the
-    # print shows nowhere else, with no row naming them before, is a witness answering (Greene, Jeffrey).
+                               ("Alan Davidson", "statement_for_record", 4), ("Ashkan Soltani", "statement_for_record", 5),
+                               ("Guy ``Bud'' Tribble", "statement_for_record", 6)]),
+    # Answerers the line names after its asker, before it, or after "questions submitted for the record to:".
     ([], "Response to written questions from Hon. Richard Burr to Hon. William P. Greene, Jr., Chief Judge, U.S. Court of "
      "Appeals for Veterans Claims", ("Richard Burr",), [("Richard Burr", "record_material", 1),
-                                                        ("William P. Greene Jr.", None, 2)]),
+                                                        ("William P. Greene Jr.", "statement_for_record", 2)]),
     (["Martynuska, Mr. Joseph, Director, Police Department"], "Questions for the record for Mr. Martynuska from Hon. Lou "
      "Barletta, a Representative in Congress from the State of Pennsylvania", (),
      [("Martynuska", None, 2), ("Lou Barletta", "record_material", 3)]),
     ([], "Chairwoman Foxx, questions submitted for the record to: Ms. Jeffrey", ("Virginia Foxx",),
-     [("Foxx", "record_material", 1), ("Jeffrey", None, 2)]),
+     [("Foxx", "record_material", 1), ("Jeffrey", "statement_for_record", 2)]),
     (["Rue, Dr. Penny, Vice President for Campus Life"], "Byrne, Hon. Bradley, a Representative in Congress from the State "
      "of Alabama, questions submitted for the record to: Dr. Rue", (),
      [("Bradley Byrne", "record_material", 2), ("Rue", None, 3)]),
 ])
 def test_a_question_line_shows_its_answerer_beside_its_askers(context, line, members, rows):
     """A question line that names who answered keeps (or gains) a row for them beside the askers, in printed order:
-    typed as the print's other row for the same person, else as the line's own reading typed the row that named them,
-    else a witness; never record material. The row a reader saw for the line keeps its locator when it named the
-    answerer ("...to Caitlin Thompson"); otherwise the first asker does."""
+    typed as their own testimony row in the print, else a statement for the record; never record material. The row a
+    reader saw for the line keeps its locator when it named the answerer ("...to Caitlin Thompson"); otherwise the
+    first asker does."""
     found = appearance_records.extract_mods_appearances(_mods_lines(*context, line, members=members))
     mine = [a for a in found if a["source_locator"].startswith(f"mods:witness[{len(context) + 1}]")]
     assert [(a["name"], a["witness_type"], a["display_order"]) for a in mine] == rows
@@ -2656,10 +2657,15 @@ def test_a_question_line_shows_its_answerer_beside_its_askers(context, line, mem
                                    ("mods:witness[7]", "James M Jeffords", "record_material", 7)]),
     # The guard: Hon. William P. Greene, Jr., a judge, shares Burr's line after "to"; he answers, he does not ask.
     ("CHRG-111shrg47762", (2,), [("mods:witness[2]", "Richard Burr", "record_material", 2),
-                                 ("mods:witness[2]/part[2]", "William P. Greene Jr.", None, 3)]),
+                                 ("mods:witness[2]/part[2]", "William P. Greene Jr.", "statement_for_record", 3)]),
+    # Round 6: written-answer lines name the answering official. Taylor and Avalos testified (their own rows);
+    # Ramaswamy accompanied Woteki (named inside her row only) and has no testimony row of his own.
+    ("CHRG-114hhrg96269", (2, 7, 13), [("mods:witness[2]", "Alexis Taylor", None, 2),
+                                       ("mods:witness[7]", "Sonny Ramaswamy", "statement_for_record", 7),
+                                       ("mods:witness[13]", "Edward M Avalos", None, 13)]),
 ])
 def test_answerers_and_confirmed_askers_in_real_prints(package, lines, rows):
-    """Real bytes of four retained prints (fixtures/gpo_metadata), read whole, roster included."""
+    """Real bytes of five retained prints (fixtures/gpo_metadata), read whole, roster included."""
     xml = (ROOT / f"packages/congress_api/tests/fixtures/gpo_metadata/{package}.xml").read_bytes()
     row = appearance_records.build_appearance_record_row(_sha(package), "mods", xml)
     assert row["package_id"] == package and package not in {k for k, by in mods_record_entries.MODS_RECORD_ENTRIES.items()
@@ -2718,6 +2724,35 @@ def test_the_rows_the_third_and_fourth_reviews_rejected(entry):
     published = entry["published"]
     assert (row["name"], row["position"], row["witness_type"]) != (
         published["name"], published.get("position", row["position"]), published["witness_type"])
+
+
+@pytest.mark.parametrize("context,line,expected", [
+    # A written-answer line names the official who answered; one who testified is typed as their testimony row.
+    (["Avalos, Hon. Edward M., Under Secretary, Marketing and Regulatory Programs"],
+     "Submitted questions: Avalos, Hon. Edward M", ("Edward M Avalos", None)),
+    ([], "Submitted questions: Avalos, Hon. Edward M", ("Edward M Avalos", "statement_for_record")),
+])
+def test_a_written_answer_lines_official_is_an_answerer(context, line, expected):
+    """Owner decision 2026-11-10, round 6 ("Statement for the record"): the official a written-answer line names
+    ("Submitted questions: X", "Responses by X", "Answers from X") is an answerer: typed as their own testimony row in
+    the print, else a statement for the record. Raben's and Beteta's lines, read with reviewed fields, are in the
+    reviewed-rows fixture."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(*context, line))
+    assert (found[-1]["name"], found[-1]["witness_type"]) == expected
+
+
+def test_a_us_senators_submitted_article_is_a_members_statement():
+    """Owner decision 2026-11-10, round 6 ("Member statement"): the Member style reads "a U.S. Senator from" as it reads
+    "a Senator from" and "a Delegate in Congress from", so a Senator's submitted article (CHRG-107shrg81998 #45) is
+    a member's statement; a Senator's testimony stays an appearance."""
+    lines = ["Hatch, Hon. Orrin G., a U.S. Senator from the State of Utah, USA Today, December 6, 2001, article",
+             "Hon. Benjamin L. Cardin, a U.S. Senator from the State of Maryland: Testimony",
+             "Hon. Jane Doe, a Senator from the State of Ohio, letter, dated May 1, 2001",
+             "Hon. Eleanor Holmes Norton, a Delegate in Congress from the District of Columbia, article"]
+    found = appearance_records.extract_mods_appearances(_mods_lines(*lines))
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        ("Orrin G. Hatch", "member_statement"), ("Benjamin L. Cardin", None), ("Jane Doe", "member_statement"),
+        ("Eleanor Holmes Norton", "member_statement")]
 
 
 def test_a_biography_appendix_is_read_by_rule_in_a_real_print():

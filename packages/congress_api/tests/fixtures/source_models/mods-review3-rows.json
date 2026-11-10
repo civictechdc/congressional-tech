@@ -88,7 +88,7 @@
    "name": "Robert Raben",
    "position": "Assistant Attorney General",
    "organization": null,
-   "witness_type": null
+   "witness_type": "statement_for_record"
   },
   "published": {
    "name": "Responses by Robert Raben",
@@ -599,7 +599,7 @@
    "name": "Caroline Beteta",
    "position": "Interim CEO",
    "organization": "Brand USA, Inc.",
-   "witness_type": null
+   "witness_type": "statement_for_record"
   },
   "published": {
    "name": "Answers from Caroline Beteta",
