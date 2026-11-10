@@ -6,7 +6,7 @@
 -- once. A Member's first name written as an abbreviation ('Wm.') is marked so it can be read in order.
 -- A witness row also carries its hearing dates (the meeting's date, else the print's heldDates), its title and what
 -- its own words say: former or a closed span of years, a state legislature, a House or Senate officer or staffer,
--- the person's own nomination ('to be ...', 'Nominee for', or a nomination hearing whose title names both of their
+-- the person's own nomination ('to be ...', 'Nominee for', 'Nominated to be', or a nomination hearing whose title names both of their
 -- names), the chamber ('U.S. Senator', 'Representative in Congress', '(NM-01)', 'Rep.' alone, 'Member of
 -- Congress'), and a committee role. 'Representative of' or 'for' an organization is not the House.
 -- Its own step: the candidate, mention and decision steps read these rows several times.
@@ -62,7 +62,7 @@ SELECT side,part,id,person,publisher_id,toks,abbreviated,
  -- A legislature named by its state ('Utah House of Representatives') is read with the states in witness_member_mentions.
  regexp_like(full_text,'\bstate (senator|senate|representative|house|legislat\w*|assembl\w*)\b|\bassembly(man|woman|member)\b|\bstatehood (senator|representative)\b|\bshadow (senator|representative)\b|\b(senator|representative|senate|house),? (\w+ ){0,2}(legislature|general assembly)\b|\blegislative district\b') AS says_state_legislature,
  regexp_like(field_text,'\b(clerk|chief administrative officer|sergeant at arms|doorkeeper|parliamentarian|legislative counsel|law revision counsel|inspector general|chaplain|historian|secretary of the senate|staff\w*|counsel|office of (the )?(senator|representative|congress\w*))\b') AS says_officer,
- regexp_like(field_text,'(^|\|\s*)(nominee (to be|for)\b|(of [a-z .]+, )?to be\b)')
+ regexp_like(field_text,'(^|\|\s*)((nominee|nominated) (to be|for)\b|(of [a-z .]+, )?to be\b)')
   OR (regexp_like(title,'nominat','i') AND cardinality(toks)>=2
    -- The nomination hearing names this person, given and family name: a Member introducing a namesake is not it.
    AND strpos(title_words,' '||toks[cast(cardinality(toks) AS BIGINT)]||' ')>0

@@ -55,7 +55,7 @@ OFFICE = re.compile(r'\bsenator\b|representative in congress|\bu\.?\s?s\.? (hous
 ROLE = re.compile(r'\b(chair\w*|ranking member|co-chair\w*|vice chair\w*)\b.*\b(committee|subcommittee|caucus|conference)\b'
                   r'|\b(majority|minority|democratic|republican) (leader|whip)\b|\bspeaker of the house\b')
 # A field that opens with the person's own nomination; a Senator 'presenting ... a Nominee' is not one.
-OWN_NOMINEE = re.compile(r'(^|\|)\s*(nominee\b|to be\b|of [a-z .]+, to be\b)')
+OWN_NOMINEE = re.compile(r'(^|\|)\s*(nominee\b|nominated\b|to be\b|of [a-z .]+, to be\b)')
 OUTSIDE = re.compile(r'\b(former|retired|designate|state (senator|representative|senate|house|legislature)'
                      r'|legislature|general assembly|association|inc|llc|university|college|corporation|company|foundation'
                      r'|institute|council|county|city of|clerk|staff\w*|counsel|of the senate)\b'
@@ -69,11 +69,11 @@ CODE_PHRASE = re.compile(r'\(([A-Z]{2})-(?:\d+|AL|At[- ]Large)\)|\b[DRI]-([A-Z]{
 # The six planted wrong values (review of c98dab56, mar-plant.py): release witness keys and the value laid over them.
 PLANTS = {
     'member left a witness (Silvestre Reyes 2007)': ('5fc16a144de708d2', None),
-    'outside witness retyped (Timothy V. Johnson, Corning)': ('d2bc5ff2a11d7e7c', 'J000177'),
+    'outside witness retyped (Timothy V. Johnson, Corning)': ('6498602416854ede', 'J000177'),
     'nominee retyped (Mike Pompeo, CIA nomination)': ('3b96984ca30e4cc4', 'P000602'),
     'former Member retyped (Ben Nighthorse Campbell 2017)': ('76f6fc3772eafc1a', 'C000077'),
     'ambiguous name resolved (French J. Hill to Katie Hill)': ('98d539f7169ccf98', 'H001087'),
-    'wrong one of two (Sander Levin to Carl Levin)': ('e2d32a3a6c0d0f0c', 'L000261'),
+    'wrong one of two (Sander Levin to Carl Levin)': ('3c12eb0487bc421a', 'L000261'),
 }
 
 
