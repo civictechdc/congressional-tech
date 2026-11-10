@@ -2,7 +2,7 @@
 id: ct-syp1
 status: in_progress
 deps: []
-links: []
+links: [ct-xyo9]
 created: 2026-11-10T03:26:30Z
 type: bug
 priority: 2
