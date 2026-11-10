@@ -78,8 +78,9 @@ SELECT o.source_id,o.filename,o.source_url,o.catalog_version,o.status,o.error_ty
  CASE WHEN o.status='completed' AND coalesce(array_length(o.committee_code),0)>0 THEN o.status WHEN l.committee_code IS NOT NULL THEN 'completed' ELSE o.status END AS committee_code_status,
  -- Whether the name supplying the value follows a published naming convention (the reading's valid).
  CASE WHEN {{SHOWN_DATE_SELECTED}} THEN o.valid ELSE l.date_valid END AS filename_date_valid,
- CASE WHEN {{SHOWN_DATE_SELECTED}} THEN coalesce(o.date_eligible,false)
-  ELSE coalesce(l.date_eligible,false) END AS filename_date_eligible,
+ -- IS TRUE around the whole CASE, not coalesce(..., false) in each branch: same values, and the column
+ -- stays required when an engine types it from the optimized plan (test_required_flags.py).
+ (CASE WHEN {{SHOWN_DATE_SELECTED}} THEN o.date_eligible ELSE l.date_eligible END) IS TRUE AS filename_date_eligible,
  CASE WHEN o.status='completed' AND o.congress IS NOT NULL THEN o.valid ELSE l.congress_valid END AS congress_valid,
  CASE WHEN {{SHOWN_DATE_SELECTED}} THEN o.filename ELSE l.date_name END AS filename_date_name,
  CASE WHEN {{SHOWN_DATE_SELECTED}} THEN o.source_url ELSE l.date_url END AS filename_date_url,

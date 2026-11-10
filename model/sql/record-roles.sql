@@ -46,10 +46,12 @@ WITH roles AS (
 )
 SELECT receipt_key, receipt_line, capture_index, sha256, format, intact_basis,
     error_type, record_role,
-    coalesce(
+    -- IS TRUE, not coalesce(..., false): same values, and the column stays required when an engine
+    -- types it from the optimized plan (test_required_flags.py).
+    (
         good_fetch
         AND sha256 IS NOT NULL AND bytes > 0 AND placeholder_body IS NULL
         AND record_role = 'document'
-        AND (format <> 'html' OR NOT file_shaped), false
-    ) AS is_real_file
+        AND (format <> 'html' OR NOT file_shaped)
+    ) IS TRUE AS is_real_file
 FROM roles
