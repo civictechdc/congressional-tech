@@ -341,7 +341,7 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     return reasons
 
 
-def _url_state_rules(base_columns, candidate_columns):
+def _url_state_rules():
     """SQL giving one reason for a url_state row the new lines do not imply, NULL when they do.
 
     Aliases: b (live row), c (candidate row), p (the address's new lines: n, and `good`, the time of
@@ -351,8 +351,8 @@ def _url_state_rules(base_columns, candidate_columns):
     condition is written to be true or false, never NULL, so a missing value cannot pass a rule.
     """
     n = 'coalesce(p.n,0)'
-    other = sorted((base_columns & candidate_columns) - set(URL_STATE_COLUMNS) - {'requested_url'})
-    unset = [(f'{column} changed, which no receipt sets', f'c.{column} IS DISTINCT FROM b.{column}') for column in other]
+    # Not here: a change to any other column, or a removed address. Each makes a comparison group
+    # that automatic_causes refuses before this proof runs, so a rule for them could never fire.
     schedule = ('last_attempt', 'last_status', 'last_outcome', 'last_good_at', 'next_attempt_at', 'recheck_meeting_date')
     later = '(x.t IS NOT NULL AND (b.last_attempt IS NULL OR x.t>epoch_us(b.last_attempt)))'
     newest = ('epoch_us(c.last_attempt) IS NOT DISTINCT FROM x.t AND c.last_status IS NOT DISTINCT FROM x.s '
@@ -381,8 +381,7 @@ def _url_state_rules(base_columns, candidate_columns):
         ('last_good_at is not the later of the live value and the newest good new line', f'NOT ({good})'),
         date,
         ('an address with attempts names linking pages', has_pages),
-        (wrong_band, f'{later} AND NOT ({band})'),
-        *unset]
+        (wrong_band, f'{later} AND NOT ({band})')]
     added = [
         ('attempts are not its new lines', f'c.attempts IS DISTINCT FROM {n}'),
         ('the newest new line has no time', 'x.t IS NULL'),
@@ -395,11 +394,10 @@ def _url_state_rules(base_columns, candidate_columns):
 
     def first(rules):
         return 'CASE ' + ' '.join(f"WHEN {condition} THEN '{reason}'" for reason, condition in rules) + ' END'
-    return f"""CASE WHEN c.requested_url IS NULL THEN 'an address left url_state'
-        WHEN c.attempts IS NULL OR c.attempts<0 THEN 'invalid attempt count'
+    return f"""CASE WHEN c.attempts IS NULL OR c.attempts<0 THEN 'invalid attempt count'
         WHEN b.requested_url IS NULL AND c.attempts>0 THEN {first(added)}
         WHEN b.requested_url IS NULL THEN {first([*queued, ('a queued address names no linking page', f'NOT {has_pages}')])}
-        WHEN b.attempts=0 AND c.attempts=0 THEN {first([*queued, pages, *unset])}
+        WHEN b.attempts=0 AND c.attempts=0 THEN {first([*queued, pages])}
         ELSE {first(fetched)} END"""
 
 
@@ -430,7 +428,8 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
         at most AUTOMATIC_FIRST_SCHEDULE_CAP such first schedules carrying a date in one night.
       queued (added, or queued in both): no new line, no schedule, at least one linking page, every
         live page kept; each page the live row did not list must come from new receipts only.
-      removed: refused. And every address with a new line must be among these rows.
+      Every address with a new line must be among these rows. A removed address, or a change to
+      any other column, is its own comparison group, refused before this proof runs.
     Cannot see: a wrong meeting association on a first schedule (no live value to keep; like any
     value of an added row it is taken as published); whether a page really links its queued address (the reading is the model's); a change to the
     fold or band code that touches only new lines (the gate runs the same code).
@@ -438,8 +437,8 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
     files on requested_url, O(rows).
     """
     from congress_api.lake.tables import table_input
-    from congress_api.retention.provenance import json_input, run_job
-    from viewer_publication.archive_model import REGISTRIES, evidence_steps, source_steps
+    from congress_api.retention.provenance import run_job
+    from viewer_publication.archive_model import evidence_steps, registry_inputs, source_steps
     from viewer_publication.archive_url_state import url_state_steps
     columns = {side: set(d.columns(side, 'url_state')) if d.has(side, 'url_state') else set() for side in ('base', 'candidate')}
     # Both releases must publish both facts: the rules read the live and the candidate values. The first
@@ -454,7 +453,7 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
     pq.write_table(pa.table({'receipt_key': pa.array(sorted(new_receipts), pa.string())}), work / 'new-receipts.parquet')
     # The model's own steps, by name: the fold, the good-fetch predicate and the band.
     model = {step['name']: step for step in [*evidence_steps(), *source_steps(), *url_state_steps()]}
-    registry = json.loads((Path(__file__).resolve().parents[4] / 'model/registries/recheck-intervals.json').read_text())
+    registry = next(item for item in registry_inputs(work / 'registries') if item['name'] == 'recheck_intervals')
     steps = [dict(name='captures', sql='SELECT c.* FROM new_receipts n JOIN lake_captures c ON c.receipt_key=n.receipt_key', materialize=True),
              dict(name='capture_evidence', sql='SELECT * FROM captures'),
              *(model[name] for name in ('good_archive_containers', 'good_fetches', 'good_fetch_contexts',
@@ -466,7 +465,7 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
         table_input('lake_captures', _captures_source(captures)),
         dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')),
         dict(name='candidate_url_state', kind='parquet', path=str((Path(candidate_dir) / 'url_state.parquet').resolve())),
-        json_input(work, 'recheck_intervals', registry, **REGISTRIES['recheck_intervals'])], queries=[
+        registry], queries=[
         dict(name='lines', sql="""SELECT l.receipt_key,l.receipt_line,l.requested_url,arrow_cast(l.retrieved_at,'Int64') AS t,
             g.receipt_key IS NOT NULL AS good FROM url_state_lines l LEFT JOIN url_state_good_lines g
             ON g.receipt_key=l.receipt_key AND g.receipt_line=l.receipt_line AND g.requested_url=l.requested_url ORDER BY 1,2,3"""),
@@ -480,15 +479,14 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
     common = sorted(columns['base'] & columns['candidate'] - {'requested_url'})
     d.table('url_rows', f"""WITH p AS (SELECT requested_url,count(*) AS n,
           max(t) FILTER (WHERE good) AS good FROM url_new_lines GROUP BY 1)
-        SELECT coalesce(c.requested_url,b.requested_url) AS url,b.requested_url IS NOT NULL AS live,
-          c.requested_url IS NOT NULL AS present,c.attempts>0 AS attempted,b.linked_from AS live_pages,c.linked_from AS pages,
+        SELECT c.requested_url AS url,b.requested_url IS NOT NULL AS live,
+          c.attempts>0 AS attempted,b.linked_from AS live_pages,c.linked_from AS pages,
           c.attempts>0 AND coalesce(b.attempts,0)=0 AND c.recheck_meeting_date IS NOT NULL AS dated_first_schedule,
           {''.join(f'b.{column} IS DISTINCT FROM c.{column} AS "moved {column}",' for column in common if column in URL_STATE_COLUMNS)}
-          {_url_state_rules(columns['base'], columns['candidate'])} AS reason
-        FROM base_url_state b FULL JOIN candidate_url_state c ON c.requested_url=b.requested_url
-        LEFT JOIN p ON p.requested_url=coalesce(c.requested_url,b.requested_url)
-        LEFT JOIN url_newest x ON x.requested_url=coalesce(c.requested_url,b.requested_url)
-        WHERE b.requested_url IS NULL OR c.requested_url IS NULL OR p.n>0
+          {_url_state_rules()} AS reason
+        FROM candidate_url_state c LEFT JOIN base_url_state b ON b.requested_url=c.requested_url
+        LEFT JOIN p ON p.requested_url=c.requested_url LEFT JOIN url_newest x ON x.requested_url=c.requested_url
+        WHERE b.requested_url IS NULL OR p.n>0
           OR {' OR '.join(f'b.{column} IS DISTINCT FROM c.{column}' for column in common)}""")
     reasons = [f'automatic causes: url_state: {count} rows: {reason} (first {urls})' for reason, count, urls in d.rows(
         'SELECT reason,count(*),list(url ORDER BY url)[1:3] FROM url_rows WHERE reason IS NOT NULL GROUP BY 1 ORDER BY 1')]
@@ -498,13 +496,12 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work):
     if unaccounted:
         reasons.append(f'automatic causes: url_state: {unaccounted} addresses with new lines have no row in the candidate')
     counts = 'SELECT count(*),count(*) FILTER (WHERE reason IS NULL) FROM url_rows WHERE '
-    summary = {f'changed {column}': list(d.rows(f'{counts}live AND present AND "moved {column}"')[0])
+    summary = {f'changed {column}': list(d.rows(f'{counts}live AND "moved {column}"')[0])
                for column in URL_STATE_COLUMNS if column in common}
     summary[f'added URLs: {ATTEMPTED_URLS}'] = list(d.rows(f'{counts}NOT live AND attempted')[0])
     summary[f'added URLs: {QUEUED_URLS}'] = list(d.rows(f'{counts}NOT live AND NOT attempted')[0])
-    summary['removed URLs'] = list(d.rows(f'{counts}NOT present')[0])
     summary['first schedules with a meeting date'] = [dated, AUTOMATIC_FIRST_SCHEDULE_CAP]
-    pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(pages) AS k FROM url_rows WHERE present AND NOT attempted)
+    pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(pages) AS k FROM url_rows WHERE NOT attempted)
         ANTI JOIN (SELECT url,unnest(live_pages) AS k FROM url_rows WHERE live AND live_pages IS NOT NULL) USING(url,k)""")}
     return reasons, summary, pages, [(r['receipt_key'], r['receipt_line'], r['requested_url']) for r in result['lines']]
 
