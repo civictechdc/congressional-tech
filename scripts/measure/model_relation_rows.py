@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
+from docspec_client import metric_events
+
 
 def lines(path):
     with (gzip.open if str(path).endswith('.gz') else open)(path, 'rt') as handle:
@@ -47,7 +49,7 @@ def relation_rows(run):
         manifest = json.loads(Path(spec['spicy_regs']['path']).read_text())
         spicy = {name: table['rows'] for name, table in manifest['tables'].items()}
     rows = {item['name']: input_rows(item, sources, spicy) for item in job['inputs']}
-    for event in map(json.loads, (run/'steps.jsonl').read_text().splitlines()):
+    for event in metric_events(run/'steps.jsonl', prefix=''):
         if event['event'] == 'step' and event['storage'] not in ('view', 'query'):
             rows[event['name']] = event['rows']
     head = (run/'head.txt').read_text().splitlines() if (run/'head.txt').exists() else []
