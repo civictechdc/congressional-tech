@@ -343,7 +343,10 @@ class NativeDatasets:
                                     timeout=self.timeout, **environment)
         if result.returncode:
             if log is not None:
-                result.stderr = Path(log).read_text()
+                try:  # The engine's failure is the error raised, whatever became of its log.
+                    result.stderr = Path(log).read_text(encoding='utf-8', errors='replace')
+                except OSError:
+                    result.stderr = ''
             raise DocSpecFailure(command, result)
         return json.loads(result.stdout) if result.stdout.strip() else None
 

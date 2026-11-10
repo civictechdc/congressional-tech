@@ -93,6 +93,22 @@ def test_job_log_keeps_the_engine_stream_whether_the_job_passes_or_fails(tmp_pat
     assert list(metric_events(log)) == [STEP, RELEASE]
 
 
+@pytest.mark.parametrize('spoil,kept', [('rm -f {log}', ''), ("printf '\\377\\n' >&2", METRICS + 'second output failed\n\ufffd\n')],
+                         ids=['removed', 'not-text'])
+def test_a_failed_job_raises_the_engine_failure_whatever_became_of_its_log(tmp_path, spoil, kept):
+    """A log removed under the job, or holding bytes that are not text, must not replace the failure."""
+    client, _, binary = executable(tmp_path, failure=True, stderr=METRICS)
+    log = tmp_path / 'engine.log'
+    body = binary.read_text().replace('exit 1\n', spoil.format(log=shlex.quote(str(log))) + '\nexit 1\n')
+    binary.write_text(body)
+    client.binary_sha256 = sha256(body.encode()).hexdigest()
+    with pytest.raises(DocSpecFailure) as raised:
+        client.run_job(tmp_path / 'job.json', log=log)
+    assert raised.value.returncode == 1 and raised.value.completed['outputs'][0]['name'] == 'one.parquet'
+    assert str(raised.value).splitlines()[0] == 'invalid_export: second output failed'
+    assert raised.value.stderr == kept
+
+
 def test_job_log_outlives_a_timeout(tmp_path):
     client, _, binary = executable(tmp_path, stderr=METRICS)
     body = binary.read_text() + 'exec sleep 30\n'
