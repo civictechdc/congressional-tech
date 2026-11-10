@@ -47,6 +47,8 @@ RAMP_SECONDS = 120
 WAKE_SECONDS = 0.05
 # How long this file waits for vm_stat or ps to answer: the limit the sampler gives its own ps calls.
 READER_SECONDS = 5
+# What available_gb and start_times raise when a reader dies, is slow or answers nonsense.
+READING_ERRORS = (OSError, subprocess.SubprocessError, LookupError, ValueError)
 HERE = Path(__file__).resolve().parent
 
 
@@ -59,6 +61,12 @@ def _load(name, path):
 
 
 sampler = _load('archive_watchdog_sampler', HERE / 'measure/process_rss.py')
+
+
+def failed_reading(error):
+    """`vm_stat: TimeoutExpired`: the reader a failed reading came from, when the error names one, and how it failed."""
+    source = getattr(error, 'cmd', None) or getattr(error, 'filename', None) or 'unreadable answer'
+    return f'{source if isinstance(source, (str, bytes, os.PathLike)) else source[0]}: {type(error).__name__}'
 
 
 def available_gb():
@@ -169,22 +177,38 @@ def total_gb():
 
 
 def admit(registry, me, *, headroom, wait_seconds):
-    """Wait for room; return None once admitted, else why the job was not started."""
+    """Wait for room; return None once admitted, else why the job was not started.
+
+    A reading that fails (vm_stat or ps slow, dead or unreadable) means no room is known yet,
+    not that the watchdog must end: the round is tried again at the next tick, and a job whose
+    readings still fail at the deadline is refused like any other. `me` gets its start time
+    here, by the first ps that answers.
+    """
     total = total_gb()
     if me['expect_gb'] + headroom > total:
         return (f'{me["expect_gb"]} GiB expected plus {headroom} GiB left free exceeds this machine '
                 f'({total:.0f} GiB); refused to start')
     deadline = time.monotonic() + wait_seconds
+    failed = {}
     while True:
-        with registry.locked() as entries:
-            available = available_gb()
-            if available is None or admissible(me, entries, available=available, headroom=headroom, now=time.time()):
-                registry.put({**me, 'admitted': time.time()})
-                return None
-            registry.put(me)
+        try:
+            if me['started'] is None:
+                me['started'] = start_times([me['pid']])[me['pid']]
+            with registry.locked() as entries:
+                available = available_gb()
+                if available is None or admissible(me, entries, available=available, headroom=headroom, now=time.time()):
+                    registry.put({**me, 'admitted': time.time()})
+                    return None
+                registry.put(me)
+            refusal = (f'refused to start; measured free memory {available:.1f} GiB, less what started jobs and earlier '
+                       f'waiters still need, did not cover {me["expect_gb"]} GiB plus {headroom} GiB')
+        except READING_ERRORS as error:
+            what = failed_reading(error)
+            failed[what] = failed.get(what, 0) + 1
+            refusal = 'refused to start; free memory could not be read: ' + ', '.join(
+                f'{what} {count} {"time" if count == 1 else "times"}' for what, count in failed.items())
         if time.monotonic() >= deadline:
-            return (f'refused to start; measured free memory {available:.1f} GiB, less what started jobs and earlier '
-                    f'waiters still need, did not cover {me["expect_gb"]} GiB plus {headroom} GiB')
+            return refusal
         time.sleep(2)
 
 
@@ -242,11 +266,12 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
                     available = available_gb()
                     squeezed = available is not None and available < min_available_gb and youngest()
                     blind = 0
-                except (OSError, subprocess.SubprocessError, LookupError, ValueError) as error:
+                except READING_ERRORS as error:
                     # A gap for this pass, as sampler.MemorySamples treats a failed sample; the third in a row stops the job.
                     blind += 1
                     if blind >= 3:
-                        raise RuntimeError('Three consecutive readings of free memory failed') from error
+                        raise RuntimeError('Three consecutive readings of free memory failed, the last '
+                                           + failed_reading(error)) from error
                     squeezed = False
                 if squeezed:
                     reason = (f'machine memory available {available:.1f} GiB under {min_available_gb} GiB; '
@@ -298,7 +323,7 @@ def main(argv=None):
             print(f'archive_watchdog: cannot create the report directory: {error}', file=sys.stderr)
             return REFUSED
     registry = Registry(args.state or default_state())
-    me = dict(pid=os.getpid(), started=start_times([os.getpid()])[os.getpid()], queued=time.time(), admitted=None,
+    me = dict(pid=os.getpid(), started=None, queued=time.time(), admitted=None,  # admit() reads the start time
               expect_gb=args.expect_gb, command=command[:8])
 
     def youngest():
