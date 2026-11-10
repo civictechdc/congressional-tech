@@ -2194,6 +2194,102 @@ def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
         bus: (None, '2017-09-06', 'filename', 115)}, facts
 
 
+def test_a_later_capture_of_held_bytes_never_renames_the_document(tmp_path):
+    """ct-f7hp (candidate 8c3a3cae): the 2026-11-08 run fetched 621 documents' bytes again at a mirror
+    address, and each took the mirror's name, kind, family and facts. A fetch that found the archive
+    already holding its bytes (receipt outcome 'unchanged') no longer leads a copy that stored them.
+    The only named copy still names its document, a recovery-only document captured live at its
+    original address still becomes an original, and every document keeps a saved address."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    raw = tmp_path / 'raw'
+    mirror = 'https://democrats-edworkforce.house.gov/'
+    official = 'https://docs.house.gov/meetings/ED/ED10/20250520/118261/HHRG-119-ED10-Wstate-PalagashviliL-20250520.pdf'
+    generic = mirror + 'imo/media/doc/testimony7.pdf'
+    unnamed = 'https://edworkforce.house.gov/download/?id=B6029D49-F86F-497E-B2E7-94CB6D9D0E6C'
+    named_later = mirror + 'imo/media/doc/akers_written_testimony.pdf'
+    dead, dead_copy = mirror + 'hearings/opening-statement-10', 'https://web.archive.org/web/2020/' + mirror + 'hearings/opening-statement-10'
+    live = mirror + 'imo/media/doc/opening_statement11.pdf'
+    lost, lost_copy = mirror + 'hearings/witness-testimony', 'https://web.archive.org/web/2020/' + mirror + 'hearings/witness-testimony'
+    pdf = {name: f'%PDF-1.7\n{name} body\n%%EOF\n'.encode() for name in ('kept', 'named', 'live', 'lost')}
+
+    def entry(content):
+        digest = hashlib.sha256(content).hexdigest()
+        path = raw / f'bodies/sha256/{digest[:2]}/{digest}'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return dict(sha256=digest, bytes=len(content), media_type='application/pdf', fidelity='exact-bytes', sniffed_format='pdf',
+            sniff_version=readings.current_version('sniff'), intact=True, stored_suffix='', stored_bytes=len(content),
+            stored_md5=hashlib.md5(content).hexdigest())
+
+    def fetch(url, content, at, outcome='stored', requested=None, status=200):
+        return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents', outcome=outcome,
+            requested_url=requested or url, url=url, response_headers={}, http_status=status, complete=True, retrieved_at=at,
+            captures=[entry(content)] if content else [])
+
+    def recovered(original, content, copy_url):
+        return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='retained_import', family='documents',
+            outcome='saved', requested_url=copy_url, url=copy_url, response_headers={}, http_status=200, complete=True,
+            retrieved_at='2026-10-15T13:43:02Z', source_associations=[dict(original_url=original, basis='user_accepted_url_variant')],
+            recovery_evidence=dict(original_url=original, imported_at='2026-10-15T14:00:50Z', match_basis='user_accepted_url_variant',
+                acquisition=dict(prior_access_category='recovered_document', recovered_url=copy_url, source='user_accepted_recovery')),
+            captures=[entry(content)])
+
+    early, late = '2026-10-01T12:00:00Z', '2026-11-08T18:00:00Z'
+    lines = [fetch(official, pdf['kept'], early), fetch(generic, pdf['kept'], late, outcome='unchanged'),
+        fetch(unnamed, pdf['named'], early), fetch(named_later, pdf['named'], late, outcome='unchanged'),
+        fetch(dead, None, early, outcome='failed', status=410), recovered(dead, pdf['live'], dead_copy),
+        fetch(live, pdf['live'], late, outcome='unchanged', requested=dead),
+        fetch(lost, None, early, outcome='failed', status=410), recovered(lost, pdf['lost'], lost_copy)]
+    receipt = raw / 'receipts/documents/2026-11-08/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    encoded = gzip.compress(''.join(json.dumps(r) + '\n' for r in lines).encode(), mtime=0)
+    receipt.write_bytes(encoded)
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps(dict(path=str(receipt), size=len(encoded), sha256=hashlib.sha256(encoded).hexdigest(), producer='fixture creation')))
+    decisions = tmp_path / 'recoveries.jsonl'
+    decisions.write_text(''.join(json.dumps(dict(id=name, body_sha256=hashlib.sha256(pdf[name]).hexdigest(), original_url=original,
+        recovered_filename=None, recovered_url=copy_url, kind='recovered_document', identity_note=None, decided_at='2026-10-27T15:46:39Z',
+        supersedes=None, recovery_record_version=2)) + '\n' for name, original, copy_url in (('live', dead, dead_copy), ('lost', lost, lost_copy))))
+    recovery_files = [dict(key='provenance/recoveries/fixture.jsonl', path=str(decisions))]
+    captures = stage_captures([dict(key=receipt.relative_to(raw).as_posix(), path=str(receipt), qualification=str(pin))],
+        engine=engine, work=tmp_path / 'stage') / 'captures.parquet'
+    assert sorted(r['outcome'] for r in pq.read_table(captures, columns=['outcome', 'mode']).to_pylist() if r['mode'] == 'fetch') == [
+        'failed', 'failed', 'stored', 'stored', 'unchanged', 'unchanged', 'unchanged']
+    inventory = tmp_path / 'inventory'
+    inventory.mkdir()
+    run_job(inventory, engine, inputs=[dict(name='captures', kind='parquet', path=str(captures))], steps=[], outputs=[parquet_output(inventory, 'bodies',
+        """SELECT DISTINCT sha256 AS body_sha,'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS physical_key,
+        'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
+    pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read',
+        decided_at='2026-10-27T12:00:00Z', parser='html')
+    names = filenames.stage(captures=captures, recovery_files=recovery_files, engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
+    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
+        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
+        engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    release = tmp_path / 'release'
+    details = pq.read_table(release / 'detail.parquet').to_pylist()
+    sources = pq.read_table(release / 'sources.parquet').to_pylist()
+    row = {name: next(i for i, d in enumerate(details) if d['saved_body'] == hashlib.sha256(body).digest()) for name, body in pdf.items() if name != 'lost'}
+    saved = lambda name: {s['url'] for s in sources if s['list_row'] == row[name] and s['is_saved']}
+    shown = lambda name: {s['url'] for s in sources if s['list_row'] == row[name]}
+
+    kept = details[row['kept']]
+    assert (kept['filename'], kept['document_kind'], kept['document_family']) == (
+        'HHRG-119-ED10-Wstate-PalagashviliL-20250520.pdf', ['witness-statement'], ['statement'])
+    # What the official name says, none of which 'testimony7.pdf' can.
+    assert {f['field']: f['value'] for f in kept['facts']} == dict(committee_code='ED10', congress='119',
+        date_token_candidates='2025-05-20', document_family='statement', document_kind='witness-statement')
+    assert saved('kept') == {official} and shown('kept') == {official, generic}
+    assert details[row['named']]['filename'] == 'akers_written_testimony.pdf' and saved('named') == {named_later}
+    live_row = details[row['live']]
+    assert (live_row['saved_kind'], live_row['filename']) == ('original', 'opening_statement11.pdf') and saved('live') == {live}
+    assert live_row['link_key'] == hashlib.sha256(pdf['live']).digest()[:8]
+    lost_row = next(d for d in details if d['saved_kind'] == 'recovery')
+    assert lost_row['saved_body'] == hashlib.sha256(pdf['lost']).digest()
+    assert all(s['url'] for s in sources) and all(saved(name) for name in row)
+
+
 def test_printed_hearing_date_and_conflicting_bill_packages_reach_the_export(tmp_path):
     from viewer_publication.archive_model import build_release
 

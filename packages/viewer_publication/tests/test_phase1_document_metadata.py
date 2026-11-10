@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-from congress_api.retention.provenance import json_input,list_of,run_job
+from congress_api.retention.provenance import json_input,list_of,run_job,struct
 from docspec_client.client import NativeDatasets
 
 ROOT=Path(__file__).parents[3]
@@ -305,6 +305,66 @@ def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
                dict(name='saved_files',sql=(ROOT/'model/sql/saved-files.sql').read_text(),materialize=True)],outputs=[],
         queries=[dict(name='o',sql="SELECT source_id FROM saved_files WHERE component='pdf' ORDER BY saved_rank")])['o']
     assert [row['source_id'] for row in order]==['later','third','fourth','earlier']
+
+
+def test_a_later_capture_of_held_bytes_never_names_the_saved_body(tmp_path):
+    """ct-f7hp: a source file whose captures only found the archive already holding its bytes
+    (body_stored false; the 2026-11-08 run fetched 621 documents' bytes again at a mirror address) comes
+    after one that stored them, so the document keeps its name and what that name says. Naming and
+    the address still come first, the body never moves, and copies that each stored the bytes keep
+    saved-file order."""
+    official='https://docs.house.gov/meetings/ED/ED10/20250520/118261/HHRG-119-ED10-Wstate-PalagashviliL-20250520.pdf'
+    mirror='https://democrats-edworkforce.house.gov/imo/media/doc/'
+    def member(component,source_id,body,filename,url,fetched,stored):
+        return dict(component=component,source_id=source_id,body_sha=body*64,filename=filename,source_url=url,format='pdf',
+                    exact_bytes=True,first_fetched=fetched,is_real_file=True,archive_member=False,body_stored=stored)
+    early,late='2026-10-01T12:00:00Z','2026-11-08T18:00:00Z'
+    members=[
+        # An official name fetched first; the same bytes found again later under a generic name.
+        member('kept','official','a','HHRG-119-ED10-Wstate-PalagashviliL-20250520.pdf',official,early,True),
+        member('kept','generic','a','testimony7.pdf',mirror+'testimony7.pdf',late,False),
+        # The only named copy is the later one: a name still comes before who stored the bytes.
+        member('named','unnamed','b','','https://edworkforce.house.gov/download/?id=B6029D49',early,True),
+        member('named','later-name','b','akers_written_testimony.pdf',mirror+'akers_written_testimony.pdf',late,False),
+        # A recovery-only document captured live at its original address: its one file leads.
+        member('live','original','c','opening_statement11.pdf',mirror+'opening_statement11.pdf',late,False),
+        # A stored copy with neither an address nor a member path never blanks the published address.
+        member('address','addressless','d','P.pdf',None,early,True),
+        member('address','addressed','d','P.pdf',mirror+'P.pdf',late,False),
+        # The saved body is still the newest fetch, whoever stored what.
+        member('body','old-body','e','old.pdf','https://x.test/old.pdf',early,True),
+        member('body','new-body','f','new.pdf','https://x.test/new.pdf',late,False),
+        # Copies that each stored the bytes (every fetch before 2026-10-30 says so) keep saved-file order.
+        member('both','first','9','first.pdf','https://x.test/first.pdf',early,True),
+        member('both','second','9','second.pdf','https://x.test/second.pdf','2026-10-12T12:00:00Z',True)]
+    said=dict(official=(['witness-statement'],['statement'],[dict(field='Witness',value='PalagashviliL')]),
+              generic=(['testimony'],['statement'],[]))
+    annotations=[dict(source_id=row['source_id'],document_kind=said.get(row['source_id'],([],[],[]))[0],
+                      document_family=said.get(row['source_id'],([],[],[]))[1],facts=said.get(row['source_id'],([],[],[]))[2]) for row in members]
+    strings=list_of('Utf8')
+    inputs=[json_input(tmp_path,'members',members,component='Utf8',source_id='Utf8',body_sha='Utf8',filename='Utf8',
+                       source_url='Utf8',format='Utf8',exact_bytes='Boolean',first_fetched='Utf8',is_real_file='Boolean',
+                       archive_member='Boolean',body_stored='Boolean'),
+            json_input(tmp_path,'source_annotations',annotations,source_id='Utf8',document_kind=strings,document_family=strings,
+                       facts=list_of(struct(field='Utf8',value='Utf8'))),
+            json_input(tmp_path,'formats',[dict(id='pdf',kind='preference',value='pdf',rank=1)],id='Utf8',kind='Utf8',value='Utf8',rank='Int32')]
+    # The document row reads its name from the leading source file and its kind, family and facts from
+    # that file's annotation (document-normalized.sql joins the same two keys).
+    result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=[dict(name='document_members',sql="SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM members"),
+               dict(name='saved_files',sql=(ROOT/'model/sql/saved-files.sql').read_text(),materialize=True)],outputs=[],
+        queries=[dict(name='lead',sql="""SELECT s.component,s.source_id,s.body_sha,s.filename,s.source_url,a.document_kind,a.document_family,a.facts
+                      FROM saved_files s JOIN source_annotations a ON s.source_id=a.source_id WHERE s.saved_rank=1 ORDER BY s.component"""),
+                 dict(name='columns',sql="SELECT * FROM saved_files LIMIT 1")])
+    lead={row['component']:row for row in result['lead']}
+    assert {c:row['source_id'] for c,row in lead.items()}==dict(kept='official',named='later-name',live='original',
+        address='addressed',body='new-body',both='second')
+    assert (lead['kept']['filename'],lead['kept']['document_kind'],lead['kept']['document_family'],lead['kept']['facts'])==(
+        'HHRG-119-ED10-Wstate-PalagashviliL-20250520.pdf',['witness-statement'],['statement'],[dict(field='Witness',value='PalagashviliL')])
+    assert lead['body']['body_sha']=='f'*64
+    assert all(row['source_url'] for row in lead.values())
+    # The flag orders rows here and goes no further: saved_files keeps its columns.
+    assert 'body_stored' not in result['columns'][0]
 
 
 def test_recovery_only_document_takes_the_recovered_reading_title_else_the_original_label(tmp_path):
