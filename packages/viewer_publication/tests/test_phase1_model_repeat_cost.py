@@ -151,7 +151,6 @@ OUTER_BUILD_TRACKED = {
     'witness_key_current': 1,                  # 173K rows by appearance_records_resolved, 15 cols
     'document_witness_url_matches': 1,         # 173K rows by appearance_records_resolved, 4 cols
     'document_witness_meeting_witnesses': 1,   # 173K rows by appearance_records_resolved, 5 cols
-    'witnesses_export': 1,                     # 173K rows by appearance_records_resolved, 20 cols
     'coverage': 3,                             # query; 173K rows by witnesses_export, 7 cols
 }
 
