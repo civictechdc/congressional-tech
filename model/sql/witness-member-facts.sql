@@ -25,10 +25,10 @@ WITH witness_rows AS (
  FROM spicy_members WHERE bioguide_id IS NOT NULL
 ), cleaned AS (
  SELECT *,regexp_replace(translate(regexp_replace(regexp_replace(split_part(regexp_replace(
-   translate(lower(raw),''áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ'',''aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld''),'\([^)]*\)',' ','g'),',',1),'[''’`]','','g'),'[^a-z .\-]+',' ','g'),'.-','  '),
+   translate(lower(raw),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'\([^)]*\)',' ','g'),',',1),'[''’`]','','g'),'[^a-z .\-]+',' ','g'),'.-','  '),
    '(\s+[a-z]){2,}\s*$','') AS cleaned_name,
-  translate(lower(raw||' | '||fields),''áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ'',''aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'') AS full_text,
-  translate(lower(fields),''áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ'',''aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'') AS field_text
+  translate(lower(raw||' | '||fields),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld') AS full_text,
+  translate(lower(fields),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld') AS field_text
  FROM named
 ), tokened AS (
  SELECT *,array_except(string_to_array(regexp_replace(trim(cleaned_name),'\s+',' ','g'),' '),
@@ -38,7 +38,7 @@ WITH witness_rows AS (
 SELECT side,id,person,publisher_id,toks,
  CASE WHEN cardinality(toks)>=2 THEN toks[1] END AS given1,
  CASE WHEN cardinality(toks)>=3 AND length(toks[1])=1 THEN toks[2] END AS given2,
- CASE WHEN cardinality(toks)>=2 THEN toks[cardinality(toks)] END AS family,
+ CASE WHEN cardinality(toks)>=2 THEN toks[cast(cardinality(toks) AS BIGINT)] END AS family,
  dates,full_text,field_text,raw||' | '||fields AS raw_text,
  regexp_like(full_text,'\b(former|retired|ex-)\b|\b(19|20)\d\d\s*[-–]\s*(19|20)\d\d\b') AS says_former,
  regexp_like(full_text,'\bstate (senator|senate|representative|house|legislat\w*|assembl\w*)\b|\bassembly(man|woman|member)\b|\bstatehood (senator|representative)\b|\bshadow (senator|representative)\b|\b(senator|representative|senate|house),? (\w+ ){0,2}(legislature|general assembly)\b|\b(northern mariana islands|district of columbia|american samoa|north carolina|south carolina|virgin islands|massachusetts|new hampshire|west virginia|north dakota|pennsylvania|rhode island|south dakota|connecticut|mississippi|puerto rico|california|new jersey|new mexico|washington|louisiana|minnesota|tennessee|wisconsin|arkansas|colorado|delaware|illinois|kentucky|maryland|michigan|missouri|nebraska|new york|oklahoma|virginia|alabama|arizona|florida|georgia|indiana|montana|vermont|wyoming|alaska|hawaii|kansas|nevada|oregon|idaho|maine|texas|guam|iowa|ohio|utah) (state )?(house of representatives|house of delegates|senate|legislature|general assembly|assembly)\b|\blegislative district\b')
@@ -46,9 +46,9 @@ SELECT side,id,person,publisher_id,toks,
  regexp_like(field_text,'\b(clerk|chief administrative officer|sergeant at arms|doorkeeper|parliamentarian|legislative counsel|law revision counsel|inspector general|chaplain|historian|secretary of the senate|staff\w*|counsel|office of (the )?(senator|representative|congress\w*))\b') AS says_officer,
  regexp_like(field_text,'(^|\|\s*)(nominee (to be|for)\b|(of [a-z .]+, )?to be\b)')
   OR (regexp_like(title,'nominat','i') AND cardinality(toks)>=2
-   AND strpos(' '||regexp_replace(translate(lower(title),''áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ'',''aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld''),'[^a-z]+',' ','g')||' ',' '||toks[cardinality(toks)]||' ')>0) AS says_nominee,
+   AND strpos(' '||regexp_replace(translate(lower(title),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'[^a-z]+',' ','g')||' ',' '||toks[cast(cardinality(toks) AS BIGINT)]||' ')>0) AS says_nominee,
  CASE WHEN regexp_like(full_text,'\bsenator\b|\bunited states senate\b|\bu\.\s?s\.\s?senate\b') THEN 'senate'
-  WHEN regexp_like(translate(lower(name_lines),''áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ'',''aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld''),'(?m)\brepresentative in congress\b|\b(u\.\s?s\.|united states|us)\s+(house of )?representatives?\b|\bcongress(wo)?man\b|\bdelegate (in|to|from|of|for)\b|\bresident commissioner\b|^\W*representative\b|\brepresentative\s*(\(|from\b)|\bcongressional district\b') THEN 'house'
+  WHEN regexp_like(translate(lower(name_lines),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'(?m)\brepresentative in congress\b|\b(u\.\s?s\.|united states|us)\s+(house of )?representatives?\b|\bcongress(wo)?man\b|\bdelegate (in|to|from|of|for)\b|\bresident commissioner\b|^\W*representative\b|\brepresentative\s*(\(|from\b)|\bcongressional district\b') THEN 'house'
   WHEN regexp_like(full_text,'\b(member of (the )?(united states |u\.\s?s\.\s?)?congress|members? of congress)\b') THEN 'either' END AS chamber,
- regexp_like(translate(lower(field_lines),''áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ'',''aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld''),'(?m)^\W*(chair(man|woman|person)?|ranking (minority )?member|vice[- ]chair\w*|co-?chair\w*)\b[^|]*?(\|[^|]*?)?\b(committee|subcommittee|caucus|commission)\b|\bmember of the (house |senate )?(permanent |special )?(select |joint )?committee\b|\b(speaker of the house|majority leader|minority leader|majority whip|minority whip|democratic leader|republican leader)\b') AS says_role
+ regexp_like(translate(lower(field_lines),'áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld'),'(?m)^\W*(chair(man|woman|person)?|ranking (minority )?member|vice[- ]chair\w*|co-?chair\w*)\b[^|]*?(\|[^|]*?)?\b(committee|subcommittee|caucus|commission)\b|\bmember of the (house |senate )?(permanent |special )?(select |joint )?committee\b|\b(speaker of the house|majority leader|minority leader|majority whip|minority whip|democratic leader|republican leader)\b') AS says_role
 FROM tokened

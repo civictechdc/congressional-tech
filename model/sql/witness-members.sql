@@ -19,7 +19,7 @@
 -- Nothing here feeds witness_precedence, appearance_people or document matching, so no key or link moves.
 WITH member_names AS (
  -- Every later token of a Member's name is a possible family name ('Bono Mack', 'Hernandez Rivera').
- SELECT id AS bioguide_id,toks[1] AS given,unnest(array_slice(toks,2,cardinality(toks))) AS family
+ SELECT id AS bioguide_id,toks[1] AS given,unnest(array_slice(toks,2,cast(cardinality(toks) AS BIGINT))) AS family
  FROM witness_member_facts WHERE side='member' AND cardinality(toks)>=2
 ), nicknames(nick,formal) AS (VALUES ('bob','robert'),('bobby','robert'),('rob','robert'),('bill','william'),('billy','william'),('will','william'),('dick','richard'),('rick','richard'),('rich','richard'),('ted','edward'),('ned','edward'),('ed','edward'),('eddie','edward'),('liz','elizabeth'),('beth','elizabeth'),('betsy','elizabeth'),('betty','elizabeth'),('libby','elizabeth'),('peggy','margaret'),('maggie','margaret'),('meg','margaret'),('jim','james'),('jimmy','james'),('mike','michael'),('tom','thomas'),('tommy','thomas'),('chuck','charles'),('jack','john'),('hank','henry'),('joe','joseph'),('tony','anthony'),('larry','lawrence'),('harry','harold'),('jerry','gerald'),('sandy','sandra'),('kathy','katherine')), members AS (
  SELECT m.bioguide_id,m.given,coalesce(n.formal,m.given) AS canon,m.family FROM member_names m LEFT JOIN nicknames n ON n.nick=m.given
