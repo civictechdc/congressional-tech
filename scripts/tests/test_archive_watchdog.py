@@ -569,6 +569,7 @@ def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
     marker = tmp_path / 'job.pid'
     report = tmp_path / 'a/b/r.json'
     code = f"import os,pathlib,sys,time;pathlib.Path({str(marker)!r}).write_text(str(os.getpid()));time.sleep(0.5);sys.exit(7)"
+    began = time.time()
     result = subprocess.run([sys.executable, str(WATCHDOG), '--rss-gb', '4', '--min-disk-gb', '0', '--min-available-gb', '0',
         '--interval', '0.1', '--report', str(report), '--timeline', '--', sys.executable, '-c', code],
         capture_output=True, text=True, timeout=60)
@@ -577,7 +578,11 @@ def test_a_missing_report_parent_is_created_and_the_exit_code_kept(tmp_path):
     value = json.loads(report.read_text())
     assert value['exit_code'] == 7 and value['stopped'] is None and value['peak_physical_gb'] > 0
     samples = [json.loads(line) for line in report.with_suffix('.timeline.jsonl').read_text().splitlines()]
-    assert samples and set(samples[0]) == {'seconds', 'rss_gb', 'physical_gb', 'free_disk_gb'}
+    assert samples and set(samples[0]) == {'seconds', 'epoch', 'rss_gb', 'physical_gb', 'free_disk_gb'}
+    # The wall clock of each sample, the clock engine step events carry (scripts/measure/step_memory.py joins on it).
+    assert began <= samples[0]['epoch'] <= samples[-1]['epoch'] <= time.time()
+    started = [sample['epoch'] - sample['seconds'] for sample in samples]
+    assert max(started) - min(started) < 0.05
 
 
 def test_a_term_ignoring_grandchild_is_killed(tmp_path):
