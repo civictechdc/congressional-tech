@@ -1,5 +1,5 @@
 """Congress research over the current archive release model."""
-__version__ = '0.6.5'
+__version__ = '0.6.6'
 
 # Shared by shipped launch checks and transport tests. Adding a public tool must
 # update the same declared surface that installed and hosted checks verify.

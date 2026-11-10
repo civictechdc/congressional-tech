@@ -269,3 +269,20 @@ Unpublished branch `claude/ct-thread3-mcp-polish`; the hosted server still runs 
 - `build_desktop.py` regenerated the manifests, and `--check` built the 0.6.5
   `.mcpb` and plugin ZIPs. Wheel, distribution and desktop launch checks run at
   publication.
+
+## 2026-11-10: 0.6.6 document kind synonyms (ct-isnv)
+
+Unpublished branch `claude/ct-explorer-066`; PyPI and the hosted server still run 0.6.5.
+
+- Archive release 77673bfb8fcf went live on 2026-11-10 at 20:27:52 UTC. Its
+  `schema.json` (sha256 `504f55d1…`), read through the package's own release
+  client, lists one `list.parquet` synonym set for `document_kind[]`:
+  `witness-statement` and `testimony`. An earlier prepared release, 5d24699a,
+  lists none, so 0.6.6 keeps 0.6.5's filters there.
+- The explorer-mcp lane passes: 224 tests, 4 skips.
+- `uv build` produced the 0.6.6 wheel and sdist. `check_distribution.py` on the
+  wheel reports `status: ok`, version 0.6.6, JSON and TOML configurations.
+- `build_desktop.py` regenerated the manifests, and `--check` built the 0.6.6
+  `.mcpb` and both plugin ZIPs. `check_desktop.py dist --wheel` reports
+  `status: ok` for the `.mcpb`, `mcp.json` and `.mcp.json` launches.
+- Not run: a 0.6.6 kind search against the live release's rows.
