@@ -24,7 +24,8 @@ the limit before the stop; the machine-floor check covers what other processes u
 The job runs under the shared owned-process trampoline (scripts/measure/process_rss.py):
 TERM/INT/HUP to the watchdog stop the job, and if the watchdog itself is killed the
 job's group leader notices and kills the group. --timeline writes one JSON line per
-sample (seconds, RSS, physical, free disk) to <report>.timeline.jsonl.
+sample (seconds, wall-clock epoch, RSS, physical, free disk) to <report>.timeline.jsonl;
+scripts/measure/step_memory.py joins it to the engine's step log on that epoch.
 """
 import argparse
 from contextlib import contextmanager
@@ -265,8 +266,8 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
             peak, physical_peak = max(peak, rss), max(physical_peak, physical)
             free_disk = shutil.disk_usage(disk_root).free / 2**30
             if timeline is not None:
-                timeline.write(json.dumps(dict(seconds=round(time.monotonic() - started, 3), rss_gb=round(rss, 3),
-                    physical_gb=round(physical, 3), free_disk_gb=round(free_disk, 1))) + '\n')
+                timeline.write(json.dumps(dict(seconds=round(time.monotonic() - started, 3), epoch=round(time.time(), 3),
+                    rss_gb=round(rss, 3), physical_gb=round(physical, 3), free_disk_gb=round(free_disk, 1))) + '\n')
                 timeline.flush()
             reason = None
             if max(rss, physical) > rss_gb:
