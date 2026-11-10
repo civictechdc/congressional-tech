@@ -40,7 +40,9 @@ def planned(tmp_path_factory):
             pass
         seen = []
         def stop(_inputs, steps, **_):
-            seen.extend(steps)
+            # Planned over the prepared binding, where captures is a file: a retained step's scan
+            # prints no relation name in a physical plan, so the gate could not find it.
+            seen.extend(step for step in steps if step['name'] != 'captures')
             raise Stop
         patch = pytest.MonkeyPatch()
         patch.setattr(archive_format, '_execute', stop)

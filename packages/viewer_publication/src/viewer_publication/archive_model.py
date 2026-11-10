@@ -1196,15 +1196,37 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
+#: The lake table's binding in the full model job, whose first step `captures` retains it
+#: (the `<name>_input` idiom of `recovery_requirements_input`).
+CAPTURES_INPUT='captures_input'
+
+
+def retained_captures(inputs):
+    """Bind the lake `captures` as CAPTURES_INPUT and return the step that retains it as `captures`.
+
+    Every statement that names a lake table reads it again from the object store: 31 statements
+    named `captures` 42 times and took 414 s of an 867 s build. Read once into a retained step,
+    all of them scan local rows; no model SQL changes. Only the full job does this: the admission
+    job and every other caller of the step factories keep their own `captures` binding. Final
+    queries read the step, so it lives to the end of the job. The engine holds a step in memory
+    while what it retains fits under its ceiling and in scratch otherwise: at about 2.7 GiB of
+    Arrow data against a 3 GiB ceiling this step sits at that boundary, so held in memory it
+    takes most of the ceiling and sends later steps to scratch, and it moves to scratch itself
+    as the table grows.
+    """
+    return ([dict(item,name=CAPTURES_INPUT) if item['name']=='captures' else item for item in inputs],
+        dict(name='captures',sql='SELECT * FROM '+CAPTURES_INPUT,materialize=True))
+
+
 def build_prepared_release(prepared,*,engine,output,root=ROOT):
     """Continue one prepared plan through grouping and the shared native exporter."""
     from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS,MEETING_DICTIONARY
     from viewer_publication.archive_annotations import annotation_steps
     from viewer_publication.archive_provenance import RECOVERY_FILE_AGREEMENT,attachment_steps,body_review_steps,recovered_copy_steps
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
-    inputs=prepared['inputs'];capture_profile=prepared['capture_profile']
+    inputs,captures_step=retained_captures(prepared['inputs']);capture_profile=prepared['capture_profile']
     parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
-    steps=list(prepared['steps'])+link_steps(root=root)
+    steps=[captures_step]+list(prepared['steps'])+link_steps(root=root)
     steps += _sql_steps(['archive-member-addresses'],root=root)
     # Meetings read only prelude inputs; the documents they list feed URL keys and annotations.
     steps += meeting_steps(root=root,has_document_references=prepared.get('has_document_references',True))+meeting_detail_steps(root=root)+_sql_steps(['meeting-document-urls'],root=root)

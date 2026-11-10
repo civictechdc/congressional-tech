@@ -108,11 +108,16 @@ and pending work. See [reading version changes](docs/development.md#reading-vers
 
 - **Candidate SHA semi-join pushdown:** Never `GROUP BY` or `DISTINCT` over
   `captures` or `readings` in `model/sql/*.sql` or `archive_model.py` before
-  joining to a smaller candidate set. Expression keys (`encode(c.sha256, 'hex')`)
-  and outer joins block DataFusion predicate pushdown and exhaust the per-stream
-  `GroupedHashAggregateStream` memory cap (`109.6 MB`) on the `4.15M`-row
-  `captures` table. Always join a `candidate_*_shas` CTE inside the
-  pre-aggregation scan.
+  joining to a smaller candidate set: an aggregate over the whole `4.15M`-row
+  `captures` table exhausts the per-stream `GroupedHashAggregateStream` memory
+  cap (`109.6 MB`). Always join a `candidate_*_shas` CTE below the aggregate.
+  In the full model job `captures` is a retained step (`retained_captures`
+  reads the lake table once, as `captures_input`), so every reader decodes it
+  whole, nothing is pushed into a lake scan and only that join bounds the
+  aggregate; never read `captures_input` anywhere else. Where `captures` is
+  the lake table itself (the admission job, the producers, the release gate),
+  and for `readings` in every job, expression keys (`encode(c.sha256, 'hex')`)
+  and outer joins also block DataFusion predicate pushdown into the scan.
 - **Single pinned version per `(body_sha, parser)`:** Historical `readings`
   tables can retain older `parser_version` rows alongside current rows. Filter
   to the single pinned `parser_version` per `parser` before re-stamping or
