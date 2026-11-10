@@ -17,3 +17,9 @@ From .cache/archive-release/investigations/next-release-review-20261110/model/RE
 
 Each item is fixed with a test, or declined with a reason, or split out.
 
+
+## Notes
+
+**2026-11-10T20:21:23Z**
+
+2026-11-10 item 7, what actually ships in release 77673bfb8fcf (record review): the placeholder-title rule misses two shapes, 'H.R.___,' and 'H.Res.___' (live rows 58914 and 58928 gain them as titles from link text fetched today), and 7 titles start with 'Download'; 12 gained titles are a file name. Recorded as accepted defects on the two changed-title groups of the release's cause record. Fix: widen the placeholder pattern to underscores without a space and trailing punctuation, and drop 'Download…' link text as a title.
