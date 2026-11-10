@@ -39,6 +39,18 @@ def scanned_pdf():
 HTML = (b'<html><head><title>Hearing transcript</title></head><body><pre>'
         b'STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n</pre></body></html>')
 XML = b'<?xml version="1.0"?><hearing><title>Oversight</title><para>The committee met.</para></hearing>'
+# A committee web page as the archive holds them (ct-chc4): JSON-LD, CSS and a script in the head, a
+# <noscript> and a <template> in the body, and block elements with no whitespace between them. The
+# *_MARK words appear only inside elements a browser does not show as text.
+WEB_PAGE = (b'<!DOCTYPE html><html><head><title>Hearings | Committee</title>'
+            b'<script type="application/ld+json">{"@context":"https://schema.org","@graph":'
+            b'[{"@type":"WebPage","name":"JSONLD_MARK"}]}</script>'
+            b'<style>.nav{color:#036} body{margin:0} /* CSS_MARK */</style>'
+            b'<script>window.dataLayer=[];function gtag(){dataLayer.push("SCRIPT_MARK")}</script></head>'
+            b'<body><noscript><p>NOSCRIPT_MARK</p></noscript><template><li>TEMPLATE_MARK</li></template>'
+            b'<nav><ul><li><a href="/about">About</a></li><li><a href="/chair">Chair</a></li></ul></nav>'
+            b'<h1>Hearings</h1><div>Archived</div><table><tr><td>2021</td><td>March</td></tr></table>'
+            b'<p>The <b>full</b> committee met.<br>It adjourned.</p></body></html>')
 
 
 def warc_member(payload, *, content_type='text/html', target='https://example.house.gov/statement'):

@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from body_text_fixtures import HTML, PAGE_ONE, PAGE_TWO, XML, scanned_pdf, two_page_pdf, warc_member
+from body_text_fixtures import HTML, PAGE_ONE, PAGE_TWO, WEB_PAGE, XML, scanned_pdf, two_page_pdf, warc_member
 from congress_api.parsers import body_text as bt
 from congress_api.retention.sniff import read_sniff
 
@@ -148,6 +148,25 @@ def test_html_pre_transcript_keeps_its_layout_and_drops_the_title():
     reading = derive(HTML, 'html_text')
     assert reading.text == 'STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n'
     assert reading.page_offsets == (0,) and reading.fields == {'page_count': 1}
+
+
+def test_web_page_text_has_no_script_or_css_and_block_elements_do_not_glue_words():
+    reading = derive(WEB_PAGE, 'html_text')
+    # Each block element's words on their own line; an inline <b> breaks nothing. spicy-docs 0.79.0 read
+    # this page as its JSON-LD, CSS, script, <noscript> and <template> text, then
+    # 'AboutChairHearingsArchived2021MarchThe full committee met.It adjourned.'
+    assert reading.text == ('About\nChair\nHearings\nArchived\n2021\nMarch\n'
+                            'The full committee met.\nIt adjourned.')
+    for mark in ('JSONLD_MARK', 'CSS_MARK', 'SCRIPT_MARK', 'NOSCRIPT_MARK', 'TEMPLATE_MARK',
+                 'schema.org', 'dataLayer', 'margin', 'Hearings | Committee'):
+        assert mark.encode() in WEB_PAGE and mark not in reading.text
+    assert derive(warc_member(WEB_PAGE), 'warc').text == reading.text
+
+
+def test_html_tags_gpo_never_closes_do_not_refuse_the_body():
+    # GPO prints literal <bullet> tags inside a report's <pre>; 300 unclosed ones passed the old depth of 256.
+    reading = derive(b'<html><body><pre>' + b'<bullet> item\n' * 300 + b'</pre></body></html>', 'html_text')
+    assert reading.status == 'completed' and reading.text == ' item\n' * 300
 
 
 def test_xml_elements_become_lines():
