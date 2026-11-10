@@ -1,0 +1,489 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee1899262ba">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>113_senate_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2014-07-25</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>STANDARD-ESSENTIAL PATENT DISPUTES AND ANTITRUST LAW</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-113shrg88369</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-113shrg88369/html/CHRG-113shrg88369.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-113shrg88369/pdf/CHRG-113shrg88369.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Printing Office</publisher>
+         <dateIssued encoding="w3cdtf">2013-07-30</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>251 p.</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.J 89/2:S.HRG.113-308</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-113shrg88369</identifier>
+    <identifier type="local">P0b002ee1899262ba</identifier>
+    <identifier type="ILS system id">000932586</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2014-07-25</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2023-02-08</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-113shrg88369</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>SHRG</docClass>
+         <accessId>CHRG-113shrg88369</accessId>
+         <type>G</type>
+         <chamber>SENATE</chamber>
+         <congress>113</congress>
+         <session>1</session>
+         <number>308</number>
+         <heldDate>2013-07-30</heldDate>
+         <preferredCitation>S. Hrg. 113-308</preferredCitation>
+    </extension>
+    <extension>
+         <searchTitle>STANDARD-ESSENTIAL PATENT DISPUTES AND ANTITRUST LAW</searchTitle>
+         <granuleClass>OTHERPART</granuleClass>
+         <accessId>CHRG-113shrg88369</accessId>
+         <graphicsInPDF>true</graphicsInPDF>
+         <witness>Munck, Suzanne, Chief Counsel for Intellectual Property, and Deputy Director, Office of Policy Planning, Washington, DC</witness>
+         <witness>Melamed, A. Douglas, Senior Vice President and General Counsel, Intel Corporation, Santa Clara, California</witness>
+         <witness>Rosenberg, Donald J., Executive Vice President, General Counsel, and Corporate Secretary, Qualcomm Incorporated, San Diego, California</witness>
+         <witness>Kulick, John D., Ph.D., Chair, Standards Board, The Institute of Electrical and Electronics Engineers Standards Association, New York, New York</witness>
+         <witness>Questions submitted by Senator Grassley for John D. Kulick, Ph.D</witness>
+         <witness>Questions submitted by Senator Klobuchar for John D. Kulick, Ph.D</witness>
+         <isAppropriation>false</isAppropriation>
+         <jacketId>88-369</jacketId>
+         <congCommittee authorityId="ssju00" chamber="S" congress="113" type="S">
+                                    
+              <name type="authority-standard">Committee on the Judiciary</name>
+                                    
+              <name type="authority-short">Judiciary</name>
+                                    
+              <subCommittee>
+                                            
+                   <name type="parsed">Subcommittee on Antitrust, Competition Policy and Consumer Rights</name>
+                                        
+            </subCommittee>
+                                
+        </congCommittee>
+         <congMember bioGuideId="B001277" chamber="S" congress="113" party="D" role="COMMMEMBER" state="CT">
+                                    
+              <name type="parsed">RICHARD BLUMENTHAL of Connecticut</name>
+                                    
+              <name type="authority-fnf">Richard Blumenthal</name>
+                                    
+              <name type="authority-lnf">Blumenthal, Richard</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001056" chamber="S" congress="113" party="R" role="COMMMEMBER" state="TX">
+                                    
+              <name type="parsed">JOHN CORNYN of Texas</name>
+                                    
+              <name type="authority-fnf">John Cornyn</name>
+                                    
+              <name type="authority-lnf">Cornyn, John</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001088" chamber="S" congress="113" party="D" role="COMMMEMBER" state="DE">
+                                    
+              <name type="parsed">CHRISTOPHER A. COONS of Delaware</name>
+                                    
+              <name type="authority-fnf">Christopher A. Coons</name>
+                                    
+              <name type="authority-lnf">Coons, Christopher A.</name>
+                                    
+              <name type="authority-other">Mr. Christopher Coons</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001098" chamber="S" congress="113" party="R" role="COMMMEMBER" state="TX">
+                                    
+              <name type="parsed">TED CRUZ of Texas</name>
+                                    
+              <name type="authority-fnf">Ted Cruz</name>
+                                    
+              <name type="authority-lnf">Cruz, Ted</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000563" chamber="S" congress="113" party="D" role="COMMMEMBER" state="IL">
+                                    
+              <name type="parsed">DICK DURBIN of Illinois</name>
+                                    
+              <name type="authority-fnf">Richard J. Durbin</name>
+                                    
+              <name type="authority-lnf">Durbin, Richard J.</name>
+                                    
+              <name type="authority-other">Mr. Richard Durbin</name>
+                                
+        </congMember>
+         <congMember bioGuideId="F000062" chamber="S" congress="113" party="D" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">DIANNE FEINSTEIN of California</name>
+                                    
+              <name type="authority-fnf">Dianne Feinstein</name>
+                                    
+              <name type="authority-lnf">Feinstein, Dianne</name>
+                                
+        </congMember>
+         <congMember bioGuideId="F000444" chamber="S" congress="113" party="R" role="COMMMEMBER" state="AZ">
+                                    
+              <name type="parsed">JEFF FLAKE of Arizona</name>
+                                    
+              <name type="authority-fnf">Jeff Flake</name>
+                                    
+              <name type="authority-lnf">Flake, Jeff</name>
+                                
+        </congMember>
+         <congMember bioGuideId="F000457" chamber="S" congress="113" party="D" role="COMMMEMBER" state="MN">
+                                    
+              <name type="parsed">AL FRANKEN of Minnesota</name>
+                                    
+              <name type="authority-fnf">Al  Franken</name>
+                                    
+              <name type="authority-lnf">Franken, Al</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000359" chamber="S" congress="113" party="R" role="COMMMEMBER" state="SC">
+                                    
+              <name type="parsed">LINDSEY GRAHAM of South Carolina</name>
+                                    
+              <name type="authority-fnf">Lindsey Graham</name>
+                                    
+              <name type="authority-lnf">Graham, Lindsey</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000386" chamber="S" congress="113" party="R" role="COMMMEMBER" state="IA">
+                                    
+              <name type="parsed">CHUCK GRASSLEY of Iowa</name>
+                                    
+              <name type="authority-fnf">Chuck Grassley</name>
+                                    
+              <name type="authority-lnf">Grassley, Chuck</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H000338" chamber="S" congress="113" party="R" role="COMMMEMBER" state="UT">
+                                    
+              <name type="parsed">ORRIN G. HATCH of Utah</name>
+                                    
+              <name type="authority-fnf">Orrin G. Hatch</name>
+                                    
+              <name type="authority-lnf">Hatch, Orrin G.</name>
+                                    
+              <name type="authority-other">Orrin Grant Hatch</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H001042" chamber="S" congress="113" party="D" role="COMMMEMBER" state="HI">
+                                    
+              <name type="parsed">MAZIE HIRONO of Hawaii</name>
+                                    
+              <name type="authority-fnf">Mazie K. Hirono</name>
+                                    
+              <name type="authority-lnf">Hirono, Mazie K.</name>
+                                    
+              <name type="authority-other">Ms. Mazie Hirono</name>
+                                
+        </congMember>
+         <congMember bioGuideId="K000367" chamber="S" congress="113" party="D" role="COMMMEMBER" state="MN">
+                                    
+              <name type="parsed">AMY KLOBUCHAR of Minnesota</name>
+                                    
+              <name type="authority-fnf">Amy Klobuchar</name>
+                                    
+              <name type="authority-lnf">Klobuchar, Amy</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000174" chamber="S" congress="113" party="D" role="COMMMEMBER" state="VT">
+                                    
+              <name type="parsed">PATRICK J. LEAHY of Vermont</name>
+                                    
+              <name type="authority-fnf">Patrick J. Leahy</name>
+                                    
+              <name type="authority-lnf">Leahy, Patrick J.</name>
+                                    
+              <name type="authority-other">Mr. Patrick Leahy</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000577" chamber="S" congress="113" party="R" role="COMMMEMBER" state="UT">
+                                    
+              <name type="parsed">MICHAEL S. LEE of Utah</name>
+                                    
+              <name type="authority-fnf">Mike Lee</name>
+                                    
+              <name type="authority-lnf">Lee, Mike</name>
+                                
+        </congMember>
+         <congMember bioGuideId="S000148" chamber="S" congress="113" party="D" role="COMMMEMBER" state="NY">
+                                    
+              <name type="parsed">CHUCK SCHUMER of New York</name>
+                                    
+              <name type="authority-fnf">Charles E. Schumer</name>
+                                    
+              <name type="authority-lnf">Schumer, Charles E.</name>
+                                    
+              <name type="authority-other">Mr. Charles Schumer</name>
+                                
+        </congMember>
+         <congMember bioGuideId="S001141" chamber="S" congress="113" party="R" role="COMMMEMBER" state="AL">
+                                    
+              <name type="parsed">JEFF SESSIONS of Alabama</name>
+                                    
+              <name type="authority-fnf">Jeff Sessions</name>
+                                    
+              <name type="authority-lnf">Sessions, Jeff</name>
+                                
+        </congMember>
+         <congMember bioGuideId="W000802" chamber="S" congress="113" party="D" role="COMMMEMBER" state="RI">
+                                    
+              <name type="parsed">SHELDON WHITEHOUSE of Rhode Island</name>
+                                    
+              <name type="authority-fnf">Sheldon Whitehouse</name>
+                                    
+              <name type="authority-lnf">Whitehouse, Sheldon</name>
+                                
+        </congMember>
+         <isNomination>false</isNomination>
+         <isErrata>false</isErrata>
+    </extension>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <namePart>Committee on the Judiciary</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+              <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <name type="personal">
+         <namePart>Richard Blumenthal</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John Cornyn</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Christopher A. Coons</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ted Cruz</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Richard J. Durbin</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Dianne Feinstein</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jeff Flake</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Al  Franken</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Lindsey Graham</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Chuck Grassley</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Orrin G. Hatch</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mazie K. Hirono</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Amy Klobuchar</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Patrick J. Leahy</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mike Lee</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Charles E. Schumer</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jeff Sessions</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Sheldon Whitehouse</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Munck, Suzanne, Chief Counsel for Intellectual Property, and Deputy Director, Office of Policy Planning, Washington, DC</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Melamed, A. Douglas, Senior Vice President and General Counsel, Intel Corporation, Santa Clara, California</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Rosenberg, Donald J., Executive Vice President, General Counsel, and Corporate Secretary, Qualcomm Incorporated, San Diego, California</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Kulick, John D., Ph.D., Chair, Standards Board, The Institute of Electrical and Electronics Engineers Standards Association, New York, New York</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Questions submitted by Senator Grassley for John D. Kulick, Ph.D</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Questions submitted by Senator Klobuchar for John D. Kulick, Ph.D</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+</mods>

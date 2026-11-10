@@ -210,9 +210,14 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_ASKED_BY",
         "_MODS_ASKED_TO",
         "_MODS_ANSWERER",
+        "_MODS_ASKED_FOR",
+        "_MODS_PERSON",
         "_MODS_SUFFIX",
         "_mods_roster",
         "_mods_member",
+        "_mods_hon",
+        "_mods_on_roster",
+        "_mods_answerers",
         "_mods_mentions",
         "_mods_asker_text",
         "_mods_askers_named",
@@ -234,6 +239,9 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_PAGE_GIVEN",
         "_mods_surname_first",
         "_mods_witness_fields",
+        "_mods_family",
+        "_mods_same_person",
+        "_mods_document_text",
         "_mods_record_rows",
         "extract_mods_observation",
         "extract_mods_appearances",
@@ -1055,10 +1063,17 @@ _MODS_ORGANIZATION_DOCUMENT = re.compile(
 # "Representative", "Delegate"), the House style after the name ("a Representative in Congress from ...", "of
 # Missouri"), a committee title ("Chairman", "Ranking Member") under a question heading, or the family name (and
 # the given name's initial, when printed) of one of the print's <congMember> entries. "Hon." is any official's
-# ("Hon. Gene L. Dodaro"), and a Member's own paged entry prints it too ("Honorable Jim Bunning.....1,"), so it never
-# makes a Member alone; a line naming anyone the record does not make a Member is read as the other rules read it.
+# ("Hon. Gene L. Dodaro"), and a Member's own paged entry prints it too ("Honorable Jim Bunning.....1,"), so it makes a
+# Member only beside one: a "Hon." name in a heading's list (that line's, or the lines under it) is a Member when the
+# print's <congMember> list confirms another name of the same list (owner decision 2026-11-10, "use the rule": the
+# Veterans' Affairs prints omit Rockefeller, Jeffords, Manchin and Sanders). The answerer after "to" or "for" is never
+# in the list ("... from Hon. Richard Burr to Hon. William P. Greene, Jr., Chief Judge"). A line naming anyone else the
+# record does not make a Member is read as the other rules read it.
 # What else the line prints keeps its reading (a witness's entry before or after the askers, a document run into the
-# heading) and the askers follow it; the answerer after "to" or "for" ("... to Justin Brookman") is not read here.
+# heading) and the askers follow it. The answerer the line names ("... to Caitlin Thompson, Ph.D", "for Mr.
+# Martynuska from", "questions submitted for the record to: Dr. Rue") keeps or gains a row of their own beside the
+# askers (owner decision 2026-11-10, "show both the asker and the answerer"): typed as the print's other row for that
+# person, else as the line's own reading types the row that named them, else a witness; never record material.
 _MODS_HON = r"(?:The Honorable|Honorable|Hon\.)"
 _MODS_CHAMBER_TITLE = r"(?:Senator|Sen\.|Representative|Rep\.|Congress(?:man|woman)|Delegate)"
 _MODS_COMMITTEE_TITLE = r"(?:Chairman|Chairwoman|Ranking Member)"
@@ -1087,8 +1102,13 @@ _MODS_ASKED_BY = re.compile(
     r"(?:\b(?:(?:written|additional|supplemental) )?(?:responses?|answers?) to (?:[\w()-]+ ){0,3}?"
     r"|\b(?:(?-i:[a-z])[\w()-]* ){0,3}?)(?:questions?|requests?)\b(?:(?!\.\.)[^:]){0,80}?\b(?:from|by|of)\b"
     r"\s*:?\s*(?:the following [^:]*:\s*)?", re.I)
-_MODS_ASKED_TO = re.compile(r",\s*questions submitted (?:for the record )?to\b", re.I)
+_MODS_ASKED_TO = re.compile(r",\s*questions submitted (?:for the record )?to\b\s*:?\s*", re.I)
 _MODS_ANSWERER = re.compile(r"\s+(?:to|for)\s")
+# The answerer a heading names before its askers ("Questions for the record for Mr. Martynuska from Hon. Lou Barletta").
+_MODS_ASKED_FOR = re.compile(r"\bfor\s+(?P<who>(?:Mr|Ms|Mrs|Dr)\.\s+[A-Z][\w'’-]+(?:\s+[A-Z][\w'’-]+)?)\s+(?:from|by)\b")
+# One person's name, for reading a list of answerers ("Justin Brookman, Alan Davidson, ..., and Guy ``Bud'' Tribble").
+_MODS_PERSON = re.compile(r"(?:(?:Mr|Ms|Mrs|Dr|Hon)\.\s+)?[A-Z][a-z'’-]+(?:\s+(?:[A-Z]\.|[A-Z][a-z'’-]+|``[A-Za-z]+''))*"
+                          r"\s+[A-Z][A-Za-z'’-]+")
 _MODS_SUFFIX = re.compile(r"(?:\s+(?:[IVX]+|Jr|Sr)\.?)+$")
 
 
@@ -1119,6 +1139,18 @@ def _mods_member(mention: re.Match[str], style: re.Match[str] | None, roster: Ma
         return True
     if mention["committee"] and asked:
         return True
+    return _mods_on_roster(mention, roster)
+
+
+def _mods_hon(mention: re.Match[str]) -> bool:
+    """Is this a name printed with "Hon." alone ("Hon. Joe Manchin", "Rockefeller IV, Hon. John D")?"""
+    return bool(mention["surname"] or mention["title"] and re.fullmatch(_MODS_HON, mention["title"]))
+
+
+def _mods_on_roster(mention: re.Match[str], roster: Mapping[tuple[str, ...], set[str]]) -> bool:
+    """Is this name's family (and the given name's initial, when printed) one of the print's <congMember> entries?"""
+    if mention["plural"]:
+        return False
     words = (mention["name"] or f"{mention['given']} {mention['surname']}").split()
     words = _MODS_SUFFIX.sub("", " ".join(words)).split()
     for size in (2, 1):
@@ -1158,13 +1190,23 @@ def _mods_asker_text(mention: re.Match[str], style: re.Match[str] | None) -> lis
     return [(mention.start(), text + (", " + style.group().lstrip(", ") if style else ""))]
 
 
-def _mods_askers_named(line: str, roster: Mapping[tuple[str, ...], set[str]],
-                       after_question: bool) -> tuple[list[tuple[int, str]], bool, bool]:
-    """The askers a line names (see above), as (printed position, text to read); whether the line prints nothing else
-    (headings, askers, page numbers, the answerer after "to" or "for"); and whether a list of askers may continue on
-    the next line. A line naming anyone the print's record does not make a Member names no askers."""
+def _mods_answerers(text: str) -> list[str]:
+    """The text to read for each answerer an answerer's phrase names: a list when every item is a person's name,
+    else the phrase as one person with their post ("Hon. William P. Greene, Jr., Chief Judge, U.S. Court of ...")."""
+    text = _MODS_PAGES.sub(" ", text).strip(" ,;:")
+    parts = [part.strip() for part in re.split(r"\s*,\s*(?:and\s+)?|\s+and\s+", text) if part.strip()]
+    return parts if len(parts) > 1 and all(_MODS_PERSON.fullmatch(part) for part in parts) else [text] if text else []
+
+
+def _mods_askers_named(line: str, roster: Mapping[tuple[str, ...], set[str]], after_question: int
+                       ) -> tuple[list[tuple[int, str]], list[tuple[int, str]], bool, int]:
+    """The askers a line names (see above) and the answerers it names, each as (printed position, text to read);
+    whether the line prints nothing else (headings, askers, answerers, page numbers); and whether a list of askers may
+    continue on the next line (0 no, 1 yes, 2 yes and the print's <congMember> list confirmed a name of it). A line
+    naming anyone the print's record does not make a Member names no askers."""
     covered: list[tuple[int, int]] = []  # spans of headings, askers, their page numbers and answerers
-    lists: list[tuple[list[tuple[re.Match[str], re.Match[str] | None]], bool]] = []  # (names, under a heading)
+    lists: list[tuple[list[tuple[re.Match[str], re.Match[str] | None]], int]] = []  # (names, under a heading)
+    answerers: list[tuple[int, str]] = []
     pos, closed = 0, False  # closed: the line's last list ends at its answerer, so no list runs on to the next line
     for head in _MODS_ASKED_BY.finditer(line):
         found, end = _mods_mentions(line, head.end())
@@ -1173,30 +1215,39 @@ def _mods_askers_named(line: str, roster: Mapping[tuple[str, ...], set[str]],
         if not lists and found:
             before, at = _mods_mentions(line, 0)  # askers printed before the heading ("Hon. Patty Murray....45,47")
             if before and not line[at:head.start()].strip(" ,;"):
-                lists.append((before, False))
+                lists.append((before, 0))
                 covered.append((0, head.start()))
-        lists.append((found, True))
+        lists.append((found, 1))
         covered.append((head.start(), end))
+        if found and (who := _MODS_ASKED_FOR.search(line, head.start(), head.end())):
+            answerers.append((who.start("who"), who["who"]))
         if closed := bool(answer := _MODS_ANSWERER.match(line, end)):
             end = nxt.start() if (nxt := _MODS_ASKED_BY.search(line, answer.end())) else len(line)
             covered.append((answer.start(), end))
+            answerers.append((answer.end(), line[answer.end():end]))
         pos = end
     heading = bool(lists)
     if not heading and (to := _MODS_ASKED_TO.search(line)):
         found, end = _mods_mentions(line, 0)
         if found and not line[end:to.start()].strip(" ,"):
             heading = closed = True
-            lists.append((found, True))
+            lists.append((found, 1))
             covered.append((0, len(line)))
+            answerers.append((to.end(), line[to.end():]))
     whole, end = ([], 0) if heading else _mods_mentions(line, 0)
     alone = bool(whole) and end == len(line)
     if alone:
         lists.append((whole, after_question))
         covered.append((0, len(line)))
+    # A heading's list is confirmed when the print's <congMember> list names one of its names, on this line or on the
+    # list's earlier lines; in a confirmed list a "Hon." name is a Member too.
+    confirmed = (alone and after_question == 2) or any(
+        asked and _mods_on_roster(mention, roster) for found, asked in lists for mention, _ in found)
     askers, members = [], True
     for found, asked in lists:
         for mention, style in found:
-            members = members and _mods_member(mention, style, roster, asked)
+            members = members and (_mods_member(mention, style, roster, bool(asked))
+                                   or bool(asked) and confirmed and _mods_hon(mention))
             askers += _mods_asker_text(mention, style)
     # A line of names alone is a list of askers under a heading, when it names two Members or more, or when its one
     # Member has a chamber or committee title and page numbers.
@@ -1204,10 +1255,10 @@ def _mods_askers_named(line: str, roster: Mapping[tuple[str, ...], set[str]],
         mention["committee"] or mention["title"] and not re.fullmatch(_MODS_HON, mention["title"])
         for mention, _ in whole)
     if not members or not (heading or alone and (after_question or len(askers) > 1 or paged)):
-        return [], False, alone and after_question
+        return [], [], False, after_question if alone else 0
     only = not re.search(r"[A-Za-z]", "".join(ch for i, ch in enumerate(line)
                                               if not any(a <= i < b for a, b in covered)))
-    return askers, only, only and not closed
+    return askers, answerers, only, (2 if confirmed else 1) if only and not closed else 0
 
 
 def mods_entry_kind(line: str, name: str | None, organization: str | None = None) -> str | None:
@@ -1462,6 +1513,28 @@ def _mods_witness_fields(
     return parsed
 
 
+def _mods_family(name: str | None) -> str:
+    """A name's family word, lower case, without a suffix ("William P. Greene Jr." -> greene)."""
+    found = _MODS_SUFFIX.sub("", name or "").split()
+    return re.sub(r"[^\w'’-]", "", found[-1].lower()) if found else ""
+
+
+def _mods_same_person(name: str, other: str) -> bool:
+    """Do two names read the same person: one family word and, when both print a given name, one initial ("Rue" and
+    "Penny Rue", "Guy ``Bud'' Tribble" and "Guy ``Bud Tribble")?"""
+    given = [re.sub(r"^(?:Mr|Ms|Mrs|Dr|Hon)\.\s+", "", n).split()[:-1] for n in (name, other)]
+    return (_mods_family(name) == _mods_family(other) != ""
+            and (not all(given) or given[0][0][:1].upper() == given[1][0][:1].upper()))
+
+
+def _mods_document_text(line: str) -> str | None:
+    """A document's own text as its line prints it, without a question heading run into it or its page numbers
+    ("Report, Arsenic and Old Laws, NRDC........267-285 Responses to ..." -> "Report, Arsenic and Old Laws, NRDC")."""
+    head = _MODS_ASKED_BY.search(line)
+    text = re.split(r"\.{2,}", line[:head.start()] if head else line, maxsplit=1)[0]
+    return re.sub(r"(?<=[A-Za-z])\d[\d,-]*\s*$", "", text.strip()).strip(" ,;:") or None
+
+
 def _mods_record_rows(names: Sequence[str | None], locators: Iterable[str], witness_type: str,
                       **kept: str | None) -> list[dict[str, Any]]:
     """A reviewed entry's rows, one per name, at the line's next locators."""
@@ -1596,6 +1669,7 @@ def extract_mods_observation(
         }
 
     raw_rows: list[dict[str, Any]] = []
+    answering: list[tuple[dict[str, Any], str | None]] = []  # answerer rows, with the type of the row that named them
 
     def row(locator: str, parsed: Mapping[str, Any], kind: str | None) -> dict[str, Any]:
         w_name = _opt_str(parsed.get("name"))
@@ -1605,22 +1679,40 @@ def extract_mods_observation(
                 "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
                 "bioguide_id": member_bioguides.get(nk) if nk else None, "witness_type": kind, "document_links": []}
 
-    def emit(found: list[tuple[int, dict[str, Any]]], askers: Sequence[tuple[int, str]], parts: Iterator[str]) -> None:
-        """A line's rows: what it reads as (`found`, at their locators) and then each Member it names as an asker
-        that no row of it names yet, at the line's next locators; numbered for display in printed order."""
+    def emit(found: list[tuple[int, dict[str, Any]]], askers: Sequence[tuple[int, str]], parts: Iterator[str],
+             answerers: Sequence[tuple[int, str]] = (), lead: tuple[str, str | None] | None = None) -> None:
+        """A line's rows: what it reads as (`found`, at their locators); then, at the line's next locators, the
+        answerer the line's own reading named (`lead`: that reading's name and type, the row a reader saw) first, each
+        Member it names as an asker, and each other answerer, when no row of the line names them yet; numbered for
+        display in printed order. Answerers are typed once the whole print is read."""
         named = {normalize_name_key(r.get("name")) for _, r in found} - {""}
-        for at, text in askers:
-            parsed = _mods_witness_fields(text)
-            if (nk := normalize_name_key(parsed.get("name"))) and nk not in named:
-                named.add(nk)
-                found.append((at, row(next(parts), parsed, "record_material")))
+        people = []  # (printed position, fields) of each answerer
+        for at, text in answerers:
+            for person in _mods_answerers(text):
+                fields = _mods_witness_fields(person)
+                name = _opt_str(fields.get("name"))
+                if name and (is_name(name) or re.match(r"(?:Mr|Ms|Mrs|Dr|Hon)\.\s+[A-Z]", person)):
+                    people.append((at + max(text.find(person), 0), fields))
+        lead_words = set(re.findall(r"[\w'’-]+", (lead or ("", None))[0].lower()))
+        leading = next((p for p in people if _mods_family(p[1].get("name")) in lead_words), None)
+        queue = ([("answerer", leading)] if leading else []) + [
+            ("asker", (at, _mods_witness_fields(text))) for at, text in askers] + [
+            ("answerer", p) for p in people if p is not leading]
+        for role, (at, fields) in queue:
+            if not (nk := normalize_name_key(fields.get("name"))) or nk in named:
+                continue
+            named.add(nk)
+            r = row(next(parts), fields, "record_material" if role == "asker" else None)
+            if role == "answerer":
+                answering.append((r, lead[1] if lead and leading and fields is leading[1] else None))
+            found.append((at, r))
         for n, (_, r) in enumerate(sorted(found, key=lambda item: item[0]), start=len(raw_rows) + 1):
             r["display_order"] = n
         raw_rows.extend(r for _, r in found)
 
     roster = _mods_roster(doc.members)
     reviewed_entries = MODS_RECORD_ENTRIES.get(resolved_pkg or "", {})
-    after_question = False
+    after_question = 0
     for idx, w_line in enumerate(raw_witness_lines, start=1):
         cleaned_line = (w_line or "").strip()
         # A line's first row reads at its locator; a joined line's second entry at /part[2]; every further row the
@@ -1639,40 +1731,53 @@ def extract_mods_observation(
             if how == "document":
                 fields = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
                 kept = {"organization": _opt_str(fields.get("organization"))}
-            found = [(0, r) for r in _mods_record_rows(names, parts, "record_material" if how == "document"
+            elif how == "title":  # a document run into a question heading: its own printed text
+                kept = {"organization": _mods_document_text(cleaned_line)}
+            found = [(0, r) for r in _mods_record_rows(names, parts, "record_material" if how in ("document", "title")
                                                        else how or entry_type, **kept)]
             if (resolved_pkg, idx) in MODS_MIXED_RECORD_ENTRIES:
                 emit(found, (), parts)
                 segments = [re.split(r"\.{4,}", cleaned_line, maxsplit=1)[1].strip()]
             else:
-                # The reviewed reading is the line's own; the Members it names as askers follow it.
-                askers, _, after_question = _mods_askers_named(cleaned_line, roster, after_question)
-                emit(found, askers, parts)
+                # The reviewed reading is the line's own; the Members it names as askers, and its answerers, follow.
+                askers, answerers, _, after_question = _mods_askers_named(cleaned_line, roster, after_question)
+                emit(found, askers, parts, answerers)
                 continue
         joined = MODS_JOINED_LINES.get(resolved_pkg or "", {}).get(idx)
         if joined and sha256(cleaned_line.encode()).hexdigest() == joined[0]:
             segments = [part.strip() for part in re.split(joined[1], cleaned_line, maxsplit=1)]
         for source_locator, cleaned_line in [(next(parts), segment) for segment in segments]:
             if not cleaned_line:
-                after_question = False
+                after_question = 0
                 emit([(0, {"source_locator": source_locator, "name": None, "document_links": []})], (), parts)
                 continue
-            askers, only, after_question = _mods_askers_named(cleaned_line, roster, after_question)
+            askers, answerers, only, after_question = _mods_askers_named(cleaned_line, roster, after_question)
+            # The line's own reading: what it reads as when it is more than askers, and on a line of askers and
+            # answerers the row a reader saw before the rule (which then named an answerer, "...to Caitlin Thompson").
+            parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
+            w_name = _opt_str(parsed.get("name"))
+            kind = mods_entry_kind(cleaned_line, w_name, _opt_str(parsed.get("organization")))
+            # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
+            skip = w_name and (LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name) or not is_name(
+                w_name) and any(phrase in cleaned_line.lower() for phrase in (
+                    "answers to questions", "printed hearing record", "submitted for the record")))
             found = []
             if only and not askers:
                 found.append((0, row(source_locator, {}, "record_material")))  # a heading that names no one
-            elif not only:
-                parsed = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
-                w_name = _opt_str(parsed.get("name"))
-                kind = mods_entry_kind(cleaned_line, w_name, _opt_str(parsed.get("organization")))
-                # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
-                skip = w_name and (LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name) or not is_name(
-                    w_name) and any(phrase in cleaned_line.lower() for phrase in (
-                        "answers to questions", "printed hearing record", "submitted for the record")))
-                if not skip:
-                    at = cleaned_line.find((w_name or "").split()[-1]) if w_name else 0
-                    found.append((max(at, 0), row(source_locator, parsed, kind)))
-            emit(found, askers, itertools.chain([] if found else [source_locator], parts))
+            elif not only and not skip:
+                at = cleaned_line.find((w_name or "").split()[-1]) if w_name else 0
+                found.append((max(at, 0), row(source_locator, parsed, kind)))
+            lead = (w_name, kind) if only and askers and w_name and not skip else None
+            emit(found, askers, itertools.chain([] if found else [source_locator], parts), answerers, lead)
+
+    # An answerer is typed as the print's other row for the same person (a witness who testified), else as the row of
+    # its line that named them before the rule, else as a witness answering; never as record material.
+    answerer_rows = [r for r, _ in answering]
+    for r, named_kind in answering:
+        same = next((o for o in raw_rows if o.get("name") and all(o is not a for a in answerer_rows)
+                     and o.get("witness_type") != "record_material" and _mods_same_person(o["name"], r["name"])), None)
+        r["witness_type"] = (same.get("witness_type") if same
+                             else "statement_for_record" if named_kind == "statement_for_record" else None)
 
     appearances = preserve_appearances(raw_rows, default_source="mods")
     return {

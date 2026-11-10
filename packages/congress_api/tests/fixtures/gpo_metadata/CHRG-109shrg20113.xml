@@ -1,0 +1,577 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee180ad4bce">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>109_senate_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2010-09-28</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>NOMINATION OF HON. R. JAMES NICHOLSON TO BE SECRETARY, DEPARTMENT OF VETERANS AFFAIRS</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-109shrg20113</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-109shrg20113/html/CHRG-109shrg20113.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-109shrg20113/pdf/CHRG-109shrg20113.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Printing Office</publisher>
+         <dateIssued encoding="w3cdtf">2005-01-24</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>89 p.</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.V 64/4:</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-109shrg20113</identifier>
+    <identifier type="local">P0b002ee180ad4bce</identifier>
+    <identifier type="ILS system id">000578612</identifier>
+    <identifier type="former package identifier">f:20113.done.txt</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2010-09-28</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2023-02-13</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-109shrg20113</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>SHRG</docClass>
+         <accessId>CHRG-109shrg20113</accessId>
+         <type>N</type>
+         <chamber>SENATE</chamber>
+         <congress>109</congress>
+         <session>1</session>
+         <number>14</number>
+         <heldDate>2005-01-24</heldDate>
+         <preferredCitation>S. Hrg. 109-14</preferredCitation>
+    </extension>
+    <extension>
+         <searchTitle>NOMINATION OF HON. R. JAMES NICHOLSON TO BE SECRETARY, DEPARTMENT OF VETERANS AFFAIRS</searchTitle>
+         <granuleClass>OTHERPART</granuleClass>
+         <accessId>CHRG-109shrg20113</accessId>
+         <graphicsInPDF>true</graphicsInPDF>
+         <nominee>
+                                                            
+                        
+              <name>Hon. R. James Nicholson</name>
+                                                            
+                        
+              <position>To Be Secretary, Department of Veterans&apos; Affairs</position>
+                                                        
+                    
+        </nominee>
+         <witness>Nicholson, Hon. R. James, nominee to be Secretary, Department of Veterans&apos; Affairs</witness>
+         <witness>Response to written questions submitted by: Craig, Hon. Larry E</witness>
+         <witness>Akaka, Hon. Daniel K</witness>
+         <witness>Hutchison, Hon. Kay Bailey</witness>
+         <witness>Specter, Hon. Arlen</witness>
+         <witness>Rockefeller IV, Hon. John D</witness>
+         <witness>Jeffords, Hon. James M</witness>
+         <witness>Salazar, Hon. Ken</witness>
+         <witness>Thune, Hon. John</witness>
+         <isAppropriation>false</isAppropriation>
+         <jacketId>20-113</jacketId>
+         <congCommittee authorityId="ssva00" chamber="S" congress="109" type="S">
+                                                            
+                        
+              <name type="authority-standard">Committee on Veterans&apos; Affairs</name>
+                                                            
+                        
+              <name type="authority-short">Veterans&apos; Affairs</name>
+                                                        
+                    
+        </congCommittee>
+         <congMember bioGuideId="A000069" chamber="S" congress="109" party="D" role="COMMMEMBER" state="HI">
+                                                            
+                        
+              <name type="parsed">Daniel K. Akaka of Hawaii</name>
+                                                            
+                        
+              <name type="authority-fnf">Daniel K. Akaka</name>
+                                                            
+                        
+              <name type="authority-lnf">Akaka, Daniel K.</name>
+                                                            
+                        
+              <name type="authority-other">Daniel Kohikina Akaka</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="B001135" chamber="S" congress="109" party="R" role="COMMMEMBER" state="NC">
+                                                            
+                        
+              <name type="parsed">Richard Burr of North Carolina</name>
+                                                            
+                        
+              <name type="authority-fnf">Richard Burr</name>
+                                                            
+                        
+              <name type="authority-lnf">Burr, Richard</name>
+                                                            
+                        
+              <name type="authority-other">Mr. Richard Mauze Burr</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="C000858" chamber="S" congress="109" party="R" role="COMMMEMBER" state="ID">
+                                                            
+                        
+              <name type="parsed">Larry E. Craig of Idaho</name>
+                                                            
+                        
+              <name type="authority-fnf">Larry E. Craig</name>
+                                                            
+                        
+              <name type="authority-lnf">Craig, Larry E.</name>
+                                                            
+                        
+              <name type="authority-other">Larry Edwin Craig</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="E000194" chamber="S" congress="109" party="R" role="COMMMEMBER" state="NV">
+                                                            
+                        
+              <name type="parsed">John Ensign of Nevada</name>
+                                                            
+                        
+              <name type="authority-fnf">John Ensign</name>
+                                                            
+                        
+              <name type="authority-lnf">Ensign, John</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="G000359" chamber="S" congress="109" party="R" role="COMMMEMBER" state="SC">
+                                                            
+                        
+              <name type="parsed">Lindsey O. Graham of South Carolina</name>
+                                                            
+                        
+              <name type="authority-fnf">Lindsey Graham</name>
+                                                            
+                        
+              <name type="authority-lnf">Graham, Lindsey</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="H001016" chamber="S" congress="109" party="R" role="COMMMEMBER" state="TX">
+                                                            
+                        
+              <name type="parsed">Kay Bailey Hutchison of Texas</name>
+                                                            
+                        
+              <name type="authority-fnf">Kay Bailey Hutchison</name>
+                                                            
+                        
+              <name type="authority-lnf">Hutchison, Kay Bailey</name>
+                                                            
+                        
+              <name type="authority-other">Kay Hutchison</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="I000055" chamber="S" congress="109" party="R" role="COMMMEMBER" state="GA">
+                                                            
+                        
+              <name type="parsed">Johnny Isakson of Georgia</name>
+                                                            
+                        
+              <name type="authority-fnf">Johnny Isakson</name>
+                                                            
+                        
+              <name type="authority-lnf">Isakson, Johnny</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="M001111" chamber="S" congress="109" party="D" role="COMMMEMBER" state="WA">
+                                                            
+                        
+              <name type="parsed">Patty Murray of Washington</name>
+                                                            
+                        
+              <name type="authority-fnf">Patty Murray</name>
+                                                            
+                        
+              <name type="authority-lnf">Murray, Patty</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="O000167" chamber="S" congress="109" party="D" role="COMMMEMBER" state="IL">
+                                                            
+                        
+              <name type="parsed">Barack Obama of Illinois</name>
+                                                            
+                        
+              <name type="authority-fnf">Barack Obama</name>
+                                                            
+                        
+              <name type="authority-lnf">Obama, Barack</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="S000709" chamber="S" congress="109" party="R" role="COMMMEMBER" state="PA">
+                                                            
+                        
+              <name type="parsed">Arlen Specter of Pennsylvania</name>
+                                                            
+                        
+              <name type="authority-fnf">Arlen Specter</name>
+                                                            
+                        
+              <name type="authority-lnf">Specter, Arlen</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="S001163" chamber="S" congress="109" party="D" role="COMMMEMBER" state="CO">
+                                                            
+                        
+              <name type="parsed">Ken Salazar of Colorado</name>
+                                                            
+                        
+              <name type="authority-fnf">Ken Salazar</name>
+                                                            
+                        
+              <name type="authority-lnf">Salazar, Ken</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="T000250" chamber="S" congress="109" party="R" role="COMMMEMBER" state="SD">
+                                                            
+                        
+              <name type="parsed">John Thune of South Dakota</name>
+                                                            
+                        
+              <name type="authority-fnf">John Thune</name>
+                                                            
+                        
+              <name type="authority-lnf">Thune, John</name>
+                                                        
+                    
+        </congMember>
+         <law congress="106" isPrivate="false" number="117"></law>
+         <law congress="106" isPrivate="false" number="419"></law>
+         <law congress="108" isPrivate="false" number="170"></law>
+         <law congress="108" isPrivate="false" number="447"></law>
+         <USCode title="38">
+                                                            
+                        
+              <section number="1710A"></section>
+                                                            
+                        
+              <section number="1710B"></section>
+                                                            
+                        
+              <section number="7306"></section>
+                                                            
+                        
+              <section number="7409"></section>
+                                                            
+                        
+              <section detail="(a)" number="8110"></section>
+                                                            
+                        
+              <section number="8153"></section>
+                                                        
+                    
+        </USCode>
+         <bill congress="109" context="BODY" number="1810" type="S"></bill>
+         <bill congress="109" context="BODY" number="4759" type="HR"></bill>
+         <bill congress="109" context="BODY" number="5109" type="HR"></bill>
+         <isNomination>true</isNomination>
+         <isErrata>false</isErrata>
+    </extension>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <namePart>Committee on Veterans&apos; Affairs</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+              <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <name type="personal">
+         <namePart>Daniel K. Akaka</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Richard Burr</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Larry E. Craig</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John Ensign</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Lindsey Graham</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Kay Bailey Hutchison</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Johnny Isakson</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Patty Murray</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Barack Obama</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Arlen Specter</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ken Salazar</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John Thune</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Nicholson, Hon. R. James, nominee to be Secretary, Department of Veterans&apos; Affairs</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Response to written questions submitted by: Craig, Hon. Larry E</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Akaka, Hon. Daniel K</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hutchison, Hon. Kay Bailey</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Specter, Hon. Arlen</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Rockefeller IV, Hon. John D</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Jeffords, Hon. James M</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Salazar, Hon. Ken</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Thune, Hon. John</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. R. James Nicholson</namePart>
+         <role>
+              <roleTerm type="text">nominee</roleTerm>
+        </role>
+         <description>Hearing Nominee</description>
+    </name>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Senate Bill 1810 (109th Congress)</title>
+        </titleInfo>
+         <identifier type="Congressional Bill citation">S. 1810</identifier>
+         <extension>
+              <congress>109</congress>
+              <context>BODY</context>
+        </extension>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States House Bill 4759 (109th Congress)</title>
+        </titleInfo>
+         <identifier type="Congressional Bill citation">H.R. 4759</identifier>
+         <extension>
+              <congress>109</congress>
+              <context>BODY</context>
+        </extension>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States House Bill 5109 (109th Congress)</title>
+        </titleInfo>
+         <identifier type="Congressional Bill citation">H.R. 5109</identifier>
+         <extension>
+              <congress>109</congress>
+              <context>BODY</context>
+        </extension>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Code</title>
+              <partNumber>Title 38 Section 1710A</partNumber>
+              <partNumber>Title 38 Section 1710B</partNumber>
+              <partNumber>Title 38 Section 7306</partNumber>
+              <partNumber>Title 38 Section 7409</partNumber>
+              <partNumber>Title 38 Section 8110(a)</partNumber>
+              <partNumber>Title 38 Section 8153</partNumber>
+        </titleInfo>
+         <identifier type="USC citation">38 U.S.C. 1710A</identifier>
+         <identifier type="USC citation">38 U.S.C. 1710B</identifier>
+         <identifier type="USC citation">38 U.S.C. 7306</identifier>
+         <identifier type="USC citation">38 U.S.C. 7409</identifier>
+         <identifier type="USC citation">38 U.S.C. 8110(a)</identifier>
+         <identifier type="USC citation">38 U.S.C. 8153</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 117 (106th Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 106-117</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 419 (106th Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 106-419</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 170 (108th Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 108-170</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 447 (108th Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 108-447</identifier>
+    </relatedItem>
+</mods>

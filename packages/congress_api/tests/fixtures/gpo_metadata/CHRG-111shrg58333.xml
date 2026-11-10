@@ -1,0 +1,457 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee180b94ea3">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>111_senate_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2010-12-23</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>HEARING ON MENTAL HEALTH CARE AND SUICIDE PREVENTION FOR VETERANS</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-111shrg58333</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-111shrg58333/html/CHRG-111shrg58333.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-111shrg58333/pdf/CHRG-111shrg58333.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Printing Office</publisher>
+         <dateIssued encoding="w3cdtf">2010-03-03</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>75 p.</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.V 64/4:S.HRG.111-716</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-111shrg58333</identifier>
+    <identifier type="local">P0b002ee180b94ea3</identifier>
+    <identifier type="ILS system id">000783691</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2010-12-23</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2023-02-09</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-111shrg58333</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>SHRG</docClass>
+         <accessId>CHRG-111shrg58333</accessId>
+         <type>G</type>
+         <chamber>SENATE</chamber>
+         <congress>111</congress>
+         <session>2</session>
+         <number>716</number>
+         <heldDate>2010-03-03</heldDate>
+         <preferredCitation>S. Hrg. 111-716</preferredCitation>
+    </extension>
+    <extension>
+         <searchTitle>HEARING ON MENTAL HEALTH CARE AND SUICIDE PREVENTION FOR VETERANS</searchTitle>
+         <granuleClass>OTHERPART</granuleClass>
+         <accessId>CHRG-111shrg58333</accessId>
+         <graphicsInPDF>true</graphicsInPDF>
+         <witness>Hanson, Daniel J., Operation Iraqi Freedom Veteran</witness>
+         <witness>Rudd, M. David, Ph.D., ABPP, Dean, College of Social and Behavioral Science, University of Utah</witness>
+         <witness>Jordan, Clarence, Member, National Board of Directors, National Alliance on Mental Illness</witness>
+         <witness>Cross, Gerald, M.D., Acting Principal Deputy Under Secretary for Health, U.S. Department of Veterans Affairs; accompanied by Janet Kemp, R.N., Ph.D., VA National Suicide Prevention Coordinator; Caitlin Thompson, Ph.D., Clinical Care Coordinator; Antonette Zeiss, Ph.D., Associate Deputy Chief Consultant and Chief Psychologist, Office of Mental Health Services; Theresa Gleason, Ph.D., Deputy Chief, Mental Health Services, Office of Research and Development; and Alfonso Batres, Ph.D., MSSW, Directo</witness>
+         <witness>Response to post-hearing questions submitted by Hon. Daniel K. Akaka to Caitlin Thompson, Ph.D</witness>
+         <witness>Response to post-hearing questions submitted by Hon. Daniel K. Akaka to Antonette Zeiss, Ph.D</witness>
+         <witness>Response to post-hearing questions submitted by Hon. Daniel K. Akaka to Theresa Gleason, Ph.D</witness>
+         <witness>Response to request arising during the hearing by Hon. Patty Murray.....................................................60,</witness>
+         <isAppropriation>false</isAppropriation>
+         <jacketId>58-333</jacketId>
+         <congCommittee authorityId="ssva00" chamber="S" congress="111" type="S">
+                                    
+              <name type="authority-standard">Committee on Veterans&apos; Affairs</name>
+                                    
+              <name type="authority-short">Veterans&apos; Affairs</name>
+                                
+        </congCommittee>
+         <congMember bioGuideId="A000069" chamber="S" congress="111" party="D" role="COMMMEMBER" state="HI">
+                                    
+              <name type="parsed">Daniel K. Akaka of Hawaii</name>
+                                    
+              <name type="authority-fnf">Daniel K. Akaka</name>
+                                    
+              <name type="authority-lnf">Akaka, Daniel K.</name>
+                                    
+              <name type="authority-other">Daniel Kohikina Akaka</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B000944" chamber="S" congress="111" party="D" role="COMMMEMBER" state="OH">
+                                    
+              <name type="parsed">Sherrod Brown of Ohio</name>
+                                    
+              <name type="authority-fnf">Sherrod Brown</name>
+                                    
+              <name type="authority-lnf">Brown, Sherrod</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001135" chamber="S" congress="111" party="R" role="COMMMEMBER" state="NC">
+                                    
+              <name type="parsed">Richard Burr of North Carolina</name>
+                                    
+              <name type="authority-fnf">Richard Burr</name>
+                                    
+              <name type="authority-lnf">Burr, Richard</name>
+                                    
+              <name type="authority-other">Mr. Richard Mauze Burr</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001265" chamber="S" congress="111" party="D" role="COMMMEMBER" state="AK">
+                                    
+              <name type="parsed">Mark Begich of Alaska</name>
+                                    
+              <name type="authority-fnf">Mark  Begich</name>
+                                    
+              <name type="authority-lnf">Begich, Mark</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001266" chamber="S" congress="111" party="D" role="COMMMEMBER" state="IL">
+                                    
+              <name type="parsed">Roland W. Burris of Illinois</name>
+                                    
+              <name type="authority-fnf">Roland  Burris</name>
+                                    
+              <name type="authority-lnf">Burris, Roland</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001268" chamber="S" congress="111" party="R" role="COMMMEMBER" state="MA">
+                                    
+              <name type="parsed">Scott P. Brown of Massachusetts</name>
+                                    
+              <name type="authority-fnf">Scott P. Brown</name>
+                                    
+              <name type="authority-lnf">Brown, Scott P.</name>
+                                    
+              <name type="authority-other">Mr. Scott Brown</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000359" chamber="S" congress="111" party="R" role="COMMMEMBER" state="SC">
+                                    
+              <name type="parsed">Lindsey O. Graham of South Carolina</name>
+                                    
+              <name type="authority-fnf">Lindsey Graham</name>
+                                    
+              <name type="authority-lnf">Graham, Lindsey</name>
+                                
+        </congMember>
+         <congMember bioGuideId="I000055" chamber="S" congress="111" party="R" role="COMMMEMBER" state="GA">
+                                    
+              <name type="parsed">Johnny Isakson of Georgia</name>
+                                    
+              <name type="authority-fnf">Johnny Isakson</name>
+                                    
+              <name type="authority-lnf">Isakson, Johnny</name>
+                                
+        </congMember>
+         <congMember bioGuideId="J000291" chamber="S" congress="111" party="R" role="COMMMEMBER" state="NE">
+                                    
+              <name type="parsed">Mike Johanns of Nebraska</name>
+                                    
+              <name type="authority-fnf">Mike  Johanns</name>
+                                    
+              <name type="authority-lnf">Johanns, Mike</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M001111" chamber="S" congress="111" party="D" role="COMMMEMBER" state="WA">
+                                    
+              <name type="parsed">Patty Murray of Washington</name>
+                                    
+              <name type="authority-fnf">Patty Murray</name>
+                                    
+              <name type="authority-lnf">Murray, Patty</name>
+                                
+        </congMember>
+         <congMember bioGuideId="S000709" chamber="S" congress="111" party="D" role="COMMMEMBER" state="PA">
+                                    
+              <name type="parsed">Arlen Specter of Pennsylvania</name>
+                                    
+              <name type="authority-fnf">Arlen Specter</name>
+                                    
+              <name type="authority-lnf">Specter, Arlen</name>
+                                
+        </congMember>
+         <congMember bioGuideId="T000464" chamber="S" congress="111" party="D" role="COMMMEMBER" state="MT">
+                                    
+              <name type="parsed">Jon Tester of Montana</name>
+                                    
+              <name type="authority-fnf">Jon Tester</name>
+                                    
+              <name type="authority-lnf">Tester, Jon</name>
+                                
+        </congMember>
+         <congMember bioGuideId="W000437" chamber="S" congress="111" party="R" role="COMMMEMBER" state="MS">
+                                    
+              <name type="parsed">Roger F. Wicker of Mississippi</name>
+                                    
+              <name type="authority-fnf">Roger F. Wicker</name>
+                                    
+              <name type="authority-lnf">Wicker, Roger F.</name>
+                                    
+              <name type="authority-other">Mr. Roger Wicker</name>
+                                
+        </congMember>
+         <congMember bioGuideId="W000803" chamber="S" congress="111" party="D" role="COMMMEMBER" state="VA">
+                                    
+              <name type="parsed">Jim Webb of Virginia</name>
+                                    
+              <name type="authority-fnf">Jim Webb</name>
+                                    
+              <name type="authority-lnf">Webb, Jim</name>
+                                    
+              <name type="authority-other">Mr. James H. &quot;Jim&quot; Webb</name>
+                                
+        </congMember>
+         <law congress="97" isPrivate="false" number="174"></law>
+         <law congress="110" isPrivate="false" number="387"></law>
+         <USCode title="38">
+                                    
+              <section number="1718"></section>
+                                
+        </USCode>
+         <isNomination>false</isNomination>
+         <isErrata>false</isErrata>
+    </extension>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <namePart>Committee on Veterans&apos; Affairs</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+              <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <name type="personal">
+         <namePart>Daniel K. Akaka</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Sherrod Brown</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Richard Burr</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mark  Begich</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Roland  Burris</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Scott P. Brown</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Lindsey Graham</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Johnny Isakson</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mike  Johanns</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Patty Murray</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Arlen Specter</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jon Tester</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Roger F. Wicker</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jim Webb</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Hanson, Daniel J., Operation Iraqi Freedom Veteran</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Rudd, M. David, Ph.D., ABPP, Dean, College of Social and Behavioral Science, University of Utah</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Jordan, Clarence, Member, National Board of Directors, National Alliance on Mental Illness</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Cross, Gerald, M.D., Acting Principal Deputy Under Secretary for Health, U.S. Department of Veterans Affairs; accompanied by Janet Kemp, R.N., Ph.D., VA National Suicide Prevention Coordinator; Caitlin Thompson, Ph.D., Clinical Care Coordinator; Antonette Zeiss, Ph.D., Associate Deputy Chief Consultant and Chief Psychologist, Office of Mental Health Services; Theresa Gleason, Ph.D., Deputy Chief, Mental Health Services, Office of Research and Development; and Alfonso Batres, Ph.D., MSSW, Directo</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Response to post-hearing questions submitted by Hon. Daniel K. Akaka to Caitlin Thompson, Ph.D</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Response to post-hearing questions submitted by Hon. Daniel K. Akaka to Antonette Zeiss, Ph.D</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Response to post-hearing questions submitted by Hon. Daniel K. Akaka to Theresa Gleason, Ph.D</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Response to request arising during the hearing by Hon. Patty Murray.....................................................60,</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Code</title>
+              <partNumber>Title 38 Section 1718</partNumber>
+        </titleInfo>
+         <identifier type="USC citation">38 U.S.C. 1718</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 174 (97th Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 97-174</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 387 (110th Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 110-387</identifier>
+    </relatedItem>
+</mods>

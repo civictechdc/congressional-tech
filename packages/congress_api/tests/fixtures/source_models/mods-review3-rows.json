@@ -1,0 +1,434 @@
+[
+ {
+  "package": "CHRG-106shrg59374",
+  "index": 3,
+  "line": "Report, Gwinnett, GA, Air Quality Data....................... 72-79 Responses to additional question from Senator Inhofe",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Gwinnett, GA, Air Quality Data",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Gwinnett Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg59379",
+  "index": 7,
+  "line": "Report, Risk Management Program Guidance for Propane Users and Small Retailers........................................ 56-85 Responses to additional questions from: Senator Chafee",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Risk Management Program Guidance for Propane Users and Small Retailers",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Risk Management Program Guidance for Propane Users and Small Retailers Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg68419",
+  "index": 7,
+  "line": "Report, Collaborative EPA-State Efforts Needed to Improve New Performance Participation System...........................68-100 Responses to additional questions from: Senator Chafee",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Collaborative EPA-State Efforts Needed to Improve New Performance Participation System",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Collaborative EPA-State Efforts Needed to Improve New Performance Participation System Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg71518",
+  "index": 10,
+  "line": "Report, Arsenic and Old Laws, NRDC..........................267-285 Responses to additional questions from: Senator Crapo",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Arsenic and Old Laws, NRDC",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Arsenic and Old Laws Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg71518",
+  "index": 12,
+  "line": "Report, Cost-Benefit of Proposed Arsenic MCL, American Water Works Association.........................................300-317 Responses to additional questions from Senator Crapo",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Cost-Benefit of Proposed Arsenic MCL, American Water Works Association",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Cost-Benefit of Proposed Arsenic MCL Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg71523",
+  "index": 6,
+  "line": "Responses by Robert Raben, Assistant Attorney General to additional questions from Senator Smith",
+  "how": "person",
+  "expect": {
+   "name": "Robert Raben",
+   "position": "Assistant Attorney General",
+   "organization": null,
+   "witness_type": null
+  },
+  "published": {
+   "name": "Responses by Robert Raben",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg80652",
+  "index": 9,
+  "line": "Report, Tracking the Deployment of the Integrated Metropolitan Intelligent Transportation Systems Infrastructure in the USA: Fiscal Year 2000 Results.......130-191 Responses to additional questions from: Senator Reid",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Tracking the Deployment of the Integrated Metropolitan Intelligent Transportation Systems Infrastructure in the USA: Fiscal Year 2000 Results",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Tracking the Deployment of the Integrated Metropolitan Intelligent Transportation Systems Infrastructure in the USA: Fiscal Year 2000 Results Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg80655",
+  "index": 13,
+  "line": "Report, Economic Analysis of a Multi-Emissions Strategy, EPA173-198 Responses to additional questions from: Senator Jeffords",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Economic Analysis of a Multi-Emissions Strategy, EPA",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Economic Analysis of a Multi-Emissions Strategy Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg83683",
+  "index": 2,
+  "line": "Report, Climate Research, Vol. 18:259-275, 2001, Modeling climatic effects of anthropogenic carbon dioxide emissions: unknown uncertainties.....................................162-178 Responses to additional questions from: Senator Campbell",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Climate Research, Vol. 18:259-275, 2001, Modeling climatic effects of anthropogenic carbon dioxide emissions: unknown uncertainties",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Climate Research Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg83683",
+  "index": 5,
+  "line": "Report, A Layman's Guide to the General Circulation Models Used in the National Assessment...........................106-125 Responses to additional questions from: Senator Campbell",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, A Layman's Guide to the General Circulation Models Used in the National Assessment",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "A Layman's Guide to the General Circulation Models Used in the National Assessment Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg83720",
+  "index": 8,
+  "line": "Report, Great Lakes Strategy 2002............................ 40-70 Responses to additional questions from Senator Voinovich",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Great Lakes Strategy 2002",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Great Lakes Strategy 2002 Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108hhrg85516",
+  "index": 6,
+  "line": "Appendix 1: Biographies, Financial Disclosures, and Answers to Post- Hearing Questions Dr. Donald Scavia, Chief Scientist, National Ocean Service, National Oceanic and Atmospheric Administration Biography",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Appendix 1: Biographies",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108hhrg86341",
+  "index": 8,
+  "line": "Appendix 1: Biographies, Financial Disclosures, and Answers to Post- Hearing Questions Mr. Emil H. Frankel, Assistant Secretary for Transportation Policy, U.S. Department of Transportation Biography",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Appendix 1: Biographies",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108hhrg87544",
+  "index": 6,
+  "line": "Appendix 1: Biographies, Financial Disclosures, and Answers to Post- Hearing Questions Mr. Thomas W. Eagar, Professor, Massachusetts Institute of Technology Biography",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Appendix 1: Biographies",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108shrg88294",
+  "index": 4,
+  "line": "Press Release No. 03-052, April 29, 2003...............55-57, 78-80 Responses to additional questions from: Senator Carper",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Press Release No. 03-052, April 29, 2003",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Press Release No. 03-052",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108shrg92375",
+  "index": 8,
+  "line": "Report, Technical Principles Related to Establishing Limits of Jurisdiction for Section 404 of the Clean Water Act....196-271 Responses to additional questions from Senator Jeffords",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Technical Principles Related to Establishing Limits of Jurisdiction for Section 404 of the Clean Water Act",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Principles Related to Establishing Limits of Jurisdiction for Section 404 of the Clean Water Act Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108shrg94598",
+  "index": 5,
+  "line": "Report, Law of the Sea Treaty: A Defective Document That Should Not Be Ratified.....................................95-126 Responses to additional questions from: Senator Inhofe",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Law of the Sea Treaty: A Defective Document That Should Not Be Ratified",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Law of the Sea Treaty: A Defective Document That Should Not Be Ratified Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 10,
+  "line": "months to begin with. And then to make this study, I think to even do it in one year, I think, is a very, very tight schedule. You tell us to do it in that one-year period, you know, we are going to be responding, but it will be a very difficult time. As I said earlier to Mr. Dingell's question, our response on the CAFE standard is not a short-term response, in terms of what is happening with fuel prices. What we deal with in CAFE is always, whether it was in 1975 or in 2006, always has been-- M",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "months to begin with. And then to make this study",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-110hhrg41525",
+  "index": 3,
+  "line": "Report, entitled Questions and Answers on Federal Milk Marketing Orders",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, entitled Questions and Answers on Federal Milk Marketing Orders",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "entitled Questions and Answers on Federal Milk Marketing Orders Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-110shrg34649",
+  "index": 27,
+  "line": "Page QUESTIONS AND ANSWERS Questions and Answers.......................... 230, 292, 349, 432,",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Page QUESTIONS AND ANSWERS Questions and Answers",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-110shrg52887",
+  "index": 11,
+  "line": "Memorandum, Bandrowski, Michael S., Chief, Air Toxics, Radiation and Indoor Air Office, Region IX, December 13, 2005 and March 10, 2006...................................170-190 Responses to additional questions from Senator Inhofe",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Memorandum, Bandrowski, Michael S., Chief, Air Toxics, Radiation and Indoor Air Office, Region IX, December 13, 2005 and March 10, 2006",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Bandrowski Memorandum",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-112hhrg82267",
+  "index": 4,
+  "line": "Answers from Caroline Beteta, Interim CEO, Brand USA, Inc., to submitted questions",
+  "how": "person",
+  "expect": {
+   "name": "Caroline Beteta",
+   "position": "Interim CEO",
+   "organization": "Brand USA, Inc.",
+   "witness_type": null
+  },
+  "published": {
+   "name": "Answers from Caroline Beteta",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-112shrg21145",
+  "index": 2,
+  "line": "Accompanied By:.................................................. Svinicki, Hon. Kristine L., Commissioner Responses to additional questions from Senator Boxer",
+  "how": "person",
+  "expect": {
+   "name": "Kristine L. Svinicki",
+   "position": "Commissioner",
+   "organization": null,
+   "witness_type": null
+  },
+  "published": {
+   "name": "Accompanied By:",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-114shrg52546",
+  "index": 2,
+  "line": "Questions submitted, classified responses received",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Questions submitted",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 5,
+  "line": "request includes $1.8 million to strengthen the capacity of the Law Library of Congress. The Law Library is the world leader in providing access to reliable legal materials in print and electronic formats, and it must have adequate funding to meet the needs of Congress, the Supreme Court, and other court judges, attorneys, and the public. The Law Librarian must also be able to function with some autonomy within the Library of Congress, as she is the leader of the de facto National Law Library. I",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "request includes $1.8 million to strengthen the capacity of the Law Library of Congress. The Law Library is the world leader in providing access to reliable legal materials in print and electronic formats",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-118hhrg57786",
+  "index": 8,
+  "line": "FISCAL YEAR 2025 REQUEST FOR THE ARMY CORPS OF ENGINEEERS (CIVIL WORKS) AND THE BUREAU OF RECLAMATION Fleischmann, Hon. Charles J. \"Chuck\", a Representative in Congress from the State of Tennessee, opening statement",
+  "how": "person",
+  "expect": {
+   "name": "Charles J. \"Chuck\" Fleischmann",
+   "position": "a Representative in Congress from the State of Tennessee",
+   "organization": null,
+   "witness_type": null
+  },
+  "published": {
+   "name": "FISCAL YEAR 2025 REQUEST FOR THE ARMY CORPS OF ENGINEEERS (CIVIL WORKS) AND THE BUREAU OF RECLAMATION Fleischmann",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-118hhrg63703",
+  "index": 2,
+  "line": "Answer to submitted question \\1\\ Glenn Hamer, President and CEO, Texas Association of Business",
+  "how": "person",
+  "expect": {
+   "name": "Glenn Hamer",
+   "position": "President and CEO",
+   "organization": "Texas Association of Business",
+   "witness_type": null
+  },
+  "published": {
+   "name": "Answer to submitted question Glenn Hamer",
+   "witness_type": null
+  }
+ }
+]
