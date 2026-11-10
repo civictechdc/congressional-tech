@@ -716,6 +716,18 @@ FILENAME_BOTH_NAMES=dict(name='filename_both_names',sql='SELECT count(*) FILTER 
     f"(SELECT count(*) FROM filename_conflicts c WHERE c.field='{name}') AS {name}_conflicting" for name,_,_,_ in _NAME_FIELDS)
     +' FROM source_filename_readings')
 
+# Documents whose saved body carries names that state different kinds (saved-name-conflicts.sql,
+# ct-yuf0): how many a committee name leads, how many are two official names of different kinds with
+# no committee name to settle them (a reading would), and how many official names outside the House
+# meeting-document slots lead against a committee name (left to saved-file order, ct-h8dr).
+SAVED_NAME_KINDS=dict(name='saved_name_kinds',sql="""SELECT count(*) AS documents,
+ count(*) FILTER (WHERE NOT official_leads) AS committee_name_leads,
+ count(*) FILTER (WHERE official_leads AND committee_agrees) AS official_name_leads_with_committee_agreement,
+ count(*) FILTER (WHERE official_leads AND NOT committee_speaks) AS official_names_disagree_unsettled,
+ count(*) FILTER (WHERE official_leads AND NOT official_slot AND committee_speaks AND NOT committee_agrees) AS other_official_name_leads_contradicted,
+ count(*) FILTER (WHERE official_slot AND committee_speaks AND NOT committee_agrees) AS slot_name_leads_contradicted
+ FROM saved_name_conflicts""")
+
 # Meeting-record doc-url literals that are no http(s) address get no URL key (model-url-inputs.sql)
 # and so cannot reach invalid_url_keys; this counts them instead of refusing the release.
 UNRESOLVED_MEETING_DOCUMENT_URLS=dict(name='unresolved_meeting_document_urls',sql="""SELECT count(*) AS urls
@@ -1149,7 +1161,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += [dict(name='filename_conflicts',sql=FILENAME_CONFLICTS_SQL,materialize=True)]
-    steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
+    steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-name-standing','saved-files','saved-name-conflicts','document-alternates',
         'document-version-keys','document-versions','document-bill-decisions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
         'document-rendition-titles','recovered-copy-fills','document-filename-facts'],root=root)
     steps += package_link_steps(root=root)
@@ -1358,6 +1370,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     meta_queries=[input_receipts_query(),probe_selectors_query(root=root),
         # The recorded disposition: a ZIP with no expanded contents stays a document, listed here.
         dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
+        SAVED_NAME_KINDS,
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
         UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,RECOVERY_FILE_AGREEMENT,FILENAME_BOTH_NAMES,
@@ -1454,6 +1467,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM ({MERGED_RECOVERY_SQL}) g WHERE {' OR '.join('lost_'+flag for flag in LOST_FLAGS)}) AS unaccounted_merged_signal,
             (SELECT count(*) FROM saved_files s JOIN saved_files n ON n.component=s.component AND n.body_sha=s.body_sha
                 AND coalesce(n.filename,'')<>'' WHERE s.saved_rank=1 AND coalesce(s.filename,'')='') AS saved_unnamed_with_named_sibling,
+            (SELECT count(*) FROM saved_name_conflicts WHERE official_slot AND committee_speaks AND NOT committee_agrees) AS contradicted_official_saved_names,
             (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,
             (SELECT count(*) FROM (
                 SELECT cast(m['event_id'] AS BIGINT) AS event_id

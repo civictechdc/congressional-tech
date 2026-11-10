@@ -2198,7 +2198,9 @@ def test_a_sites_help_page_is_not_a_document_of_the_meetings_that_link_it(tmp_pa
 def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
     """ct-vq2a, ct-kwse (nightly ef4c1632): the saved copy is the newest fetch, but package, filename date
     and Congress come from every copy of the bytes, and only a GovInfo-form filename names a package;
-    an act's title year dates nothing."""
+    an act's title year dates nothing. The document shows its official name where a copy has one
+    (ct-h8dr): the House names of Batcheller and Bus and the GovInfo bill name, not the newer committee
+    copies' names; a committee site's sha256-prefixed copy of a House name is not an official name."""
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     pdf = lambda text: f'%PDF-1.7\n{text}\n%%EOF\n'.encode()
@@ -2225,12 +2227,12 @@ def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
     rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
     facts = {r['filename']: (r['package_id'], r['document_date'] and str(r['document_date']), r['document_date_source'], r['congress']) for r in rows}
     assert facts == {
-        'AFWA testimony_H.R. 2264_Bear Protection Act of 2019_6-23-20_final.pdf': (None, '2020-06-25', 'filename', 116),
-        'hr1833-text.pdf': ('BILLS-117hr1833ih', None, None, 117),
+        'HHRG-116-II13-Wstate-BatchellerG-20200625.pdf': (None, '2020-06-25', 'filename', 116),
+        'BILLS-117hr1833ih.pdf': ('BILLS-117hr1833ih', None, None, 117),
         'BILLS-117hr1833ih-Katko.pdf': (None, None, None, 117),
         'Wildlife Act of 2019_6-23-20_testimony.pdf': (None, None, None, None),
         '2012 04 23 Webster testimony.pdf': (None, '2012-04-25', 'filename', 112),
-        bus: (None, '2017-09-06', 'filename', 115)}, facts
+        'HHRG-115-SY18-Wstate-BusJ-20170906.pdf': (None, '2017-09-06', 'filename', 115)}, facts
 
 
 def test_a_later_capture_of_held_bytes_never_renames_the_document(tmp_path):
