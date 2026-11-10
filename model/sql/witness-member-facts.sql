@@ -3,15 +3,17 @@
 -- 'given': name_first, a nickname it holds in parentheses, and the members data's own name_nickname). Every name is
 -- read by the same rule: accents folded, a parenthetical and everything after the first comma dropped ('Bill
 -- Cassidy, M.D.'), honorifics, ranks and suffixes dropped as words, trailing initials dropped ('M.D.'), repeats kept
--- once. A Member's first name written as an abbreviation ('Wm.') is marked so it can be read in order.
+-- once; 'JD' is a credential at the end of a witness's name and a first name at its start (JD Vance). A Member's first
+-- name written as an abbreviation ('Wm.') is marked so it can be read in order.
 -- A witness row also carries its hearing dates (the meeting's date, else the print's heldDates), its title and what
 -- its own words say: former or a closed span of years, a state legislature, a House or Senate officer or staffer,
--- the person's own nomination ('to be ...', 'Nominee for', 'Nominated to be', or a nomination hearing whose title names both of their
--- names), the chamber ('U.S. Senator', 'Representative in Congress', '(NM-01)', 'Rep.' alone, 'Member of
--- Congress'), a committee role, and whether it may state a House seat ('3d District', '(AR-2)', 'a Delegate').
+-- the person's own nomination ('to be ...', 'Nominee for', 'Nominated to be', or a nomination hearing whose title
+-- names both of their names), the chamber ('U.S. Senator', 'Representative(s) in Congress', '(NM-01)', 'Rep.' alone,
+-- 'Member of Congress'), a committee role ('ranking House Member' included), whether it may state a House seat ('3d
+-- District', '(AR-2)', 'a Delegate'), and the words of its name and first field a seat's holder may be named by.
 -- 'Representative of' or 'for' an organization is not the House. 'eligible' marks the rows the name and seat rules
 -- read: dated, without the publisher's ID of a known Member, and with no words that keep them witnesses.
--- Its own step: the name, candidate, row and decision steps read it.
+-- Its own step: the name, candidate, row, seat and decision steps read it.
 WITH fold(accented,plain) AS (
  -- The one accent table the Member appearance steps fold names and words with.
  VALUES ('áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld')
