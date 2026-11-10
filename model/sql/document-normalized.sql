@@ -1,5 +1,7 @@
 -- A merged recovered copy's link (x, recovered-copy-fills.sql) fills only a field the copy lacks.
 -- Filename date, Congress and package come from every copy (fc, pk), never only the saved one (a).
+-- The engine builds each hash join on its left input, so every outer join names its small relation
+-- first and the document row streams past it; an outer join built on that row exhausted the pool (ct-n5ec).
 SELECT d.document_id AS doc_key,true AS body_expected,
  CASE WHEN coalesce(s.filename,'')='' THEN coalesce(x.filename,s.filename) ELSE s.filename END AS filename,
  CASE
@@ -37,25 +39,29 @@ SELECT d.document_id AS doc_key,true AS body_expected,
  'body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'size',cast(NULL AS BIGINT))),1,0)) AS alternates,
  CASE WHEN NOT coalesce(pk.bill_package_conflict,false) AND NOT coalesce(bd.package_withheld,false) THEN coalesce(pk.package_id,x.package_id) END AS package_id,
  CASE WHEN coalesce(array_length(a.facts),0)=0 THEN coalesce(x.facts,a.facts) ELSE a.facts END AS facts,bodies.link_bodies
-FROM document_witness_keys wk RIGHT JOIN (
- component_meeting_links ml RIGHT JOIN (
-  document_versions v RIGHT JOIN (
-   document_alternates alt RIGHT JOIN (
-    document_packages pk RIGHT JOIN (
-     document_bodies bodies JOIN (
-      body_evidence b JOIN (
-       document_metadata m JOIN (
-        document_identities d JOIN saved_files s ON d.component=s.component AND s.saved_rank=1
-        JOIN source_annotations a ON s.source_id=a.source_id
-       ) ON d.component=m.component
-      ) ON s.body_sha=b.body_sha
-     ) ON d.component=bodies.component
-    ) ON d.component=pk.component
-   ) ON d.component=alt.component
-  ) ON d.component=v.component
- ) ON d.component=ml.component
-) ON d.component=wk.component
-LEFT JOIN document_rendition_titles rt ON d.component=rt.component
-LEFT JOIN recovered_copy_fills x ON d.component=x.component
-LEFT JOIN document_filename_facts fc ON d.component=fc.component
-LEFT JOIN document_bill_decisions bd ON d.component=bd.component
+FROM document_bill_decisions bd RIGHT JOIN (
+ document_filename_facts fc RIGHT JOIN (
+  recovered_copy_fills x RIGHT JOIN (
+   document_rendition_titles rt RIGHT JOIN (
+    document_witness_keys wk RIGHT JOIN (
+     component_meeting_links ml RIGHT JOIN (
+      document_versions v RIGHT JOIN (
+       document_alternates alt RIGHT JOIN (
+        document_packages pk RIGHT JOIN (
+         document_bodies bodies JOIN (
+          body_evidence b JOIN (
+           document_metadata m JOIN (
+            document_identities d JOIN saved_files s ON d.component=s.component AND s.saved_rank=1
+            JOIN source_annotations a ON s.source_id=a.source_id
+           ) ON d.component=m.component
+          ) ON s.body_sha=b.body_sha
+         ) ON d.component=bodies.component
+        ) ON d.component=pk.component
+       ) ON d.component=alt.component
+      ) ON d.component=v.component
+     ) ON d.component=ml.component
+    ) ON d.component=wk.component
+   ) ON d.component=rt.component
+  ) ON d.component=x.component
+ ) ON d.component=fc.component
+) ON d.component=bd.component
