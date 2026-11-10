@@ -29,6 +29,7 @@ sample (seconds, RSS, physical, free disk) to <report>.timeline.jsonl.
 import argparse
 from contextlib import contextmanager
 import fcntl
+import functools
 import importlib.util
 import json
 import os
@@ -42,6 +43,11 @@ import time
 STOPPED = 99
 REFUSED = 98
 RAMP_SECONDS = 120
+# The longest the loop sleeps before it looks for a recorded signal again. A sleep resumes after a handler that
+# returns, so the wait between passes is taken in slices: 20 wake-ups a second, and nothing for a handler to lock.
+WAKE_SECONDS = 0.05
+# How long this file waits for vm_stat or ps to answer: the limit the sampler gives its own ps calls.
+READER_SECONDS = 5
 HERE = Path(__file__).resolve().parent
 
 
@@ -56,18 +62,32 @@ def _load(name, path):
 sampler = _load('archive_watchdog_sampler', HERE / 'measure/process_rss.py')
 
 
-class Interrupted(Exception):
-    """A signal to the watchdog; the finally clause then stops the owned job."""
+class ReadingFailed(Exception):
+    """`vm_stat: TimeoutExpired`: a reader died, did not answer in READER_SECONDS or answered nonsense.
+
+    No reading is not a reading. Admission skips a round on it and the loop a pass; nothing else
+    that goes wrong there, the registry's files or the arithmetic, is ever taken for one.
+    """
 
 
-def _interrupted(number, _frame):
-    raise Interrupted(f'watchdog received signal {number}')
+def reads(reader):
+    """Mark a function that asks `reader`: whatever fails inside it leaves as ReadingFailed."""
+    def marked(ask):
+        @functools.wraps(ask)
+        def asking(*args):
+            try:
+                return ask(*args)
+            except (OSError, subprocess.SubprocessError, LookupError, ValueError) as error:
+                raise ReadingFailed(f'{reader}: {type(error).__name__}') from error
+        return asking
+    return marked
 
 
+@reads('vm_stat' if sys.platform == 'darwin' else '/proc/meminfo')
 def available_gb():
     """Memory the machine can still hand out, or None where that is not knowable."""
     if sys.platform == 'darwin':
-        text = subprocess.run(['vm_stat'], capture_output=True, text=True).stdout
+        text = subprocess.run(['vm_stat'], capture_output=True, text=True, check=True, timeout=READER_SECONDS).stdout
         page = int(text.split('page size of ')[1].split()[0])
         pages = sum(int(line.split(':')[1].strip().rstrip('.')) for line in text.splitlines()
                     if line.startswith(('Pages free', 'Pages inactive', 'Pages speculative', 'Pages purgeable')))
@@ -98,17 +118,22 @@ def floor_victim(entries):
     return max(running, key=lambda entry: (entry['admitted'], entry['pid']))['pid'] if running else None
 
 
+@reads('ps')
 def start_times(pids):
     """Each live process's start time as ps prints it; a PID absent from the result is dead.
 
     A PID alone is not an identity: once a watchdog dies its number can name another
     process, so an entry counts only while its PID still has the start time it recorded.
+    A ps that died is a failed reading: read as "none of them is alive", it would have
+    every entry in the registry deleted.
     """
     if not pids:
         return {}
-    rows = subprocess.run(['ps', '-o', 'pid=,lstart=', '-p', ','.join(map(str, pids))],
-                          capture_output=True, text=True).stdout.splitlines()
-    return {int(row.split(None, 1)[0]): ' '.join(row.split()[1:]) for row in rows if row.strip()}
+    listed = subprocess.run(['ps', '-o', 'pid=,lstart=', '-p', ','.join(map(str, pids))],
+                            capture_output=True, text=True, timeout=READER_SECONDS)
+    if listed.returncode not in (0, 1):  # 1 is its answer when none of the PIDs exists
+        raise subprocess.CalledProcessError(listed.returncode, listed.args, listed.stdout, listed.stderr)
+    return {int(row.split(None, 1)[0]): ' '.join(row.split()[1:]) for row in listed.stdout.splitlines() if row.strip()}
 
 
 class Registry:
@@ -165,22 +190,37 @@ def total_gb():
 
 
 def admit(registry, me, *, headroom, wait_seconds):
-    """Wait for room; return None once admitted, else why the job was not started."""
+    """Wait for room; return None once admitted, else why the job was not started.
+
+    A reading that fails (vm_stat or ps slow, dead or unreadable) means no room is known yet,
+    not that the watchdog must end: the round is tried again at the next tick, and a job whose
+    readings still fail at the deadline is refused like any other. `me` gets its start time
+    here, by the first ps that answers.
+    """
     total = total_gb()
     if me['expect_gb'] + headroom > total:
         return (f'{me["expect_gb"]} GiB expected plus {headroom} GiB left free exceeds this machine '
                 f'({total:.0f} GiB); refused to start')
     deadline = time.monotonic() + wait_seconds
+    failed = {}
     while True:
-        with registry.locked() as entries:
-            available = available_gb()
-            if available is None or admissible(me, entries, available=available, headroom=headroom, now=time.time()):
-                registry.put({**me, 'admitted': time.time()})
-                return None
-            registry.put(me)
+        try:
+            if me['started'] is None:
+                me['started'] = start_times([me['pid']])[me['pid']]
+            with registry.locked() as entries:
+                available = available_gb()
+                if available is None or admissible(me, entries, available=available, headroom=headroom, now=time.time()):
+                    registry.put({**me, 'admitted': time.time()})
+                    return None
+                registry.put(me)
+            refusal = (f'refused to start; measured free memory {available:.1f} GiB, less what started jobs and earlier '
+                       f'waiters still need, did not cover {me["expect_gb"]} GiB plus {headroom} GiB')
+        except ReadingFailed as error:  # only that: a registry or arithmetic error shows at once, as it always did
+            failed[str(error)] = failed.get(str(error), 0) + 1
+            refusal = 'refused to start; free memory could not be read: ' + ', '.join(
+                f'{what} {count} {"time" if count == 1 else "times"}' for what, count in failed.items())
         if time.monotonic() >= deadline:
-            return (f'refused to start; measured free memory {available:.1f} GiB, less what started jobs and earlier '
-                    f'waiters still need, did not cover {me["expect_gb"]} GiB plus {headroom} GiB')
+            return refusal
         time.sleep(2)
 
 
@@ -192,9 +232,26 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
     compressed memory that RSS misses. Below the machine floor the job stops only when
     youngest() says it is the youngest running job. The owned group is always stopped
     on the way out: a breach, a signal to the watchdog, or any error inside this loop.
+
+    The handler only records the signal; the loop reads the record between passes and
+    every WAKE_SECONDS of its wait, so the stop begins that soon after a signal, or when
+    the pass the signal landed in ends. A handler that raises does so at
+    whatever instruction the main thread has reached, and inside the interpreter's own
+    timed wait for a child that left the child's lock held: the next wait on it never
+    returned, so the watchdog hung with its job running and no report (ct-psb5). A
+    signal during the stop itself is recorded and changes nothing.
     """
-    old = {number: signal.signal(number, _interrupted) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
+    received = []
+
+    def record(number, _frame):
+        received.append(number)
+
+    def signalled():
+        return f'Interrupted: watchdog received signal {received[0]}' if received else None
+
+    old = {number: signal.signal(number, record) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
     memory = sampler.MemorySamples(sampler)
+    blind = 0  # passes in a row without a free-memory reading
     peak = physical_peak = 0.0
     started = time.monotonic()
     process = None
@@ -217,16 +274,30 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
             elif free_disk < min_disk_gb:
                 reason = f'free disk under {min_disk_gb} GiB'
             else:
-                available = available_gb()
-                if available is not None and available < min_available_gb and youngest():
+                try:
+                    available = available_gb()
+                    squeezed = available is not None and available < min_available_gb and youngest()
+                    blind = 0
+                except ReadingFailed as error:
+                    # A gap for this pass, as sampler.MemorySamples treats a failed sample; the third in a row stops the job.
+                    blind += 1
+                    if blind >= 3:
+                        raise RuntimeError(f'Three consecutive readings of free memory failed, the last {error}') from error
+                    squeezed = False
+                if squeezed:
                     reason = (f'machine memory available {available:.1f} GiB under {min_available_gb} GiB; '
                               'the youngest running job stops first')
             if reason:
                 return STOPPED, peak, physical_peak, reason, time.monotonic() - started
-            time.sleep(interval)
+            waking = time.monotonic() + interval
+            while not received and (left := waking - time.monotonic()) > 0:
+                time.sleep(min(left, WAKE_SECONDS))
+            if received:
+                return STOPPED, peak, physical_peak, signalled(), time.monotonic() - started
         return process.returncode, peak, physical_peak, None, time.monotonic() - started
-    except Exception as error:  # Interrupted included: the finally stops the job
-        return STOPPED, peak, physical_peak, f'{type(error).__name__}: {error}', time.monotonic() - started
+    except Exception as error:  # the finally stops the job
+        # A signal to the whole group also kills the reader this pass had running; the signal is the reason.
+        return STOPPED, peak, physical_peak, signalled() or f'{type(error).__name__}: {error}', time.monotonic() - started
     finally:
         if process is not None:
             sampler.stop_owned(process)
@@ -263,7 +334,7 @@ def main(argv=None):
             print(f'archive_watchdog: cannot create the report directory: {error}', file=sys.stderr)
             return REFUSED
     registry = Registry(args.state or default_state())
-    me = dict(pid=os.getpid(), started=start_times([os.getpid()])[os.getpid()], queued=time.time(), admitted=None,
+    me = dict(pid=os.getpid(), started=None, queued=time.time(), admitted=None,  # admit() reads the start time
               expect_gb=args.expect_gb, command=command[:8])
 
     def youngest():
