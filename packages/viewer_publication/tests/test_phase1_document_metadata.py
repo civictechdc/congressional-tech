@@ -275,6 +275,12 @@ def _name_readings(tmp_path,members,said=None):
         source_id='Utf8',valid='Boolean',document_family_status='Utf8',document_family=list_of('Utf8'))
 
 
+def _name_decisions(tmp_path,rows=()):
+    """The reviewed name decisions the standing reads (saved-name-decisions.json); none unless a test plants some."""
+    from viewer_publication.archive_model import REGISTRIES
+    return json_input(tmp_path,'saved_name_decisions',list(rows),**REGISTRIES['saved_name_decisions'])
+
+
 def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
     """A NULL-address unnamed source fetched later never names the saved body when a named one exists;
     a named ZIP member (no address of its own) keeps its place as a first-class copy."""
@@ -308,7 +314,7 @@ def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
                        body_stored='Boolean'),
             json_input(tmp_path,'formats',[dict(id='pdf',kind='preference',value='pdf',rank=1),dict(id='xml',kind='preference',value='xml',rank=3)],
                        id='Utf8',kind='Utf8',value='Utf8',rank='Int32'),
-            _name_readings(tmp_path,members)]
+            _name_readings(tmp_path,members),_name_decisions(tmp_path)]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=_saved_file_steps(),outputs=[],
         queries=[dict(name='saved',sql='SELECT component,source_id,body_sha FROM saved_files WHERE saved_rank=1 ORDER BY component')])
@@ -363,7 +369,7 @@ def test_a_later_capture_of_held_bytes_never_names_the_saved_body(tmp_path):
             json_input(tmp_path,'source_annotations',annotations,source_id='Utf8',document_kind=strings,document_family=strings,
                        facts=list_of(struct(field='Utf8',value='Utf8'))),
             json_input(tmp_path,'formats',[dict(id='pdf',kind='preference',value='pdf',rank=1)],id='Utf8',kind='Utf8',value='Utf8',rank='Int32'),
-            _name_readings(tmp_path,members,dict(official=(True,['statement']),generic=(False,['statement'])))]
+            _name_readings(tmp_path,members,dict(official=(True,['statement']),generic=(False,['statement']))),_name_decisions(tmp_path)]
     # The document row reads its name from the leading source file and its kind, family and facts from
     # that file's annotation (document-normalized.sql joins the same two keys).
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
@@ -387,10 +393,14 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
     bytes has one, whichever copy was fetched last or stored the bytes; but when a committee's own name
     for the same bytes states a kind and no committee name states the official name's, the committee
     name leads when the official one is a House meeting-document slot (the House repository filed 54
-    testimonies under Bio and support-document names, one under another witness's surname). A
-    contradicted official name of another kind stays where saved-file order puts it. The saved body
-    never moves, a body with no official name keeps saved-file order, and every document whose names
-    state different kinds is counted."""
+    testimonies under Bio and support-document names, one under another witness's surname) or the
+    generic House name (a cover page beside the committee's hearing notice). A GovInfo printed hearing
+    is also the hearing's transcript and nomination record, and an official vote record is also the
+    amendment it tallies, so those official names lead, though after an official name a committee name
+    agrees with outright. A body reviewed one by one takes the review's decision instead of any rule;
+    an undecided one keeps saved-file order. Any other contradicted official name stays where
+    saved-file order puts it. The saved body never moves, a body with no official name keeps
+    saved-file order, and every document whose names state different kinds is counted."""
     house='https://docs.house.gov/meetings/XX/XX00/20200311/110712/'
     congress='https://www.congress.gov/116/meeting/house/110712/witnesses/'
     site='https://democrats-homeland.house.gov/imo/media/doc/'
@@ -430,17 +440,43 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
     # A committee name with no address cannot name the body, so it contradicts nothing.
     member('addressless','smith-house','9','HHRG-118-XX00-Bio-SmithA-20240101.pdf',house+'HHRG-118-XX00-Bio-SmithA-20240101.pdf',early,True,True,['biography'])
     member('addressless','smith-nowhere','9','Smith Testimony.pdf',None,late,True,False,['statement'])
-    # A GovInfo hearing beside a committee "transcript" name is no slot label: saved-file order holds, whichever is newer.
+    # A GovInfo printed hearing is also the transcript and the nomination record: its name leads, whichever is newer.
     gpo='https://www.govinfo.gov/content/pkg/'
     member('hearing-new','chrg-new','c','CHRG-119shrg60688.pdf',gpo+'CHRG-119shrg60688/pdf/CHRG-119shrg60688.pdf',late,True,True,['published-hearing'])
     member('hearing-new','transcript-old','c','S.HRG.119-99_Transcript.pdf',site+'S.HRG.119-99_Transcript.pdf',early,True,False,['transcript'])
     member('hearing-old','chrg-old','d','CHRG-118shrg53651.pdf',gpo+'CHRG-118shrg53651/pdf/CHRG-118shrg53651.pdf',early,True,True,['published-hearing'])
     member('hearing-old','transcript-new','d','S. Hrg. 118-126_Transcript_3.16.2023.pdf',site+'S.%20Hrg.%20118-126_Transcript.pdf',late,True,False,['transcript'])
+    member('nomination','chrg-vilsack','e','CHRG-117shrg44844.pdf',gpo+'CHRG-117shrg44844/pdf/CHRG-117shrg44844.pdf',early,True,True,['published-hearing'])
+    member('nomination','vilsack-site','e','S. Hrg. 117-56 - Nomination of Vilsack.pdf',site+'Vilsack.pdf',late,True,False,['nomination'])
+    # A House transcript name the committee's own name agrees with still leads the printed hearing of the same bytes.
+    member('hearing-house','ag-transcript','f','HHRG-119-AG22-Transcript-20250409.pdf',house+'HHRG-119-AG22-Transcript-20250409.pdf',early,True,True,['transcript'])
+    member('hearing-house','ag-site','f','04.09.25_transcript.pdf',site+'04.09.25_transcript.pdf',middle,True,False,['transcript'])
+    member('hearing-house','ag-chrg','f','CHRG-119hhrg63755.pdf',gpo+'CHRG-119hhrg63755/pdf/CHRG-119hhrg63755.pdf',late,True,True,['published-hearing'])
+    # An official vote record is also the amendment it tallies: its name leads the committee's amendment name.
+    member('tally','vote018','g','CRPT-118-WM00-Vote018-20230613.pdf',house+'CRPT-118-WM00-Vote018-20230613.pdf',early,True,True,['vote-record'])
+    member('tally','davis-site','g','3936-Davis-Amendment.pdf',site+'3936-Davis-Amendment.pdf',late,True,False,['amendment'])
+    # The generic House cover-page name gives way to the committee's hearing notice, though the House copy is newer.
+    member('cover-page','cpg-house','h','HHRG-115-SM00-20180410-CPg.pdf',house+'HHRG-115-SM00-20180410-CPg.pdf',late,True,True,['committee-document'])
+    member('cover-page','notice-site','h','4-10-18_hearing_notice.pdf',site+'4-10-18_hearing_notice.pdf',early,True,False,['notice'])
+    # Reviewed one by one (saved_name_decisions): the review's name leads, whichever copy is newer.
+    member('reviewed-committee','bill-house','i','BILLS-118000rh.pdf',house+'BILLS-118000rh.pdf',late,True,True,['legislation'])
+    member('reviewed-committee','comparison-site','i','BILL-TO-BILL_BILLS-118hr3397rh_to_RCP_H3397_xml.pdf',site+'BILL-TO-BILL.pdf',early,True,False,['bill-comparison'])
+    member('reviewed-official','amdt-house','j','BILLS-119-0-S001195-Amdt-1-U9.pdf',house+'BILLS-119-0-S001195-Amdt-1-U9.pdf',early,True,True,['amendment'])
+    member('reviewed-official','letter-site','j','VE-Letter-AINS.pdf',site+'VE-Letter-AINS.pdf',late,True,False,['letter'])
+    # Reviewed but undecided: no rule decides it, so saved-file order holds where a rule would have moved it.
+    member('undecided-tally','vote010','k','CRPT-115-WM00-Vote010-20180711.pdf',house+'CRPT-115-WM00-Vote010-20180711.pdf',early,True,True,['vote-record'])
+    member('undecided-tally','chu-site','k','20180711-Chu-Amendment-for-AINS-to-H.R.-6306-1.pdf',site+'Chu.pdf',late,True,False,['amendment'])
+    member('undecided-cover','cpg-sm','l','HHRG-115-SM00-20180117-CPg.pdf',house+'HHRG-115-SM00-20180117-CPg.pdf',late,True,True,['committee-document'])
+    member('undecided-cover','notice-sm','l','1-17-18_hearing_notice.pdf',site+'1-17-18_hearing_notice.pdf',early,True,False,['notice'])
+    decisions=[dict(body_sha='i'*64,decision='committee',evidence='planted'),dict(body_sha='j'*64,decision='official',evidence='planted'),
+               dict(body_sha='k'*64,decision='undecided',evidence='planted'),dict(body_sha='l'*64,decision='undecided',evidence='planted')]
     # The saved body is still the newest fetch: an official name on older bytes names nothing.
     member('body','old-official','a','HHRG-118-XX00-Wstate-JonesB-20240101.pdf',house+'HHRG-118-XX00-Wstate-JonesB-20240101.pdf',early,True,True,['statement'])
     member('body','new-plain','b','jones_revised.pdf',site+'jones_revised.pdf',late,True,False,[])
     kinds=dict(biography='witness-biography',statement='testimony',memorandum='committee-memorandum')
-    kinds.update({'supporting-material':'meeting-support','published-hearing':'published-hearing','transcript':'transcript'})
+    kinds.update({'supporting-material':'meeting-support','published-hearing':'published-hearing','transcript':'transcript',
+        'nomination':'nomination','vote-record':'committee-vote','amendment':'amendment','committee-document':'committee-document',
+        'notice':'hearing-notice','legislation':'bill-numbered','bill-comparison':'bill-comparison','letter':'letter'})
     annotations=[dict(source_id=row['source_id'],document_family=said[row['source_id']][1],
         document_kind=[('witness-statement' if said[row['source_id']][0] and f=='statement' else kinds[f]) for f in said[row['source_id']][1]]) for row in members]
     strings=list_of('Utf8')
@@ -449,7 +485,7 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
                        archive_member='Boolean',body_stored='Boolean'),
             json_input(tmp_path,'source_annotations',annotations,source_id='Utf8',document_kind=strings,document_family=strings),
             json_input(tmp_path,'formats',[dict(id='pdf',kind='preference',value='pdf',rank=1)],id='Utf8',kind='Utf8',value='Utf8',rank='Int32'),
-            _name_readings(tmp_path,members,said)]
+            _name_readings(tmp_path,members,said),_name_decisions(tmp_path,decisions)]
     from viewer_publication.archive_model import SAVED_NAME_KINDS
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=_saved_file_steps()+[dict(name='saved_name_conflicts',sql=(ROOT/'model/sql/saved-name-conflicts.sql').read_text(),materialize=True)],outputs=[],
@@ -460,7 +496,9 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
     lead={row['component']:row for row in result['lead']}
     assert {c:row['source_id'] for c,row in lead.items()}=={'bio-slot':'knox-site','bryan':'bryan-site','real-bio':'hayden-house',
         'plain':'kessler-house','support-slot':'memo-site','two-official':'donaldson-wstate','unsettled':'daigh-wstate',
-        'no-official':'ford-silent','addressless':'smith-house','hearing-new':'chrg-new','hearing-old':'transcript-new','body':'new-plain'}
+        'no-official':'ford-silent','addressless':'smith-house','hearing-new':'chrg-new','hearing-old':'chrg-old','nomination':'chrg-vilsack',
+        'hearing-house':'ag-transcript','tally':'vote018','cover-page':'notice-site','reviewed-committee':'comparison-site',
+        'reviewed-official':'amdt-house','undecided-tally':'chu-site','undecided-cover':'cpg-sm','body':'new-plain'}
     for component,name in (('bio-slot','Knox Testimony - WOW Ov Hrg 10.26.21.pdf'),('bryan','Testimony - Bryan.pdf')):
         assert (lead[component]['filename'],lead[component]['document_kind'],lead[component]['document_family'])==(name,['testimony'],['statement'])
     assert (lead['real-bio']['filename'],lead['real-bio']['document_kind'])==('HHRG-118-HA00-Bio-HaydenC-20240710.pdf',['witness-biography'])
@@ -470,10 +508,13 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
     # Every document whose leading name's kind another name of the same bytes does not share, and who leads it.
     flags=lambda component,*values:dict(component=component,**dict(zip(('official_leads','official_slot','committee_speaks','committee_agrees'),values)))
     assert result['conflicts']==[flags('bio-slot',False,False,False,False),flags('bryan',False,False,False,False),
-        flags('hearing-new',True,False,True,False),flags('hearing-old',False,False,False,False),flags('support-slot',False,False,False,False),
-        flags('two-official',True,True,True,True),flags('unsettled',True,True,False,False)]
-    assert result['saved_name_kinds']==[dict(documents=7,committee_name_leads=4,official_name_leads_with_committee_agreement=1,
-        official_names_disagree_unsettled=1,other_official_name_leads_contradicted=1,slot_name_leads_contradicted=0)]
+        flags('cover-page',False,False,False,False),flags('hearing-house',True,False,True,True),
+        flags('hearing-new',True,False,True,False),flags('hearing-old',True,False,True,False),flags('nomination',True,False,True,False),
+        flags('reviewed-committee',False,False,False,False),flags('reviewed-official',True,False,True,False),
+        flags('support-slot',False,False,False,False),flags('tally',True,False,True,False),flags('two-official',True,True,True,True),
+        flags('undecided-cover',True,False,True,False),flags('undecided-tally',False,False,False,False),flags('unsettled',True,True,False,False)]
+    assert result['saved_name_kinds']==[dict(documents=15,committee_name_leads=6,official_name_leads_with_committee_agreement=2,
+        official_names_disagree_unsettled=1,other_official_name_leads_contradicted=6,slot_name_leads_contradicted=0)]
 
 
 def test_the_name_conflict_step_sees_a_slot_name_leading_against_a_committee_name(tmp_path):
@@ -505,6 +546,25 @@ def test_the_name_conflict_step_sees_a_slot_name_leading_against_a_committee_nam
     assert [list(row.values()) for row in result['refused']]==[[1]] and [list(row.values()) for row in result['all_refused']]==[[1]]
     assert result['saved_name_kinds']==[dict(documents=2,committee_name_leads=0,official_name_leads_with_committee_agreement=0,
         official_names_disagree_unsettled=0,other_official_name_leads_contradicted=1,slot_name_leads_contradicted=1)]
+
+
+def test_the_reviewed_name_decisions_are_keyed_by_saved_bytes_and_hold_the_undecided():
+    """ct-h8dr: the 343 documents whose non-slot official name a committee name contradicts were read one by
+    one (.cache/archive-release/investigations/name-clash-review-20261110). The rules settle 252 as the review
+    decided (132 printed hearings, 57 vote tallies, 63 cover pages). The registry holds the other 65 decided
+    ones and the 26 left undecided (25) or with neither name right (1), keyed by the saved body's sha256, which
+    no release renumbers. An undecided or neither entry keeps saved-file order, so those 26 stay as published:
+    among them 2 unread Ways and Means tallies the vote-record rule would rename, and 4 Small Business notices
+    and a table of contents the generic-name rule would decide."""
+    import json,re
+    from collections import Counter
+    from viewer_publication.archive_model import REGISTRIES
+    assert REGISTRIES['saved_name_decisions']==dict(body_sha='Utf8',decision='Utf8',evidence='Utf8')
+    rows=json.loads((ROOT/'model/registries/saved-name-decisions.json').read_text())
+    assert all(re.fullmatch('[0-9a-f]{64}',row['body_sha']) and row['evidence'] and row['official_name'] and row['committee_name']
+               for row in rows)
+    assert len({row['body_sha'] for row in rows})==len(rows)
+    assert Counter(row['decision'] for row in rows)==dict(committee=50,official=15,undecided=25,neither=1)
 
 
 def test_a_document_named_by_an_unlisted_copy_keeps_the_link_text_of_its_listed_copy(tmp_path):
