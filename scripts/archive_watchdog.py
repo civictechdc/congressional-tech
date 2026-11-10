@@ -56,14 +56,6 @@ def _load(name, path):
 sampler = _load('archive_watchdog_sampler', HERE / 'measure/process_rss.py')
 
 
-class Interrupted(Exception):
-    """A signal to the watchdog; the finally clause then stops the owned job."""
-
-
-def _interrupted(number, _frame):
-    raise Interrupted(f'watchdog received signal {number}')
-
-
 def available_gb():
     """Memory the machine can still hand out, or None where that is not knowable."""
     if sys.platform == 'darwin':
@@ -192,8 +184,20 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
     compressed memory that RSS misses. Below the machine floor the job stops only when
     youngest() says it is the youngest running job. The owned group is always stopped
     on the way out: a breach, a signal to the watchdog, or any error inside this loop.
+
+    The handler only records the signal; the loop reads the record once per pass, after
+    its sleep, so the job stops within one interval. A handler that raises does so at
+    whatever instruction the main thread has reached, and inside the interpreter's own
+    timed wait for a child that left the child's lock held: the next wait on it never
+    returned, so the watchdog hung with its job running and no report (ct-psb5). A
+    signal during the stop itself is recorded and changes nothing.
     """
-    old = {number: signal.signal(number, _interrupted) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
+    received = []
+
+    def record(number, _frame):
+        received.append(number)
+
+    old = {number: signal.signal(number, record) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
     memory = sampler.MemorySamples(sampler)
     peak = physical_peak = 0.0
     started = time.monotonic()
@@ -223,9 +227,13 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
                               'the youngest running job stops first')
             if reason:
                 return STOPPED, peak, physical_peak, reason, time.monotonic() - started
-            time.sleep(interval)
+            if not received:  # a signal during the sample is acted on now, one during the sleep when it ends
+                time.sleep(interval)
+            if received:
+                return (STOPPED, peak, physical_peak, f'Interrupted: watchdog received signal {received[0]}',
+                        time.monotonic() - started)
         return process.returncode, peak, physical_peak, None, time.monotonic() - started
-    except Exception as error:  # Interrupted included: the finally stops the job
+    except Exception as error:  # the finally stops the job
         return STOPPED, peak, physical_peak, f'{type(error).__name__}: {error}', time.monotonic() - started
     finally:
         if process is not None:
