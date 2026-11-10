@@ -158,6 +158,36 @@ def recoverable(candidate):
         (publish / 'model-intent.json').exists() and (candidate / 'archive-release/manifest.json').exists())
 
 
+CAUSE_RECORD_PATHS = ('model/jobs/release-causes/', '.tickets/', 'docs/')
+
+
+def only_cause_records(worktree, old, new):
+    """True when two commits differ only in what a reviewed release cause adds.
+
+    Gate 1 refuses a candidate until its cause record is committed, and that commit moves HEAD.
+    The publisher's own resume checks (model definitions, daily heads, continuation identity)
+    ignore these paths, so a completed model survives them (ct-n5ec). `publish.json` may differ
+    only in its `release_causes` pin.
+    """
+    if re.fullmatch('[0-9a-f]{40}', old) is None:
+        return False
+    try:
+        names = git('diff', '--name-only', old, new, cwd=worktree).splitlines()
+        for name in names:
+            if name.startswith(CAUSE_RECORD_PATHS):
+                continue
+            if name != 'model/jobs/publish.json':
+                return False
+            specs = [json.loads(git('show', f'{commit}:{name}', cwd=worktree)) for commit in (old, new)]
+            for spec in specs:
+                spec.pop('release_causes', None)
+            if specs[0] != specs[1]:
+                return False
+    except (subprocess.CalledProcessError, ValueError):
+        return False
+    return bool(names)
+
+
 def archive_candidate(candidate, evidence):
     # Detach the active name before cleanup. A stopped cleanup leaves an archive
     # under this run, never a partially deleted candidate eligible for resume.
@@ -290,7 +320,9 @@ def run(worktree, prepare_only, *, lock_fd=None):
                     commit = candidate / 'commit'
                     if changed.is_file():
                         reason = json.loads(changed.read_text())['reason']
-                    elif not commit.is_file() or commit.read_text().strip() != head:
+                    elif not commit.is_file() or not (
+                            commit.read_text().strip() == head or (recoverable(candidate) and only_cause_records(
+                                worktree, commit.read_text().strip(), head))):
                         reason = 'Selected code commit changed'
                     elif not recoverable(candidate):
                         reason = 'Previous attempt has no completed model'
