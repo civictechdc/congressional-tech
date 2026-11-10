@@ -2,7 +2,7 @@
 id: ct-cpd8
 status: in_progress
 deps: []
-links: []
+links: [ct-68e1]
 created: 2026-11-09T04:47:42Z
 type: bug
 priority: 3
