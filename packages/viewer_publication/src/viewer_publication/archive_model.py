@@ -727,6 +727,9 @@ SAVED_NAME_KINDS=dict(name='saved_name_kinds',sql="""SELECT count(*) AS document
  count(*) FILTER (WHERE official_leads AND NOT official_slot AND committee_speaks AND NOT committee_agrees) AS other_official_name_leads_contradicted,
  count(*) FILTER (WHERE official_slot AND committee_speaks AND NOT committee_agrees) AS slot_name_leads_contradicted
  FROM saved_name_conflicts""")
+# The case the name rule forbids, as model invariant contradicted_official_saved_names: a House
+# meeting-document slot name leading a document against a committee name that states another kind.
+CONTRADICTED_OFFICIAL_SAVED_NAMES_SQL="SELECT count(*) FROM saved_name_conflicts WHERE official_slot AND committee_speaks AND NOT committee_agrees"
 
 # Meeting-record doc-url literals that are no http(s) address get no URL key (model-url-inputs.sql)
 # and so cannot reach invalid_url_keys; this counts them instead of refusing the release.
@@ -1467,7 +1470,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM ({MERGED_RECOVERY_SQL}) g WHERE {' OR '.join('lost_'+flag for flag in LOST_FLAGS)}) AS unaccounted_merged_signal,
             (SELECT count(*) FROM saved_files s JOIN saved_files n ON n.component=s.component AND n.body_sha=s.body_sha
                 AND coalesce(n.filename,'')<>'' WHERE s.saved_rank=1 AND coalesce(s.filename,'')='') AS saved_unnamed_with_named_sibling,
-            (SELECT count(*) FROM saved_name_conflicts WHERE official_slot AND committee_speaks AND NOT committee_agrees) AS contradicted_official_saved_names,
+            ({CONTRADICTED_OFFICIAL_SAVED_NAMES_SQL}) AS contradicted_official_saved_names,
             (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,
             (SELECT count(*) FROM (
                 SELECT cast(m['event_id'] AS BIGINT) AS event_id

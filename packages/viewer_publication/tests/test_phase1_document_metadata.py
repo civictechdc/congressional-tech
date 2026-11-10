@@ -476,6 +476,37 @@ def test_an_official_name_leads_unless_a_committee_name_contradicts_it(tmp_path)
         official_names_disagree_unsettled=1,other_official_name_leads_contradicted=1,slot_name_leads_contradicted=0)]
 
 
+def test_the_name_conflict_step_sees_a_slot_name_leading_against_a_committee_name(tmp_path):
+    """ct-yuf0: the conflict step reads the saved files, not the name standing, so it sees an order the
+    rule must never produce. Planted: a House Bio name leading a committee "testimony" name of the same
+    bytes is the one row the invariant counts. A GovInfo hearing leading a committee "transcript" is
+    listed but not refused; names that share a kind, a name on other bytes and a name with no
+    address list nothing."""
+    from viewer_publication.archive_model import CONTRADICTED_OFFICIAL_SAVED_NAMES_SQL, SAVED_NAME_KINDS
+    said,files={},[]
+    def saved(component,source_id,body,rank,official,families,url='https://x.test/f.pdf'):
+        files.append(dict(component=component,source_id=source_id,body_sha=body*64,filename=source_id+'.pdf',source_url=url,
+            archive_member=False,saved_rank=rank))
+        said[source_id]=(official,families)
+    saved('planted','HHRG-116-HM08-Bio-HentzA-20200311','1',1,True,['biography']); saved('planted','Testimony - Bryan','1',2,False,['statement'])
+    saved('agreed','HHRG-119-ED10-Wstate-KesslerG-20260224','2',1,True,['statement']); saved('agreed','kessler_testimony','2',2,False,['statement'])
+    saved('hearing','CHRG-119shrg60688','3',1,True,['published-hearing']); saved('hearing','S.HRG.119-99_Transcript','3',2,False,['transcript'])
+    saved('other-bytes','HHRG-118-XX00-Bio-JonesB-20240101','4',1,True,['biography']); saved('other-bytes','jones_testimony','5',2,False,['statement'])
+    saved('addressless','HHRG-118-XX00-Bio-SmithA-20240101','6',1,True,['biography']); saved('addressless','Smith Testimony','6',2,False,['statement'],url=None)
+    inputs=[json_input(tmp_path,'saved_files',files,component='Utf8',source_id='Utf8',body_sha='Utf8',filename='Utf8',source_url='Utf8',
+                       archive_member='Boolean',saved_rank='Int64'),
+            _name_readings(tmp_path,files,said)]
+    result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=[dict(name='saved_name_conflicts',sql=(ROOT/'model/sql/saved-name-conflicts.sql').read_text(),materialize=True)],outputs=[],
+        queries=[dict(name='listed',sql='SELECT component FROM saved_name_conflicts ORDER BY component'),
+                 dict(name='refused',sql=CONTRADICTED_OFFICIAL_SAVED_NAMES_SQL+" AND component='planted'"),
+                 dict(name='all_refused',sql=CONTRADICTED_OFFICIAL_SAVED_NAMES_SQL),SAVED_NAME_KINDS])
+    assert [row['component'] for row in result['listed']]==['hearing','planted']
+    assert [list(row.values()) for row in result['refused']]==[[1]] and [list(row.values()) for row in result['all_refused']]==[[1]]
+    assert result['saved_name_kinds']==[dict(documents=2,committee_name_leads=0,official_name_leads_with_committee_agreement=0,
+        official_names_disagree_unsettled=0,other_official_name_leads_contradicted=1,slot_name_leads_contradicted=1)]
+
+
 def test_a_document_named_by_an_unlisted_copy_keeps_the_link_text_of_its_listed_copy(tmp_path):
     """ct-h8dr: the name can come from an official copy that no page lists. The fallback title is still the
     reading title of the first other-format file; with none it is the listing-link text of another copy
