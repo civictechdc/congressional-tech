@@ -55,3 +55,7 @@ Six shards and storage-loopback pass on the stack. A full model build outside th
 **2026-11-10T18:00:45Z**
 
 2026-11-10 18:00Z owner decision: ship the rest now, hearing records (MODS) next. Release stack is now claude/ct-release-20261110b at cc7e64be (worktree wt/ct-release-b): 59 non-MODS commits of the earlier stack plus the recovery-requirements commit e84a92cf on its own; pin a5a2e3f136fa/5551 verified against publish-model.json. Lanes started 17:59:50Z (.cache/archive-release/lanes-ct-release-b-cc7e64be/); model build release-next/build-release-b follows. Earlier builds for reference only: build-final-2 (2f6a6f9ae94c, with MODS round 2) and build-final-3 (with MODS round 3). Next release: MODS (round 4 pending) with Member appearances (ct-kw85).
+
+**2026-11-10T18:32:51Z**
+
+2026-11-10 18:30Z the release stack claude/ct-release-20261110b at cc7e64be is TESTED: production-offline shards 2 to 6 exit 0 and storage-loopback (full lane) exit 0 in the first run; shard 1 exit 0 on rerun (its one failure in the first run was the known load timeout in house-naming, ct-cpd8). Logs: .cache/archive-release/lanes-ct-release-b-cc7e64be/ (shard-1.rerun.log). The model build (release-next/build-release-b) waited eight minutes for memory admission (about 13 to 14.6 GiB available; idle sessions' Flutter and Xcode tooling holds about 10 GiB) and was restarted with thresholds at its measured peak; running since about 18:33Z.
