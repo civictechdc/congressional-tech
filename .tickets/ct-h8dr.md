@@ -2,7 +2,7 @@
 id: ct-h8dr
 status: in_progress
 deps: []
-links: [ct-yuf0, ct-f7hp]
+links: [ct-yuf0, ct-f7hp, ct-29n4, ct-fk4w]
 created: 2026-11-10T05:38:12Z
 type: feature
 priority: 2
@@ -52,3 +52,7 @@ OWNER DECISION, not built: 343 documents whose official name is not a House slot
 Written step, not built: settle a contradiction by reading the document. The model holds no PDF reading (page_facts is html, xml and json). The existing pdf_text body-text producer already writes text_head, text_bytes and page_count per PDF body; it is not in the model profile and its backfill (ct-m704) has read 102,787 of 297,229 published PDF documents. On the producer's own text, "testimony or disclosure words in the first 2 KB" decides 95 of 132 sample documents and is right in 94. Over the 1,168 contested slot names it has read: Bio 172 read, committee name supported 157, official 0; TTF 43 read, committee 32, official 7; Wstate 17 read, official 11. The same reading says testimony for 621 and disclosure form for 169 of 10,516 published "witness-biography" documents, most with no committee name: that needs a kind rule, not a name rule.
 
 A full model build must confirm: the 18,033 renames and their split on its own diff against live; saved_name_kinds near 3,531 documents, 2,770 led by a committee name, 602 unsettled official pairs, 85 non-slot; contradicted_official_saved_names = 0 and generic_titles = 0; no renamed document loses its title; the 44 predicted values; time and memory of saved_name_standing on the full document_members.
+
+**2026-11-10T10:17:20Z**
+
+Known losses of the built rule, listed in .cache/archive-release/investigations/name-rule-20261110/nr_35_known_wrong_giveways.out: 12 of the 253 names that give way were the right one by the evidence at hand. 10 are House TTF names: 9 give way to a committee name that itself says Truth in Testimony, which the filename reader takes for testimony (ct-29n4), and 1 to a disclosure form the committee named Testimony. 1 is a real biography the committee named Testimony (HHRG-119-GO12-Bio-ButlerA). 1 is a Wstate name. The reading step (ct-fk4w) settles each of them; ct-29n4 fixes 9 without it. 40 of the 253 are listed by fixed seed in nr_34_giveways.out and all are in 10-engine-changes-against-published.csv.

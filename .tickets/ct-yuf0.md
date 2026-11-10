@@ -2,7 +2,7 @@
 id: ct-yuf0
 status: in_progress
 deps: []
-links: [ct-h8dr]
+links: [ct-h8dr, ct-fk4w]
 created: 2026-11-10T05:18:40Z
 type: bug
 priority: 1
