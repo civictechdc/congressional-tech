@@ -7,7 +7,10 @@
 -- against the committee's. official_leads without committee_speaks is two official names of
 -- different kinds, which only a reading of the bytes can settle.
 WITH said AS (
- SELECT s.component,s.source_id,s.saved_rank,coalesce(f.valid,false) AS official,f.document_family AS family
+ -- IS NOT DISTINCT FROM true, not coalesce or IS TRUE: on a lake-backed build coalesce carries the
+ -- reading column's Parquet field id into an expression the planner reuses, and IS TRUE differs in
+ -- nullability; either way the pinned engine refuses the plan (logical and physical schemas disagree).
+ SELECT s.component,s.source_id,s.saved_rank,f.valid IS NOT DISTINCT FROM true AS official,f.document_family AS family
  FROM (SELECT component,body_sha FROM saved_files WHERE saved_rank=1) k
  JOIN saved_files s ON s.component=k.component AND s.body_sha=k.body_sha
  JOIN source_filename_readings f ON f.source_id=s.source_id

@@ -14,7 +14,10 @@
 -- One join, then running windows over one row per stated family (no whole-partition WindowAggExec, no
 -- per-group lists): three sorts of about one row per named copy, n log n.
 WITH said AS (
- SELECT m.component,m.body_sha,m.source_id,coalesce(f.valid,false) AS official,
+ -- IS NOT DISTINCT FROM true, not coalesce or IS TRUE: on a lake-backed build coalesce carries the
+ -- reading column's Parquet field id into an expression the planner reuses, and IS TRUE differs in
+ -- nullability; either way the pinned engine refuses the plan (logical and physical schemas disagree).
+ SELECT m.component,m.body_sha,m.source_id,f.valid IS NOT DISTINCT FROM true AS official,
   unnest(CASE WHEN f.document_family_status='completed' AND coalesce(array_length(f.document_family),0)>0
    THEN f.document_family ELSE make_array('') END) AS family
  FROM (SELECT component,body_sha,source_id FROM document_members
