@@ -27,6 +27,7 @@ from .models import (
     UpdateMergeStrategy,
     VersionRef,
     load_runtime_pin,
+    metric_events,
     runtime_pin_digest,
 )
 from .schema import (
@@ -88,6 +89,7 @@ __all__ = [
     'cleanup_safe',
     'encode_arrow_ipc_stream',
     'load_runtime_pin',
+    'metric_events',
     'native_storage_schema',
     'parse_export_pin',
     'producer_input_entry',

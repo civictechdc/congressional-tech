@@ -342,9 +342,17 @@ def run_job(root,engine,*,inputs,steps,outputs,queries=()):
     path=root/'job.json'
     path.write_text(json.dumps(dict(scratch=str(root/'native'),inputs=inputs,steps=steps,
                                    outputs=outputs,queries=list(queries)),separators=(',',':')))
-    result=engine.run_job(path)
+    result=engine.run_job(path,**_kept_log(engine,root/'engine.log'))
     (root/'result.json').write_text(json.dumps(result,separators=(',',':')))
     return {query['name']:query['data'] for query in result.get('queries',[])}
+
+
+def _kept_log(engine,path):
+    """Ask an engine that keeps its stderr (the client, also through a wrapper) to write it at `path`.
+
+    Engines whose run_job takes the spec alone, the test doubles, are asked for nothing."""
+    from inspect import signature
+    return dict(log=path) if 'log' in signature(engine.run_job).parameters else {}
 
 
 def parquet_records(path):

@@ -1,5 +1,5 @@
 """Typed models and specifications for the DocSpec client."""
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 import json
 from pathlib import Path
 import re
@@ -116,8 +116,27 @@ PRE_ADMISSION_ERROR_CODES = frozenset({
 })
 
 
+METRIC_PREFIX = '[docspec-metric] '
+
+
+def metric_events(log: str | Path, *, prefix: str = METRIC_PREFIX) -> Iterator[dict[str, Any]]:
+    """Yield the engine's step, retain, release, output and query events from a kept stderr log.
+
+    Other text is skipped, and so is a last line a kill cut short. ``prefix=''`` reads a
+    ``DOCSPEC_STEP_LOG`` file, which holds the same events one per line without the prefix.
+    """
+    with open(log, encoding='utf-8', errors='replace') as lines:
+        for line in lines:
+            if line.startswith(prefix) and line.endswith('\n'):
+                yield json.loads(line[len(prefix):])
+
+
 class DocSpecFailure(RuntimeError, OSError):
-    """Native refusal or host failure, retaining its original diagnostic."""
+    """Native refusal or host failure, retaining its original diagnostic.
+
+    The message says what failed first: the engine's own ``code: message`` when it reported
+    one on stdout, then its stderr without the metric lines. ``stderr`` keeps the whole stream.
+    """
 
     def __init__(self, command: Any, result: Any) -> None:
         self.command = tuple(command)
@@ -129,8 +148,9 @@ class DocSpecFailure(RuntimeError, OSError):
             report = json.loads(self.stdout)
         except (TypeError, ValueError):
             report = None
-        if isinstance(report, dict) and report.get('status') == 'failed' and isinstance(report.get('completed'), dict):
-            self.completed = report['completed']
+        failed = report if isinstance(report, dict) and report.get('status') == 'failed' else {}
+        if isinstance(failed.get('completed'), dict):
+            self.completed = failed['completed']
         self.status_code: int | None = None
         self.code: str | None = None
         self.pre_admission: bool | None = None
@@ -143,7 +163,14 @@ class DocSpecFailure(RuntimeError, OSError):
                 self.code = payload['code']
             if isinstance(payload.get('pre_admission'), bool):
                 self.pre_admission = payload['pre_admission']
-        super().__init__(self.stderr.strip() or f'DocSpec exited {self.returncode}')
+        reported = failed['error'] if isinstance(failed.get('error'), dict) else {}
+        code, message = (value if isinstance(value, str) else '' for value in (reported.get('code'), reported.get('message')))
+        if self.code is None and code:
+            self.code = code
+        said = ''.join(line for line in self.stderr.splitlines(keepends=True)
+                       if not line.startswith(METRIC_PREFIX)).strip()
+        lead = ': '.join(filter(None, (code, message)))
+        super().__init__('\n'.join(filter(None, (lead, said))) or f'DocSpec exited {self.returncode}')
 
     @property
     def status(self) -> int | None:

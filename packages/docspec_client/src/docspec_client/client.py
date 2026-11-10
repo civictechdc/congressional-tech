@@ -1,7 +1,7 @@
 """Main client interface for native DocSpec operations and dataset custody."""
 import base64
 from collections.abc import Generator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from hashlib import file_digest
 import json
 import math
@@ -329,7 +329,7 @@ class NativeDatasets:
         return any(value is not None for value in (
             self.binary_sha256, self.platform, self.source_revision, self.build_features))
 
-    def _call(self, *args: Any, remote: bool = False) -> Any:
+    def _call(self, *args: Any, remote: bool = False, log: Path | str | None = None) -> Any:
         if self._closed:
             raise RuntimeError('DocSpec client is closed')
         if self._has_runtime_pins():
@@ -337,9 +337,13 @@ class NativeDatasets:
         command = [*self._command(remote=remote), *map(str, args)]
         environment = ({'env': {**os.environ, **self._remote_secrets}}
                        if remote and self.remote is not None and self._remote_secrets else {})
-        result = subprocess.run(command, capture_output=True, text=True,
-                                timeout=self.timeout, **environment)
+        # The engine writes straight into `log`, so it can be followed during the run and outlives a timeout or kill.
+        with nullcontext(subprocess.PIPE) if log is None else open(log, 'wb') as stderr:
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=stderr, text=True,
+                                    timeout=self.timeout, **environment)
         if result.returncode:
+            if log is not None:
+                result.stderr = Path(log).read_text()
             raise DocSpecFailure(command, result)
         return json.loads(result.stdout) if result.stdout.strip() else None
 
@@ -443,9 +447,13 @@ class NativeDatasets:
     def run(self, request: Any) -> Any:
         return self._request('/run', request)
 
-    def run_job(self, spec: Path | str) -> dict[str, Any]:
-        """Run a declarative SQL job through the verified executable adapter."""
-        return self._run_spec('job', spec)
+    def run_job(self, spec: Path | str, *, log: Path | str | None = None) -> dict[str, Any]:
+        """Run a declarative SQL job through the verified executable adapter.
+
+        ``log`` names a file that receives the engine's stderr (its metric lines and any
+        error) as it is produced; ``docspec_client.metric_events`` reads the events back.
+        """
+        return self._run_spec('job', spec, log=log)
 
     def create_file(self, spec: Path | str) -> dict[str, Any]:
         """Transfer a known file once through the native create-only adapter."""
@@ -453,12 +461,12 @@ class NativeDatasets:
             raise ValueError('create-file requires explicit remote configuration')
         return self._run_spec('create-file', spec)
 
-    def _run_spec(self, command: str, spec: Path | str) -> dict[str, Any]:
+    def _run_spec(self, command: str, spec: Path | str, *, log: Path | str | None = None) -> dict[str, Any]:
         if self.limits is None:
             raise ValueError(f'{command} requires explicit host limits')
         if self.binary_sha256 is None or self.source_revision is None:
             raise ValueError(f'{command} requires binary and source revision pins')
-        return self._call(command, '--spec', Path(spec).resolve(), remote=True)
+        return self._call(command, '--spec', Path(spec).resolve(), remote=True, log=log)
 
     def run_ipc(
         self,
