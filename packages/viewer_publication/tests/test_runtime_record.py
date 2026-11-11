@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 import pytest
+from docspec_client.client import runtime_record
 
 from archive_job_fixture import MAC_LIMITS, constructed_runtime, real_model_spec, runtime_ran
 from test_archive_model_job import base_release, daily_candidate, pinned_local_spec, write_spec
@@ -28,8 +29,8 @@ def logged(err):
 
 def test_the_session_runtime_is_a_decoy_with_other_limits():
     """Each record below must hold the Mac's limits; one read from this session's runtime would not."""
-    session = json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
-    assert json.loads(Path(session['limits']).read_text())['memory_bytes'] != MAC_LIMITS['memory_bytes']
+    session = runtime_record(os.environ['DOCSPEC_JOB_CONFIG'], {})  # resolves a relative limits path as the client does
+    assert session['limits']['values']['memory_bytes'] != MAC_LIMITS['memory_bytes']
 
 
 def run_model(monkeypatch, capsys, argv):
