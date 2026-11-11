@@ -1,0 +1,130 @@
+[
+  {
+    "body_sha": "6c4616d90df517d96807f78c3913502f1b2f6a011da241c4c99ec29b9b0c547f",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-106shrg77325",
+    "source_literal": "Initial Comments of the Consumer Federation of America, Consumers Union, and the Texas Office of Public Utility Counsel before the FCC (Excerpt)",
+    "organization": "Initial Comments of the Consumer Federation of America, Consumers Union, and the Texas Office of Public Utility Counsel before the FCC (Excerpt)",
+    "line_sha256": "7e3ca7ad6086d701b7bb3d5eade7cad2ecdfa7bcfdb195abfa9fa4dd48cf57f0"
+  },
+  {
+    "body_sha": "0007c6c4404893ace210f04043973640a20a88a8d0be1e62475e438863b56c94",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-107shrg89642",
+    "source_literal": "Summary of Selected Counter-Terrorism Initiatives, by the National Academies",
+    "organization": "Summary of Selected Counter-Terrorism Initiatives, by the National Academies",
+    "line_sha256": "2b5d381c972b0ca1e4d0ac59d564fb69c22e9b05dda1724e77042fb6b57f0e4a"
+  },
+  {
+    "body_sha": "48b1fd9bc0b6361d64a11f517c7ea217f1bcf3a27a218048d34bb651caa6bc27",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-108shrg92386",
+    "source_literal": "Application Packet for the State Disaster Relief Program, September 2001............................................275-307 NEMA, Issues and recommendations for possible amendments to the Stafford Act to better address catastrophic disasters",
+    "organization": "Application Packet for the State Disaster Relief Program, September 2001",
+    "line_sha256": "8640edf1613251e943547430c3773c0be33e32882611283dd85dacff8ccb0338"
+  },
+  {
+    "body_sha": "27471be524b7bc865eaa66fb4ef8678d572b8601b0702a9805794bf81fc925e8",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-109shrg22551",
+    "source_literal": "Department of Veterans Affairs, example of letter sent to Veterans",
+    "organization": "Department of Veterans Affairs, example of letter sent to Veterans",
+    "line_sha256": "7cc18dca3203d43571e8a86c1ad95ac3d5a5026b19677799104b944af389ca20"
+  },
+  {
+    "body_sha": "164e77f004dfe604bbd17ddf964c56d8f6eb005d55c810ea4b9e152578bb6c18",
+    "locator": "mods:witness[9]",
+    "package": "CHRG-110hhrg44215",
+    "source_literal": "Long Island Children's Museum,'' the Nassau County Department of Health and Human Services and Nassau County Family Court",
+    "organization": "Long Island Children's Museum, '' the Nassau County Department of Health and Human Services and Nassau County Family Court",
+    "line_sha256": "1224a1e659455fbe570bc28fe8402db41c27fe0c835c2a52f5c299bf03b834b7"
+  },
+  {
+    "body_sha": "ca96a11e95fdc2d2bb1def1ed9f7964b6547e7118d8b08e16f07026e7f41d6c5",
+    "locator": "mods:witness[16]",
+    "package": "CHRG-110shrg52887",
+    "source_literal": "Society of Environmental Journalists (SEJ), August 8, 2006",
+    "organization": "Society of Environmental Journalists, August 8, 2006",
+    "line_sha256": "f80dbd0215387353a0cbe56d5a0a2188dbbb8f516768a5ffe397c5922b60293b"
+  },
+  {
+    "body_sha": "92b9bcedf4bdbf2dc796cdb5751d042c0aae1fab74fd984821f0cff2bbb47cb0",
+    "locator": "mods:witness[5]",
+    "package": "CHRG-111hhrg55850",
+    "source_literal": "Children in U.S. Public Schools,'' a report by the ACLU and Human Rights Watch, Internet address to",
+    "organization": "Children in U.S. Public Schools, '' a report by the ACLU and Human Rights Watch, Internet address to",
+    "line_sha256": "9d260641607123e8c5849e5a3c064ea902aa9c9b0e812ba6fd2571fb79c5f8cc"
+  },
+  {
+    "body_sha": "92b9bcedf4bdbf2dc796cdb5751d042c0aae1fab74fd984821f0cff2bbb47cb0",
+    "locator": "mods:witness[6]",
+    "package": "CHRG-111hhrg55850",
+    "source_literal": "Students With Disabilities in U.S. Public Schools,'' a report by the ACLU and Human Rights Watch, Internet address to",
+    "organization": "Students With Disabilities in U.S. Public Schools, '' a report by the ACLU and Human Rights Watch, Internet address to",
+    "line_sha256": "881eeda28c54c73b0f5712ca2c8137c31761d04c968a6d91220c8c89579bd89a"
+  },
+  {
+    "body_sha": "68adfffe164c97cba9b006384547b4e513521524bd4ecbc537f55d7ced5b7971",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-112hhrg64533",
+    "source_literal": "Project Labor Agreement on the I-287/Cross Westchester Expressway Project,'' June 17, 1999",
+    "organization": "Project Labor Agreement on the I-287/Cross Westchester Expressway Project, '' June 17, 1999",
+    "line_sha256": "6c3b8d2f59ddee276dce5387eae92ba0d76cb937febd0697b2f960db0954b2a8"
+  },
+  {
+    "body_sha": "68adfffe164c97cba9b006384547b4e513521524bd4ecbc537f55d7ced5b7971",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-112hhrg64533",
+    "source_literal": "Project Labor Agreement Covering Construction and Renovation of the Jacob K. Javits Convention Center,'' April 2007",
+    "organization": "Project Labor Agreement Covering Construction and Renovation of the Jacob K. Javits Convention Center, '' April 2007",
+    "line_sha256": "449c937bbd076a17ea44359ca1a9998d8f09bd3add563a0f49fa9fe4a0125021"
+  },
+  {
+    "body_sha": "f1e9182628e403019a04710899da55c46fec1f43d95683286a7d2d403be752fd",
+    "locator": "mods:witness[8]",
+    "package": "CHRG-112jhrg85228",
+    "source_literal": "Summary of Goals and Projects, December 20, 2010",
+    "organization": "Summary of Goals and Projects, December 20, 2010",
+    "line_sha256": "819d3e27deb6ca377c9f5848bacc7ec49fe760b6f42fee0f6e63dd60c261b5a2"
+  },
+  {
+    "body_sha": "f1e9182628e403019a04710899da55c46fec1f43d95683286a7d2d403be752fd",
+    "locator": "mods:witness[10]",
+    "package": "CHRG-112jhrg85228",
+    "source_literal": "Report of the National Surface Transportation Policy and Revenue Study Commission, January 2008",
+    "organization": "Report of the National Surface Transportation Policy and Revenue Study Commission, January 2008",
+    "line_sha256": "23b6e24c5ba9841d3e8135fde1154decda6286caca11e02fc86ea78f46f50124"
+  },
+  {
+    "body_sha": "052749af9e392f5616e9f7a2f1865628be0ed6f727243d774504bb4b8ccca5d2",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-112shrg85232",
+    "source_literal": "Our Projects, DOE, Loan Programs Office",
+    "organization": "Our Projects, Loan Programs Office",
+    "line_sha256": "494ecd9f0cb7c1aead06b9e9ca313960d54639847a80a024f220de164198316d"
+  },
+  {
+    "body_sha": "36ce08508e63a97960893b8c68af0b5caebe25847e606d970f18971b234ab964",
+    "locator": "mods:witness[3]",
+    "package": "CHRG-113hhrg80816",
+    "source_literal": "Prepared Statement of the National Park Service, on H.R. 586",
+    "organization": "the National Park Service, on H.R. 586",
+    "line_sha256": "edf183d0e07b2af67fbca21af752392b9c31677d872ac8017224fc65aae35faa"
+  },
+  {
+    "body_sha": "3cca3bfeb1f91e680f17b8469c77c6ea8a72b2880fb80808bdae4788e8256e8f",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-114hhrg93069",
+    "source_literal": "Association of American Railroads, \"AAR Calls for Regulations to Enhance the Safety of Flammable Liquids Transport and Keep the Network Efficient\"",
+    "organization": "Association of American Railroads, \"AAR Calls for Regulations to Enhance the Safety of Flammable Liquids Transport and Keep the Network Efficient\"",
+    "line_sha256": "3882d9b193f6a097144d68149e66a539a0191b22a792eb390a1cd7796c44d743"
+  },
+  {
+    "body_sha": "b40740f561557bdcdcd613badfc51576adaba8dd79be8f2d926ed0af8b36ac6d",
+    "locator": "mods:witness[4]",
+    "package": "CHRG-114shrg97368",
+    "source_literal": "U.S. Government Accountability Office, \"Public Safety Communications: Preliminary Information on FirstNet's Efforts to Establish a Nationwide Broadband Network\"",
+    "organization": "U.S. Government Accountability Office, \"Public Safety Communications: Preliminary Information on FirstNet's Efforts to Establish a Nationwide Broadband Network\"",
+    "line_sha256": "d646f835d493085e5bd7b0a1b3cd09b1c125c71cbd5962f5a7b915565525e12e"
+  }
+]

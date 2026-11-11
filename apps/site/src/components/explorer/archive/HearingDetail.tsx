@@ -10,7 +10,7 @@ import {
 } from './archive-metadata.ts';
 import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
 import {savedCopy} from '../reader/archive.ts';
-import {transcriptSourceLabel, witnessLabel, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
+import {transcriptSourceLabel, witnessLabel, witnessMember, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
 
 function savedCaptionUrl(track: any, rawBase?: string) {
   if (rawBase && track?.sha256) {
@@ -268,15 +268,17 @@ export function HearingDetail({
           const label=witnessLabel(w)||wKey;
           const roleParts=[w.position,label===w.organization?null:w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];
+          const named=witnessMember(w);
           return <li key={`${wKey}-${i}`} className="archive-witness-item">
             <div className="archive-witness-header">
               {w.panel!=null&&<span className="archive-witness-panel">Panel {String(w.panel)}: </span>}
               {wKey&&onWitness
                 ?<button type="button" className="explorer-text-button archive-entity-link" onClick={()=>onWitness(String(wKey))}><strong>{label}</strong></button>
                 :<strong>{label}</strong>}
-              {w.bioguide_id&&onMember&&<>
+              {named&&onMember&&<>
                 <span aria-hidden="true"> · </span>
-                <button type="button" className="archive-measure-pill" onClick={()=>onMember(String(w.bioguide_id))}>Member ({w.bioguide_id})</button>
+                <button type="button" className="archive-measure-pill" onClick={()=>onMember(named.bioguide_id)}>
+                  {named.name_matched?`Member (${named.bioguide_id}, name-matched)`:`Member (${named.bioguide_id})`}</button>
               </>}
             </div>
             {recordLabel&&w.name&&<p className="archive-source-meta">{recordLabel}</p>}

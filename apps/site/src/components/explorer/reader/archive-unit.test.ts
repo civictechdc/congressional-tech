@@ -261,6 +261,44 @@ test('default hearing, document and member views keep each current witness occur
   assert.deepEqual(keys((await reader.listEntities('witnesses')).rows),['current']);
 });
 
+test('a sitting Member keeps a Member tag in the hearing list, leaves the witness lists, and reaches their page name-matched (ct-kw85)',async()=>{
+  // 'matched' is a name alone at a Member Day hearing (match_basis member_day): it links like every name-matched row.
+  const {createArchiveEntities,witnessMember,witnessRecordEntryLabel}=await import('./archive-entities.ts');
+  const member='B001257';
+  const table:Record<string,any[]>={
+    witnesses:[
+      {witness_key:'outside',superseded_by:null,event_id:200,name:'Dr. Ada Lovelace'},
+      {witness_key:'matched',superseded_by:null,event_id:200,name:'The Honorable Gus Bilirakis',witness_type:'member_appearance',
+        matched_bioguide_id:member,match_basis:'member_day'},
+      {witness_key:'published',superseded_by:null,event_id:201,name:'The Honorable Gus M. Bilirakis',bioguide_id:member,
+        witness_type:'member_appearance',matched_bioguide_id:member,match_basis:'publisher_id'},
+    ],
+    meetings:[{event_id:200,title:'Members Day'},{event_id:201,title:'Hearing on H.R. 1'}],
+    members:[{bioguide_id:member,name:'Gus Bilirakis'}],
+  };
+  const reader=createArchiveEntities({
+    count:0,files:new Map(Object.keys(table).map(name=>[name+'.parquet',{}])),columns:new Map(),
+    row:()=>null,value:()=>null,entity:async name=>table[name]??[],
+    resolve:async()=>null,entry:async()=>null,versions:async()=>[],
+  });
+  const meeting=await reader.getMeeting(200);
+  const rows=meeting?.witnesses??[];
+  assert.deepEqual(rows.map((w:any)=>w.witness_key).sort(),['matched','outside']);
+  assert.equal(witnessRecordEntryLabel(rows.find((w:any)=>w.witness_key==='matched').witness_type),'Member');
+  assert.equal(rows.filter((w:any)=>!witnessRecordEntryLabel(w.witness_type)).length,1);
+  assert.deepEqual(witnessMember(rows.find((w:any)=>w.witness_key==='matched')),{bioguide_id:member,name_matched:true});
+  assert.deepEqual(witnessMember(table.witnesses[2]),{bioguide_id:member,name_matched:false});
+  // A publisher's typo stays published; the link goes to the matched Member.
+  assert.deepEqual(witnessMember({bioguide_id:'KOOO395',matched_bioguide_id:'K000395',match_basis:'name_chamber'}),
+    {bioguide_id:'K000395',name_matched:true});
+  assert.deepEqual(witnessMember({bioguide_id:'W000789'}),{bioguide_id:'W000789',name_matched:false});
+  assert.deepEqual((await reader.listEntities('witnesses')).rows.map((w:any)=>w.witness_key),['outside']);
+  const page=await reader.getMember(member);
+  assert.deepEqual(page?.witness_records.map((w:any)=>w.witness_key).sort(),['matched','published']);
+  assert.deepEqual(page?.hearings.map((h:any)=>[String(h.event_id),Boolean(h.name_matched)]).sort(),[['200',true],['201',false]]);
+  assert.equal((await reader.getWitness('matched'))?.member_name_matched,true);
+});
+
 test('a nomination keeps its own data when optional hearings fail',async()=>{
   const {createArchiveEntities}=await import('./archive-entities.ts');
   const reads:string[]=[];

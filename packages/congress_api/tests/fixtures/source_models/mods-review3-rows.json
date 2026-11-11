@@ -1,0 +1,851 @@
+[
+ {
+  "package": "CHRG-106shrg59374",
+  "index": 3,
+  "line": "Report, Gwinnett, GA, Air Quality Data....................... 72-79 Responses to additional question from Senator Inhofe",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Gwinnett, GA, Air Quality Data",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Gwinnett Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg59379",
+  "index": 7,
+  "line": "Report, Risk Management Program Guidance for Propane Users and Small Retailers........................................ 56-85 Responses to additional questions from: Senator Chafee",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Risk Management Program Guidance for Propane Users and Small Retailers",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Risk Management Program Guidance for Propane Users and Small Retailers Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg68419",
+  "index": 7,
+  "line": "Report, Collaborative EPA-State Efforts Needed to Improve New Performance Participation System...........................68-100 Responses to additional questions from: Senator Chafee",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Collaborative EPA-State Efforts Needed to Improve New Performance Participation System",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Collaborative EPA-State Efforts Needed to Improve New Performance Participation System Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg71518",
+  "index": 10,
+  "line": "Report, Arsenic and Old Laws, NRDC..........................267-285 Responses to additional questions from: Senator Crapo",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Arsenic and Old Laws, NRDC",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Arsenic and Old Laws Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg71518",
+  "index": 12,
+  "line": "Report, Cost-Benefit of Proposed Arsenic MCL, American Water Works Association.........................................300-317 Responses to additional questions from Senator Crapo",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Cost-Benefit of Proposed Arsenic MCL, American Water Works Association",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Cost-Benefit of Proposed Arsenic MCL Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-106shrg71523",
+  "index": 6,
+  "line": "Responses by Robert Raben, Assistant Attorney General to additional questions from Senator Smith",
+  "how": "person",
+  "expect": {
+   "name": "Robert Raben",
+   "position": "Assistant Attorney General",
+   "organization": null,
+   "witness_type": "statement_for_record"
+  },
+  "published": {
+   "name": "Responses by Robert Raben",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg80652",
+  "index": 9,
+  "line": "Report, Tracking the Deployment of the Integrated Metropolitan Intelligent Transportation Systems Infrastructure in the USA: Fiscal Year 2000 Results.......130-191 Responses to additional questions from: Senator Reid",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Tracking the Deployment of the Integrated Metropolitan Intelligent Transportation Systems Infrastructure in the USA: Fiscal Year 2000 Results",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Tracking the Deployment of the Integrated Metropolitan Intelligent Transportation Systems Infrastructure in the USA: Fiscal Year 2000 Results Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg80655",
+  "index": 13,
+  "line": "Report, Economic Analysis of a Multi-Emissions Strategy, EPA173-198 Responses to additional questions from: Senator Jeffords",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Economic Analysis of a Multi-Emissions Strategy, EPA",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Economic Analysis of a Multi-Emissions Strategy Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg83683",
+  "index": 2,
+  "line": "Report, Climate Research, Vol. 18:259-275, 2001, Modeling climatic effects of anthropogenic carbon dioxide emissions: unknown uncertainties.....................................162-178 Responses to additional questions from: Senator Campbell",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Climate Research, Vol. 18:259-275, 2001, Modeling climatic effects of anthropogenic carbon dioxide emissions: unknown uncertainties",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Climate Research Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg83683",
+  "index": 5,
+  "line": "Report, A Layman's Guide to the General Circulation Models Used in the National Assessment...........................106-125 Responses to additional questions from: Senator Campbell",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, A Layman's Guide to the General Circulation Models Used in the National Assessment",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "A Layman's Guide to the General Circulation Models Used in the National Assessment Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-107shrg83720",
+  "index": 8,
+  "line": "Report, Great Lakes Strategy 2002............................ 40-70 Responses to additional questions from Senator Voinovich",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Great Lakes Strategy 2002",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Great Lakes Strategy 2002 Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108hhrg85516",
+  "index": 6,
+  "line": "Appendix 1: Biographies, Financial Disclosures, and Answers to Post- Hearing Questions Dr. Donald Scavia, Chief Scientist, National Ocean Service, National Oceanic and Atmospheric Administration Biography",
+  "how": "biography",
+  "expect": {
+   "name": "Donald Scavia",
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Appendix 1: Biographies",
+   "witness_type": null
+  },
+  "review": 4
+ },
+ {
+  "package": "CHRG-108hhrg86341",
+  "index": 8,
+  "line": "Appendix 1: Biographies, Financial Disclosures, and Answers to Post- Hearing Questions Mr. Emil H. Frankel, Assistant Secretary for Transportation Policy, U.S. Department of Transportation Biography",
+  "how": "biography",
+  "expect": {
+   "name": "Emil H. Frankel",
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Appendix 1: Biographies",
+   "witness_type": null
+  },
+  "review": 4
+ },
+ {
+  "package": "CHRG-108hhrg87544",
+  "index": 6,
+  "line": "Appendix 1: Biographies, Financial Disclosures, and Answers to Post- Hearing Questions Mr. Thomas W. Eagar, Professor, Massachusetts Institute of Technology Biography",
+  "how": "biography",
+  "expect": {
+   "name": "Thomas W. Eagar",
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Appendix 1: Biographies",
+   "witness_type": null
+  },
+  "review": 4
+ },
+ {
+  "package": "CHRG-108shrg88294",
+  "index": 4,
+  "line": "Press Release No. 03-052, April 29, 2003...............55-57, 78-80 Responses to additional questions from: Senator Carper",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Press Release No. 03-052, April 29, 2003",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Press Release No. 03-052",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108shrg92375",
+  "index": 8,
+  "line": "Report, Technical Principles Related to Establishing Limits of Jurisdiction for Section 404 of the Clean Water Act....196-271 Responses to additional questions from Senator Jeffords",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Technical Principles Related to Establishing Limits of Jurisdiction for Section 404 of the Clean Water Act",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Principles Related to Establishing Limits of Jurisdiction for Section 404 of the Clean Water Act Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-108shrg94598",
+  "index": 5,
+  "line": "Report, Law of the Sea Treaty: A Defective Document That Should Not Be Ratified.....................................95-126 Responses to additional questions from: Senator Inhofe",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, Law of the Sea Treaty: A Defective Document That Should Not Be Ratified",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Law of the Sea Treaty: A Defective Document That Should Not Be Ratified Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 1,
+  "line": "for being here. We appreciate your time, and we appreciate also, Mr. Chairman, that you would call the committee today. Reauthorization of the way we develop our fuel economy standards is another important step for our country in reaching a point where we can one day celebrate an energy independence day, and as all of you can hear, this is going to be a feisty little debate, and the focus today is on fuel economy, but I think the real issue that we are here discussing is the high price of fuel.",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "for being here. We appreciate your time",
+   "witness_type": null,
+   "position": "and we appreciate also"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 2,
+  "line": "years. In my part of North Texas, I originally bought this vehicle because, or got in line to buy a vehicle, because of air quality concerns, and then with the miracle of redistricting, I was given a very long, narrow district. So I have got to log a lot of miles across North Texas, and now, I look positively brilliant for having a vehicle that gets in excess of 50 miles a gallon. And of course, that vehicle came to us without any additional change in the CAFE standards, but we are here today to",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "years. In my part of North Texas",
+   "witness_type": null,
+   "position": "I originally bought this vehicle because"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 3,
+  "line": "year to create standards 18 months prior to the beginning of each model year, it will simply punt CAFE increases for at least 4 years from now. Mr. Chairman, I have to say I fail to understand why giving the President blanket authority to completely redo our CAFE system to change standards several years from now is a more prudent option than simply urging the Administration to take prompt action, using their existing authority. That is what we should do. The simple fact of the matter is that inc",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "year to create standards 18 months prior to the beginning of each model year",
+   "witness_type": null,
+   "position": "it will simply punt CAFE increases for at least 4 years from now. Mr. Chairman"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 4,
+  "line": "years, and exempting pickup trucks. Technology exists to achieve a higher standard, and I know we can do better. As I said, I am skeptical, and I hope that the panelists will address some of the concerns today. I look forward to your testimony, and yield back the remainder of my time, Mr. Chairman. MR. ROGERS. [Presiding] Thank you. Mr. Pitts for an opening statement. MR. PITTS. Waives. MR. ROGERS. Mr. Stupak. Mr. Wynn for an opening statement. Waives. Ms. Solis, opening statement. MS. SOLIS. Th",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "and exempting pickup trucks. Technology exists to achieve a higher standard years",
+   "witness_type": null,
+   "position": "and I know we can do better. As I said"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 5,
+  "line": "percent since 2001. This increase acts as a tax on our small businesses, which we know are critical to America's economy, and also are impacting our local school districts. The Los Angeles Unified School District, as a matter of fact, had to budget an additional $2 million for its fuel budget for busing and after-school activities. School districts across the country are being forced to choose between fueling buses, funding construction, hiring new teachers, or taking children on field trips. Th",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "percent since 2001. This increase acts as a tax on our small businesses",
+   "witness_type": null,
+   "position": "which we know are critical to America's economy"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 6,
+  "line": "years, now. And the President and Republicans in Congress are falling all over themselves to call for repeal of the energy bill's billions of dollars in taxpayer subsidies for Big Oil. I couldn't agree more. But wouldn't it have been better to have voted - as I did - against creating those subsidies in the first place? The facts are clear and simple. American consumers are hurting at the pump today, because Republican leadership rejected common-sense reforms that could have protected consumers a",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "now. And the President and Republicans in Congress are falling all over themselves to call for repeal of the energy bill's billions of dollars in taxpayer subsidies for Big Oil. I couldn't agree more. But wouldn't it have been better to have voted - as I did - against creating those subsidies in the first place? The facts are clear and simple. American consumers are hurting at the pump today years",
+   "witness_type": null,
+   "position": "because Republican leadership rejected common-sense reforms that could have protected consumers a"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 7,
+  "line": "year freeze on CAFE rulemaking, and later that year, the National Academy of Sciences issued a Congressionally mandated study that was critical of the CAFE program. Among the report's criticism was that CAFE had probably cost between 1,300 and 2,600 lives in one year alone, namely 1993, because it encouraged automakers to build smaller vehicles. Paul Portney, the chair of the committee which wrote this landmark study, said upon its release, and I quote: ``No matter what Congress decides regardin",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "year freeze on CAFE rulemaking",
+   "witness_type": null,
+   "position": "and later that year"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 8,
+  "line": "miles per gallon does; it backs out all the Persian Gulf oil. Would you, Mr. Secretary, recommend to the President that he pick a goal, as the Congress and Gerald Ford in 1975, that the public can understand, that the oil futures marketplace speculators can understand, so that it will depress the speculation on the barrel of oil, so that it will all of this hype out of the marketplace, so the price of oil can go down, because OPEC and the oil industry will know that President Bush is serious abo",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "miles per gallon does; it backs out all the Persian Gulf oil. Would you",
+   "witness_type": null,
+   "position": "Mr. Secretary"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 9,
+  "line": "years-- MR. ROGERS. Your time is up, sir. MR. MARKEY. I am done. MR. ROGERS. I appreciate your questioning. Thank you, Mr. Secretary. Mrs. Cubin. MRS. CUBIN. Thank you, Mr. Chairman. Welcome, Secretary Mineta. It is good to see you again. If Congress does, indeed, give the authority to your Department to promulgate new CAFE standards for passenger cars, what assurances do we have in Congress that adequate attention will be given to the safety of our constituents, and what I am speaking about, in",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "years-- MR. ROGERS. Your time is up",
+   "witness_type": null,
+   "position": "sir. MR. MARKEY. I am done. MR. ROGERS. I appreciate your questioning. Thank you"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 10,
+  "line": "months to begin with. And then to make this study, I think to even do it in one year, I think, is a very, very tight schedule. You tell us to do it in that one-year period, you know, we are going to be responding, but it will be a very difficult time. As I said earlier to Mr. Dingell's question, our response on the CAFE standard is not a short-term response, in terms of what is happening with fuel prices. What we deal with in CAFE is always, whether it was in 1975 or in 2006, always has been-- M",
+  "how": "prose",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "months to begin with. And then to make this study",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 11,
+  "line": "votes for their proposal, which lost to a filibuster. Had it passed, we would probably be consuming half the gasoline we now use, and be in better shape to deal with today's price squeeze.'' And today's environmental concerns, too, I might add. ``There is still time to prepare for the next one,'' this editorial says. So all I would say is that let us get real. Let us get serious. Let us have a sense of urgency about dealing with this. Yes, car auto safety is important, but everything pales in te",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "votes for their proposal",
+   "witness_type": null,
+   "position": "which lost to a filibuster. Had it passed"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 12,
+  "line": "years to get to the Moon. Well, we are in the same position. It is still going to take us 18 months, minimum, plus a year, to reform CAFE. So the urgency is for us to be given the authority to start, even though it will take time to get there. And at the same time, the urgency is on doing the right thing, whether it be on safety, or whether it be on the impact on the industry itself, and the impact on the environment. So all of these things, we take into consideration, and it is not that we are",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "years to get to the Moon. Well",
+   "witness_type": null,
+   "position": "we are in the same position. It is still going to take us 18 months"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 13,
+  "line": "miles per gallon on the highway. Every model is available with some fuel-efficient technology, like cylinder deactivation, where you can have the fuel economy you want on the highway, and still have the power you need when merging on a busy road. In every State, automakers are selling advanced technology vehicles like hybrids, clean diesel, and ethanol-capable autos. In just 5 years, we have made a lot of progress. There are now more than 40 models of advanced technology vehicles on sale in deal",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "miles per gallon on the highway. Every model is available with some fuel-efficient technology",
+   "witness_type": null,
+   "position": "like cylinder deactivation"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 14,
+  "line": "to 29.1 mpg in 2004 and light truck fuel economy has increased by 60 percent since 1974. But as we have noted on many previous occasions, the ultimate decisions about what vehicles are purchased and how they are driven belong to American consumers. And while consumers value fuel economy, they also want many other attributes in today's vehicles, such as safety, passenger and cargo room, performance, towing and hauling capacity and more. Our challenge is to develop advanced technology vehicles tha",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "to 29.1 mpg in 2004 and light truck fuel economy has increased by 60 percent since 1974. But as we have noted on many previous occasions",
+   "witness_type": null,
+   "position": "the ultimate decisions about what vehicles are purchased and how they are driven belong to American consumers. And while consumers value fuel economy"
+  }
+ },
+ {
+  "package": "CHRG-109hhrg29389",
+  "index": 15,
+  "line": "years. As an institution, however, RFF does not take positions nor engage in advocacy, so the opinions expressed here are my own. For the record, I have been involved with fuel economy issues in several ways. During my service in Congress and on this committee (1975-1995), I participated in the creation of the Corporate Average Fuel Economy (CAFE) policy and in the few legislative changes made since then. In 1975, the full House was presented with a choice between two dramatically different alte",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "years. As an institution",
+   "witness_type": null,
+   "position": "however"
+  }
+ },
+ {
+  "package": "CHRG-110hhrg41525",
+  "index": 3,
+  "line": "Report, entitled Questions and Answers on Federal Milk Marketing Orders",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Report, entitled Questions and Answers on Federal Milk Marketing Orders",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "entitled Questions and Answers on Federal Milk Marketing Orders Report",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-110shrg34649",
+  "index": 27,
+  "line": "Page QUESTIONS AND ANSWERS Questions and Answers.......................... 230, 292, 349, 432,",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Page QUESTIONS AND ANSWERS Questions and Answers",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-110shrg52887",
+  "index": 11,
+  "line": "Memorandum, Bandrowski, Michael S., Chief, Air Toxics, Radiation and Indoor Air Office, Region IX, December 13, 2005 and March 10, 2006...................................170-190 Responses to additional questions from Senator Inhofe",
+  "how": "title",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": "Memorandum, Bandrowski, Michael S., Chief, Air Toxics, Radiation and Indoor Air Office, Region IX, December 13, 2005 and March 10, 2006",
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Bandrowski Memorandum",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-112hhrg82267",
+  "index": 4,
+  "line": "Answers from Caroline Beteta, Interim CEO, Brand USA, Inc., to submitted questions",
+  "how": "person",
+  "expect": {
+   "name": "Caroline Beteta",
+   "position": "Interim CEO",
+   "organization": "Brand USA, Inc.",
+   "witness_type": "statement_for_record"
+  },
+  "published": {
+   "name": "Answers from Caroline Beteta",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-112shrg21145",
+  "index": 2,
+  "line": "Accompanied By:.................................................. Svinicki, Hon. Kristine L., Commissioner Responses to additional questions from Senator Boxer",
+  "how": "person",
+  "expect": {
+   "name": "Kristine L. Svinicki",
+   "position": "Commissioner",
+   "organization": null,
+   "witness_type": null
+  },
+  "published": {
+   "name": "Accompanied By:",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-112shrg21145",
+  "index": 3,
+  "line": "Apostolakis, Hon. George, Commissioner Responses to additional questions from Senator Boxer",
+  "how": "cut",
+  "review": 4,
+  "expect": {
+   "name": "George Apostolakis",
+   "position": "Commissioner",
+   "organization": null,
+   "witness_type": null
+  },
+  "published": {
+   "name": "George Apostolakis",
+   "witness_type": null,
+   "position": "Commissioner Responses to additional questions from Senator Boxer"
+  }
+ },
+ {
+  "package": "CHRG-112shrg21145",
+  "index": 4,
+  "line": "Magwood, Hon. William D., IV, Commissioner Responses to additional questions from Senator Boxer",
+  "how": "cut",
+  "review": 4,
+  "expect": {
+   "name": "William D. Magwood",
+   "position": "Commissioner",
+   "organization": null,
+   "witness_type": null
+  },
+  "published": {
+   "name": "William D. Magwood",
+   "witness_type": null,
+   "position": "Commissioner Responses to additional questions from Senator Boxer"
+  }
+ },
+ {
+  "package": "CHRG-112shrg21145",
+  "index": 5,
+  "line": "Ostendorff, Hon. William C., Commissioner Responses to additional questions from Senator Boxer",
+  "how": "cut",
+  "review": 4,
+  "expect": {
+   "name": "William C. Ostendorff",
+   "position": "Commissioner",
+   "organization": null,
+   "witness_type": null
+  },
+  "published": {
+   "name": "William C. Ostendorff",
+   "witness_type": null,
+   "position": "Commissioner Responses to additional questions from Senator Boxer"
+  }
+ },
+ {
+  "package": "CHRG-114hhrg20236",
+  "index": 4,
+  "line": "Courtney, Hon. Joe, a Representative in Congress from the State of Connecticut: Hartford Courant article: Veteran's coffeehouse opens in Danielson",
+  "how": "member_statement",
+  "review": 4,
+  "expect": {
+   "name": "Joe Courtney",
+   "witness_type": "member_statement",
+   "position": "a Representative in Congress from the State of Connecticut: Hartford Courant article: Veteran's coffeehouse opens in Danielson",
+   "organization": null
+  },
+  "published": {
+   "name": "Joe Courtney",
+   "witness_type": null,
+   "position": "a Representative in Congress from the State of Connecticut: Hartford Courant article: Veteran's coffeehouse opens in Danielson"
+  }
+ },
+ {
+  "package": "CHRG-114hhrg20236",
+  "index": 6,
+  "line": "Scott, Hon. Robert C. \"Bobby\", a Representative in Congress from the State of Virginia: May 2008 Executive Summary Still Serving: Measuring the Eight-Year Impact of AmeriCorps on Alumni",
+  "how": "member_statement",
+  "review": 4,
+  "expect": {
+   "name": "Robert C. \"Bobby\" Scott",
+   "witness_type": "member_statement",
+   "position": "a Representative in Congress from the State of Virginia: May 2008 Executive Summary Still Serving: Measuring the Eight-Year Impact of AmeriCorps on Alumni",
+   "organization": null
+  },
+  "published": {
+   "name": "Robert C. \"Bobby\" Scott",
+   "witness_type": null,
+   "position": "a Representative in Congress from the State of Virginia: May 2008 Executive Summary Still Serving: Measuring the Eight-Year Impact of AmeriCorps on Alumni"
+  }
+ },
+ {
+  "package": "CHRG-114shrg52546",
+  "index": 2,
+  "line": "Questions submitted, classified responses received",
+  "how": "nameless",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "Questions submitted",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 3,
+  "line": "years ago, 199 GAO staffers had top secret clearances. Ninety- six had sensitive compartmented information clearances. In 2018, when I checked yesterday, there were a total of 35 Senate Select Committee on Intelligence staffers and a total of",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "years ago",
+   "witness_type": null,
+   "position": "199 GAO staffers had top secret clearances. Ninety- six had sensitive compartmented information clearances. In 2018"
+  }
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 5,
+  "line": "request includes $1.8 million to strengthen the capacity of the Law Library of Congress. The Law Library is the world leader in providing access to reliable legal materials in print and electronic formats, and it must have adequate funding to meet the needs of Congress, the Supreme Court, and other court judges, attorneys, and the public. The Law Librarian must also be able to function with some autonomy within the Library of Congress, as she is the leader of the de facto National Law Library. I",
+  "how": "prose",
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "request includes $1.8 million to strengthen the capacity of the Law Library of Congress. The Law Library is the world leader in providing access to reliable legal materials in print and electronic formats",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 6,
+  "line": "analysts, after about 4, 5 years left; head of the Human Resources Unit left; so have various analysts and attorneys. And these are not folks who are just kind of happily going off into retirement to go fishing. No, these are people often mid-career, even earlier in their career, who have just kind of had enough and left. The turnover at CRS and the loss of good employees is bad for the agency. It is bad for Congress, and it is expensive. It costs a lot to on-board and train a new employee. That",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "after about 4 analysts",
+   "witness_type": null,
+   "position": "5 years left; head of the Human Resources Unit left; so have various analysts and attorneys. And these are not folks who are just kind of happily going off into retirement to go fishing. No"
+  }
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 9,
+  "line": "challenges in each district in--each congressional district all across America. Some urban districts, but also many rural districts, like Congressman Ryan's district, Chairman Greg Harper from the Committee on House Administration's district in Mississippi, all over the place. So they are not like urban centers. They are reaching into--using the strength of the Member office, they are reaching into the districts in America to inspire students. And, frankly, as we saw last week at House of Code,",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "challenges in each district in--each congressional district all across America. Some urban districts",
+   "witness_type": null,
+   "position": "but also many rural districts"
+  }
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 10,
+  "line": "were Congresswoman Ros-Lehtinen and Congressman Ryan. He was the chair. So, in a way, I am here because he was so successful at doubling participation. This project is kind of hard to administer. To have--about 5,000 students participated last year, about 1,250 apps were created by students, and it has just been incredibly difficult to manage that entire process. The art competition is relatively simple. If we had the art competition--we could do an art competition right now and five students wo",
+  "how": "prose",
+  "review": 4,
+  "expect": {
+   "name": null,
+   "position": null,
+   "organization": null,
+   "witness_type": "record_material"
+  },
+  "published": {
+   "name": "were Congresswoman Ros-Lehtinen and Congressman Ryan. He was the chair. So",
+   "witness_type": null,
+   "position": "in a way"
+  }
+ },
+ {
+  "package": "CHRG-118hhrg57786",
+  "index": 8,
+  "line": "FISCAL YEAR 2025 REQUEST FOR THE ARMY CORPS OF ENGINEEERS (CIVIL WORKS) AND THE BUREAU OF RECLAMATION Fleischmann, Hon. Charles J. \"Chuck\", a Representative in Congress from the State of Tennessee, opening statement",
+  "how": "person",
+  "expect": {
+   "name": "Charles J. \"Chuck\" Fleischmann",
+   "position": "a Representative in Congress from the State of Tennessee",
+   "organization": "opening statement",
+   "witness_type": null
+  },
+  "published": {
+   "name": "FISCAL YEAR 2025 REQUEST FOR THE ARMY CORPS OF ENGINEEERS (CIVIL WORKS) AND THE BUREAU OF RECLAMATION Fleischmann",
+   "witness_type": null
+  }
+ },
+ {
+  "package": "CHRG-118hhrg63703",
+  "index": 2,
+  "line": "Answer to submitted question \\1\\ Glenn Hamer, President and CEO, Texas Association of Business",
+  "how": "person",
+  "expect": {
+   "name": "Glenn Hamer",
+   "position": "President and CEO",
+   "organization": "Texas Association of Business",
+   "witness_type": null
+  },
+  "published": {
+   "name": "Answer to submitted question Glenn Hamer",
+   "witness_type": null
+  }
+ }
+]

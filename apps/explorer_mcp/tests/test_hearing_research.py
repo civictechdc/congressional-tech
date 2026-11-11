@@ -136,6 +136,10 @@ def test_hearing_tools_transcript_paging_cues_dossier_and_passage_roundtrips(tmp
                 assert observation['event_id'] is None and observation['meeting_links'][0]['scope']=='package_context'
                 assert observation['source_ref']=='fixture'
                 assert len(encoded(bundle))<=128<<10
+                # A sitting Member stays in the roster by its tag; record entries do not (ct-kw85).
+                roster=(await call('get_hearing_bundle',event_id=334136,include=['witnesses'],limit=50))['sections']['witnesses']['rows']
+                assert [(w['witness_key'],w['matched_bioguide_id']) for w in roster if w['witness_type']=='member_appearance']==[('member-appearance-1','A000001')]
+                assert not {w['witness_type'] for w in roster} & {'statement_for_record','member_statement','record_material'}
                 sparse=await call('get_hearing_bundle',event_id=103)
                 assert sparse['sections']['official_transcripts']['state']=='unknown'
                 assert sparse['sections']['witnesses']['rows']==[]

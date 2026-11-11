@@ -1,0 +1,223 @@
+[
+ {
+  "package": "CHRG-114hhrg20236",
+  "index": 1,
+  "line": "Cohn, Mr. Joseph, Legislative and Policy Director, Foundation for Individual Rights in Education, Philadelphia, PA....... Prepared statement of.................................... Maatz, Ms. Lisa M., Vice President for Government Relations, American Association of University Women, Washington, DC... Prepared statement of.................................... Jeffrey, Ms. Deborah, Inspector General, Corporation for National and Community Service",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[1]",
+    "Joseph Cohn",
+    null
+   ],
+   [
+    "mods:witness[1]/part[2]",
+    "Lisa M. Maatz",
+    null
+   ],
+   [
+    "mods:witness[1]/part[3]",
+    "Deborah Jeffrey",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-106shrg66376",
+  "index": 20,
+  "line": "Robb, Hon. Charles, U.S. Senator from the Commonwealth of Virginia....................................................... Roberts, Hon. Pat, U.S. Senator from the State of Kansas",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[20]",
+    "Charles Robb",
+    null
+   ],
+   [
+    "mods:witness[20]/part[2]",
+    "Pat Roberts",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-112hhrg74441",
+  "index": 4,
+  "line": "Jackson, Hon. Lisa P., Administrator, U.S. Environmental Protection Agency--Invited--did not testify................ Kirkendoll, Hon. Art, Senator, West Virginia State Senate",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[4]",
+    "Lisa P. Jackson",
+    null
+   ],
+   [
+    "mods:witness[4]/part[2]",
+    "Art Kirkendoll",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-112hhrg76217",
+  "index": 1,
+  "line": "Miller, Hon. Neile L., Principal Deputy Administrator, National Nuclear Security Administration (Ms. Miller did not provide an opening statement during the unclassified portion of the hearing.)...................................................... Poneman, Hon. Daniel B., Deputy Secretary of Energy, U.S. Department of Energy",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[1]",
+    "Neile L. Miller",
+    null
+   ],
+   [
+    "mods:witness[1]/part[2]",
+    "Daniel B. Poneman",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 1,
+  "line": "HON. RANDY HULTGREN, A REPRESENTATIVE IN CONGRESS FROM THE STATE OF ILLINOIS HON. JAMES P. McGOVERN, A REPRESENTATIVE IN CONGRESS FROM THE STATE OF MASSACHUSETTS Mr. Yoder. Gentlemen, welcome back to the committee. I note that you were some of our witnesses last year when we had our first open hearing and had a number of topics that we worked on based on those hearings. One of them was your support and advocacy for the Tom Lantos Human Rights Commission. I think we were able to make some progres",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[1]",
+    "HON. RANDY HULTGREN",
+    null
+   ],
+   [
+    "mods:witness[1]/part[2]",
+    "HON. JAMES P. McGOVERN",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 2,
+  "line": "KEL McCLANAHAN, EXECUTIVE DIRECTOR, NATIONAL SECURITY COUNSELORS MANDY SMITHBERGER, DIRECTOR OF THE CENTER FOR DEFENSE INFORMATION SAMANTHA FEINSTEIN, GOVERNMENT ACCOUNTABILITY PROJECT Mr. Yoder. Okay. As part of our open hearing effort this morning, we are going to take testimony from a number of members of the public who have issues they would like to bring before Congress and they would like to have this committee consider. We have broken those witnesses down in four different panels, and we",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[2]",
+    "KEL McCLANAHAN",
+    null
+   ],
+   [
+    "mods:witness[2]/part[2]",
+    "MANDY SMITHBERGER",
+    null
+   ],
+   [
+    "mods:witness[2]/part[3]",
+    "SAMANTHA FEINSTEIN",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 4,
+  "line": "JOHN PARE, NATIONAL FEDERATION OF THE BLIND GREG LAMBERT, PRESIDENT, THE AMERICAN ASSOCIATION OF LAW LIBRARIES KEVIN KOSAR, VICE PRESIDENT OF POLICY, R STREET INSTITUTE Mr. Yoder. We will call forward the second panel, which will be dealing with topics on the Library of Congress. I call forward John Pare, Greg Lambert, and Kevin Kosar. Gentlemen, welcome to the committee. Thank you for taking the time to testify today. I will note that your testimony will be placed in the record. So, to the exte",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[4]",
+    "JOHN PARE",
+    null
+   ],
+   [
+    "mods:witness[4]/part[2]",
+    "GREG LAMBERT",
+    null
+   ],
+   [
+    "mods:witness[4]/part[3]",
+    "KEVIN KOSAR",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 7,
+  "line": "DANIEL SCHUMAN, DEMAND PROGRESS JOSH TAUBERER, CIVIC IMPULSE LLC SHEILA KRUMHOLZ, CENTER FOR RESPONSIVE POLITICS Mr. Yoder. We are now going to move on to our third panel this morning, and I will call before the committee Daniel Schuman, Josh Tauberer, and Sheila Krumholz, who will all be testifying related to operations of the House of Representatives. Welcome to the committee. Welcome back to the committee for some. Appreciate your interest in testifying today and look forward to hearing your",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[7]",
+    "DANIEL SCHUMAN",
+    null
+   ],
+   [
+    "mods:witness[7]/part[2]",
+    "JOSH TAUBERER",
+    null
+   ],
+   [
+    "mods:witness[7]/part[3]",
+    "SHEILA KRUMHOLZ",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 8,
+  "line": "ZACH GRAVES, DIRECTOR OF TECHNOLOGY POLICY, R STREET INSTITUTE TIM LORDAN, EXECUTIVE DIRECTOR, INTERNET EDUCATION FOUNDATION Mr. Yoder. Okay. Committee, we have our fourth and final panel, and I will now call to the table Mr. Zach Graves and Mr. Tim Lordan. Welcome to the committee, gentlemen. I would like to go ahead and start with Mr. Graves, Director of Technology Policy at the R Street Institute. Mr. Graves. Chairman Yoder, Ranking Member Ryan, and members of the committee, thank you for con",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[8]",
+    "ZACH GRAVES",
+    null
+   ],
+   [
+    "mods:witness[8]/part[2]",
+    "TIM LORDAN",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-115hhrg30357",
+  "index": 11,
+  "line": "SUSAN TSUI GRUNDMANN Mr. Yoder. The subcommittee will come to order. Thank you everybody for attending this hearing on the Office of Compliance. This is our fifth hearing, hearing in the last week or so as we work on our fiscal year 2019 appropriations legislation. And so we appreciate Ms. Grundmann coming to attend the hearing today. I don't believe we had a hearing with you last year. It is my first year chairing the committee so we are thankful that you are here this year. I know from time to",
+  "how": "joined",
+  "rows": [
+   [
+    "mods:witness[11]",
+    "SUSAN TSUI GRUNDMANN",
+    null
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-109hhrg29726",
+  "index": 1,
+  "line": "for participating in today's hearing and I know the subcommittee is eager to hear your testimony. Nearly two years ago Congress passed the Project BioShield Act with tremendous bipartisan support. Democrats and Republicans worked together to establish a process that would help our Nation respond to bioterrorism threats and attacks. Today's hearing will give us an opportunity to assess how well the program is working to meet this important goal. Since going into effect, a number of criticisms hav",
+  "how": "prose",
+  "rows": [
+   [
+    "mods:witness[1]",
+    null,
+    "record_material"
+   ]
+  ]
+ },
+ {
+  "package": "CHRG-109hhrg29726",
+  "index": 6,
+  "line": "budget, $160 million for advanced research and development. Yes, sir. MR. ROGERS. And for naturally occurring. So it wouldn't have the same target set, maybe, as a BioShield-- MR. AZAR. No, that $160 million is actually focused on chemical, bio, and radiological/nuclear advanced research and development. It is meant to be in league with the implementation of the BioShield purchasing. It is part of the pulling effort there to get these products closer to the BioShield contracting point. MR. ROGER",
+  "how": "prose",
+  "rows": [
+   [
+    "mods:witness[6]",
+    null,
+    "record_material"
+   ]
+  ]
+ }
+]

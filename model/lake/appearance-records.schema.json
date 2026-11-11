@@ -217,6 +217,28 @@
       "name": "created",
       "required": false,
       "type": "string"
+    },
+    {
+      "id": 36,
+      "name": "committees",
+      "required": false,
+      "type": {
+        "type": "list",
+        "element-id": 37,
+        "element-required": true,
+        "element": "string"
+      }
+    },
+    {
+      "id": 38,
+      "name": "committee_members",
+      "required": false,
+      "type": {
+        "type": "list",
+        "element-id": 39,
+        "element-required": true,
+        "element": "string"
+      }
     }
   ]
 }

@@ -786,7 +786,7 @@ def test_historical_record_only_replay_preserves_rows_but_refuses_head_producer_
     spec_path = tmp_path/'record-only.json'
     spec_path.write_text(json.dumps(dict(version=1, work=str(work), engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
         record_only=dict(base_model=pin(model), bases=bases, raw_root=str(raw), raw_mirror=str(mirror),
-            max_work_items=2, meeting_selection=pin(selection)))))
+            max_work_items=2, meeting_selection=pin(selection), replay_sources=['mods', 'senate_page']))))
     spec = load_spec(spec_path)
     assert plan(spec)['executed'] is False and not work.exists()
     result = execute(spec)['tables']
@@ -827,6 +827,88 @@ def test_record_only_meeting_transition_refuses_unreviewed_versions_before_base_
     monkeypatch.setattr(backfill, '_base_keys', reject_base)
     with pytest.raises(ValueError, match='reviewed document-reference transition'):
         backfill._meetings(None, prior, None)
+
+
+def test_record_only_appearances_replay_exactly_the_sources_whose_version_moved(monkeypatch):
+    from viewer_publication import archive_record_backfill as backfill
+
+    current = dict(congress_gov='c1', house_xml='h1', senate_page='s1', mods='m2')
+    assert backfill._moved_sources(current, dict(current, mods='m1'), ['mods']) == {'mods'}
+    assert backfill._moved_sources(current, dict(current, mods='m1', senate_page='s0'),
+                                   ['senate_page', 'mods']) == {'mods', 'senate_page'}
+    with pytest.raises(ValueError, match='name different sources: youtube'):
+        backfill._moved_sources(current, dict(current, mods='m1', youtube='y1'), ['mods'])
+    with pytest.raises(ValueError, match='name different sources: house_xml'):
+        backfill._moved_sources(current, {k: v for k, v in current.items() if k != 'house_xml'}, ['mods'])
+    # The move must be exactly the reviewed one, in both directions.
+    with pytest.raises(ValueError, match=r"moved sources \['mods', 'senate_page'\] differ from the reviewed replay_sources \['mods'\]"):
+        backfill._moved_sources(current, dict(current, mods='m1', senate_page='s0'), ['mods'])
+    with pytest.raises(ValueError, match=r"moved sources \['mods'\] differ"):
+        backfill._moved_sources(current, dict(current, mods='m1'), ['mods', 'senate_page'])
+    # Congress.gov rows are built from inline receipt lines, which a stored-body replay cannot read.
+    with pytest.raises(ValueError, match='cannot replay inline-built sources: congress_gov'):
+        backfill._moved_sources(current, dict(current, congress_gov='c0'), ['congress_gov'])
+    # Refused before any base row is examined (the caller has already loaded the base file):
+    # nothing moved, an unreviewed move, an inline source.
+    monkeypatch.setattr(backfill, '_base_keys', lambda *a, **k: pytest.fail('a refused replay examined the base rows'))
+    monkeypatch.setattr(appearance_records, 'current_versions', lambda: dict(current))
+    for prior, reviewed, refusal in ((dict(current), ['mods'], 'no source producer version moved'),
+                                     (dict(current, mods='m1'), ['senate_page'], 'differ from the reviewed'),
+                                     (dict(current, congress_gov='c0'), ['congress_gov'], 'inline-built')):
+        with pytest.raises(ValueError, match=refusal):
+            backfill._appearances(None, prior, reviewed, directory=None)
+
+
+def test_record_only_mods_move_replays_mods_and_promotes_older_rows_to_the_new_columns(tmp_path):
+    """The lake's older table lacks committees/committee_members: its rows come through verbatim with them null."""
+    from hashlib import sha256
+
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_backfill_job import load_spec
+
+    def pin(path):
+        return dict(path=str(path), **file_pin(path))
+
+    mirror, raw = tmp_path/'mirror', tmp_path/'raw'
+    raw.mkdir()
+    current = appearance_records.current_versions()
+    prior = dict(current, mods='older-mods')
+    body = (b'<mods xmlns="http://www.loc.gov/mods/v3"><titleInfo><title>Hearing</title></titleInfo>'
+            b'<extension><congCommittee authorityId="SSAP00" chamber="S" congress="114" type="S">'
+            b'<name type="authority-standard">Senate Appropriations</name></congCommittee></extension></mods>')
+    mods_sha = sha256(body).hexdigest()
+    dest = mirror/'bodies'/'sha256'/mods_sha[:2]/mods_sha
+    dest.parent.mkdir(parents=True)
+    dest.write_bytes(body)
+    rows = [dict(record_sha=mods_sha if source == 'mods' else sha256(source.encode()).hexdigest(), source=source,
+                 parser_version=version, status='completed', appearances=[]) for source, version in prior.items()]
+    base_table = appearance_records.table(rows).drop_columns(['committees', 'committee_members'])
+    base = tmp_path/'appearances.parquet'
+    pq.write_table(base_table, base)
+    model = tmp_path/'model.json'
+    model.write_text(json.dumps(dict(appearance_records=dict(kind='parquet', **pin(base)),
+        parser_versions=dict(appearance_records=prior), unreadable_files=[])))
+    spec_path = tmp_path/'record-only.json'
+    job = dict(base_model=pin(model), bases=dict(appearance_records=pin(base)), raw_root=str(raw),
+               raw_mirror=str(mirror), max_work_items=1)
+    spec = dict(version=1, work=str(tmp_path/'work'), engine_config=os.environ['DOCSPEC_JOB_CONFIG'], record_only=job)
+    # The reviewed move is part of the spec: an appearance replay without it is refused at load.
+    spec_path.write_text(json.dumps(spec))
+    with pytest.raises(ValueError, match='reviewed replay_sources'):
+        load_spec(spec_path)
+    spec_path.write_text(json.dumps(dict(spec, record_only=dict(job, replay_sources=['mods']))))
+    result = execute(load_spec(spec_path))['tables']['appearance_records']
+    assert (result['reused_rows'], result['appended'], result['replayed_sources']) == (4, 1, ['mods'])
+    out = pq.read_table(result['selector']['path'])
+    assert out.schema.names == appearance_records.ARROW_SCHEMA.names
+    by_key = {(r['record_sha'].hex(), r['parser_version']): r for r in out.to_pylist()}
+    assert len(by_key) == 5
+    for row in base_table.to_pylist():
+        assert by_key[(row['record_sha'].hex(), row['parser_version'])] == dict(row, committees=None, committee_members=None)
+    replayed = by_key[(mods_sha, current['mods'])]
+    assert (replayed['status'], replayed['committees']) == ('completed', ['ssap00'])
+    proof = json.loads(Path(result['producer']['path']).read_text())
+    assert (proof['reused_rows'], proof['appended'], proof['replayed_sources']) == (4, 1, ['mods'])
 
 
 def test_record_only_retained_committee_checks_custody_and_returns_only_append_rows(tmp_path):

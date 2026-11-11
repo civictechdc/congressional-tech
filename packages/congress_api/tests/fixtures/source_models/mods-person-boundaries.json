@@ -1288,5 +1288,20 @@
       "on_behalf_of": null
     },
     "line_sha256": "3ac21bc480dbbb0c819275b992bf8486661f535c9bf73f54e29b4383857d6078"
+  },
+  {
+    "body_sha": "5057aa873cbe69ad7b353c8a29cc9e04369582f6b61e81692e1191b51a2e36c6",
+    "locator": "mods:witness[2]",
+    "package": "CHRG-115shrg24586",
+    "source_literal": "Shulkin, Hon, David J., M.D., Nominee, Secretary, U.S. Department of Veterans Affairs",
+    "expected_name": "David J. Shulkin",
+    "fields": {
+      "name": "David J. Shulkin",
+      "honorific": null,
+      "position": "Nominee, Secretary",
+      "organization": "U.S. Department of Veterans Affairs",
+      "on_behalf_of": null
+    },
+    "line_sha256": "d82ea61f779c6c89fdcf87da87626f60ed7c55dd4a941bb545828ba0f76cbaa1"
   }
 ]

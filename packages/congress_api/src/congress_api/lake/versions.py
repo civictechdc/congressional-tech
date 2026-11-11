@@ -19,18 +19,21 @@ import tomllib
 # old-rule entries are gone because no new-rule fingerprint can match them.
 # Any later source, schema, parameter or imported-package change produces an
 # unmapped fingerprint. Add an entry only with a reviewed equivalence decision.
+# ct-zs48/ct-3aap changed MODS extraction, so appearance_records.mods publishes
+# its new fingerprint and its entry was removed. ct-gfo7 round 8 added two
+# MODS-only record columns to the shared appearance_records table, whose bytes
+# every source hashes (3fb41ddd); congress_gov, house_xml and senate_page keep
+# their published IDs under reviewed equivalence (2026-11-11, orchestrating
+# session, on mods-rebase-20261110/round-8/m8-equivalence.json).
 _REVIEWED_PRODUCER_VERSIONS = {
     # appearance_records.congress_gov
-    "7f9ac402f23815c37f5c53dec202ea9094abf172dd8bd32a9efa6b811a779252":
+    "25751e32be9a279abf93d207b12c5f41d59f06296a9e2062656a15117bb4d6b6":
         "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
     # appearance_records.house_xml
-    "2daadbeb9c249c4dc19b58969ef6f9305392b1aafcffdcf6d5b826f763d5a69e":
+    "374e9eee2a7a1d8ab7b1ab7f938450724edf82fc129b1a33d5270ceff4dbd0cc":
         "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
-    # appearance_records.mods
-    "8a34087e918243fabb0b849d3921a0cf78b119578f1ba7d5359d52b18b7f162d":
-        "8a0023a9303e2b0e502b20a6cfaa276a3c0937fa93454f474f7b25f0a1b5c4af",
     # appearance_records.senate_page
-    "d2faf6985353f72219cd6a8a99feebb142170e4936c1d1eefad9d91de654e67a":
+    "5cc97181e78b4cde1469ffb8bc310a15bee26db7f82ef11e39f4f62f3e6a07ae":
         "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb",
     # committee_records.house_xml
     "6c2519acf32de655f13ca491eaa3808dd68a9328ed49d76663989a3d18044b28":

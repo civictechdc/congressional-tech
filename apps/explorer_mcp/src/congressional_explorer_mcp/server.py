@@ -134,7 +134,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Return a bounded hearing dossier using published meeting, witness and recording associations.
 
         Includes meeting, committees, current witnesses, prepared_testimony, official_transcripts,
-        committee_transcripts, captions, recordings and coverage. Narrow include to those section names;
+        committee_transcripts, captions, recordings and coverage. A sitting Member of Congress acting officially is
+        listed among witnesses as witness_type member_appearance with matched_bioguide_id and match_basis; the
+        witnesses coverage count holds only outside witnesses. Narrow include to those section names;
         each section's next request continues it using offsets. Transcript rows carry get_transcript references.
         Original recording observations and event versus package_context scope remain intact.
         The meeting row's captions {advertised, archived, basis} separates publisher-advertised captions

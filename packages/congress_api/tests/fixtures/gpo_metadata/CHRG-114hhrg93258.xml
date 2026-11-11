@@ -1,0 +1,1220 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee18ca5876d">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>House of Representatives</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>114_house_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2015-06-11</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>SURFACE TRANSPORTATION REAUTHORIZATION BILL: LAYING THE FOUNDATION FOR U.S. ECONOMIC GROWTH AND JOB CREATION, PART 1</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-114hhrg93258</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-114hhrg93258/html/CHRG-114hhrg93258.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-114hhrg93258/pdf/CHRG-114hhrg93258.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Publishing Office</publisher>
+         <dateIssued encoding="w3cdtf">2015-02-11</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>106 digital object pages</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.T 68/2:114-5</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-114hhrg93258</identifier>
+    <identifier type="local">P0b002ee18ca5876d</identifier>
+    <identifier type="ILS system id">000951154</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2015-06-11</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2025-08-21</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-114hhrg93258</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>HHRG</docClass>
+         <accessId>CHRG-114hhrg93258</accessId>
+         <type>AU</type>
+         <chamber>HOUSE</chamber>
+         <congress years="2015-2016">114</congress>
+         <session>1</session>
+         <heldDate>2015-02-11</heldDate>
+         <preferredCitation>Serial No. 114-5</preferredCitation>
+    </extension>
+    <extension>
+         <searchTitle>SURFACE TRANSPORTATION REAUTHORIZATION BILL: LAYING THE FOUNDATION FOR U.S. ECONOMIC GROWTH AND JOB CREATION, PART 1</searchTitle>
+         <granuleClass>FIRSTPART</granuleClass>
+         <accessId>CHRG-114hhrg93258</accessId>
+         <heading>Part 1</heading>
+         <partNumber>1</partNumber>
+         <graphicsInPDF>true</graphicsInPDF>
+         <witness>Hon. Anthony R. Foxx, Secretary, U.S. Department of Transportation: Testimony</witness>
+         <witness>Responses to questions for the record from the following Representatives and Delegate: Hon. Bill Shuster, of Pennsylvania</witness>
+         <witness>Hon. Sam Graves, of Missouri</witness>
+         <witness>Hon. Lee M. Zeldin, of New York</witness>
+         <witness>Hon. Frank A. LoBiondo, of New Jersey</witness>
+         <witness>Hon. Don Young, of Alaska</witness>
+         <witness>Hon. Carlos Curbelo, of Florida</witness>
+         <witness>Hon. Lou Barletta, of Pennsylvania</witness>
+         <witness>Hon. Peter A. DeFazio, of Oregon</witness>
+         <witness>Hon. Eleanor Holmes Norton, of the District of Columbia.. Hon. Daniel Lipinski, of Illinois</witness>
+         <isAppropriation>false</isAppropriation>
+         <congSerial chamber="H" congress="114" number="5"></congSerial>
+         <jacketId>93-258</jacketId>
+         <congCommittee authorityId="hspw00" chamber="H" congress="114" type="S">
+                                    
+              <name type="authority-standard">Committee on Transportation and Infrastructure</name>
+                                    
+              <name type="authority-short">Transportation and Infrastructure</name>
+                                
+        </congCommittee>
+         <congMember bioGuideId="B000911" chamber="H" congress="114" party="D" role="COMMMEMBER" state="FL">
+                                    
+              <name type="parsed">CORRINE BROWN of Florida</name>
+                                    
+              <name type="authority-fnf">Corrine Brown</name>
+                                    
+              <name type="authority-lnf">Brown, Corrine</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001269" chamber="H" congress="114" party="R" role="COMMMEMBER" state="PA">
+                                    
+              <name type="parsed">LOU BARLETTA of Pennsylvania</name>
+                                    
+              <name type="authority-fnf">Lou Barletta</name>
+                                    
+              <name type="authority-lnf">Barletta, Lou</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001285" chamber="H" congress="114" party="D" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">JULIA BROWNLEY of California</name>
+                                    
+              <name type="authority-fnf">Julia Brownley</name>
+                                    
+              <name type="authority-lnf">Brownley, Julia</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001286" chamber="H" congress="114" party="D" role="COMMMEMBER" state="IL">
+                                    
+              <name type="parsed">CHERI BUSTOS of Illinois</name>
+                                    
+              <name type="authority-fnf">Cheri Bustos</name>
+                                    
+              <name type="authority-lnf">Bustos, Cheri</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001291" chamber="H" congress="114" party="R" role="COMMMEMBER" state="TX">
+                                    
+              <name type="parsed">BRIAN BABIN of Texas</name>
+                                    
+              <name type="authority-fnf">Brian Babin</name>
+                                    
+              <name type="authority-lnf">Babin, Brian</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C000984" chamber="H" congress="114" party="D" role="COMMMEMBER" state="MD">
+                                    
+              <name type="parsed">ELIJAH E. CUMMINGS of Maryland</name>
+                                    
+              <name type="authority-fnf">Elijah E. Cummings</name>
+                                    
+              <name type="authority-lnf">Cummings, Elijah E.</name>
+                                    
+              <name type="authority-other">Elijah Cummings</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001037" chamber="H" congress="114" party="D" role="COMMMEMBER" state="MA">
+                                    
+              <name type="parsed">MICHAEL E. CAPUANO of Massachusetts</name>
+                                    
+              <name type="authority-fnf">Michael E. Capuano</name>
+                                    
+              <name type="authority-lnf">Capuano, Michael E.</name>
+                                    
+              <name type="authority-other">Michael Capuano</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001068" chamber="H" congress="114" party="D" role="COMMMEMBER" state="TN">
+                                    
+              <name type="parsed">STEVE COHEN of Tennessee</name>
+                                    
+              <name type="authority-fnf">Steve Cohen</name>
+                                    
+              <name type="authority-lnf">Cohen, Steve</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001072" chamber="H" congress="114" party="D" role="COMMMEMBER" state="IN">
+                                    
+              <name type="parsed">ANDRE CARSON of Indiana</name>
+                                    
+              <name type="authority-fnf">Andre Carson</name>
+                                    
+              <name type="authority-lnf">Carson, Andre</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001105" chamber="H" congress="114" party="R" role="COMMMEMBER" state="VA">
+                                    
+              <name type="parsed">BARBARA COMSTOCK of Virginia</name>
+                                    
+              <name type="authority-fnf">Barbara Comstock</name>
+                                    
+              <name type="authority-lnf">Comstock, Barbara</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001106" chamber="H" congress="114" party="R" role="COMMMEMBER" state="PA">
+                                    
+              <name type="parsed">RYAN A. COSTELLO of Pennsylvania</name>
+                                    
+              <name type="authority-fnf">Ryan A. Costello</name>
+                                    
+              <name type="authority-lnf">Costello, Ryan A.</name>
+                                    
+              <name type="authority-other">Ryan Costello</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001107" chamber="H" congress="114" party="R" role="COMMMEMBER" state="FL">
+                                    
+              <name type="parsed">CARLOS CURBELO of Florida</name>
+                                    
+              <name type="authority-fnf">Carlos Curbelo</name>
+                                    
+              <name type="authority-lnf">Curbelo, Carlos</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000191" chamber="H" congress="114" party="D" role="COMMMEMBER" state="OR">
+                                    
+              <name type="parsed">PETER A. DeFAZIO of Oregon</name>
+                                    
+              <name type="authority-fnf">Peter A. DeFazio</name>
+                                    
+              <name type="authority-lnf">DeFazio, Peter A.</name>
+                                    
+              <name type="authority-other">Peter DeFazio</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000533" chamber="H" congress="114" party="R" role="COMMMEMBER" state="TN">
+                                    
+              <name type="parsed">JOHN J. DUNCAN, Jr. of Tennessee</name>
+                                    
+              <name type="authority-fnf">John J. Duncan, Jr.</name>
+                                    
+              <name type="authority-lnf">Duncan, John J., Jr.</name>
+                                    
+              <name type="authority-other">John Duncan</name>
+                                    
+              <name type="authority-other">John J. Duncan</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000612" chamber="H" congress="114" party="R" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">JEFF DENHAM of California</name>
+                                    
+              <name type="authority-fnf">Jeff Denham</name>
+                                    
+              <name type="authority-lnf">Denham, Jeff</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000619" chamber="H" congress="114" party="R" role="COMMMEMBER" state="IL">
+                                    
+              <name type="parsed">RODNEY DAVIS of Illinois</name>
+                                    
+              <name type="authority-fnf">Rodney Davis</name>
+                                    
+              <name type="authority-lnf">Davis, Rodney</name>
+                                
+        </congMember>
+         <congMember bioGuideId="E000290" chamber="H" congress="114" party="D" role="COMMMEMBER" state="MD">
+                                    
+              <name type="parsed">DONNA F. EDWARDS of Maryland</name>
+                                    
+              <name type="authority-fnf">Donna F. Edwards</name>
+                                    
+              <name type="authority-lnf">Edwards, Donna F.</name>
+                                    
+              <name type="authority-other">Donna Edwards</name>
+                                
+        </congMember>
+         <congMember bioGuideId="E000293" chamber="H" congress="114" party="D" role="COMMMEMBER" state="CT">
+                                    
+              <name type="parsed">ELIZABETH H. ESTY of Connecticut</name>
+                                    
+              <name type="authority-fnf">Elizabeth H. Esty</name>
+                                    
+              <name type="authority-lnf">Esty, Elizabeth H.</name>
+                                    
+              <name type="authority-other">Elizabeth Esty</name>
+                                
+        </congMember>
+         <congMember bioGuideId="F000460" chamber="H" congress="114" party="R" role="COMMMEMBER" state="TX">
+                                    
+              <name type="parsed">BLAKE FARENTHOLD of Texas</name>
+                                    
+              <name type="authority-fnf">Blake Farenthold</name>
+                                    
+              <name type="authority-lnf">Farenthold, Blake</name>
+                                
+        </congMember>
+         <congMember bioGuideId="F000462" chamber="H" congress="114" party="D" role="COMMMEMBER" state="FL">
+                                    
+              <name type="parsed">LOIS FRANKEL of Florida</name>
+                                    
+              <name type="authority-fnf">Lois Frankel</name>
+                                    
+              <name type="authority-lnf">Frankel, Lois</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000546" chamber="H" congress="114" party="R" role="COMMMEMBER" state="MO">
+                                    
+              <name type="parsed">SAM GRAVES of Missouri</name>
+                                    
+              <name type="authority-fnf">Sam Graves</name>
+                                    
+              <name type="authority-lnf">Graves, Sam</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000559" chamber="H" congress="114" party="D" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">JOHN GARAMENDI of California</name>
+                                    
+              <name type="authority-fnf">John Garamendi</name>
+                                    
+              <name type="authority-lnf">Garamendi, John</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000563" chamber="H" congress="114" party="R" role="COMMMEMBER" state="OH">
+                                    
+              <name type="parsed">BOB GIBBS of Ohio</name>
+                                    
+              <name type="authority-fnf">Bob Gibbs</name>
+                                    
+              <name type="authority-lnf">Gibbs, Bob</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000577" chamber="H" congress="114" party="R" role="COMMMEMBER" state="LA">
+                                    
+              <name type="parsed">GARRET GRAVES of Louisiana</name>
+                                    
+              <name type="authority-fnf">Garret Graves</name>
+                                    
+              <name type="authority-lnf">Graves, Garret</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H001048" chamber="H" congress="114" party="R" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">DUNCAN HUNTER of California</name>
+                                    
+              <name type="authority-fnf">Duncan Hunter</name>
+                                    
+              <name type="authority-lnf">Hunter, Duncan D.</name>
+                                    
+              <name type="authority-other">Duncan D. Hunter</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H001051" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NY">
+                                    
+              <name type="parsed">RICHARD L. HANNA of New York</name>
+                                    
+              <name type="authority-fnf">Richard L. Hanna</name>
+                                    
+              <name type="authority-lnf">Hanna, Richard L.</name>
+                                    
+              <name type="authority-other">Richard Hanna</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H001063" chamber="H" congress="114" party="D" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">JANICE HAHN of California</name>
+                                    
+              <name type="authority-fnf">Janice Hahn</name>
+                                    
+              <name type="authority-lnf">Hahn, Janice</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H001068" chamber="H" congress="114" party="D" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">JARED HUFFMAN of California</name>
+                                    
+              <name type="authority-fnf">Jared Huffman</name>
+                                    
+              <name type="authority-lnf">Huffman, Jared</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H001070" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NV">
+                                    
+              <name type="parsed">CRESENT HARDY of Nevada</name>
+                                    
+              <name type="authority-fnf">Cresent Hardy</name>
+                                    
+              <name type="authority-lnf">Hardy, Cresent</name>
+                                
+        </congMember>
+         <congMember bioGuideId="J000126" chamber="H" congress="114" party="D" role="COMMMEMBER" state="TX">
+                                    
+              <name type="parsed">EDDIE BERNICE JOHNSON of Texas</name>
+                                    
+              <name type="authority-fnf">Eddie Bernice Johnson</name>
+                                    
+              <name type="authority-lnf">Johnson, Eddie Bernice</name>
+                                    
+              <name type="authority-other">Eddie Johnson</name>
+                                
+        </congMember>
+         <congMember bioGuideId="K000368" chamber="H" congress="114" party="D" role="COMMMEMBER" state="AZ">
+                                    
+              <name type="parsed">ANN KIRKPATRICK of Arizona</name>
+                                    
+              <name type="authority-fnf">Ann Kirkpatrick</name>
+                                    
+              <name type="authority-lnf">Kirkpatrick, Ann</name>
+                                
+        </congMember>
+         <congMember bioGuideId="K000386" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NY">
+                                    
+              <name type="parsed">JOHN KATKO of New York</name>
+                                    
+              <name type="authority-fnf">John Katko</name>
+                                    
+              <name type="authority-lnf">Katko, John</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000554" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NJ">
+                                    
+              <name type="parsed">FRANK A. LoBIONDO of New Jersey</name>
+                                    
+              <name type="authority-fnf">Frank A. LoBiondo</name>
+                                    
+              <name type="authority-lnf">LoBiondo, Frank A.</name>
+                                    
+              <name type="authority-other">Frank LoBiondo</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000560" chamber="H" congress="114" party="D" role="COMMMEMBER" state="WA">
+                                    
+              <name type="parsed">RICK LARSEN of Washington</name>
+                                    
+              <name type="authority-fnf">Rick Larsen</name>
+                                    
+              <name type="authority-lnf">Larsen, Rick</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000563" chamber="H" congress="114" party="D" role="COMMMEMBER" state="IL">
+                                    
+              <name type="parsed">DANIEL LIPINSKI of Illinois</name>
+                                    
+              <name type="authority-fnf">Daniel Lipinski</name>
+                                    
+              <name type="authority-lnf">Lipinski, Daniel</name>
+                                    
+              <name type="authority-other">Daniel William Lipinski</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M000689" chamber="H" congress="114" party="R" role="COMMMEMBER" state="FL">
+                                    
+              <name type="parsed">JOHN L. MICA of Florida</name>
+                                    
+              <name type="authority-fnf">John L. Mica</name>
+                                    
+              <name type="authority-lnf">Mica, John L.</name>
+                                    
+              <name type="authority-other">John Mica</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M001150" chamber="H" congress="114" party="R" role="COMMMEMBER" state="MI">
+                                    
+              <name type="parsed">CANDICE S. MILLER of Michigan</name>
+                                    
+              <name type="authority-fnf">Candice S. Miller</name>
+                                    
+              <name type="authority-lnf">Miller, Candice S.</name>
+                                    
+              <name type="authority-other">Candice Miller</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M001184" chamber="H" congress="114" party="R" role="COMMMEMBER" state="KY">
+                                    
+              <name type="parsed">THOMAS MASSIE of Kentucky</name>
+                                    
+              <name type="authority-fnf">Thomas Massie</name>
+                                    
+              <name type="authority-lnf">Massie, Thomas</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M001185" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NY">
+                                    
+              <name type="parsed">SEAN PATRICK MALONEY of New York</name>
+                                    
+              <name type="authority-fnf">Sean Patrick Maloney</name>
+                                    
+              <name type="authority-lnf">Maloney, Sean Patrick</name>
+                                    
+              <name type="authority-other">Sean Maloney</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M001187" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NC">
+                                    
+              <name type="parsed">MARK MEADOWS of North Carolina</name>
+                                    
+              <name type="authority-fnf">Mark Meadows</name>
+                                    
+              <name type="authority-lnf">Meadows, Mark</name>
+                                
+        </congMember>
+         <congMember bioGuideId="N000002" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NY">
+                                    
+              <name type="parsed">JERROLD NADLER of New York</name>
+                                    
+              <name type="authority-fnf">Jerrold Nadler</name>
+                                    
+              <name type="authority-lnf">Nadler, Jerrold</name>
+                                
+        </congMember>
+         <congMember bioGuideId="N000127" chamber="H" congress="114" party="D" role="COMMMEMBER" state="MN">
+                                    
+              <name type="parsed">RICHARD M. NOLAN of Minnesota</name>
+                                    
+              <name type="authority-fnf">Richard M. Nolan</name>
+                                    
+              <name type="authority-lnf">Nolan, Richard M.</name>
+                                    
+              <name type="authority-other">Richard Nolan</name>
+                                
+        </congMember>
+         <congMember bioGuideId="N000179" chamber="H" congress="114" party="D" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">GRACE F. NAPOLITANO of California</name>
+                                    
+              <name type="authority-fnf">Grace F. Napolitano</name>
+                                    
+              <name type="authority-lnf">Napolitano, Grace F.</name>
+                                    
+              <name type="authority-other">Grace Napolitano</name>
+                                
+        </congMember>
+         <congMember bioGuideId="P000605" chamber="H" congress="114" party="R" role="COMMMEMBER" state="PA">
+                                    
+              <name type="parsed">SCOTT PERRY of Pennsylvania</name>
+                                    
+              <name type="authority-fnf">Scott Perry</name>
+                                    
+              <name type="authority-lnf">Perry, Scott</name>
+                                
+        </congMember>
+         <congMember bioGuideId="R000587" chamber="H" congress="114" party="R" role="COMMMEMBER" state="WI">
+                                    
+              <name type="parsed">REID J. RIBBLE of Wisconsin</name>
+                                    
+              <name type="authority-fnf">Reid J. Ribble</name>
+                                    
+              <name type="authority-lnf">Ribble, Reid J.</name>
+                                    
+              <name type="authority-other">Reid Ribble</name>
+                                
+        </congMember>
+         <congMember bioGuideId="R000592" chamber="H" congress="114" party="R" role="COMMMEMBER" state="IN">
+                                    
+              <name type="parsed">TODD ROKITA of Indiana</name>
+                                    
+              <name type="authority-fnf">Todd Rokita</name>
+                                    
+              <name type="authority-lnf">Rokita, Todd</name>
+                                
+        </congMember>
+         <congMember bioGuideId="R000597" chamber="H" congress="114" party="R" role="COMMMEMBER" state="SC">
+                                    
+              <name type="parsed">TOM RICE of South Carolina</name>
+                                    
+              <name type="authority-fnf">Tom Rice</name>
+                                    
+              <name type="authority-lnf">Rice, Tom</name>
+                                
+        </congMember>
+         <congMember bioGuideId="R000603" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NC">
+                                    
+              <name type="parsed">DAVID ROUZER of North Carolina</name>
+                                    
+              <name type="authority-fnf">David Rouzer</name>
+                                    
+              <name type="authority-lnf">Rouzer, David</name>
+                                
+        </congMember>
+         <congMember bioGuideId="S000051" chamber="H" congress="114" party="R" role="COMMMEMBER" state="SC">
+                                    
+              <name type="parsed">MARK SANFORD of South Carolina</name>
+                                    
+              <name type="authority-fnf">Mark Sanford</name>
+                                    
+              <name type="authority-lnf">Sanford, Mark</name>
+                                
+        </congMember>
+         <congMember bioGuideId="S001154" chamber="H" congress="114" party="R" role="COMMMEMBER" state="PA">
+                                    
+              <name type="parsed">BILL SHUSTER of Pennsylvania</name>
+                                    
+              <name type="authority-fnf">Bill Shuster</name>
+                                    
+              <name type="authority-lnf">Shuster, Bill</name>
+                                
+        </congMember>
+         <congMember bioGuideId="S001165" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NJ">
+                                    
+              <name type="parsed">ALBIO SIRES of New Jersey</name>
+                                    
+              <name type="authority-fnf">Albio Sires</name>
+                                    
+              <name type="authority-lnf">Sires, Albio</name>
+                                
+        </congMember>
+         <congMember bioGuideId="T000468" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NV">
+                                    
+              <name type="parsed">DINA TITUS of Nevada</name>
+                                    
+              <name type="authority-fnf">Dina Titus</name>
+                                    
+              <name type="authority-lnf">Titus, Dina</name>
+                                
+        </congMember>
+         <congMember bioGuideId="W000806" chamber="H" congress="114" party="R" role="COMMMEMBER" state="FL">
+                                    
+              <name type="parsed">DANIEL WEBSTER of Florida</name>
+                                    
+              <name type="authority-fnf">Daniel Webster</name>
+                                    
+              <name type="authority-lnf">Webster, Daniel</name>
+                                
+        </congMember>
+         <congMember bioGuideId="W000810" chamber="H" congress="114" party="R" role="COMMMEMBER" state="GA">
+                                    
+              <name type="parsed">ROB WOODALL of Georgia</name>
+                                    
+              <name type="authority-fnf">Rob Woodall</name>
+                                    
+              <name type="authority-lnf">Woodall, Rob</name>
+                                
+        </congMember>
+         <congMember bioGuideId="W000820" chamber="H" congress="114" party="R" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">MIMI WALTERS of California</name>
+                                    
+              <name type="authority-fnf">Mimi Walters</name>
+                                    
+              <name type="authority-lnf">Walters, Mimi</name>
+                                
+        </congMember>
+         <congMember bioGuideId="Y000033" chamber="H" congress="114" party="R" role="COMMMEMBER" state="AK">
+                                    
+              <name type="parsed">DON YOUNG of Alaska</name>
+                                    
+              <name type="authority-fnf">Don Young</name>
+                                    
+              <name type="authority-lnf">Young, Don</name>
+                                    
+              <name type="authority-other">Don E. Young</name>
+                                
+        </congMember>
+         <congMember bioGuideId="Z000017" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NY">
+                                    
+              <name type="parsed">LEE M. ZELDIN of New York</name>
+                                    
+              <name type="authority-fnf">Lee M. Zeldin</name>
+                                    
+              <name type="authority-lnf">Zeldin, Lee M.</name>
+                                    
+              <name type="authority-other">Lee Zeldin</name>
+                                
+        </congMember>
+         <isNomination>false</isNomination>
+         <isErrata>false</isErrata>
+    </extension>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>House of Representatives</namePart>
+         <namePart>Committee on Transportation and Infrastructure</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+              <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <name type="personal">
+         <namePart>Corrine Brown</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Lou Barletta</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Julia Brownley</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Cheri Bustos</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Brian Babin</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Elijah E. Cummings</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Michael E. Capuano</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Steve Cohen</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Andre Carson</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Barbara Comstock</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ryan A. Costello</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Carlos Curbelo</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Peter A. DeFazio</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John J. Duncan, Jr.</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jeff Denham</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Rodney Davis</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Donna F. Edwards</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Elizabeth H. Esty</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Blake Farenthold</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Lois Frankel</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Sam Graves</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John Garamendi</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Bob Gibbs</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Garret Graves</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Duncan Hunter</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Richard L. Hanna</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Janice Hahn</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jared Huffman</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Cresent Hardy</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Eddie Bernice Johnson</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ann Kirkpatrick</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John Katko</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Frank A. LoBiondo</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Rick Larsen</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Daniel Lipinski</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John L. Mica</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Candice S. Miller</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Thomas Massie</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Sean Patrick Maloney</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mark Meadows</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jerrold Nadler</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Richard M. Nolan</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Grace F. Napolitano</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Scott Perry</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Reid J. Ribble</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Todd Rokita</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Tom Rice</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>David Rouzer</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mark Sanford</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Bill Shuster</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Albio Sires</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Dina Titus</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Daniel Webster</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Rob Woodall</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mimi Walters</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Don Young</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Lee M. Zeldin</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Anthony R. Foxx, Secretary, U.S. Department of Transportation: Testimony</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Responses to questions for the record from the following Representatives and Delegate: Hon. Bill Shuster, of Pennsylvania</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Sam Graves, of Missouri</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Lee M. Zeldin, of New York</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Frank A. LoBiondo, of New Jersey</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Don Young, of Alaska</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Carlos Curbelo, of Florida</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Lou Barletta, of Pennsylvania</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Peter A. DeFazio, of Oregon</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Hon. Eleanor Holmes Norton, of the District of Columbia.. Hon. Daniel Lipinski, of Illinois</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Congress Serial Number 5 (114th Congress)</title>
+        </titleInfo>
+         <identifier type="congressional serial number">Serial No. 114-5</identifier>
+    </relatedItem>
+</mods>

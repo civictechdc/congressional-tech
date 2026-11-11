@@ -87,6 +87,7 @@ An appearance is a source observation, not a person identified by normalized nam
 | `appearances` | list<struct> | One element per source occurrence in source order, including repeated names. Empty lists do not erase subject identity or collection state. Fields below. |
 | `held_dates`, `title` | list<string> nullable, string nullable | For a MODS record: its `heldDate` values and title, which decide whether a print records a meeting ([[DATA-MODEL]] §7.11 Packages). |
 | `created` | string, nullable | For a House witness list: its `create-date`, so an empty list made before its hearing reads as a placeholder, not as no one testifying. |
+| `committees`, `committee_members` | list<string> nullable, list<string> nullable | For a MODS record: each `congCommittee` `authorityId` (lower case) and each `congMember` `bioGuideId` whose role is `COMMMEMBER`, root and constituent items, each once in the publisher's order, so the model can tell a committee Member's own statement from a witness's (ct-kw85). Null for other sources. |
 
 Each `appearances` element:
 

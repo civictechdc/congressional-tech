@@ -8,15 +8,83 @@ represented party (owner decision, 2026-11-08, ct-rg34). Original bytes retain
 that listing context, separate companions, and printed headings.
 """
 
-# Reviewed lines that join two people's contents entries, bound the same way to
-# the printed separator between them. The first entry keeps the line's locator;
-# the second reads at `<locator>/part[2]`. CHRG-113shrg89525 (ct-79j1): the
-# contents repeat Victor Joseph's entry without a page and run it into Michael K.
-# Abbott's, whose testimony (p. 24) and prepared statement (p. 54) are printed.
+# Reviewed lines that join several contents entries, bound the same way to a
+# pattern matching the printed separator between them (regular expression,
+# removed by the split). The first entry keeps the line's locator; the next read
+# at `<locator>/part[2]`, `/part[3]` and on. A speaker's turn run in after the
+# entries ("Mr. Yoder. We will call forward ...") is transcript and reads as no
+# entry. CHRG-113shrg89525 (ct-79j1): the contents repeat Victor Joseph's entry
+# without a page and run it into Michael K. Abbott's, whose testimony (p. 24) and
+# prepared statement (p. 54) are printed. CHRG-112shrg25114 (ct-zs48 review r3):
+# the heading "Responses to additional questions from: Senator Boxer Senator
+# Inhofe" runs into witness Amy W. Larson's entry ("President and CEO, National
+# Waterways Conference"), which the label skip had dropped; the asker rule reads
+# "Senator Inhofe Larson" as one name, so only this split shows where her entry
+# starts. Round 7 (the fifth review): four lines hide five witnesses behind
+# another's entry, each with its own separator: Lisa M. Maatz and Deborah
+# Jeffrey after Joseph Cohn's "Prepared statement of" leaders (CHRG-114hhrg20236
+# #1), Pat Roberts after Charles Robb (CHRG-106shrg66376 #20), Art Kirkendoll
+# after Lisa P. Jackson (CHRG-112hhrg74441 #4), Daniel B. Poneman after Neile L.
+# Miller (CHRG-112hhrg76217 #1); and CHRG-115hhrg30357's six panel lines print
+# each panel's names in capitals, then the chairman's turn (#4: John Pare, Greg
+# Lambert, Kevin Kosar). Members run together under a question heading are the
+# asker rule's (appearance_records._mods_askers_named). A separator must not hold
+# a capturing group (re.split would return it as a part); use lookarounds or
+# (?:...) (ct-gfo7 item 6).
 MODS_JOINED_LINES: dict[str, dict[int, tuple[str, str]]] = {
-    'CHRG-113shrg89525': {6: ('7fc2f30fbfe6c95cf115fcb4543b1327cf4d9b331087062880bfdcee89cb4f38', '.. ')},
+    'CHRG-106shrg66376': {
+        20: ('0314c1d9f8c18d3ebc7a7ac701face7a5d51bb70b16fb024187e4702bd793d3e',
+             r'\.{4,}\s*'),
+    },
+    'CHRG-112hhrg74441': {
+        4: ('b1bea0549f427bb5d3bee1ef7fe7075f91e741a1785fb67ee323c4636bbb29f5',
+             r'\.{4,}\s*'),
+    },
+    'CHRG-112hhrg76217': {
+        1: ('b3f7ab4f5627be26fd8c2b2b381c397cf2e7176108735deec2b82847e7af2127',
+             r'\.{4,}\s*'),
+    },
+    'CHRG-112shrg25114': {
+        3: ('95e6dad7aa730ea060fa4d98e50e4371fbd077860df8824481d9cc967cea445f',
+             r'(?<=Senator Inhofe) (?=Larson, Amy W\.)'),
+    },
+    'CHRG-113shrg89525': {
+        6: ('7fc2f30fbfe6c95cf115fcb4543b1327cf4d9b331087062880bfdcee89cb4f38',
+             r'\.\. '),
+    },
+    'CHRG-114hhrg20236': {
+        1: ('e216b3e6a71fe8d7ddcf89b66d849380b9f0d5c4c30055e2133ffea76933586c',
+             r'\.{3,}\s*Prepared statement of\.{3,}\s*'),
+    },
+    'CHRG-115hhrg30357': {
+        1: ('22d78e01a5d92208b917f987726b1e042d910f540ed765cc2f9a886d3079f2ea',
+             r'\s+(?=HON\. JAMES P\. McGOVERN,)|\s+(?=Mr\. Yoder\.)'),
+        2: ('3f0eab57e276792e09fb0f11088697e68c2c77d067f318cc278b5eb33176551c',
+             r'\s+(?=MANDY SMITHBERGER,)|\s+(?=SAMANTHA FEINSTEIN,)|\s+(?=Mr\. Yoder\.)'),
+        4: ('2d294e4c298d842aa9652f7d7bbc6ab7f131239373ce2c05a80af244207cc7d2',
+             r'\s+(?=GREG LAMBERT,)|\s+(?=KEVIN KOSAR,)|\s+(?=Mr\. Yoder\.)'),
+        7: ('505c4989592096dabdc55e30825c4fcb812fae6fe62c33a4528bce1be91b141c',
+             r'\s+(?=JOSH TAUBERER,)|\s+(?=SHEILA KRUMHOLZ,)|\s+(?=Mr\. Yoder\.)'),
+        8: ('3b1011e939ff36f0fc1634f150fbfcf607548532b85d90f8ed40232de4a49186',
+             r'\s+(?=TIM LORDAN,)|\s+(?=Mr\. Yoder\.)'),
+        11: ('6dde3b92b2bd4951240e70fbf78f470483929a8ec789f657ba01e737c593294c',
+             r'\s+(?=Mr\. Yoder\.)'),
+    },
 }
 
+# The third review's rejected rows (owner decision 2026-11-10, "fix them in this branch now"): five people a line
+# named inside heading or garbled text keep their rows, named with what the line states, typed as the rules type the
+# line: Robert Raben ("Responses by Robert Raben, Assistant Attorney General to additional questions from Senator
+# Smith"), Glenn Hamer ("Answer to submitted question \1\ Glenn Hamer, ..."), Kristine L. Svinicki ("Accompanied
+# By:..... Svinicki, Hon. Kristine L., Commissioner Responses to ..."), Caroline Beteta ("Answers from Caroline Beteta,
+# Interim CEO, Brand USA, Inc., to submitted questions") and Charles J. "Chuck" Fleischmann (a subcommittee's budget
+# title run into his opening-statement entry; a Member's opening statement is a witness's under the rules, and its
+# organization reads "opening statement", as Marcy Kaptur's on the next line does; round 7). Round 7: two lines open
+# with GPO's note that an item is "not included in this hearing record but is available on the ... Web" and run it
+# into the witness's own entry: Charles Pellicane (CHRG-118shrg54562 #4) and Serena McIlwain (CHRG-118shrg52811 #2,
+# after the American Lung Association's "State of the Air, 2023 Report" and its link). Round 9 (the sixth review's
+# rejection): Tom Daschle's letter under a "Letters:" heading (CHRG-106shrg71515 #10), the only line printing a
+# heading of that word before a "Family, Hon." entry, typed member_statement by the rules.
 MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'CHRG-106hhrg57366': {9: ('7409e3e059e4a34a44b1d0051d29d0b52acbcdda5994016eb97ea4000ce610cc',
                             {'honorific': None,
                              'name': 'Barbara D. Bovbjerg',
@@ -72,6 +140,18 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
  'CHRG-106shrg66382': {4: ('df2cb23c8d88297645467349e84949ad8a5d33a4b5b06afc45b8eaaee228b5a0',
                            {'organization': 'General Accounting Office',
                             'position': 'Associate Director of Energy, Resources, and Science Issues'})},
+ 'CHRG-106shrg71515': {10: ('5361b5a0a6c16db582f90cb4d67c722e4889cc1b3b1869a8084c7851cf2fd993',
+                            {'honorific': None,
+                             'name': 'Tom Daschle',
+                             'on_behalf_of': None,
+                             'organization': None,
+                             'position': 'U.S. Senator from the State of South Dakota'})},
+ 'CHRG-106shrg71523': {6: ('2a9b091c041330b1abbb6d043bdc1d41bd7302403e90bc6625ceb7e8392021e8',
+                           {'honorific': None,
+                            'name': 'Robert Raben',
+                            'on_behalf_of': None,
+                            'organization': None,
+                            'position': 'Assistant Attorney General'})},
  'CHRG-106shrg73292': {7: ('def2dc6c988aa779ca4e1f2e81d3b694ff57237c5d3dfa72620fd82b723bfdff',
                            {'organization': None, 'position': None})},
  'CHRG-106shrg79942': {1: ('aa4d4399c1bc2e469db775d682e3fa372b6db82e65ec6cb3efe191157249680c',
@@ -517,8 +597,20 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
  'CHRG-112hhrg80145': {4: ('56651477acb2e428d7b3f23f227e3467fdd4f875fb8c8813c429b88d9d281d6a',
                            {'organization': 'Emmis Communications',
                             'position': 'Chairman, President, and Chief Executive Officer'})},
+ 'CHRG-112hhrg82267': {4: ('801911c8e8fa71edf24ad17acba9bba9dc2d919e5181ccdf38c84667fe179da2',
+                           {'honorific': None,
+                            'name': 'Caroline Beteta',
+                            'on_behalf_of': None,
+                            'organization': 'Brand USA, Inc.',
+                            'position': 'Interim CEO'})},
  'CHRG-112jhrg85228': {25: ('2bc01641b71947fb51ee084465f8cd748575a8c73de544fdf4742802cce6110f',
                             {'organization': 'Department of Transportation, State of California'})},
+ 'CHRG-112shrg21145': {2: ('ba11e7fec5ffc9f3e4745510ceac936fe669a1e196fcf14f68ecb822b6348170',
+                           {'honorific': None,
+                            'name': 'Kristine L. Svinicki',
+                            'on_behalf_of': None,
+                            'organization': None,
+                            'position': 'Commissioner'})},
  'CHRG-112shrg66674': {3: ('3a741e8a413793b5e60ba0e6cbb64945b71f30dcce69c70b9998dcc5f55a8cc8',
                            {'organization': 'U.S. Government Accountability Office',
                             'position': 'Director of Education, Workforce, and Income Security Issues'})},
@@ -690,6 +782,12 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
                            {'on_behalf_of': None,
                             'organization': 'U.S. Coast Guard',
                             'position': 'Assistant Commandant for Human Resources'})},
+ 'CHRG-115shrg24586': {2: ('d82ea61f779c6c89fdcf87da87626f60ed7c55dd4a941bb545828ba0f76cbaa1',
+                           {'honorific': None,
+                            'name': 'David J. Shulkin',
+                            'on_behalf_of': None,
+                            'organization': 'U.S. Department of Veterans Affairs',
+                            'position': 'Nominee, Secretary'})},
  'CHRG-115shrg26594': {3: ('88b09a189b12dc78be7dccacf6c53bff2c51378614eb6fda1717ca70b1c4f230',
                            {'organization': 'Xcel Energy',
                             'position': 'Chairman, President, and Chief Executive Officer'})},
@@ -888,15 +986,39 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
                            {'on_behalf_of': None,
                             'organization': None,
                             'position': 'Author, and Former Department of Defense Official'})},
+ 'CHRG-118hhrg57786': {8: ('f1f7eeef5e4b734b9cdfd5105544e675315b780a90c2032064acb066d8078c36',
+                           {'honorific': None,
+                            'name': 'Charles J. "Chuck" Fleischmann',
+                            'on_behalf_of': None,
+                            'organization': 'opening statement',
+                            'position': 'a Representative in Congress from the State of Tennessee'})},
  'CHRG-118hhrg60159': {3: ('a70d9118c8c52d888aa10d7376469419ccf6627f9c39b4f95f4ede14edbb9593',
                            {'organization': 'United States Government Accountability Office',
                             'position': 'Director of Education, Workforce, and Income Security'})},
+ 'CHRG-118hhrg63703': {2: ('97585c2108f3dd09a114276e92d7491b7eabc41ab9287a6387bf3e714d26393d',
+                           {'honorific': None,
+                            'name': 'Glenn Hamer',
+                            'on_behalf_of': None,
+                            'organization': 'Texas Association of Business',
+                            'position': 'President and CEO'})},
  'CHRG-118jhrg54665': {1: ('7100cd23dc50b61128bc62e026423a150877eefec79f681450dceb1425d8ae42',
                            {'organization': 'Congressional Budget Office, Washington, DC',
                             'position': 'Director of Labor, Income Security, and Long-Term Analysis'})},
+ 'CHRG-118shrg52811': {2: ('fc3b15a3d9a0b0b86ef7cc2022265fd4a4ba56935209aa039b28ea813aef9054',
+                           {'honorific': None,
+                            'name': 'Serena McIlwain',
+                            'on_behalf_of': None,
+                            'organization': 'Maryland Department of the Environment',
+                            'position': 'Secretary'})},
  'CHRG-118shrg54491': {5: ('68ea4cddab2d032e0e32a18e93f724ca64a1f14b2cccf4ac6f755a54f8e918cf',
                            {'organization': 'Government Accountability Office, Washington, DC',
                             'position': 'Director in Education, Workforce, and Income Security'})},
+ 'CHRG-118shrg54562': {4: ('9eab8154000b995b70db77034d054ed763270aac51b4675c11134fa99ac185d4',
+                           {'honorific': None,
+                            'name': 'Charles Pellicane',
+                            'on_behalf_of': None,
+                            'organization': 'Business Development and Operations, Human-I-T',
+                            'position': 'Executive Vice President'})},
  'CHRG-118shrg55517': {1: ('8ea27ff74a28f4db2e125b6b005529a0f085be39ca8804d1c3f6f8f57849ed49',
                            {'on_behalf_of': None,
                             'organization': 'U.S. Forest Service, U.S. Department of Agriculture',

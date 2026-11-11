@@ -1,0 +1,872 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee1801352d6">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>111_senate_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2009-12-16</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>REVIEW OF VETERANS&apos; DISABILITY COMPENSATION: WHAT CHANGES ARE NEEDED TO IMPROVE THE APPEALS PROCESS?</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-111shrg47762</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-111shrg47762/html/CHRG-111shrg47762.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-111shrg47762/pdf/CHRG-111shrg47762.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Printing Office</publisher>
+         <dateIssued encoding="w3cdtf">2009-02-11</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>92 p.</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.V 64/4:</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-111shrg47762</identifier>
+    <identifier type="local">P0b002ee1801352d6</identifier>
+    <identifier type="ILS system id">000657334</identifier>
+    <identifier type="former package identifier">f:47762.TXT</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2009-12-16</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2023-02-09</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-111shrg47762</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>SHRG</docClass>
+         <accessId>CHRG-111shrg47762</accessId>
+         <type>G</type>
+         <chamber>SENATE</chamber>
+         <congress>111</congress>
+         <session>1</session>
+         <number>132</number>
+         <heldDate>2009-02-11</heldDate>
+         <preferredCitation>S. Hrg. 111-132</preferredCitation>
+    </extension>
+    <extension>
+         <searchTitle>REVIEW OF VETERANS&apos; DISABILITY COMPENSATION: WHAT CHANGES ARE NEEDED TO IMPROVE THE APPEALS PROCESS?</searchTitle>
+         <granuleClass>OTHERPART</granuleClass>
+         <accessId>CHRG-111shrg47762</accessId>
+         <witness>Kasold, Hon. Bruce E., Judge, U.S. Court of Appeals for Veterans Claims</witness>
+         <witness>Response to written questions from Hon. Richard Burr to Hon. William P. Greene, Jr., Chief Judge, U.S. Court of Appeals for Veterans Claims</witness>
+         <witness>Terry, Hon. James P., Chairman, Board of Veterans&apos; Appeals, Department of Veterans Affairs</witness>
+         <witness>Baker, Kerry, Assistant National Legislative Director, The Disabled American Veterans</witness>
+         <witness>Cohen, Richard Paul, Executive Director, National Organization of Veterans&apos; Advocates, Inc</witness>
+         <witness>Stichman, Barton F., Joint Executive Director, National Veterans Legal Services Program</witness>
+         <isAppropriation>false</isAppropriation>
+         <jacketId>47-762</jacketId>
+         <congCommittee authorityId="ssva00" chamber="S" congress="111" type="S">
+                                                            
+                        
+              <name type="authority-standard">Committee on Veterans&apos; Affairs</name>
+                                                            
+                        
+              <name type="authority-short">Veterans&apos; Affairs</name>
+                                                        
+                    
+        </congCommittee>
+         <congMember bioGuideId="A000069" chamber="S" congress="111" party="D" role="COMMMEMBER" state="HI">
+                                                            
+                        
+              <name type="parsed">Daniel K. Akaka of Hawaii</name>
+                                                            
+                        
+              <name type="authority-fnf">Daniel K. Akaka</name>
+                                                            
+                        
+              <name type="authority-lnf">Akaka, Daniel K.</name>
+                                                            
+                        
+              <name type="authority-other">Daniel Kohikina Akaka</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="B000944" chamber="S" congress="111" party="D" role="COMMMEMBER" state="OH">
+                                                            
+                        
+              <name type="parsed">Sherrod Brown of Ohio</name>
+                                                            
+                        
+              <name type="authority-fnf">Sherrod Brown</name>
+                                                            
+                        
+              <name type="authority-lnf">Brown, Sherrod</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="B001135" chamber="S" congress="111" party="R" role="COMMMEMBER" state="NC">
+                                                            
+                        
+              <name type="parsed">Richard Burr of North Carolina</name>
+                                                            
+                        
+              <name type="authority-fnf">Richard Burr</name>
+                                                            
+                        
+              <name type="authority-lnf">Burr, Richard</name>
+                                                            
+                        
+              <name type="authority-other">Mr. Richard Mauze Burr</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="B001265" chamber="S" congress="111" party="D" role="COMMMEMBER" state="AK">
+                                                            
+                        
+              <name type="parsed">Mark Begich of Alaska</name>
+                                                            
+                        
+              <name type="authority-fnf">Mark  Begich</name>
+                                                            
+                        
+              <name type="authority-lnf">Begich, Mark</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="B001266" chamber="S" congress="111" party="D" role="COMMMEMBER" state="IL">
+                                                            
+                        
+              <name type="parsed">Roland W. Burris of Illinois</name>
+                                                            
+                        
+              <name type="authority-fnf">Roland  Burris</name>
+                                                            
+                        
+              <name type="authority-lnf">Burris, Roland</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="G000359" chamber="S" congress="111" party="R" role="COMMMEMBER" state="SC">
+                                                            
+                        
+              <name type="parsed">Lindsey O. Graham of South Carolina</name>
+                                                            
+                        
+              <name type="authority-fnf">Lindsey Graham</name>
+                                                            
+                        
+              <name type="authority-lnf">Graham, Lindsey</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="I000055" chamber="S" congress="111" party="R" role="COMMMEMBER" state="GA">
+                                                            
+                        
+              <name type="parsed">Johnny Isakson of Georgia</name>
+                                                            
+                        
+              <name type="authority-fnf">Johnny Isakson</name>
+                                                            
+                        
+              <name type="authority-lnf">Isakson, Johnny</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="J000291" chamber="S" congress="111" party="R" role="COMMMEMBER" state="NE">
+                                                            
+                        
+              <name type="parsed">Mike Johanns of Nebraska</name>
+                                                            
+                        
+              <name type="authority-fnf">Mike  Johanns</name>
+                                                            
+                        
+              <name type="authority-lnf">Johanns, Mike</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="M001111" chamber="S" congress="111" party="D" role="COMMMEMBER" state="WA">
+                                                            
+                        
+              <name type="parsed">Patty Murray of Washington</name>
+                                                            
+                        
+              <name type="authority-fnf">Patty Murray</name>
+                                                            
+                        
+              <name type="authority-lnf">Murray, Patty</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="S000709" chamber="S" congress="111" party="D" role="COMMMEMBER" state="PA">
+                                                            
+                        
+              <name type="parsed">Arlen Specter of Pennsylvania</name>
+                                                            
+                        
+              <name type="authority-fnf">Arlen Specter</name>
+                                                            
+                        
+              <name type="authority-lnf">Specter, Arlen</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="T000464" chamber="S" congress="111" party="D" role="COMMMEMBER" state="MT">
+                                                            
+                        
+              <name type="parsed">Jon Tester of Montana</name>
+                                                            
+                        
+              <name type="authority-fnf">Jon Tester</name>
+                                                            
+                        
+              <name type="authority-lnf">Tester, Jon</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="W000437" chamber="S" congress="111" party="R" role="COMMMEMBER" state="MS">
+                                                            
+                        
+              <name type="parsed">Roger F. Wicker of Mississippi</name>
+                                                            
+                        
+              <name type="authority-fnf">Roger F. Wicker</name>
+                                                            
+                        
+              <name type="authority-lnf">Wicker, Roger F.</name>
+                                                            
+                        
+              <name type="authority-other">Mr. Roger Wicker</name>
+                                                        
+                    
+        </congMember>
+         <congMember bioGuideId="W000803" chamber="S" congress="111" party="D" role="COMMMEMBER" state="VA">
+                                                            
+                        
+              <name type="parsed">Jim Webb of Virginia</name>
+                                                            
+                        
+              <name type="authority-fnf">Jim Webb</name>
+                                                            
+                        
+              <name type="authority-lnf">Webb, Jim</name>
+                                                            
+                        
+              <name type="authority-other">Mr. James H. &quot;Jim&quot; Webb</name>
+                                                        
+                    
+        </congMember>
+         <law congress="107" isPrivate="false" number="330"></law>
+         <law congress="110" isPrivate="false" number="389"></law>
+         <USCode title="28">
+                                                            
+                        
+              <section number="2412"></section>
+                                                            
+                        
+              <section detail="(d)" number="2414"></section>
+                                                        
+                    
+        </USCode>
+         <USCode title="38">
+                                                            
+                        
+              <section number="1116"></section>
+                                                            
+                        
+              <section number="38"></section>
+                                                            
+                        
+              <section detail="(a)(1)" number="5102A"></section>
+                                                            
+                        
+              <section number="5103A"></section>
+                                                            
+                        
+              <section detail="(d)" number="5103A"></section>
+                                                            
+                        
+              <section number="5104"></section>
+                                                            
+                        
+              <section detail="(b)" number="5104"></section>
+                                                            
+                        
+              <section detail="(b)" number="5107"></section>
+                                                            
+                        
+              <section number="5125A"></section>
+                                                            
+                        
+              <section number="7101A"></section>
+                                                            
+                        
+              <section detail="(a)(1)" number="7101A"></section>
+                                                            
+                        
+              <section detail="(c)" number="7101A"></section>
+                                                            
+                        
+              <section number="7101"></section>
+                                                            
+                        
+              <section detail="(d)" number="7101"></section>
+                                                            
+                        
+              <section detail="(a)" number="7104"></section>
+                                                            
+                        
+              <section detail="(d)" number="7104"></section>
+                                                            
+                        
+              <section detail="(d)(1)" number="7104"></section>
+                                                            
+                        
+              <section detail="(b)(1)" number="7105"></section>
+                                                            
+                        
+              <section detail="(b)" number="7107"></section>
+                                                            
+                        
+              <section detail="(e)" number="7107"></section>
+                                                            
+                        
+              <section number="7261"></section>
+                                                            
+                        
+              <section detail="(a)(4)" number="7261"></section>
+                                                            
+                        
+              <section detail="(b)(1)" number="7261"></section>
+                                                            
+                        
+              <section detail="(a)" number="7264"></section>
+                                                        
+                    
+        </USCode>
+         <USCode title="39">
+                                                            
+                        
+              <section number="5125"></section>
+                                                        
+                    
+        </USCode>
+         <statuteAtLarge volume="116">
+                                                            
+                        
+              <pages pages="2820"></pages>
+                                                        
+                    
+        </statuteAtLarge>
+         <bill congress="111" context="BODY" number="2079" type="S"></bill>
+         <bill congress="111" context="BODY" number="3023" type="S"></bill>
+         <bill congress="111" context="BODY" number="11334" type="S"></bill>
+         <cfr title="20">
+                                                            
+                        
+              <part detail=".708" number="20"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part number="4"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".1304(c)" number="20"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".1403(d)(2)" number="20"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".1403" number="20"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".1504(b)," number="20"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".1504(b)" number="20"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".201" number="20"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".708" number="20"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".102" number="3"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".159(c)(4)(i)" number="3"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".159(c)" number="3"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".2600" number="3"></part>
+                                                        
+                    
+        </cfr>
+         <cfr title="38">
+                                                            
+                        
+              <part detail=".655(b)" number="3"></part>
+                                                        
+                    
+        </cfr>
+         <isNomination>false</isNomination>
+         <isErrata>false</isErrata>
+    </extension>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <namePart>Committee on Veterans&apos; Affairs</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+              <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <name type="personal">
+         <namePart>Daniel K. Akaka</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Sherrod Brown</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Richard Burr</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mark  Begich</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Roland  Burris</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Lindsey Graham</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Johnny Isakson</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mike  Johanns</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Patty Murray</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Arlen Specter</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jon Tester</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Roger F. Wicker</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jim Webb</namePart>
+         <affiliation>United States Senate</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Kasold, Hon. Bruce E., Judge, U.S. Court of Appeals for Veterans Claims</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Response to written questions from Hon. Richard Burr to Hon. William P. Greene, Jr., Chief Judge, U.S. Court of Appeals for Veterans Claims</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Terry, Hon. James P., Chairman, Board of Veterans&apos; Appeals, Department of Veterans Affairs</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Baker, Kerry, Assistant National Legislative Director, The Disabled American Veterans</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Cohen, Richard Paul, Executive Director, National Organization of Veterans&apos; Advocates, Inc</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Stichman, Barton F., Joint Executive Director, National Veterans Legal Services Program</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Senate Bill 2079 (111th Congress)</title>
+        </titleInfo>
+         <identifier type="Congressional Bill citation">S. 2079</identifier>
+         <extension>
+              <congress>111</congress>
+              <context>BODY</context>
+        </extension>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Senate Bill 3023 (111th Congress)</title>
+        </titleInfo>
+         <identifier type="Congressional Bill citation">S. 3023</identifier>
+         <extension>
+              <congress>111</congress>
+              <context>BODY</context>
+        </extension>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Senate Bill 11334 (111th Congress)</title>
+        </titleInfo>
+         <identifier type="Congressional Bill citation">S. 11334</identifier>
+         <extension>
+              <congress>111</congress>
+              <context>BODY</context>
+        </extension>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Code</title>
+              <partNumber>Title 28 Section 2412</partNumber>
+              <partNumber>Title 28 Section 2414(d)</partNumber>
+        </titleInfo>
+         <identifier type="USC citation">28 U.S.C. 2412</identifier>
+         <identifier type="USC citation">28 U.S.C. 2414(d)</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Code</title>
+              <partNumber>Title 38 Section 1116</partNumber>
+              <partNumber>Title 38 Section 38</partNumber>
+              <partNumber>Title 38 Section 5102A(a)(1)</partNumber>
+              <partNumber>Title 38 Section 5103A</partNumber>
+              <partNumber>Title 38 Section 5103A(d)</partNumber>
+              <partNumber>Title 38 Section 5104</partNumber>
+              <partNumber>Title 38 Section 5104(b)</partNumber>
+              <partNumber>Title 38 Section 5107(b)</partNumber>
+              <partNumber>Title 38 Section 5125A</partNumber>
+              <partNumber>Title 38 Section 7101A</partNumber>
+              <partNumber>Title 38 Section 7101A(a)(1)</partNumber>
+              <partNumber>Title 38 Section 7101A(c)</partNumber>
+              <partNumber>Title 38 Section 7101</partNumber>
+              <partNumber>Title 38 Section 7101(d)</partNumber>
+              <partNumber>Title 38 Section 7104(a)</partNumber>
+              <partNumber>Title 38 Section 7104(d)</partNumber>
+              <partNumber>Title 38 Section 7104(d)(1)</partNumber>
+              <partNumber>Title 38 Section 7105(b)(1)</partNumber>
+              <partNumber>Title 38 Section 7107(b)</partNumber>
+              <partNumber>Title 38 Section 7107(e)</partNumber>
+              <partNumber>Title 38 Section 7261</partNumber>
+              <partNumber>Title 38 Section 7261(a)(4)</partNumber>
+              <partNumber>Title 38 Section 7261(b)(1)</partNumber>
+              <partNumber>Title 38 Section 7264(a)</partNumber>
+        </titleInfo>
+         <identifier type="USC citation">38 U.S.C. 1116</identifier>
+         <identifier type="USC citation">38 U.S.C. 38</identifier>
+         <identifier type="USC citation">38 U.S.C. 5102A(a)(1)</identifier>
+         <identifier type="USC citation">38 U.S.C. 5103A</identifier>
+         <identifier type="USC citation">38 U.S.C. 5103A(d)</identifier>
+         <identifier type="USC citation">38 U.S.C. 5104</identifier>
+         <identifier type="USC citation">38 U.S.C. 5104(b)</identifier>
+         <identifier type="USC citation">38 U.S.C. 5107(b)</identifier>
+         <identifier type="USC citation">38 U.S.C. 5125A</identifier>
+         <identifier type="USC citation">38 U.S.C. 7101A</identifier>
+         <identifier type="USC citation">38 U.S.C. 7101A(a)(1)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7101A(c)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7101</identifier>
+         <identifier type="USC citation">38 U.S.C. 7101(d)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7104(a)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7104(d)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7104(d)(1)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7105(b)(1)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7107(b)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7107(e)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7261</identifier>
+         <identifier type="USC citation">38 U.S.C. 7261(a)(4)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7261(b)(1)</identifier>
+         <identifier type="USC citation">38 U.S.C. 7264(a)</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Code</title>
+              <partNumber>Title 39 Section 5125</partNumber>
+        </titleInfo>
+         <identifier type="USC citation">39 U.S.C. 5125</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Statutes at Large</title>
+              <partNumber>Volume 116 Page 2820</partNumber>
+        </titleInfo>
+         <identifier type="Statute citation">116 Stat. 2820</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 330 (107th Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 107-330</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 389 (110th Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 110-389</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 20 Part 20.708</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">20 CFR Part  20.708</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 4</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  4</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 20.1304(c)</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  20.1304(c)</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 20.1403(d)(2)</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  20.1403(d)(2)</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 20.1403</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  20.1403</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 20.1504(b),</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  20.1504(b),</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 20.1504(b)</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  20.1504(b)</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 20.201</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  20.201</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 20.708</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  20.708</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 3.102</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  3.102</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 3.159(c)(4)(i)</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  3.159(c)(4)(i)</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 3.159(c)</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  3.159(c)</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 3.2600</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  3.2600</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 38 Part 3.655(b)</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">38 CFR Part  3.655(b)</identifier>
+    </relatedItem>
+</mods>

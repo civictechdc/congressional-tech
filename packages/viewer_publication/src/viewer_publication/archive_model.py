@@ -32,6 +32,7 @@ REGISTRIES={
         supported_measure_keys=list_of('Utf8'),evidence='Utf8'),
     'saved_name_decisions':dict(body_sha='Utf8',decision='Utf8',official_name='Utf8',committee_name='Utf8',evidence='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
+    'congressional_commissions':dict(id='Utf8',name='Utf8',pattern='Utf8',created_by='Utf8',members_serve='Utf8',citation_status='Utf8'),
 }
 
 MEETING_RECORD_FIELDS=dict(
@@ -109,6 +110,10 @@ APPEARANCE_RECORD_FIELDS=dict(
     held_dates=list_of('Utf8'),
     title='Utf8',
     created='Utf8',
+    # The print's own MODS committee codes (congCommittee authorityId) and committee members (congMember role
+    # COMMMEMBER, bioGuideId): read by the committee opening-statement rule (ct-kw85, witness_member_committees).
+    committees=list_of('Utf8'),
+    committee_members=list_of('Utf8'),
 )
 
 RECORDING_DECISION_FIELDS=dict(id='Utf8',subject_kind='Utf8',subject_id='Utf8',verdict='Utf8',video_refs=list_of('Utf8'),
@@ -131,7 +136,7 @@ SPICY_SCHEMAS={
         history=list_of(struct(officialName='Utf8',startDate='Utf8',endDate='Utf8')),
     ),
     'spicy_members':dict(
-        bioguide_id='Utf8',name_first='Utf8',name_last='Utf8',
+        bioguide_id='Utf8',name_first='Utf8',name_last='Utf8',name_nickname='Utf8',
         lis_id='Utf8',opensecrets_id='Utf8',govtrack_id='Utf8',
         icpsr_id='Utf8',wikidata_id='Utf8',fec_ids=list_of('Utf8'),
     ),
@@ -332,6 +337,8 @@ def _normalize_appearance_rows(rows,selected_versions=None):
             held_dates=[str(d) for d in row.get('held_dates') or ()],
             title=str(row['title']) if row.get('title') is not None else None,
             created=str(row['created']) if row.get('created') is not None else None,
+            committees=[str(c) for c in row.get('committees') or ()],
+            committee_members=[str(m) for m in row.get('committee_members') or ()],
         ))
     return normalized
 
@@ -919,11 +926,20 @@ def meeting_records_have_document_references(path):
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false"""
-WITNESSES_SQL='SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_locator,r.context_key,r.event_id,r.package_id,r.page_url,r.name,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,r.witness_type,r.testified,r.bioguide_id,p.superseded_by FROM appearance_records_resolved r LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key'
+# A sitting Member acting officially is published as witness_type member_appearance, and a committee member's own
+# opening statement as member_statement (ct-kw85): the archive's classification replaces the source's for those rows,
+# whose own value stays in the appearance record.
+WITNESSES_SQL=('SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_locator,r.context_key,r.event_id,r.package_id,r.page_url,'
+    'r.name,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,'
+    "CASE m.outcome WHEN 'member' THEN 'member_appearance' WHEN 'statement' THEN 'member_statement' ELSE r.witness_type END AS witness_type,"
+    'r.testified,r.bioguide_id,p.superseded_by,m.matched_bioguide_id,m.match_basis '
+    'FROM witness_members m RIGHT JOIN (witness_precedence p RIGHT JOIN appearance_records_resolved r ON p.witness_key=r.witness_key) '
+    'ON m.witness_key=r.witness_key')
 
 
 def appearance_steps(*,root=ROOT):
-    """Witness URLs, their keys, then the resolved appearances (one owner for the full and frozen builds)."""
+    """Witness URLs, their keys, then the resolved appearances (one owner for the full and frozen builds), and which
+    of them are sitting Members of Congress (ct-kw85), after precedence and read only by the exports."""
     app_url_inputs_sql="""WITH selected_app_records AS (
         SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
             r.context_url,r.appearances
@@ -978,7 +994,12 @@ def appearance_steps(*,root=ROOT):
         dict(name='appearance_capture_contexts',sql=(Path(root)/'model/sql/appearance-capture-contexts.sql').read_text(),materialize=True),
         dict(name='appearance_observations',sql=(Path(root)/'model/sql/appearance-observations.sql').read_text(),materialize=True),
         dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(
-        ['witness-precedence','witness-key-current','witness-key-priors','witness-key-map'],root=root)
+        ['witness-precedence','witness-key-current','witness-key-priors','witness-key-map',
+         'member-terms','witness-member-facts','witness-member-names','witness-member-candidates','witness-member-rows',
+         'witness-member-mentions','witness-member-seats','witness-member-tiers','witness-member-decisions'],root=root)+[
+        # The pinned rosters as a step: the rosters export and the committee check read the one result.
+        dict(name='roster_seats',sql=(Path(root)/'model/sql/entity-rosters.sql').read_text(),materialize=True)]+_sql_steps(
+        ['witness-member-committees','witness-members'],root=root)
 
 
 def package_link_steps(*,root=ROOT):
@@ -1094,8 +1115,13 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         status_expr='status'
         error_expr='error_type'
         extra_select=''
+        # The print's own committees and committee members (MODS only; null for other sources). The pinned lake table
+        # carries them (schema fields 36-39, imported as a new table: the engine cannot add columns to an existing one);
+        # an older local Parquet input without them states none.
+        no_committees=("arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committees,"
+                       "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committee_members,")
         if table_name=='appearance_records':
-            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,'
+            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,committees,committee_members,'
         if parquet_path is not None and Path(parquet_path).is_file():
             import pyarrow as pa
             import pyarrow.parquet as pq
@@ -1116,7 +1142,9 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                 held_expr='held_dates' if 'held_dates' in schema.names else "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS held_dates"
                 title_expr='title' if 'title' in schema.names else 'cast(NULL AS VARCHAR) AS title'
                 created_expr='created' if 'created' in schema.names else 'cast(NULL AS VARCHAR) AS created'
-                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},{created_expr},'
+                committees_expr=('committees,committee_members,' if {'committees','committee_members'}<=set(schema.names)
+                                 else no_committees)
+                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},{created_expr},{committees_expr}'
         return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
     meeting_records_path=meeting_records.get('path') if isinstance(meeting_records,dict) else meeting_records
     has_document_references=(not isinstance(meeting_records_path,(str,Path)) or
@@ -1396,13 +1424,13 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             dict(name='caption_resources',sql=(Path(root)/'model/sql/caption-resources.sql').read_text(),materialize=True),
             dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True)]
         auxiliary += [
-            ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id']),
+            ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id','match_basis']),
             ('witness_key_map','SELECT old_key,witness_key,status,basis,candidate_keys,occasion,source FROM witness_key_map',['old_key'],['occasion','source','status','basis']),
             ('recordings','SELECT * FROM recordings_entity',['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
             ('caption_resources','SELECT * FROM caption_resources',['video_key','track_body','ordinal'],['suffix','format','status']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
-            ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
+            ('rosters','SELECT * FROM roster_seats',['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
             ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
             ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
         ]

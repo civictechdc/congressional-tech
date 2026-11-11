@@ -1,0 +1,1051 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee18eb4966e">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>House of Representatives</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>114_house_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2016-02-23</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>HEARINGS TO REVIEW USDA ORGANIZATION AND PROGRAM ADMINISTRATION</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-114hhrg96269</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-114hhrg96269/html/CHRG-114hhrg96269.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-114hhrg96269/pdf/CHRG-114hhrg96269.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Publishing Office</publisher>
+         <dateIssued encoding="w3cdtf">2015-09-15</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>201 digital object pages</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.AG 8/1:</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-114hhrg96269</identifier>
+    <identifier type="local">P0b002ee18eb4966e</identifier>
+    <identifier type="ILS system id">000972834</identifier>
+    <identifier type="former package identifier">f:96269.txt</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2016-02-23</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2025-08-21</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-114hhrg96269</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>HHRG</docClass>
+         <accessId>CHRG-114hhrg96269</accessId>
+         <type>G</type>
+         <chamber>HOUSE</chamber>
+         <congress years="2015-2016">114</congress>
+         <session>1</session>
+         <heldDate>2015-09-15</heldDate>
+         <heldDate>2015-09-16</heldDate>
+         <preferredCitation>Serial No. 114-26</preferredCitation>
+    </extension>
+    <extension>
+         <searchTitle>HEARINGS TO REVIEW USDA ORGANIZATION AND PROGRAM ADMINISTRATION</searchTitle>
+         <granuleClass>OTHERPART</granuleClass>
+         <accessId>CHRG-114hhrg96269</accessId>
+         <graphicsInPDF>true</graphicsInPDF>
+         <witness>Taylor, Alexis, Deputy Under Secretary, Farm and Foreign Agricultural Services; accompanied by Val Dolcini, J.D., Administrator, Farm Service Agency; Philip C. Karsting, Administrator, Foreign Agricultural Service; and Brandon Willis, Administrator, Risk Management Agency, U.S. Department of Agriculture, Washington, D.C</witness>
+         <witness>Submitted questions: Taylor, Alexis</witness>
+         <witness>Karsting, Philip C</witness>
+         <witness>Willis, Brandon</witness>
+         <witness>Bonnie, Hon. Robert, Under Secretary, Natural Resources and Environment, U.S. Department of Agriculture, Washington, D.C.; accompanied by Jason Weller, Chief, Natural Resources Conservation Service, USDA; and Mary Wagner, Associate Chief, U.S. Forest Service, USDA</witness>
+         <witness>Woteki, Ph.D., Hon. Catherine, Under Secretary, Research, Education, and Economics, U.S. Department of Agriculture, Washington, D.C.; accompanied by Chavonda Jacobs-Young, Ph.D., Administrator, Agricultural Research Service, USDA; Sonny Ramaswamy, Ph.D., Director, National Institute of Food and Agriculture, USDA; Mary Bohman, Ph.D., Administrator, Economic Research Service, USDA; and Renee Picanso, Associate Administrator, National Agricultural Statistics Service, USDA</witness>
+         <witness>Submitted questions: Ramaswamy, Ph.D., Sonny</witness>
+         <witness>Picanso, Renee</witness>
+         <witness>Conaway, Hon. K. Michael, a Representative in Congress from Texas, opening statement</witness>
+         <witness>Peterson, Hon. Collin C., a Representative in Congress from Minnesota, opening statement</witness>
+         <witness>Mensah, Hon. Lisa, Under Secretary, Rural Development, U.S. Department of Agriculture, Washington, D.C.; accompanied by Brandon McBride, Administrator, Rural Utilities Service, USDA; Tony Hernandez, Administrator, Rural Housing Service, USDA; and Samuel H. Rikkers, Acting Administrator, Rural Business-- Cooperative Service, USDA</witness>
+         <witness>Avalos, Hon. Edward M., Under Secretary, Marketing and Regulatory Programs, U.S. Department of Agriculture, Washington, D.C.*; accompanied by Anne L. Alonzo, J.D., Administrator, Agricultural Marketing Service, USDA; Kevin Shea, Administrator, Animal and Plant Health Inspection Service, USDA; and Larry Mitchell, Administrator, Grain Inspection Packers and Stockyards Administration, USDA</witness>
+         <witness>Submitted questions: Avalos, Hon. Edward M</witness>
+         <witness>Alonzo, J.D., Anne L</witness>
+         <witness>Shea, Kevin</witness>
+         <witness>Almanza, Alfred V., Deputy Under Secretary, Food Safety, U.S. Department of Agriculture, Washington, D.C</witness>
+         <witness>Concannon, Hon. Kevin, Under Secretary, Food, Nutrition, and Consumer Services, U.S. Department of Agriculture, Washington, D.C.; accompanied by Audrey Rowe, Administrator, Food and Nutrition Service, USDA; and Angela Tagtow, M.S., R.D., L.D., Executive Director, Center for Nutrition Policy and Promotion, USDA</witness>
+         <isAppropriation>false</isAppropriation>
+         <congSerial chamber="H" congress="114" number="26"></congSerial>
+         <jacketId>96-269</jacketId>
+         <congCommittee authorityId="hsag00" chamber="H" congress="114" type="S">
+                                    
+              <name type="authority-standard">Committee on Agriculture</name>
+                                    
+              <name type="authority-short">Agriculture</name>
+                                
+        </congCommittee>
+         <congMember bioGuideId="A000370" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NC">
+                                    
+              <name type="parsed">ALMA S. ADAMS of North Carolina</name>
+                                    
+              <name type="authority-fnf">Alma S. Adams</name>
+                                    
+              <name type="authority-lnf">Adams, Alma S.</name>
+                                    
+              <name type="authority-other">Alma Adams</name>
+                                
+        </congMember>
+         <congMember bioGuideId="A000371" chamber="H" congress="114" party="D" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">PETE AGUILAR of California</name>
+                                    
+              <name type="authority-fnf">Pete Aguilar</name>
+                                    
+              <name type="authority-lnf">Aguilar, Pete</name>
+                                
+        </congMember>
+         <congMember bioGuideId="A000372" chamber="H" congress="114" party="R" role="COMMMEMBER" state="GA">
+                                    
+              <name type="parsed">RICK W. ALLEN of Georgia</name>
+                                    
+              <name type="authority-fnf">Rick W. Allen</name>
+                                    
+              <name type="authority-lnf">Allen, Rick W.</name>
+                                    
+              <name type="authority-other">Rick Allen</name>
+                                
+        </congMember>
+         <congMember bioGuideId="A000373" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NE">
+                                    
+              <name type="parsed">BRAD ASHFORD of Nebraska</name>
+                                    
+              <name type="authority-fnf">Brad Ashford</name>
+                                    
+              <name type="authority-lnf">Ashford, Brad</name>
+                                
+        </congMember>
+         <congMember bioGuideId="A000374" chamber="H" congress="114" party="R" role="COMMMEMBER" state="LA">
+                                    
+              <name type="parsed">RALPH LEE ABRAHAM of Louisiana</name>
+                                    
+              <name type="authority-fnf">Ralph Lee Abraham</name>
+                                    
+              <name type="authority-lnf">Abraham, Ralph Lee</name>
+                                    
+              <name type="authority-other">Ralph Abraham</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001271" chamber="H" congress="114" party="R" role="COMMMEMBER" state="MI">
+                                    
+              <name type="parsed">DAN BENISHEK of Michigan</name>
+                                    
+              <name type="authority-fnf">Dan Benishek</name>
+                                    
+              <name type="authority-lnf">Benishek, Dan</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001286" chamber="H" congress="114" party="D" role="COMMMEMBER" state="IL">
+                                    
+              <name type="parsed">CHERI BUSTOS of Illinois</name>
+                                    
+              <name type="authority-fnf">Cheri Bustos</name>
+                                    
+              <name type="authority-lnf">Bustos, Cheri</name>
+                                
+        </congMember>
+         <congMember bioGuideId="B001295" chamber="H" congress="114" party="R" role="COMMMEMBER" state="IL">
+                                    
+              <name type="parsed">MIKE BOST of Illinois</name>
+                                    
+              <name type="authority-fnf">Mike Bost</name>
+                                    
+              <name type="authority-lnf">Bost, Mike</name>
+                                
+        </congMember>
+         <congMember bioGuideId="C001059" chamber="H" congress="114" party="D" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">JIM COSTA of California</name>
+                                    
+              <name type="authority-fnf">Jim Costa</name>
+                                    
+              <name type="authority-lnf">Costa, Jim</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000612" chamber="H" congress="114" party="R" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">JEFF DENHAM of California</name>
+                                    
+              <name type="authority-fnf">Jeff Denham</name>
+                                    
+              <name type="authority-lnf">Denham, Jeff</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000616" chamber="H" congress="114" party="R" role="COMMMEMBER" state="TN">
+                                    
+              <name type="parsed">SCOTT DesJARLAIS of Tennessee</name>
+                                    
+              <name type="authority-fnf">Scott DesJarlais</name>
+                                    
+              <name type="authority-lnf">DesJarlais, Scott</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000617" chamber="H" congress="114" party="D" role="COMMMEMBER" state="WA">
+                                    
+              <name type="parsed">SUZAN K. DelBENE of Washington</name>
+                                    
+              <name type="authority-fnf">Suzan K. DelBene</name>
+                                    
+              <name type="authority-lnf">DelBene, Suzan K.</name>
+                                    
+              <name type="authority-other">Suzan DelBene</name>
+                                
+        </congMember>
+         <congMember bioGuideId="D000619" chamber="H" congress="114" party="R" role="COMMMEMBER" state="IL">
+                                    
+              <name type="parsed">RODNEY DAVIS of Illinois</name>
+                                    
+              <name type="authority-fnf">Rodney Davis</name>
+                                    
+              <name type="authority-lnf">Davis, Rodney</name>
+                                
+        </congMember>
+         <congMember bioGuideId="F000455" chamber="H" congress="114" party="D" role="COMMMEMBER" state="OH">
+                                    
+              <name type="parsed">MARCIA L. FUDGE of Ohio</name>
+                                    
+              <name type="authority-fnf">Marcia L. Fudge</name>
+                                    
+              <name type="authority-lnf">Fudge, Marcia L.</name>
+                                    
+              <name type="authority-other">Marcia Fudge</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000289" chamber="H" congress="114" party="R" role="COMMMEMBER" state="VA">
+                                    
+              <name type="parsed">BOB GOODLATTE of Virginia</name>
+                                    
+              <name type="authority-fnf">Bob Goodlatte</name>
+                                    
+              <name type="authority-lnf">Goodlatte, Bob</name>
+                                    
+              <name type="authority-other">Robert Goodlatte</name>
+                                    
+              <name type="authority-other">Robert W. Goodlatte</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000563" chamber="H" congress="114" party="R" role="COMMMEMBER" state="OH">
+                                    
+              <name type="parsed">BOB GIBBS of Ohio</name>
+                                    
+              <name type="authority-fnf">Bob Gibbs</name>
+                                    
+              <name type="authority-lnf">Gibbs, Bob</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000564" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NY">
+                                    
+              <name type="parsed">CHRISTOPHER P. GIBSON of New York</name>
+                                    
+              <name type="authority-fnf">Christopher P. Gibson</name>
+                                    
+              <name type="authority-lnf">Gibson, Christopher P.</name>
+                                    
+              <name type="authority-other">Christopher Gibson</name>
+                                
+        </congMember>
+         <congMember bioGuideId="G000575" chamber="H" congress="114" party="D" role="COMMMEMBER" state="FL">
+                                    
+              <name type="parsed">GWEN GRAHAM of Florida</name>
+                                    
+              <name type="authority-fnf">Gwen Graham</name>
+                                    
+              <name type="authority-lnf">Graham, Gwen</name>
+                                
+        </congMember>
+         <congMember bioGuideId="H001053" chamber="H" congress="114" party="R" role="COMMMEMBER" state="MO">
+                                    
+              <name type="parsed">VICKY HARTZLER of Missouri</name>
+                                    
+              <name type="authority-fnf">Vicky Hartzler</name>
+                                    
+              <name type="authority-lnf">Hartzler, Vicky</name>
+                                
+        </congMember>
+         <congMember bioGuideId="K000362" chamber="H" congress="114" party="R" role="COMMMEMBER" state="IA">
+                                    
+              <name type="parsed">STEVE KING of Iowa</name>
+                                    
+              <name type="authority-fnf">Steve King</name>
+                                    
+              <name type="authority-lnf">King, Steve</name>
+                                
+        </congMember>
+         <congMember bioGuideId="K000368" chamber="H" congress="114" party="D" role="COMMMEMBER" state="AZ">
+                                    
+              <name type="parsed">ANN KIRKPATRICK of Arizona</name>
+                                    
+              <name type="authority-fnf">Ann Kirkpatrick</name>
+                                    
+              <name type="authority-lnf">Kirkpatrick, Ann</name>
+                                
+        </congMember>
+         <congMember bioGuideId="K000382" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NH">
+                                    
+              <name type="parsed">ANN M. KUSTER of New Hampshire</name>
+                                    
+              <name type="authority-fnf">Ann M. Kuster</name>
+                                    
+              <name type="authority-lnf">Kuster, Ann M.</name>
+                                    
+              <name type="authority-other">Ann Kuster</name>
+                                
+        </congMember>
+         <congMember bioGuideId="K000388" chamber="H" congress="114" party="R" role="COMMMEMBER" state="MS">
+                                    
+              <name type="parsed">TRENT KELLY of Mississippi</name>
+                                    
+              <name type="authority-fnf">Trent Kelly</name>
+                                    
+              <name type="authority-lnf">Kelly, Trent</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000491" chamber="H" congress="114" party="R" role="COMMMEMBER" state="OK">
+                                    
+              <name type="parsed">FRANK D. LUCAS of Oklahoma</name>
+                                    
+              <name type="authority-fnf">Frank D. Lucas</name>
+                                    
+              <name type="authority-lnf">Lucas, Frank D.</name>
+                                    
+              <name type="authority-other">Frank Lucas</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000578" chamber="H" congress="114" party="R" role="COMMMEMBER" state="CA">
+                                    
+              <name type="parsed">DOUG LaMALFA of California</name>
+                                    
+              <name type="authority-fnf">Doug LaMalfa</name>
+                                    
+              <name type="authority-lnf">LaMalfa, Doug</name>
+                                
+        </congMember>
+         <congMember bioGuideId="L000580" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NM">
+                                    
+              <name type="parsed">MICHELLE LUJAN GRISHAM of New Mexico</name>
+                                    
+              <name type="authority-fnf">Michelle Lujan Grisham</name>
+                                    
+              <name type="authority-lnf">Lujan Grisham, Michelle</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M000312" chamber="H" congress="114" party="D" role="COMMMEMBER" state="MA">
+                                    
+              <name type="parsed">JAMES P. McGOVERN of Massachusetts</name>
+                                    
+              <name type="authority-fnf">James P. McGovern</name>
+                                    
+              <name type="authority-lnf">McGovern, James P.</name>
+                                    
+              <name type="authority-other">James McGovern</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M001185" chamber="H" congress="114" party="D" role="COMMMEMBER" state="NY">
+                                    
+              <name type="parsed">SEAN PATRICK MALONEY of New York</name>
+                                    
+              <name type="authority-fnf">Sean Patrick Maloney</name>
+                                    
+              <name type="authority-lnf">Maloney, Sean Patrick</name>
+                                    
+              <name type="authority-other">Sean Maloney</name>
+                                
+        </congMember>
+         <congMember bioGuideId="M001194" chamber="H" congress="114" party="R" role="COMMMEMBER" state="MI">
+                                    
+              <name type="parsed">JOHN R. MOOLENAAR of Michigan</name>
+                                    
+              <name type="authority-fnf">John R. Moolenaar</name>
+                                    
+              <name type="authority-lnf">Moolenaar, John R.</name>
+                                    
+              <name type="authority-other">John Moolenaar</name>
+                                
+        </congMember>
+         <congMember bioGuideId="N000127" chamber="H" congress="114" party="D" role="COMMMEMBER" state="MN">
+                                    
+              <name type="parsed">RICHARD M. NOLAN of Minnesota</name>
+                                    
+              <name type="authority-fnf">Richard M. Nolan</name>
+                                    
+              <name type="authority-lnf">Nolan, Richard M.</name>
+                                    
+              <name type="authority-other">Richard Nolan</name>
+                                
+        </congMember>
+         <congMember bioGuideId="N000182" chamber="H" congress="114" party="R" role="COMMMEMBER" state="TX">
+                                    
+              <name type="parsed">RANDY NEUGEBAUER of Texas</name>
+                                    
+              <name type="authority-fnf">Randy Neugebauer</name>
+                                    
+              <name type="authority-lnf">Neugebauer, Randy</name>
+                                
+        </congMember>
+         <congMember bioGuideId="N000189" chamber="H" congress="114" party="R" role="COMMMEMBER" state="WA">
+                                    
+              <name type="parsed">DAN NEWHOUSE of Washington</name>
+                                    
+              <name type="authority-fnf">Dan Newhouse</name>
+                                    
+              <name type="authority-lnf">Newhouse, Dan</name>
+                                
+        </congMember>
+         <congMember bioGuideId="P000258" chamber="H" congress="114" party="D" role="COMMMEMBER" state="MN">
+                                    
+              <name type="parsed">COLLIN C. PETERSON of Minnesota</name>
+                                    
+              <name type="authority-fnf">Collin C. Peterson</name>
+                                    
+              <name type="authority-lnf">Peterson, Collin C.</name>
+                                    
+              <name type="authority-other">Collin Peterson</name>
+                                
+        </congMember>
+         <congMember bioGuideId="R000575" chamber="H" congress="114" party="R" role="COMMMEMBER" state="AL">
+                                    
+              <name type="parsed">MIKE ROGERS of Alabama</name>
+                                    
+              <name type="authority-fnf">Mike Rogers</name>
+                                    
+              <name type="authority-lnf">Rogers, Mike D.</name>
+                                
+        </congMember>
+         <congMember bioGuideId="R000603" chamber="H" congress="114" party="R" role="COMMMEMBER" state="NC">
+                                    
+              <name type="parsed">DAVID ROUZER of North Carolina</name>
+                                    
+              <name type="authority-fnf">David Rouzer</name>
+                                    
+              <name type="authority-lnf">Rouzer, David</name>
+                                
+        </congMember>
+         <congMember bioGuideId="S001157" chamber="H" congress="114" party="D" role="COMMMEMBER" state="GA">
+                                    
+              <name type="parsed">DAVID SCOTT of Georgia</name>
+                                    
+              <name type="authority-fnf">David Scott</name>
+                                    
+              <name type="authority-lnf">Scott, David</name>
+                                
+        </congMember>
+         <congMember bioGuideId="S001189" chamber="H" congress="114" party="R" role="COMMMEMBER" state="GA">
+                                    
+              <name type="parsed">AUSTIN SCOTT of Georgia</name>
+                                    
+              <name type="authority-fnf">Austin Scott</name>
+                                    
+              <name type="authority-lnf">Scott, Austin</name>
+                                
+        </congMember>
+         <congMember bioGuideId="T000467" chamber="H" congress="114" party="R" role="COMMMEMBER" state="PA">
+                                    
+              <name type="parsed">GLENN THOMPSON of Pennsylvania</name>
+                                    
+              <name type="authority-fnf">Glenn Thompson</name>
+                                    
+              <name type="authority-lnf">Thompson, Glenn</name>
+                                
+        </congMember>
+         <congMember bioGuideId="V000132" chamber="H" congress="114" party="D" role="COMMMEMBER" state="TX">
+                                    
+              <name type="parsed">FILEMON VELA of Texas</name>
+                                    
+              <name type="authority-fnf">Filemon Vela</name>
+                                    
+              <name type="authority-lnf">Vela, Filemon</name>
+                                
+        </congMember>
+         <congMember bioGuideId="W000799" chamber="H" congress="114" party="D" role="COMMMEMBER" state="MN">
+                                    
+              <name type="parsed">TIMOTHY J. WALZ of Minnesota</name>
+                                    
+              <name type="authority-fnf">Timothy J. Walz</name>
+                                    
+              <name type="authority-lnf">Walz, Timothy J.</name>
+                                    
+              <name type="authority-other">Timothy Walz</name>
+                                
+        </congMember>
+         <congMember bioGuideId="W000813" chamber="H" congress="114" party="R" role="COMMMEMBER" state="IN">
+                                    
+              <name type="parsed">JACKIE WALORSKI of Indiana</name>
+                                    
+              <name type="authority-fnf">Jackie Walorski</name>
+                                    
+              <name type="authority-lnf">Walorski, Jackie</name>
+                                
+        </congMember>
+         <congMember bioGuideId="Y000065" chamber="H" congress="114" party="R" role="COMMMEMBER" state="FL">
+                                    
+              <name type="parsed">TED S. YOHO of Florida</name>
+                                    
+              <name type="authority-fnf">Ted S. Yoho</name>
+                                    
+              <name type="authority-lnf">Yoho, Ted S.</name>
+                                    
+              <name type="authority-other">Ted Yoho</name>
+                                
+        </congMember>
+         <law congress="83" isPrivate="false" number="480"></law>
+         <bill congress="114" context="BODY" number="2647" type="HR"></bill>
+         <cfr title="7">
+                                    
+              <part number="29"></part>
+                                
+        </cfr>
+         <isNomination>false</isNomination>
+         <isErrata>false</isErrata>
+    </extension>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>House of Representatives</namePart>
+         <namePart>Committee on Agriculture</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+              <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <name type="personal">
+         <namePart>Alma S. Adams</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Pete Aguilar</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Rick W. Allen</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Brad Ashford</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ralph Lee Abraham</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Dan Benishek</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Cheri Bustos</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mike Bost</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jim Costa</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jeff Denham</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Scott DesJarlais</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Suzan K. DelBene</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Rodney Davis</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Marcia L. Fudge</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Bob Goodlatte</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Bob Gibbs</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Christopher P. Gibson</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Gwen Graham</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Vicky Hartzler</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Steve King</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ann Kirkpatrick</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ann M. Kuster</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Trent Kelly</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Frank D. Lucas</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Doug LaMalfa</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Michelle Lujan Grisham</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>James P. McGovern</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Sean Patrick Maloney</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>John R. Moolenaar</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Richard M. Nolan</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Randy Neugebauer</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Dan Newhouse</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Collin C. Peterson</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Mike Rogers</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>David Rouzer</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>David Scott</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Austin Scott</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Glenn Thompson</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Filemon Vela</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Timothy J. Walz</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Jackie Walorski</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Ted S. Yoho</namePart>
+         <affiliation>United States House of Representatives</affiliation>
+         <role>
+              <roleTerm type="text">committee member</roleTerm>
+        </role>
+         <description>United States Congressional Member</description>
+    </name>
+    <name type="personal">
+         <namePart>Taylor, Alexis, Deputy Under Secretary, Farm and Foreign Agricultural Services; accompanied by Val Dolcini, J.D., Administrator, Farm Service Agency; Philip C. Karsting, Administrator, Foreign Agricultural Service; and Brandon Willis, Administrator, Risk Management Agency, U.S. Department of Agriculture, Washington, D.C</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Submitted questions: Taylor, Alexis</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Karsting, Philip C</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Willis, Brandon</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Bonnie, Hon. Robert, Under Secretary, Natural Resources and Environment, U.S. Department of Agriculture, Washington, D.C.; accompanied by Jason Weller, Chief, Natural Resources Conservation Service, USDA; and Mary Wagner, Associate Chief, U.S. Forest Service, USDA</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Woteki, Ph.D., Hon. Catherine, Under Secretary, Research, Education, and Economics, U.S. Department of Agriculture, Washington, D.C.; accompanied by Chavonda Jacobs-Young, Ph.D., Administrator, Agricultural Research Service, USDA; Sonny Ramaswamy, Ph.D., Director, National Institute of Food and Agriculture, USDA; Mary Bohman, Ph.D., Administrator, Economic Research Service, USDA; and Renee Picanso, Associate Administrator, National Agricultural Statistics Service, USDA</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Submitted questions: Ramaswamy, Ph.D., Sonny</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Picanso, Renee</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Conaway, Hon. K. Michael, a Representative in Congress from Texas, opening statement</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Peterson, Hon. Collin C., a Representative in Congress from Minnesota, opening statement</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Mensah, Hon. Lisa, Under Secretary, Rural Development, U.S. Department of Agriculture, Washington, D.C.; accompanied by Brandon McBride, Administrator, Rural Utilities Service, USDA; Tony Hernandez, Administrator, Rural Housing Service, USDA; and Samuel H. Rikkers, Acting Administrator, Rural Business-- Cooperative Service, USDA</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Avalos, Hon. Edward M., Under Secretary, Marketing and Regulatory Programs, U.S. Department of Agriculture, Washington, D.C.*; accompanied by Anne L. Alonzo, J.D., Administrator, Agricultural Marketing Service, USDA; Kevin Shea, Administrator, Animal and Plant Health Inspection Service, USDA; and Larry Mitchell, Administrator, Grain Inspection Packers and Stockyards Administration, USDA</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Submitted questions: Avalos, Hon. Edward M</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Alonzo, J.D., Anne L</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Shea, Kevin</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Almanza, Alfred V., Deputy Under Secretary, Food Safety, U.S. Department of Agriculture, Washington, D.C</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <name type="personal">
+         <namePart>Concannon, Hon. Kevin, Under Secretary, Food, Nutrition, and Consumer Services, U.S. Department of Agriculture, Washington, D.C.; accompanied by Audrey Rowe, Administrator, Food and Nutrition Service, USDA; and Angela Tagtow, M.S., R.D., L.D., Executive Director, Center for Nutrition Policy and Promotion, USDA</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+              <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+        </role>
+         <description>Hearing Witness</description>
+    </name>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States House Bill 2647 (114th Congress)</title>
+        </titleInfo>
+         <identifier type="Congressional Bill citation">H.R. 2647</identifier>
+         <extension>
+              <congress>114</congress>
+              <context>BODY</context>
+        </extension>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Public Law 480 (83rd Congress)</title>
+        </titleInfo>
+         <identifier type="public law citation">Public Law 83</identifier>
+         <identifier type="public law citation">Public Law No 83</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>Code of Federal Regulations</title>
+              <partNumber>Title 7 Part 29</partNumber>
+        </titleInfo>
+         <identifier type="CFR citation">7 CFR Part  29</identifier>
+    </relatedItem>
+    <relatedItem type="isReferencedBy">
+         <titleInfo>
+              <title>United States Congress Serial Number 26 (114th Congress)</title>
+        </titleInfo>
+         <identifier type="congressional serial number">Serial No. 114-26</identifier>
+    </relatedItem>
+</mods>

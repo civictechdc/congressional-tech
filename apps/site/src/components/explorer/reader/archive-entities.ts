@@ -2,13 +2,22 @@ import {ArchiveReleaseChangedError, awaitShared} from './cache.ts';
 
 export type RelationState = 'ready' | 'missing' | 'unavailable';
 
+// Rows in a hearing's list that are not outside witnesses: they keep their place with this tag and stay out of the
+// witness count. member_appearance is a sitting Member of Congress acting officially (ct-kw85).
 const RECORD_ENTRY_LABELS = new Map([
   ['statement_for_record', 'Statement for the record'],
   ['member_statement', 'Member statement'],
   ['record_material', 'Record material'],
+  ['member_appearance', 'Member'],
 ]);
 
 export const witnessRecordEntryLabel = (kind: string) => RECORD_ENTRY_LABELS.get(kind);
+// The Member a row links to: the archive's match when it has one (the publisher's ID when that names a known Member,
+// else a name match, marked as such: a publisher typo such as KOOO395 stays published but is not linked), else the
+// publisher's ID as published.
+export const witnessMember = (w: any): { bioguide_id: string, name_matched: boolean } | null =>
+  w?.matched_bioguide_id ? { bioguide_id: String(w.matched_bioguide_id), name_matched: w.match_basis !== 'publisher_id' }
+    : w?.bioguide_id ? { bioguide_id: String(w.bioguide_id), name_matched: false } : null;
 // A witness row's label: its name, else its record-entry kind, else the organization its line lists (a line that
 // names only an organization keeps its row with no name, ct-rg34), and the key only when nothing else is stated.
 export const witnessLabel = (w: any): string =>
@@ -385,17 +394,19 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const rows = (await entity('witnesses')).map(normalizeWitness);
     rows.sort((a: any, b: any) => (b.list_rows.length - a.list_rows.length) || (b.appearances.length - a.appearances.length) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
     const byKey = new Map<string, any>(), byEventId = new Map<string, any[]>(), byBioguide = new Map<string, any[]>(), byDocRow = new Map<number, any[]>();
+    const byMatchedBioguide = new Map<string, any[]>();
     const currentRows = rows.filter(w => w.superseded_by == null && !witnessRecordEntryLabel(w.witness_type));
     for (const w of rows) {
       if (w.witness_key) byKey.set(w.witness_key.toLowerCase(), w);
       if (w.name_key && w.superseded_by == null && !witnessRecordEntryLabel(w.witness_type)) byKey.set(String(w.name_key).toLowerCase(), w);
       if (w.bioguide_id) pushMap(byBioguide, String(w.bioguide_id).toLowerCase(), w);
+      if (w.matched_bioguide_id && w.matched_bioguide_id !== w.bioguide_id) pushMap(byMatchedBioguide, String(w.matched_bioguide_id).toLowerCase(), w);
       for (const ev of new Set(w.appearances.map((a: any) => String(a.event_id ?? a.meeting_key ?? '')))) {
         if (ev) pushMap(byEventId, String(ev), w);
       }
       for (const r of w.list_rows) pushMap(byDocRow, r, w);
     }
-    return { rows, currentRows, byKey, byEventId, byBioguide, byDocRow };
+    return { rows, currentRows, byKey, byEventId, byBioguide, byMatchedBioguide, byDocRow };
   });
 
   const membersIndex = () => memoized('members', async () => {
@@ -767,8 +778,10 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
         ...a, meeting_title: a.title ?? m?.title ?? null, committee_keys: a.committee_keys ?? m?.committee_keys ?? [],
       };
     });
-    const member = found.bioguide_id ? memIdx.byBioguide.get(String(found.bioguide_id).toLowerCase()) ?? null : null;
-    return { ...found, appearances: enrichedAppearances, hearings: enrichedAppearances, member, documents: found.list_rows.map(row), redirected_from: redirectedFrom };
+    const named = witnessMember(found);
+    const member = named ? memIdx.byBioguide.get(named.bioguide_id.toLowerCase()) ?? null : null;
+    return { ...found, appearances: enrichedAppearances, hearings: enrichedAppearances, member, member_name_matched: Boolean(member && named?.name_matched),
+      documents: found.list_rows.map(row), redirected_from: redirectedFrom };
   }
 
   async function getMember(bioguideId: string, signal?: AbortSignal) {
@@ -776,7 +789,12 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const clean = String(bioguideId ?? '').trim().toLowerCase();
     if (!clean) return null;
     const [memIdx, rostIdx, wIdx, mIdx, bIdx, commIdx] = await Promise.all([membersIndex(), rostersIndex(), witnessesIndex(), meetingsIndex(), billsIndex(), committeesIndex()]);
-    const witnessRecords = (wIdx.byBioguide.get(clean) ?? []).filter(w => w.superseded_by == null);
+    // The publisher's Bioguide rows, then the archive's name matches of this Member (ct-kw85), each appearance marked.
+    const witnessRecords = [
+      ...(wIdx.byBioguide.get(clean) ?? []).filter(w => w.superseded_by == null),
+      ...(wIdx.byMatchedBioguide.get(clean) ?? []).filter(w => w.superseded_by == null)
+        .map(w => ({ ...w, appearances: w.appearances.map((a: any) => ({ ...a, name_matched: w.match_basis !== 'publisher_id' })) })),
+    ];
     const found = memIdx.byBioguide.get(clean), rawRosterEntries = rostIdx.byBioguide.get(clean) ?? [], sponsoredBills = bIdx.bySponsor.get(clean) ?? [], colRows = rowsForColumn('bioguide_ids', clean);
     if (!found && !rawRosterEntries.length && !witnessRecords.length && !colRows.length && !sponsoredBills.length) return null;
     const rosterEntries = rawRosterEntries.map((r: any) => {

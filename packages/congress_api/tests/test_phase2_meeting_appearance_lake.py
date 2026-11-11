@@ -24,6 +24,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import time
 from typing import Any
 from xml.sax.saxutils import escape
 
@@ -36,7 +37,7 @@ from congress_api.acquisition import house_fallback
 from congress_api.acquisition import meetings as meetings_acq
 from congress_api.acquisition import senate as senate_acq
 from congress_api.acquisition.fetcher import CaptureScope, Fetcher
-from congress_api.lake import appearance_records, appearances, meeting_records, meetings, tables
+from congress_api.lake import appearance_records, appearances, meeting_records, meetings, mods_person_fields, mods_record_entries, tables
 from congress_api.models.raw_fetch import Transfer
 from congress_api.parsers.house_xml import (
     HOUSE_MEETING_PREFIXES,
@@ -120,6 +121,8 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "held_dates",
         "title",
         "created",
+        "committees",
+        "committee_members",
     ]
 
     appearances_field = next(f for f in a_schema["fields"] if f["name"] == "appearances")
@@ -650,6 +653,8 @@ def test_s2_fixture_2_empty_witness_and_meeting_rows_retained_for_anti_join():
         "held_dates": None,
         "title": None,
         "created": None,
+        "committees": None,
+        "committee_members": None,
     }
 
     # Second run at the same parser_version skips via anti-join before touching payload
@@ -758,6 +763,10 @@ def test_appearance_records_from_congress_gov_senate_page_and_mods():
     assert mods_row["held_dates"] == ["2013-06-13"]
     assert mods_row["title"] == "TAX REFORM: TAX HAVENS, BASE EROSION AND PROFIT-SHIFTING"
     assert cg_row["held_dates"] is None and cg_row["title"] is None
+    # Its committee and that committee's members, which tell a Member's own statement from a witness's (ct-kw85).
+    assert mods_row["committees"] == ["hswm00"]
+    assert len(mods_row["committee_members"]) == 37 and mods_row["committee_members"][:2] == ["B000287", "B000574"]
+    assert cg_row["committees"] is None and cg_row["committee_members"] is None
 
     # Round-trip through PyArrow table builder
     tbl = appearance_records.table([cg_row, senate_row, mods_row])
@@ -2285,6 +2294,58 @@ def test_mods_reviewed_joined_line_yields_both_printed_entries():
         assert [a["name"] for a in found if a["name"]] == ["Victor Joseph"]
 
 
+def test_norton_and_lipinski_run_together_are_two_askers():
+    """ct-zs48: CHRG-114hhrg93258's tenth contents line, under "Responses to questions for the record from the
+    following Representatives and Delegate", runs Delegate Eleanor Holmes Norton's entry into Representative
+    Daniel Lipinski's. The asker rule reads each (it was a reviewed split until 2026-11-10). The heading and every
+    Member listed under it asked questions for the record; they are record material, not witnesses, and the heading,
+    which names Bill Shuster, is kept as his row. None is a WITNESS congMember, so none links to a bioguide."""
+    xml = (ROOT / "packages/congress_api/tests/fixtures/gpo_metadata/CHRG-114hhrg93258.xml").read_bytes()
+    assert hashlib.sha256(xml).hexdigest() == "b7222c476e68a944d4bf0c57890400287a153988e2a02b66ef985893fd4f9f6e"
+    row = appearance_records.build_appearance_record_row(_sha("mods-93258"), "mods", xml)
+    assert row["package_id"] == "CHRG-114hhrg93258"
+    people = [(a["source_locator"], a["name"], a["position"], a["organization"], a["bioguide_id"], a["witness_type"],
+               a["display_order"]) for a in row["appearances"]]
+    asked = "record_material"
+    assert people[0] == ("mods:witness[1]", "Anthony R. Foxx", "Secretary", "U.S. Department of Transportation: Testimony",
+                         None, None, 1)
+    assert people[1] == ("mods:witness[2]", "Bill Shuster", "of Pennsylvania", None, None, asked, 2)
+    assert {p[5] for p in people[1:]} == {asked} and len(people) == 11
+    assert people[-3:] == [
+        ("mods:witness[9]", "Peter A. DeFazio", "of Oregon", None, None, asked, 9),
+        ("mods:witness[10]", "Eleanor Holmes Norton", "of the District of Columbia", None, None, asked, 10),
+        ("mods:witness[10]/part[2]", "Daniel Lipinski", "of Illinois", None, None, asked, 11),
+    ]
+
+    # No reviewed split remains: the line names two Members by the House style wherever it stands, and a Member
+    # missing that style ("Hon. Daniel Lipinski" alone) is not one.
+    assert "CHRG-114hhrg93258" not in mods_person_fields.MODS_JOINED_LINES
+    line = xml.decode().split("<witness>")[10].split("</witness>")[0]
+    found = appearance_records.extract_mods_appearances(_mods_lines(line), package_id="CHRG-114hhrg93259")
+    assert [(a["name"], a["witness_type"]) for a in found] == [("Eleanor Holmes Norton", "record_material"),
+                                                               ("Daniel Lipinski", "record_material")]
+    found = appearance_records.extract_mods_appearances(_mods_lines(line.replace(", of Illinois", "")))
+    assert [a["witness_type"] for a in found] == [None]
+
+
+def test_mods_organization_only_lines_ending_in_a_document_are_statements_for_the_record():
+    """ct-3aap: a line read as an organization alone that ends in its own document is a submission for the
+    record; one without a document word, or a person's line ending the same way, keeps its reading."""
+    lines = ["Paralyzed Veterans of America, statement",
+             "National Restaurant Association, letter, dated Sept. 8, 2014",
+             "American Council of Chief Defenders, Washington, D.C., statement and attachment",
+             "The Mortgage Bankers Association, prepared statement",
+             "Heritage Foundation, Washington, D.C., November 5, 2001, memorandum",
+             "Blinded Veterans Association, New York, Inc",
+             "Coston, James E., Attorney, Chicago, IL, prepared statement"]
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+           + "".join(f"<witness>{line}</witness>" for line in lines) + "</extension></mods>")
+    found = appearance_records.extract_mods_appearances(xml, package_id="CHRG-000hhrg00000")
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        (None, "statement_for_record")] * 5 + [(None, None), ("James E. Coston", None)]
+    assert found[1]["organization"] == "National Restaurant Association, letter, dated Sept. 8, 2014"
+
+
 def test_mods_print_states_every_held_day_and_labels_statements():
     """A multi-day print states later days in constituent items (Haaland 328803), and its <witness> list
     carries letters for the record and Members' statements, which are not witnesses (red-f2)."""
@@ -2400,11 +2461,643 @@ def test_the_lake_table_keeps_each_records_held_dates_title_and_created():
     ("The Honorable Tom Lantos, a Representative in Congress From the State of California, and Ranking Member Prepared Statement", "member_statement"),
     ("Kingston, Hon. Jack, a Representative in Congress from the State of Georgia, Oral statement of", None),
     ("Statement of Honorable Amy Klobuchar, A United States Senator from the State of Minnesota", None),
-    ("Response to posthearing questions submitted by: Hon. Jon Tester", "statement_for_record"),
-    ("Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana", "statement_for_record"),
+    # The askers a question line names are the asker rule's (test_question_lines_name_each_member_who_asked); a
+    # response heading the rule names no Member on is a statement for the record.
+    ("Responses to additional questions from: Senator Boxer Senator Inhofe Larson, Amy W., Esq., President and CEO", "statement_for_record"),
 ])
 def test_a_witnesss_own_entries_are_the_witness_and_submissions_are_statements(line, kind):
     assert appearance_records.mods_entry_kind(line, None) == kind
+
+
+def _mods_lines(*lines, members=()):
+    """A MODS record of these <witness> lines, with a <congMember> for each "Given Family" in `members`."""
+    roster = "".join(f'<congMember chamber="S" role="COMMMEMBER"><name type="authority-fnf">{name}</name>'
+                     f'<name type="authority-lnf">{name.rsplit(" ", 1)[1]}, {name.rsplit(" ", 1)[0]}</name></congMember>'
+                     for name in members)
+    return ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>' + roster
+            + "".join(f"<witness>{escape(line)}</witness>" for line in lines) + "</extension></mods>")
+
+
+def _askers(found):
+    return [(a["source_locator"], a["name"], a["witness_type"], a["display_order"]) for a in found]
+
+
+@pytest.mark.parametrize("line,members,names", [
+    ("Hon. Sam Graves, of Missouri", (), ["Sam Graves"]),
+    ("Senator Smith", (), ["Smith"]),
+    ("Akaka, Hon. Daniel K", ("Daniel K. Akaka",), ["Daniel K Akaka"]),
+    ("Hon. Patty Murray", ("Patty Murray",), ["Patty Murray"]),
+])
+def test_a_member_listed_alone_is_an_asker_only_after_a_question_heading(line, members, names):
+    """A Member alone on a line is an asker under a question heading, or under a line of askers; elsewhere, and
+    without a fact that makes the name a Member's ("Hon." alone), the line reads as a witness."""
+    heading = "Responses to additional questions from:"
+    under = appearance_records.extract_mods_appearances(_mods_lines(heading, line, members=members))
+    assert [(a["name"], a["witness_type"]) for a in under] == [(None, "record_material")] + [
+        (name, "record_material") for name in names]
+    alone = appearance_records.extract_mods_appearances(_mods_lines(line, members=members))
+    assert [a["witness_type"] for a in alone] == [None]
+    if members:
+        unknown = appearance_records.extract_mods_appearances(_mods_lines(heading, line))
+        assert [a["witness_type"] for a in unknown] == ["record_material", None]
+
+
+def test_a_member_printed_right_under_a_question_heading_reads_as_an_asker():
+    """ct-gfo7 item 5, a known limit: a Member printed in a Member's style directly under a question heading is read
+    as an asker, so a Member who testified and is printed so would be typed record material (and the raw check would
+    count the same line an asker). No print had that shape on 2026-11-09 (0 of 35,019). A name the print's record
+    does not make a Member's ("Doe, Hon. Jane") stays a witness; the list ends at the first line that is not names
+    alone, so a Member after it is a witness again. A change to either half should be deliberate."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(
+        "Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana",
+        "Hon. Jane Doe, a Representative in Congress from the State of Ohio",
+        "Doe, Hon. Jane",
+        "Hon. Joseph H. Boardman, President and Chief Executive Officer, Amtrak: Testimony",
+        "Hon. Jane Doe, a Representative in Congress from the State of Ohio"), package_id="CHRG-000hhrg00000")
+    assert [a["witness_type"] for a in found] == ["record_material"] * 2 + [None, None, None]
+
+
+def test_a_long_line_of_paged_askers_that_fails_to_match_does_not_backtrack():
+    """Review r3: the paged-asker pattern took 0.5 s at ten "Senator X.....NN," groups and four times longer per
+    group when the line then failed; it runs on every MODS line. Thirteen groups make a returning pattern fail this
+    test in about half a minute; twenty would hang the suite for hours."""
+    started = time.perf_counter()
+    assert appearance_records._mods_askers_named("Senator Graham.....23, " * 13 + "Larson, Amy W., Esq.", {}, 1) == (
+        [], [], False, 0)
+    assert len(appearance_records._mods_askers_named("Senator Graham.....23, " * 13, {}, 0)[0]) == 13
+    askers, _, only, _ = appearance_records._mods_askers_named(
+        "Responses to questions from " + "Senator Graham, " * 300 + "and Larson", {}, 0)
+    assert (len(askers), only) == (300, False)  # "Larson" has no title: the line prints more than its askers
+    assert time.perf_counter() - started < 1
+
+
+def test_reviewed_askers_and_a_heading_run_into_a_witness():
+    """Review r3: Members printed after a witness's entry with no heading are askers when the line names two of them
+    and nothing else; CHRG-112shrg25114's heading runs into witness Amy W. Larson's entry, which reads as her own
+    row at /part[2] (a reviewed split). The heading names two askers, each a row (owner decision 2026-11-10), the
+    second at the line's next free part, /part[3]."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(
+        "Hawthorne, Kara, Director, Office of Rural Health",
+        "Hon. Jon Tester............................................ 22,32 Hon. Roland W. Burris",
+        members=("Jon Tester", "Roland W. Burris")), package_id="CHRG-111shrg47763")
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        ("Kara Hawthorne", None), ("Jon Tester", "record_material"), ("Roland W. Burris", "record_material")]
+    found = appearance_records.extract_mods_appearances(_mods_lines(
+        "Curtis, Stephen A., P.E., M.ASCE, Board Member and At-Large Director, American Society of Civil Engineers",
+        "Sullivan, Terry, State Director, Rhode Island Chapter, The Nature Conservancy",
+        "Responses to additional questions from: Senator Boxer Senator Inhofe Larson, Amy W., Esq., President and CEO, "
+        "National Waterways Conference, Inc"), package_id="CHRG-112shrg25114")
+    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["witness_type"]) for a in found[2:]] == [
+        ("mods:witness[3]", "Boxer", None, None, "record_material"),
+        ("mods:witness[3]/part[3]", "Inhofe", None, None, "record_material"),
+        ("mods:witness[3]/part[2]", "Amy W. Larson", "President and CEO", "National Waterways Conference, Inc", None)]
+
+
+def _parts(index, count):
+    return [f"mods:witness[{index}]"] + [f"mods:witness[{index}]/part[{n}]" for n in range(2, count + 1)]
+
+
+# Lines of the 35,020 MODS originals (2026-11-10) whose askers the rule names: each with the <congMember> names of its
+# print that it needs (a Member printed with "Hon." alone), and the rows of that line, in locator order.
+QUESTION_LINES = [
+    # Joint askers with no heading, after a witness's entry (were reviewed entries).
+    ("Hon. Jon Tester............................................ 22,32 Hon. Roland W. Burris", ("Jon Tester", "Roland W. Burris"),
+     ["Jon Tester", "Roland W. Burris"]),
+    ("Senators Warner, Cotton, Tillis, and Jones", (), ["Warner", "Cotton", "Tillis", "Jones"]),
+    # Review round 2: had published one witness named "Senators Inhofe".
+    ("Senators Inhofe, Voinovich, Vitter, and Bond", (), ["Inhofe", "Voinovich", "Vitter", "Bond"]),
+    ("Response to posthearing questions submitted by: Hon. Jon Tester............................................ 49,55 "
+     "Hon. Jerry Moran", ("Jon Tester", "Jerry Moran"), ["Jon Tester", "Jerry Moran"]),
+    ("Hon. Patty Murray.......................................... 45,47 Response to posthearing questions submitted by: "
+     "Hon. Bill Cassidy", ("Patty Murray", "Bill Cassidy"), ["Patty Murray", "Bill Cassidy"]),
+    ("Response to request arising during the hearing by: Hon. Patty Murray.......................................... "
+     "13,14 Hon. Jon Tester............................................ 22,27 Response to posthearing questions submitted "
+     "by Hon. Jerry Moran", ("Patty Murray", "Jon Tester", "Jerry Moran"), ["Patty Murray", "Jon Tester", "Jerry Moran"]),
+    # Review round 2: request headings that had published one witness named for the heading.
+    ("Response to request arising during the hearing by: Hon. Jon Tester............................................ "
+     "29,30 Hon. Mazie K. Hirono", ("Jon Tester", "Mazie K. Hirono"), ["Jon Tester", "Mazie K. Hirono"]),
+    ("Response to requests arising during the hearing by: Hon. Jerry Moran........................................... "
+     "13,14 Hon. Jon Tester............................................ 57,78 Hon. John Boozman..........................."
+     "............... 58,59 Hon. Richard Blumenthal", ("Jerry Moran", "Jon Tester", "John Boozman", "Richard Blumenthal"),
+     ["Jerry Moran", "Jon Tester", "John Boozman", "Richard Blumenthal"]),
+    ("Response to request arising during the hearing by Hon. Mark Begich...................143,", ("Mark Begich",),
+     ["Mark Begich"]),
+    ("Responses to written questions of: Senators Brown, Warner, Van Hollen, Cortez Masto, and Jones", (),
+     ["Brown", "Warner", "Van Hollen", "Cortez Masto", "Jones"]),
+    # House questions for the record that had published no row, or a witness named for the heading.
+    ("Responses to questions for the record from Hon. Don Young, a Representative in Congress from the State of Alaska",
+     (), ["Don Young"]),
+    ("Responses to questions for the record from Hon. Eleanor Holmes Norton, a Delegate in Congress from the District of "
+     "Columbia", (), ["Eleanor Holmes Norton"]),
+]
+
+
+@pytest.mark.parametrize("line,members,names", QUESTION_LINES)
+def test_question_lines_name_each_member_who_asked(line, members, names):
+    """Owner decisions 2026-11-10: each Member a question, response or request line names as an asker is a
+    record_material row of that line, named as printed, the second at /part[2] and so on, in printed order; a name is
+    a Member's by a chamber or committee title, the House style, or the print's own <congMember> list."""
+    found = appearance_records.extract_mods_appearances(_mods_lines("", line, members=members))
+    assert _askers(found[1:]) == [(locator, name, "record_material", 2 + i)
+                                  for i, (locator, name) in enumerate(zip(_parts(2, len(names)), names))]
+    assert all(word.lower() in line.lower() for name in names for word in name.split())
+    if any(name in line for name in members):
+        # "Hon." alone makes no one a Member: without the print's list the rule names no asker on the line.
+        unread = appearance_records.extract_mods_appearances(_mods_lines("", line))
+        assert not {a["name"] for a in unread[1:]} & set(names[1:] or names)
+
+
+WITNESS = "Witness, Jane, Director, Office of Things"
+
+
+@pytest.mark.parametrize("context,line,members,rows", [
+    # Owner decisions 2026-11-10 ("show both the asker and the answerer"; round 6, "Statement for the record"). An
+    # answerer with no testimony row of their own in the print answered only in writing (CHRG-111shrg58333).
+    ([], "Response to post-hearing questions submitted by Hon. Daniel K. Akaka to Caitlin Thompson, Ph.D",
+     ("Daniel K. Akaka",), [("Caitlin Thompson", "statement_for_record", 2), ("Daniel K. Akaka", "record_material", 1)]),
+    # An answerer who testified is typed as their own row (CHRG-113shrg88369's John D. Kulick, a witness).
+    (["Kulick, John D., Ph.D., Chair, Standards Board"], "Questions submitted by Senator Grassley for John D. Kulick, Ph.D",
+     (), [("John D. Kulick", None, 3), ("Grassley", "record_material", 2)]),
+    # Of four answerers, the one who testified is a witness; the three the print shows nowhere else answered in writing.
+    (["Brookman, Justin, Director, Project on Consumer Privacy"],
+     "Questions from Hon. Richard Blumenthal to Justin Brookman, Alan Davidson, Ashkan Soltani, and Guy ``Bud'' Tribble",
+     ("Richard Blumenthal",), [("Justin Brookman", None, 3), ("Richard Blumenthal", "record_material", 2),
+                               ("Alan Davidson", "statement_for_record", 4), ("Ashkan Soltani", "statement_for_record", 5),
+                               ("Guy ``Bud'' Tribble", "statement_for_record", 6)]),
+    # Answerers the line names after its asker, before it, or after "questions submitted for the record to:".
+    ([], "Response to written questions from Hon. Richard Burr to Hon. William P. Greene, Jr., Chief Judge, U.S. Court of "
+     "Appeals for Veterans Claims", ("Richard Burr",), [("Richard Burr", "record_material", 1),
+                                                        ("William P. Greene Jr.", "statement_for_record", 2)]),
+    (["Martynuska, Mr. Joseph, Director, Police Department"], "Questions for the record for Mr. Martynuska from Hon. Lou "
+     "Barletta, a Representative in Congress from the State of Pennsylvania", (),
+     [("Martynuska", None, 2), ("Lou Barletta", "record_material", 3)]),
+    ([], "Chairwoman Foxx, questions submitted for the record to: Ms. Jeffrey", ("Virginia Foxx",),
+     [("Foxx", "record_material", 1), ("Jeffrey", "statement_for_record", 2)]),
+    (["Rue, Dr. Penny, Vice President for Campus Life"], "Byrne, Hon. Bradley, a Representative in Congress from the State "
+     "of Alabama, questions submitted for the record to: Dr. Rue", (),
+     [("Bradley Byrne", "record_material", 2), ("Rue", None, 3)]),
+])
+def test_a_question_line_shows_its_answerer_beside_its_askers(context, line, members, rows):
+    """A question line that names who answered keeps (or gains) a row for them beside the askers, in printed order:
+    typed as their own testimony row in the print, else a statement for the record; never record material. The row a
+    reader saw for the line keeps its locator when it named the answerer ("...to Caitlin Thompson"); otherwise the
+    first asker does."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(*context, line, members=members))
+    mine = [a for a in found if a["source_locator"].startswith(f"mods:witness[{len(context) + 1}]")]
+    assert [(a["name"], a["witness_type"], a["display_order"]) for a in mine] == rows
+    assert [a["source_locator"] for a in mine] == _parts(len(context) + 1, len(rows))
+
+
+@pytest.mark.parametrize("package,lines,rows", [
+    # Round 7: Thompson, Zeiss and Gleason are listed as accompanying Gerald Cross (line 4), at the witness table.
+    ("CHRG-111shrg58333", (5, 6, 7), [("mods:witness[5]", "Caitlin Thompson", None, 6),
+                                      ("mods:witness[5]/part[2]", "Daniel K. Akaka", "record_material", 5),
+                                      ("mods:witness[6]", "Antonette Zeiss", None, 8),
+                                      ("mods:witness[6]/part[2]", "Daniel K. Akaka", "record_material", 7),
+                                      ("mods:witness[7]", "Theresa Gleason", None, 10),
+                                      ("mods:witness[7]/part[2]", "Daniel K. Akaka", "record_material", 9)]),
+    ("CHRG-113shrg88369", (5, 6), [("mods:witness[5]", "John D. Kulick", None, 6),
+                                   ("mods:witness[5]/part[2]", "Grassley", "record_material", 5),
+                                   ("mods:witness[6]", "John D. Kulick", None, 8),
+                                   ("mods:witness[6]/part[2]", "Klobuchar", "record_material", 7)]),
+    # Owner decision 2026-11-10 ("use the rule"): Rockefeller and Jeffords, printed with "Hon." only and absent from this
+    # print's <congMember> list, are askers in a list the list confirms (Craig, Akaka, Hutchison, Specter ...).
+    ("CHRG-109shrg20113", (6, 7), [("mods:witness[6]", "John D Rockefeller IV", "record_material", 6),
+                                   ("mods:witness[7]", "James M Jeffords", "record_material", 7)]),
+    # The guard: Hon. William P. Greene, Jr., a judge, shares Burr's line after "to"; he answers, he does not ask.
+    ("CHRG-111shrg47762", (2,), [("mods:witness[2]", "Richard Burr", "record_material", 2),
+                                 ("mods:witness[2]/part[2]", "William P. Greene Jr.", "statement_for_record", 3)]),
+    # Round 6: written-answer lines name the answering official. Taylor and Avalos testified (their own rows);
+    # round 7: Ramaswamy is listed as accompanying Woteki (line 6), at the witness table.
+    ("CHRG-114hhrg96269", (2, 7, 13), [("mods:witness[2]", "Alexis Taylor", None, 2),
+                                       ("mods:witness[7]", "Sonny Ramaswamy", None, 7),
+                                       ("mods:witness[13]", "Edward M Avalos", None, 13)]),
+])
+def test_answerers_and_confirmed_askers_in_real_prints(package, lines, rows):
+    """Real bytes of five retained prints (fixtures/gpo_metadata), read whole, roster included."""
+    xml = (ROOT / f"packages/congress_api/tests/fixtures/gpo_metadata/{package}.xml").read_bytes()
+    row = appearance_records.build_appearance_record_row(_sha(package), "mods", xml)
+    assert row["package_id"] == package and package not in {k for k, by in mods_record_entries.MODS_RECORD_ENTRIES.items()
+                                                            if any(i in by for i in lines)}
+    found = [(a["source_locator"], a["name"], a["witness_type"], a["display_order"]) for a in row["appearances"]
+             if int(a["source_locator"].split("[")[1].split("]")[0]) in lines]
+    assert found == rows
+
+
+@pytest.mark.parametrize("line,members,names", [
+    ("Response to requests arising during the hearing by: Hon. Joe Manchin........................................... "
+     "39,42 Hon. Mazie Hirono", ("Mazie Hirono",), ["Joe Manchin", "Mazie Hirono"]),
+    ("Response to request arising during the hearing by: Hon. Bernard Sanders....................................... "
+     "39,40 Hon. Mark Begich", ("Mark Begich",), ["Bernard Sanders", "Mark Begich"]),
+])
+def test_a_hon_name_in_a_confirmed_heading_list_is_a_member(line, members, names):
+    """Owner decision 2026-11-10 ("use the rule"): a name printed with "Hon." counts as a Member when it shares a
+    heading's list with a Member the print's <congMember> list confirms; with no such Member the line names no
+    asker. A "Hon." name after a witness with no heading is not helped (CHRG-115shrg34881 keeps its entry)."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(line, members=members))
+    assert [(a["name"], a["witness_type"]) for a in found] == [(name, "record_material") for name in names]
+    unconfirmed = appearance_records.extract_mods_appearances(_mods_lines(line))
+    assert [a["witness_type"] for a in unconfirmed] == [None]
+    alone = appearance_records.extract_mods_appearances(_mods_lines(
+        "Hon. Sherrod Brown......................................... 47,50 Hon. Joe Manchin III", members=("Sherrod Brown",)))
+    assert [a["witness_type"] for a in alone] == [None]
+
+
+REVIEWED_ROWS = json.loads((Path(__file__).parent / "fixtures/source_models/mods-review3-rows.json").read_text())
+
+
+@pytest.mark.parametrize("entry", REVIEWED_ROWS, ids=[f"{r['package']}#{r['index']}" for r in REVIEWED_ROWS])
+def test_the_rows_the_third_and_fourth_reviews_rejected(entry):
+    """Owner decision 2026-11-10 ("fix them in this branch now"): each row the third and fourth reviews rejected, from
+    its line's real text. Documents run into a question heading are record material keeping their own printed text;
+    rows with no person (a contents heading, a note, transcript prose) are nameless record material; people named
+    with heading text keep their rows, named with what the line states. Those are reviewed, each bound to its line's
+    SHA-256. Rules read the rest: a biography appendix's first entry is the person's biography; a question heading
+    after a witness's entry is not part of the position; a Member's submitted article or summary is a member's
+    statement."""
+    package, index, line = entry["package"], entry["index"], entry["line"]
+    digest = hashlib.sha256(line.encode()).hexdigest()
+    if entry["how"] == "person":
+        assert mods_person_fields.MODS_PERSON_FIELDS[package][index][0] == digest
+    elif entry["how"] == "title":
+        assert mods_record_entries.MODS_RECORD_ENTRIES[package][index] == (digest, None, "title")
+    elif entry["how"] == "nameless":
+        assert mods_record_entries.MODS_RECORD_ENTRIES[package][index] in (
+            (digest, None), (digest, None, "record_material"))
+    else:  # read by a rule: a biography, a heading cut, a Member's submission, transcript prose
+        assert index not in mods_record_entries.MODS_RECORD_ENTRIES.get(package, {})
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
+    row = found[index - 1]
+    assert row["source_locator"] == f"mods:witness[{index}]"
+    assert {f: row[f] for f in ("name", "position", "organization", "witness_type")} == entry["expect"]
+    published = entry["published"]
+    assert (row["name"], row["position"], row["witness_type"]) != (
+        published["name"], published.get("position", row["position"]), published["witness_type"])
+
+
+@pytest.mark.parametrize("context,line,expected", [
+    # A written-answer line names the official who answered; one who testified is typed as their testimony row.
+    (["Avalos, Hon. Edward M., Under Secretary, Marketing and Regulatory Programs"],
+     "Submitted questions: Avalos, Hon. Edward M", ("Edward M Avalos", None)),
+    ([], "Submitted questions: Avalos, Hon. Edward M", ("Edward M Avalos", "statement_for_record")),
+])
+def test_a_written_answer_lines_official_is_an_answerer(context, line, expected):
+    """Owner decision 2026-11-10, round 6 ("Statement for the record"): the official a written-answer line names
+    ("Submitted questions: X", "Responses by X", "Answers from X") is an answerer: typed as their own testimony row in
+    the print, else a statement for the record. Raben's and Beteta's lines, read with reviewed fields, are in the
+    reviewed-rows fixture."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(*context, line))
+    assert (found[-1]["name"], found[-1]["witness_type"]) == expected
+
+
+def test_a_us_senators_submitted_article_is_a_members_statement():
+    """Owner decision 2026-11-10, round 6 ("Member statement"): the Member style reads "a U.S. Senator from" as it reads
+    "a Senator from" and "a Delegate in Congress from", so a Senator's submitted article (CHRG-107shrg81998 #45) is
+    a member's statement; a Senator's testimony stays an appearance."""
+    lines = ["Hatch, Hon. Orrin G., a U.S. Senator from the State of Utah, USA Today, December 6, 2001, article",
+             "Hon. Benjamin L. Cardin, a U.S. Senator from the State of Maryland: Testimony",
+             "Hon. Jane Doe, a Senator from the State of Ohio, letter, dated May 1, 2001",
+             "Hon. Eleanor Holmes Norton, a Delegate in Congress from the District of Columbia, article"]
+    found = appearance_records.extract_mods_appearances(_mods_lines(*lines))
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        ("Orrin G. Hatch", "member_statement"), ("Benjamin L. Cardin", None), ("Jane Doe", "member_statement"),
+        ("Eleanor Holmes Norton", "member_statement")]
+
+
+REVIEW5_LINES = json.loads((Path(__file__).parent / "fixtures/source_models/mods-review5-lines.json").read_text())
+
+
+@pytest.mark.parametrize("entry", REVIEW5_LINES, ids=[f"{r['package']}#{r['index']}" for r in REVIEW5_LINES])
+def test_the_fifth_reviews_lines(entry):
+    """Round 7 (the fifth review), from each line's real text. A line that hides witnesses behind another's entry is
+    split at its printed separator into every entry, the next at /part[2], /part[3] (bound to its SHA-256 in
+    MODS_JOINED_LINES); a speaker's turn run in after a panel's names is no entry; transcript prose is nameless
+    record material by rule."""
+    package, index, line = entry["package"], entry["index"], entry["line"]
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
+    mine = [(a["source_locator"], a["name"], a["witness_type"]) for a in found
+            if a["source_locator"].split("/")[0] == f"mods:witness[{index}]"]
+    assert mine == [tuple(row) for row in entry["rows"]]
+    joined = mods_person_fields.MODS_JOINED_LINES.get(package, {}).get(index)
+    assert (joined is not None) == (len(entry["rows"]) > 1 or entry["how"] == "joined")
+    assert not joined or joined[0] == hashlib.sha256(line.encode()).hexdigest()
+
+
+@pytest.mark.parametrize("line,prose", [
+    ("for participating in today's hearing and I know the subcommittee is eager to hear your testimony. Nearly two years "
+     "ago Congress passed the Project BioShield Act with tremendous bipartisan support. Democrats and Republicans", True),
+    ("de Rugy, Veronique, Ph.D., George Gibbs chair in political economy and senior research fellow, Mercatus Center", False),
+    ("accompanied by Patrick Murray, National Legislative Director, Veteran of Foreign Wars. Ryan Gallucci, National "
+     "Veterans Service Director. Kristina Keenan, Director", False),
+    ("is available at https://docs.house.gov/meetings/IF/IF03/x.pdf. Dr. Jones answered. David Mallino, Director", False),
+    # An honorific's abbreviation ends no sentence (round 9; the sixth review's "Hon. Oscar").
+    ("de Lugo, Hon. Ron, Delegate of the Virgin Islands, and Hon. Oscar Garcia, Mayor of Ponce", False),
+])
+def test_transcript_prose_is_read_by_its_shape(line, prose):
+    """A line that opens in lower case mid-sentence with two sentence breaks (or one in forty words) is transcript
+    prose; a surname with a lower-case particle, an "accompanied by" list and GPO's footnote text are not."""
+    assert appearance_records._mods_prose(line) is prose
+    found = appearance_records.extract_mods_appearances(_mods_lines(line))
+    assert (found[0]["name"] is None and found[0]["witness_type"] == "record_material") is prose
+
+
+@pytest.mark.parametrize("line,row", [
+    ("are available at: docs.house.gov. Brenda Leong, Senior Counsel and Director of AI and Ethics Future of Privacy Forum",
+     ("Brenda Leong", "Senior Counsel and Director of AI and Ethics Future of Privacy Forum", None, None)),
+    ("record. Scott Cleland, President, Precursor LLC", ("Scott Cleland", "President", "Precursor LLC", None)),
+    # The line's type is read from the whole line, as before.
+    ("statement for the record. Dona Abbott, Vice President of Refugee and Immigrant Services, Bethany Christian Services",
+     ("Dona Abbott", "Vice President of Refugee and Immigrant Services", "Bethany Christian Services",
+      "statement_for_record")),
+])
+def test_a_notes_last_sentence_run_into_an_entry_names_no_one(line, row):
+    """Round 9 (CHRG-116hhrg39581 #1, CHRG-111hhrg74087 #7, CHRG-116hhrg35404 #8): a line that opens in lower case
+    with a note's last sentence before a person's entry reads the person, not the note."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(line))
+    assert [(a["name"], a["position"], a["organization"], a["witness_type"]) for a in found] == [row]
+
+
+def test_a_letter_under_a_letters_heading_names_its_member():
+    """Round 9 (the sixth review's rejection): "Letters: Daschle, Hon. Tom, ..." (CHRG-106shrg71515 #10) reads Tom
+    Daschle by reviewed fields, his letter typed a Member's statement by the rules."""
+    line = "Letters: Daschle, Hon. Tom, U.S. Senator from the State of South Dakota"
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * 9, line), package_id="CHRG-106shrg71515")
+    assert [(a["name"], a["position"], a["organization"], a["witness_type"]) for a in found[9:]] == [
+        ("Tom Daschle", "U.S. Senator from the State of South Dakota", None, "member_statement")]
+
+
+@pytest.mark.parametrize("line,expected", [
+    # A line naming a submission is a Member's statement under every style.
+    ("Miller, Hon. Zell, a U.S. Senator from the State of Georgia, December 5, 2001, press release", "member_statement"),
+    ("Stabenow, Hon. Debbie, U.S. Senator from Michigan, prepared statement submitted by Hon. Patrick Leahy",
+     "member_statement"),
+    ("Cornyn, John, a U.S. Senator from Texas, On Behalf Of Former U.S. Attorney General John Ashcroft",
+     "member_statement"),
+    ("Jackson Lee, Hon. Sheila, a Representative in Congress from the State of Texas, submitted statement",
+     "member_statement"),
+    # A prepared statement alone waits for the transcript under the styles read since round 7 ...
+    ("Wyden, Hon. Ron, U.S. Senator from Oregon, prepared statement", None),
+    ("McCollum, Hon. Bill, U.S. Representative in Congress from the State of Florida, prepared statement", None),
+    ("Gorton, Hon. Slade, a U.S. Senator from the State of Washington, prepared statement", None),
+    # ... and keeps its earlier reading under the styles read before.
+    ("Hon. Jane Doe, a Representative in Congress from the State of Ohio, prepared statement", "member_statement"),
+    # A State senator is no Member.
+    ("Kirkendoll, Hon. Art, Senator, West Virginia State Senate, letter", None),
+])
+def test_one_member_style_reader_for_both_chambers(line, expected):
+    """Owner decision 2026-11-10, round 7 ("Transcripts decide in the rule"): one reader of a Member's style for both
+    chambers; a line that names a submission is a Member's statement; a prepared statement alone is decided by the
+    hearing transcript (to come), so under the newly read styles it stays as printed."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(line))
+    assert found[0]["witness_type"] == expected
+
+
+@pytest.mark.parametrize("lines,members,expected", [
+    # A heading run into the first entry under it carries over the Member lines that follow (CHRG-106shrg59372).
+    (["OPENING STATEMENTS Crapo, Hon. Michael D., U.S. Senator from the State of Idaho",
+      "Lautenberg, Hon. Frank R., U.S. Senator from the State of New Jersey",
+      "Barry, Hon. Donald J., Assistant Secretary for Fish, Wildlife and Parks, U.S. Department of the Interior"], (),
+     [("Michael D. Crapo", "U.S. Senator from the State of Idaho", "opening statement"),
+      ("Frank R. Lautenberg", "U.S. Senator from the State of New Jersey", "opening statement"),
+      ("Donald J. Barry", "Assistant Secretary for Fish", "Wildlife and Parks, U.S. Department of the Interior")]),
+    # A section title before the heading (CHRG-112jhrg71179 #8, #9 and #10).
+    (["Overview of Previous Debt Proposals Opening Statements Hensarling, Hon. Jeb, a U.S. Representative from Texas, "
+      "co- chairman, Joint Select Committee on Deficit Reduction",
+      "Murray, Hon. Patty, a U.S. Senator from Washington, co-chairman, Joint Select Committee on Deficit Reduction",
+      "Bowles, Erskine, Co-Chair, National Commission on Fiscal Responsibility and Reform"], (),
+     [("Jeb Hensarling", "a U.S. Representative from Texas",
+       "co- chairman, Joint Select Committee on Deficit Reduction, opening statement"),
+      ("Patty Murray", "a U.S. Senator from Washington",
+       "co-chairman, Joint Select Committee on Deficit Reduction, opening statement"),
+      ("Erskine Bowles", "Co-Chair", "National Commission on Fiscal Responsibility and Reform")]),
+    # A contents heading and its dot leader; a Member the print's roster names, with no style (CHRG-106hhrg61647).
+    (["Appendix Opening statements:...................................... Talent, Hon. James M", "Velazquez, Hon. Nydia",
+      "Prepared statements:..................................... LaMura, Marianne"], ("James M. Talent", "Nydia Velazquez"),
+     [("James M Talent", None, "opening statement"), ("Nydia Velazquez", None, "opening statement"),
+      ("Marianne LaMura", None, None)]),
+    # A sitting's heading, its date (CHRG-114hhrg99853 #35) or its subcommittee and weekday (CHRG-112hhrg64659 #7);
+    # the words as a label (CHRG-117shrg53977 #1); a given name run into the Member's style (CHRG-117hhrg49906 #73).
+    (["Tuesday, May 24, 2016--Subcommittee on Livestock and Foreign Agriculture Costa, Hon. Jim, a Representative in "
+      "Congress from California, opening statement"], (),
+     [("Jim Costa", "a Representative in Congress from California", "opening statement")]),
+    (["Subcommittee on General Farm Commodities and Risk Management, Tuesday, Boswell, Hon. Leonard L., a "
+      "Representative in Congress from Iowa, opening statement"], (),
+     [("Leonard L. Boswell", "a Representative in Congress from Iowa", "opening statement")]),
+    (["Opening Statement of Hon. Patrick J. Leahy, a U.S. Senator from the State of Vermont"], (),
+     [("Patrick J. Leahy", "a U.S. Senator from the State of Vermont", "opening statement")]),
+    (["Thompson, Hon. Glenn a Representative in Congress from Pennsylvania, opening statement"], (),
+     [("Glenn Thompson", "a Representative in Congress from Pennsylvania", "opening statement")]),
+])
+def test_a_members_opening_statement_keeps_the_words(lines, members, expected):
+    """Round 8: a Member's opening statement keeps "opening statement" in its organization, from its own text or an
+    opening statements heading over it, for the model step that types it from the committee's roster; the parser
+    leaves it untyped. A heading or a sitting's date run into the entry names no one."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(*lines, members=members))
+    assert [(a["name"], a["position"], a["organization"]) for a in found] == expected
+    assert all(a["witness_type"] is None for a in found)
+
+
+def test_a_prints_committees_and_members_are_its_own_facts():
+    """A print's congCommittee codes, lower case, and its committee members' bioGuideIds, root and constituent items,
+    each once in the publisher's order; a print in parts states them on its items only (CHRG-117hhrg49906). The
+    entry behind a date heading starts at a family of two words the print's roster names."""
+    line = ("Wednesday, June 8, 2022--Subcommittee on Nutrition, Oversight, and Department Operations Torres Small, Hon. "
+            "Xochitl, a Representative in Congress from New Mexico, opening statement")
+    member = '<congMember bioGuideId="{}" chamber="H" role="{}"><name type="authority-lnf">{}</name></congMember>'
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+           f'<witness>{escape(line)}</witness></extension>'
+           '<relatedItem type="constituent"><extension><congCommittee authorityId="HSAG00" chamber="H"/>'
+           + member.format("T000484", "COMMMEMBER", "Torres Small, Xochitl")
+           + member.format("S001234", "WITNESS", "Smith, Jane") + '</extension></relatedItem>'
+           '<relatedItem type="constituent"><extension><congCommittee authorityId="HSAG03" chamber="H"/>'
+           '<congCommittee authorityId="HSAG00" chamber="H"/>' + member.format("B001298", "COMMMEMBER", "Bacon, Don")
+           + member.format("T000484", "COMMMEMBER", "Torres Small, Xochitl") + '</extension></relatedItem></mods>')
+    row = appearance_records.build_appearance_record_row(_sha("committee-facts"), "mods", xml.encode())
+    assert (row["committees"], row["committee_members"]) == (["hsag00", "hsag03"], ["T000484", "B001298"])
+    assert [(a["name"], a["organization"]) for a in row["appearances"]] == [("Xochitl Torres Small", "opening statement")]
+
+
+def test_a_biography_appendix_is_read_by_rule_in_a_real_print():
+    """CHRG-108hhrg85516 (real bytes): five witnesses, then "Appendix 1: Biographies, ... Questions" run into the
+    first biography and one line per witness ending "Biography". Each biography is record material named for its
+    person; the witnesses' own lines stay witnesses. No reviewed entry is left for the print."""
+    xml = (ROOT / "packages/congress_api/tests/fixtures/gpo_metadata/CHRG-108hhrg85516.xml").read_bytes()
+    row = appearance_records.build_appearance_record_row(_sha("CHRG-108hhrg85516"), "mods", xml)
+    people = ["Donald Scavia", "Charles G. Groat", "Wayne W. Carmichael", "Donald M. Anderson", "Dan L. Ayres"]
+    assert [(a["name"], a["witness_type"]) for a in row["appearances"]] == [
+        *((name, None) for name in people), *((name, "record_material") for name in people)]
+    assert "CHRG-108hhrg85516" not in mods_record_entries.MODS_RECORD_ENTRIES
+
+
+@pytest.mark.parametrize("lines,index,names", [
+    (["Responses to additional questions from: Senators Boxer and Carper................................81,",
+      "Senators Boxer and Lautenberg............................81,"], 1, ("Boxer", "Carper")),
+    (["Responses to additional questions from: Senators Boxer and Carper................................81,",
+      "Senators Boxer and Lautenberg............................81,"], 2, ("Boxer", "Lautenberg")),
+    (["Responses to written questions of: Senators Brown, Reed, Schumer, Menendez, Tester, Warner, Merkley, Warren, "
+      "Heitkamp, and Donnelly"], 1,
+     ("Brown", "Reed", "Schumer", "Menendez", "Tester", "Warner", "Merkley", "Warren", "Heitkamp", "Donnelly")),
+    (["Questions and Answers (Post-Hearing) from: Chairman Michael B. Enzi.......................... 36, 330,",
+      "Ranking Member Bernard Sanders..............................332 Senator Kamala D. Harris............................... 39,"],
+     2, ("Bernard Sanders", "Kamala D. Harris")),
+])
+def test_a_question_line_naming_several_askers_reads_each(lines, index, names):
+    """A heading's list of Senators (CHRG-111shrg21635 #6, CHRG-114shrg23001 #2), a list after it (CHRG-111shrg21635
+    #7) and two paged askers on one line (CHRG-115shrg35700 #6) are a record_material row per Member, by the name the
+    print gives, without "Senators" or a committee title; the second at /part[2], the next at /part[3]."""
+    found = [a for a in appearance_records.extract_mods_appearances(_mods_lines(*lines, members=("Michael B. Enzi",)),
+                                                                    package_id="CHRG-000shrg00000")
+             if a["source_locator"].split("/")[0] == f"mods:witness[{index}]"]
+    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["witness_type"]) for a in found] == [
+        (locator, name, None, None, "record_material") for locator, name in zip(_parts(index, len(names)), names)]
+
+
+@pytest.mark.parametrize("line,members,rows", [
+    # Review round 2: askers printed before the person the line reads; display follows the print.
+    ("Responses to additional questions from: Senator Inhofe........................................... 44-73 Senator "
+     "Smith............................................ 73-77 Sessions, Hon. Jeff, U.S. Senator from the State of Alabama",
+     (), [("Jeff Sessions", "statement_for_record", 4), ("Inhofe", "record_material", 2), ("Smith", "record_material", 3)]),
+    ("New Source Review: Report to the President, Overview....134-155 New Source Review: Report to the President, June "
+     "2002, Recommended Improvements to the New Source Review Program...............................................130-134 "
+     "Responses to additional questions from Senators Jeffords and Leahy....................................................."
+     "113-130 Kelley, Hilton, founder, Community In-Power and Development Association", (),
+     [("Hilton Kelley", None, 4), ("Jeffords", "record_material", 2), ("Leahy", "record_material", 3)]),
+    ("Response to written question of: Senator Reed............................................. Marcus Schaefer, "
+     "President and Chief Executive Officer, Truliant Federal Credit Union", (),
+     [("Marcus Schaefer", None, 3), ("Reed", "record_material", 2)]),
+    # A witness's entry, then the heading naming who asked them.
+    ("Baran, Hon. Jeff, Commissioner, U.S. Nuclear Regulatory Commission.............................................."
+     "....... Responses to additional questions from: Senator Barrasso", (),
+     [("Jeff Baran", None, 2), ("Barrasso", "record_material", 3)]),
+    ("Apostolakis, Hon. George, Commissioner Responses to additional questions from Senator Boxer", (),
+     [("George Apostolakis", None, 2), ("Boxer", "record_material", 3)]),
+    ("Mr. Damon Stevens, Assistant Director, Strategic Operational Planning, National Counterterrorism Center, Office of "
+     "the Director of National Intelligence: Questions From Chairman Bennie G. Thompson for Damon Stevens", (),
+     [("Damon Stevens", None, 2), ("Bennie G. Thompson", "record_material", 3)]),
+    ("Responses by Robert Raben, Assistant Attorney General to additional questions from Senator Smith", (),
+     # Round 6: the official a written-answer line names, with no testimony row of their own, answered in writing.
+     [("Responses by Robert Raben", "statement_for_record", 2), ("Smith", "record_material", 3)]),
+])
+def test_askers_printed_inside_another_entry_follow_its_row(line, members, rows):
+    """Owner decision 2026-11-10: a line that prints askers inside another entry (a witness's, a document's) keeps that
+    entry's reading at its locator, as published before; each asker follows it at /part[2] and on, and display
+    numbers follow the print (askers printed first come first)."""
+    found = appearance_records.extract_mods_appearances(_mods_lines("", line, members=members))
+    assert [(a["name"], a["witness_type"], a["display_order"]) for a in found[1:]] == rows
+    assert [a["source_locator"] for a in found[1:]] == _parts(2, len(rows))
+
+
+@pytest.mark.parametrize("package,index,line,names", [
+    ("CHRG-115shrg34881", 5, "Hon. Sherrod Brown......................................... 47,50 Hon. Joe Manchin III",
+     ("Sherrod Brown", "Joe Manchin III")),
+    ("CHRG-112shrg86775", 8, "QUESTIONS FROM HON. AL FRANKEN, HON. RICHARD BLUMENTHAL, AND HON. TOM COBURN Questions "
+     "from Hon. Al Franken to Alan Davidson and Guy ``Bud'' Tribble", ("Al Franken", "Richard Blumenthal", "Tom Coburn")),
+    ("CHRG-115hhrg25242", 2, "Responses to questions for the record from the following Representatives: Hon. Frank A. "
+     "LoBiondo of New Jersey, submitted on behalf of Hon. Paul Mitchell of Michigan", ("Frank A. LoBiondo", "Paul Mitchell")),
+])
+def test_askers_the_rule_cannot_decide_are_reviewed(package, index, line, names):
+    """Askers the rule cannot decide, each bound by its line's SHA-256 in MODS_RECORD_ENTRIES (its docstring gives
+    each reason): "Hon." names after a witness with no heading where the print's <congMember> list names one of them
+    (Brown, not Manchin), a heading in capitals, a Member who asked on behalf of another. The answerers the line names
+    follow the entry's rows. Off its reviewed position the line reads by the rule alone, which shows no one the rule
+    cannot place (Mitchell, Blumenthal and Coburn, Manchin)."""
+    entry = mods_record_entries.MODS_RECORD_ENTRIES[package][index]
+    assert entry == (hashlib.sha256(line.encode()).hexdigest(), names, "record_material")
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
+    assert _askers(found[index - 1:index - 1 + len(names)]) == [
+        (locator, name, "record_material", index + i) for i, (locator, name) in enumerate(zip(_parts(index, len(names)),
+                                                                                           names))]
+    assert all(a["witness_type"] != "record_material" for a in found[index - 1 + len(names):])
+    rows = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id="CHRG-0")
+    assert names[-1] not in [a["name"] for a in rows]
+
+
+def test_hon_alone_makes_no_one_a_member():
+    """Real witnesses print "Hon." (the Comptroller General, CBO's director, Commissioners, agency chairs), and a
+    Member's own paged entry prints it too ("Honorable Jim Bunning.....1,"; CHRG-109shrg28459): none of these is an
+    asker, under a question heading or not. Members who testified as a caucus's chair keep their witness rows
+    (CHRG-112shrg71326): "Chairman Congressional Black Caucus" names no Member, so the line names no asker."""
+    lines = ["Dodaro, Hon. Gene L., Comptroller of the United States, U.S. Government Accountability Office.......... 297,",
+             "Hall, Hon. Keith, Ph.D. Director, Congressional Budget Office",
+             "Honorable Jim Bunning............................................ 1,",
+             "Cleaver, Hon. Emanuel, a Representative in Congress from the State of Missouri, and Chairman Congressional "
+             "Black Caucus",
+             "Bair, Hon. Sheila C., Chairman Federal Deposit Insurance Corporation",
+             "Flores, Hon. Amelia, Chairwoman Colorado River Indian Tribes"]
+    found = appearance_records.extract_mods_appearances(_mods_lines(*lines, members=("Jim Bunning", "Emanuel Cleaver")))
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        ("Gene L. Dodaro", None), ("Keith Hall", None), ("Jim Bunning", None), ("Emanuel Cleaver", None),
+        ("Sheila C. Bair", None), ("Amelia Flores", None)]
+    under = appearance_records.extract_mods_appearances(_mods_lines("Responses to additional questions from:",
+                                                                    "Hon. Gene L. Dodaro"))
+    assert [(a["name"], a["witness_type"]) for a in under] == [(None, "record_material"), ("Gene L. Dodaro", None)]
+
+
+# ct-gfo7 item 4 (owner 2026-11-10): the organization-only statements whose organization a witness of the same print
+# testified for, among all 37 such rows on 2026-11-10.
+OWN_STATEMENTS = [
+    ("CHRG-110shrg75166", 3, "The Federal Trade Commission, prepared statement"),
+    ("CHRG-114hhrg93962", 11, "National Commission on Hunger, submitted report"),
+    ("CHRG-107shrg81998", 23, "American Civil Liberties Union, Washington, D.C.: November 28, 2001, statement"),
+]
+
+
+@pytest.mark.parametrize("package,index,line", OWN_STATEMENTS)
+def test_the_testifying_bodys_own_statement_is_record_material(package, index, line):
+    """Owner decision 2026-11-10 (ct-gfo7 item 4): an organization's statement is the testifying body's own document
+    when a witness of the print testified for it (FTC commissioners, the Hunger Commission's co-chairs, the ACLU's
+    president), so record_material rather than statement_for_record, its text kept in organization as before. Off its
+    reviewed position the line reads by the rule, a statement for the record."""
+    assert mods_record_entries.MODS_RECORD_ENTRIES[package][index] == (hashlib.sha256(line.encode()).hexdigest(), None,
+                                                                       "document")
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
+    assert [(a["source_locator"], a["name"], a["position"], a["organization"], a["witness_type"])
+            for a in found[index - 1:]] == [(f"mods:witness[{index}]", None, None, line, "record_material")]
+    unreviewed = appearance_records.extract_mods_appearances(_mods_lines(*[""] * index, line), package_id=package)
+    assert [(a["organization"], a["witness_type"]) for a in unreviewed[index:]] == [(line, "statement_for_record")]
+
+
+def test_reviewed_document_titles_keep_their_text_in_organization():
+    """Owner decision 2026-11-10 (ct-3aap): the sixteen reviewed document titles are record material and keep in
+    `organization` the text the activated generation holds for them, the title and the publisher it names, as an
+    organization's letter or statement does. Each control's line is the print's own and its organization is that
+    generation's (pin 8a0023a9); the dot-leader leftovers and the reviewed askers keep no field."""
+    controls = json.loads((Path(__file__).parent / "fixtures/source_models/mods-record-titles.json").read_text())
+    entries = mods_record_entries.MODS_RECORD_ENTRIES
+    documents = {(package, index) for package, by in entries.items() for index, entry in by.items()
+                 if entry[2:] == ("document",)}
+    assert {(c["package"], int(c["locator"][13:-1])) for c in controls} == documents - {s[:2] for s in OWN_STATEMENTS}
+    assert len(controls) == 16
+    for control in controls:
+        package, index, line = control["package"], int(control["locator"][13:-1]), control["source_literal"]
+        assert entries[package][index] == (hashlib.sha256(line.encode()).hexdigest(), None, "document")
+        row = appearance_records.build_appearance_record_row(
+            _sha(line), "mods", _mods_lines(*[""] * (index - 1), line), package_id=package)
+        item = row["appearances"][index - 1]
+        assert (item["source_locator"], item["name"], item["position"], item["organization"], item["on_behalf_of"],
+                item["witness_type"]) == (control["locator"], None, None, control["organization"], None, "record_material")
+        # Off its reviewed position the line is read by the rules alone, as before it was reviewed.
+        unreviewed = appearance_records.extract_mods_appearances(_mods_lines(*[""] * index, line), package_id=package)
+        assert unreviewed[index]["organization"] == control["organization"]
+        assert unreviewed[index]["witness_type"] != "record_material"
+    for package, index in [("CHRG-116shrg39734", 4), ("CHRG-106shrg66381", 26), ("CHRG-110shrg55921", 3),
+                           ("CHRG-115shrg26915", 5)]:
+        assert entries[package][index][1:] == (None, "record_material")
+
+
+def test_a_question_block_ends_at_the_first_line_that_is_not_an_asker():
+    """CHRG-114hhrg94806: a heading and the Member after it are record material; the witness after them, and a
+    Member listed after that witness with no heading of their own, read as before."""
+    lines = ["Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana",
+             "Hon. Peter A. DeFazio, of Oregon",
+             "Hon. Joseph H. Boardman, President and Chief Executive Officer, Amtrak: Testimony",
+             "Hon. Corrine Brown, of Florida"]
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+           + "".join(f"<witness>{line}</witness>" for line in lines) + "</extension></mods>")
+    found = appearance_records.extract_mods_appearances(xml, package_id="CHRG-000hhrg00000")
+    assert [(a["name"], a["witness_type"]) for a in found] == [
+        ("Andre Carson", "record_material"), ("Peter A. DeFazio", "record_material"),
+        ("Joseph H. Boardman", None), ("Corrine Brown", None)]
 
 
 def test_every_source_version_covers_the_table_write():

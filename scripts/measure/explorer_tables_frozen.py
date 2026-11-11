@@ -62,7 +62,9 @@ def positioned_list(release, work):
 
 
 def spicy_inputs(work, spicy_regs_dir):
-    names = ('spicy_committees', 'spicy_bill_committee_activities', 'spicy_congress_bills', 'spicy_nominations')
+    # Members and their terms decide which witness rows are Member appearances (ct-kw85).
+    names = ('spicy_committees', 'spicy_bill_committee_activities', 'spicy_congress_bills', 'spicy_nominations',
+             'spicy_members', 'spicy_member_terms')
     if spicy_regs_dir is not None and (spicy_regs_dir / 'spicy-regs.json').is_file():
         tables = json.loads((spicy_regs_dir / 'spicy-regs.json').read_text())['tables']
         return [dict(name=name, kind='parquet', path=str(spicy_regs_dir / tables[name]['path'])) for name in names]
@@ -71,6 +73,8 @@ def spicy_inputs(work, spicy_regs_dir):
         json_input(work, 'spicy_bill_committee_activities', [], **SPICY_SCHEMAS['spicy_bill_committee_activities']),
         json_input(work, 'spicy_congress_bills', [], **SPICY_SCHEMAS['spicy_congress_bills']),
         json_input(work, 'spicy_nominations', [], **SPICY_SCHEMAS['spicy_nominations']),
+        json_input(work, 'spicy_members', [], **SPICY_SCHEMAS['spicy_members']),
+        json_input(work, 'spicy_member_terms', [], **SPICY_SCHEMAS['spicy_member_terms']),
     ]
 
 

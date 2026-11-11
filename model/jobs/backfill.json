@@ -29,7 +29,7 @@
       ]
     },
     "appearance_records": {
-      "name": "appearance_records_mvp_20261105",
+      "name": "appearance_records_committees_20261111",
       "namespace": [
         "archive_r1b"
       ]
@@ -51,9 +51,9 @@
   "max_batches": 20,
   "producers": {
     "appearance_records": {
-      "path": "producers/appearance_records-mvp-20261105.json",
-      "sha256": "f3b6b08d4b778b23166ea49d4503db67326ebf11a76619968bfc20851ec05366",
-      "size": 3046
+      "path": "producers/appearance_records-committees-20261111.json",
+      "sha256": "31f3a7a996d4052d643b90ce7c083ab21befcff9e120ab6c6acfd8db89e9931b",
+      "size": 3066
     },
     "captures": {
       "path": "producers/captures.json",
