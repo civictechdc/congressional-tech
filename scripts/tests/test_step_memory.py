@@ -372,8 +372,8 @@ def test_a_debug_line_counts_for_the_next_statement_in_its_stream(tmp_path, caps
 
 def test_a_debug_log_from_another_run_or_none_at_all_is_refused(tmp_path, capsys):
     paths = write(tmp_path)
-    moved = ''.join(metric({**event, 'start_epoch': event['start_epoch'] + 1}) if 'start_epoch' in event else metric(event)
-                    for event in EVENTS)
+    moved = admission(1) + ''.join(metric({**event, 'start_epoch': event['start_epoch'] + 1}) if 'start_epoch' in event
+                                   else metric(event) for event in EVENTS)
     (tmp_path / 'other.log').write_text(moved)
     assert 'not from this run' in refusal(capsys, *paths, '--debug-log', str(tmp_path / 'other.log'))
     assert 'absent.log' in refusal(capsys, *paths, '--debug-log', str(tmp_path / 'absent.log'))
