@@ -219,9 +219,24 @@ def test_committed_shard_durations_keep_every_production_offline_shard_within_bu
     config = dev.declaration()
     files = dev.inventory(config)
     roots = config['lanes']['production-offline']['roots']
+    enrolled = {item for item in files if any(
+        item == root or item.startswith(root.rstrip('/') + '/') for root in roots)}
     durations = dev.load_shard_durations()
+    assert len(enrolled - durations.keys()) <= 25
     parts = [dev.shard_files(files, roots, (i, 6), durations=durations) for i in range(1, 7)]
     loads = [sum(durations.get(name, dev.DEFAULT_SHARD_DURATION_MS) for name in part) for part in parts]
     assert max(loads) < 1_050_000
     assert max(loads) - min(loads) < 30_000
+
+
+def test_refresh_shard_durations_cli_merges_active_files_and_drops_retired_paths(tmp_path, monkeypatch):
+    enrolled = {'tests/test_kept.py', 'tests/test_updated.py'}
+    monkeypatch.setattr(dev, 'inventory', lambda *_: enrolled)
+    out = tmp_path / 'durations.json'
+    out.write_text('{"tests/test_kept.py": 3200, "tests/test_retired.py": 9000}\n')
+    xml = tmp_path / 'shard.xml'
+    xml.write_text('<testsuite><testcase classname="tests.test_updated" name="t" time="7.5"/></testsuite>')
+    assert dev.main(['refresh-shard-durations', str(xml), '--lane', 'production-offline',
+                     '--merge', '--out', str(out)]) == 0
+    assert dev.load_shard_durations(out) == {'tests/test_kept.py': 3_200, 'tests/test_updated.py': 7_500}
 
