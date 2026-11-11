@@ -670,7 +670,8 @@ def main(argv=None):
     ask.add_argument('--json', action='store_true', help="Print the engine's JSON instead of tab-separated rows")
     ask.add_argument('--memory-gib', type=float, help='Engine memory for the query (default 2; never above the runtime)')
     ask.add_argument('--work', type=Path,
-                     help='Keep the job in this new or empty folder (job.json, limits.json, engine.log, result.json)')
+                     help='Keep the job in this new or empty folder (job.json, engine.log, result.json, '
+                          'and limits.json when a limit was lowered)')
     tests = sub.add_parser('test')
     tests.add_argument('lane', choices=config['lanes'], nargs='?', default='production-offline')
     tests.add_argument('--path', action='append', default=[], help='Restrict to a path or node within this lane (repeatable)')

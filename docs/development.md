@@ -127,7 +127,8 @@ needed over 32 MB), so ask for counts or narrow columns. The client stops a quer
 after the runtime's `timeout_seconds`, 120 s unless the runtime file sets it.
 Nothing is written: the job has no steps or outputs, and the engine plans no DDL
 or DML in a query. The job folder is temporary and removed on exit or TERM;
-`--work DIR` (new or empty) keeps `job.json`, `limits.json` and `engine.log`.
+`--work DIR` (new or empty) keeps `job.json`, `engine.log` and, when a limit was
+lowered, `limits.json`.
 From Python, `congress_api.retention.provenance.query(engine, sql, tables)`,
 `query_result` (column names too) and `explain(...)` do the same with any engine.
 Large inputs still run under the watchdog (AGENTS.md).

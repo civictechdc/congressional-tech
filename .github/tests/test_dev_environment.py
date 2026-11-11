@@ -379,9 +379,11 @@ def test_query_prints_rows_a_reader_can_read_or_the_engines_json(tmp_path, capsy
     assert 'Plan with Metrics\n' in capsys.readouterr().out
 
 
-def test_a_stopped_query_leaves_no_temporary_folder(tmp_path):
-    """The watchdog stops a job with TERM to its group, then KILL 5 s later; the query's folder (up to its scratch
-    limit of spill) is removed on TERM. Plant: without dev.py's TERM handler the folder stays."""
+def test_a_stopped_query_leaves_no_engine_and_no_temporary_folder(tmp_path):
+    """The watchdog stops a job with TERM, then KILL 5 s later; the query's folder (up to its scratch limit of
+    spill) is removed on TERM. TERM goes to dev.py alone, so the engine is stopped by dev.py's exit path
+    (subprocess.run kills its child), not by a signal of its own. Plants: no TERM handler leaves the folder;
+    a handler that exits at once leaves the engine running."""
     import time
     temporary = tmp_path / 'tmp'
     temporary.mkdir()
@@ -395,8 +397,10 @@ def test_a_stopped_query_leaves_no_temporary_folder(tmp_path):
             time.sleep(0.05)
         assert list(temporary.glob('docspec-query-*/engine.log')), process.stderr.read() if process.poll() else ''
         time.sleep(0.3)
-        os.killpg(process.pid, signal.SIGTERM)
+        os.kill(process.pid, signal.SIGTERM)
         assert process.wait(timeout=5) != 0
+        with pytest.raises(ProcessLookupError):  # nothing of the job is left running, the engine included
+            os.killpg(process.pid, 0)
     finally:
         with suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)

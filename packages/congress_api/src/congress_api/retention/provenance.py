@@ -379,7 +379,8 @@ def _query_job(engine,queries,tables,*,memory_bytes=QUERY_MEMORY_BYTES,scratch_b
     """One throwaway `run_job` of `queries` over `tables`: no steps, no outputs, memory and scratch lowered.
 
     The engine plans no DDL or DML in a job query, so nothing is written outside the job's folder. `work`
-    keeps the job (`job.json`, `limits.json`, `engine.log`, `result.json`) and must be absent or empty, so no
+    keeps the job (`job.json`, `engine.log`, `result.json`, and `limits.json` when a limit was lowered) and
+    must be absent or empty, so no
     earlier run's file sits beside it. Otherwise the folder is temporary and removed on return; dev.py turns
     the watchdog's TERM into a return, and a KILLed query leaves at most `scratch_bytes` of spill behind."""
     from congress_api.lake.tables import table_input
