@@ -17,3 +17,9 @@ Stage 1 of the staged move of the model to managed jobs (owner decision 2026-11-
 
 A test that fails first: a field id written by one step is present in the schema a later step sees after the managed reopen, and in the export's footer. The pipeline's fixture model gives equal output hashes plain against managed for every file (or the remaining differences are listed by cause). Plain jobs on today's inputs give the same bytes before and after (measured on the fixture and on the local measurement job). Independent review; the engine's check green on the integration branch.
 
+
+## Notes
+
+**2026-11-11T11:14:25Z**
+
+2026-11-11: for the one-line pin the owner accepted field ids on lake-copied columns ('Accept them', relayed by the coordinator at 09:22Z): on the candidate ae12bbd, columns the model copies from lake tables carry their source column's Iceberg field id. Read from the lake-backed fixture run: 11 file-and-column pairs in 6 files, 9 distinct columns, for example detail.parquet and document_rows.parquet saved_bytes (21) and in_archive_since (36), url_state.parquet requested_url (8) (PIN-MOVE-QUALIFICATION.md section 2, from refactor/one-line/ol_bytes_w12lake_pinned_vs_tip7aa59e3.json). The byte test accepts a field id only on a column copied from a lake table and equal to that column's id. This ticket still sets field ids deliberately; the pinned behaviour is its starting point (stage 1a), and the release note says a later engine change assigns them.
