@@ -1,6 +1,6 @@
 ---
 id: ct-hiec
-status: in_progress
+status: closed
 deps: []
 links: [ct-4jms, ct-082q]
 created: 2026-11-08T17:33:29Z
@@ -38,3 +38,7 @@ Moved out of ct-082q's acceptance criteria (owner decision 2026-11-08). New HTML
 **2026-11-10T13:27:30Z**
 
 2026-11-10 status: merged to main in 0fad483d (one budget per night, the rest carried). Three scheduled or hand-run nightlies have run with it since; the 12:15Z run ended release_unchanged, so it has not yet been seen reading a night's new HTML pages under the budget and carrying a remainder. Left: observe one such night (run folder steps.jsonl now records it) and state the numbers here; then close.
+
+**2026-11-11T14:40:09Z**
+
+validated 2026-11-11, closing: on main since 0fad483d, and seen working unattended. The capture of 2026-11-10 14:03Z (1,032 receipts, 1,027 HTTP 200) was read by the driver's own nightly at 18:58Z (run 20261110T185807.402472Z, launched through the launch agent, daily_status completed); the rebuild at 19:53Z (published as 77673bfb8fcf) found the html_metadata work list empty (candidate-rebuilt/archive-daily/html_metadata-scoped/readings/plan/work-list.parquet: 0 rows of a 2,516-body scope), so every new page had been read. readings took 2 commits for it (ct-1mq9). Not seen: a night that exceeds the 64 MiB budget and carries a remainder (no summary.json has had daily_carried); the carry path is covered by its lane tests (six shards green on 72e8b1a9).

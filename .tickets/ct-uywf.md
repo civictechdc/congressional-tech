@@ -1,6 +1,6 @@
 ---
 id: ct-uywf
-status: in_progress
+status: closed
 deps: []
 links: [ct-rhqw, ct-46f3]
 created: 2026-11-10T19:31:06Z
@@ -43,3 +43,7 @@ Either a witness's key and basis are stable across a re-fetch that does not chan
 **2026-11-11T02:23:12Z**
 
 2026-11-11 (same branch, review fixes; rebased onto 15b24814): the independent review said ship with two must-fixes. (1) The witnesses 'added keys | successor of a re-keyed witness' group was exempt as a whole; now only successors in witness_refetch are (a surviving witness's key mapped to a new duplicate stays a refused group, the review's p16). (2) The review's plants are repository tests: test_release_gate.py::test_a_meeting_read_again_unattended, one case per clause, plus D1 (a document key the map moves that no re-fetch moved stops) and D2 (documents naming re-keyed witnesses pass; without it every relist night stops: 78 such rows per document file on 619db5f9e08e to 77673bfb8fcf). Should-fixes, all done: the witness half is Congress.gov only and each re-keyed witness's new body must be its meeting's new detail read body (so two re-fetched meetings cannot trade bodies; a MODS re-fetch now stops); the gate also requires each new read's capture line to carry the read's own time; the multiset compares structs directly. Clause mutations (uy-08-mutate.py, uy-mutations-review.json): p16 split, D1, D2, read tie, read time and multiset each fail a test; 'Congress.gov only' survives because the read tie implies it. Cause records drafted against the old comparison refuse after merge (77673's meetings 'changed congress_gov_detail_observation' 32 becomes 18; its 'witness_key_map | changed basis' entry is stale); docs/releases/README.md says so. Replay unchanged: 619db5f9e08e to 77673bfb8fcf exempts 37 of 37 re-keys and 14 meetings' read columns; 630164505301 to 619db5f9e08e qualifies 99 of 104 (the 5 MODS occasion moves stop the whole re-key). The capture step on the real tables (candidate model capture_evidence, the review's ur-03-capture-step.py) passes 23 of 23 new bodies and 34 of 34 new reads with the time check. Tests: test_release_gate.py 180, test_release_comparison.py 82, test_archive_publish.py 36 passed.
+
+**2026-11-11T14:35:33Z**
+
+validated 2026-11-11, closing: the acceptance's second option is on main. f358d020 (merged d1bbe1f7, owner 'Push now, applies tonight', full lanes green 03:00:51Z) and the review's last plants c4295a1b (merged 67282b94 after a green stacked lane set, 11:11Z): release_comparison.py marks re-fetch-only rows refetch_only (29 references) and test_release_gate.py::test_a_meeting_read_again_unattended plants each clause. Rerun today on origin/main 17a283bc: test_release_gate.py through dev.py test production-offline --path: 183 passed in 66 s. The replay on 619db5f9e08e -> 77673bfb8fcf exempts 37 of 37 re-keys with no unexplained witness_key_map group (ct-uywf-20261110/uy-replay-*). Not yet exercised live: the 20261111T103005Z nightly read 0 new receipts (release_unchanged), so the first relist night is the first real use. The witness half is interim and is deleted by carried witness keys (ct-46f3, open, congress-1).

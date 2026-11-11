@@ -17,3 +17,9 @@ url_state on 2026-11-10: 303 in-scope www.energy.senate.gov addresses are at 403
 
 The 303 addresses are fetched, or the refusal is recorded with what was tried (user agent, rate, route); the 88 request failures have a recorded status or reason.
 
+
+## Notes
+
+**2026-11-11T14:40:09Z**
+
+validated 2026-11-11, left open: unchanged in the live release. DuckDB on 77673bfb8fcf url_state.parquet, www.energy.senate.gov excluding /wp-json/oembed/: 1,426 at 200, 303 at 403 (last attempt 2026-10-30), 69 at 404, 8 with no status. Nothing has been tried since the filing.

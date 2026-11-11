@@ -17,3 +17,9 @@ From the 2026-11-10 cause review: discovery lists only each family's newest day 
 
 The blind spot is confirmed or refuted from code with a test; if real, discovery finds a planted late receipt in an older prefix; the 44 missed receipts are explained.
 
+
+## Notes
+
+**2026-11-11T14:40:09Z**
+
+validated 2026-11-11, left open; the blind spot is confirmed from code, no test yet. receipt_inventory.discover_receipts (lake/receipt_inventory.py:67-116) in incremental mode keeps a prefix only when it is a date and cast(day) >= that family's newest existing day; undated prefixes and older days are listed only in backfill or raw-check mode. So a receipt written late into an older day prefix is not discovered by the nightly. Remains: the planted-late-receipt test and a fix (or a periodic backfill-mode listing), the docs note that the oldest-first daily budget tail is by design, and the 44 missed receipts explained.

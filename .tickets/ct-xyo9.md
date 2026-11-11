@@ -23,3 +23,7 @@ Each numbered item is fixed with a failing-first test from the reviewer's plant,
 **2026-11-10T13:27:30Z**
 
 2026-11-10: no work since filing. The gate rules it follows (ct-syp1, ct-gc99, ct-4qld, ct-wscb) are on main in e6c1865c and ran in the 12:15Z scheduled nightly without a refusal (release unchanged, so no comparison groups were formed).
+
+**2026-11-11T14:35:33Z**
+
+validated 2026-11-11, left open: none of the six items has been worked (git log --grep ct-xyo9 finds only the filing commit e6c1865c). Each still needs a failing-first test from the reviewer's plant or a recorded decline.

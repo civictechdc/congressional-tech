@@ -27,3 +27,7 @@ Do this before or alongside the full-corpus run only if the measured probe cost 
 **2026-11-10T03:56:09Z**
 
 2026-11-10 measurement: 60 random bodies from the captures pin, one-byte Range GET against the public origin with a fresh connection each (urllib, User-Agent ct-body-text/1): median 293 ms, p90 430 ms; 57 of 60 answered 206 with the captured size (the other 3 not examined). The producer reuses a client connection, so its real cost per probe is lower and unmeasured. Upper bound for the full run at 12 workers: 584,000 bodies x 0.3 s / 12 = about 4 hours of a multi-day run, and for cheap html bodies the probe is a large share of per-body time. A bucket LIST would replace this with about 600 requests but needs R2 credentials: the public origin does not list, so the local full run (body-text-full-20261110) cannot use it. Scope of this ticket is therefore the credentialed production route only. Cheaper first step if wanted: time the probe inside the worker (one counter) on the running job before building anything.
+
+**2026-11-11T14:40:09Z**
+
+validated 2026-11-11, left open: not done. lake/body_text.py:236 still pins an MD5-less remote read with _observed_etag (line 246), the one-byte probe; no listing input exists for body_text. Scope stays the credentialed production route.

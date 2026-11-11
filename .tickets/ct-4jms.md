@@ -145,3 +145,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-10T20:39:29Z**
 
 2026-11-10 release 77673bfb8fcf published the results of a capture run by hand on this Mac (run 20261110T140311Z-06d91c83c2d8: 2,000 requests, 1,032 receipts), not a scheduled hosted run. The cause record attributes 392 new documents to it (197 new bytes, 195 already in raw). Acceptance still needs the scheduled capture-archive.yml run, which waits on the owner's two hosted secrets.
+
+**2026-11-11T14:40:09Z**
+
+validated 2026-11-11, left open: waits on the owner's two hosted secrets. Checked today with gh: workflow 'Capture archive sources' (399669501) is still disabled_manually, no ARCHIVE_CAPTURE_* secret is listed at repository level, and capture-archive.yml has no runs. The only captures so far are hand runs on the Mac (2026-11-10 14:03Z, published in 77673bfb8fcf). Remains: the owner runs the two 'gh secret set' commands, then 'gh workflow enable capture-archive.yml', then one scheduled run checked against this ticket's list. Related finding, recorded on ct-lft6: receipts under receipts/owner/* are not in publish-daily.json's receipt_families, so the nightly never reads them.

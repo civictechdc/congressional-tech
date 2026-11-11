@@ -1,6 +1,6 @@
 ---
 id: ct-z4i9
-status: in_progress
+status: closed
 deps: []
 links: [ct-1mq9, ct-yndj]
 created: 2026-11-09T02:50:56Z
@@ -35,3 +35,7 @@ Fix: readings.run backfill takes an optional batch_bytes. A batch closes at batc
 Tests: test_readings_budget_backfill.py::test_backfill_commits_scale_with_stored_bytes_not_rows covers 9 bodies at four bounds. Commits are at most ceil(stored bytes/bound), and every batch but the last reaches the bound. test_daily_producers.py's native derived test now uses 3 HTML pages: 3 rows in 1 commit. test_daily_producer_records.py (gate 5) passes unchanged in semantics. Its interrupted-resume case now leaves only the missing body as remaining work, because the pass appends once.
 
 Local measurement (local catalog, no R2; same driver loop, 60 bodies): batch_size=1 took 60 commits in 18.84 s, and the byte bound took 1 commit in 0.58 s; both wrote 120 rows. Projected R2 nightly on the measured scope: 7,169 s of commits becomes about one 20 s commit, so the step is mostly parse time (at most 565 s, less with one worker pool). Acceptance 4 still needs the after measurement on a real nightly with the same scope; that needs R2, which this branch did not touch.
+
+**2026-11-11T14:40:09Z**
+
+validated 2026-11-11, closing: the fix is on main (lake/daily.py:814 passes batch_size=max_work_items and batch_bytes=max_stored_bytes; readings.run takes batch_bytes, readings.py:753-779; the scope's batch_size key is gone from model/jobs/publish-daily.json). Rerun today: packages/congress_api/tests/test_readings_budget_backfill.py through dev.py test production-offline --path: 33 passed, including test_backfill_commits_scale_with_stored_bytes_not_rows. In production (ct-1mq9's measurement from retained run folders) readings took 2 commits and 3 files from 2026-11-09T20:20Z to 2026-11-10T19:16Z, a span that includes the night that read the 1,032-receipt capture, against 362 commits for 362 rows (7,169 s of commits) on 2026-11-09. Acceptance 4's same-scope wall time was not re-measured; the commit count, which was 93% of the time, is the cause and it is gone.

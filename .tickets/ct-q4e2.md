@@ -31,3 +31,7 @@ The public archive has no Congress.gov meeting update after 2026-10-30. Schedule
 **2026-11-10T20:39:29Z**
 
 2026-11-10 release 77673bfb8fcf published the results of a meetings relist run by hand on this Mac (run 20261110T140153Z-6b3c368e77f8: 38 receipts, 35 Congress.gov details). Per the cause record: 3 new meetings, 25 nominations, 10 recording matches and 4 witnesses, plus 37 witness re-keys (ct-uywf). The relist is not yet seen running from the scheduled workflow, which still waits on the hosted secrets (ct-4jms).
+
+**2026-11-11T14:40:09Z**
+
+validated 2026-11-11, left open: the code is on main (fetch_meetings --since-days 7 in capture-archive.yml) and a hand relist proved the path (release 77673bfb8fcf: 3 new meetings from run 20261110T140153Z-6b3c368e77f8). The done condition needs a scheduled run, which waits on ct-4jms's secrets.
