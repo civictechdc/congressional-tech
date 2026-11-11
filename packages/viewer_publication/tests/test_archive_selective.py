@@ -785,7 +785,7 @@ def test_historical_record_only_replay_preserves_rows_but_refuses_head_producer_
     spec_path = tmp_path/'record-only.json'
     spec_path.write_text(json.dumps(dict(version=1, work=str(work), engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
         record_only=dict(base_model=pin(model), bases=bases, raw_root=str(raw), raw_mirror=str(mirror),
-            max_work_items=2, meeting_selection=pin(selection)))))
+            max_work_items=2, meeting_selection=pin(selection), replay_sources=['mods', 'senate_page']))))
     spec = load_spec(spec_path)
     assert plan(spec)['executed'] is False and not work.exists()
     result = execute(spec)['tables']
@@ -832,17 +832,30 @@ def test_record_only_appearances_replay_exactly_the_sources_whose_version_moved(
     from viewer_publication import archive_record_backfill as backfill
 
     current = dict(congress_gov='c1', house_xml='h1', senate_page='s1', mods='m2')
-    assert backfill._moved_sources(current, dict(current, mods='m1')) == {'mods'}
-    assert backfill._moved_sources(current, dict(current, mods='m1', senate_page='s0')) == {'mods', 'senate_page'}
+    assert backfill._moved_sources(current, dict(current, mods='m1'), ['mods']) == {'mods'}
+    assert backfill._moved_sources(current, dict(current, mods='m1', senate_page='s0'),
+                                   ['senate_page', 'mods']) == {'mods', 'senate_page'}
     with pytest.raises(ValueError, match='name different sources: youtube'):
-        backfill._moved_sources(current, dict(current, mods='m1', youtube='y1'))
+        backfill._moved_sources(current, dict(current, mods='m1', youtube='y1'), ['mods'])
     with pytest.raises(ValueError, match='name different sources: house_xml'):
-        backfill._moved_sources(current, {k: v for k, v in current.items() if k != 'house_xml'})
-    # Nothing moved: refused before the base is read.
+        backfill._moved_sources(current, {k: v for k, v in current.items() if k != 'house_xml'}, ['mods'])
+    # The move must be exactly the reviewed one, in both directions.
+    with pytest.raises(ValueError, match=r"moved sources \['mods', 'senate_page'\] differ from the reviewed replay_sources \['mods'\]"):
+        backfill._moved_sources(current, dict(current, mods='m1', senate_page='s0'), ['mods'])
+    with pytest.raises(ValueError, match=r"moved sources \['mods'\] differ"):
+        backfill._moved_sources(current, dict(current, mods='m1'), ['mods', 'senate_page'])
+    # Congress.gov rows are built from inline receipt lines, which a stored-body replay cannot read.
+    with pytest.raises(ValueError, match='cannot replay inline-built sources: congress_gov'):
+        backfill._moved_sources(current, dict(current, congress_gov='c0'), ['congress_gov'])
+    # Refused before any base row is examined (the caller has already loaded the base file):
+    # nothing moved, an unreviewed move, an inline source.
+    monkeypatch.setattr(backfill, '_base_keys', lambda *a, **k: pytest.fail('a refused replay examined the base rows'))
     monkeypatch.setattr(appearance_records, 'current_versions', lambda: dict(current))
-    monkeypatch.setattr(backfill, '_base_keys', lambda *a, **k: pytest.fail('a refused replay read the base'))
-    with pytest.raises(ValueError, match='no source producer version moved'):
-        backfill._appearances(None, dict(current), directory=None)
+    for prior, reviewed, refusal in ((dict(current), ['mods'], 'no source producer version moved'),
+                                     (dict(current, mods='m1'), ['senate_page'], 'differ from the reviewed'),
+                                     (dict(current, congress_gov='c0'), ['congress_gov'], 'inline-built')):
+        with pytest.raises(ValueError, match=refusal):
+            backfill._appearances(None, prior, reviewed, directory=None)
 
 
 def test_record_only_mods_move_replays_mods_and_promotes_older_rows_to_the_new_columns(tmp_path):
@@ -875,9 +888,14 @@ def test_record_only_mods_move_replays_mods_and_promotes_older_rows_to_the_new_c
     model.write_text(json.dumps(dict(appearance_records=dict(kind='parquet', **pin(base)),
         parser_versions=dict(appearance_records=prior), unreadable_files=[])))
     spec_path = tmp_path/'record-only.json'
-    spec_path.write_text(json.dumps(dict(version=1, work=str(tmp_path/'work'), engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
-        record_only=dict(base_model=pin(model), bases=dict(appearance_records=pin(base)), raw_root=str(raw),
-                         raw_mirror=str(mirror), max_work_items=1))))
+    job = dict(base_model=pin(model), bases=dict(appearance_records=pin(base)), raw_root=str(raw),
+               raw_mirror=str(mirror), max_work_items=1)
+    spec = dict(version=1, work=str(tmp_path/'work'), engine_config=os.environ['DOCSPEC_JOB_CONFIG'], record_only=job)
+    # The reviewed move is part of the spec: an appearance replay without it is refused at load.
+    spec_path.write_text(json.dumps(spec))
+    with pytest.raises(ValueError, match='reviewed replay_sources'):
+        load_spec(spec_path)
+    spec_path.write_text(json.dumps(dict(spec, record_only=dict(job, replay_sources=['mods']))))
     result = execute(load_spec(spec_path))['tables']['appearance_records']
     assert (result['reused_rows'], result['appended'], result['replayed_sources']) == (4, 1, ['mods'])
     out = pq.read_table(result['selector']['path'])

@@ -37,13 +37,19 @@ def load_record_only(value, *, base):
         raise ValueError('Record-only backfill requires version 1, work and a local engine config')
     job = value['record_only']
     fields = {'base_model', 'bases', 'raw_root', 'raw_mirror', 'max_work_items'}
-    optional = {'meeting_selection', 'capture_inputs', 'retained_committee', 'committee_composition'}
+    optional = {'meeting_selection', 'capture_inputs', 'retained_committee', 'committee_composition', 'replay_sources'}
     if not isinstance(job, dict) or not fields <= job.keys() or job.keys() - fields - optional:
         raise ValueError('Record-only backfill requires pinned bases, raw locations and a work limit')
     if not isinstance(job['bases'], dict) or job['bases'].keys() - RECORD_TABLES:
         raise ValueError('Record-only backfill bases must name meeting_records or appearance_records')
     if ('meeting_records' in job['bases']) != ('meeting_selection' in job):
         raise ValueError('Meeting backfill requires its exact source selection')
+    # The reviewed move: the run refuses unless exactly these appearance sources moved (_appearances).
+    if ('appearance_records' in job['bases']) != ('replay_sources' in job) or 'replay_sources' in job and (
+            not isinstance(job['replay_sources'], list) or not job['replay_sources']
+            or any(not isinstance(s, str) or not s for s in job['replay_sources'])
+            or len(set(job['replay_sources'])) != len(job['replay_sources'])):
+        raise ValueError('Appearance backfill requires its reviewed replay_sources, a list of distinct sources')
     if type(job['max_work_items']) is not int or job['max_work_items'] <= 0:
         raise ValueError('Record-only backfill requires a positive max_work_items')
 
@@ -170,11 +176,18 @@ def _meetings(base, versions, selection, **stage):
     return output, dict(reused_rows=len(rows) - len(expected), appended=len(expected))
 
 
-def _moved_sources(current, prior):
+# Congress.gov appearance rows are built from inline receipt lines (_record_producer's inline candidates), not
+# stored bodies: on 2026-11-11, 36,333 of the lake's 36,438 congress_gov records had no body. The stored-body
+# selection below cannot replay them; a congress_gov move goes through the daily or the selective backfill.
+INLINE_SOURCES = frozenset({'congress_gov'})
+
+
+def _moved_sources(current, prior, reviewed):
     """Sources whose producer version moved from the base model's pin; the rest are reused verbatim.
 
-    The base model and this code must name the same sources, and at least one must move: replaying
-    nothing would re-import an unchanged table.
+    The base model and this code must name the same sources, at least one must move (replaying nothing
+    would re-import an unchanged table), the move must be exactly the spec's reviewed `replay_sources`,
+    and none may be a source built from inline receipt lines.
     """
     unexpected = sorted(current.keys() ^ prior.keys())
     if unexpected:
@@ -183,12 +196,18 @@ def _moved_sources(current, prior):
     moved = {source for source in current if current[source] != prior[source]}
     if not moved:
         raise ValueError('Record-only appearances: no source producer version moved from the base model')
+    if moved != set(reviewed):
+        raise ValueError(f'Record-only appearances: moved sources {sorted(moved)} differ from the reviewed '
+                         f'replay_sources {sorted(reviewed)}')
+    if moved & INLINE_SOURCES:
+        raise ValueError('Record-only appearances cannot replay inline-built sources: '
+                         + ', '.join(sorted(moved & INLINE_SOURCES)))
     return moved
 
 
-def _appearances(base, versions, *, directory, **stage):
+def _appearances(base, versions, reviewed, *, directory, **stage):
     current = appearance_records.current_versions()
-    changed = _moved_sources(current, versions)
+    changed = _moved_sources(current, versions, reviewed)
     current_rows = _base_keys(base, versions, history=True)
     rows = [row for row in current_rows if row['source'] in changed]
     if len(rows) > stage['limit']:
@@ -372,7 +391,7 @@ def execute_record_only(spec, *, runtime_factory=None):
                 if name == 'meeting_records':
                     rows, counts = _meetings(base, versions, selection, **stage)
                 else:
-                    rows, counts = _appearances(base, versions, directory=directory, **stage)
+                    rows, counts = _appearances(base, versions, job['replay_sources'], directory=directory, **stage)
                 lineage = dict(source=job['bases'][name], base_selector=model[name])
             output = directory / f'{name}.parquet'
             pq.write_table(rows, output, compression='zstd')
