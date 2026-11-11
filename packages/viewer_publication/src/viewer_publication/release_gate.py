@@ -634,51 +634,77 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     return reasons, summary, pages, lines, result['trace']
 
 
-MEETING_UPDATES = 'meeting-updates'  # the morning report's file stem in the gate's work folder (ct-rhqw)
+MEETING_UPDATES = 'meeting-updates'  # the morning report's file stem, beside the gate report (ct-rhqw)
 # Meeting columns every read moves; the report names them only in its count of meetings.
 QUIET = ('congress_gov_detail_observation', 'congress_gov_updated', 'publisher_status_observations')
+SHOWN = ('event_id', 'title', 'meeting_date', 'publisher_status', 'document_references', 'videos', 'sittings')
+
+
+def _sitting(value):
+    """One sitting as the report shows it: its start and the room or place."""
+    if not isinstance(value, dict):
+        return str(value)
+    start = value.get('start')
+    when = start.strftime('%Y-%m-%d %H:%MZ') if hasattr(start, 'strftime') else str(start)
+    where = ' '.join(str(value[k]) for k in ('room', 'building', 'place') if value.get(k))
+    return f'{when} {where}'.strip()
+
+
+def _link(value):
+    """A document or video link as the report shows it: its name, or its address."""
+    if isinstance(value, dict):
+        return value.get('name') or value.get('description') or value.get('url') or '(unnamed)'
+    return str(value)
+
+
+def _multiset_moved(before, after):
+    """The items of `before` not matched one for one in `after` (whole records, so a renamed link or a
+    repeated entry shows)."""
+    rest, out = [json.dumps(a, sort_keys=True, default=str) for a in after], []
+    for item in before:
+        key = json.dumps(item, sort_keys=True, default=str)
+        if key in rest:
+            rest.remove(key)
+        else:
+            out.append(item)
+    return out
 
 
 def meeting_updates(report, base_dir, candidate_dir):
-    """The morning report (ct-rhqw): for each Congress.gov meeting the comparison set apart as updated
-    (`release_comparison.updated_meetings`), what changed between the live release and the candidate:
-    title, date, status, witnesses added and removed (Congress.gov rows, by name and organization),
-    and document and video links added and removed. Returns a list of dicts, one per meeting.
-    Reads the two releases' meetings and witnesses for those meetings only."""
+    """The morning report's entries (ct-rhqw): for each Congress.gov meeting the comparison set apart as
+    updated (`release_comparison.updated_meetings`), what changed between the live release and the
+    candidate: title, date and status as they were and are; Congress.gov witnesses added and removed
+    (by name and organization) and the live witness keys the candidate map does not resolve to one
+    witness; document links, videos and sittings added and removed, compared as whole records; and
+    any other column that moved. Reads the two releases' meetings, witnesses and map for those
+    meetings only."""
     import duckdb
     ids = report['files'].get('meetings.parquet', {}).get('congress_gov_updates') or []
     if not ids:
         return []
     con = duckdb.connect()
-    con.execute("SET threads=1")
-    listed = ','.join(str(int(i)) for i in ids)
+    con.execute('SET threads=1')
+    events, occasions = ','.join(str(int(i)) for i in ids), ','.join(f"'meeting:{int(i)}'" for i in ids)
+    rows = lambda path, where: con.execute(f"SELECT * FROM read_parquet('{path}') WHERE {where}").to_arrow_table().to_pylist()
     def side(directory):
         directory = Path(directory)
-        meetings = {r['event_id']: r for r in con.execute(
-            f"SELECT * FROM read_parquet('{directory / 'meetings.parquet'}') WHERE event_id IN ({listed})").to_arrow_table().to_pylist()}
+        meetings = {r['event_id']: r for r in rows(directory / 'meetings.parquet', f'event_id IN ({events})')}
         people = {}
         if (directory / 'witnesses.parquet').exists():
-            for row in con.execute(f"""SELECT * FROM read_parquet('{directory / 'witnesses.parquet'}') WHERE source='congress_gov'
-                  AND occasion IN ({','.join(f"'meeting:{int(i)}'" for i in ids)})""").to_arrow_table().to_pylist():
-                name = (row.get('name') or '(unnamed)') + (f" ({row['organization']})" if row.get('organization') else '')
-                people.setdefault(int(row['occasion'].split(':')[1]), []).append((row.get('display_order') or 0, name))
-        return meetings, {event: [name for _, name in sorted(names)] for event, names in people.items()}
+            for w in rows(directory / 'witnesses.parquet', f"source='congress_gov' AND occasion IN ({occasions})"):
+                name = (w.get('name') or '(unnamed)') + (f" ({w['organization']})" if w.get('organization') else '')
+                people.setdefault(int(w['occasion'].split(':')[1]), []).append((w.get('display_order') or 0, w['witness_key'], name))
+        return meetings, {event: sorted(found) for event, found in people.items()}
     (old, old_people), (new, new_people) = side(base_dir), side(candidate_dir)
-    def gone(before, after):
-        rest, out = list(after), []
-        for item in before:
-            if item in rest:
-                rest.remove(item)
-            else:
-                out.append(item)
-        return out
-    def links(values):
-        """(address, label) of each document or video link; a plain string is both."""
-        return [(v.get('url'), v.get('name') or v.get('description') or v.get('url')) if isinstance(v, dict) else (v, v)
-                for v in values or []]
-    def moved(before, after):
-        kept = {url for url, _ in after}
-        return [label for url, label in before if url not in kept]
+    lost = {}
+    old_keys = {key: (event, name) for event, found in old_people.items() for _, key, name in found}
+    if old_keys and (Path(candidate_dir) / 'witness_key_map.parquet').exists():
+        listed = ','.join(f"'{k}'" for k in old_keys)
+        resolved = {r['old_key']: r['status'] for r in rows(Path(candidate_dir) / 'witness_key_map.parquet', f'old_key IN ({listed})')}
+        current = {key for found in new_people.values() for _, key, _ in found}
+        for key, (event, name) in old_keys.items():
+            if key not in current and resolved.get(key) != 'unambiguous':
+                lost.setdefault(event, []).append(f"{key} ({name}): {resolved.get(key) or 'no map row'}")
     result = []
     for event in ids:
         now, was = new[event], old.get(event)
@@ -688,14 +714,16 @@ def meeting_updates(report, base_dir, candidate_dir):
             if was is not None and was.get(key) != now.get(key):
                 entry[key + '_was'] = None if was.get(key) is None else str(was.get(key))
                 entry[key + '_now'] = None if now.get(key) is None else str(now.get(key))
-        for key in ('document_references', 'videos'):
-            before, after = links((was or {}).get(key)), links(now.get(key))
-            label = 'documents' if key == 'document_references' else 'videos'
-            entry[label + '_added'], entry[label + '_removed'] = moved(after, before), moved(before, after)
-        entry['witnesses_added'] = gone(new_people.get(event, []), old_people.get(event, []))
-        entry['witnesses_removed'] = gone(old_people.get(event, []), new_people.get(event, []))
-        shown = {'event_id', 'title', 'meeting_date', 'publisher_status', 'document_references', 'videos', *QUIET}
-        entry['also_changed'] = sorted(k for k in now if k not in shown and was is not None and was.get(k) != now.get(k))
+        for key, label, show in (('document_references', 'documents', _link), ('videos', 'videos', _link), ('sittings', 'sittings', _sitting)):
+            before, after = (was or {}).get(key) or [], now.get(key) or []
+            entry[label + '_added'] = [show(v) for v in _multiset_moved(after, before)]
+            entry[label + '_removed'] = [show(v) for v in _multiset_moved(before, after)]
+        people_before = [name for _, _, name in old_people.get(event, [])]
+        people_after = [name for _, _, name in new_people.get(event, [])]
+        entry['witnesses_added'] = _multiset_moved(people_after, people_before)
+        entry['witnesses_removed'] = _multiset_moved(people_before, people_after)
+        entry['keys_lost'] = sorted(lost.get(event, []))
+        entry['also_changed'] = sorted(k for k in now if k not in (*SHOWN, *QUIET) and was is not None and was.get(k) != now.get(k))
         result.append(entry)
     return result
 
@@ -704,15 +732,24 @@ def _plural(n, word):
     return f'{n} {word}' + ('' if n == 1 else 'es' if word.endswith('s') else 's')
 
 
-def write_meeting_updates(report, base_dir, candidate_dir, work):
+def write_meeting_updates(report, base_dir, candidate_dir, folder, refused=()):
     """Write the morning report as `meeting-updates.txt` (plain, one block per meeting) and
-    `meeting-updates.json` (the entries and one summary `line` for the nightly summary) into `work`,
-    when the comparison names any Congress.gov meeting update; returns the line, or None."""
+    `meeting-updates.json` (the entries, whether the release check cleared, and one summary `line` for
+    the nightly summary) into `folder`, when the comparison names any Congress.gov meeting update. A
+    night the gates `refused` says so first, with its reasons: its updates waited, none published.
+    Later publication steps can still stop a cleared night; the nightly summary's status says so.
+    Returns the line, or None."""
     entries = meeting_updates(report, base_dir, candidate_dir)
     if not entries:
         return None
-    parts, text = [], [f"Congress.gov meeting updates: {_plural(len(entries), 'meeting')}, "
-                       f"{report['base_release'][:12]} to {report['candidate_release'][:12]} (ct-rhqw)", '']
+    count = _plural(len(entries), 'Congress.gov meeting update')
+    pair = f"{report['base_release'][:12]} to {report['candidate_release'][:12]}"
+    if refused:
+        text = [f'STOPPED at the release check, nothing published ({pair}): {count} waited, for these reasons (ct-rhqw):',
+                *(f'  {reason}' for reason in list(refused)[:10]), *([f'  and {len(refused) - 10} more'] if len(refused) > 10 else []), '']
+    else:
+        text = [f'Cleared the release check: {count} ({pair}, ct-rhqw).', '']
+    parts = []
     for e in entries:
         head = f"{e['event_id']} {e['title'] or '(no title)'} ({e['meeting_date'] or 'no date'})"
         text.append(head + (' - first stated' if e['first_stated'] else ''))
@@ -721,25 +758,29 @@ def write_meeting_updates(report, base_dir, candidate_dir, work):
             if key + '_was' in e:
                 text.append(f"  {label}: {e[key + '_was']} -> {e[key + '_now']}")
                 changed.append(label)
-        for key, label in (('witnesses_added', 'witnesses added'), ('witnesses_removed', 'witnesses removed'),
-                           ('documents_added', 'documents added'), ('documents_removed', 'documents removed'),
-                           ('videos_added', 'videos added'), ('videos_removed', 'videos removed')):
-            if e[key]:
-                text.append(f"  {label}: " + '; '.join(e[key]))
-                noun = {'witnesses': 'witness', 'documents': 'document', 'videos': 'video'}[key.split('_')[0]]
-                changed.append(('+' if key.endswith('added') else '-') + _plural(len(e[key]), noun))
+        for key, noun in (('witnesses', 'witness'), ('documents', 'document'), ('videos', 'video'), ('sittings', 'sitting')):
+            for direction, sign in (('added', '+'), ('removed', '-')):
+                found = e[f'{key}_{direction}']
+                if found:
+                    text.append(f'  {key} {direction}: ' + '; '.join(found))
+                    changed.append(sign + _plural(len(found), noun))
+        if e['keys_lost']:
+            text.append('  witness keys lost (no single successor): ' + '; '.join(e['keys_lost']))
+            changed.append(_plural(len(e['keys_lost']), 'lost key'))
         if e['also_changed']:
             text.append('  also changed: ' + ', '.join(e['also_changed']))
             changed += e['also_changed']
         if text[-1] == head and not e['first_stated']:
-            text.append('  read again with new bytes; no title, date, status, witness, document or video change')
+            text.append('  read again with new bytes; no title, date, status, witness, document, video or sitting change')
         parts.append(f"{e['event_id']} ({', '.join(changed) or 'read again'})")
         text.append('')
     shown = parts[:12] + ([f'and {len(parts) - 12} more'] if len(parts) > 12 else [])
-    line = f"{_plural(len(entries), 'Congress.gov meeting')} updated: " + '; '.join(shown)
-    work.mkdir(parents=True, exist_ok=True)
-    (work / f'{MEETING_UPDATES}.txt').write_text('\n'.join(text))
-    (work / f'{MEETING_UPDATES}.json').write_text(json.dumps(dict(line=line, meetings=entries), indent=1, default=str) + '\n')
+    line = (f"STOPPED at the release check, nothing published; {count} waited: " if refused
+            else f"Cleared the release check with {count}: ") + '; '.join(shown)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f'{MEETING_UPDATES}.txt').write_text('\n'.join(text))
+    (folder / f'{MEETING_UPDATES}.json').write_text(json.dumps(dict(line=line, cleared=not refused, reasons=list(refused),
+                                                                   meetings=entries), indent=1, default=str) + '\n')
     return line
 
 
@@ -771,7 +812,6 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     new row whose receipts are new while the code that made it changed; the other gates still run.
     """
     from viewer_publication.release_comparison import Diff, documents
-    write_meeting_updates(report, base_dir, candidate_dir, Path(work))
     reasons = []
     groups = report['failing']
     if not report['link_rule']['ok']:
@@ -988,6 +1028,8 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
         # A verified comparison group can still be outside the unattended policy.
         report['reasons'] = report.get('automatic_reasons', [])
     report_path.write_text(json.dumps(report, indent=1, default=str) + '\n')
+    # ct-rhqw: the morning report, written once the night's outcome is known.
+    write_meeting_updates(report, base_dir, candidate_dir, report_path.parent, refused=report['reasons'])
     if report['reasons']:
         raise ValueError('Release gates refused (report ' + str(report_path) + '):\n' + '\n'.join(report['reasons']))
     return report

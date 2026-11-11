@@ -293,17 +293,20 @@ def rekeyed(d: Diff):
 # meeting's record states (owner, 2026-11-11: "Everything from Congress.gov publishes").
 MEETING_UPDATE = 'a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)'
 FIRST_STATED = 'a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)'
-# Meeting columns another source moves (GovInfo packages, the House XML record): a Congress.gov read
-# cannot explain them, so they are never exempt. The outcome is exempt only where both releases base
-# it on the publisher (a cancellation, or no evidence); a print or transcript basis is another source,
-# and its reference is a release-local row that shifts with unrelated documents.
-OTHER_SOURCES = ('transcripts', 'house_xml_updated')
+NEW_SUBJECT = 'a new subject of a Congress.gov meeting update (ct-rhqw)'
+# The meeting columns a Congress.gov detail record states, the only ones an update may move. A column
+# not named here, such as `transcripts` (GovInfo) or `house_xml_updated` (House XML) or one added
+# later, is never exempt. House XML leads several of these (title, date, type, committees, videos,
+# meeting-records-merged.sql), so an update also requires the meeting's House sightings unchanged.
+UPDATE_COLUMNS = ('chamber', 'chamber_basis', 'title', 'meeting_date', 'meeting_type', 'session', 'status', 'sittings',
+                  'committees', 'subject_keys', 'videos', 'congress', 'congress_gov_updated', 'congress_gov_meeting_type',
+                  'access', 'access_basis', 'not_held', 'document_references', 'publisher_status',
+                  'publisher_status_observations', 'congress_gov_detail_observation')
+# The outcome moves with an update only when the candidate bases it on the new read (a Congress.gov
+# cancellation names the read's body) and the live outcome was the publisher's too: a print or a
+# transcript is another source, and its reference is a release-local row.
 OUTCOME = ('outcome', 'outcome_basis', 'outcome_source_reference', 'outcome_reason')
 PUBLISHER_OUTCOMES = ('publisher_cancellation', 'no_outcome_evidence')
-# A removed witness key keeps an answer when the map names its successor, its candidates, or states
-# it unresolved (the archive's answer for a witness the record dropped, ct-kb4w). Only a key with no
-# map row is lost.
-STATED = ('unambiguous', 'ambiguous', 'unresolved')
 
 
 def _equal_except(d: Diff, table, skip, compare=None):
@@ -370,15 +373,18 @@ def updated_meetings(d: Diff):
     """Table `meeting_update(event_id,body,added)`: the meetings the candidate read from Congress.gov
     again with new bytes, or for the first time (`added`), with the new body; True when there is one
     (ct-rhqw). On such a meeting every change its record can make publishes without a person: the
-    meeting row, its Congress.gov witnesses (added, removed with a map row, edited, reordered), their
-    key-map rows, the documents that name them and its witness coverage.
+    `UPDATE_COLUMNS` of the meeting row, its Congress.gov witnesses (added; removed with a successor;
+    edited, reordered), their key-map rows, the documents that name them, its witness coverage and
+    its new nomination subjects.
 
-    The read is the meeting's `successful_read`: it names a body and a receipt, is not later than the
-    moment of comparison, and the live release cites its body nowhere (no witness, no meeting read),
-    so the bytes are new. A meeting the live release holds must also have been read in another
-    receipt, later than its live read. Which columns of the meeting are exempt is `meetings`'s.
-    Cannot see whether the read happened: the unattended gate finds the body and the read's line in
-    the capture table, in receipts the live release did not read. O(meetings).
+    The read is the meeting's `successful_read`: it names a body and a receipt, is a read of this
+    meeting's own record (the address ends in its event ID), is not later than the moment of
+    comparison, and the live release cites its body nowhere (no witness, no meeting read), so the
+    bytes are new. A meeting the live release holds must also have been read in another receipt,
+    later than its live read, with every sighting from another source (House XML) unchanged: a House
+    read may move the title, date or videos the House record leads. Cannot see whether the read
+    happened: the unattended gate finds the body and the read's line in the capture table, in
+    receipts the live release did not read. O(meetings).
     """
     if d.meeting_update is None:
         d.meeting_update = False
@@ -391,14 +397,19 @@ def updated_meetings(d: Diff):
                  f'SELECT lower({DETAIL}.latest_attempt.evidence.body_sha256) FROM base_meetings']
         if d.has('base', 'witnesses') and 'record_sha' in d.columns('base', 'witnesses'):
             cited.append('SELECT lower(hex(record_sha)) FROM base_witnesses')
+        others = 'true'
+        if STATUSES in shared:
+            elsewhere = lambda side: f"list_sort(list_filter({side}.{STATUSES},e->e.source IS DISTINCT FROM 'congress_gov'))"
+            others = f"{elsewhere('p')} IS NOT DISTINCT FROM {elsewhere('l')}"
         d.table('meeting_update', f"""WITH cited AS ({' UNION '.join(cited)})
           SELECT l.event_id,lower({read('l')}.body_sha256) AS body,p.event_id IS NULL AS added
           FROM candidate_meetings l LEFT JOIN base_meetings p ON p.event_id=l.event_id
           WHERE {read('l')}.body_sha256 IS NOT NULL AND {read('l')}.receipt_key IS NOT NULL
+            AND regexp_extract({read('l')}.source_url,'/([0-9]+)([?#].*)?$',1)=CAST(l.event_id AS VARCHAR)
             AND coalesce({read('l')}.retrieved_at<=TIMESTAMPTZ '{d.now.isoformat()}',false)
             AND lower({read('l')}.body_sha256) NOT IN (SELECT b FROM cited WHERE b IS NOT NULL)
             AND (p.event_id IS NULL OR ({read('l')}.receipt_key IS DISTINCT FROM {read('p')}.receipt_key
-              AND ({read('p')}.retrieved_at IS NULL OR {read('l')}.retrieved_at>{read('p')}.retrieved_at)))""")
+              AND ({read('p')}.retrieved_at IS NULL OR {read('l')}.retrieved_at>{read('p')}.retrieved_at) AND {others}))""")
         d.meeting_update = d.one('SELECT count(*) FROM meeting_update') > 0
     return d.meeting_update
 
@@ -668,11 +679,12 @@ def refetched_meetings(d: Diff):
 
 def meetings(d: Diff):
     """Event IDs by multiplicity, then value groups on matched meetings. A swapped or wiped subject key is
-    a `changed subject_keys` group. Set apart as verified groups flagged `refetch_only`: every column
-    a Congress.gov record states on a meeting `updated_meetings` names, and each meeting Congress.gov
-    states for the first time (ct-rhqw); `OTHER_SOURCES` never, `OUTCOME` only on a publisher basis;
-    and the three columns a byte-identical read moves (`refetched_meetings`, ct-uywf).
-    The updated meetings are listed in the report (`congress_gov_updates`) for the morning report."""
+    a `changed subject_keys` group. Set apart as verified groups flagged `refetch_only`: the
+    `UPDATE_COLUMNS` of a meeting `updated_meetings` names, its `OUTCOME` columns where the candidate
+    bases the outcome on the new read and the live one was the publisher's, and each meeting
+    Congress.gov states for the first time (ct-rhqw); and the three columns a byte-identical read
+    moves (`refetched_meetings`, ct-uywf). The updated meetings are listed in the report
+    (`congress_gov_updates`) for the morning report."""
     join = 'base_meetings p JOIN candidate_meetings l USING(event_id)'
     groups, notes = key_file('meetings', 'event_id')(d)[0], {}
     groups += d.changed('meetings', join, MEETING_COMPARE, set())
@@ -680,10 +692,13 @@ def meetings(d: Diff):
     if updated_meetings(d):
         updated = 'event_id IN (SELECT event_id FROM meeting_update WHERE NOT added)'
         counts = changed_counts(d, join, groups, updated, MEETING_COMPARE)
-        publisher = "','".join(PUBLISHER_OUTCOMES)
-        outcome = (changed_counts(d, join, groups, f"{updated} AND p.outcome_basis IN ('{publisher}') AND l.outcome_basis IN ('{publisher}')")
-                   if 'outcome_basis' in set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings')) else {})
-        counts = {c: outcome.get(c, 0) if c in OUTCOME else n for c, n in counts.items() if c not in OTHER_SOURCES}
+        shared = set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
+        outcome = {}
+        if {'outcome_basis', 'outcome_source_reference'} <= shared:
+            publisher = "','".join(PUBLISHER_OUTCOMES)
+            outcome = changed_counts(d, join, groups, f"""event_id IN (SELECT u.event_id FROM meeting_update u JOIN candidate_meetings c
+                USING(event_id) WHERE NOT u.added AND lower(c.outcome_source_reference)=u.body) AND p.outcome_basis IN ('{publisher}')""")
+        counts = {c: outcome.get(c, 0) if c in OUTCOME else n for c, n in counts.items() if c in UPDATE_COLUMNS or c in OUTCOME}
         groups = refetch_split(groups, counts, MEETING_UPDATE)
         groups = split_group(groups, 'added keys', 'unexplained', d.one('SELECT count(*) FROM meeting_update WHERE added'), FIRST_STATED)
         notes['congress_gov_updates'] = [r[0] for r in d.rows('SELECT event_id FROM meeting_update ORDER BY 1')]
@@ -692,6 +707,24 @@ def meetings(d: Diff):
         counts = {c: d.one(f"""SELECT count(*) FROM meeting_refetch JOIN base_meetings p USING(event_id)
             JOIN candidate_meetings l USING(event_id) WHERE p.{c} IS DISTINCT FROM l.{c} AND {elsewhere}""") for c in (DETAIL, UPDATED, STATUSES)}
         groups = refetch_split(groups, counts, MEETING_REFETCHED)
+    return groups, notes
+
+
+def nominations(d: Diff):
+    """The registry comparison, with each added nomination that a Congress.gov meeting update newly
+    names as a subject set apart as a verified group flagged `refetch_only` (ct-rhqw): its ID is in
+    the updated meeting's candidate `subject_keys` and not in that meeting's live ones (or the meeting
+    is first stated). Any other added, removed or changed nomination still needs a cause."""
+    groups, notes = generic('nominations')(d)
+    if updated_meetings(d) and 'subject_keys' in set(d.columns('candidate', 'meetings')) and 'nomination_id' in d.columns('candidate', 'nominations'):
+        n = d.one("""WITH named AS (SELECT DISTINCT u.event_id,lower(unnest(l.subject_keys)) AS k FROM meeting_update u
+              JOIN candidate_meetings l USING(event_id)),
+            before AS (SELECT DISTINCT p.event_id,lower(unnest(p.subject_keys)) AS k FROM base_meetings p
+              WHERE p.event_id IN (SELECT event_id FROM meeting_update)),
+            new AS (SELECT k FROM named ANTI JOIN before USING(event_id,k))
+          SELECT count(*) FROM candidate_nominations ANTI JOIN base_nominations USING(nomination_id)
+          WHERE lower(nomination_id) IN (SELECT k FROM new)""")
+        groups = split_group(groups, 'added keys', 'no evidence given', n, NEW_SUBJECT)
     return groups, notes
 
 
@@ -756,11 +789,12 @@ def witnesses(d: Diff):
     changes by definition, and compare superseded_by through the map. Cannot see whether the map
     chose the right successor: the model's matching rules and their fixtures own that.
     A Congress.gov meeting update (`updated_witnesses`, ct-rhqw) sets apart as groups flagged
-    `refetch_only`: its live Congress.gov witnesses removed with a map row that answers for them
-    (`STATED`), its new ones (successors or not), and every value that changed on a
-    pair of them on the same meeting. A removed key with no map row is lost and still stops, as does a
-    map row whose successor is not published, a map that collapses two witnesses, and any row of
-    another source or another meeting.
+    `refetch_only`: its live Congress.gov witnesses removed with a published successor, its new ones
+    (successors or not), and every value that changed on a pair of them on the same meeting. A
+    removed key the map does not resolve to one witness (no row, ambiguous, unresolved, or a successor
+    not published) is a lost key and still stops (owner, 2026-11-11: until a dropped witness is kept
+    as "no longer listed"), as does a map that collapses two witnesses and any row of another source
+    or another meeting.
     """
     if not rekeyed(d):
         return generic('witnesses')(d)
@@ -781,7 +815,7 @@ def witnesses(d: Diff):
             out.append(group('removed keys', 'witness_key_map collapses distinct base occurrences', -n, 'defect'))
         elif status in ('ambiguous', 'unresolved'):
             cause = f'witness_key_map states the key {status}'
-            out.append(flagged('removed keys', cause, -n) if updated and status in STATED else group('removed keys', cause, -n))
+            out.append(group('removed keys', cause, -n))
         elif status:
             out.append(group('removed keys', 'unexplained', -n))  # an unambiguous row whose successor is not published
         else:
@@ -815,18 +849,20 @@ def witness_key_map(d: Diff):
     publishes again. A dropped key the candidate does not publish no longer resolves: unverified.
     A successor that moved is the same witness when the base successor itself maps to it.
     A Congress.gov meeting update (`updated_witnesses`, ct-rhqw) sets apart as groups flagged
-    `refetch_only` the rows of its Congress.gov keys: added rows, and every value that changed on a
-    matched row (a key whose witness the record dropped turns unresolved). A dropped map row is a
-    lost key and stops.
+    `refetch_only` the rows of its Congress.gov keys that resolve to one witness: added rows (an old
+    key the live release published must be one of the meeting's live Congress.gov witnesses), and
+    every value that changed on a matched row whose live and candidate rows both belong to the
+    meeting. A row that turns ambiguous or unresolved, or is dropped, is a lost key and stops.
     """
     if not d.has('base', 'witness_key_map'):
         return generic('witness_key_map')(d)
     rekeyed(d)
     update = updated_witnesses(d) and {'source', 'occasion', 'status'} <= set(d.columns('candidate', 'witness_key_map'))
-    resolving = ("{x}source='congress_gov' AND {x}status IN ('unambiguous','ambiguous','unresolved') "
-                 "AND {x}occasion IN (SELECT 'meeting:'||event_id FROM meeting_update WHERE NOT added)")
+    on_meeting = "{x}source='congress_gov' AND {x}occasion IN (SELECT 'meeting:'||event_id FROM meeting_update WHERE NOT added)"
+    added = (f"{on_meeting.format(x='')} AND status='unambiguous' AND (old_key NOT IN (SELECT witness_key FROM base_witnesses) "
+             "OR old_key IN (SELECT witness_key FROM witness_update_base))")
     out = []
-    for published, updated, n in d.rows(f"""SELECT old_key IN (SELECT witness_key FROM base_witnesses),{resolving.format(x='') if update else 'false'},count(*)
+    for published, updated, n in d.rows(f"""SELECT old_key IN (SELECT witness_key FROM base_witnesses),{added if update else 'false'},count(*)
           FROM candidate_witness_key_map ANTI JOIN base_witness_key_map USING(old_key) GROUP BY 1,2 ORDER BY 1,2"""):
         cause = 'key retired from witnesses in this release' if published else 'a key no base witness carries'
         out.append(dict(group('added keys', f'{cause}; {MEETING_UPDATE}', n, 'verified'), refetch_only=True) if updated
@@ -843,7 +879,8 @@ def witness_key_map(d: Diff):
     compare = {'witness_key': 'coalesce(Xs.{c},X.{c})', 'candidate_keys': 'coalesce(Xc.{c},X.{c})'}
     out += d.changed('witness_key_map', join, compare, exclude={'old_key'})
     if update:
-        out = refetch_split(out, changed_counts(d, join, out, resolving.format(x='l.'), compare), MEETING_UPDATE)
+        both = f"{on_meeting.format(x='p.')} AND {on_meeting.format(x='l.')} AND p.occasion=l.occasion AND l.status='unambiguous'"
+        out = refetch_split(out, changed_counts(d, join, out, both, compare), MEETING_UPDATE)
     return out, {}
 
 
@@ -1029,7 +1066,7 @@ def cache_churn(table):
 HANDLERS = {'list': document_file('list'), 'detail': document_file('detail'), 'links': links, 'urls': urls, 'sources': sources, 'meetings': meetings,
             'recoveries': recoveries,
             'recordings': recordings, 'bills': bills, 'url_state': url_state, 'witnesses': witnesses, 'witness_key_map': witness_key_map,
-            'meeting_coverage': meeting_coverage,
+            'meeting_coverage': meeting_coverage, 'nominations': nominations,
             **{table: cache_churn(table) for table in CITATIONS}}
 
 

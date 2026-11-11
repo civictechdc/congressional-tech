@@ -223,10 +223,10 @@ def record_daily(summary, candidate):
 
 
 def record_meeting_updates(summary, candidate):
-    """The morning report's line (ct-rhqw): which Congress.gov meetings the release gate let through as
-    updates, from `meeting-updates.json` beside the gate's automatic trace. The plain report
+    """The morning report's line (ct-rhqw): the Congress.gov meeting updates the release check cleared
+    or stopped, from `meeting-updates.json` beside the gate report. The plain report
     (`meeting-updates.txt`) is kept with the run's evidence."""
-    for path in sorted(candidate.glob('archive-publish/candidate-*/automatic/meeting-updates.json')):
+    for path in sorted(candidate.glob('archive-publish/candidate-*/meeting-updates.json')):
         summary['meeting_updates'] = json.loads(path.read_text()).get('line')
 
 
@@ -286,7 +286,7 @@ def archive_candidate(candidate, evidence, *, failed=False):
                     'producer-proof/*/*/job.json', 'producer-proof/*/*/result.json',
                     'archive-publish/candidate-*/release-gate.json',
                     'archive-publish/candidate-*/automatic/automatic-trace.json',
-                    'archive-publish/candidate-*/automatic/meeting-updates.*'):
+                    'archive-publish/candidate-*/meeting-updates.*'):
         for path in retired.glob(pattern):
             target = evidence / path.relative_to(retired)
             target.parent.mkdir(parents=True, exist_ok=True)

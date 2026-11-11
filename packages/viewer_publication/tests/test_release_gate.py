@@ -934,6 +934,9 @@ MEETINGS = pa.schema([
     ('document_references', pa.list_(pa.string())),
     ('videos', pa.list_(pa.struct([('name', pa.string()), ('url', pa.string()), ('video_key', pa.string())]))),
     ('house_xml_updated', pa.string()), ('congress_gov_updated', TS), ('outcome', pa.string()), ('outcome_basis', pa.string()),
+    ('outcome_source_reference', pa.string()),
+    ('sittings', pa.list_(pa.struct([('start', TS), ('end', TS), ('place', pa.string()), ('room', pa.string()), ('building', pa.string()),
+                                     ('address', pa.string())]))),
     ('publisher_status_observations', pa.list_(pa.struct([('source', pa.string()), ('status', pa.string()),
                                                           ('meeting_date', pa.date32()), ('record_sha', pa.string()), ('observed_at', TS)]))),
     ('congress_gov_detail_observation', pa.struct([('state', pa.string()), ('coverage', pa.string()), ('successful_read', READ),
@@ -950,16 +953,19 @@ PANEL = (('Ann Lee', 'GAO'), ('Bo Park', 'CBO'))
 
 def meeting_read(record, receipt, at, *, keys, mapped, outcome='stored', updated=datetime(2026, 1, 2, tzinfo=timezone.utc),
                  statuses=(), documents=('hearing memo',), panel=PANEL, order=(1, 2), panels=None, title='Oversight hearing',
-                 date=HEARD, status='Scheduled', videos=(), house_xml=None, held=('unknown', 'no_outcome_evidence')):
+                 date=HEARD, status='Scheduled', videos=(), house_xml=None, held=('unknown', 'no_outcome_evidence', None), rooms=()):
     """The meeting, its witnesses (listed in `order`, each on its (panel, panel order), all on the
     first panel by default) and the key map, as one read of the record left them. `videos` are names;
-    `held` is the meeting's (outcome, outcome basis)."""
+    `held` is the meeting's (outcome, outcome basis, outcome source reference); `rooms` are (start, room)
+    sittings."""
     panels = panels or [('Panel I', 1)] * len(keys)
     read = dict(source_url=MEETING_URL, retrieved_at=at, receipt_key=receipt, receipt_line=1, capture_index=0,
                 body_sha256=record.hex(), meeting_parser_version='m1', proof_parser_version='p1')
     meeting = dict(event_id=118340, title=title, meeting_date=date, publisher_status=status, document_references=list(documents),
                    videos=[dict(name=v, url=f'https://www.youtube.com/watch?v={v}', video_key=None) for v in videos],
                    house_xml_updated=house_xml, congress_gov_updated=updated, outcome=held[0], outcome_basis=held[1],
+                   outcome_source_reference=held[2],
+                   sittings=[dict(start=start, end=None, place=None, room=room, building=None, address=None) for start, room in rooms],
                    publisher_status_observations=[dict(zip(('source', 'status', 'meeting_date', 'record_sha', 'observed_at'), s))
                                                   for s in statuses],
                    congress_gov_detail_observation=dict(state='successful', coverage='selected_release_inputs', successful_read=read,
@@ -1079,35 +1085,66 @@ def test_a_byte_identical_read_again_passes_unattended(tmp_path):
     assert groups_of(report) == {('meetings.parquet', 'changed congress_gov_detail_observation', READ_AGAIN): 1,
                                  ('meetings.parquet', 'changed publisher_status_observations', READ_AGAIN): 1}
     assert json.loads((tmp_path / 'auto/cited/citation-trace.json').read_text())['files'] == {}
-    assert not (tmp_path / 'auto/meeting-updates.txt').exists()
+    assert not (tmp_path / 'meeting-updates.txt').exists()
 
 
 UNRESOLVED = dict(old_key='w2', witness_key=None, status='unresolved', basis=None, candidate_keys=[], occasion='meeting:118340',
                   source='congress_gov')
+NINE, TEN = datetime(2025, 6, 12, 14, tzinfo=timezone.utc), datetime(2025, 6, 19, 14, tzinfo=timezone.utc)
+
+
+def report_lines(tmp_path):
+    return (tmp_path / 'meeting-updates.txt').read_text().splitlines()
 
 
 def test_a_congress_gov_update_publishes_and_the_morning_report_says_what_changed(tmp_path):
-    """Owner, 2026-11-11 (ct-rhqw): a re-fetched meeting's title, date, status, witnesses, documents
-    and videos all change; the night publishes, and the report names each change."""
-    candidate = edit(cand_tables(keys=('n1', 'n3'), panel=(PANEL[0], ('Cy Diaz', 'EPA')), mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content')],
-                                 title='Oversight hearing, rescheduled', date=HEARD + timedelta(days=7), status='Postponed',
-                                 documents=('hearing memo', 'testimony'), videos=('v1',),
-                                 statuses=[LIVE_STATUS, ('congress_gov', 'Postponed', HEARD + timedelta(days=7), NEW_RECORD.hex(), SEEN_AGAIN)]),
-                     'witness_key_map', lambda rows: rows.append(dict(UNRESOLVED)))
-    passed, report = gate_night(tmp_path, base_tables(), candidate)
+    """Owner, 2026-11-11 (ct-rhqw): a re-fetched meeting's title, date, status, sitting, witnesses,
+    documents and videos all change; the night clears the release check, and the report names each change."""
+    base = base_tables(documents=('hearing memo', 'agenda'), rooms=[(NINE, 'SD-366')])
+    candidate = cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, ('Cy Diaz', 'EPA')), order=(1, 2, 3),
+                            title='Oversight hearing, rescheduled', date=HEARD + timedelta(days=7), status='Postponed',
+                            documents=('hearing memo', 'testimony'), videos=('v1', 'v1'), rooms=[(TEN, 'SD-406')],
+                            statuses=[LIVE_STATUS, ('congress_gov', 'Postponed', HEARD + timedelta(days=7), NEW_RECORD.hex(), SEEN_AGAIN)])
+    passed, report = gate_night(tmp_path, base, candidate)
     assert passed, report['reasons'] + report['automatic_reasons']
     assert report['files']['meetings.parquet']['congress_gov_updates'] == [118340]
-    assert (tmp_path / 'auto/meeting-updates.txt').read_text().splitlines()[2:] == [
+    assert report_lines(tmp_path) == [
+        'Cleared the release check: 1 Congress.gov meeting update (' + report['base_release'][:12] + ' to '
+        + report['candidate_release'][:12] + ', ct-rhqw).', '',
         '118340 Oversight hearing, rescheduled (2025-06-19)',
         '  title: Oversight hearing -> Oversight hearing, rescheduled',
         '  date: 2025-06-12 -> 2025-06-19',
         '  status: Scheduled -> Postponed',
         '  witnesses added: Cy Diaz (EPA)',
-        '  witnesses removed: Bo Park (CBO)',
         '  documents added: testimony',
-        '  videos added: v1']
-    assert json.loads((tmp_path / 'auto/meeting-updates.json').read_text())['line'] == (
-        '1 Congress.gov meeting updated: 118340 (title, date, status, +1 witness, -1 witness, +1 document, +1 video)')
+        '  documents removed: agenda',
+        '  videos added: v1; v1',
+        '  sittings added: 2025-06-19 14:00Z SD-406',
+        '  sittings removed: 2025-06-12 14:00Z SD-366']
+    assert json.loads((tmp_path / 'meeting-updates.json').read_text())['line'] == (
+        'Cleared the release check with 1 Congress.gov meeting update: 118340 (title, date, status, +1 witness, +1 document, '
+        '-1 document, +2 videos, +1 sitting, -1 sitting)')
+
+
+def test_a_stopped_night_says_so_and_names_the_lost_keys(tmp_path):
+    """The record drops Bo Park and the map states his key unresolved: a lost key stops the night
+    (owner, 2026-11-11), and the report says nothing was published and which key was lost."""
+    candidate = edit(cand_tables(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=NEW_MAP[:2]), 'witness_key_map',
+                     lambda rows: rows.append(dict(UNRESOLVED)))
+    passed, report = gate_night(tmp_path, base_tables(), candidate)
+    assert not passed
+    lines = report_lines(tmp_path)
+    assert lines[0].startswith('STOPPED at the release check, nothing published') and lines[1].startswith('  comparison: no recorded cause')
+    assert '  witness keys lost (no single successor): w2 (Bo Park (CBO)): unresolved' in lines
+    summary = json.loads((tmp_path / 'meeting-updates.json').read_text())
+    assert not summary['cleared'] and summary['line'].startswith('STOPPED at the release check, nothing published; 1 Congress.gov meeting update waited')
+
+
+def test_the_report_shows_a_renamed_video(tmp_path):
+    """Review R9: the same address under a new name is a change the report shows."""
+    passed, _ = gate_night(tmp_path, base_tables(videos=('v1',)), edit(cand_tables(videos=('v1',)), 'meetings',
+                                                                       lambda rows: rows[0]['videos'][0].update(name='v1 (renamed)')))
+    assert passed and report_lines(tmp_path)[2:] == ['118340 Oversight hearing (2025-06-12)', '  videos added: v1 (renamed)', '  videos removed: v1']
 
 
 def first_stated():
@@ -1116,9 +1153,9 @@ def first_stated():
             cand_tables(mapped=[]))
 
 
-def coverage(witnesses, documents=1):
+def coverage(witnesses, documents=1, extra=()):
     rows = [dict(event_id=118340, aspect='witnesses', state='present', basis='appearance_records', count=witnesses, reason=None),
-            dict(event_id=118340, aspect='documents', state='present', basis='list.meeting_keys', count=documents, reason=None)]
+            dict(event_id=118340, aspect='documents', state='present', basis='list.meeting_keys', count=documents, reason=None), *extra]
     return pa.Table.from_pylist(rows, schema=pa.schema([('event_id', pa.int64()), ('aspect', pa.string()), ('state', pa.string()),
                                                         ('basis', pa.string()), ('count', pa.int32()), ('reason', pa.string())]))
 
@@ -1135,17 +1172,96 @@ def mods(reordered=False):
             [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN), capture_line(MODS_RECEIPT, MODS_NEW, SEEN_AGAIN, url='https://www.govinfo.gov/mods')])
 
 
+def meeting_row(tables, event, read=True):
+    """`tables` plus a copy of meeting 118340 as meeting `event`, with its own read (in RELIST, line 2), or with no detail read
+    (Congress.gov only lists it)."""
+    meeting = tables['meetings'].to_pylist()[0]
+    observation = meeting['congress_gov_detail_observation']
+    body = sha256(f'meeting {event}'.encode()).digest()
+    reading = dict(observation['successful_read'], body_sha256=body.hex(), receipt_line=2,
+                   source_url=MEETING_URL.replace('118340', str(event))) if read else None
+    copy = dict(meeting, event_id=event, publisher_status_observations=[],
+                congress_gov_detail_observation=dict(observation, state='successful' if read else 'unknown', successful_read=reading,
+                                                     latest_attempt=dict(observation['latest_attempt'], evidence=reading)))
+    return {**tables, 'meetings': pa.Table.from_pylist([meeting, copy], schema=tables['meetings'].schema)}, body
+
+
+def listed_only_beside_an_update():
+    """Review F1 (the 338820 shape): beside an update, Congress.gov lists meeting 338820 with no detail read."""
+    candidate, _ = meeting_row(cand_tables(), 338820, read=False)
+    return base_tables(), candidate
+
+
+def nomination_named_by_the_update(subject):
+    """An added nomination; the update names `subject` as the meeting's subject."""
+    table = lambda ids: pa.Table.from_pylist([dict(nomination_id=i, description='to be Inspector General') for i in ids],
+                                             schema=pa.schema([('nomination_id', pa.string()), ('description', pa.string())]))
+    candidate = edit(cand_tables(), 'meetings', lambda rows: rows[0].update(subject_keys=[subject]))
+    return ({**edit(base_tables(), 'meetings', lambda rows: rows[0].update(subject_keys=[])), 'nominations': table([])},
+            {**candidate, 'nominations': table(['119-pn-1022-19'])})
+
+
+def document_names(witness_keys, meeting_keys=()):
+    """One document naming witness `witness_keys` and meetings `meeting_keys` in list and detail (review R4)."""
+    return dict(list=pa.table({'filename': ['A.pdf'], 'witness_keys': [list(witness_keys)],
+                               'meeting_keys': pa.array([list(meeting_keys)], pa.list_(pa.string()))}),
+                detail=pa.table({'link_key': pa.array([K('A')], pa.binary(8)), 'saved_body': pa.array([K('A') + bytes(24)], pa.binary(32)),
+                                 'witness_keys': [list(witness_keys)], 'meeting_keys': pa.array([list(meeting_keys)], pa.list_(pa.string()))}))
+
+
+def mods_beside(tables, body, keys, mapped=()):
+    """`tables` plus MODS witnesses `keys` on meeting 118340 from `body`, and MODS map rows `mapped` (old, new)."""
+    out = edit(tables, 'witnesses', lambda rows: rows.extend(other_witness(k, 'mods', body, i + 1, *PANEL[i % 2]) for i, k in enumerate(keys)))
+    return edit(out, 'witness_key_map', lambda rows: rows.extend(dict(old_key=o, witness_key=n, status='unambiguous', basis='content', candidate_keys=[],
+                                                                     occasion='meeting:118340', source='mods') for o, n in mapped))
+
+
+def second_meeting(tables, event, body, receipt, at, line, witnesses):
+    """`tables` plus meeting `event` read from `body` at (`receipt`, `line`, `at`), with Congress.gov `witnesses` [(key, name, org)] (review R3b)."""
+    meeting = tables['meetings'].to_pylist()[0]
+    observation = meeting['congress_gov_detail_observation']
+    reading = dict(observation['successful_read'], body_sha256=body.hex(), receipt_key=receipt, receipt_line=line, retrieved_at=at,
+                   source_url=MEETING_URL.replace('118340', str(event)))
+    copy = dict(meeting, event_id=event, publisher_status_observations=[],
+                congress_gov_detail_observation=dict(observation, successful_read=reading, latest_attempt=dict(observation['latest_attempt'], evidence=reading)))
+    rows = [dict(witness_key=k, occasion=f'meeting:{event}', source='congress_gov', record_sha=body, source_locator=f'congress_gov:witness[{i + 1}]',
+                 context_key='congress/meetings', name=n, organization=o, panel='Panel I', panel_order=1, display_order=i + 1, superseded_by=None)
+            for i, (k, n, o) in enumerate(witnesses)]
+    return edit({**tables, 'meetings': pa.Table.from_pylist([meeting, copy], schema=tables['meetings'].schema)}, 'witnesses', lambda r: r.extend(rows))
+
+
+def successor_on_another_updated_meeting():
+    """Review R3b: Bo Park's key w2 re-keyed onto meeting 118341, both meetings read again with new bytes."""
+    old, new = bytes.fromhex('b1' * 32), bytes.fromhex('b2' * 32)
+    base = second_meeting(base_tables(), 118341, old, FIRST_READ, FIRST_SEEN, 2, [('y1', 'Cy Diaz', 'EPA')])
+    candidate = second_meeting(cand_tables(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'),
+                                                                                              ('w2', 'bn9', 'content'), ('y1', 'y2', 'content')]),
+                               118341, new, RELIST, SEEN_AGAIN, 2, [('y2', 'Cy Diaz', 'EPA'), ('bn9', *PANEL[1])])
+    other = MEETING_URL.replace('118340', '118341')
+    return base, candidate, [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+                             capture_line(RELIST, new, SEEN_AGAIN, url=other, receipt_line=2), capture_line(FIRST_READ, old, FIRST_SEEN, url=other, receipt_line=2)]
+
+
 # One case per clause of the re-fetch rule (release_comparison.updated_meetings, updated_witnesses,
-# refetched_meetings; release_gate.cited_files_are_new), many from the 2026-11-11 reviews. Each builds
-# (base, candidate[, capture lines[, cache files]]) and names the outcome: True passes unattended; a
-# string must appear among the gate's reasons. Under the owner's ct-rhqw decision a Congress.gov
-# update publishes whatever its record changed; it stops on a lost key, on anything another source
-# or another meeting moved, and on any re-fetch the capture table does not prove.
+# refetched_meetings, nominations; release_gate.cited_files_are_new), many from the 2026-11-11
+# reviews (R1-R12: the ct-rhqw review). Each builds (base, candidate[, capture lines[, cache files[, documents]]])
+# and names the outcome: True passes unattended; a string must appear among the gate's reasons. Under
+# the owner's ct-rhqw decision a Congress.gov update publishes whatever its record changed; it stops
+# on a lost key (a witness key the map does not resolve to one witness: until "no longer listed"
+# lands), on anything another source or another meeting moved, and on any re-fetch the capture
+# table does not prove.
 PERSON_MAP = [('k1', 'n2', 'content'), ('w1', 'n2', 'content'), ('w2', 'n1', 'content'), ('v1', 'n2', 'content')]
 REKEY_STOPS = 'witnesses.parquet|removed keys|re-keyed: witness_key_map names the published successor ('
+UNRESOLVED_STOPS = 'witnesses.parquet|removed keys|witness_key_map states the key unresolved'
 NOT_A_BODY = f'cited file {NEW_RECORD.hex()[:16]} is not a body in the capture table'
 CY = ('Cy Diaz', 'EPA')
 HOUSE_LIST = lambda organization: other_witness('x1', 'house_xml', OTHER_BODY, 9, 'Di Fox', organization)
+HOUSE_SEEN, HOUSE_SEEN_AGAIN = ('house_xml', 'Scheduled', HEARD, 'e1' * 32, FIRST_SEEN), ('house_xml', 'Canceled', HEARD, 'e2' * 32, SEEN_AGAIN)
+SEEN_IN_THE_NEW_BODY = ('congress_gov', 'Scheduled', HEARD, NEW_RECORD.hex(), SEEN_AGAIN)
+DROPPED = lambda status, **row: edit(cand_tables(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=NEW_MAP[:2]), 'witness_key_map',
+                                     lambda rows: rows.append(dict(UNRESOLVED, status=status, **row)))
+MODS_ELSEWHERE = dict(other_witness('m1', 'mods', MODS_OLD, 1, *PANEL[0]), occasion='meeting:777')
+TO_MODS_ELSEWHERE = dict(old_key='q1', witness_key='m1', status='unambiguous', basis='content', candidate_keys=[], occasion='meeting:777', source='mods')
 CASES = {
     # Pass: what a Congress.gov update may change (ct-rhqw), and the clean re-keys before it (ct-uywf).
     'map_follows_the_person_in_a_new_order': (lambda: (base_tables(), cand_tables(panel=(PANEL[1], PANEL[0]), mapped=PERSON_MAP)), True),
@@ -1159,33 +1275,52 @@ CASES = {
                                                 {**cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3)), **documents(('n1', 'n3'))}), True),
     'video_refresh_beside_a_re_key': (lambda: ({**base_tables(), **video_tables('fetch-1', 1)}, {**cand_tables(), **video_tables('fetch-2', 8)},
                                                None, [(cache_file('fetch-2'), CACHE_RECEIPT)]), True),
-    'organization_edited': (lambda: (base_tables(), cand_tables(panel=(PANEL[0], ('Bo Park', 'EPA')))), True),
-    'name_edited_under_a_new_order': (lambda: (base_tables(), cand_tables(order=(2, 1), panel=(PANEL[0], ('Bo Parks', 'CBO')))), True),
+    # The map's locator tier pairs an edited name at the same place (witness-key-map.sql).
+    'name_edited_in_place': (lambda: (base_tables(), cand_tables(panel=(PANEL[0], ('Bo Parks', 'CBO')),
+                                                                 mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'), ('w2', 'n2', 'locator')])), True),
     'superseded_by_set_under_a_new_order': (lambda: (base_tables(), edit(cand_tables(order=(2, 1)), 'witnesses',
                                                                          lambda rows: rows[0].update(superseded_by='n2'))), True),
-    'witness_moved_to_another_panel': (lambda: (base_tables(), cand_tables(order=(2, 1), panels=[('Panel II', 2), ('Panel I', 1)])), True),
-    'details_swapped_under_a_new_order': (lambda: (base_tables(), cand_tables(order=(2, 1), panel=(('Ann Lee', 'CBO'), ('Bo Park', 'GAO')))), True),
     'a_witness_added': (lambda: (base_tables(), cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3))), True),
-    'a_witness_dropped_the_map_states_unresolved': (lambda: (base_tables(), edit(cand_tables(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=NEW_MAP[:2]),
-                                                                                'witness_key_map', lambda rows: rows.append(dict(UNRESOLVED)))), True),
-    'a_witness_dropped_the_map_names_candidates': (lambda: (base_tables(), edit(cand_tables(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=NEW_MAP[:2]),
-                                                                               'witness_key_map', lambda rows: rows.append(dict(UNRESOLVED, status='ambiguous', candidate_keys=['n1'])))), True),
     'two_old_bodies_one_new': (lambda: (edit(base_tables(), 'witnesses', lambda rows: rows[1].update(record_sha=OTHER_BODY)), cand_tables()), True),
-    'title_date_status_documents_and_videos_changed': (lambda: (base_tables(), cand_tables(title='Renamed', date=HEARD + timedelta(days=1), status='Canceled',
-                                                                                         documents=('agenda',), videos=('v9',))), True),
+    'title_date_status_documents_videos_and_sitting_changed': (lambda: (base_tables(), cand_tables(title='Renamed', date=HEARD + timedelta(days=1),
+                                                                                                status='Canceled', documents=('agenda',), videos=('v9',),
+                                                                                                rooms=[(TEN, 'SD-406')])), True),
     'status_postponed': (lambda: (base_tables(), cand_tables(statuses=[LIVE_STATUS, ('congress_gov', 'Postponed', HEARD, NEW_RECORD.hex(), SEEN_AGAIN)])), True),
-    'live_status_dropped': (lambda: (base_tables(), cand_tables(statuses=[('congress_gov', 'Scheduled', HEARD, NEW_RECORD.hex(), SEEN_AGAIN)])), True),
+    'postponed_and_moved_a_fortnight': (lambda: (base_tables(), cand_tables(status='Postponed', date=HEARD + timedelta(days=14),
+                                                                            statuses=[LIVE_STATUS, ('congress_gov', 'Postponed', HEARD + timedelta(days=14),
+                                                                                                    NEW_RECORD.hex(), SEEN_AGAIN)])), True),
+    'live_status_dropped': (lambda: (base_tables(), cand_tables(statuses=[SEEN_IN_THE_NEW_BODY])), True),
     'latest_attempt_failed': (lambda: (base_tables(), edit(cand_tables(), 'meetings', lambda rows: rows[0]['congress_gov_detail_observation']['latest_attempt'].update(state='failed'))), True),
     'update_stamp_moved_back': (lambda: (base_tables(), cand_tables(updated=datetime(2025, 12, 1, tzinfo=timezone.utc))), True),
-    'canceled_by_the_publisher': (lambda: (base_tables(), cand_tables(status='Canceled', held=('canceled', 'publisher_cancellation'))), True),
+    'canceled_by_the_publisher': (lambda: (base_tables(), cand_tables(status='Canceled', held=('canceled', 'publisher_cancellation', NEW_RECORD.hex()))), True),
     'first_stated_meeting_with_its_witnesses': (first_stated, True),
     'witness_coverage_counts_a_new_witness': (lambda: ({**base_tables(), 'meeting_coverage': coverage(2)},
                                                       {**cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3)), 'meeting_coverage': coverage(3)}), True),
+    'a_nomination_the_update_newly_names': (lambda: nomination_named_by_the_update('119-pn-1022-19'), True),
+    'read_dated_a_minute_ago': (lambda: (base_tables(), cand_tables(at=(t := datetime.now(timezone.utc).replace(microsecond=0) - timedelta(minutes=1))),
+                                         [capture_line(RELIST, NEW_RECORD, t), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), True),
 
-    # Lost keys stop, whatever the record says.
+    # Lost keys stop, whatever the record says (owner, 2026-11-11, until "no longer listed" lands).
     'a_link_key_lost': (lambda: (base_tables(), cand_tables(), None, (), (['A', 'B'], ['A'])), 'link rule: 1 base link keys vanish'),
     'a_witness_dropped_with_no_map_row': (lambda: (base_tables(), cand_tables(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=NEW_MAP[:2])),
                                           'witnesses.parquet|removed keys|no evidence given'),
+    'a_witness_dropped_the_map_states_unresolved': (lambda: (base_tables(), DROPPED('unresolved')), UNRESOLVED_STOPS),
+    'a_witness_dropped_the_map_names_candidates': (lambda: (base_tables(), DROPPED('ambiguous', candidate_keys=['n1'])),
+                                                   'witnesses.parquet|removed keys|witness_key_map states the key ambiguous'),
+    # The map the model writes for an edit its tiers cannot pair (witness-key-map.sql: unresolved): reviews R8a, R8b.
+    'organization_edited_the_map_states_unresolved': (lambda: (base_tables(), edit(cand_tables(panel=(PANEL[0], ('Bo Park', 'EPA')), mapped=NEW_MAP[:2]),
+                                                                                   'witness_key_map', lambda rows: rows.append(dict(UNRESOLVED)))), UNRESOLVED_STOPS),
+    'panel_moved_the_map_states_unresolved': (lambda: (base_tables(), edit(cand_tables(panels=[('Panel I', 1), ('Panel II', 2)], mapped=NEW_MAP[:2]),
+                                                                           'witness_key_map', lambda rows: rows.append(dict(UNRESOLVED)))), UNRESOLVED_STOPS),
+    'name_edited_under_a_new_order_the_map_states_unresolved': (lambda: (base_tables(), edit(cand_tables(order=(2, 1), panel=(PANEL[0], ('Bo Parks', 'CBO')),
+                                                                                                         mapped=NEW_MAP[:2]),
+                                                                                             'witness_key_map', lambda rows: rows.append(dict(UNRESOLVED)))), UNRESOLVED_STOPS),
+    'record_drops_every_witness': (lambda: ({**base_tables(), **documents(('w1', 'w2'))},
+                                            {**edit(cand_tables(keys=(), panel=(), order=(), mapped=[]), 'witness_key_map',
+                                                    lambda rows: rows.extend(dict(UNRESOLVED, old_key=k) for k in ('k1', 'w1', 'w2'))), **documents(())}),
+                                   UNRESOLVED_STOPS),
+    'unresolved_row_for_a_key_never_listed': (lambda: (base_tables(), edit(cand_tables(), 'witness_key_map', lambda rows: rows.append(dict(UNRESOLVED, old_key='zz')))),
+                                              'witness_key_map.parquet|added keys|a key no base witness carries (1) is not an addition'),
     'new_order_beside_a_dropped_witness': (lambda: (base_tables(keys=('w1', 'w2', 'w3'), panel=(*PANEL, CY), order=(1, 2, 3)),
                                                     cand_tables(order=(2, 1))), 'witnesses.parquet|removed keys|no evidence given'),
     'dropped_witness_key_sent_to_another': (lambda: (base_tables(keys=('w1', 'w2', 'w3'), panel=(*PANEL, CY), order=(1, 2, 3)),
@@ -1198,6 +1333,22 @@ CASES = {
     # Another source, another meeting, or a column another source moves: not this update.
     'house_list_witness_edited': (lambda: (edit(base_tables(), 'witnesses', lambda rows: rows.append(HOUSE_LIST('NSF'))),
                                            edit(cand_tables(), 'witnesses', lambda rows: rows.append(HOUSE_LIST('NIH')))), 'witnesses.parquet|changed organization'),
+    'house_list_witness_added_on_an_update': (lambda: (base_tables(), edit(cand_tables(), 'witnesses',
+                                                                            lambda rows: rows.append(other_witness('x1', 'house_xml', NEW_RECORD, 9, 'Di Fox', 'NSF')))),
+                                              'witnesses.parquet|added keys|no evidence given'),
+    # R1a, R1b: a House read beside the update may move what the House record leads; its sightings must stay.
+    'house_read_moves_the_title_stamp_kept': (lambda: (base_tables(house_xml='2026-01-01', statuses=[LIVE_STATUS, HOUSE_SEEN]),
+                                                       cand_tables(house_xml='2026-01-01', title='Renamed by the House',
+                                                                   statuses=[LIVE_STATUS, SEEN_IN_THE_NEW_BODY, HOUSE_SEEN_AGAIN])), 'meetings.parquet|changed title'),
+    'house_cancellation_stamp_kept': (lambda: (base_tables(house_xml='2026-01-01', statuses=[LIVE_STATUS, HOUSE_SEEN]),
+                                               cand_tables(house_xml='2026-01-01', held=('canceled', 'publisher_cancellation', 'e2' * 32),
+                                                           statuses=[LIVE_STATUS, SEEN_IN_THE_NEW_BODY, HOUSE_SEEN_AGAIN])), 'meetings.parquet|changed outcome'),
+    'house_xml_stamp_moved_on_an_update': (lambda: (base_tables(), cand_tables(title='Renamed', house_xml='2026-11-08')), 'meetings.parquet|changed house_xml_updated'),
+    'held_by_a_transcript_on_an_update': (lambda: (base_tables(), cand_tables(held=('held', 'committee_transcript', '256383'))), 'meetings.parquet|changed outcome'),
+    # C3: a live outcome from a transcript is not the publisher's to undo.
+    'canceled_where_a_transcript_held_it': (lambda: (base_tables(held=('held', 'committee_transcript', '256383')),
+                                                     cand_tables(status='Canceled', held=('canceled', 'publisher_cancellation', NEW_RECORD.hex()))),
+                                            'meetings.parquet|changed outcome'),
     'mods_print_re_fetched': (lambda: mods(), 'witnesses.parquet|removed keys|re-keyed'),
     'mods_print_re_fetched_in_a_new_order': (lambda: mods(reordered=True), 'witnesses.parquet|changed display_order'),
     'surviving_key_mapped_to_a_duplicate': (lambda: (
@@ -1211,17 +1362,66 @@ CASES = {
              'witness_key_map', lambda rows: rows.append(dict(old_key='z9', witness_key='h1', status='unambiguous', basis='content',
                                                               candidate_keys=[], occasion='meeting:118340', source='house_xml')))),
         'witness_key_map.parquet|added keys|a key no base witness carries (1) is not an addition'),
+    # W4: a live MODS witness mapped (by a row that claims Congress.gov) onto the update's new witness.
+    'live_mods_witness_mapped_onto_the_update': (lambda: (
+        edit(base_tables(), 'witnesses', lambda rows: rows.append(other_witness('m1', 'mods', MODS_OLD, 3, *CY))),
+        edit(cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3)), 'witness_key_map', lambda rows: rows.append(
+            dict(old_key='m1', witness_key='n3', status='unambiguous', basis='content', candidate_keys=[], occasion='meeting:118340', source='congress_gov')))),
+        REKEY_STOPS),
+    # R7b: a live MODS key of another meeting relabelled onto the update; R7c: the same row kept on its meeting.
+    'live_mods_key_relabelled_onto_the_update': (lambda: (
+        edit(edit(base_tables(), 'witnesses', lambda rows: rows.append(dict(MODS_ELSEWHERE))), 'witness_key_map', lambda rows: rows.append(dict(TO_MODS_ELSEWHERE))),
+        edit(edit(cand_tables(), 'witnesses', lambda rows: rows.append(dict(MODS_ELSEWHERE))), 'witness_key_map',
+             lambda rows: rows.append(dict(TO_MODS_ELSEWHERE, occasion='meeting:118340', source='congress_gov', basis='locator')))),
+        'witness_key_map.parquet|changed'),
+    'live_mods_key_unresolved_on_its_meeting': (lambda: (
+        edit(edit(base_tables(), 'witnesses', lambda rows: rows.append(dict(MODS_ELSEWHERE))), 'witness_key_map', lambda rows: rows.append(dict(TO_MODS_ELSEWHERE))),
+        edit(edit(cand_tables(), 'witnesses', lambda rows: rows.append(dict(MODS_ELSEWHERE))), 'witness_key_map',
+             lambda rows: rows.append(dict(UNRESOLVED, old_key='q1', occasion='meeting:777', source='mods')))), 'witness_key_map.parquet|changed'),
+    # K2: a Congress.gov key of a meeting the night did not read.
+    'map_row_of_a_meeting_not_read': (lambda: (
+        edit(base_tables(), 'witness_key_map', lambda rows: rows.append(dict(TO_MODS_ELSEWHERE, old_key='z1', witness_key='w1', basis='occurrence',
+                                                                                occasion='meeting:118341', source='congress_gov'))),
+        edit(cand_tables(), 'witness_key_map', lambda rows: rows.append(dict(TO_MODS_ELSEWHERE, old_key='z1', witness_key='n1', basis='content',
+                                                                                 occasion='meeting:118341', source='congress_gov')))),
+        'witness_key_map.parquet|changed basis'),
+    # R3a, R3b: a removed witness's successor on a meeting not read, or on another updated meeting.
+    'successor_on_a_meeting_not_read': (lambda: (base_tables(), edit(cand_tables(), 'witnesses', lambda rows: rows[1].update(occasion='meeting:118341'))),
+                                        'is not an addition'),
+    'successor_on_another_updated_meeting': (successor_on_another_updated_meeting, 'witnesses.parquet|changed occasion'),
     'a_meeting_not_read_again_renamed': (lambda: (base_tables(), meeting_read(OLD_RECORD, FIRST_READ, FIRST_SEEN, keys=('w1', 'w2'), mapped=[('k1', 'w1', 'occurrence')],
                                                                               statuses=[LIVE_STATUS], title='Renamed'), [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]),
                                          'meetings.parquet|changed title'),
-    'house_xml_stamp_moved_on_an_update': (lambda: (base_tables(), cand_tables(title='Renamed', house_xml='2026-11-08')), 'meetings.parquet|changed house_xml_updated'),
-    'held_by_a_transcript_on_an_update': (lambda: (base_tables(), cand_tables(held=('held', 'committee_transcript'))), 'meetings.parquet|changed outcome'),
+    # R12: the read that would prove the update is a read of another meeting's record.
+    'read_is_another_meetings_record': (lambda: (base_tables(), edit(cand_tables(title='Renamed'), 'meetings', lambda rows: [
+        r.update(source_url=r['source_url'].replace('118340', '999999')) for r in (rows[0]['congress_gov_detail_observation']['successful_read'],
+                                                                                 rows[0]['congress_gov_detail_observation']['latest_attempt']['evidence'])]),
+                                                 [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN, url=MEETING_URL.replace('118340', '999999')),
+                                                  capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), 'meetings.parquet|changed title'),
+    # F1 (338820's shape), F2: a meeting Congress.gov only lists, and coverage of an aspect the update does not move.
+    'listed_only_meeting_beside_an_update': (listed_only_beside_an_update, 'meetings.parquet|added keys|unexplained'),
+    'coverage_row_added_to_an_updated_meeting': (lambda: ({**base_tables(), 'meeting_coverage': coverage(2)},
+                                                          {**cand_tables(), 'meeting_coverage': coverage(2, extra=[dict(event_id=118340, aspect='captions', state='unknown',
+                                                                                                                         basis='videos.has_caption', count=0, reason=None)])}),
+                                                 'meeting_coverage.parquet|added keys|no evidence given'),
     'documents_coverage_moved_on_an_update': (lambda: ({**base_tables(), 'meeting_coverage': coverage(2)}, {**cand_tables(), 'meeting_coverage': coverage(2, documents=2)}),
                                               'meeting_coverage.parquet|changed count'),
+    'a_nomination_no_update_names': (lambda: nomination_named_by_the_update('119-pn-9999-1'), 'nominations.parquet|added keys|no evidence given'),
+    # R4: a first stated meeting that claims an existing document.
+    'first_stated_meeting_claims_an_existing_document': (lambda: ({**first_stated()[0], **document_names((), ())}, {**first_stated()[1], **document_names((), ('118340',))}),
+                                                         'changed meeting_keys'),
     # D1: a document key the map moves that no update moved (here a stale key the live document listed).
     'document_lists_a_key_no_update_moved': (lambda: ({**base_tables(), **documents(('v1', 'w2'))}, {**cand_tables(), **documents(('n1', 'n2'))}),
                                              'list.parquet|changed witness_keys|re-keyed through witness_key_map (1) is not an addition'),
-    # The witness's new body is its meeting's new read, and the read really is new.
+    # D3: a document that gains a witness of another source; R2a, R2b: and beside a MODS re-key.
+    'document_gains_a_witness_of_another_source': (lambda: ({**edit(base_tables(), 'witnesses', lambda rows: rows.append(HOUSE_LIST('NSF'))), **documents(('w1',))},
+                                                           {**edit(cand_tables(), 'witnesses', lambda rows: rows.append(HOUSE_LIST('NSF'))), **documents(('n1', 'x1'))}),
+                                                   'list.parquet|changed witness_keys|value differs on matched key'),
+    'document_moved_by_a_re_key_and_a_mods_re_key': (lambda: ({**mods_beside(base_tables(), MODS_OLD, ('m1',)), **documents(('w1', 'm1'))},
+                                                              {**mods_beside(cand_tables(), MODS_NEW, ('m3',), [('m1', 'm3')]), **documents(('n1', 'm3'))},
+                                                              [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+                                                               capture_line(MODS_RECEIPT, MODS_NEW, SEEN_AGAIN, url='https://www.govinfo.gov/mods')]),
+                                                     'is not an addition'),
     'witness_body_is_not_its_meetings_read': (lambda: (base_tables(), edit(cand_tables(), 'witnesses', lambda rows: [r.update(record_sha=SECOND_BODY) for r in rows]),
                                                        [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(RELIST, SECOND_BODY, SEEN_AGAIN, receipt_line=2),
                                                         capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]),
@@ -1238,7 +1438,7 @@ CASES = {
     'read_dated_before_the_live_read': (lambda: (base_tables(), cand_tables(at=datetime(2026, 10, 1, tzinfo=timezone.utc))),
                                         'meetings.parquet|changed congress_gov_detail_observation'),
     'read_dated_in_the_future': (lambda: (base_tables(), cand_tables(at=FUTURE)), 'meetings.parquet|changed congress_gov_detail_observation'),
-    # A byte-identical read moves only its bookkeeping (ct-uywf).
+    # A byte-identical read moves only bookkeeping (ct-uywf).
     'status_seen_again_with_no_read': (lambda: (base_tables(), meeting_read(OLD_RECORD, FIRST_READ, FIRST_SEEN, keys=('w1', 'w2'), mapped=[('k1', 'w1', 'occurrence')],
                                                                             statuses=[LIVE_STATUS[:4] + (SEEN_AGAIN,)]), [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]),
                                        'meetings.parquet|changed publisher_status_observations'),
@@ -1256,7 +1456,6 @@ CASES = {
     'new_body_also_in_a_live_receipt': (lambda: (base_tables(), cand_tables(), [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
                                                                               capture_line(FIRST_READ, NEW_RECORD, SEEN_AGAIN, receipt_line=9)]),
                                         f'cited file {NEW_RECORD.hex()[:16]} was already read by the live release ({FIRST_READ})'),
-    # A meeting with no witnesses: only its own read cites the new body.
     'meeting_body_also_in_a_live_receipt': (lambda: (base_tables(keys=(), panel=(), order=(), mapped=[]),
                                                      cand_tables(keys=(), panel=(), order=(), mapped=[], title='Renamed'),
                                                      [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),

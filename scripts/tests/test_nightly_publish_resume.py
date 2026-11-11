@@ -136,11 +136,11 @@ def test_a_log_that_cannot_be_kept_never_stops_the_retirement(tmp_path, monkeypa
 
 
 def test_the_morning_report_is_kept_and_its_line_goes_in_the_summary(tmp_path):
-    """ct-rhqw: the gate writes the Congress.gov meeting update report beside its automatic trace; the
+    """ct-rhqw: the gate writes the Congress.gov meeting update report beside its gate report; the
     run keeps both files with its evidence and puts the report's line in summary.json."""
-    report = {'archive-publish/candidate-x/automatic/meeting-updates.json':
+    report = {'archive-publish/candidate-x/meeting-updates.json':
               json.dumps(dict(line='1 Congress.gov meeting updated: 118340 (title)', meetings=[])).encode(),
-              'archive-publish/candidate-x/automatic/meeting-updates.txt': b'118340 Hearing (2026-11-12)\n  title: A -> B\n'}
+              'archive-publish/candidate-x/meeting-updates.txt': b'118340 Hearing (2026-11-12)\n  title: A -> B\n'}
     published, run = candidate(tmp_path / 'published', report)
     summary = {}
     nightly.record_meeting_updates(summary, published)
