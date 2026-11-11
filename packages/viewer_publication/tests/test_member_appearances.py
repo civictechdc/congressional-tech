@@ -71,7 +71,11 @@ MEMBERS = [
 ]
 # Pinned roster seats (Congress, committee, Member): Peterson sits on the full committee only, Scott on a subcommittee too.
 SEATS = [(114, 'hsag00', 'W000009'), (114, 'hsag00', 'P000005'), (114, 'hsag00', 'S000007'), (114, 'hsag22', 'S000007'),
-         (116, 'hsap00', 'K000009')]
+         (115, 'hsag00', 'P000005'), (116, 'hsap00', 'K000009')]
+# What prints' own MODS state (package_mods_facts): held dates, committee codes, committee members.
+PRINTS = {'CHRG-rivers': (['2010-03-02'], [], []), 'CHRG-114hhrg99999': (['2016-02-01'], [], []),
+          'CHRG-115hhrg88888': (['2017-02-28'], ['hsag00'], []),
+          'CHRG-110hhrg77777': (['2008-03-01'], ['hsag00'], ['P000005']), 'CHRG-110hhrg77776': (['2008-03-02'], ['hsag00'], ['W000009'])}
 COMMITTEES = {9030: ['hsag00'], 9031: ['hsag22'], 9032: ['hsif00'], 9033: ['hsag00'], 9034: ['hsag00']}
 DISTRICTS = {'P000003': 0, 'C000004': 46}  # House seats the seat rule reads; 0 is at large
 MEETINGS = [
@@ -172,6 +176,12 @@ ROWS = {
                                    None, None, None),
     'opening-before-the-rosters': ('mods', 9034, None, 'Collin C. Peterson', 'a Representative in Congress from Minnesota',
                                    'opening statement', None, None, None),
+    'print-code-opening': ('mods', None, 'CHRG-115hhrg88888', 'Collin C. Peterson', 'a Representative in Congress from Minnesota',
+                           'opening statement', None, None, None),
+    'print-list-opening': ('mods', None, 'CHRG-110hhrg77777', 'Collin C. Peterson', 'a Representative in Congress from Minnesota',
+                           'opening statement', None, None, None),
+    'print-list-omits-the-member': ('mods', None, 'CHRG-110hhrg77776', 'Collin C. Peterson',
+                                    'a Representative in Congress from Minnesota', 'opening statementt', None, None, None),
 }
 
 
@@ -202,9 +212,10 @@ def result(tmp_path_factory):
         json_input(work, 'congressional_commissions',
                    json.loads((ROOT / 'model/registries/congressional-commissions.json').read_text()),
                    **REGISTRIES['congressional_commissions']),
-        json_input(work, 'package_mods_facts', [dict(package_id='CHRG-rivers', held_dates=['2010-03-02'], title='Rivers'),
-                                                dict(package_id='CHRG-114hhrg99999', held_dates=['2016-02-01'], title='Cotton')],
-                   package_id='Utf8', held_dates=list_of('Utf8'), title='Utf8'),
+        json_input(work, 'package_mods_facts', [dict(package_id=p, held_dates=h, title=p, committees=c, committee_members=m)
+                                                for p, (h, c, m) in PRINTS.items()],
+                   package_id='Utf8', held_dates=list_of('Utf8'), title='Utf8', committees=list_of('Utf8'),
+                   committee_members=list_of('Utf8')),
         json_input(work, 'appearance_rows', [
             dict(witness_key=k, source=s, event_id=e, package_id=p, name=n, position=pos, organization=org, witness_type=t, bioguide_id=b)
             for k, (s, e, p, n, pos, org, t, b, _sup) in ROWS.items()],
@@ -260,7 +271,8 @@ def decided(result):
     ('listed-commission', ('member', 'K000005', 'name_role')),       # the registry lists the Solarium Commission
     ('opening-off-the-committee', ('member', 'K000009', 'name_state')),   # an Appropriations member at Energy and Commerce
     ('committee-member-testifies', ('member', 'W000009', 'name_state')),  # no opening statement
-    ('opening-before-the-rosters', ('member', 'P000005', 'name_state')),  # the rosters begin with the 113th Congress
+    ('opening-before-the-rosters', ('member', 'P000005', 'name_state')),  # no rosters and no print member list
+    ('print-list-omits-the-member', ('member', 'P000005', 'name_state')),  # the print's own list does not hold him
 ])
 def test_sitting_members_acting_officially_are_member_appearances(result, key, expected):
     assert decided(result)[key] == expected
@@ -278,6 +290,8 @@ def test_these_stay_witnesses_or_statements(result, key):
     ('committee-opening', ('statement', 'W000009', 'name_state')),
     ('parent-committee-opening', ('statement', 'P000005', 'name_state')),  # a full committee member at its subcommittee
     ('print-committee-opening', ('statement', 'S000007', 'name_state')),   # the print's own document names the committee
+    ('print-code-opening', ('statement', 'P000005', 'name_state')),       # only the print's own MODS committee code does
+    ('print-list-opening', ('statement', 'P000005', 'name_state')),       # before the rosters: the print's member list
 ])
 def test_a_committee_members_own_opening_statement_is_a_member_statement(result, key, expected):
     assert decided(result)[key] == expected

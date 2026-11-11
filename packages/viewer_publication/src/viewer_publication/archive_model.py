@@ -110,6 +110,10 @@ APPEARANCE_RECORD_FIELDS=dict(
     held_dates=list_of('Utf8'),
     title='Utf8',
     created='Utf8',
+    # The print's own MODS committee codes (congCommittee authorityId) and committee members (congMember role
+    # COMMMEMBER, bioGuideId): read by the committee opening-statement rule (ct-kw85, witness_member_committees).
+    committees=list_of('Utf8'),
+    committee_members=list_of('Utf8'),
 )
 
 RECORDING_DECISION_FIELDS=dict(id='Utf8',subject_kind='Utf8',subject_id='Utf8',verdict='Utf8',video_refs=list_of('Utf8'),
@@ -333,6 +337,8 @@ def _normalize_appearance_rows(rows,selected_versions=None):
             held_dates=[str(d) for d in row.get('held_dates') or ()],
             title=str(row['title']) if row.get('title') is not None else None,
             created=str(row['created']) if row.get('created') is not None else None,
+            committees=[str(c) for c in row.get('committees') or ()],
+            committee_members=[str(m) for m in row.get('committee_members') or ()],
         ))
     return normalized
 
@@ -1109,8 +1115,12 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         status_expr='status'
         error_expr='error_type'
         extra_select=''
+        # The print's own committee and committee members: the lake's appearance records do not carry them yet (the MODS
+        # producer parses and drops them), so a lake table states none; a local Parquet input that has them is read.
+        no_committees=("arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committees,"
+                       "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committee_members,")
         if table_name=='appearance_records':
-            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,'
+            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,'+no_committees
         if parquet_path is not None and Path(parquet_path).is_file():
             import pyarrow as pa
             import pyarrow.parquet as pq
@@ -1131,7 +1141,9 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                 held_expr='held_dates' if 'held_dates' in schema.names else "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS held_dates"
                 title_expr='title' if 'title' in schema.names else 'cast(NULL AS VARCHAR) AS title'
                 created_expr='created' if 'created' in schema.names else 'cast(NULL AS VARCHAR) AS created'
-                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},{created_expr},'
+                committees_expr=('committees,committee_members,' if {'committees','committee_members'}<=set(schema.names)
+                                 else no_committees)
+                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},{created_expr},{committees_expr}'
         return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
     meeting_records_path=meeting_records.get('path') if isinstance(meeting_records,dict) else meeting_records
     has_document_references=(not isinstance(meeting_records_path,(str,Path)) or

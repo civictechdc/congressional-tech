@@ -66,7 +66,7 @@ WITH fold(accented,plain) AS (
  FROM folded
 ), facts AS (
 SELECT side,part,id,person,publisher_id,publisher_member,event_id,package_id,toks,abbreviated,
- part='name' AND regexp_like(full_text,'\bopening statements?\b') AS says_opening,
+ part='name' AND regexp_like(full_text,'\bopening statement') AS says_opening,
  part='name' AND trim(fields)='' AND regexp_like(title_words,'\smembers?\s(s\s)?day\s')
   AND NOT regexp_like(title_words,'\sformer\smembers?\s(s\s)?day\s') AS member_day_name_only,
  CASE WHEN part='name' THEN string_to_array(trim(regexp_replace(seat_text,'[^a-z]+',' ','g')),' ') END AS seat_words,
