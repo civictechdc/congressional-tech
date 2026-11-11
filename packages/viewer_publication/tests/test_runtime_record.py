@@ -54,10 +54,11 @@ def model_job(tmp_path, monkeypatch, capsys, engine_config):
 
 def model_only_build(tmp_path, monkeypatch, capsys, runtime):
     """A candidate build. The bound template's spicy-regs tables are fetched data this checkout need not
-    have, so they are not held; every other input is, as the build holds it."""
+    have, so neither the input check nor the build reads them (the table list both take is empty); every
+    other input is checked and held, as the build does."""
     import viewer_publication.archive_model_job as job
     from viewer_publication.release_gate import prior_links
-    monkeypatch.setattr(job, '_spicy_arguments', lambda *_: {})
+    monkeypatch.setattr(job, '_spicy_tables', lambda *_: ({}, {}))
     candidate = tmp_path / 'candidate'
     daily_candidate(candidate)
     ready = tmp_path / 'ready'
