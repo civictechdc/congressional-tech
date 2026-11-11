@@ -31,9 +31,12 @@ are None there: "not logged", never 0.
 moved: seconds by more than --seconds, peak physical footprint, its rise, pool peak and
 shared floor by more than --gib, storage and the counts on any change. A figure one run lacks
 is not compared; statements in one run only are listed. Its pass lines are the next
-pin's qualification (ct-x00f): refused copies 0 on every statement, and no statement's
-pool peak in B above A's. Where A logs no pool peak, B is judged against the larger of
-A's pool before and after, which A's peak is at least: above it is undetermined.
+pin's qualification (ct-x00f), each PASS, FAIL or UNDETERMINED: refused copies 0 on every
+statement of B (its debug log's refusal lines where its binary logs no count), and no
+statement's pool peak in B above A's. Where A logs no pool peak, B is judged against the
+larger of A's pool before and after, which A's peak is at least: above it is undetermined.
+A step log the engine appended a rerun to is refused: its earlier statements lie
+outside the timeline.
 
 --debug-log reads the engine's stderr from a run with
 RUST_LOG=docspec=info,docspec::budget=debug and gives each statement its shared-budget
@@ -43,9 +46,16 @@ that request's own acquisition, so nothing "after" is computed from it. A view c
 one column copied, not comparable to the engine's copied batches. A debug line counts
 for the next statement event after it in the same file, so no clock is needed. That
 cannot see work outside statements (input registration before the first, releases after
-an event: it lands on the next statement), memory a statement uses after its last
-request, or lines another process wrote to the file; lines after the last statement
-event are counted apart.
+an event: it lands on the next statement), or lines another process wrote to the file;
+lines after the last statement event are counted apart. The floor is sampled only where
+Budget::reserve logs: what a request's own acquisition leaves, and takes from the shared
+budget that bypass it (the candidate's metadata cache, 562ad6a
+src/budget/metadata_cache.rs:55, fails silently), are not seen. A views.rs reserve line
+not in VIEW_RESERVES withholds every view count (None), since its copies would read 0.
+`native_reserved` is not used to bound a pin's pool peak: a line logged after the
+previous event, before its releases, can carry a pool above this statement's whole peak.
+The pass lines skip what the engine does not log: no output event carries a count or a
+pool peak (one-line src/job/metrics.rs:184-206).
 
 What this cannot see. A statement that spans no whole reading is unattributed, never
 given a neighbour's figure. A peak between two readings is missed; sample faster with
@@ -179,10 +189,14 @@ def read_debug_log(path):
                     tally['view_copies'] += role == 'copy'
                     if role is None:
                         unknown.add(number)
-    if not any(counted['requests'] for counted in (*statements.values(), tally)):
+    tallies = (*statements.values(), tally)
+    if not any(counted['requests'] for counted in tallies):
         # Every engine job reserves shared budget: none read means the debug log was off, or its format moved.
         raise Refused(f'{path} holds no readable "{ADMISSION}" line: run the engine with '
                       'RUST_LOG=docspec=info,docspec::budget=debug, or see whether the line format moved (ADMISSION)')
+    if unknown:  # a copy reserve on a line not in VIEW_RESERVES would count as no copy: withhold every count
+        for counted in tallies:
+            counted['view_copies'] = None
     return dict(statements=statements, after_last=tally, unreadable_lines=unreadable, unknown_view_lines=sorted(unknown))
 
 
@@ -194,6 +208,13 @@ def _shared(tally):
                 refusal_lines=tally['refusal_lines'])
 
 
+def _comparable(row):
+    """A statement row holding every field --compare reads, each of the type this script writes."""
+    return (isinstance(row, dict) and COMPARED <= row.keys() and isinstance(row['kind'], str)
+            and isinstance(row['name'], str) and isinstance(row['storage'], (str, type(None))) and _number(row['seconds'])
+            and all(row[key] is None or _number(row[key]) for key in COMPARED - {'kind', 'name', 'storage', 'seconds'}))
+
+
 def read_result(path):
     """A result this script wrote with --json, refused if it lacks what a comparison reads."""
     with open(path, errors='replace') as stream:
@@ -202,10 +223,14 @@ def read_result(path):
         except ValueError:
             raise Refused(f'{path} is not JSON: give a result step_memory.py wrote with --json') from None
     rows = value.get('statements') if isinstance(value, dict) else None
-    if not (isinstance(rows, list) and isinstance(value.get('run_peak'), dict)
-            and all(isinstance(row, dict) and COMPARED <= row.keys() for row in rows)):
-        raise Refused(f'{path} is not a result of this step_memory.py --json (an older one lacks storage and the '
-                      'compaction counts): measure that run again')
+    peak = value.get('run_peak') if isinstance(value, dict) else None
+    debug = value.get('debug') if isinstance(value, dict) else None
+    if not (isinstance(rows, list) and all(map(_comparable, rows)) and isinstance(peak, dict)
+            and _number(peak.get('peak_physical_gb')) and _number(peak.get('peak_rss_gb'))
+            and (debug is None or isinstance(debug, dict) and isinstance(debug.get('log'), str)
+                 and isinstance(debug.get('unknown_view_lines'), list))):
+        raise Refused(f'{path} is not a result of this step_memory.py --json: a field --compare reads is missing or of '
+                      'another type (an older result lacks storage and the compaction counts); measure that run again')
     return value
 
 
@@ -276,6 +301,14 @@ def measure(events, samples, offset_seconds=None, debug=None):
     # A reading ends at its stamp. Readings never overlap, so their starts are in the same order as their ends.
     ends = [sample[clock] for sample in samples]
     begins = [sample['epoch'] - sample['read_seconds'] for sample in samples] if exact else ends
+    # The engine appends to DOCSPEC_STEP_LOG (b0342a7 src/job/metrics.rs:20-25), so a rerun into the same file holds the
+    # earlier run too, whose statements lie outside this timeline. The allowance keeps a running job read a moment apart.
+    outside = [event['name'] for event in spans if event['end_epoch'] + shift < begins[0] - ONE_RUN_SECONDS
+               or event['start_epoch'] + shift > ends[-1] + ONE_RUN_SECONDS]
+    if outside:
+        raise Refused(f'{len(outside)} statements of the step log lie outside the timeline, the first {outside[0]}: the two '
+                      'files are not from the same run (the engine appends a rerun to the same DOCSPEC_STEP_LOG); '
+                      'give one run\'s step log')
     highest = max(range(len(samples)), key=lambda index: samples[index]['physical_gb'])
     rows, during, overlaps = [], [], []
     for event in spans:
@@ -342,9 +375,10 @@ def _keyed(result):
 
 
 def _logged(rows, field):
-    """How many statements log a count, and those where it is not 0; None when none logs it."""
+    """How many statements log a count, those where it is not 0, and, by kind, those that log none; None when none does."""
     logged = {label: row[field] for label, row in rows.items() if row[field] is not None}
-    return dict(logged=len(logged), statements={label: count for label, count in logged.items() if count}) if logged else None
+    return dict(logged=len(logged), statements={label: count for label, count in logged.items() if count},
+                not_logged=dict(Counter(row['kind'] for row in rows.values() if row[field] is None))) if logged else None
 
 
 def compare(run_a, run_b, *, seconds, gib):
@@ -353,7 +387,8 @@ def compare(run_a, run_b, *, seconds, gib):
     rows_a, rows_b = _keyed(a), _keyed(b)
     both = [label for label in rows_a if label in rows_b]
     limit = dict(seconds=seconds, gib=gib)
-    moved, pool, compared_memory = {}, dict(judged=0, against_a_bound=0, above={}, above_a_bound={}), 0
+    moved, compared_memory, one_run = {}, 0, dict(a=[], b=[])
+    pool, not_judged = dict(judged=0, against_a_bound=0, above={}, above_a_bound={}), Counter()
     for label in both:
         x, y = rows_a[label], rows_b[label]
         changes = {}
@@ -365,14 +400,17 @@ def compare(run_a, run_b, *, seconds, gib):
                 changes[field] = [before, after]
         if changes:
             moved[label] = changes
-        compared_memory += x['peak_physical_gb'] is not None and y['peak_physical_gb'] is not None
-        if y['pool_peak_gb'] is None:
-            continue
-        if x['pool_peak_gb'] is not None:
+        attributed = (x['peak_physical_gb'] is not None, y['peak_physical_gb'] is not None)
+        compared_memory += all(attributed)
+        if any(attributed) and not all(attributed):
+            one_run['a' if attributed[0] else 'b'].append(label)
+        if y['pool_peak_gb'] is None or x['pool_peak_gb'] is None and None in (x['pool_before_gb'], x['pool_after_gb']):
+            not_judged[x['kind']] += 1
+        elif x['pool_peak_gb'] is not None:
             pool['judged'] += 1
             if y['pool_peak_gb'] > x['pool_peak_gb']:
                 pool['above'][label] = [x['pool_peak_gb'], y['pool_peak_gb']]
-        elif x['pool_before_gb'] is not None and x['pool_after_gb'] is not None:
+        else:
             # A logs no peak, but its peak is at least its pool at the start and at the end.
             pool['judged'] += 1
             pool['against_a_bound'] += 1
@@ -381,15 +419,16 @@ def compare(run_a, run_b, *, seconds, gib):
                 pool['above_a_bound'][label] = [bound, y['pool_peak_gb']]
 
     def run(path, result, rows):
+        debug = result.get('debug') or {}
         return dict(result=path, statements=len(rows), seconds=round(sum(row['seconds'] for row in rows.values()), 3),
                     peak_physical_gb=result['run_peak']['peak_physical_gb'], peak_rss_gb=result['run_peak']['peak_rss_gb'],
-                    debug_log=(result.get('debug') or {}).get('log'))
+                    debug_log=debug.get('log'), unknown_view_lines=debug.get('unknown_view_lines', []))
     only_b = [label for label in rows_b if label not in rows_a]
     return dict(
         runs=dict(a=run(path_a, a, rows_a), b=run(path_b, b, rows_b)), thresholds=limit,
-        counts={field: dict(a=_logged(rows_a, field), b=_logged(rows_b, field)) for field in COUNTS}, pool_peak=pool,
-        memory_compared=compared_memory, only_in=dict(a=[label for label in rows_a if label not in rows_b], b=only_b),
-        moved=moved,
+        counts={field: dict(a=_logged(rows_a, field), b=_logged(rows_b, field)) for field in COUNTS},
+        pool_peak=dict(pool, not_judged=dict(not_judged)), memory_compared=compared_memory, memory_in_one_run=one_run,
+        only_in=dict(a=[label for label in rows_a if label not in rows_b], b=only_b), moved=moved,
         statements=[dict(statement=label, a=rows_a.get(label), b=rows_b.get(label)) for label in [*rows_a, *only_b]])
 
 
@@ -401,15 +440,24 @@ def render_compare(result):
     """The two runs, the pass lines, what one run lacks, and what moved."""
     runs, counts, pool, limit = result['runs'], result['counts'], result['pool_peak'], result['thresholds']
 
+    def kinds(counted):
+        return ', '.join(f'{number} {kind}' + ('s' * (number != 1)) for kind, number in counted.items())
+
     def logged(title, field):
         def side(run):
-            count = counts[field][run]
+            count, unknown = counts[field][run], ', '.join(map(str, runs[run]['unknown_view_lines']))
             if count is None:
-                return 'no debug log read' if field in FROM_DEBUG else 'not logged by this binary'
+                return ('not logged by this binary' if field not in FROM_DEBUG else 'no debug log read'
+                        if not runs[run]['debug_log'] else f'not counted: {VIEWS} lines {unknown} unknown')
             found = ', '.join(f'{number} in {label}' for label, number in count['statements'].items()) or '0'
-            return f'{found} (logged on {count["logged"]} of {runs[run]["statements"]})'
+            skipped = f'; not on {kinds(count["not_logged"])}' if count['not_logged'] else ''
+            return f'{found} (logged on {count["logged"]} of {runs[run]["statements"]}{skipped})'
         return f'{title}: A {side("a")}; B {side("b")}'
 
+    # Refusals 0 on every statement of B, by its event counts, or by its debug log's lines where its binary writes none.
+    refusals = 'refused_copies' if counts['refused_copies']['b'] or not counts['refusal_lines']['b'] else 'refusal_lines'
+    found = counts[refusals]['b']
+    refused = 'UNDETERMINED' if found is None else 'FAIL' if found['statements'] else 'PASS'
     by_a = pool['judged'] - pool['against_a_bound']
     verdict = ([f'B above A on {_pairs(pool["above"])}' if pool['above'] else f'none above A on the {by_a} statements both log']
                if by_a else [])
@@ -417,20 +465,28 @@ def render_compare(result):
         verdict.append(f'on {pool["against_a_bound"]} statements A logs no pool peak, but its peak is at least the larger of '
                        f'its pool before and after: B at or below that on {pool["against_a_bound"] - len(pool["above_a_bound"])}'
                        + (f'; B above that bound, undetermined: {_pairs(pool["above_a_bound"])}' if pool['above_a_bound'] else ''))
+    if pool['not_judged']:
+        verdict.append(f'not judged: {kinds(pool["not_judged"])}, B logging no pool peak or A no pool figure')
+    peaked = ('FAIL' if pool['above'] else 'UNDETERMINED' if pool['above_a_bound'] or not pool['judged'] else 'PASS')
     lines = [f'{run.upper()}: {value["result"]}: {value["statements"]} statements, {value["seconds"]:.1f} s in statements; '
              f'run peak {value["peak_physical_gb"]:.2f} GiB physical, {value["peak_rss_gb"]:.2f} GiB RSS'
-             + (f'; debug log {value["debug_log"]}' if value['debug_log'] else '') for run, value in runs.items()]
+             + (f'; debug log {value["debug_log"]}' if value['debug_log'] else '')
+             + (f'; unknown {VIEWS} lines {", ".join(map(str, value["unknown_view_lines"]))} (view copies not counted)'
+                if value['unknown_view_lines'] else '') for run, value in runs.items()]
     lines += [
         f'thresholds: seconds moved by more than {limit["seconds"]:g} s; peak physical, rise, pool peak and shared floor by more '
         f'than {limit["gib"]:g} GiB; storage and counts on any change; a figure one run lacks is not compared',
-        logged('refused copies (pass: 0 on every statement)', 'refused_copies'),
-        "pool peak (pass: none in B above A's): " + ('; '.join(verdict) or 'not judged: B logs no pool peak on a statement in both'),
+        logged('refused copies (pass: 0 on every statement' + ('' if refusals == 'refused_copies' else
+               ", from B's debug log where its binary logs no count") + f'): {refused}', refusals),
+        f"pool peak (pass: none in B above A's): {peaked}: " + ('; '.join(verdict) or 'no statement in both'),
         logged('copied batches', 'copied_batches'),
     ]
     if runs['a']['debug_log'] or runs['b']['debug_log']:
         lines += [logged('refusal lines (debug log)', 'refusal_lines'), logged('view copies (debug log)', 'view_copies')]
     both = len(result['statements']) - len(result['only_in']['a']) - len(result['only_in']['b'])
-    lines += [f'real memory: peak physical compared on the {result["memory_compared"]} statements attributed in both',
+    one_run = result['memory_in_one_run']
+    lines += [f'real memory: peak physical compared on the {result["memory_compared"]} statements attributed in both; '
+              f'attributed in A only: {", ".join(one_run["a"]) or "none"}; in B only: {", ".join(one_run["b"]) or "none"}',
               'in A only: ' + (', '.join(result['only_in']['a']) or 'none'),
               'in B only: ' + (', '.join(result['only_in']['b']) or 'none'),
               '', f'moved: {len(result["moved"])} of {both} statements in both']
@@ -485,22 +541,24 @@ def render(result, top):
     debug = result.get('debug')
     if debug:
         floored = sorted((row for row in rows if row['shared_floor_gb'] is not None), key=lambda row: row['shared_floor_gb'])
-        after = debug['after_last']
+        after, unknown = debug['after_last'], debug['unknown_view_lines']
+        copies = 'view copies not counted' if unknown else f'{sum(row["view_copies"] for row in rows)} view copies'
         lines += [
             f'shared budget, from the debug log: {debug["requests"]} admission requests in {debug["statements"]} statements; '
             + (f'lowest available before its own acquisition: {floored[0]["shared_floor_gb"]:.2f} GiB, in '
                f'{floored[0]["kind"]} {floored[0]["name"]}' if floored else 'no statement made one')
-            + f'; {sum(row["view_copies"] for row in rows)} view copies; {sum(row["refusal_lines"] for row in rows)} refusal lines',
+            + f'; {copies}; {sum(row["refusal_lines"] for row in rows)} refusal lines',
             f'after the last statement: {after["shared_requests"]} requests'
             + ('' if after['shared_floor_gb'] is None else f' (lowest {after["shared_floor_gb"]:.2f} GiB)')
-            + f', {after["view_copies"]} view copies, {after["refusal_lines"]} refusal lines',
+            + ('' if unknown else f', {after["view_copies"]} view copies') + f', {after["refusal_lines"]} refusal lines',
             'a debug line counts for the next statement event after it in the same file: work outside statements '
-            '(input registration, releases after an event) lands on the next statement; memory used after a '
-            "statement's last request, and lines another process wrote, are not seen",
+            '(input registration, releases after an event) lands on the next statement. The floor is sampled only where '
+            'Budget::reserve logs a request: what a request\'s own acquisition leaves, and shared-budget takes that bypass '
+            'Budget::reserve (the candidate\'s metadata cache), are not seen; nor are lines another process wrote',
         ]
-        if debug['unknown_view_lines']:
-            lines.append(f'{VIEWS} lines this script does not know: {", ".join(map(str, debug["unknown_view_lines"]))} '
-                         '(another engine revision: add its reserve lines to VIEW_RESERVES; copies there are not counted)')
+        if unknown:
+            lines.append(f'view copies not counted: {VIEWS} lines this script does not know: {", ".join(map(str, unknown))} '
+                         '(another engine revision: add its reserve lines to VIEW_RESERVES)')
         if debug['unreadable_lines']:
             lines.append(f'{debug["unreadable_lines"]} debug or metric lines in the debug log unreadable')
         lines += ['', f'lowest shared floor first, top {min(top, len(floored))}, GiB:',
