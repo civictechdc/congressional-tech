@@ -2,7 +2,7 @@
 id: ct-jcnd
 status: open
 deps: []
-links: []
+links: [ct-5q3g]
 created: 2026-11-10T14:57:27Z
 type: task
 priority: 2
