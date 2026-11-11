@@ -757,3 +757,25 @@ def test_the_round8_plants_are_flagged(tmp_path):
     round8(tmp_path, prints=prints)
     code, out = run(tmp_path, '--plant', *kinds)
     assert [(p['kind'], p['flagged']) for p in out['planted']] == [(kind, True) for kind in kinds]
+
+
+def test_an_office_shed_from_a_name_and_a_member_only_the_table_names_pass(tmp_path):
+    """m16: a given name run into the Member's style ("Roe, Hon. Richard a Representative ...") sheds the office into
+    the position, which moves no person; a name surname first whose given name other publishers do not state is a
+    Member's by the members table ("Vito Fossella"); an opening statements heading in capitals is no part of the
+    Member's name, so the heading carries (Jeffords, then Carper; CHRG-107shrg78075)."""
+    lines = [f'Roe, Hon. Richard {OHIO}', 'Fossella, Hon. Vito a Representative in Congress from the State of New York',
+             'OPENING STATEMENTS Jeffords, Hon. James M., U.S. Senator from the State of Vermont',
+             'Carper, Hon. Thomas R., U.S. Senator from the State of Delaware']
+    new_york = 'a Representative in Congress from the State of New York'
+    before = [asked('mods:witness[1]', f'Richard {OHIO} Roe', 1, None),
+              asked('mods:witness[2]', f'Vito {new_york} Fossella', 2, None),
+              asked('mods:witness[3]', 'James M. Jeffords', 3, None, position='U.S. Senator from the State of Vermont'),
+              asked('mods:witness[4]', 'Thomas R. Carper', 4, None, position='U.S. Senator from the State of Delaware')]
+    after = [asked('mods:witness[1]', 'Richard Roe', 1, None, position=OHIO),
+             asked('mods:witness[2]', 'Vito Fossella', 2, None, position=new_york),
+             dict(before[2], organization='opening statement'), dict(before[3], organization='opening statement')]
+    write(tmp_path, before=before, after=after, lines=lines,
+          table=['Richard Roe', 'Vito Fossella', 'James Jeffords', 'Thomas Carper'])
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']

@@ -42,7 +42,9 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   name's words the line prints in that order and whose family word is a Member's of that line;
 - ``answerer`` (listed, not failing): a row the before side lacks, typed a witness or a statement on an asking line,
   naming in the line's order a person who is not one of its Members (as ``question_asker_as_witness`` reads one);
-- ``person_moved``: a changed name that opens with a known given name and whose words the new name lacks;
+- ``person_moved``: a changed name that opens with a known given name and whose words the new name lacks, unless
+  the new name keeps its first and family words and the words it lacks are the new position's (an office printed
+  inside the name, "Emanuel a Representative in Congress from ... Cleaver");
 - ``name_not_in_line``: a new or added name with a word its raw line lacks;
 - ``words_lost``: a changed occurrence that loses a word across name, position, organization and
   on_behalf_of (credentials such as "M.D." and titles such as "Hon." may go, as for every witness line, and the
@@ -66,7 +68,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   later segment opening with a known given name;
 - ``reorder_unsupported``: a new or restored name whose words are not in the raw line in that order (a surname
   joined to its given name) and that does not open with a known given name and end with a known family name or a
-  family name of the print's ``<congMember>`` entries;
+  family name of the print's ``<congMember>`` entries, nor name a Member serving in the print's Congress by the
+  members table;
 - ``order_unsupported``: on a line with two named rows or more, rows whose display order does not follow where
   their family names stand in the raw line (any row, changed or not);
 - ``order_across_lines``: a row shown before a row of a line printed above it (display order against line order,
@@ -467,10 +470,11 @@ def capital(text):
 
 
 def name_word(kind, text):
-    """Can this token be part of a printed name: an initial ("A."), or a capitalised word that is no title and no
-    style word?"""
+    """Can this token be part of a printed name: an initial ("A."), or a capitalised word that is no title, no style
+    word and no word of an opening statements heading ("OPENING STATEMENTS Jeffords, Hon. James M.")?"""
     return kind == 'word' and capital(text) and (len(plain(text)) == 1 and text != 'A' or plain(text) not in MEMBER_TITLES
-                                                 and plain(text) not in LIST_WORDS)
+                                                 and plain(text) not in LIST_WORDS
+                                                 and plain(text) not in {'opening', 'statement', 'statements'})
 
 
 def member_groups(line, families, *, near_title=False):
@@ -641,8 +645,10 @@ def judge(before, after, raw_root, given, family, serving=None):
                 and (any(person(part) for part in parts[1:]) or names_document_only(line)))
 
     def reorder_supported(name):
-        # Ends in a family name: one other publishers state, or a <congMember>'s of the print ("Daniel K Akaka").
-        return person(name) and (family_word(name) in family or family_word(name) in {f[-1] for f in member_families})
+        # Ends in a family name: one other publishers state, or a <congMember>'s of the print ("Daniel K Akaka"); or
+        # names a Member serving in the print's Congress by the members table ("Vito Fossella", round 8).
+        return (person(name) and (family_word(name) in family or family_word(name) in {f[-1] for f in member_families})
+                or table_member(name_words(name), serving_now))
 
     out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'split', 'restored', 'asker', 'answerer', 'not_read',
                                'no_congress', 'bodies_only_before', 'bodies_only_after')}
@@ -1002,7 +1008,14 @@ def judge(before, after, raw_root, given, family, serving=None):
             reordered = bool(new_name) and not in_order(new_name, line)
             counts['no_name' if not new_name else 'reordered' if reordered else 'name_read'] += 1
             head = heading_words(line, new_name) if new_name else set()
-            if (old_name and old_name[:1].isupper() and person(old_name)
+            # A name that keeps its given and family words and sheds an office printed inside it into the position
+            # ("Emanuel a Representative in Congress from the State of Missiouri Cleaver" -> "Emanuel Cleaver") moved
+            # no person.
+            shed_office = (bool(new_name) and opening(new_name) == opening(old_name)
+                           and family_word(new_name) == family_word(old_name)
+                           and set(name_words(old_name)) - set(name_words(new_name))
+                           <= {plain(w) for w in words(b.get('position'))})
+            if (old_name and old_name[:1].isupper() and person(old_name) and not shed_office
                     and not set(name_words(old_name)) - transcript(line) - head <= set(name_words(new_name))):
                 out['person_moved'].append(item)
             if new_name and not set(map(plain, words(new_name))) <= set(map(plain, words(line))):
