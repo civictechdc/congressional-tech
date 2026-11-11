@@ -56,7 +56,7 @@
       "version": "0.84.0"
     },
     "version": "e1928f25e2803cd6bc8546d1673ff7ba01a11ae861c322165c78af9d32380941",
-    "workspace_sha256": "ed65fa3b07b4190963220c141333f0a7f0c3c7ce97f2ad040bbe7d6ac83c384f"
+    "workspace_sha256": "2ab41c8a17440509a0fa30b9a0411fd28f477da4195cb3b0f65327821120c21c"
   },
   "json": {
     "limits": {
@@ -101,7 +101,7 @@
       "version": "0.84.0"
     },
     "version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
-    "workspace_sha256": "ed65fa3b07b4190963220c141333f0a7f0c3c7ce97f2ad040bbe7d6ac83c384f"
+    "workspace_sha256": "2ab41c8a17440509a0fa30b9a0411fd28f477da4195cb3b0f65327821120c21c"
   },
   "readings": {
     "limits": {
@@ -118,7 +118,7 @@
     },
     "sample_sha256": "475a2288edeaf9a7dc8e8c91be51524729eeb54b750bb99d28ebb81996393982",
     "version": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
-    "workspace_sha256": "58029b639fff2779e0cc271347873d54ec8e9b61e9e0a092c5bee84c13599a9e"
+    "workspace_sha256": "51abc3b87ae394c66d8b115216cd059c62d0d8094adff65dc3faf6362c3918b9"
   },
   "sniff": {
     "locked_sha256": "4712044f1e68920433b7352425e350d3e301037e7ddf2b0943378193d7d35dec",
@@ -163,7 +163,7 @@
       "version": "0.84.0"
     },
     "version": "e835fb8116a0ed204706c7cbed136cab4f7e49885e773369c663232672d5e397",
-    "workspace_sha256": "ed65fa3b07b4190963220c141333f0a7f0c3c7ce97f2ad040bbe7d6ac83c384f"
+    "workspace_sha256": "2ab41c8a17440509a0fa30b9a0411fd28f477da4195cb3b0f65327821120c21c"
   },
   "xml": {
     "limits": {
@@ -196,6 +196,6 @@
       "version": "0.84.0"
     },
     "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
-    "workspace_sha256": "ed65fa3b07b4190963220c141333f0a7f0c3c7ce97f2ad040bbe7d6ac83c384f"
+    "workspace_sha256": "2ab41c8a17440509a0fa30b9a0411fd28f477da4195cb3b0f65327821120c21c"
   }
 }
