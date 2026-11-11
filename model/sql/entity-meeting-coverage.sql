@@ -72,11 +72,6 @@ WITH observations AS (
  -- Superseded rows point to the selected person; record material and sitting Members (ct-kw85) contribute no witness count.
  SELECT event_id,count(*) AS n FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
   AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material','member_appearance') GROUP BY event_id
-), member_only AS (
- -- The meeting's stated list names Members of Congress (and perhaps record entries) and no outside witness: empty,
- -- not unstated. A nomination hearing's list that names only Members left its nominee out: unknown, not empty.
- SELECT DISTINCT event_id FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
-  AND witness_type='member_appearance'
 ), witness_states AS (
  SELECT event_id,max(CASE WHEN collection_state='unresolved' THEN 2 WHEN collection_state='empty' THEN 1 ELSE 0 END) AS rank
  FROM (
@@ -95,17 +90,31 @@ WITH observations AS (
        WHEN e.chamber='senate' AND ws.event_id IS NULL THEN 'senate_page_links_pending' END AS reason
  FROM meetings_export e LEFT JOIN document_counts d ON e.event_id=d.event_id LEFT JOIN stated_documents s ON e.event_id=s.event_id
   LEFT JOIN witness_states ws ON e.event_id=ws.event_id
-), unattached_package_witnesses AS (
- -- A linked package holds witnesses that no raw record ties to this meeting alone (ct-dx22).
- -- These publisher jacket references point to different same-day proceedings.
- SELECT DISTINCT l.event_id FROM (VALUES
+), linked_packages AS (
+ -- The prints a meeting's jacket links, less these publisher jacket references to different same-day proceedings.
+ SELECT l.event_id,l.package_id FROM (VALUES
   (105990,'CHRG-115hhrg27490'), (106820,'CHRG-115hhrg29991'),
   (110525,'CHRG-116hhrg43523'), (111173,'CHRG-117hhrg47471'),
   (117523,'CHRG-118hhrg56208'), (329023,'CHRG-117shrg45981')
  ) AS unrelated(event_id,package_id)
  RIGHT ANTI JOIN meeting_transcript_links l ON l.event_id=unrelated.event_id AND l.package_id=unrelated.package_id
+), unattached_package_witnesses AS (
+ -- A linked package holds witnesses that no raw record ties to this meeting alone (ct-dx22).
+ SELECT DISTINCT l.event_id FROM linked_packages l
  JOIN witnesses_export w ON w.package_id=l.package_id AND w.event_id IS NULL AND w.name IS NOT NULL
   AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material','member_appearance')
+), member_only AS (
+ -- The people a meeting lists are sitting Members (ct-kw85), perhaps with record entries: shown Member rows on its own
+ -- list, or tied to no meeting on a print it links, and no outside witness on either (none counted, none unattached):
+ -- empty, not unstated, whatever the print's rows were before. A nomination hearing's list that names only Members
+ -- left its nominee out: unknown, not empty.
+ SELECT DISTINCT m.event_id FROM unattached_package_witnesses u RIGHT ANTI JOIN (
+  SELECT event_id FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
+   AND witness_type='member_appearance'
+  UNION ALL
+  SELECT l.event_id FROM linked_packages l JOIN witnesses_export w ON w.package_id=l.package_id AND w.event_id IS NULL
+   AND w.name IS NOT NULL AND w.superseded_by IS NULL AND w.witness_type='member_appearance'
+ ) m ON m.event_id=u.event_id
 ), witness_rows AS (
  SELECT e.event_id,'witnesses' AS aspect,
   CASE WHEN c.n IS NOT NULL THEN 'present' WHEN s.rank=2 THEN 'unresolved'

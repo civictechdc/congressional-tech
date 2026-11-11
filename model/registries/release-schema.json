@@ -2408,7 +2408,7 @@
         {
           "name": "reason",
           "type": "dict",
-          "meaning": "Why a state holds, when known: recording_decision_unresolved_or_conflicting, package_context_only, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, member_appearances_only (empty: the stated list names Members of Congress, perhaps with record entries, and no outside witness), nominee_not_listed (unknown: a nomination hearing whose list names only Members, so its nominee is missing), package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions)",
+          "meaning": "Why a state holds, when known: recording_decision_unresolved_or_conflicting, package_context_only, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, member_appearances_only (empty: the people the meeting lists, on its own list or, tied to no meeting, on a print it links, are Members of Congress, perhaps with record entries, and no outside witness), nominee_not_listed (unknown: a nomination hearing whose list names only Members, so its nominee is missing), package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions)",
           "nullable": true
         }
       ],
