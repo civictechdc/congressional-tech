@@ -2,7 +2,7 @@
 id: ct-eav2
 status: open
 deps: []
-links: [ct-ucwm]
+links: [ct-ucwm, ct-h267]
 created: 2026-11-11T09:47:37Z
 type: bug
 priority: 2
