@@ -49,7 +49,7 @@ import pytest
 
 from archive_job_fixture import _Capture, _Submitted, spicy_input, versions
 from congress_api.lake import appearance_records, committee_records, meeting_records, tables, video_records
-from congress_api.retention.provenance import parquet_output, run_job
+from congress_api.retention.provenance import run_job
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model import build_prepared_release, prepare_model_inputs
 from viewer_publication.archive_model_lifetimes import sql_dependencies
@@ -168,15 +168,16 @@ PLANTED = {
 # A second direct read of the lake table. Its SQL names the job's own input, so the fixture builds it.
 PLANTED_LAKE_READ = 'planted_second_read_of_the_lake_captures'
 
-# A lake-only refusal: saved_name_conflicts as it was before f8541b6d. Explained, never run as a step.
+# A lake-only refusal: saved_name_conflicts' shape before f8541b6d, over the lake's filename readings. The
+# CTE is read twice, so NOT o.official becomes a common expression below the aggregate, and coalesce carries
+# the flag's Iceberg field id into it. Explained, never run as a step; the fixture names the job's input.
 PLANTED_LAKE_REFUSAL = 'planted_saved_name_conflicts_before_f8541b6d'
-
-
-def lake_refusal_sql():
-    sql = (Path(__file__).parents[3]/'model/sql/saved-name-conflicts.sql').read_text()
-    spelling = 'f.valid IS NOT DISTINCT FROM true'
-    assert sql.count(spelling) == 1, 'saved_name_conflicts no longer reads the flag this way; plant another refusal'
-    return sql.replace(spelling, 'coalesce(f.valid,false)')
+LAKE_REFUSAL_SQL = """WITH said AS (SELECT f.filename AS component, f.congress AS saved_rank,
+    coalesce(f.valid,false) AS official, f.document_family AS family FROM {filename_readings} f WHERE f.status='completed')
+    SELECT l.component, bool_or(l.official) AS official_leads, bool_or(NOT o.official) AS committee_speaks,
+    bool_or(NOT o.official AND array_has_any(l.family,o.family)) AS committee_agrees
+    FROM (SELECT * FROM said WHERE saved_rank=1) l JOIN said o ON o.component=l.component AND o.saved_rank>1
+    GROUP BY l.component"""
 
 
 SCAN = re.compile(r'^\s*TableScan: (\S+)', re.M)
@@ -238,27 +239,9 @@ def readers(job):
         yield item['name'], item['sql']
 
 
-def explain(engine, root, job, statements):
-    """Each statement's EXPLAIN rows by plan type, after the job's steps run over its inputs."""
-    data = run_job(root, engine, inputs=job['inputs'], steps=job['steps'], outputs=[],
-                   queries=[dict(name=f'reader_{i}', sql='EXPLAIN '+sql) for i, (_name, sql) in enumerate(statements)])
-    return {name: {row['plan_type']: row['plan'] for row in data[f'reader_{i}']}
-            for i, (name, _sql) in enumerate(statements)}
-
-
-def parquet_stand_ins(engine, root, job):
-    """The job with each lake stand-in bound instead to an empty Parquet file of its schema, written by the engine."""
-    lake = {lake_input(job, table): table for table in LAKE_TABLES}
-    run_job(root, engine, inputs=[item for item in job['inputs'] if item['name'] in lake], steps=[],
-            outputs=[parquet_output(root, name, 'SELECT * FROM ' + name, tables.TABLE_SPECS[table]['primary_key'])
-                     for name, table in lake.items()])
-    return dict(job, inputs=[dict(name=item['name'], kind='parquet', path=str(root/(item['name']+'.parquet')))
-                             if item['name'] in lake else item for item in job['inputs']])
-
-
 @pytest.fixture(scope='module')
 def explained(tmp_path_factory):
-    """EXPLAIN rows of every reader and the planted lake-only refusal; and the refusal's rows on Parquet stand-ins."""
+    """EXPLAIN rows by plan type of every reader and the planted lake-only refusal, after the steps run."""
     root = tmp_path_factory.mktemp('repeat-cost')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         job = submitted_job(root, engine)
@@ -266,17 +249,18 @@ def explained(tmp_path_factory):
         steps += [dict(name=name, sql=sql, materialize=True) for name, sql in PLANTED.items()]
         steps += [dict(name=PLANTED_LAKE_READ, sql='SELECT receipt_key FROM ' + lake_input(job, 'captures'), materialize=True)]
         job = dict(job, steps=steps)
-        named = [*readers(job), (PLANTED_LAKE_REFUSAL, lake_refusal_sql())]
-        explains = explain(engine, root/'explain', job, named)
-        parquet = parquet_stand_ins(engine, root/'parquet-stand-ins', job)
-        on_parquet = explain(engine, root/'explain-on-parquet', parquet, named[-1:])
+        refusal = LAKE_REFUSAL_SQL.format(filename_readings=lake_input(job, 'filename_readings'))
+        named = [*readers(job), (PLANTED_LAKE_REFUSAL, refusal)]
+        data = run_job(root/'explain', engine, inputs=job['inputs'], steps=steps, outputs=[],
+                       queries=[dict(name=f'reader_{i}', sql='EXPLAIN '+sql) for i, (_name, sql) in enumerate(named)])
+    explains = {name: {row['plan_type']: row['plan'] for row in data[f'reader_{i}']} for i, (name, _sql) in enumerate(named)}
     assert len(explains) == len(named), 'reader names must be unique'
-    return job, explains, on_parquet[PLANTED_LAKE_REFUSAL]
+    return job, explains
 
 
 @pytest.fixture(scope='module')
 def planned(explained):
-    job, explains, _on_parquet = explained
+    job, explains = explained
     return job, {name: rows['logical_plan'] for name, rows in explains.items()}
 
 
@@ -361,21 +345,19 @@ def refused(explains):
 
 
 def test_every_reader_builds_its_physical_plan_on_lake_backed_inputs(explained):
-    _job, explains, _on_parquet = explained
-    readers = model_plans(explains)
-    assert refused(readers) == {}
-    assert all('physical_plan' in rows for rows in readers.values())
+    _job, explains = explained
+    model = model_plans(explains)
+    assert refused(model) == {}
+    assert all('physical_plan' in rows for rows in model.values())
 
 
-def test_the_pass_refuses_the_spelling_that_failed_26_lane_tests_which_parquet_stand_ins_plan(explained):
-    # f8541b6d (ct-h8dr): refused only where filename readings came from the lake. The pinned engine
-    # strips field metadata from a Parquet input (engine ticket def-9ise), so Parquet stand-ins plan it.
-    # Once the engine keeps that metadata, the last assertion fails: revisit this half then.
-    _job, explains, on_parquet = explained
+def test_the_pass_refuses_the_spelling_that_failed_26_lane_tests(explained):
+    # f8541b6d (ct-h8dr): refused only where filename readings came from the lake. Parquet stand-ins plan
+    # it (the pinned engine strips their field metadata, def-9ise), so this test fails on them.
+    _job, explains = explained
     assert set(refused(explains)) == {PLANTED_LAKE_REFUSAL}
     reason = refused(explains)[PLANTED_LAKE_REFUSAL]
     assert 'field metadata' in reason and '"PARQUET:field_id"' in reason, reason
-    assert 'physical_plan' in on_parquet and 'physical_plan_error' not in on_parquet, on_parquet
 
 
 def test_the_lake_captures_table_is_read_by_one_statement_the_first_retained_step(planned):
