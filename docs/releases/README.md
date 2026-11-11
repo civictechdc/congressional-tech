@@ -153,33 +153,36 @@ that changed anything else.
 **Congress.gov meeting updates (ct-uywf, ct-rhqw).** Owner decision 2026-11-11, "Everything from
 Congress.gov publishes": a Congress.gov meeting update publishes without a person, with a morning
 report; only lost links or keys stop the night. A meeting is updated when the candidate's
-successful detail read names a body the live release cites nowhere (no witness, no meeting read),
-in another receipt than its live read, later than it and not later than the comparison; or when
-Congress.gov states the meeting for the first time and its detail read names such a body. On it,
-set apart as verified groups flagged `refetch_only`:
+successful detail read for that `event_id` names a body the live release cites nowhere (no witness,
+no meeting read), in another receipt than its live read, later than it and not later than the
+comparison, with non-Congress.gov status sightings unchanged; or when Congress.gov states the
+meeting for the first time and its detail read names such a body. On it, set apart as verified
+groups flagged `refetch_only`:
 
-- every meetings column the record states (title, date, status and its sightings, sittings,
+- the explicit `UPDATE_COLUMNS` the record states (title, date, status and its sightings, sittings,
   committees, subjects, documents, videos, the update stamp, the detail read itself) and a first
   stated meeting's row. Never `transcripts` or `house_xml_updated` (GovInfo and House XML move
-  them), and the outcome columns only where both releases base the outcome on the publisher (a
-  cancellation, or no evidence): a print or transcript basis is another source, and its reference
-  is a release-local row that shifts with unrelated documents;
+  them), and the outcome columns only where the candidate cites the new read's body and the live
+  outcome was publisher-based (a cancellation, or no evidence): a print or transcript basis is
+  another source, and its reference is a release-local row that shifts with unrelated documents;
 - its Congress.gov witnesses: new ones (re-key successors or not) whose body is the meeting's new
-  read, so the proven read is the one that moved them; live ones removed with a map row that
-  answers for the key (a successor, candidates, or unresolved, the archive's answer for a witness
-  the record dropped); every value changed on a pair of them (names, organizations, panels,
-  order). This witness half is interim: carried witness keys (ct-46f3, the first slice of the
-  witness-identity epic ct-woj3) end the re-keys;
-- the key-map rows of those keys (added, or with a changed successor, basis or status), the
-  documents whose `witness_keys` gained or lost only such witnesses, and the meeting's
-  `witnesses` coverage, with every coverage row of a first stated meeting.
+  read, so the proven read is the one that moved them; live ones removed with an `unambiguous` map
+  row naming a published successor; every value changed on a pair of them (names, organizations,
+  panels, order). This witness half is interim: carried witness keys (ct-46f3, the first slice of
+  the witness-identity epic ct-woj3) end the re-keys;
+- the `unambiguous` key-map rows of those keys (added, or with a changed successor or basis), the
+  documents whose `witness_keys` gained or lost only such witnesses, added `nominations` newly
+  named in an updated meeting's `subject_keys`, and the meeting's `witnesses` coverage, with every
+  coverage row of a first stated meeting.
 
 Still stopping: anything the link rule refuses (a lost or changed link or lookup key, a removed
-meeting); a removed witness key with no map row, a map row whose successor is not published, a
-map that collapses two witnesses; any row of another source (MODS, House XML, Senate pages) or of
-a meeting not updated; a column another source moves; a meeting Congress.gov only lists (no detail
-read); and any read or body the capture table does not prove (below). A byte-identical read moves
-only bookkeeping, which passes when every other column is equal:
+meeting); a removed witness key with no map row, an `ambiguous` or `unresolved` map row (lost keys
+until dropped witnesses are kept as "no longer listed"), a map row whose successor is not published
+or that turns `ambiguous` or `unresolved`, a map that collapses two witnesses; any row of another
+source (MODS, House XML, Senate pages) or of a meeting not updated; a column another source moves;
+a meeting Congress.gov only lists (no detail read); and any read or body the capture table does not
+prove (below). A byte-identical read moves only bookkeeping, which passes when every other column
+is equal:
 
 - `congress_gov_detail_observation`: only the locators of its two reads (time, receipt, line,
   capture index, body), each later than the live read, not later than the comparison and in
@@ -189,15 +192,16 @@ only bookkeeping, which passes when every other column is equal:
 - `publisher_status_observations`: every live entry kept; a new entry only a live one seen again
   later.
 
-The unattended gate writes `meeting-updates.txt` (per meeting: title, date and status as they
-were and are, witnesses, documents and videos added and removed, any other column that moved)
-and `meeting-updates.json` beside its automatic trace; the nightly keeps both with the run's
-evidence and puts the report's one line in `summary.json` (`meeting_updates`). Replayed on
-2026-11-10's pairs, the rule sets apart 23 updated meetings (2 first stated) on 619db5f9e08e to
-77673bfb8fcf, including the 4 new witnesses of meeting 119590, and 31 on 630164505301 to
-619db5f9e08e, including the 22 reordered witnesses; what still stops on those pairs is other
-sources (transcripts, transcript-based outcomes, the MODS reader change) and one meeting only
-listed.
+The gate writes `meeting-updates.txt` (per meeting: title, date and status as they were and are,
+witnesses, documents, videos and sittings added and removed, lost witness keys, any other column
+that moved; marked stopped with its reasons when the gates refuse) and `meeting-updates.json`
+beside `release-gate.json`; the nightly keeps both with the run's evidence and puts the report's
+one line in `summary.json` (`meeting_updates`). Replayed on 2026-11-10's pairs, the rule sets
+apart 23 updated meetings (2 first stated) on 619db5f9e08e to 77673bfb8fcf, including the 4 new
+witnesses of meeting 119590 and 25 added `nominations`, and 31 (13 first stated) on 630164505301
+to 619db5f9e08e, including the 22 reordered witnesses and 10 added `nominations`; what still stops
+on those pairs is other sources (transcripts, transcript-based outcomes, the MODS reader change)
+and one meeting only listed.
 
 These checks compare the candidate with the live release and read no file, so they show only
 that the candidate is consistent with itself: a made-up hash applied to every row of one old

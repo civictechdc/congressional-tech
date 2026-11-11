@@ -931,7 +931,7 @@ READ = pa.struct([('source_url', pa.string()), ('retrieved_at', TS), ('receipt_k
                   ('proof_parser_version', pa.string())])
 MEETINGS = pa.schema([
     ('event_id', pa.int64()), ('title', pa.string()), ('meeting_date', pa.date32()), ('publisher_status', pa.string()),
-    ('document_references', pa.list_(pa.string())),
+    ('subject_keys', pa.list_(pa.string())), ('document_references', pa.list_(pa.string())),
     ('videos', pa.list_(pa.struct([('name', pa.string()), ('url', pa.string()), ('video_key', pa.string())]))),
     ('house_xml_updated', pa.string()), ('congress_gov_updated', TS), ('outcome', pa.string()), ('outcome_basis', pa.string()),
     ('outcome_source_reference', pa.string()),
@@ -961,7 +961,8 @@ def meeting_read(record, receipt, at, *, keys, mapped, outcome='stored', updated
     panels = panels or [('Panel I', 1)] * len(keys)
     read = dict(source_url=MEETING_URL, retrieved_at=at, receipt_key=receipt, receipt_line=1, capture_index=0,
                 body_sha256=record.hex(), meeting_parser_version='m1', proof_parser_version='p1')
-    meeting = dict(event_id=118340, title=title, meeting_date=date, publisher_status=status, document_references=list(documents),
+    meeting = dict(event_id=118340, title=title, meeting_date=date, publisher_status=status, subject_keys=[],
+                   document_references=list(documents),
                    videos=[dict(name=v, url=f'https://www.youtube.com/watch?v={v}', video_key=None) for v in videos],
                    house_xml_updated=house_xml, congress_gov_updated=updated, outcome=held[0], outcome_basis=held[1],
                    outcome_source_reference=held[2],

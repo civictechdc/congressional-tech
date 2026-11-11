@@ -645,6 +645,8 @@ def _sitting(value):
     if not isinstance(value, dict):
         return str(value)
     start = value.get('start')
+    if hasattr(start, 'astimezone') and getattr(start, 'tzinfo', None) is not None:
+        start = start.astimezone(timezone.utc)
     when = start.strftime('%Y-%m-%d %H:%MZ') if hasattr(start, 'strftime') else str(start)
     where = ' '.join(str(value[k]) for k in ('room', 'building', 'place') if value.get(k))
     return f'{when} {where}'.strip()

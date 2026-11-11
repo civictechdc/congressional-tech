@@ -716,7 +716,8 @@ def nominations(d: Diff):
     the updated meeting's candidate `subject_keys` and not in that meeting's live ones (or the meeting
     is first stated). Any other added, removed or changed nomination still needs a cause."""
     groups, notes = generic('nominations')(d)
-    if updated_meetings(d) and 'subject_keys' in set(d.columns('candidate', 'meetings')) and 'nomination_id' in d.columns('candidate', 'nominations'):
+    if (updated_meetings(d) and 'subject_keys' in set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
+            and 'nomination_id' in d.columns('candidate', 'nominations')):
         n = d.one("""WITH named AS (SELECT DISTINCT u.event_id,lower(unnest(l.subject_keys)) AS k FROM meeting_update u
               JOIN candidate_meetings l USING(event_id)),
             before AS (SELECT DISTINCT p.event_id,lower(unnest(p.subject_keys)) AS k FROM base_meetings p
