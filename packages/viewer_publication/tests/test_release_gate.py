@@ -1231,12 +1231,14 @@ def second_meeting(tables, event, body, receipt, at, line, witnesses):
     return edit({**tables, 'meetings': pa.Table.from_pylist([meeting, copy], schema=tables['meetings'].schema)}, 'witnesses', lambda r: r.extend(rows))
 
 
-def successor_on_another_updated_meeting():
-    """Review R3b: Bo Park's key w2 re-keyed onto meeting 118341, both meetings read again with new bytes."""
+def successor_on_another_updated_meeting(historical=False):
+    """Review R3b: Bo Park's key w2 (or historical key k1) re-keyed onto meeting 118341, both meetings read again with new bytes."""
     old, new = bytes.fromhex('b1' * 32), bytes.fromhex('b2' * 32)
     base = second_meeting(base_tables(), 118341, old, FIRST_READ, FIRST_SEEN, 2, [('y1', 'Cy Diaz', 'EPA')])
-    candidate = second_meeting(cand_tables(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'),
-                                                                                              ('w2', 'bn9', 'content'), ('y1', 'y2', 'content')]),
+    rekeyed = (dict(mapped=[('k1', 'bn9', 'content'), *NEW_MAP[1:], ('y1', 'y2', 'content')]) if historical
+               else dict(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'),
+                                                                            ('w2', 'bn9', 'content'), ('y1', 'y2', 'content')]))
+    candidate = second_meeting(cand_tables(**rekeyed),
                                118341, new, RELIST, SEEN_AGAIN, 2, [('y2', 'Cy Diaz', 'EPA'), ('bn9', *PANEL[1])])
     other = MEETING_URL.replace('118340', '118341')
     return base, candidate, [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
@@ -1328,8 +1330,14 @@ CASES = {
                                                      cand_tables(order=(2, 1), mapped=NEW_MAP + [('w3', 'n1', 'content')])), 'collapses distinct base occurrences'),
     'two_old_keys_one_successor': (lambda: (base_tables(), cand_tables(mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'),
                                                                                ('w2', 'n1', 'content'), ('v1', 'n1', 'content')])), 'collapses distinct base occurrences'),
+    'successor_collides_with_a_base_map_row': (lambda: (base_tables(), cand_tables(mapped=[('k1', 'n1', 'content'), ('w1', 'n2', 'content'),
+                                                                                           ('w2', 'n1', 'content')])), 'collapses distinct base occurrences'),
     'map_names_an_unpublished_successor': (lambda: (base_tables(), cand_tables(mapped=NEW_MAP[:2] + [('w2', 'gone', 'content')])),
                                            'witnesses.parquet|removed keys|unexplained'),
+    'historical_key_names_an_unpublished_successor': (lambda: (base_tables(), cand_tables(mapped=[('k1', 'gone', 'content'), *NEW_MAP[1:]])),
+                                                      'witness_key_map.parquet|changed witness_key'),
+    'historical_key_successor_on_another_meeting': (lambda: successor_on_another_updated_meeting(historical=True),
+                                                    'witness_key_map.parquet|changed witness_key'),
 
     # Another source, another meeting, or a column another source moves: not this update.
     'house_list_witness_edited': (lambda: (edit(base_tables(), 'witnesses', lambda rows: rows.append(HOUSE_LIST('NSF'))),

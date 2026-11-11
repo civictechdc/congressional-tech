@@ -264,7 +264,8 @@ def rekeyed(d: Diff):
     the candidate publishes no map.
 
     A successor can carry keys from several historical releases. Within the base release, a re-key
-    must preserve each occurrence, including a witness whose key survives directly.
+    must preserve each occurrence (live witnesses and base map keys), including a witness whose key
+    survives directly.
     """
     if d.witness_rekey is None:
         d.witness_rekey = d.has('candidate', 'witness_key_map') and d.has('candidate', 'witnesses')
@@ -274,10 +275,15 @@ def rekeyed(d: Diff):
               WHERE m.status='unambiguous'""")
             collisions = 'SELECT witness_key FROM witness_rekey_candidates WHERE false'
             if d.has('base', 'witnesses'):
-                collisions = """SELECT r.witness_key FROM witness_rekey_candidates r
-                  JOIN base_witnesses old ON old.witness_key=r.old_key
-                  LEFT JOIN base_witnesses surviving ON surviving.witness_key=r.witness_key
-                  GROUP BY r.witness_key HAVING count(*)>1 OR count(surviving.witness_key)>0"""
+                prior = ["SELECT witness_key AS old_key,'w:'||witness_key AS base_key FROM base_witnesses"]
+                if d.has('base', 'witness_key_map') and {'old_key', 'witness_key', 'status'} <= set(d.columns('base', 'witness_key_map')):
+                    prior.append("""SELECT old_key,CASE WHEN status='unambiguous' AND witness_key IS NOT NULL
+                      THEN 'w:'||witness_key ELSE 'm:'||old_key END FROM base_witness_key_map""")
+                collisions = f"""WITH prior AS ({' UNION '.join(prior)}),
+                  held AS (SELECT r.witness_key,p.base_key FROM witness_rekey_candidates r JOIN prior p USING(old_key)
+                    UNION SELECT r.witness_key,'w:'||s.witness_key FROM witness_rekey_candidates r
+                      JOIN base_witnesses s USING(witness_key))
+                  SELECT witness_key FROM held GROUP BY 1 HAVING count(*)>1"""
             d.table('witness_rekey_collisions', collisions)
             d.table('witness_rekey', """SELECT r.* FROM witness_rekey_candidates r
               ANTI JOIN witness_rekey_collisions USING(witness_key)""")
@@ -415,7 +421,7 @@ def updated_meetings(d: Diff):
 
 
 def updated_witnesses(d: Diff):
-    """Tables `witness_update_base(witness_key)` and `witness_update_candidate(witness_key)`: the
+    """Tables `witness_update_base(witness_key,occasion)` and `witness_update_candidate(witness_key,occasion)`: the
     Congress.gov witness rows of the meetings `updated_meetings` names, on each side; True when they
     exist. A candidate row counts only when its body is the meeting's new read, so a witness is moved
     by the read that was proven, not by another body; a base row is any of the meeting's live
@@ -427,9 +433,9 @@ def updated_witnesses(d: Diff):
         columns = {'source', 'occasion', 'record_sha', 'witness_key'}
         if (updated_meetings(d) and d.has('base', 'witnesses') and d.has('candidate', 'witnesses')
                 and columns <= set(d.columns('base', 'witnesses')) & set(d.columns('candidate', 'witnesses'))):
-            d.table('witness_update_base', """SELECT w.witness_key FROM meeting_update u JOIN base_witnesses w
+            d.table('witness_update_base', """SELECT w.witness_key,w.occasion FROM meeting_update u JOIN base_witnesses w
               ON w.occasion='meeting:'||u.event_id WHERE w.source='congress_gov' AND NOT u.added""")
-            d.table('witness_update_candidate', """SELECT w.witness_key FROM meeting_update u JOIN candidate_witnesses w
+            d.table('witness_update_candidate', """SELECT w.witness_key,w.occasion FROM meeting_update u JOIN candidate_witnesses w
               ON w.occasion='meeting:'||u.event_id WHERE w.source='congress_gov' AND lower(hex(w.record_sha))=u.body""")
             d.witness_update = True
     return d.witness_update
@@ -850,21 +856,28 @@ def witness_key_map(d: Diff):
     publishes again. A dropped key the candidate does not publish no longer resolves: unverified.
     A successor that moved is the same witness when the base successor itself maps to it.
     A Congress.gov meeting update (`updated_witnesses`, ct-rhqw) sets apart as groups flagged
-    `refetch_only` the rows of its Congress.gov keys that resolve to one witness: added rows (an old
-    key the live release published must be one of the meeting's live Congress.gov witnesses), and
-    every value that changed on a matched row whose live and candidate rows both belong to the
-    meeting. A row that turns ambiguous or unresolved, or is dropped, is a lost key and stops.
+    `refetch_only` the rows of its Congress.gov keys that resolve unambiguously through
+    `witness_rekey` to one of that meeting's updated Congress.gov witnesses: added rows (an old key
+    the live release published must be one of that meeting's live Congress.gov witnesses), and every
+    value that changed on a matched row whose live and candidate rows both belong to the meeting.
+    Any other successor (unpublished, on another meeting, or colliding), a row that turns ambiguous
+    or unresolved, or a dropped row is a lost key and stops.
     """
     if not d.has('base', 'witness_key_map'):
         return generic('witness_key_map')(d)
     rekeyed(d)
-    update = updated_witnesses(d) and {'source', 'occasion', 'status'} <= set(d.columns('candidate', 'witness_key_map'))
+    update = (updated_witnesses(d) and bool(d.witness_rekey)
+              and {'source', 'occasion', 'status', 'witness_key'} <= set(d.columns('base', 'witness_key_map')) & set(d.columns('candidate', 'witness_key_map')))
     on_meeting = "{x}source='congress_gov' AND {x}occasion IN (SELECT 'meeting:'||event_id FROM meeting_update WHERE NOT added)"
-    added = (f"{on_meeting.format(x='')} AND status='unambiguous' AND (old_key NOT IN (SELECT witness_key FROM base_witnesses) "
-             "OR old_key IN (SELECT witness_key FROM witness_update_base))")
+    resolves = ("{x}status='unambiguous' AND EXISTS (SELECT 1 FROM witness_rekey r "
+                "JOIN witness_update_candidate w USING(witness_key) "
+                "WHERE r.old_key={x}old_key AND r.witness_key={x}witness_key AND w.occasion={x}occasion)")
+    added = (f"coalesce({on_meeting.format(x='m.')} AND {resolves.format(x='m.')} "
+             "AND (NOT EXISTS (SELECT 1 FROM base_witnesses b WHERE b.witness_key=m.old_key) "
+             "OR EXISTS (SELECT 1 FROM witness_update_base b WHERE b.witness_key=m.old_key AND b.occasion=m.occasion)),false)")
     out = []
-    for published, updated, n in d.rows(f"""SELECT old_key IN (SELECT witness_key FROM base_witnesses),{added if update else 'false'},count(*)
-          FROM candidate_witness_key_map ANTI JOIN base_witness_key_map USING(old_key) GROUP BY 1,2 ORDER BY 1,2"""):
+    for published, updated, n in d.rows(f"""SELECT m.old_key IN (SELECT witness_key FROM base_witnesses),{added if update else 'false'},count(*)
+          FROM candidate_witness_key_map m ANTI JOIN base_witness_key_map USING(old_key) GROUP BY 1,2 ORDER BY 1,2"""):
         cause = 'key retired from witnesses in this release' if published else 'a key no base witness carries'
         out.append(dict(group('added keys', f'{cause}; {MEETING_UPDATE}', n, 'verified'), refetch_only=True) if updated
                    else group('added keys', cause, n, 'verified'))
@@ -875,12 +888,12 @@ def witness_key_map(d: Diff):
     join = 'base_witness_key_map p JOIN candidate_witness_key_map l USING(old_key)'
     for side, alias in (('base', 'pc'), ('candidate', 'lc')):
         mapped_keys = rekeyed_lists(d, f'{side}_witness_key_map', 'old_key', 'candidate_keys')
-        join += (f' LEFT JOIN {mapped_keys} {alias} ON {alias}.old_key=p.old_key'
-                 f' LEFT JOIN witness_rekey {alias[0]}s ON {alias[0]}s.old_key={alias[0]}.witness_key')
+        join += f' LEFT JOIN {mapped_keys} {alias} ON {alias}.old_key=p.old_key'
+    join += ' LEFT JOIN witness_rekey ps ON ps.old_key=p.witness_key LEFT JOIN witness_rekey ls ON false'
     compare = {'witness_key': 'coalesce(Xs.{c},X.{c})', 'candidate_keys': 'coalesce(Xc.{c},X.{c})'}
     out += d.changed('witness_key_map', join, compare, exclude={'old_key'})
     if update:
-        both = f"{on_meeting.format(x='p.')} AND {on_meeting.format(x='l.')} AND p.occasion=l.occasion AND l.status='unambiguous'"
+        both = f"coalesce({on_meeting.format(x='p.')} AND {on_meeting.format(x='l.')} AND p.occasion=l.occasion AND {resolves.format(x='l.')},false)"
         out = refetch_split(out, changed_counts(d, join, out, both, compare), MEETING_UPDATE)
     return out, {}
 
