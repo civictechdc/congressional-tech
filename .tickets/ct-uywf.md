@@ -1,6 +1,6 @@
 ---
 id: ct-uywf
-status: open
+status: in_progress
 deps: []
 links: [ct-rhqw, ct-46f3]
 created: 2026-11-10T19:31:06Z
@@ -27,6 +27,10 @@ Either a witness's key and basis are stable across a re-fetch that does not chan
 **2026-11-10T20:38:46Z**
 
 2026-11-10 seen again in release 77673bfb8fcf after the 11-10 meetings relist (38 receipts). Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables. witness_key_map: 37 matched old keys changed basis, all 37 now map to a different witness_key; 78 new rows. The cause record explains it by hand under ct-uywf. Every relist night will need the same until this lands.
+
+**2026-11-11T00:13:25Z**
+
+2026-11-11 (branch claude/ct-uywf-refetch-gate, not merged): built the owner's choice, an automatic gate cause widened to the meeting's re-fetch bookkeeping. The comparison now flags rows a re-fetch moved as verified groups marked refetch_only, one exemption shared with the ct-syp1 cache refresh (the flag was citation_only). Witnesses: the re-key groups (removed and added keys, the map's added keys and changed basis, documents' witness_keys) are exempt only when every base witness key the candidate drops is a re-key whose row is equal on every column but key and record_sha, each old body went to one new body, the live release cites the new body on no witness and the candidate cites the old one on none. Meetings: with every other column equal, congress_gov_detail_observation (read locators only, later, in another receipt; outcome only stored/unchanged), congress_gov_updated (later, only with a new body) and publisher_status_observations (live entries kept; a new entry only restates a live source/status/date) are exempt; a new status or date stops. The unattended gate then finds every newly cited body in the capture table outside the live receipts, and every new detail read as that capture line (receipt, line, index) outside the live receipts with that address and body. Every other verified group still stops a night. New witnesses on a re-fetched meeting still stop: witnesses.parquet|added keys|no evidence given plus their 'a key no base witness carries' map rows. Replay of gate 1 on the saved pairs (.cache/archive-release/investigations/ct-uywf-20261110/uy-04-replay.py, uy-replay-*-before/after.json): 619db5f9e08e to 77673bfb8fcf exempts all 37 re-keys (10 groups) and the read columns of 14 of 32 re-read meetings; still stopping are meeting 119590's 4 new witnesses (and 4 map rows), 18 meetings with real changes (documents, videos, titles, dates), and the release's other changes. 630164505301 to 619db5f9e08e exempts no re-key (22 reordered rows, 5 MODS occasion moves) and the read columns of 12 of 27 meetings. The capture-table step was not replayed: no local capture table holds the 11-08 or 11-10 receipts. Tests (production-offline --path, each file in full): test_release_gate.py 130 passed, test_release_comparison.py 82, test_archive_publish.py 36, test_archive_controller.py 19, test_bill_identity_decisions.py 3, test_retired_links.py 6.
 
 **2026-11-11T00:35:01Z**
 

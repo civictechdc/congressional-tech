@@ -353,32 +353,45 @@ def _captures_source(captures):
 
 
 def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work):
-    """Reasons a citation-only change cannot pass without a person (ct-syp1); empty when it can.
+    """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf); empty when it can.
 
-    The comparison shows only that the candidate is consistent with itself. Here every file hash
-    the candidate cites for the first time (`release_comparison.new_citations`) is looked up in
-    `captures`, which the candidate does not control: it must be the SHA-256 of a captured body,
-    and every receipt holding that body must be absent from the live release's receipt set. So a
-    made-up hash, and a file the live release could already have cited, both refuse.
-    One engine query joining about 70 hashes to captures; the evidence file lists each hash's
-    receipts. Cannot see: whether the file holds the published values, or the raw receipt line
-    (the capture mapping is trusted for the hash; documents are checked against raw).
+    The comparison shows only that the candidate is consistent with itself. Here every body the
+    candidate cites for the first time (`release_comparison.new_citations`: cache files, witness
+    records, meeting detail bodies) is looked up in `captures`, which the candidate does not
+    control: it must be the SHA-256 of a captured body, and every receipt holding that body must
+    be absent from the live release's receipt set. So a made-up hash, and a body the live release
+    could already have cited, both refuse. Every detail read a meeting names for the first time
+    (`release_comparison.new_reads`) must be a capture line at that receipt, line and capture
+    index, in a receipt outside the live set, requesting the read's address and holding its body
+    (a byte-identical re-fetch names an old body in a new line). So a made-up read and a read the
+    live release already held both refuse.
+    One engine job, two joins of a few hundred keys to captures; the evidence file lists each
+    hash's receipts and each read's line. Cannot see: whether the body holds the published values,
+    or the raw receipt line (the capture mapping is trusted for hash and address; documents are
+    checked against raw).
     """
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
-    from viewer_publication.release_comparison import new_citations
-    cited = new_citations(base_dir, candidate_dir)
-    if not cited:
-        return ['automatic causes: citations moved, but the candidate cites no file the live release does not']
+    from viewer_publication.release_comparison import new_citations, new_reads
+    cited, reads = new_citations(base_dir, candidate_dir), new_reads(base_dir, candidate_dir)
+    if not cited and not reads:
+        return ['automatic causes: citations moved, but the candidate cites no file or read the live release does not']
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
-    pq.write_table(pa.table({'sha': cited}), work / 'cited-files.parquet')
-    rows = run_job(work / 'citations', engine, inputs=[table_input('captures', _captures_source(captures)),
-        dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet'))], steps=[], outputs=[],
+    pq.write_table(pa.table({'sha': pa.array(cited, pa.string())}), work / 'cited-files.parquet')
+    pq.write_table(pa.table({f: pa.array([r[f] for r in reads], t) for f, t in
+                             (('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()))}),
+                   work / 'cited-reads.parquet')
+    found = run_job(work / 'citations', engine, inputs=[table_input('captures', _captures_source(captures)),
+        dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet')),
+        dict(name='cited_reads', kind='parquet', path=str(work / 'cited-reads.parquet'))], steps=[], outputs=[],
         queries=[dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
-            JOIN captures c ON lower(encode(c.sha256,'hex'))=k.sha WHERE c.sha256 IS NOT NULL ORDER BY 1,2""")])['files']
+            JOIN captures c ON lower(encode(c.sha256,'hex'))=k.sha WHERE c.sha256 IS NOT NULL ORDER BY 1,2"""),
+                 dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
+            c.requested_url FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
+            AND c.capture_index=k.capture_index ORDER BY 1,2,3""")])
     receipts = {}
-    for row in rows:
+    for row in found['files']:
         receipts.setdefault(row['sha'], []).append(row['receipt_key'])
     reasons = []
     for sha in cited:
@@ -387,7 +400,21 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
         for key in receipts.get(sha, []):
             if key in held:
                 reasons.append(f'automatic causes: cited file {sha[:16]} was already read by the live release ({key})')
-    (work / 'citation-trace.json').write_text(json.dumps(dict(live_receipts=len(held), files=receipts), indent=1) + '\n')
+    lines = {(r['receipt_key'], r['receipt_line'], r['capture_index']): r for r in found['reads']}
+    for read in reads:
+        where = f"{read['receipt_key']}:{read['receipt_line']}:{read['capture_index']}"
+        line = lines.get((read['receipt_key'], read['receipt_line'], read['capture_index']))
+        body = (read['body_sha256'] or '').lower() or None
+        if read['receipt_key'] in held:
+            reasons.append(f'automatic causes: read {where} is in a receipt the live release read')
+        if line is None:
+            reasons.append(f'automatic causes: read {where} is not a line in the capture table')
+        elif line['sha'] != body:
+            reasons.append(f"automatic causes: read {where} holds body {str(line['sha'])[:16]}, not {str(body)[:16]}")
+        elif line['requested_url'] != read['source_url']:
+            reasons.append(f"automatic causes: read {where} requested {line['requested_url']}, not {read['source_url']}")
+    (work / 'citation-trace.json').write_text(json.dumps(dict(live_receipts=len(held), files=receipts, reads=found['reads']),
+                                                          indent=1, default=str) + '\n')
     return reasons
 
 
@@ -631,10 +658,11 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if not report['link_rule']['ok']:
         return [], ['automatic causes: the link rule failed']
     # Include already verified differences when deciding whether this is addition-only. The
-    # citation-only groups (ct-syp1) change no content, so they do not stop this proof; they get
-    # their own check below, against the capture table.
+    # re-fetch groups (ct-syp1 cache files, ct-uywf witness re-keys and meeting reads) change no
+    # content, so they do not stop this proof; they get their own check below, against the capture
+    # table. Any other verified group still stops it.
     every = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
-    differences = [g for g in every if not g.get('citation_only')]
+    differences = [g for g in every if not g.get('refetch_only')]
     url_state = [g for g in differences if g['file'] == 'url_state.parquet' and (g['group'], g['cause']) in URL_STATE_GROUPS]
     other = [g for g in differences if g not in url_state and (
         g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS)]

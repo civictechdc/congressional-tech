@@ -597,8 +597,9 @@ def write_captures(rows, path):
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
             url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=None,
-            base_tables=None, candidate_tables=None, also_held=None, cache_files=(), base_retired=None):
-    """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
+            base_tables=None, candidate_tables=None, also_held=None, cache_files=(), capture_lines=(), base_retired=None):
+    """Releases plus a captures file and raw receipts; returns the gate's automatic callback.
+    `capture_lines` are further capture rows, each a dict of its own columns."""
     import gzip
     import os
     from docspec_client.client import NativeDatasets
@@ -638,6 +639,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     # Cache files the pipeline captured: (file hash, receipt key).
     capture_rows += [dict(receipt_key=key, receipt_line=1, sha256=file_sha, requested_url=None, mode='fetch', complete=True,
                           attempt=0, outcome='stored', http_status=200) for file_sha, key in cache_files]
+    capture_rows += [dict(dict(receipt_line=1, mode='fetch', complete=True, attempt=0, outcome='stored', http_status=200), **row)
+                     for row in capture_lines]
     write_captures(capture_rows, tmp_path / 'captures.parquet')
     sha = next(iter(bodies.values()), b'').hex() if raw_names_body else '0' * 64
     line = dict(record=dict(mode='fetch', outcome='stored', requested_url=raw_url, url=raw_url,
@@ -656,7 +659,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     def automatic(report):
         return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
                                 live_receipt_keys=live_receipts, read_receipt=raw.__getitem__, work=tmp_path / 'auto',
-                                candidate_receipt_keys={*live_receipts, receipt, *(key for _, key in cache_files)})
+                                candidate_receipt_keys={*live_receipts, receipt, *(key for _, key in cache_files),
+                                                        *(row['receipt_key'] for row in capture_lines)})
     return base, candidate, automatic
 
 
@@ -912,6 +916,161 @@ def test_a_check_date_in_the_future_refuses_unattended(tmp_path):
     base, candidate, automatic = refreshed(tmp_path, year=2099)
     with pytest.raises(ValueError, match=r'no recorded cause for videos.parquet\|changed details_checked_at'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+
+
+# ct-uywf: a Congress.gov meeting record read again. Its witness keys hash the record body, so a
+# new body re-keys both witnesses; the meeting's detail read, status sightings and the publisher's
+# update stamp move. Every expected group below is written by hand from the two releases.
+MEETING_URL = 'https://api.congress.gov/v3/committee-meeting/119/house/118340?format=json'
+FIRST_READ = 'receipts/congress/meetings/2026-10-31/first.jsonl.gz'  # in the live release's receipt set
+RELIST = 'receipts/congress/meetings/2026-11-08/relist.jsonl.gz'
+OLD_RECORD, NEW_RECORD = sha256(b'meeting 118340, first read').digest(), sha256(b'meeting 118340, read again').digest()
+READ = pa.struct([('source_url', pa.string()), ('retrieved_at', TS), ('receipt_key', pa.string()), ('receipt_line', pa.int32()),
+                  ('capture_index', pa.int32()), ('body_sha256', pa.string()), ('meeting_parser_version', pa.string()),
+                  ('proof_parser_version', pa.string())])
+MEETINGS = pa.schema([
+    ('event_id', pa.int64()), ('title', pa.string()), ('document_references', pa.list_(pa.string())), ('congress_gov_updated', TS),
+    ('publisher_status_observations', pa.list_(pa.struct([('source', pa.string()), ('status', pa.string()),
+                                                          ('meeting_date', pa.date32()), ('record_sha', pa.string()), ('observed_at', TS)]))),
+    ('congress_gov_detail_observation', pa.struct([('state', pa.string()), ('coverage', pa.string()), ('successful_read', READ),
+        ('latest_attempt', pa.struct([('evidence', READ), ('state', pa.string()), ('outcome', pa.string()), ('http_status', pa.int32())])),
+        ('has_undated_attempt', pa.bool_())]))])
+WITNESSES = pa.schema([('witness_key', pa.string()), ('occasion', pa.string()), ('source', pa.string()), ('record_sha', pa.binary()),
+                       ('source_locator', pa.string()), ('context_key', pa.string()), ('name', pa.string()), ('organization', pa.string()),
+                       ('display_order', pa.int16()), ('superseded_by', pa.string())])
+KEY_MAP = pa.schema([('old_key', pa.string()), ('witness_key', pa.string()), ('status', pa.string()), ('basis', pa.string()),
+                     ('candidate_keys', pa.list_(pa.string())), ('occasion', pa.string()), ('source', pa.string())])
+HEARD = datetime(2025, 6, 12).date()
+PANEL = (('Ann Lee', 'GAO'), ('Bo Park', 'CBO'))
+
+
+def meeting_read(record, receipt, at, *, keys, mapped, outcome='stored', updated=datetime(2026, 1, 2, tzinfo=timezone.utc),
+                 statuses=(), documents=('hearing memo',), panel=PANEL, order=(1, 2)):
+    """The meeting, its witnesses (listed in `order`) and the key map, as one read of the record left them."""
+    read = dict(source_url=MEETING_URL, retrieved_at=at, receipt_key=receipt, receipt_line=1, capture_index=0,
+                body_sha256=record.hex(), meeting_parser_version='m1', proof_parser_version='p1')
+    meeting = dict(event_id=118340, title='Oversight hearing', document_references=list(documents), congress_gov_updated=updated,
+                   publisher_status_observations=[dict(zip(('source', 'status', 'meeting_date', 'record_sha', 'observed_at'), s))
+                                                  for s in statuses],
+                   congress_gov_detail_observation=dict(state='successful', coverage='selected_release_inputs', successful_read=read,
+                       latest_attempt=dict(evidence=read, state='successful', outcome=outcome, http_status=200), has_undated_attempt=False))
+    witnesses = [dict(witness_key=key, occasion='meeting:118340', source='congress_gov', record_sha=record,
+                      source_locator=f'congress_gov:witness[{place}]', context_key='congress/meetings', name=name,
+                      organization=organization, display_order=place, superseded_by=None)
+                 for key, (name, organization), place in zip(keys, panel, order)]
+    key_map = [dict(old_key=old, witness_key=new, status='unambiguous', basis=basis, candidate_keys=[],
+                    occasion='meeting:118340', source='congress_gov') for old, new, basis in mapped]
+    return dict(meetings=pa.Table.from_pylist([meeting], schema=MEETINGS), witnesses=pa.Table.from_pylist(witnesses, schema=WITNESSES),
+                witness_key_map=pa.Table.from_pylist(key_map, schema=KEY_MAP))
+
+
+FIRST_SEEN = datetime(2026, 10, 31, tzinfo=timezone.utc)
+SEEN_AGAIN = datetime(2026, 11, 8, 14, tzinfo=timezone.utc)
+LIVE_STATUS = ('congress_gov', 'Scheduled', HEARD, OLD_RECORD.hex(), FIRST_SEEN)
+
+
+def relisted(tmp_path, *, record=NEW_RECORD, receipt=RELIST, captured=None, **candidate):
+    """The gate's unattended callback for a night that read meeting 118340 again from `receipt`.
+    By default the record came back with new bytes and the same two witnesses; `captured` lists
+    the bodies the capture table holds, each with its receipt (the read's line is the first)."""
+    captured = ((record, receipt),) if captured is None else captured
+    base = meeting_read(OLD_RECORD, FIRST_READ, FIRST_SEEN, keys=('w1', 'w2'), mapped=[('k1', 'w1', 'occurrence')],
+                        statuses=[LIVE_STATUS])
+    new = record != OLD_RECORD
+    settings = dict(keys=('n1', 'n2') if new else ('w1', 'w2'),
+                    mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'), ('w2', 'n2', 'content'), ('v1', 'n1', 'content')]
+                    if new else [('k1', 'w1', 'occurrence')],
+                    outcome='stored' if new else 'unchanged',
+                    updated=datetime(2026, 11, 7, tzinfo=timezone.utc) if new else datetime(2026, 1, 2, tzinfo=timezone.utc),
+                    statuses=[LIVE_STATUS, ('congress_gov', 'Scheduled', HEARD, record.hex(), SEEN_AGAIN)] if new
+                    else [LIVE_STATUS[:4] + (SEEN_AGAIN,)])
+    settings.update(candidate)
+    lines = [dict(receipt_key=key, receipt_line=1 if i == 0 else 9, capture_index=0, sha256=body, requested_url=MEETING_URL,
+                  family='congress') for i, (body, key) in enumerate(captured)]
+    lines.append(dict(receipt_key=FIRST_READ, sha256=OLD_RECORD, requested_url=MEETING_URL, family='congress'))
+    return nightly(tmp_path, ['A'], ['A'], base_tables=base, candidate_tables=meeting_read(record, receipt, SEEN_AGAIN, **settings),
+                   live_receipts=LIVE_RECEIPTS | {FIRST_READ}, capture_lines=lines)
+
+
+def groups_of(report):
+    return {(name, g['group'], g['cause']): g['count'] for name, facts in report['files'].items() for g in facts['groups']}
+
+
+def test_a_meeting_read_again_with_unchanged_witnesses_passes_unattended(tmp_path):
+    base, candidate, automatic = relisted(tmp_path)
+    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert report['reasons'] == [] and report['automatic_reasons'] == [] and report['failing'] == []
+    refetched = 'a re-fetch of the record: every published value equal'
+    read_again = 'a new read of the Congress.gov detail record: every other column equal on the meeting'
+    assert groups_of(report) == {
+        ('witnesses.parquet', 'removed keys', 're-keyed: witness_key_map names the published successor'): -2,
+        ('witnesses.parquet', 'added keys', 'successor of a re-keyed witness'): 2,
+        ('witness_key_map.parquet', 'added keys', f'key retired from witnesses in this release; {refetched}'): 2,
+        ('witness_key_map.parquet', 'added keys', f'a key no base witness carries; {refetched}'): 1,
+        ('witness_key_map.parquet', 'changed basis', 'the successor was re-keyed by a re-fetch of its record'): 1,
+        ('meetings.parquet', 'changed congress_gov_detail_observation', read_again): 1,
+        ('meetings.parquet', 'changed congress_gov_updated', read_again): 1,
+        ('meetings.parquet', 'changed publisher_status_observations', read_again): 1}
+    assert all(g.get('refetch_only') for facts in report['files'].values() for g in facts['groups'])
+    trace = json.loads((tmp_path / 'auto/cited/citation-trace.json').read_text())
+    assert trace['files'] == {NEW_RECORD.hex(): [RELIST]} and [r['receipt_key'] for r in trace['reads']] == [RELIST]
+
+
+def test_a_byte_identical_read_again_passes_unattended(tmp_path):
+    """Only the date stamps move: the same body read from a new receipt, its status seen again."""
+    base, candidate, automatic = relisted(tmp_path, record=OLD_RECORD)
+    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert report['reasons'] == [] and report['failing'] == []
+    assert {(f, g) for f, g, _ in groups_of(report)} == {('meetings.parquet', 'changed congress_gov_detail_observation'),
+                                                        ('meetings.parquet', 'changed publisher_status_observations')}
+    assert json.loads((tmp_path / 'auto/cited/citation-trace.json').read_text())['files'] == {}
+
+
+POSTPONED = [LIVE_STATUS, ('congress_gov', 'Postponed', HEARD, NEW_RECORD.hex(), SEEN_AGAIN)]
+MEETING_COLUMNS = {'meetings.parquet|changed congress_gov_detail_observation', 'meetings.parquet|changed congress_gov_updated',
+                   'meetings.parquet|changed publisher_status_observations'}
+
+
+@pytest.mark.parametrize('change,failing', [
+    # A witness edited on the re-fetched record: no re-key is exempt, and the edit needs a person.
+    (dict(panel=(PANEL[0], ('Bo Parks', 'CBO'))), {'witnesses.parquet|changed name', 'witness_key_map.parquet|changed basis'}),
+    # The same people in a new order: their locators and display order moved.
+    (dict(order=(2, 1)), {'witnesses.parquet|changed display_order', 'witness_key_map.parquet|changed basis'}),
+    # The re-fetched record states another status: the meeting qualifies for nothing.
+    (dict(statuses=POSTPONED), MEETING_COLUMNS),
+    # The record lists another document.
+    (dict(documents=('hearing memo', 'testimony')), MEETING_COLUMNS | {'meetings.parquet|changed document_references'}),
+    # The record names one more witness: new content waits for a person, though both re-keys are exempt.
+    (dict(keys=('n1', 'n2', 'n3'), panel=(*PANEL, ('Cy Diaz', 'EPA')), order=(1, 2, 3)), {'witnesses.parquet|added keys'}),
+    # The record drops a witness: the other's clean re-key is no longer exempt either.
+    (dict(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content')]),
+     {'witnesses.parquet|removed keys', 'witness_key_map.parquet|changed basis'}),
+])
+def test_a_real_change_on_a_meeting_read_again_refuses_unattended(tmp_path, change, failing):
+    base, candidate, automatic = relisted(tmp_path, **change)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert {g['file'] + '|' + g['group'] for g in report['failing']} == failing
+    assert report['automatic_reasons'] and all('is not an addition' in reason for reason in report['automatic_reasons'])
+
+
+@pytest.mark.parametrize('change,reason', [
+    # The new body is in no capture: made up, consistently, on every row that cites it.
+    (dict(captured=()), f'automatic causes: cited file {NEW_RECORD.hex()[:16]} is not a body in the capture table'),
+    # The new body also sits in a receipt the live release read: the live release could have cited it.
+    (dict(captured=((NEW_RECORD, RELIST), (NEW_RECORD, FIRST_READ))),
+     f'automatic causes: cited file {NEW_RECORD.hex()[:16]} was already read by the live release ({FIRST_READ})'),
+    # A byte-identical read the candidate places in a receipt the live release read.
+    (dict(record=OLD_RECORD, receipt=UNDATED_LIVE_RECEIPT),
+     f'automatic causes: read {UNDATED_LIVE_RECEIPT}:1:0 is in a receipt the live release read'),
+])
+def test_a_meeting_read_again_no_new_receipt_delivered_refuses_unattended(tmp_path, change, reason):
+    base, candidate, automatic = relisted(tmp_path, **change)
+    with pytest.raises(ValueError):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert report['failing'] == [] and reason in report['automatic_reasons']
 
 
 # ct-9j3z: a capture night's url_state bookkeeping, proven from the lines of receipts new to the

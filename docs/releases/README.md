@@ -81,7 +81,8 @@ putting them in the release would force a second model run.
 
 The daily publish (`model/jobs/publish.json`, `automatic_causes: true`) can explain a
 difference without a person only when every difference is a new row traced to receipts the
-live release did not read, or `url_state` bookkeeping those receipts imply (below). A new row is a new document, or a source
+live release did not read, `url_state` bookkeeping those receipts imply, or a row a re-fetch
+moved (both below). A new row is a new document, or a source
 or lookup row on one. Each new document's body is joined to `captures`, and each receipt
 line is read from raw. The receipt key must be outside the live release's receipt set (the
 key list its input record names, `inputs/receipts/<sha256>.json.gz`), and the line must name
@@ -124,13 +125,17 @@ What it cannot see: a bug that adds only wrong rows from genuinely new receipts.
 code change that alters how new rows are built is invisible too, when no existing row
 changes. Gates 2-5 still run on every nightly candidate.
 
-## Video cache refresh (ct-syp1)
+## Re-fetched sources (ct-syp1, ct-uywf)
 
-`videos.record_sha` and `channels.record_sha` are the hash of the cache file a row was read
-from, `videos.details_checked_at` is when it was fetched, and a `recording_matches.source_ref`
-of the form `video_records:<hash>` cites the same file. The file embeds fetch times, so the
-weekly refresh rewrites all of them with no content change. The comparison sets such a row
-apart as `verified`, so it needs no cause entry:
+A source read again moves the rows that cite it even when nothing it says changed. The
+comparison sets such a row apart as a `verified` group flagged `refetch_only`, so it needs no
+cause entry; a row that changed anything else qualifies for nothing, and every other verified
+group still stops an unattended night.
+
+**Video cache refresh (ct-syp1).** `videos.record_sha` and `channels.record_sha` are the hash
+of the cache file a row was read from, `videos.details_checked_at` is when it was fetched, and a
+`recording_matches.source_ref` of the form `video_records:<hash>` cites the same file. The file
+embeds fetch times, so the weekly refresh rewrites all of them with no content change:
 
 - a channel: every other column equal, its old file went to one new file that came from that
   old file only, over all channels, and the live release cites the new hash nowhere;
@@ -144,10 +149,45 @@ Everything else in these tables still needs a reviewed cause: a changed title, d
 description or any other column, an added or removed row, and the citation change on a row
 that changed anything else.
 
-That check compares the candidate with the live release and reads no file, so it shows only
+**Congress.gov meeting re-fetch (ct-uywf).** A witness key hashes its record body
+(`witness-occurrence-v2`, an observation key by design), so when Congress.gov updates a meeting
+and the relist stores the new bytes, every witness on it is re-keyed though none changed. The
+re-key groups (witnesses removed and added, the map's added keys and changed `basis`, documents'
+`witness_keys`) are exempt only when every base witness key the candidate drops is such a
+re-key: the row equal on every column but the key and `record_sha` (occasion, context, locator,
+display order and every stated value; `superseded_by` through the map), each old body replaced
+by one new body that came from it alone, the live release citing the new body on no witness and
+the candidate citing the old one on none. One reordered list, edited name, moved occasion or
+vanished key leaves the whole re-key for a person. On the meeting, three columns may move when
+every other column is equal:
+
+- `congress_gov_detail_observation`: only the locators of its two reads (time, receipt, line,
+  capture index, body), each later than the live read, not later than the comparison and in
+  another receipt; the successful read must move; the latest attempt's outcome may only go
+  between `stored` and `unchanged`. State, coverage, listing, address, HTTP status and reader
+  versions stay equal. This is acquisition evidence, not meeting content.
+- `congress_gov_updated`: later and not later than the comparison, and only when the
+  successful read names another body. It is the publisher's own update stamp.
+- `publisher_status_observations`: every live entry kept; a new entry only a live one seen
+  again later, or one citing the new body that states a source, status and date the live
+  release already states. The list carries real statuses (a postponement, a cancellation, a
+  moved date), so a new status or date on the re-fetched record stops the meeting.
+
+New witnesses on a re-fetched record (`witnesses.parquet | added keys | no evidence given`, and
+their `a key no base witness carries` map rows) are new content and still need a person, as do
+a changed title, document list, video, sitting or date. On 2026-11-10's pair (619db5f9e08e to
+77673bfb8fcf) the rule exempts all 37 re-keys on 8 meetings and the read columns of 14 of the 32
+re-read meetings; 18 also changed real columns, and the 4 new witnesses of meeting 119590
+stop. On 630164505301 to 619db5f9e08e no re-key is exempt: 22 rows were reordered and 5 MODS
+rows moved occasion.
+
+These checks compare the candidate with the live release and read no file, so they show only
 that the candidate is consistent with itself: a made-up hash applied to every row of one old
-file would pass it. The nightly, which has no person, therefore also looks up every file hash
-the candidate cites for the first time in the capture table: it must be a captured body, and
-every receipt holding it must be absent from the live release's receipt set. A reviewed
-publish has the comparison and the reviewer. Neither can see whether the file holds the
-published values.
+file would pass them. The nightly, which has no person, therefore also looks up every body the
+candidate cites for the first time (cache files, witness records, meeting detail bodies) in the
+capture table: it must be a captured body, and every receipt holding it must be absent from the
+live release's receipt set. Every detail read a meeting names for the first time must be a
+capture line at that receipt, line and index, outside the live receipt set, requesting the
+read's address and holding its body; a byte-identical re-fetch names an old body in a new line.
+A reviewed publish has the comparison and the reviewer. Neither can see whether the body holds
+the published values.
