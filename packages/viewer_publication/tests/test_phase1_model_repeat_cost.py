@@ -76,7 +76,8 @@ REPEAT_COST_TRACKED = {
     'merged_recovery_fields': 43_005_605,       # query; the merged 7-way join x5 (M13)
     'bills_export': 33_468_701,                 # spicy_congress_bills x30, ordered x27 (M17)
     'component_meeting_links': 32_189_482,      # effective_filenames x4, source_annotations x6 (M17)
-    'retired_links_export': 31_775_718,         # the links view: ordered x29, prior_links x21 (M16)
+    'retired_links_export': 32_708_507,         # the links view: ordered x29, prior_links x21 (M16); a landing page's
+                                                # notice reads source_rows and details once more (ct-egoo, +932,789)
     'profile_completeness': 23_295_486,         # query; readings through the current selected_readings (M28)
     'model_url_keys': 18_289_579,               # url_normalized x11 through mappings (M17)
     'source_url_keys': 13_842_862,              # source_url_normalized x11 through mappings (M17)
