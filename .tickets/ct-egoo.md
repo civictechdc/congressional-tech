@@ -17,3 +17,9 @@ Split from ct-m878 when it closed on release 77673bfb8fcf (2026-11-10). The fold
 
 Each of the three is decided by the owner and either built with a before/after count on a full build or declined with the reason written here.
 
+
+## Notes
+
+**2026-11-11T14:44:37Z**
+
+validated 2026-11-11, left open: all three are owner questions and none has been answered (no commit or note since the split from ct-m878).

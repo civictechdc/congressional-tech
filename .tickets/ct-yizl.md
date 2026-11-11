@@ -17,3 +17,9 @@ After the 2026-11-10 build, recordings with an empty event_ids but a linked reco
 
 One of the two is the owner of the link and the other is derived from it (or removed); the disagreement count is 0 and a test holds it there.
 
+
+## Notes
+
+**2026-11-11T14:44:37Z**
+
+validated 2026-11-11, left open: still two owners. DuckDB on 77673bfb8fcf: 67 recordings have empty event_ids but a recording_matches row with an event_id and basis video_states_event_id (69 with any basis); the filing counted 66 on the earlier build.

@@ -17,3 +17,9 @@ Split from ct-aoxp when it closed on release 77673bfb8fcf (2026-11-10); its 08:4
 
 An owner view on which index pages are documents is recorded; the chosen rule (or a decision to keep them) is applied and measured on a full build with the count before and after.
 
+
+## Notes
+
+**2026-11-11T14:44:36Z**
+
+validated 2026-11-11, left open: waits on the owner's view of which index pages are documents; no commit names ct-xj8s since its filing.

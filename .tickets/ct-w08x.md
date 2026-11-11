@@ -17,3 +17,9 @@ From ct-n5ec (2026-11-10). model/sql/page-descriptions.sql orders its pick by fo
 
 One query on a build's page_metadata_values counts (body_sha, field, path) groups with more than one row and the count is recorded. If it is not zero, the three other picks get the same last key with a test; if zero, an invariant asserts it stays zero.
 
+
+## Notes
+
+**2026-11-11T14:43:58Z**
+
+validated 2026-11-11, left open: the one counting query has not been run. page_metadata_values is still not retained after a build (the 77673bfb8fcf clone's archive-model/evidence has no such file), so it needs a model-only build with that step retained, or a query job through dev.py query on a build's workspace.

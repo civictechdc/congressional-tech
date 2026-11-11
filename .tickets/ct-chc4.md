@@ -43,3 +43,7 @@ Related, not the same: the model already selects a page's main content (`detail.
 **2026-11-10T13:27:30Z**
 
 2026-11-10 status: spicy-docs 0.84.0 is on main (0fad483d) with html_text and warc reading versions bumped. Equivalence at full size: the 12:15Z scheduled nightly on af1da283 rebuilt the whole model and produced release id 619db5f9e08e again, byte-identical to the release built before the bump. The html/warc re-read runs as the html phase of the body-text run (.cache/archive-release/body-text-full-20261110, work list html 192,959 and warc 1,768; chunk 39 running at 12:42Z, yielding to every nightly). Left: finish the re-read, re-measure script/CSS in saved HTML texts (acceptance line 3), list bodies whose text became far shorter.
+
+**2026-11-11T14:41:23Z**
+
+validated 2026-11-11, left open: the reader fix and the version bump are on main (spicy-docs 0.84.0, 0fad483d; html_text e1928f25, warc e835fb81), and the 12:15Z nightly on af1da283 reproduced 619db5f9e08e after the bump. Remains: the html/warc re-read is part of the full body-text run, which is still running (OCR chunk-0085 at 14:29Z; body text is not a published table yet), then acceptance line 3, the script/CSS re-measure over saved HTML texts, and the list of bodies whose text became far shorter.

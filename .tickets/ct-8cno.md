@@ -1,6 +1,6 @@
 ---
 id: ct-8cno
-status: open
+status: closed
 deps: []
 links: [ct-m104, ct-itcg, ct-mx3g]
 created: 2026-11-03T01:00:02Z
@@ -122,3 +122,7 @@ Keep open for ss-ehci to supply accepted source-dated House and Senate rosters f
 **2026-11-10T13:27:10Z**
 
 2026-11-10 (session congress-1): rosters are published in archive release 619db5f9e08e: 25,190 rows (2,973 before), each pinned input row published once, 0 duplicate keys, 0 null keys, 0 missing committee or member references, all 2,973 previously live rows unchanged in title, rank and party (causes-2/reference/rosters-counts.json). Not verified by this session: the installed committee_roster recipe for Congresses 116 to 118, and archive_schema --check on the relationship documentation; those two acceptance lines keep the ticket open. Known defects in the new rows are ct-sh1i (19 departed seats unlabeled, 697 archive-made ranks, the 118th as three joined sources with two double chairs).
+
+**2026-11-11T14:43:34Z**
+
+validated 2026-11-11, closing: the two lines left open on 2026-11-10 are checked today and the rest re-derived. (1) The installed committee_roster recipe (model/registries/release-schema.json) run with DuckDB on release 77673bfb8fcf returns named seats with titles for hsif00 116 (55 rows; Chair, Ranking Member, Vice Chair), 117 (58), 118 (52), ssju00 117 (22) and hsag00 118 (54). (2) '.venv/bin/python -m viewer_publication.archive_schema --check' exits 0 on origin/main 17a283bc, and docs/release-relationships.md:1414 states the 113th-119th scope and that coverage is bounded by the pinned generation. Re-derived on the live release: rosters.parquet 25,190 rows over Congresses 113-119, 0 duplicate seats (congress, system_code, bioguide_id, edition_date), 0 missing committee keys, 0 missing member keys; the source generation is pinned as committee-rosters 32ac9696... in model/jobs/spicy-regs/spicy-regs.json. Known data defects stay on ct-sh1i, with two stale hand-written doc lines noted there.

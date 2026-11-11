@@ -18,3 +18,7 @@ On candidate 77673bfb8fcf (2026-11-10), 83 of 118 new no-meeting YouTube recordi
 **2026-11-10T20:38:46Z**
 
 2026-11-10 seen again in release 77673bfb8fcf. Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables. 123 new recordings, 118 with no event_ids. As the description says, 83 of the 118 were traced only by a raw read of the day's pages (release-20261110b/trace-recordings.json). The gate group 'empty event_ids; source not traced' shipped with a hand cause. Nothing changed here.
+
+**2026-11-11T14:44:37Z**
+
+validated 2026-11-11, left open: not started; the 77673bfb8fcf gate group 'empty event_ids; source not traced' shipped with a hand cause, and no commit names ct-zdj8.

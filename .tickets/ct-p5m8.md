@@ -17,3 +17,9 @@ Release 2026-11-10: 31 descriptions go NULL to one space, one gains two spaces (
 
 The video record reader normalises surrounding whitespace and maps whitespace-only text to null; the count of whitespace-only titles and descriptions in a build is 0.
 
+
+## Notes
+
+**2026-11-11T14:44:37Z**
+
+validated 2026-11-11, left open: not fixed. DuckDB on 77673bfb8fcf videos.parquet: 1,095 source_description values are whitespace-only and 1,159 rows have a title or source_description with surrounding whitespace (0 whitespace-only titles).

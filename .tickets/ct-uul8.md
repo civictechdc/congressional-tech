@@ -23,3 +23,7 @@ Each of the eleven is attached to its hearing, or the reason it cannot be is rec
 **2026-11-10T20:39:29Z**
 
 2026-11-10 unchanged in release 77673bfb8fcf; this release did not touch it. Followed by link key from 619db5f9e08e: rows 130655 (CHRG-117shrg45945.pdf), 138297 (CHRG-119shrg58674.pdf) and 138459 (CHRG-119shrg60657.pdf) are now rows 100076, 103985 and 104069, still on meetings 329124, 336584 and 337025.
+
+**2026-11-11T14:43:58Z**
+
+validated 2026-11-11, left open: unchanged in 77673bfb8fcf (rows 100076, 103985, 104069 still on Senate business meetings 329124, 336584, 337025, per the 2026-11-10 note); no commit names ct-uul8.

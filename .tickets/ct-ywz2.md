@@ -17,3 +17,9 @@ tags: [model, video, meetings]
 
 Committee pages are linked to their meeting where the page identifies one, with the count linked and not linked recorded; recordings carry a full-or-excerpt marker or the reason they cannot.
 
+
+## Notes
+
+**2026-11-11T14:43:58Z**
+
+validated 2026-11-11, left open: not started (no commit names ct-ywz2); recordings.parquet in 77673bfb8fcf still has no full-or-excerpt column.

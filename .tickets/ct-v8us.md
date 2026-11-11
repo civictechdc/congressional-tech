@@ -23,3 +23,7 @@ The reference is stored or compared through a release-stable key (the link key, 
 **2026-11-10T20:39:29Z**
 
 2026-11-10 still happening in release 77673bfb8fcf. Checked on published release 77673bfb8fcf against 619db5f9e08e with DuckDB on the published tables. Meetings whose outcome_source_reference differs: 530, and 516 of them have the same outcome and outcome_basis, so they changed only by renumbering. The cause record explained the group by hand again (ct-v8us, ct-h8dr).
+
+**2026-11-11T14:43:58Z**
+
+validated 2026-11-11, left open: not fixed; release 77673bfb8fcf still shows 516 renumber-only rows of 530 changed outcome_source_reference values against 619db5f9e08e (2026-11-10 note), and no commit names ct-v8us since its filing.

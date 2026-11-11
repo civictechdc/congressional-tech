@@ -18,3 +18,7 @@ The recovered-copy rule (ct-u9y4) keeps a recovered file on a document only when
 **2026-11-10T20:38:46Z**
 
 2026-11-10 shipped as an accepted defect in release 77673bfb8fcf. Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables. Following link keys from 619db5f9e08e: row 334942 (hr3210rptlegtext.pdf) and row 335064 (hr4954commrptpt1.pdf) each now reach 2 documents. The cause record files the split and shared-key groups under ct-m3h3 as accepted_defect.
+
+**2026-11-11T14:42:31Z**
+
+validated 2026-11-11, left open: still an accepted defect in 77673bfb8fcf (rows 334942 and 335064 each reachable as 2 documents, per the 2026-11-10 note). No join for same-text renditions exists yet; the candidate is the body-text reading (ct-fk4w), which is not a model input.

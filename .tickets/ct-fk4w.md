@@ -27,3 +27,7 @@ pdf_text is a pinned model input with an empty work list. saved-name-standing.sq
 **2026-11-10T20:38:46Z**
 
 2026-11-10 what release 77673bfb8fcf shows. Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables. saved_name_kinds: 3,539 documents whose copies' names state different kinds; committee name leads 2,656; official pairs unsettled 602; other official names lead contradicted 206; slot names leading contradicted 0. One decided body is unmet: saved_name_decisions_unmet 1 (see ct-h8dr). Event 101019's transcript (the July 10, 2013 file the House filed under June 20) shipped as an accepted defect in the cause record (meetings changed transcripts, 112 rows). Nothing here reads PDF text yet.
+
+**2026-11-11T14:41:23Z**
+
+validated 2026-11-11, left open: pdf_text is not a model input yet (model/jobs/publish-model.json binds no body-text table; release 77673bfb8fcf's saved_name_kinds still shows 602 unsettled official pairs per the 2026-11-10 note), and the full body-text run is still in progress. The reading step and the owner's decision on single-name kind correction remain.

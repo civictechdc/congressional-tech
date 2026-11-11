@@ -73,3 +73,7 @@ Final root-cause review: bind subset export policy to pinned captures, use chron
 **2026-11-08T17:42:58Z**
 
 2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.
+
+**2026-11-11T14:41:33Z**
+
+validated 2026-11-11, left open: parked News Lake work, nothing changed since the 2026-11-08 simplification (no commit names ct-4nyy; last packages/news_lake commit d4d53baa is ct-xu1o's).

@@ -51,3 +51,7 @@ Final root-cause review: credit the existing backend and focus on writer fencing
 **2026-11-08T17:42:58Z**
 
 2026-11-08: acceptance criteria simplified by owner decision (proposed by the ticket sweep); the earlier criteria are in git history.
+
+**2026-11-11T14:41:33Z**
+
+validated 2026-11-11, left open: parked News Lake work, nothing changed. The last News Lake commit on origin/main is d4d53baa (ct-xu1o, 2026-11-08); no commit names ct-d8cf since its 2026-11-08 criteria simplification. No scheduled news run exists yet, so the first criterion is still ahead of it.

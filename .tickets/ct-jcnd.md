@@ -27,3 +27,7 @@ Each item is fixed with a test, or declined with a reason, or split out.
 **2026-11-10T20:38:46Z**
 
 2026-11-10 what release 77673bfb8fcf shows. Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables. Item 7: 18 titles contain an 'H.R. _' style placeholder; 2 are nothing else ('H.R.___,' and 'H.Res.___'); the other 16 are long real titles with a placeholder inside. 'Download...' titles 2,263 -> 2,270. Item 1: saved_name_decisions_unmet shipped and reports 1 on this release: body 3d1434b5... (decision undecided; names BILLS-1145033ih.pdf and HR-5033-ANS.pdf) leads under a third, unread name, SLW_311_xml.pdf (also on ct-h8dr).
+
+**2026-11-11T14:42:31Z**
+
+validated 2026-11-11, left open. Done on main (review-fix commits before aef93461): item 1 in part (saved_name_decisions_unmet ships and reports 1), item 2 (f100431e, 1b39ca0c: a details page names a file only by a GovInfo ID, a lost one refuses), item 5 (6a348916: letterless titles caught without the rule's own pattern), item 7 in part (68cde266: 'H.R. ___' is a link word). Remains: item 7's two missed shapes ('H.R.___,', 'H.Res.___') and 'Download...' link text as a title (2,270 in 77673bfb8fcf); items 3, 4, 6 and 8 (model-relation-rows.json still lacks the new steps, see ct-swyw); item 9 waits on ct-fk4w.

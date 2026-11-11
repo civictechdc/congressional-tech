@@ -17,3 +17,9 @@ Found by the MODS witness-list work (branch claude/ct-mods-zs48-3aap, round 6, 2
 
 The three lines each produce the answerer's row, typed by the owner's rule; a corpus survey of the three widened shapes shows every new match and no other row changes; each producer whose fingerprint moves is listed with its row delta; a raw-check plant for each shape is flagged.
 
+
+## Notes
+
+**2026-11-11T14:41:23Z**
+
+validated 2026-11-11, left open: not fixed on main or on the MODS release branch claude/ct-mods-and-member-appearances (no diff to parsers/witness_names.py, no commit naming ct-eppo besides its filing 0bc32ccb).

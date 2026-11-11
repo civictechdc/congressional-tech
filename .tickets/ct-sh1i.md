@@ -23,3 +23,7 @@ Each of the three counts is re-measured at zero or explained row by row; a rank 
 **2026-11-10T05:38:12Z**
 
 2026-11-10 correction from the recount on release 619db5f9e08e: 697 new seats carry an archive-made rank, of which 254 are Directory seats of the 113th to 117th, 441 come from archived Senate files and 2 from manual readings; the 118th joins three sources, not two; the 19 unlabelled departed seats are confirmed.
+
+**2026-11-11T14:43:34Z**
+
+validated 2026-11-11, left open: no change to model/sql/entity-rosters.sql or the roster inputs since the 2026-11-10 recount (the three counts stand: 19 unlabelled departed seats, 697 archive-made ranks, the 118th joined from three sources). Also stale, from closing ct-8cno: docs/congress-explorer-personas.md:21 and :217 still say rosters are 119th only (2,973 rows), and docs/engine-first-architecture.md:308 says roster history before the 119th waits on spicy-regs; the live release has 25,190 rows over 113-119.

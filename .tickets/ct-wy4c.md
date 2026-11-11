@@ -23,3 +23,7 @@ The owner's decision is recorded here and, if rank or credentials are kept, a pa
 **2026-11-10T05:38:12Z**
 
 2026-11-10 owner decision (questions dialog): rank and credentials go in their own field, not the name and not dropped. Reviewer's corrected count: 299 rows this release (47 rank, 291 credential); live already drops rank on 944 rows and credentials on 6,474. The parser work joins ct-6mvl's version step.
+
+**2026-11-11T14:43:58Z**
+
+validated 2026-11-11, left open: the owner's decision is recorded (2026-11-10: rank and credentials in their own field), but the parser ticket the acceptance asks for does not exist: ct-6mvl's text and acceptance do not mention rank or credentials, and the MODS release branch claude/ct-mods-and-member-appearances adds no such field (its SQL drops credentials as words, appearance-people.sql:4-5). Remains: file or fold the parser work (own field, 299 + 944 rank and 6,474 + 291 credential rows) into ct-6mvl's acceptance, then close this.
