@@ -2,7 +2,7 @@
 id: ct-rhqw
 status: open
 deps: []
-links: [ct-uywf]
+links: [ct-uywf, ct-960v]
 created: 2026-11-11T00:15:02Z
 type: task
 priority: 2
