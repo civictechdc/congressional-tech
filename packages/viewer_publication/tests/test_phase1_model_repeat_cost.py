@@ -6,7 +6,7 @@ CTE that is itself read twice runs four times. Each run is one `TableScan` in th
 optimized logical plan, so counting scans counts the work, nesting and views included.
 
 The job is the one the build submits (every step, export and query), planned over zero-row
-inputs with the producers' schemas: nothing corpus-sized runs, and the lint sees plan shape,
+inputs with the lake's schemas: nothing corpus-sized runs, and the lint sees plan shape,
 not memory or time. A reader's score is the sum, over relations its plan scans more than
 once, of (scans - 1) x rows, the extra row-scans the materialization audit ranked by
 (.cache/archive-release/investigations/model-step-materialization-audit-20261104.md, M40).
@@ -23,8 +23,30 @@ The same plans show which statements read a lake table itself. Every statement t
 reads it again from the object store: 31 statements scanned `captures` 42 times, about 10 s
 each, in a 867 s build. The job therefore reads the lake `captures` in one statement, its first
 step, and every other reader scans that retained step. That check names the lake input by the
-stand-in file it is bound to, so it sees the scans whatever the job calls the input; it sees
+stand-in table it is bound to, so it sees the scans whatever the job calls the input; it sees
 neither the admission job nor any other job that binds `captures` itself.
+
+The same EXPLAIN also builds each reader's physical plan, where the engine can refuse a plan the
+logical planner accepted. It reports that refusal as a `physical_plan_error` row and does not
+fail, so only a check of that row sees one. A refusal can depend on the input being a lake table:
+`coalesce(f.valid,false)` in saved_name_conflicts carried the column's Iceberg field id into a
+reused expression and was refused only where filename readings came from the lake (f8541b6d,
+ct-h8dr), found by a 20-minute lane. So seven of the eight inputs the release reads from the lake
+are bound here to empty tables in a throwaway local catalog, created with the lake's schemas and
+pinned through the engine; a Parquet stand-in cannot carry field ids into a plan, because the
+pinned engine strips field metadata from a Parquet input (engine ticket def-9ise). The tables are
+unpartitioned, where production partitions readings and filename_readings, so a refusal that
+depends on partitioning is not seen. The eighth, playlist_records, is not bound: its readers plan
+over the job's stand-in step of NULL literals, which differs from the lake table in nullability
+and field ids, so their lake-only refusals are not seen. Binding it waits for its rows in
+fixtures/model-relation-rows.json (selected-records.sql scans it twice): the local-lake build those
+rows come from predates it, and newer builds pin remote snapshots the measuring script cannot
+count. A refused step is run before any EXPLAIN, so it stops the job and every test errors with
+the engine's message, which names no statement. That check sees planning only: no refusal that
+needs rows, statistics or memory, and no statement outside the job the build submits.
+test_model_candidate_joins keeps Parquet stand-ins: it finds each captures scan by the stand-in's
+file name in the physical plan, and a lake scan prints none; this pass plans its statements on
+lake-backed inputs.
 """
 import collections
 import json
@@ -32,11 +54,11 @@ import os
 import re
 from pathlib import Path
 
-import pyarrow.parquet as pq
 import pytest
 
-from archive_job_fixture import _Capture, _Submitted, real_model_spec, spicy_input
-from congress_api.lake import appearance_records, committee_records, meeting_records, video_records
+from archive_job_fixture import _Capture, _Submitted, spicy_input, versions
+from congress_api.lake import appearance_records, committee_records, meeting_records, tables, video_records
+from congress_api.retention.provenance import run_job
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model import build_prepared_release, prepare_model_inputs
 from viewer_publication.archive_model_lifetimes import sql_dependencies
@@ -155,6 +177,18 @@ PLANTED = {
 # A second direct read of the lake table. Its SQL names the job's own input, so the fixture builds it.
 PLANTED_LAKE_READ = 'planted_second_read_of_the_lake_captures'
 
+# A lake-only refusal: saved_name_conflicts' shape before f8541b6d, over the lake's filename readings. The
+# CTE is read twice, so NOT o.official becomes a common expression below the aggregate, and coalesce carries
+# the flag's Iceberg field id into it. Explained, never run as a step; the fixture names the job's input.
+PLANTED_LAKE_REFUSAL = 'planted_saved_name_conflicts_before_f8541b6d'
+LAKE_REFUSAL_SQL = """WITH said AS (SELECT f.filename AS component, f.congress AS saved_rank,
+    coalesce(f.valid,false) AS official, f.document_family AS family FROM {filename_readings} f WHERE f.status='completed')
+    SELECT l.component, bool_or(l.official) AS official_leads, bool_or(NOT o.official) AS committee_speaks,
+    bool_or(NOT o.official AND array_has_any(l.family,o.family)) AS committee_agrees
+    FROM (SELECT * FROM said WHERE saved_rank=1) l JOIN said o ON o.component=l.component AND o.saved_rank>1
+    GROUP BY l.component"""
+
+
 SCAN = re.compile(r'^\s*TableScan: (\S+)', re.M)
 JOIN = re.compile(r'^\s*\w+ Join: (.*)$', re.M)
 REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
@@ -162,22 +196,28 @@ REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
 NODE = re.compile(r'^( *)([A-Z]\w*(?: Join)?)(?:: (\S*).*)?$')
 
 
+#: Seven of the eight tables the release job reads from the lake (model/jobs/publish-model.json), each bound
+#: here to an empty one; playlist_records is not yet (the module docstring says why).
+LAKE_TABLES = ('captures', 'readings', 'filename_readings', 'meeting_records', 'appearance_records',
+               'video_records', 'committee_records')
+
+
 def submitted_job(root, engine):
-    """The release job over empty inputs with every producer schema: entities and Explorer tables included."""
-    value, _digest, _html = real_model_spec(root)
-    empty = {}
-    for name in ('captures', 'readings', 'filename_readings'):
-        empty[name] = root/f'empty-{name}.parquet'
-        pq.write_table(pq.read_schema(value[name]['path']).empty_table(), empty[name])
-    for name, lake in dict(meeting_records=meeting_records, appearance_records=appearance_records,
-                           video_records=video_records, committee_records=committee_records).items():
-        empty[name] = root/f'empty-{name}.parquet'
-        pq.write_table(lake.table([]), empty[name])
+    """The release job over empty lake tables: entities and Explorer tables included.
+
+    One throwaway catalog under `root`; each table created with the lake's schema and pinned through the
+    engine, unpartitioned as archive_selective creates one, so its Iceberg field ids are the lake's."""
+    refs = {name: dict(namespace=['archive'], name=name) for name in LAKE_TABLES}
+    for i, (name, ref) in enumerate(refs.items()):
+        tables.create_table(engine=engine, work=root/f'create-{name}', catalog_root=root/'catalog', table=ref,
+            schema=tables.load_schema(name), location=root/f'lake-{name}', create_namespace=not i)
+    pins = tables.resolve_tables(engine=engine, work=root/'resolve', catalog_root=root/'catalog', tables=refs)
+    parsers, catalog_version = versions()
     decisions = root/'recording-decisions.jsonl'; decisions.write_text('')
-    versions = dict(value['parser_versions'], meeting_records=meeting_records.current_versions(),
-                    appearance_records=appearance_records.current_versions(),
-                    video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'}, committee_records={'house_xml': 'pc'})
-    prepared = prepare_model_inputs(**empty, parser_versions=versions, catalog_version=value['catalog_version'],
+    parsers.update(meeting_records=meeting_records.current_versions(), appearance_records=appearance_records.current_versions(),
+                   video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'}, committee_records={'house_xml': 'pc'})
+    prepared = prepare_model_inputs(**{name: dict(pin, kind='native_table') for name, pin in pins.items()},
+        parser_versions=parsers, catalog_version=catalog_version,
         engine=engine, scratch=root/'prepared', spicy_regs=spicy_input(), include_entities=True,
         recording_decision_files=[dict(key='provenance/recording_decisions/empty.jsonl', path=str(decisions))])
     with pytest.raises(_Submitted):
@@ -186,8 +226,9 @@ def submitted_job(root, engine):
 
 
 def lake_input(job, table):
-    """The job input bound to a lake table's stand-in file, under whatever name the job gives it."""
-    [name] = [item['name'] for item in job['inputs'] if Path(item.get('path', '')).name == f'empty-{table}.parquet']
+    """The job input bound to a lake table's stand-in, under whatever name the job gives it."""
+    [name] = [item['name'] for item in job['inputs']
+              if Path(item.get('metadata_location', '')).parent.parent.name == f'lake-{table}']
     return name
 
 
@@ -209,7 +250,8 @@ def readers(job):
 
 
 @pytest.fixture(scope='module')
-def planned(tmp_path_factory):
+def explained(tmp_path_factory):
+    """EXPLAIN rows by plan type of every reader and the planted lake-only refusal, after the steps run."""
     root = tmp_path_factory.mktemp('repeat-cost')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         job = submitted_job(root, engine)
@@ -217,15 +259,19 @@ def planned(tmp_path_factory):
         steps += [dict(name=name, sql=sql, materialize=True) for name, sql in PLANTED.items()]
         steps += [dict(name=PLANTED_LAKE_READ, sql='SELECT receipt_key FROM ' + lake_input(job, 'captures'), materialize=True)]
         job = dict(job, steps=steps)
-        named = list(readers(job))
-        path = root/'explain-job.json'
-        path.write_text(json.dumps(dict(inputs=job['inputs'], steps=steps, outputs=[], scratch=str(root/'native'),
-            queries=[dict(name=f'reader_{i}', sql='EXPLAIN '+sql) for i, (_name, sql) in enumerate(named)])))
-        result = engine.run_job(path)
-    plans = {name: next(row['plan'] for row in query['data'] if row['plan_type'] == 'logical_plan')
-             for (name, _sql), query in zip(named, result['queries'])}
-    assert len(plans) == len(named), 'reader names must be unique'
-    return job, plans
+        refusal = LAKE_REFUSAL_SQL.format(filename_readings=lake_input(job, 'filename_readings'))
+        named = [*readers(job), (PLANTED_LAKE_REFUSAL, refusal)]
+        data = run_job(root/'explain', engine, inputs=job['inputs'], steps=steps, outputs=[],
+                       queries=[dict(name=f'reader_{i}', sql='EXPLAIN '+sql) for i, (_name, sql) in enumerate(named)])
+    explains = {name: {row['plan_type']: row['plan'] for row in data[f'reader_{i}']} for i, (name, _sql) in enumerate(named)}
+    assert len(explains) == len(named), 'reader names must be unique'
+    return job, explains
+
+
+@pytest.fixture(scope='module')
+def planned(explained):
+    job, explains = explained
+    return job, {name: rows['logical_plan'] for name, rows in explains.items()}
 
 
 def rows(job, name, seen=()):
@@ -299,7 +345,29 @@ def large_outer_builds(job, plan):
 
 
 def model_plans(plans):
-    return {name: plan for name, plan in plans.items() if name not in PLANTED and name != PLANTED_LAKE_READ}
+    return {name: plan for name, plan in plans.items()
+            if name not in PLANTED and name not in (PLANTED_LAKE_READ, PLANTED_LAKE_REFUSAL)}
+
+
+def refused(explains):
+    """Statements whose physical plan the engine refused, with its reason."""
+    return {name: rows['physical_plan_error'] for name, rows in explains.items() if 'physical_plan_error' in rows}
+
+
+def test_every_reader_builds_its_physical_plan_on_lake_backed_inputs(explained):
+    _job, explains = explained
+    model = model_plans(explains)
+    assert refused(model) == {}
+    assert all('physical_plan' in rows for rows in model.values())
+
+
+def test_the_pass_refuses_the_spelling_that_failed_26_lane_tests(explained):
+    # f8541b6d (ct-h8dr): refused only where filename readings came from the lake. Parquet stand-ins plan
+    # it (the pinned engine strips their field metadata, def-9ise), so this test fails on them.
+    _job, explains = explained
+    assert set(refused(explains)) == {PLANTED_LAKE_REFUSAL}
+    reason = refused(explains)[PLANTED_LAKE_REFUSAL]
+    assert 'field metadata' in reason and '"PARQUET:field_id"' in reason, reason
 
 
 def test_the_lake_captures_table_is_read_by_one_statement_the_first_retained_step(planned):
