@@ -788,10 +788,11 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
         def prose_line(line, name=None):
             """A raw line (or the name a row held) read as transcript prose: it opens in lower case or with a figure, and
             the line's second comma segment is no given name ("de Rugy, Veronique, ...", "de Lugo, Hon. Ron, ..." are
-            entries)."""
+            entries; "..., Mr. Secretary, ..." in a speech is no name)."""
             segments = line.split(',')
-            return (bool(re.match(r"[a-z$]", line) or re.match(r"[a-z$]", (name or '').strip()))
-                    and not (len(segments) > 1 and GIVEN_SEGMENT.fullmatch(segments[1])))
+            given_name = (len(segments) > 1 and GIVEN_SEGMENT.fullmatch(segments[1])
+                          and not {plain(w) for w in words(segments[1])} & (NOT_PERSON | COMMITTEE))  # "Mr. Secretary"
+            return bool(re.match(r"[a-z$]", line) or re.match(r"[a-z$]", (name or '').strip())) and not given_name
 
         def heading_words(line, name):
             """The words a raw line prints before a row's own name (its family word) when they are a heading that names

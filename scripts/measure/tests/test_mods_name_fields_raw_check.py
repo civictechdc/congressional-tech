@@ -814,6 +814,18 @@ def round9(tmp_path, after=ROUND9_AFTER, **more):
 
 
 def test_offices_shed_entries_a_note_ran_into_and_a_lower_case_surname_pass(tmp_path):
+    # A speech addressing an office ("Would you, Mr. Secretary, recommend ...") is still prose: its row may name no one.
+    speech = 'miles per gallon does; it backs out all the oil. Would you, Mr. Secretary, recommend to the President that'
+    before = [*ROUND9_BEFORE, asked('mods:witness[6]', 'miles per gallon does; it backs out all the oil. Would you', 6,
+                                    None, position='Mr. Secretary')]
+    after = [*ROUND9_AFTER, asked('mods:witness[6]', None, 6, 'record_material')]
+    write(tmp_path, before=before, after=after, lines=[*ROUND9_LINES, speech], people=ROUND9_PEOPLE,
+          table=['James Moran', 'Richard Armey', 'Tom Daschle'])
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+
+
+def test_the_round9_reading_passes(tmp_path):
     round9(tmp_path)
     code, out = run(tmp_path)
     assert code == 0, out['failed']
