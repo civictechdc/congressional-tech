@@ -20,21 +20,54 @@ SHARED_READING_FILES = (DRIVER, SOURCE / 'retention/parser_worker.py',
                         SOURCE / 'retention/process_resources.py')
 BUNDLE_SQL = ('pinned-readings', 'sniff-observations', 'sniff-conflicts', 'sniff-facts', 'body-admissions')
 
+# Evidence covers only the code a reader runs to turn a body into text (ct-r91j, owner 2026-11-11).
+# Each group of entries names the reader modules it runs, walked through their imports, and the
+# dispatcher and producer files it runs, hashed by their bytes only (their imports also serve
+# planning, table I/O and engine jobs), with the schema and SQL it reads.
+READERS = {
+    'sniff': ((SOURCE / 'retention/sniff.py',), (*SHARED_READING_FILES, SCHEMA)),
+    'page': ((SOURCE / 'parsers/archive_readings.py',), (*SHARED_READING_FILES, SCHEMA)),
+    'html_metadata': ((SOURCE / 'parsers/html_metadata.py',), (*SHARED_READING_FILES, SCHEMA)),
+    # parse_once_payload runs the sniff and the page reader.
+    'readings': ((SOURCE / 'retention/sniff.py', SOURCE / 'parsers/archive_readings.py'),
+                 (*SHARED_READING_FILES, SCHEMA, *(Path('model/sql') / f'{name}.sql' for name in BUNDLE_SQL))),
+    # The worker (lake/body_text.parse_payload) routes each body by read_sniff, then derives it.
+    'body_text': ((SOURCE / 'parsers/body_text.py', SOURCE / 'retention/sniff.py'),
+                  (SOURCE / 'lake/body_text.py', *SHARED_READING_FILES, BODY_TEXT_SCHEMA)),
+}
+# The one plumbing a reader module reaches by import: retention/__init__.py re-exports it, and
+# congress_shared and docspec_client come with it. No reader calls it; the walk neither follows
+# nor hashes it.
+STOP = (SOURCE / 'retention/weekly_tables.py',)
 
-def _fingerprints(closure, files, *, shared_files=()):
-    workspace, modules = closure.reachable(files)
-    # The common dispatcher imports all readers. Include its bytes in each
-    # leaf without attributing one parser's imports to every other parser.
-    workspace.update(closure.root / file for file in shared_files)
-    return dict(
-        workspace_sha256=version_digest(packages={}, files={
-            path.relative_to(closure.root).as_posix(): path for path in workspace
-            # Declared IDs already appear in the snapshot. A bump for a
-            # separate parser does not change this parser's source evidence.
-            if path != closure.root / DECLARATIONS
-        }),
-        locked_sha256=version_digest(packages={}, files={}, values=closure.locked(modules)),
-    )
+
+def _members(group):
+    from congress_api.lake import body_text, compatible_versions
+    return dict(page=compatible_versions.PAGE_PARSERS, body_text=body_text.PARSERS).get(group, (group,))
+
+
+def _evidence(closure, group):
+    """One group's evidence files (relative path: path) and the external modules its reader modules import."""
+    walked, hashed = READERS[group]
+    workspace, modules = closure.reachable(walked, stop=STOP)
+    stopped = {(closure.root / path).resolve() for path in STOP}
+    files = {path for path in workspace if path.resolve() not in stopped} | {closure.root / path for path in hashed}
+    # Declared IDs already appear in the snapshot. A bump for a
+    # separate parser does not change this parser's source evidence.
+    return {path.relative_to(closure.root).as_posix(): path for path in files
+            if path != closure.root / DECLARATIONS}, modules
+
+
+def evidence_files(root=ROOT):
+    """Each entry's evidence files by path relative to `root`: exactly what its workspace_sha256 hashes."""
+    closure = ImportClosure(root)
+    return {entry: set(_evidence(closure, group)[0]) for group in READERS for entry in _members(group)}
+
+
+def _fingerprints(closure, group):
+    files, modules = _evidence(closure, group)
+    return dict(workspace_sha256=version_digest(packages={}, files=files),
+                locked_sha256=version_digest(packages={}, files={}, values=closure.locked(modules)))
 
 
 def snapshot(root=ROOT):
@@ -46,12 +79,10 @@ def snapshot(root=ROOT):
     closure = ImportClosure(root, distributions=packages_distributions())
     limits = dict(stored_bytes=readings.MAX_STORED_BYTES, decoded_bytes=readings.MAX_DECODED_BYTES,
                   page_parse_bytes=readings.PAGE_PARSE_MAX_BYTES)
-    sniff = _fingerprints(closure, (SOURCE / 'retention/sniff.py', SCHEMA), shared_files=SHARED_READING_FILES)
-    page = _fingerprints(closure, (SOURCE / 'parsers/archive_readings.py', SCHEMA), shared_files=SHARED_READING_FILES)
-    metadata = _fingerprints(closure, (SOURCE / 'parsers/html_metadata.py', SCHEMA), shared_files=SHARED_READING_FILES)
-    bundle = _fingerprints(closure, (DRIVER, SCHEMA, *(
-        Path('model/sql') / f'{name}.sql' for name in BUNDLE_SQL
-    )))
+    sniff = _fingerprints(closure, 'sniff')
+    page = _fingerprints(closure, 'page')
+    metadata = _fingerprints(closure, 'html_metadata')
+    bundle = _fingerprints(closure, 'readings')
     pins = compatible_versions.current_pins()
     return {
         'sniff': dict(version=pins['sniff'], **sniff, readers=reader_versions()),
@@ -72,7 +103,7 @@ def body_text_evidence(closure):
     from spicy_docs.extraction import BODY_TEXT_DERIVATION_VERSION, derivation_code_digest
     from congress_api.lake import body_text
     from congress_api.parsers import body_text as derivation
-    code = _fingerprints(closure, (SOURCE / 'lake/body_text.py', SOURCE / 'parsers/body_text.py', BODY_TEXT_SCHEMA))
+    code = _fingerprints(closure, 'body_text')
     common = dict(**code, limits=dict(stored_bytes=body_text.MAX_STORED_BYTES, decoded_bytes=body_text.MAX_DECODED_BYTES),
                   policy=body_text.worker_limits(), page_deadline_seconds=body_text.PAGE_DEADLINE_SECONDS,
                   spicy_docs=dict(version=version('spicy-docs'), derivation=BODY_TEXT_DERIVATION_VERSION,
