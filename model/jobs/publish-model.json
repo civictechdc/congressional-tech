@@ -31,10 +31,10 @@
   },
   "appearance_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/appearance_records_mvp_20261105/metadata/00007-01a1bb7e-be4e-7772-a3df-14048fe1c2e0.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/appearance_records_committees_20261111/metadata/00001-01a1cbde-84b8-7db2-a6a5-790786198c0c.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 2797270525889091387,
-    "table_uuid": "01a1adb0-13d1-7bb1-a783-09608e74a3ea"
+    "snapshot": 3297732713683642951,
+    "table_uuid": "01a1cbde-6504-7571-b83b-19d9ef114596"
   },
   "video_records": {
     "kind": "native_table",

@@ -2,13 +2,13 @@
   "version": 1,
   "model_spec": {
     "path": "publish-model.json",
-    "sha256": "e2c911482ce9819ea15a30915e034f6a90e65c1d4cab32f3e6a5f4964a55fcf8",
-    "size": 5551
+    "sha256": "3e12bedf10633d05cc3186964af776165c43aea54450cf3e337e2c6c82ad59a9",
+    "size": 5558
   },
   "daily": {
     "path": "publish-daily.json",
-    "sha256": "4b10dd8d8fa7bc8374f5c529918ffbd625699efd54642d4fea131ec870b053e8",
-    "size": 2812
+    "sha256": "df3be51550600a6e9a3f0d97dd1dcc50930f7e649bf83343a79812c3f41ff06c",
+    "size": 2819
   },
   "bucket": "congressional-tech-raw",
   "work": "../../output/archive-publish",
@@ -27,9 +27,9 @@
   "automatic_causes": true,
   "producers": {
     "appearance_records": {
-      "path": "producers/appearance_records-mvp-20261105.json",
-      "sha256": "f3b6b08d4b778b23166ea49d4503db67326ebf11a76619968bfc20851ec05366",
-      "size": 3046
+      "path": "producers/appearance_records-committees-20261111.json",
+      "sha256": "31f3a7a996d4052d643b90ce7c083ab21befcff9e120ab6c6acfd8db89e9931b",
+      "size": 3066
     },
     "captures": {
       "path": "producers/captures.json",

@@ -1115,12 +1115,13 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         status_expr='status'
         error_expr='error_type'
         extra_select=''
-        # The print's own committee and committee members: the lake's appearance records do not carry them yet (the MODS
-        # producer parses and drops them), so a lake table states none; a local Parquet input that has them is read.
+        # The print's own committees and committee members (MODS only; null for other sources). The pinned lake table
+        # carries them (schema fields 36-39, imported as a new table: the engine cannot add columns to an existing one);
+        # an older local Parquet input without them states none.
         no_committees=("arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committees,"
                        "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committee_members,")
         if table_name=='appearance_records':
-            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,'+no_committees
+            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,committees,committee_members,'
         if parquet_path is not None and Path(parquet_path).is_file():
             import pyarrow as pa
             import pyarrow.parquet as pq
