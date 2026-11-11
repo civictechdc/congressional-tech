@@ -1641,15 +1641,18 @@ def _mods_accompanied(text: str, name: str) -> bool:
 
 # A Member's opening statement (round 8): the model step types it from the committee's roster, so the row keeps the
 # words in its organization, from the line's own text or from an opening statements heading over the Member lines that
-# follow it. GPO runs such a heading, or a sitting's date heading, into the first entry under it ("OPENING STATEMENTS
-# Crapo, Hon. Michael D., U.S. Senator from the State of Idaho", "Overview of Previous Debt Proposals Opening
-# Statements Hensarling, Hon. Jeb, ...", "Appendix Opening statements:..... Talent, Hon. James M", "Tuesday, May 24,
-# 2016--Subcommittee on Livestock and Foreign Agriculture Costa, Hon. Jim, ..."). The heading names no one.
+# follow it. GPO runs such a heading, or a sitting's heading (its date, or its subcommittee and weekday), into the
+# first entry under it ("OPENING STATEMENTS Crapo, Hon. Michael D., U.S. Senator from the State of Idaho", "Overview of
+# Previous Debt Proposals Opening Statements Hensarling, Hon. Jeb, ...", "Appendix Opening statements:..... Talent,
+# Hon. James M", "Tuesday, May 24, 2016--Subcommittee on Livestock and Foreign Agriculture Costa, Hon. Jim, ...",
+# "Subcommittee on General Farm Commodities and Risk Management, Tuesday, Boswell, Hon. Leonard L., ..."). The heading
+# names no one.
 _MODS_OPENING_WORDS = re.compile(r"\bopening\s+statements?\b", re.I)
 _MODS_OPENING_HEADING = re.compile(r"\bopening\s+statements?:?(?:\.{3,})?$", re.I)
 _MODS_DATE_HEADING = re.compile(
     r"^\W*(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s+)?(?:January|February|March|April|May|June|July|August"
-    r"|September|October|November|December)\s+\d{1,2},\s+\d{4}\s*--", re.I)
+    r"|September|October|November|December)\s+\d{1,2},\s+\d{4}\s*--|^Subcommittee\b.*,\s*(?:Mon|Tues|Wednes|Thurs"
+    r"|Fri|Satur|Sun)day,?$", re.I)
 _MODS_HON_ENTRY = re.compile(r"(?<![\w'’-])[A-Z][\w'’-]+,\s+Hon\.\s")
 
 
@@ -1670,7 +1673,7 @@ def _mods_member_entry(line: str, roster: Mapping[tuple[str, ...], set[str]]) ->
     entry, opening = line, False
     found = _MODS_HON_ENTRY.search(line)
     head = line[:found.start()].strip() if found else ""
-    if head and ", Hon." not in head and (_MODS_DATE_HEADING.match(head) or _MODS_OPENING_HEADING.search(head)):
+    if head and ", Hon." not in head and (_MODS_DATE_HEADING.search(head) or _MODS_OPENING_HEADING.search(head)):
         words, family = head.split(), line[found.start():].split(",", 1)[0]
         take = next((k for k in (2, 1) if len(words) > k
                      and tuple(w.lower() for w in (*words[-k:], family)) in roster), 0)

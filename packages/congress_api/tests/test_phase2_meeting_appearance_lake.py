@@ -2848,11 +2848,14 @@ def test_one_member_style_reader_for_both_chambers(line, expected):
       "Prepared statements:..................................... LaMura, Marianne"], ("James M. Talent", "Nydia Velazquez"),
      [("James M Talent", None, "opening statement"), ("Nydia Velazquez", None, "opening statement"),
       ("Marianne LaMura", None, None)]),
-    # A sitting's date heading (CHRG-114hhrg99853 #35), the words as a label (CHRG-117shrg53977 #1), and a given name
-    # run into the Member's style (CHRG-117hhrg49906 #73).
+    # A sitting's heading, its date (CHRG-114hhrg99853 #35) or its subcommittee and weekday (CHRG-112hhrg64659 #7);
+    # the words as a label (CHRG-117shrg53977 #1); a given name run into the Member's style (CHRG-117hhrg49906 #73).
     (["Tuesday, May 24, 2016--Subcommittee on Livestock and Foreign Agriculture Costa, Hon. Jim, a Representative in "
       "Congress from California, opening statement"], (),
      [("Jim Costa", "a Representative in Congress from California", "opening statement")]),
+    (["Subcommittee on General Farm Commodities and Risk Management, Tuesday, Boswell, Hon. Leonard L., a "
+      "Representative in Congress from Iowa, opening statement"], (),
+     [("Leonard L. Boswell", "a Representative in Congress from Iowa", "opening statement")]),
     (["Opening Statement of Hon. Patrick J. Leahy, a U.S. Senator from the State of Vermont"], (),
      [("Patrick J. Leahy", "a U.S. Senator from the State of Vermont", "opening statement")]),
     (["Thompson, Hon. Glenn a Representative in Congress from Pennsylvania, opening statement"], (),
