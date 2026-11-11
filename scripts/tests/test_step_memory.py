@@ -281,7 +281,7 @@ def test_two_runs_compare_statement_by_statement_and_one_run_statements_are_list
     assert (result['memory_compared'], result['memory_in_one_run']) == (3, dict(a=['step short'], b=[]))
     assert step_memory.main(['--compare', pin, fix]) == 0
     text = capsys.readouterr().out
-    assert ('refused copies (pass: 0 on every statement): FAIL: A not logged by this binary; '
+    assert ('refused copies (pass: 0 on every statement of B, by its counts and its debug log): FAIL: A not logged by this binary; '
             'B 2 in step short (logged on 4 of 5; not on 1 output)') in text
     assert 'copied batches: A not logged by this binary; B 3 in step a (logged on 4 of 5; not on 1 output)' in text
     assert "pool peak (pass: none in B above A's): UNDETERMINED: " in text
@@ -308,7 +308,7 @@ def test_a_pool_peak_above_the_other_runs_is_named_whatever_the_thresholds(tmp_p
     assert step_memory.main(['--compare', base, high]) == 0
     text = capsys.readouterr().out
     assert "pool peak (pass: none in B above A's): FAIL: B above A on step a (3.00 -> 3.50 GiB)" in text
-    assert 'refused copies (pass: 0 on every statement): UNDETERMINED: A not logged by this binary' in text
+    assert 'refused copies (pass: 0 on every statement of B, by its counts and its debug log): UNDETERMINED: A not logged by this binary' in text
     same = compared(capsys, base, base)
     assert (same['pool_peak']['above'], same['pool_peak']['judged']) == ({}, 4)
     assert step_memory.main(['--compare', base, base]) == 0
@@ -433,6 +433,32 @@ def test_view_copies_are_not_counted_when_the_view_reserves_sit_on_lines_this_sc
             'B not counted: src/storage/batch/views.rs lines 999 unknown') in text
 
 
+def test_the_refusal_pass_line_fails_on_a_refusal_either_source_shows(tmp_path, capsys):
+    """The engine restarts its counts at each step and query (one-line src/job/spec.rs:472, 622), so a refusal while an
+    output exports reaches no count; only the debug log shows it, inside a statement or after the last one."""
+    counted = [statement(event['name'], event['start_epoch'] - EPOCH, event['end_epoch'] - EPOCH, before=0, after=0,
+                         event=event['event'], storage=event.get('storage', 'memory'), copied=0, refused=0)
+               if event['event'] == 'step' and 'start_epoch' in event else event for event in EVENTS]
+    base = measured(tmp_path, capsys, 'base', EVENTS)
+    quiet = DEBUG.replace(REFUSAL, '')
+    cases = (('counted', counted, DEBUG, 'FAIL'), ('after', counted, quiet + REFUSAL, 'FAIL'),
+             ('silent', counted, quiet, 'PASS'), ('uncounted', EVENTS, quiet, 'PASS'))
+    for label, events, log, verdict in cases:
+        (tmp_path / f'{label}.log').write_text(log)
+        run = measured(tmp_path, capsys, label, events, None, '--debug-log', str(tmp_path / f'{label}.log'))
+        assert compared(capsys, base, run)['refusals']['verdict'] == verdict, label
+        assert step_memory.main(['--compare', base, run]) == 0
+        text = capsys.readouterr().out
+        assert f'refused copies (pass: 0 on every statement of B, by its counts and its debug log): {verdict}: ' in text
+        # Without counts, PASS rests on a line the pin cannot write: true there only because a refusal fails the statement.
+        assert ('rests on refusal lines alone' in text) == (label == 'uncounted'), label
+    (tmp_path / 'after-only.log').write_text(quiet + REFUSAL)
+    after = measured(tmp_path, capsys, 'after-only', counted, None, '--debug-log', str(tmp_path / 'after-only.log'))
+    assert compared(capsys, base, after)['refusals'] == dict(verdict='FAIL', after_last_lines=1, counts_logged=True)
+    assert step_memory.main(['--compare', base, after]) == 0
+    assert '; 1 refusal line in B after its last statement' in capsys.readouterr().out
+
+
 def test_two_runs_compare_their_shared_floors_when_both_read_a_debug_log(tmp_path, capsys):
     (tmp_path / 'one.log').write_text(DEBUG)
     (tmp_path / 'two.log').write_text(DEBUG.replace(admission(3, size=0), admission(0.25, size=0)))
@@ -444,7 +470,7 @@ def test_two_runs_compare_their_shared_floors_when_both_read_a_debug_log(tmp_pat
     assert result['counts']['refusal_lines'] == dict(a=lines, b=lines)
     # Neither binary logs a refusal count, so the pass line reads B's refusal lines: two, a failure.
     assert step_memory.main(['--compare', one, two]) == 0
-    assert ('refused copies (pass: 0 on every statement, from B\'s debug log where its binary logs no count): FAIL'
+    assert ('refused copies (pass: 0 on every statement of B, by its counts and its debug log): FAIL'
             in capsys.readouterr().out)
 
 
