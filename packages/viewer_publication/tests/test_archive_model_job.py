@@ -339,7 +339,7 @@ def test_unfetched_or_changed_spicy_tables_are_named_before_anything_runs(tmp_pa
     assert f'Pinned model input missing: {missing} (spicy_regs spicy_committees)' in err
     assert f'Pinned model input changed: {resized} (spicy_regs spicy_members)' in err
     # Present but not readable is not "missing": the reason is named.
-    assert f'Pinned model input unreadable: {unreadable} (spicy_regs spicy_congress_bills): ' in err and 'directory' in err
+    assert f'Pinned model input unreadable: {unreadable} (spicy_regs spicy_congress_bills): ' in err and 'must be a regular file' in err
     assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
 
 
