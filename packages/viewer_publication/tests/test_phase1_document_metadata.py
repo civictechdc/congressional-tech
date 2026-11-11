@@ -553,14 +553,13 @@ def test_the_name_conflict_step_sees_a_slot_name_leading_against_a_committee_nam
         official_names_disagree_unsettled=0,other_official_name_leads_contradicted=1,slot_name_leads_contradicted=1)]
 
 
-def test_the_reviewed_name_decisions_are_keyed_by_saved_bytes_and_hold_the_undecided():
+def test_the_reviewed_name_decisions_are_keyed_by_saved_bytes_and_hold_what_no_rule_settles():
     """ct-h8dr: the 343 documents whose non-slot official name a committee name contradicts were read one by
-    one (.cache/archive-release/investigations/name-clash-review-20261110). The rules settle 252 as the review
-    decided (132 printed hearings, 57 vote tallies, 63 cover pages). The registry holds the other 65 decided
-    ones and the 26 left undecided (25) or with neither name right (1), keyed by the saved body's sha256, which
-    no release renumbers. An undecided or neither entry keeps saved-file order, so those 26 stay as published:
-    among them 2 unread Ways and Means tallies the vote-record rule would rename, and 4 Small Business notices
-    and a table of contents the generic-name rule would decide."""
+    one (.cache/archive-release/investigations/name-clash-review-20261110; the 25 it left undecided were read
+    2026-11-11, name-clash-25-20261111). The rules settle 259 as read (132 printed hearings, 59 vote tallies,
+    67 cover pages and a table of contents). The registry holds the other 83 decided ones and the 1 with neither
+    name right, keyed by the saved body's sha256, which no release renumbers. A neither (or undecided) entry
+    keeps saved-file order, so that one stays as published."""
     import json,re
     from collections import Counter
     from viewer_publication.archive_model import REGISTRIES
@@ -569,7 +568,7 @@ def test_the_reviewed_name_decisions_are_keyed_by_saved_bytes_and_hold_the_undec
     assert all(re.fullmatch('[0-9a-f]{64}',row['body_sha']) and row['evidence'] and row['official_name'] and row['committee_name']
                for row in rows)
     assert len({row['body_sha'] for row in rows})==len(rows)
-    assert Counter(row['decision'] for row in rows)==dict(committee=50,official=15,undecided=25,neither=1)
+    assert Counter(row['decision'] for row in rows)==dict(committee=65,official=18,neither=1)
 
 
 def test_the_name_decisions_registry_is_refused_at_load_when_a_decision_could_act_unread(tmp_path):
