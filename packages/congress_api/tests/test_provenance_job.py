@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 import os
+import re
 
 import pytest
 
@@ -23,6 +24,9 @@ def test_native_job_creates_a_fresh_work_root_before_writing_its_spec(tmp_path):
 
 
 STEPS=[dict(name='one',sql='SELECT 1 AS x')]
+# An engine failure's first line is its code, then (on an engine that names it, the one line's X2) the failing
+# statement, then the cause.
+STATEMENT=r'(?:(?:query|step|output) \d+ "[^"]+": )?'
 
 
 def native():
@@ -56,7 +60,9 @@ def test_a_failing_job_says_what_failed_first_and_keeps_the_whole_stream(tmp_pat
         run_job(tmp_path/'job',native(),inputs=[absent],steps=STEPS,outputs=[],
             queries=[dict(name='before',sql='SELECT x FROM one'),dict(name='q',sql='SELECT count(*) AS n FROM absent')])
     error=raised.value
-    assert str(error).splitlines()[0]=='query: Execution error: absent line 1: source open failed'
+    # The failing query by name where the engine gives it; the one line also adds the path and the OS error.
+    assert re.fullmatch(r'query: (?:query \d+ "q": )?Execution error: absent line 1: source open failed'
+                        r'(?:: .+/absent\.jsonl\.gz: No such file or directory.*)?',str(error).splitlines()[0]),str(error)
     assert '[docspec-metric]' not in str(error) and 'Caused by:' in str(error)
     assert error.stderr.startswith('[docspec-metric] ') and error.stderr==(tmp_path/'job/engine.log').read_text()
     assert error.code is None and error.completed['queries'][0]['name']=='before'
@@ -132,7 +138,11 @@ def test_a_statement_returning_two_columns_of_one_name_is_refused(tmp_path,sql):
 
 
 def test_the_memory_limit_reaches_the_engine(tmp_path):
-    """A sort that fits the default limit is refused by the engine at 1 MiB (plant: the limit is not passed on)."""
+    """A sort that fits the default limit is refused for memory by the engine at 1 MiB (plant: the limit is not
+    passed on). Where it refuses depends on the engine. The pin's view copy of the scanned batch reserves first and
+    is refused by the engine's budget (code capacity, src/storage/batch/views.rs:148 at b0342a7). The one line skips
+    a copy that frees under 1 MiB (MIN_FREED), so DataFusion's own pool refuses the TopK (code query, "Resources
+    exhausted"); both engines give a DataFusion refusal the code query (src/error.rs)."""
     import pyarrow as pa
     import pyarrow.parquet as pq
     from docspec_client.models import DocSpecFailure
@@ -140,8 +150,11 @@ def test_the_memory_limit_reaches_the_engine(tmp_path):
     pq.write_table(pa.table({'k':[f'key-{i:06d}-'+'x'*40 for i in range(20000)]}),tmp_path/'big.parquet')
     sql='SELECT count(*) AS n FROM (SELECT k FROM big ORDER BY k DESC LIMIT 5000)'
     assert query(native(),sql,dict(big=tmp_path/'big.parquet'))==[dict(n=5000)]
-    with pytest.raises(DocSpecFailure,match='^capacity: '):
+    with pytest.raises(DocSpecFailure) as raised:
         query(native(),sql,dict(big=tmp_path/'big.parquet'),memory_bytes=1<<20)
+    assert re.match(r'(?:capacity|query): '+STATEMENT+
+                    r'(?:External error: capacity: shared memory budget exhausted|Resources exhausted): ',
+                    str(raised.value)),str(raised.value)
 
 
 def test_explain_returns_the_logical_and_physical_plans_without_running_the_statement(tmp_path):
@@ -167,7 +180,8 @@ def test_a_failing_statement_raises_the_engines_own_error_first(tmp_path):
     from congress_api.retention.provenance import query
     with pytest.raises(DocSpecFailure) as raised:
         query(native(),'SELECT nope FROM cited',capture_files(tmp_path))
-    assert str(raised.value).splitlines()[0]=='query: Schema error: No field named nope. Valid fields are cited.sha.'
+    assert re.fullmatch('query: '+STATEMENT+r'Schema error: No field named nope\. Valid fields are cited\.sha\.',
+                        str(raised.value).splitlines()[0]),str(raised.value)
     assert '[docspec-metric]' not in str(raised.value)
 
 

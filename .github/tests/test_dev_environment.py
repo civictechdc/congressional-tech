@@ -408,8 +408,12 @@ def test_a_stopped_query_leaves_no_engine_and_no_temporary_folder(tmp_path):
 
 
 def test_query_says_the_engines_error_first(tmp_path, capsys):
+    """The engine's code, then the failing statement where the engine names it (the one line's X2), then the cause."""
+    import re
     assert dev.main(['query', 'SELECT nope FROM cited', '--table', query_table(tmp_path)]) == 1
-    assert capsys.readouterr().err.startswith('ERROR: query: Schema error: No field named nope.')
+    err = capsys.readouterr().err
+    assert re.match(r'ERROR: query: (?:(?:query|step|output) \d+ "[^"]+": )?Schema error: No field named nope\.', err), err
+    assert '[docspec-metric]' not in err
 
 
 def test_query_refuses_a_lake_pin_held_elsewhere_before_loading_any_runtime(tmp_path, monkeypatch, capsys):
