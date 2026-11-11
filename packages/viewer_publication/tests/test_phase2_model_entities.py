@@ -1933,7 +1933,17 @@ def test_imported_zip_identical_to_a_good_download_keeps_its_members(tmp_path):
     staged = _staged_lines(tmp_path, engine, raw, lines, day='2026-10-16', recovery_files=recovery_files)
     modes = {(r['mode'], r['member_path']) for r in pq.read_table(staged['captures'], columns=['mode', 'member_path']).to_pylist()}
     assert ('retained_import', 'A/one.pdf') in modes, modes
-    build_release(**staged, recovery_files=recovery_files, engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    # The unverified import's ZIP and its member are two recovered files of one dead link, whose text the model
+    # cannot read: a review must name them before the build publishes (ct-u9y4 item 4).
+    from viewer_publication.archive_model_profile import ROOT, _definition_hashes
+    root = tmp_path / 'root'
+    for relative in _definition_hashes(ROOT):
+        (root / relative).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / relative, root / relative)
+    roles = root / 'model/registries/recovered-file-roles.json'
+    roles.write_text(json.dumps(json.loads(roles.read_text()) + [dict(original_url='https://fixture.test/unverified-original',
+        body_sha=hashlib.sha256(content).hexdigest(), role='undecided', evidence='fixture') for content in (other, orphan)]))
+    build_release(**staged, recovery_files=recovery_files, engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model', root=root)
     release = tmp_path / 'release'
     details = pq.read_table(release / 'detail.parquet').to_pylist()
     bodies = {d['saved_body'] for d in details}
@@ -2095,11 +2105,13 @@ def test_a_page_listed_beside_a_file_is_not_one_of_its_formats(tmp_path):
     """ct-h3jb (candidate a70ebc3d1466): each Financial Services event page has a table row with a
     "here" link to that hearing's PDF and a "Full Committee" link to one listing page. The listing
     page became every PDF's HTML version, so seven PDFs were one document and six could not be
-    opened. Files a publisher lists together are one document only when they also share a name."""
+    opened. Files a publisher lists together are one document only when they also share a name.
+    The real listing page (/events/default.aspx) is site furniture since ct-xj8s, never a document, so
+    a listing page the furniture list does not name stands in for it here."""
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     site = 'https://democrats-financialservices.house.gov'
-    listing_url = f'{site}/events/default.aspx?CategoryID=117403'
+    listing_url = f'{site}/news/documentquery.aspx?DocumentTypeID=27'
     words = 'The committee considers legislation and holds hearings on housing and insurance. ' * 30
     listing = (f'<html><head><title>Committee Events</title></head><body><main><p>{words}</p></main></body></html>').encode()
     dates = ['20260604', '20260714', '20260915']

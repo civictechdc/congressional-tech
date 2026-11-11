@@ -176,7 +176,7 @@ def _core(steps, output,*,lookup_extra=None):
         _step('recovery_ranges', 'SELECT doc_key,min(recovery_index) AS rec_start,cast(count(*) AS INT) AS rec_len FROM recovery_rows GROUP BY doc_key'),
         # A recovery-only row is found by its link, unless it is an edition moved off its link (ct-u9y4), which
         # carries its body as its one link body and is found by that.
-        _step('details', f"""SELECT {detail_inputs},CASE WHEN saved_kind='recovery' AND cardinality(o.link_bodies)=0 THEN {_hash_key('o.source_url', 'url:')}
+        _step('details', f"""SELECT {detail_inputs},CASE WHEN saved_kind='recovery' AND coalesce(cardinality(o.link_bodies),0)=0 THEN {_hash_key('o.source_url', 'url:')}
             ELSE {_binary('substr(body_hex,1,16)', 8)} END AS link_key,
             {_binary('body_hex', 32)} AS saved_body,CASE WHEN body_hex IS NOT NULL THEN suffix END AS saved_suffix,CASE WHEN body_hex IS NOT NULL THEN media_type END AS saved_media_type,bytes AS saved_bytes,
             coalesce(s.src_start,cast(0 AS INT)) AS src_start,coalesce(s.src_len,cast(0 AS INT)) AS src_len,
