@@ -157,9 +157,14 @@ re-key groups (witnesses removed and added, the map's added keys and changed `ba
 re-key: the row equal on every column but the key and `record_sha` (occasion, context, locator,
 display order and every stated value; `superseded_by` through the map), each old body replaced
 by one new body that came from it alone, the live release citing the new body on no witness and
-the candidate citing the old one on none. One reordered list, edited name, moved occasion or
-vanished key leaves the whole re-key for a person. On the meeting, three columns may move when
-every other column is equal:
+the candidate citing the old one on none. A new order is published too (owner, 2026-11-11): a
+re-key may also move its `display_order` and positional locator (`congress_gov:witness[i]`)
+when the old and new body list the same witnesses, their rows without key, body and place equal
+as multisets, so a reorder hides no swap, addition or removal; `panel` and `panel_order` must
+not move. One edited name, moved panel, moved occasion or vanished key leaves the whole re-key
+for a person. This witness half is interim: it goes when carried witness keys land (ct-46f3,
+the first slice of the witness-identity epic ct-woj3: keys that survive a re-fetch). On the meeting,
+three columns may move when every other column is equal:
 
 - `congress_gov_detail_observation`: only the locators of its two reads (time, receipt, line,
   capture index, body), each later than the live read, not later than the comparison and in
@@ -178,8 +183,8 @@ their `a key no base witness carries` map rows) are new content and still need a
 a changed title, document list, video, sitting or date. On 2026-11-10's pair (619db5f9e08e to
 77673bfb8fcf) the rule exempts all 37 re-keys on 8 meetings and the read columns of 14 of the 32
 re-read meetings; 18 also changed real columns, and the 4 new witnesses of meeting 119590
-stop. On 630164505301 to 619db5f9e08e no re-key is exempt: 22 rows were reordered and 5 MODS
-rows moved occasion.
+stop. On 630164505301 to 619db5f9e08e 99 of 104 re-keys qualify, the 22 reordered rows among
+them, but 5 MODS rows moved occasion, so none is exempt.
 
 These checks compare the candidate with the live release and read no file, so they show only
 that the candidate is consistent with itself: a made-up hash applied to every row of one old

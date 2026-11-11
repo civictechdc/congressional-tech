@@ -937,7 +937,7 @@ MEETINGS = pa.schema([
         ('has_undated_attempt', pa.bool_())]))])
 WITNESSES = pa.schema([('witness_key', pa.string()), ('occasion', pa.string()), ('source', pa.string()), ('record_sha', pa.binary()),
                        ('source_locator', pa.string()), ('context_key', pa.string()), ('name', pa.string()), ('organization', pa.string()),
-                       ('display_order', pa.int16()), ('superseded_by', pa.string())])
+                       ('panel', pa.string()), ('panel_order', pa.int16()), ('display_order', pa.int16()), ('superseded_by', pa.string())])
 KEY_MAP = pa.schema([('old_key', pa.string()), ('witness_key', pa.string()), ('status', pa.string()), ('basis', pa.string()),
                      ('candidate_keys', pa.list_(pa.string())), ('occasion', pa.string()), ('source', pa.string())])
 HEARD = datetime(2025, 6, 12).date()
@@ -945,8 +945,10 @@ PANEL = (('Ann Lee', 'GAO'), ('Bo Park', 'CBO'))
 
 
 def meeting_read(record, receipt, at, *, keys, mapped, outcome='stored', updated=datetime(2026, 1, 2, tzinfo=timezone.utc),
-                 statuses=(), documents=('hearing memo',), panel=PANEL, order=(1, 2)):
-    """The meeting, its witnesses (listed in `order`) and the key map, as one read of the record left them."""
+                 statuses=(), documents=('hearing memo',), panel=PANEL, order=(1, 2), panels=None):
+    """The meeting, its witnesses (listed in `order`, each on its (panel, panel order), all on the
+    first panel by default) and the key map, as one read of the record left them."""
+    panels = panels or [('Panel I', 1)] * len(keys)
     read = dict(source_url=MEETING_URL, retrieved_at=at, receipt_key=receipt, receipt_line=1, capture_index=0,
                 body_sha256=record.hex(), meeting_parser_version='m1', proof_parser_version='p1')
     meeting = dict(event_id=118340, title='Oversight hearing', document_references=list(documents), congress_gov_updated=updated,
@@ -956,8 +958,8 @@ def meeting_read(record, receipt, at, *, keys, mapped, outcome='stored', updated
                        latest_attempt=dict(evidence=read, state='successful', outcome=outcome, http_status=200), has_undated_attempt=False))
     witnesses = [dict(witness_key=key, occasion='meeting:118340', source='congress_gov', record_sha=record,
                       source_locator=f'congress_gov:witness[{place}]', context_key='congress/meetings', name=name,
-                      organization=organization, display_order=place, superseded_by=None)
-                 for key, (name, organization), place in zip(keys, panel, order)]
+                      organization=organization, panel=sitting, panel_order=rank, display_order=place, superseded_by=None)
+                 for key, (name, organization), place, (sitting, rank) in zip(keys, panel, order, panels, strict=True)]
     key_map = [dict(old_key=old, witness_key=new, status='unambiguous', basis=basis, candidate_keys=[],
                     occasion='meeting:118340', source='congress_gov') for old, new, basis in mapped]
     return dict(meetings=pa.Table.from_pylist([meeting], schema=MEETINGS), witnesses=pa.Table.from_pylist(witnesses, schema=WITNESSES),
@@ -1026,16 +1028,35 @@ def test_a_byte_identical_read_again_passes_unattended(tmp_path):
     assert json.loads((tmp_path / 'auto/cited/citation-trace.json').read_text())['files'] == {}
 
 
+def test_a_meeting_read_again_listing_the_same_witnesses_in_a_new_order_passes_unattended(tmp_path):
+    """Owner, 2026-11-11: the new order is published. Both witnesses swap places, nothing else moves."""
+    base, candidate, automatic = relisted(tmp_path, order=(2, 1))
+    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert report['reasons'] == [] and report['failing'] == []
+    assert groups_of(report)[('witnesses.parquet', 'changed display_order',
+                              'the re-fetched record lists the same witnesses in a new order')] == 2
+    assert all(g.get('refetch_only') for facts in report['files'].values() for g in facts['groups'])
+
+
 POSTPONED = [LIVE_STATUS, ('congress_gov', 'Postponed', HEARD, NEW_RECORD.hex(), SEEN_AGAIN)]
 MEETING_COLUMNS = {'meetings.parquet|changed congress_gov_detail_observation', 'meetings.parquet|changed congress_gov_updated',
                    'meetings.parquet|changed publisher_status_observations'}
+REORDER_STOPS = {'witnesses.parquet|changed display_order', 'witness_key_map.parquet|changed basis'}
 
 
 @pytest.mark.parametrize('change,failing', [
     # A witness edited on the re-fetched record: no re-key is exempt, and the edit needs a person.
     (dict(panel=(PANEL[0], ('Bo Parks', 'CBO'))), {'witnesses.parquet|changed name', 'witness_key_map.parquet|changed basis'}),
-    # The same people in a new order: their locators and display order moved.
-    (dict(order=(2, 1)), {'witnesses.parquet|changed display_order', 'witness_key_map.parquet|changed basis'}),
+    # A new order hides no edit.
+    (dict(order=(2, 1), panel=(PANEL[0], ('Bo Parks', 'CBO'))), REORDER_STOPS | {'witnesses.parquet|changed name'}),
+    # A new order that moves a witness to another panel.
+    (dict(order=(2, 1), panels=[('Panel II', 2), ('Panel I', 1)]),
+     REORDER_STOPS | {'witnesses.parquet|changed panel', 'witnesses.parquet|changed panel_order'}),
+    # A new order beside a new witness: the record no longer lists the same witnesses.
+    (dict(keys=('n1', 'n2', 'n3'), panel=(*PANEL, ('Cy Diaz', 'EPA')), order=(3, 2, 1)), REORDER_STOPS | {'witnesses.parquet|added keys'}),
+    # A new order on the same record body, which no re-fetch delivered (a reader change, say).
+    (dict(record=OLD_RECORD, keys=('n1', 'n2'), order=(2, 1),
+          mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'), ('w2', 'n2', 'content')]), REORDER_STOPS),
     # The re-fetched record states another status: the meeting qualifies for nothing.
     (dict(statuses=POSTPONED), MEETING_COLUMNS),
     # The record lists another document.
@@ -1058,6 +1079,8 @@ def test_a_real_change_on_a_meeting_read_again_refuses_unattended(tmp_path, chan
 @pytest.mark.parametrize('change,reason', [
     # The new body is in no capture: made up, consistently, on every row that cites it.
     (dict(captured=()), f'automatic causes: cited file {NEW_RECORD.hex()[:16]} is not a body in the capture table'),
+    # The same, under a new order.
+    (dict(captured=(), order=(2, 1)), f'automatic causes: cited file {NEW_RECORD.hex()[:16]} is not a body in the capture table'),
     # The new body also sits in a receipt the live release read: the live release could have cited it.
     (dict(captured=((NEW_RECORD, RELIST), (NEW_RECORD, FIRST_READ))),
      f'automatic causes: cited file {NEW_RECORD.hex()[:16]} was already read by the live release ({FIRST_READ})'),
