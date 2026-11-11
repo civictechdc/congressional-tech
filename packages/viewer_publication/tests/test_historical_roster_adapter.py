@@ -6,6 +6,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
+from congress_api.lake.model_sql import model_steps
 from congress_api.retention.provenance import json_input, parquet_output, run_job
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model import SPICY_SCHEMAS, registry_inputs
@@ -49,15 +50,15 @@ def _inputs(directory, assignments):
 
 
 def _build(directory, assignments):
+    # The entity steps with every model step they read (members reads member_terms), as the model orders them.
     directory.mkdir()
-    outputs = [parquet_output(directory, name, 'SELECT * FROM ' + name,
+    outputs = [parquet_output(directory, name, 'SELECT * FROM entity_' + name,
                               ['congress', 'system_code', 'bioguide_id'] if name == 'rosters' else
                               ['bioguide_id'] if name == 'members' else ['system_code'])
                for name in ('rosters', 'members', 'committees')]
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         run_job(directory, engine, inputs=_inputs(directory, assignments), outputs=outputs,
-                steps=[dict(name=name, sql=(ROOT / 'model/sql' / ('entity-' + name + '.sql')).read_text(),
-                            materialize=True) for name in ('rosters', 'members', 'committees')])
+                steps=model_steps(['entity-rosters', 'entity-members', 'entity-committees'], root=ROOT, materialize=True))
     return directory
 
 
