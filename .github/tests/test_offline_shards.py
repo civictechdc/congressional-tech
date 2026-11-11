@@ -151,3 +151,77 @@ def test_actual_shard_shell_records_and_preserves_the_runner_exit(tmp_path, stat
     assert result.stdout.splitlines() == [f'CT_OFFLINE_EXIT_STATUS={status}']
     assert calls.read_text().splitlines()[:6] == ['scripts/dev.py', 'test', 'production-offline', '--shard', '1/6', '--']
     assert '-v' in calls.read_text().splitlines()
+
+
+def test_duration_weighted_shards_balance_heavy_files_across_partitions():
+    files = {f'tests/test_case_{i:02}.py' for i in range(36)}
+    heavy = {f'tests/test_case_{i:02}.py' for i in (5, 11, 17, 23, 29, 35)}
+    durations = {name: (300_000 if name in heavy else 1_000) for name in files}
+    parts = [dev.shard_files(files, ['tests'], (i, 6), durations=durations) for i in range(1, 7)]
+    assert set().union(*map(set, parts)) == files
+    assert sum(map(len, parts)) == len(files)
+    for part in parts:
+        assert part == sorted(part)
+        assert sum(durations[name] for name in part) == 305_000
+    assert parts == [dev.shard_files(reversed(sorted(files)), ['tests'], (i, 6), durations=durations)
+                     for i in range(1, 7)]
+
+
+def test_nonempty_partition_guarantees_every_shard_receives_work_despite_skew():
+    files = {f'tests/test_case_{i}.py' for i in range(6)}
+    durations = {name: (900_000 if name == 'tests/test_case_0.py' else 100) for name in files}
+    parts = [dev.shard_files(files, ['tests'], (i, 6), durations=durations) for i in range(1, 7)]
+    assert [len(part) for part in parts] == [1, 1, 1, 1, 1, 1]
+
+
+@pytest.mark.parametrize('bad', [
+    ['tests/test_a.py'],
+    {'tests/test_a.py': 1.5},
+    {'tests/test_a.py': True},
+    {'tests/test_a.py': 0},
+    {'tests/test_a.py': -10},
+])
+def test_invalid_shard_durations_refuse_corrupt_entries(bad):
+    with pytest.raises(ValueError, match='duration'):
+        dev.shard_files({'tests/test_a.py'}, ['tests'], (1, 1), durations=bad)
+
+
+def test_junit_shard_durations_maps_testcases_to_enrolled_files_and_overlays_runs(tmp_path):
+    enrolled = {'packages/example/tests/test_alpha.py', 'tests/test_beta.py', 'tests/test_fast.py'}
+    xml1 = tmp_path / 'run1.xml'
+    xml1.write_text(
+        '<testsuite>'
+        '<testcase classname="packages.example.tests.test_alpha.TestSuite" name="test_1" time="1.250"/>'
+        '<testcase classname="packages.example.tests.test_alpha" name="test_2" time="0.750"/>'
+        '<testcase classname="tests.test_beta" name="test_b" time="10.000"/>'
+        '<testcase classname="tests.test_fast" name="test_f" time="0.002"/>'
+        '</testsuite>'
+    )
+    xml2 = tmp_path / 'run2.xml'
+    xml2.write_text(
+        '<testsuite>'
+        '<testcase classname="tests.test_beta" name="test_b" time="4.400"/>'
+        '</testsuite>'
+    )
+    measured = dev.junit_shard_durations([xml1, xml2], enrolled)
+    assert measured == {
+        'packages/example/tests/test_alpha.py': 2_000,
+        'tests/test_beta.py': 4_400,
+        'tests/test_fast.py': dev.MIN_SHARD_DURATION_MS,
+    }
+    bad_xml = tmp_path / 'bad.xml'
+    bad_xml.write_text('<testsuite><testcase classname="unknown.module" name="test_x" time="1.0"/></testsuite>')
+    with pytest.raises(ValueError, match='unknown.module'):
+        dev.junit_shard_durations([bad_xml], enrolled)
+
+
+def test_committed_shard_durations_keep_every_production_offline_shard_within_budget():
+    config = dev.declaration()
+    files = dev.inventory(config)
+    roots = config['lanes']['production-offline']['roots']
+    durations = dev.load_shard_durations()
+    parts = [dev.shard_files(files, roots, (i, 6), durations=durations) for i in range(1, 7)]
+    loads = [sum(durations.get(name, dev.DEFAULT_SHARD_DURATION_MS) for name in part) for part in parts]
+    assert max(loads) < 1_050_000
+    assert max(loads) - min(loads) < 30_000
+
