@@ -199,12 +199,19 @@ Source evidence covers only the code a reader runs to turn a body into text
 
 A test runs each reader's worker callable over its fixture bodies and fails when
 a file whose functions ran is missing from that entry's evidence. That guards
-the helpers the bytes-only files call. It cannot see:
+the helpers the bytes-only files call. Outside both the evidence and that test:
 - the remote read path;
 - a helper called only off the fixture paths;
 - a page rule loaded by name from another module;
 - the bundle's version naming (`lake/versions.py`; the IDs are pinned in
-  `publish-daily.json`).
+  `publish-daily.json`);
+- locked packages that only unwalked code imports. Locked-package evidence
+  covers the walked modules' imports only, so pyarrow, botocore and other
+  table-I/O and transport packages no longer move it. Producer identities
+  already exclude them;
+- `compatible_versions.py`'s inputs. `model/registries/compatible-versions.json`
+  has each entry validated with its proof when it is loaded; hashing it would warn
+  on every new record. `provenance.json_input` is generic job I/O.
 
 Review those, and any externally supplied input, by hand.
 

@@ -368,17 +368,21 @@ def reader_runs(tmp_path):
     }
 
 
-def traced(run, evidence, monkeypatch):
-    """Workspace files whose functions ran in `run`, with every reader cache emptied first, so what a run
-    reaches does not depend on what ran before it in this process. Function bodies only: module and
-    class bodies are import-time code, not reading."""
+def traced(run, monkeypatch):
+    """Workspace files whose functions ran in `run`, with every cache in the workspace's source emptied
+    first: evidence modules and the unwalked ones an escape would live in alike, so what a run reaches
+    does not depend on what ran before it in this process. Function bodies only: module and class
+    bodies are import-time code, not reading."""
     import inspect
     import sys
     from congress_api.lake import body_text
     from congress_api.lake.reading_version_diagnostics import ROOT
-    held = {str(ROOT / path) for files in evidence.values() for path in files}
+
+    def workspace(name):
+        return bool(name) and name.startswith(str(ROOT)) and '/src/' in name and '/.venv/' not in name
+
     for module in list(sys.modules.values()):
-        if getattr(module, '__file__', None) in held:
+        if workspace(getattr(module, '__file__', None)):
             for value in list(vars(module).values()):
                 if callable(getattr(value, 'cache_clear', None)):
                     value.cache_clear()
@@ -387,8 +391,7 @@ def traced(run, evidence, monkeypatch):
 
     def profile(frame, event, arg):
         name = frame.f_code.co_filename
-        if event == 'call' and frame.f_code.co_flags & inspect.CO_OPTIMIZED and '/src/' in name \
-                and name.startswith(str(ROOT)) and '/.venv/' not in name:
+        if event == 'call' and frame.f_code.co_flags & inspect.CO_OPTIMIZED and workspace(name):
             ran.add(Path(name).relative_to(ROOT).as_posix())
 
     sys.setprofile(profile)
@@ -407,7 +410,7 @@ def test_every_file_a_reader_runs_on_its_fixtures_is_in_its_evidence(tmp_path, m
     monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER', str(tmp_path / 'io.phase'))
     evidence = diagnostics.evidence_files()
     for entries, run in reader_runs(tmp_path).items():
-        ran = traced(run, evidence, monkeypatch)
+        ran = traced(run, monkeypatch)
         assert ran, entries
         for entry in entries:
             assert ran <= evidence[entry], (entry, sorted(ran - evidence[entry]))
