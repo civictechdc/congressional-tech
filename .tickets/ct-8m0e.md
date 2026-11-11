@@ -1,6 +1,6 @@
 ---
 id: ct-8m0e
-status: in_progress
+status: closed
 deps: []
 links: [ct-x00f]
 created: 2026-11-10T18:08:24Z
@@ -23,3 +23,7 @@ A contract test that the six columns are marked required in their published file
 **2026-11-10T19:23:06Z**
 
 2026-11-10: built as far as the machine allows on claude/dx-required-flags (base aef93461): 6bdace69 the contract test (packages/viewer_publication/tests/test_required_flags.py), 65845050 the three edits, all IS TRUE (around the whole CASE for filename_date_eligible). On the pinned engine the contract test passes before and after; with IS NOT DISTINCT FROM true planted on hidden it fails on all three files; one fixture build is byte-identical before and after (38 of 38 Parquet, 14 of 14 release files, release id equal). Independently reviewed: no must-fix, ship from all three views. The reviewer re-derived from DataFusion 53.1's source that the logical-against-physical schema check (physical_planner.rs:916-977) applies at an aggregate's input, which includes DISTINCT and UNION and a later statement reading the flag through a non-materialized step, and that none of the three steps reads its flag that way; source_filename_readings reads the lake table directly, so the lake-backed run is the confirming one. Values agree for every true, false and NULL input. Owed when the machine is free: the two lake-backed test files; the wider fixture before-and-after; a retained lake-backed job run on the one-line binary; the identity build with the release id and the 18 evidence files equal, plus true and false counts per flag and whether any hidden=true row exists. Operational note from the review: the edit moves the model definition hashes, so a retained publication intent refuses to resume (archive_controller.py:117); merge only when no publication is half-way. The same holds for any model change, ct-07wr included.
+
+**2026-11-11T14:28:17Z**
+
+validated 2026-11-11, closing: W12 is on main (b12853f0). Checked today with pyarrow: in the live release clone (release-20261110b/candidate-rebuilt) hidden in list.parquet, detail.parquet and evidence/document_rows.parquet, is_real_file in record_roles and capture_sources, and filename_date_eligible in source_filename_readings are all required; in the one-line candidate build of the pin move (refactor/pin-move/candidate-build, engine ae12bbd) the same six are required. Post-merge (decisions-overnight 23:48Z, 00:14Z): full lanes green, the lake-backed test files passed (00:53Z), the identity pair reproduced 77673bfb8fcf with equal true/false/null counts per flag. Pin-move step 5 compared 34 of 34 flag changes as 'becomes required' only.

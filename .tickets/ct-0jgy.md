@@ -1,6 +1,6 @@
 ---
 id: ct-0jgy
-status: open
+status: closed
 deps: []
 links: [ct-x00f, ct-01kq]
 created: 2026-11-10T17:00:46Z
@@ -27,3 +27,7 @@ On a local run of the pinned binary with the debug log on, the per-step table ag
 **2026-11-11T01:27:23Z**
 
 Later, not now (W9 re-review): native_reserved, which every shared admission request line logs, could bound a pinned run's pool peak more tightly than its pool before/after, but only if counted from lines stamped inside the statement's [start_epoch, end_epoch]. Each tracing line carries a wall-clock timestamp (tracing_subscriber::fmt, src/main.rs:537); attribution by stream order alone is unsound for it, since a line logged after the previous event and before its releases can carry a pool above the next statement's whole peak (step_memory.py docstring).
+
+**2026-11-11T14:24:24Z**
+
+validated 2026-11-11, closing: W9 is on main (666830e3 .. bb397a52, merged 4f689d1f; lane set green and review ship x3 per decisions-overnight 02:07Z). Acceptance re-checked in refactor/run-recorder: rr_hand_debug_real.txt hand-counts three statements (capture_sources, probe_roles_left_containers.parquet, archive_container_links) against the tool; rr_plant*.log are the planted cases; rr_build3_compare.txt the two-run comparison; null epoch and two runs in one timeline exit 2 (666830e3). Rerun today: scripts/tests/test_step_memory.py: 21 passed (partial lane). Not done and not required: the timestamp-filtered native_reserved bound (note 2026-11-11T01:27Z) stays an idea for later.

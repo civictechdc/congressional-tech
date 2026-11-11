@@ -1,6 +1,6 @@
 ---
 id: ct-01kq
-status: in_progress
+status: closed
 deps: []
 links: [ct-64t4, ct-psb5, ct-0jgy]
 created: 2026-11-10T15:46:33Z
@@ -27,3 +27,7 @@ The script reproduces the report's figures on build c03c43da (run peak 10.28 GiB
 **2026-11-10T17:12:34Z**
 
 2026-11-10: the reviewer confirmed both review fixes at ddaf7fb8: no must-fix, the three verdicts stand (ship), ready for its full lane (which waits for the release's lanes and build). Two small notes go to the run recorder (ct-0jgy), which edits the same script: a timeline sample whose epoch or read_seconds is null or a string still gives a TypeError traceback (scripts/measure/step_memory.py:81,128; the watchdog cannot write that today); two timelines concatenated at a line boundary are read as one run (a constant epoch-minus-seconds check would catch it).
+
+**2026-11-11T14:24:24Z**
+
+validated 2026-11-11, closing: W2 is on main (merge c6f2085e, in origin/main 0abb3ab5 with W11 and W1; stacked lane set green per decisions-overnight 22:41Z). Acceptance re-checked: refactor/step-memory/sm_05_c03c43da.txt shows the script on build c03c43da giving run peak 10.28 GiB physical in output member_votes.parquet at pool 2.81 GiB, the report's figures; a timeline without epoch takes a hand-given offset (same file, first line); review in refactor/review-step-memory. The two reviewer notes moved to ct-0jgy and were fixed there (666830e3: null epoch and two concatenated runs exit 2). Rerun today: scripts/tests/test_step_memory.py through dev.py test production-offline --path: 21 passed.

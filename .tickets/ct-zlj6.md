@@ -1,6 +1,6 @@
 ---
 id: ct-zlj6
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T15:46:19Z
@@ -31,3 +31,7 @@ Reading evidence: W1 moved workspace_sha256 for sniff, readings, pdf_text, html_
 **2026-11-11T00:22:00Z**
 
 2026-11-11 from the reading-evidence review: since W1, engine.log files (231 to 10,850 bytes in fixtures) land in job work folders, so byte limits that sum a work folder now count them: lake/daily.py:1363 (record activation, max_output_bytes from the activation job) and archive_house_xml_dispositions.py:126. Not a reader effect. Check the configured limits against a worst-case engine.log before the next hand-run activation, or exclude engine.log from those sums.
+
+**2026-11-11T14:29:02Z**
+
+validated 2026-11-11, closing: W1 is on main (merge 0abb3ab5; review fixes 88ae4bc6, 5fbd8439, db782ace; nightly keeps a retired candidate's engine.log, bounded, 911249a7/52474e25). Code on origin/main 17a283bc: DocSpecClient.run_job(spec, log=...) (docspec_client/client.py:518-537). Evidence: stacked lane set green and soak build reproduced 77673bfb8fcf (decisions-overnight 22:41Z); measured on the failed nightly's text, the message went from 202,583 to 508 characters with the error first; reading-evidence equivalence recorded in f6615f13 (doctor clean). The production nightly 20261111T103005Z ran with it (release_unchanged). Leftover, minor, moved to ct-b7bv item 5: engine.log now counts toward work-folder byte sums in lake/daily.py:1363 (record activation's max_output_bytes) and archive_house_xml_dispositions.py:126; logs are 231 to 10,850 bytes in fixtures.

@@ -17,3 +17,9 @@ Stage 1 of the staged move to managed jobs (owner decision 2026-11-10, MANAGED-J
 
 A test that fails first on request count: a member of N MiB is fetched in at most a stated number of requests. A measurement on a local object store with a fixed delay per request (so it needs no remote read): the trial's shape (756 members, 488 MiB) before and after, seconds and peak memory, with the budget never exceeded. Members already in custody from an earlier snapshot are not fetched again (test). A timing on the real lake is the coordinator's run. Independent review; the engine's check green.
 
+
+## Notes
+
+**2026-11-11T14:30:06Z**
+
+validated 2026-11-11, left open: not started. On the engine's integration branch dx/one-line (8db7ebb, worktree docspec-dx-one-line) SNAPSHOT_MEMBER_CHUNK_BYTES is still 64 << 10 (src/storage.rs:105); no dx/ branch carries this work. Waits on the managed-jobs stage 1 slot after the one-line pin (ct-x00f).

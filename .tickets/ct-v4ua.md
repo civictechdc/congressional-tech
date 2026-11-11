@@ -1,6 +1,6 @@
 ---
 id: ct-v4ua
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-11T12:02:23Z
@@ -26,3 +26,9 @@ Measured on the real candidate (release-20261110b/candidate-rebuilt) from a chec
 
 --plan and the start of --execute refuse a spec with any missing or changed pinned input in seconds, naming each one; execution reads each file once. Tests seen failing first, plus the two plants. The lane set on the branch is green (the manager schedules it), then merged.
 
+
+## Notes
+
+**2026-11-11T14:28:17Z**
+
+validated 2026-11-11, closing: on main via a39f3cad (merge 97ff5611 of the W5+W17 stack; stacked lanes green on 31b5a6b2 per decisions-overnight 14:12Z). Code on origin/main: archive_model_job.check_inputs (line 203) and preflight (line 248) run before execute; model_arguments takes verified_files so each file is read once; failing tests first in c4d114c6 and 4f787d9f. The focused file test_archive_model_job.py takes over 3 minutes here, so I did not rerun it; the lane result stands.

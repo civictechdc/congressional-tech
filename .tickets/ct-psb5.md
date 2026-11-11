@@ -1,6 +1,6 @@
 ---
 id: ct-psb5
-status: in_progress
+status: closed
 deps: []
 links: [ct-01kq, ct-752r]
 created: 2026-11-10T17:00:45Z
@@ -27,3 +27,7 @@ The hang is reproduced on purpose (a test that delivers the signal at the vulner
 **2026-11-10T19:00:28Z**
 
 2026-11-10: fix built on claude/dx-watchdog-signal (c30094a5 failing tests, 20a71bef the fix, 1ce8d360 an exact test of the bound) and independently reviewed by a reader of the signal handling in both interpreters: no must-fix, ship from all three views. Cause as proven: the hung process's native stack matches a reproduction in which the old handler raises while subprocess holds a child's wait lock, taken with acquire(False) outside a try (CPython 3.12 subprocess.py:1983 and :2032; 3.15 :2180 and :2336); it does not prove which site, how many signals, or the rate, which stays unexplained. The hung process was killed at 18:27:45Z. A second round is being made from the review: the stop reason names the signal also when a group signal kills the in-flight ps or vm_stat (today the report would say IndexError); the three signals tested, not only TERM; the wait between passes wakes promptly on a recorded signal (time.sleep resumes after a handler that returns, so the stop began up to an interval later than before and a report could be lost more often where the watchdog itself is killed 2 s after the TERM); timeouts on the two untimed helper calls; a bounded test teardown. Still open by design: a signal after watch() returns and before the report is written can lose the report; admission is unchanged. Follow-up for the backfill loop and one shared recorder: ct-752r.
+
+**2026-11-11T14:28:17Z**
+
+validated 2026-11-11, closing: W11 is on main (13c9833e in 0abb3ab5). Code read on origin/main: archive_watchdog.py installs a recording handler for TERM, INT and HUP (line 254) and the loop reports 'Interrupted: watchdog received signal N' (line 252); commits 4c78f49d (handler records and returns), b4228ff9 (wait taken in 0.05 s slices), 779174ca (a pass that fails after a signal still reports it), a308fca7 (ps and vm_stat get 5 s). Lanes green with the driver's own start path on a loaded machine: TERM stopped everything in 0.39 s with exit 99 (decisions-overnight 22:41Z); review in refactor/review-watchdog-signal. Left by design and named elsewhere: a signal after watch() returns can still lose the report, and the backfill loop's own signal recorder, both on ct-752r.

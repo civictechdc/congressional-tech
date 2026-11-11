@@ -17,3 +17,9 @@ Measured on the pinned engine (b0342a7), 2026-11-10 by the W4 builder. A job que
 
 The engine refuses a query whose result schema repeats a field name (or returns rows with an ordered column list, or Parquet results as X4 proposes), with a test on the one line. Then the pipeline's pgjson check in provenance.query_result can go.
 
+
+## Notes
+
+**2026-11-11T14:30:07Z**
+
+validated 2026-11-11, left open: the engine side is unchanged on dx/one-line 8db7ebb (no refusal of repeated output names in src/job/query_result.rs). Only the pipeline guard exists: provenance.query's pgjson check (W4, on main since 623b6a63). Remains: the engine change and a test on the one line, then removing the pipeline check.

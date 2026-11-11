@@ -23,3 +23,7 @@ The engine can add a nullable field to an existing lake table as a recorded tabl
 **2026-11-11T09:48:23Z**
 
 2026-11-11 (session congress-1, from the release session and the refactor team, read from source on engine candidate ae12bbd): the one-line engine cannot add a column to a pipeline lake table either (same five table operations; append still refuses a field-name mismatch). It has schema evolution only for the engine's own datasets (docspec schema / plan-schema), which does not serve appearance_records without moving the table into the dataset model. So the MODS fields 36-39 ship through a new table this release (option 1, the 2026-11-05 path). The refactor team scoped X9: a guarded add_columns table operation (optional columns only, fresh field ids, refuses a stale head, idempotent), as a post-pin engine item. The pipeline caller in packages/congress_api/src/congress_api/lake/tables.py is CT's.
+
+**2026-11-11T14:30:07Z**
+
+validated 2026-11-11, left open: X9 is built on engine branch dx/add-columns (bafd5c4, 6 commits) but is NOT merged into dx/one-line (8db7ebb; git merge-base --is-ancestor says no) and not in the pin candidate ae12bbd. Remains: review, merge onto the line, a later pin, and the CT caller in lake/tables.py with the MODS-style two-column test. The MODS fields 36-39 ship through a new table this release.

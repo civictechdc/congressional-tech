@@ -17,3 +17,9 @@ Stage 1 of the staged move to managed jobs (owner decision 2026-11-10, MANAGED-J
 
 First a measurement, not a fix: a synthetic managed job of 3,000 small steps, bytes written per commit against commit number, on the integration branch as it is (this confirms or refutes the extrapolation). Then a test that fails first on that growth, the fix, and the same measurement after: total metadata written for 3,000 commits under a stated bound. Retirement removes what a finished job no longer needs (test). Independent review; the engine's check green.
 
+
+## Notes
+
+**2026-11-11T14:30:07Z**
+
+validated 2026-11-11, left open: not started. dx/managed-records sits at ae12bbd (the pin candidate) with no commits of its own, and dx/one-line (8db7ebb) has no change to the workspace catalog's per-commit metadata; the first step (the 3,000-step measurement) has not been run.

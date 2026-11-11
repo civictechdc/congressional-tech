@@ -20,3 +20,7 @@ Branch df55-types (backed up to GitHub at 30ba6655) holds the casts DataFusion 5
 **2026-11-10T03:26:46Z**
 
 2026-11-10: the df55-types worktree was pruned (clean); branch df55-types (30ba6655, also on GitHub) still holds the casts. Branch r4-a (065f7fbd) is kept without a worktree: its one commit not on main, c6284e80 'Keep engine limits out of the semantic model profile (C3)', looks superseded by f33d957d (ct-oun5); confirm and delete the branch when the engine upgrade lands.
+
+**2026-11-11T14:30:07Z**
+
+validated 2026-11-11, left open: still not needed today. main pins b0342a7 (DataFusion 53.1) and the pin candidate is the one line (also DataFusion 53.1); branch df55-types is unchanged at 30ba6655 and was not rebased. Waits on a DataFusion 55 engine pin, which nobody has scheduled.
