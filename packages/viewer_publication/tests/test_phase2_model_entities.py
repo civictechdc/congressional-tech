@@ -2199,16 +2199,15 @@ def _landing_fixture(tmp_path, engine):
     """Three GovInfo hearings, each with its Content Details page, as raw receipt lines.
 
     LANDED: a ZIP of its PDF and HTML text, the direct PDF, and another site's different copy of
-    the PDF under the same GovInfo name; its page links the ZIP. TEXT_ONLY: the .htm alone, titled as
-    GovInfo's text is ("- RURAL ROADS": the hearing number left out), its page requested at GPO's
-    retired search address and answered at GovInfo's (the CHRG-113hhrg85449 shape). PARTS: a
+    the PDF under the same GovInfo name; its page links the ZIP. TEXT_ONLY: the .htm alone, its page
+    requested at GPO's retired search address and answered at GovInfo's (the CHRG-113hhrg85449
+    shape). PARTS: a
     multi-part package with no package-level file, so its package page names no saved file; each of
     its two parts has its own granule page (the CHRG-115hhrg24725 shape)."""
     raw = tmp_path / 'raw'
     pdf = f'%PDF-1.7\n{LANDED} transcript\n%%EOF\n'.encode()
     other = f'%PDF-1.7\n{LANDED} transcript as the committee posted it\n%%EOF\n'.encode()
-    member = _transcript_html(7, 'clerk@mail.house.gov')
-    text_only = _transcript_html(8, 'clerk@mail.senate.gov').replace(b'<title>Hearing 8</title>', b'<title>- RURAL ROADS</title>')
+    member, text_only = _transcript_html(7, 'clerk@mail.house.gov'), _transcript_html(8, 'clerk@mail.senate.gov')
     parts = [f'%PDF-1.7\n{PARTS} part {n}\n%%EOF\n'.encode() for n in (1, 2)]
     zip_bytes = _govinfo_zip(LANDED, member, pdf)
     content = f'{GOVINFO}/content/pkg'
@@ -2247,10 +2246,9 @@ def test_a_govinfo_landing_page_is_another_address_of_the_hearing_it_names(tmp_p
     only file, and the package's own copy, which the page links, before another site's copy under the
     same name. Its link key retires with the ordinary notice, which lists that document. Owner,
     2026-11-11 (ct-egoo): a package page that names no saved file is an address of each of its parts
-    (the documents its granule pages took), so its notice and lookup key list them; and the page's title,
-    the only one GovInfo prints the hearing number in, fills a hearing title that is empty or has that
-    number left out ("- RURAL ROADS"). Built twice from one capture set: without the rule (as
-    published) and with it, against the first as the live release; the publish gate passes."""
+    (the documents its granule pages took), so its notice and lookup key list them. Built twice from
+    one capture set: without the rule (as published) and with it, against the first as the live
+    release; the publish gate passes."""
     from viewer_publication.archive_model import build_release
     from viewer_publication.archive_model_profile import ROOT, _definition_hashes
     from viewer_publication.release_comparison import compare
@@ -2297,13 +2295,6 @@ def test_a_govinfo_landing_page_is_another_address_of_the_hearing_it_names(tmp_p
     assert notices == {key(pages[url]): (None, sorted(after[row]['link_key'] for row in rows)) for url, rows in landed.items()}
     reports = {q['name']: q['data'] for q in json.loads((tmp_path / 'after-model/result.json').read_text())['queries']}
     assert reports['unplaced_landing_pages'] == []
-    # The page's title fills a hearing title that is empty (a part's PDF) or GovInfo's with the number left
-    # out; a hearing's own title stays. As published, before the rule, the titles were the files' own.
-    titles = lambda rows, at: [rows[row]['title'] for row in at]
-    assert titles(after, [hearing, text_only, part, part2]) == [
-        'Hearing 7', 'S. Hrg. 119-8 - RURAL ROADS', 'Serial No. 119-9, Part 1 - PUBLIC LANDS', 'Serial No. 119-9, Part 2 - PUBLIC LANDS']
-    before_row = lambda data: next(i for i, d in enumerate(before) if d['saved_body'] == hashlib.sha256(data).digest())
-    assert titles(before, [before_row(files[name]) for name in ('text_only', 'part')]) == ['- RURAL ROADS', None]
     assert reports['landing_page_invariants'] == [dict(saved_landing_addresses=0, unaddressed_landing_pages=0, lost_landing_addresses=0)]
     # The publish gate's link rule: no key vanishes, and no live key, lookup key or address answers another file.
     rule = compare(tmp_path / 'before', tmp_path / 'after')['link_rule']

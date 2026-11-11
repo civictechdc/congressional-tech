@@ -78,12 +78,6 @@
     "sample_id": "page-signals:govinfo_details_name"
   },
   {
-    "id": "govinfo_details_title",
-    "kind": "landing_title",
-    "pattern": "^((?:(?i:S[.] Hrg[.])|Serial No[.]|Series No[.]|H[.]A[.]S[.]C[.] No[.]|Small Business Committee Document Number|Joint Committee) [^ ].*) - [A-Z]+-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)* [|] Content Details [|] GovInfo$",
-    "sample_id": "page-signals:govinfo_details_title"
-  },
-  {
     "id": "error_routes",
     "kind": "error_url",
     "pattern": "(?i)/(404|error|errors|notfound|not-found|page-not-found)(\\b|[/.?_-])|[?&]aspxerrorpath=",
