@@ -211,6 +211,54 @@
       "source": "Authored boundary: hyphenated words without an upper-case GovInfo collection code are no package or granule ID"
     },
     {
+      "id": "page-signals:gpo_printed_hearing_cover",
+      "registry": "page-signals",
+      "entry": "gpo_printed_hearing_cover",
+      "value": "VA FEE BASIS CARE: EXAMINING SOLUTIONS TO A FLAWED SYSTEM HEARING BEFORE THE SUBCOMMITTEE ON HEALTH OF THE COMMITTEE ON VETERANS' AFFAIRS U.S. HOUSE OF REPRESENTATIVES ONE HUNDRED TWELFTH CONGRESS SECOND SESSION SEPTEMBER 14, 2012 SERIAL No. 112-75 Printed for the use of the Committee on Veterans' Affairs U.S. GOVERNMENT PRINTING OFFICE WASHINGTON, DC: 2012",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: text head of Transcript,Health9-14-12.htm, a recovered copy the committee linked as a transcript; one of 17 documents tagged transcript whose own text is a GPO printed hearing's cover (ct-isnv)"
+    },
+    {
+      "id": "page-signals:gpo_printed_hearing_cover_govinfo_text",
+      "registry": "page-signals",
+      "entry": "gpo_printed_hearing_cover",
+      "value": "[House Hearing, 114 Congress] [From the U.S. Government Publishing Office] CONCUSSIONS IN YOUTH SPORTS: EVALUATING PREVENTION AND RESEARCH ======================================================================= HEARING BEFORE THE SUBCOMMITTEE ON OVERSIGHT AND INVESTIGATIONS OF THE COMMITTEE ON ENERGY AND COMMERCE HOUSE OF REPRESENTATIVES ONE HUNDRED FOURTEENTH CONGRESS SECOND SESSION __________ MAY 13, 2016 __________ Serial No. 114-145 [GRAPHIC NOT AVAILABLE IN TIFF FORMAT] Printed for the use of the Committee on Energy and Commerce energycommerce.house.gov __________ U.S. GOVERNMENT PUBLISHING OFFICE 21-158 PDF WASHINGTON : 2017",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: text head of Transcript-OI-Hrg-Youth-Concussions-051316.pdf, recovered as GovInfo's text of the printed hearing"
+    },
+    {
+      "id": "page-signals:gpo_printed_hearing_cover_senate",
+      "registry": "page-signals",
+      "entry": "gpo_printed_hearing_cover",
+      "value": "[Senate Hearing 106-24] [From the U.S. Government Publishing Office] S. Hrg. 106-24 TO CONSIDER BUDGET PROCESS REFORM ======================================================================= JOINT HEARING BEFORE THE COMMITTEE ON THE BUDGET AND THE COMMITTEE ON GOVERNMENTAL AFFAIRS UNITED STATES SENATE ONE HUNDRED SIXTH CONGRESS FIRST SESSION __________ JANUARY 27, 1999 __________ Printed for the use of the Committee on Governmental Affairs and the Committee on the Budget U.S. GOVERNMENT PRINTING OFFICE 54-926 cc",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: text head of CHRG-106shrg54926.htm; a Senate cover states its number before 'HEARING BEFORE THE'"
+    },
+    {
+      "id": "page-signals:gpo_printed_hearing_cover_committee_page",
+      "registry": "page-signals",
+      "entry": "gpo_printed_hearing_cover",
+      "value": "Skip to Main About Chairman Rick Crawford HPSCI Members History & Jurisdiction Subcommittees Committee Rules Legislation Committee Schedule Bills Hearings Business Meetings News Press Releases Videos November 06, 2017 Carter Page hearing transcript released The House Permanent Select Committee on Intelligence released the transcript of its hearing",
+      "expected": false,
+      "source": "Published release 77673bfb8fcf: text head of carter-page-hearing-transcript-released, a committee page about its own transcript; no cover"
+    },
+    {
+      "id": "page-signals:gpo_printed_hearing_cover_banner_only",
+      "registry": "page-signals",
+      "entry": "gpo_printed_hearing_cover",
+      "value": "[Senate Hearing 106-] [From the U.S. Government Publishing Office] DEPARTMENT OF THE INTERIOR AND RELATED AGENCIES APPROPRIATIONS FOR FISCAL YEAR 2004 ---------- U.S. Senate, Subcommittee of the Committee on Appropriations, Washington, DC. NONDEPARTMENTAL WITNESSES [Clerk's note.--The subcommittee was unable to hold hearings on nondepartmental witnesses",
+      "expected": false,
+      "source": "Published release 77673bfb8fcf: text head of CHRG-106shrg2910441.htm; GovInfo's banner alone is no cover"
+    },
+    {
+      "id": "page-signals:gpo_printed_hearing_cover_court_reporter",
+      "registry": "page-signals",
+      "entry": "gpo_printed_hearing_cover",
+      "value": "STENOGRAPHIC TRANSCRIPT OF PROCEEDINGS HEARING BEFORE THE COMMITTEE ON ARMED SERVICES UNITED STATES SENATE TO RECEIVE TESTIMONY ON THE POSTURE OF THE DEPARTMENT OF THE ARMY Washington, D.C. ALDERSON COURT REPORTING 1111 14TH STREET NW SUITE 1050 WASHINGTON, D.C. 20005 (202) 289-2260",
+      "expected": false,
+      "source": "Authored boundary: a court reporter's transcript of a hearing has no hearing number and no GPO imprint; it is the committee's own transcript"
+    },
+    {
       "id": "formats:preference-pdf",
       "registry": "formats",
       "entry": "preference-pdf",

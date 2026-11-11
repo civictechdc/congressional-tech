@@ -2374,6 +2374,34 @@ def test_a_details_sub_page_that_is_no_govinfo_id_names_no_file_and_is_counted(t
     assert result['landing_page_invariants'] == [dict(saved_landing_addresses=0, unaddressed_landing_pages=0, lost_landing_addresses=1)]
 
 
+def test_a_committee_transcript_that_is_a_printed_hearing_is_tagged_as_one(tmp_path):
+    """ct-isnv (owner, 2026-11-11: filter the transcript words together, and label each document as what
+    it is). Committees post GPO's printed hearing under their own transcript label (release 77673bfb8fcf:
+    17 such, House Veterans' Affairs and Energy and Commerce). A document a committee calls a transcript
+    whose own text opens with a printed hearing's cover (page signals kind print_cover: the hearing number
+    and the GPO imprint) is that printed hearing: kind and family published-hearing. A court reporter's
+    transcript, with neither, stays a transcript."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    site = 'http://veterans.house.gov/hearing-transcript'  # the committee's pages, as published (77673bfb8fcf)
+    words = 'Mr. MILLER. The hearing will come to order. Thank you all for being here this morning. ' * 40
+    cover = ("VA FEE BASIS CARE: EXAMINING SOLUTIONS TO A FLAWED SYSTEM\n\nHEARING\n\nBEFORE THE\n\nSUBCOMMITTEE ON HEALTH\n\n"
+             "OF THE\n\nCOMMITTEE ON VETERANS' AFFAIRS\nU.S. HOUSE OF REPRESENTATIVES\n\nONE HUNDRED TWELFTH CONGRESS\n"
+             "SECOND SESSION\n\nSEPTEMBER 14, 2012\n\nSERIAL No. 112-75\n\nPrinted for the use of the Committee on Veterans' Affairs\n\n"
+             "U.S. GOVERNMENT PRINTING OFFICE\nWASHINGTON, DC: 2012\n\n")
+    printed = f'<html><head><title>VA FEE BASIS CARE</title></head><body><pre>{cover}{words}</pre></body></html>'.encode()
+    reporter = (f'<html><head><title>Fee basis care</title></head><body><pre>STENOGRAPHIC TRANSCRIPT OF PROCEEDINGS\n\n'
+                f'HEARING BEFORE THE SUBCOMMITTEE ON HEALTH\n\nALDERSON COURT REPORTING\n\n{words}</pre></body></html>').encode()
+    staged = _stage_raw_fixture(tmp_path, engine, [dict(url=f'{site}/final-transcript-hearing-va-fee-basis-care', data=printed, format='html'),
+                                                   dict(url=f'{site}/final-transcript-hearing-va-fee-basis-care-day-two', data=reporter, format='html')])
+    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+        parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
+        catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    rows = {r['filename']: (r['document_kind'], r['document_family']) for r in pq.read_table(tmp_path / 'release/list.parquet').to_pylist()}
+    assert rows == {'final-transcript-hearing-va-fee-basis-care': (['published-hearing'], ['published-hearing']),
+                    'final-transcript-hearing-va-fee-basis-care-day-two': (['transcript'], ['transcript'])}
+
+
 def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
     """ct-vq2a, ct-kwse (nightly ef4c1632): the saved copy is the newest fetch, but package, filename date
     and Congress come from every copy of the bytes, and only a GovInfo-form filename names a package;
