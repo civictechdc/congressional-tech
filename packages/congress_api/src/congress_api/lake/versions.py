@@ -3,6 +3,7 @@ import ast
 from collections import defaultdict
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -141,6 +142,7 @@ class ImportClosure:
         self.requested_extras = defaultdict(set)
         self.distributions = distributions or {}
         self._paths = {}
+        self._listings = {}
         for entry in tomllib.loads((self.root / 'uv.lock').read_text())['package']:
             self.entries[_normalized(entry['name'])].append(entry)
             source = entry['source']
@@ -156,8 +158,26 @@ class ImportClosure:
         if parts not in self._paths:
             self._paths[parts] = next((path for source in self.sources for module in [source.joinpath(*parts)]
                                        for path in (module / '__init__.py', module.with_suffix('.py'))
-                                       if path.is_file()), None)
+                                       if self._exact_file(source, path)), None)
         return self._paths[parts]
+
+    def _exact_file(self, source, path):
+        """Whether `path` is a file whose every name below `source` is listed exactly, as Python imports it.
+
+        A case-insensitive disk (macOS) also accepts house_naming/Engine.py for `from house_naming
+        import Engine` and would hash engine.py again under a name Linux does not have (ct-p394).
+        Each directory is listed once per closure."""
+        directory = source
+        for name in path.relative_to(source).parts:
+            if directory not in self._listings:
+                try:
+                    self._listings[directory] = frozenset(os.listdir(directory))
+                except OSError:
+                    self._listings[directory] = frozenset()
+            if name not in self._listings[directory]:
+                return False
+            directory = directory / name
+        return path.is_file()
 
     def _imports(self, path):
         # Include imports inside functions, plus package initializers and possible
