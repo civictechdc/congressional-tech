@@ -49,7 +49,7 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   label "Accompanied by"; on an asking line, so may its heading's words and a contents column's "Page"; a word
   the row or another row of the line still shows is not lost (a name printed again in a heading, "... for Damon
   Stevens", may go), nor page numbers fused to a kept word, "EPA173-198"; a row whose
-  name opened in lower case, a fragment of prose, loses nothing when it comes to name no one; nor do words printed
+  name or raw line opened in lower case, a fragment of prose, loses nothing when it comes to name no one; nor do words printed
   after a speaker's turn, "Mr. Yoder. We will ...", which are transcript). A raw line that opens
   in lower case is a fragment of prose run into the list: ``member_unnamed`` and ``person_left_in_organization`` do
   not read it, and ``person_moved`` reads only names that open in capitals;
@@ -83,7 +83,7 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   none when they testified on a line of the print that asks nothing and to ``statement_for_record`` when they did not
   (an answerer); or it is ``record_material`` on an asking line for a row with no name, a Member's family
   word, on a line of names alone, or on a line naming a paper, or with no name where the before row held prose (a
-  name opening in lower case). Every ``record_material`` row on an asking line is
+  name or a raw line opening in lower case). Every ``record_material`` row on an asking line is
   held to that, its type changed or not; and an added row typed a statement on an asking line for a person who
   testified on a line that asks nothing fails (an answerer who testified answers as a witness), and so does an
   added answerer typed a witness who did not. "Testified" is read from the raw print: a witness row on a line that
@@ -813,7 +813,7 @@ def judge(before, after, raw_root, given, family, serving=None):
         def type_supported(a, b, line, locator):
             if b.get('witness_type') == 'record_material':
                 # ... or a row that held a fragment of prose (a name opening in lower case) and now names no one.
-                prose = bool(re.match(r"[a-z]", (a.get('name') or '').strip()))
+                prose = bool(re.match(r"[a-z$]", (a.get('name') or '').strip())) or line[:1].islower()
                 return record_supported(b, locator) or (not b.get('name') and prose)
             said = {plain(w) for w in words(line)}
             if b.get('witness_type') == 'member_statement':
@@ -825,7 +825,7 @@ def judge(before, after, raw_root, given, family, serving=None):
             # An answerer on an asking line, a person who is not one of its Members: a witness when they testified on a
             # line of the print that asks nothing, a statement for the record when they did not.
             if (b.get('name') and position(locator) in asking and not a_member(b['name'], locator)
-                    and a.get('witness_type') in (None, 'record_material')):
+                    and a.get('witness_type') in (None, 'record_material', 'statement_for_record')):
                 answered = family_word(b['name']) in testified
                 if (b.get('witness_type') is None) == answered and b.get('witness_type') in (None, 'statement_for_record'):
                     return True
@@ -925,7 +925,7 @@ def judge(before, after, raw_root, given, family, serving=None):
             reordered = bool(new_name) and not in_order(new_name, line)
             counts['no_name' if not new_name else 'reordered' if reordered else 'name_read'] += 1
             if (old_name and old_name[:1].isupper() and person(old_name)
-                    and not set(name_words(old_name)) <= set(name_words(new_name))):
+                    and not set(name_words(old_name)) - transcript(line) <= set(name_words(new_name))):
                 out['person_moved'].append(item)
             if new_name and not set(map(plain, words(new_name))) <= set(map(plain, words(line))):
                 out['name_not_in_line'].append(item)
@@ -949,7 +949,7 @@ def judge(before, after, raw_root, given, family, serving=None):
                             if w not in shed and w not in shown and w not in new_words and not fused(w)})
             # A name that opens in lower case is a fragment of prose, no one's: a row that held one and now names no
             # one loses no person or affiliation.
-            if not new_name and re.match(r"[a-z]", (old_name or '').strip()):
+            if not new_name and (re.match(r"[a-z$]", (old_name or '').strip()) or line[:1].islower()):
                 lost = Counter()
             if lost:
                 out['words_lost'].append(dict(item, words=sorted(lost.elements())))
