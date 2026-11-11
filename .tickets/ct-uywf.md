@@ -2,7 +2,7 @@
 id: ct-uywf
 status: open
 deps: []
-links: []
+links: [ct-rhqw]
 created: 2026-11-10T19:31:06Z
 type: bug
 priority: 1
