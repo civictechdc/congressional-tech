@@ -27,3 +27,7 @@ A failing job's message starts with the engine's error, not a metric line; a pas
 **2026-11-11T00:18:36Z**
 
 Reading evidence: W1 moved workspace_sha256 for sniff, readings, pdf_text, html_text, xml_text and warc. Recorded as equivalence in f6615f13 (claude/dx-reading-evidence), with every declared version kept and the six values re-stamped. Not a reader: daily.py:1363's activation byte limit now counts engine.log.
+
+**2026-11-11T00:22:00Z**
+
+2026-11-11 from the reading-evidence review: since W1, engine.log files (231 to 10,850 bytes in fixtures) land in job work folders, so byte limits that sum a work folder now count them: lake/daily.py:1363 (record activation, max_output_bytes from the activation job) and archive_house_xml_dispositions.py:126. Not a reader effect. Check the configured limits against a worst-case engine.log before the next hand-run activation, or exclude engine.log from those sums.
