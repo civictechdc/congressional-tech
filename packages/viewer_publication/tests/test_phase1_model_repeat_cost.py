@@ -179,7 +179,7 @@ def lake_refusal_sql():
     return sql.replace(spelling, 'coalesce(f.valid,false)')
 
 
-SCAN =re.compile(r'^\s*TableScan: (\S+)', re.M)
+SCAN = re.compile(r'^\s*TableScan: (\S+)', re.M)
 JOIN = re.compile(r'^\s*\w+ Join: (.*)$', re.M)
 REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
 # A plan node line; a line of any other shape continues the expression above it.
