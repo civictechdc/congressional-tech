@@ -64,6 +64,8 @@ class Diff:
         self.link_causes = False
         self.witness_rekey = None  # set by rekeyed()
         self.meeting_update = None  # set by updated_meetings()
+        self.subject_update = None  # set by updated_subjects()
+        self.doc_subjects = None  # set by document_subjects()
         self.witness_update = None  # set by updated_witnesses()
         self.meeting_refetch = None  # set by refetched_meetings()
         self.refetched = None  # set by refetched_files()
@@ -375,38 +377,74 @@ def split_group(groups, name, cause, n, flagged_cause):
     return out
 
 
+def document_subjects(d: Diff):
+    """Tables `doc_meeting_subjects(event_id,k)` (single-meeting candidate documents' measure_keys, which
+    entity-meetings.sql copies into `meetings.subject_keys`) and `new_doc_subjects(k)` (candidate document
+    measure_keys absent from base documents)."""
+    if d.doc_subjects is None:
+        cand_cols = set(d.columns('candidate', 'list')) if d.has('candidate', 'list') else set()
+        base_cols = set(d.columns('base', 'list')) if d.has('base', 'list') else set()
+        if {'meeting_keys', 'measure_keys'} <= cand_cols:
+            d.table('doc_meeting_subjects', """SELECT DISTINCT try_cast(meeting_keys[1] AS BIGINT) AS event_id,
+                lower(unnest(measure_keys)) AS k FROM candidate_list
+                WHERE len(meeting_keys)=1 AND measure_keys IS NOT NULL AND try_cast(meeting_keys[1] AS BIGINT) IS NOT NULL""")
+        else:
+            d.table('doc_meeting_subjects', 'SELECT CAST(NULL AS BIGINT) AS event_id,CAST(NULL AS VARCHAR) AS k WHERE false')
+        if 'measure_keys' in cand_cols:
+            prior = (' EXCEPT SELECT DISTINCT lower(unnest(measure_keys)) FROM base_list WHERE measure_keys IS NOT NULL'
+                     if 'measure_keys' in base_cols else '')
+            d.table('new_doc_subjects', f'SELECT DISTINCT lower(unnest(measure_keys)) AS k FROM candidate_list WHERE measure_keys IS NOT NULL{prior}')
+        else:
+            d.table('new_doc_subjects', 'SELECT CAST(NULL AS VARCHAR) AS k WHERE false')
+        d.doc_subjects = True
+    return d.doc_subjects
+
+
 def updated_meetings(d: Diff):
     """Table `meeting_update(event_id,body,added)`: the meetings the candidate read from Congress.gov
     again with new bytes, or for the first time (`added`), with the new body; True when there is one
     (ct-rhqw). On such a meeting every change its record can make publishes without a person: the
     `UPDATE_COLUMNS` of the meeting row, its Congress.gov witnesses (added; removed with a successor;
     edited, reordered), their key-map rows, the documents that name them, its witness coverage and
-    its new nomination subjects.
+    its new subjects.
 
     The read is the meeting's `successful_read`: it names a body and a receipt, is a read of this
     meeting's own record (the address ends in its event ID), is not later than the moment of
     comparison, and the live release cites its body nowhere (no witness, no meeting read), so the
-    bytes are new. A meeting the live release holds must also have been read in another receipt,
-    later than its live read, with every sighting from another source (House XML) unchanged: a House
-    read may move the title, date or videos the House record leads. Cannot see whether the read
-    happened: the unattended gate finds the body and the read's line in the capture table, in
-    receipts the live release did not read. O(meetings).
+    bytes are new. Every sighting and stamp from another source (`publisher_status_observations`,
+    `house_xml_updated`) is unchanged on a matched meeting and absent on a first-stated one (along
+    with transcripts and single-meeting document `measure_keys`), because a House read leads title,
+    date and videos (`meeting-records-merged.sql`). Cannot see whether the read happened or whether
+    a null-status, unchanged-stamp House XML body was also captured: the unattended gate checks
+    both against the capture table (`release_gate.cited_files_are_new`). O(meetings).
     """
     if d.meeting_update is None:
         d.meeting_update = False
-        shared = (set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
+        cand_cols = set(d.columns('candidate', 'meetings')) if d.has('candidate', 'meetings') else set()
+        shared = (set(d.columns('base', 'meetings')) & cand_cols
                   if d.has('base', 'meetings') and d.has('candidate', 'meetings') else set())
         if DETAIL not in shared:
             return False
+        document_subjects(d)
         read = lambda side: f'{side}.{DETAIL}.successful_read'
         cited = [f'SELECT lower({DETAIL}.successful_read.body_sha256) b FROM base_meetings',
                  f'SELECT lower({DETAIL}.latest_attempt.evidence.body_sha256) FROM base_meetings']
         if d.has('base', 'witnesses') and 'record_sha' in d.columns('base', 'witnesses'):
             cited.append('SELECT lower(hex(record_sha)) FROM base_witnesses')
-        others = 'true'
-        if STATUSES in shared:
+        first_terms = ['NOT EXISTS (SELECT 1 FROM doc_meeting_subjects ds WHERE ds.event_id=l.event_id)']
+        matched_terms = ['true']
+        if STATUSES in cand_cols:
             elsewhere = lambda side: f"list_sort(list_filter({side}.{STATUSES},e->e.source IS DISTINCT FROM 'congress_gov'))"
-            others = f"{elsewhere('p')} IS NOT DISTINCT FROM {elsewhere('l')}"
+            first_terms.append(f"len({elsewhere('l')})=0")
+            if STATUSES in shared:
+                matched_terms.append(f"{elsewhere('p')} IS NOT DISTINCT FROM {elsewhere('l')}")
+        if 'house_xml_updated' in cand_cols:
+            first_terms.append('l.house_xml_updated IS NULL')
+            if 'house_xml_updated' in shared:
+                matched_terms.append('p.house_xml_updated IS NOT DISTINCT FROM l.house_xml_updated')
+        if 'transcripts' in cand_cols:
+            first_terms.append('coalesce(len(l.transcripts),0)=0')
+        first_ok, others = ' AND '.join(first_terms), ' AND '.join(matched_terms)
         d.table('meeting_update', f"""WITH cited AS ({' UNION '.join(cited)})
           SELECT l.event_id,lower({read('l')}.body_sha256) AS body,p.event_id IS NULL AS added
           FROM candidate_meetings l LEFT JOIN base_meetings p ON p.event_id=l.event_id
@@ -414,10 +452,39 @@ def updated_meetings(d: Diff):
             AND regexp_extract({read('l')}.source_url,'/([0-9]+)([?#].*)?$',1)=CAST(l.event_id AS VARCHAR)
             AND coalesce({read('l')}.retrieved_at<=TIMESTAMPTZ '{d.now.isoformat()}',false)
             AND lower({read('l')}.body_sha256) NOT IN (SELECT b FROM cited WHERE b IS NOT NULL)
-            AND (p.event_id IS NULL OR ({read('l')}.receipt_key IS DISTINCT FROM {read('p')}.receipt_key
+            AND ((p.event_id IS NULL AND {first_ok}) OR (p.event_id IS NOT NULL AND {read('l')}.receipt_key IS DISTINCT FROM {read('p')}.receipt_key
               AND ({read('p')}.retrieved_at IS NULL OR {read('l')}.retrieved_at>{read('p')}.retrieved_at) AND {others}))""")
         d.meeting_update = d.one('SELECT count(*) FROM meeting_update') > 0
     return d.meeting_update
+
+
+def updated_subjects(d: Diff):
+    """Tables `clean_subject_meetings(event_id,added)` and `new_update_subjects(k)`: updated meetings
+    whose `subject_keys` carry no transcript change or single-meeting document `measure_keys` injection,
+    and the subject keys those updates introduce to the archive for the first time (ct-rhqw)."""
+    if d.subject_update is None:
+        d.subject_update = False
+        shared = (set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
+                  if updated_meetings(d) else set())
+        if 'subject_keys' not in shared:
+            return False
+        document_subjects(d)
+        same_tx = ('list_transform(p.transcripts,t->t.package_id) IS NOT DISTINCT FROM list_transform(l.transcripts,t->t.package_id)'
+                   if 'transcripts' in shared else 'true')
+        empty = 'CAST([] AS VARCHAR[])'
+        d.table('clean_subject_meetings', f"""SELECT u.event_id,u.added FROM meeting_update u
+          JOIN candidate_meetings l USING(event_id) LEFT JOIN base_meetings p USING(event_id)
+          WHERE u.added OR ({same_tx} AND NOT EXISTS (
+            SELECT 1 FROM (SELECT lower(unnest(coalesce(l.subject_keys,{empty}))) AS k
+              EXCEPT SELECT lower(unnest(coalesce(p.subject_keys,{empty})))) a
+            JOIN doc_meeting_subjects ds ON ds.event_id=l.event_id AND ds.k=a.k))""")
+        d.table('new_update_subjects', """SELECT DISTINCT lower(unnest(l.subject_keys)) AS k
+          FROM clean_subject_meetings u JOIN candidate_meetings l USING(event_id) WHERE l.subject_keys IS NOT NULL
+          EXCEPT SELECT DISTINCT lower(unnest(p.subject_keys)) FROM base_meetings p WHERE p.subject_keys IS NOT NULL
+          EXCEPT SELECT k FROM doc_meeting_subjects WHERE event_id IN (SELECT event_id FROM clean_subject_meetings)
+          EXCEPT SELECT k FROM new_doc_subjects""")
+        d.subject_update = True
+    return d.subject_update
 
 
 def updated_witnesses(d: Diff):
@@ -698,6 +765,10 @@ def meetings(d: Diff):
     if updated_meetings(d):
         updated = 'event_id IN (SELECT event_id FROM meeting_update WHERE NOT added)'
         counts = changed_counts(d, join, groups, updated, MEETING_COMPARE)
+        if 'subject_keys' in counts and updated_subjects(d):
+            counts['subject_keys'] = changed_counts(
+                d, join, [g for g in groups if g['group'] == 'changed subject_keys'],
+                'event_id IN (SELECT event_id FROM clean_subject_meetings WHERE NOT added)', MEETING_COMPARE).get('subject_keys', 0)
         shared = set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
         outcome = {}
         if {'outcome_basis', 'outcome_source_reference'} <= shared:
@@ -719,18 +790,13 @@ def meetings(d: Diff):
 def nominations(d: Diff):
     """The registry comparison, with each added nomination that a Congress.gov meeting update newly
     names as a subject set apart as a verified group flagged `refetch_only` (ct-rhqw): its ID is in
-    the updated meeting's candidate `subject_keys` and not in that meeting's live ones (or the meeting
-    is first stated). Any other added, removed or changed nomination still needs a cause."""
+    `new_update_subjects` (not previously a meeting subject, and not supplied by a document's
+    `measure_keys` or a transcript change). Any other added, removed or changed nomination still
+    needs a cause."""
     groups, notes = generic('nominations')(d)
-    if (updated_meetings(d) and 'subject_keys' in set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
-            and 'nomination_id' in d.columns('candidate', 'nominations')):
-        n = d.one("""WITH named AS (SELECT DISTINCT u.event_id,lower(unnest(l.subject_keys)) AS k FROM meeting_update u
-              JOIN candidate_meetings l USING(event_id)),
-            before AS (SELECT DISTINCT p.event_id,lower(unnest(p.subject_keys)) AS k FROM base_meetings p
-              WHERE p.event_id IN (SELECT event_id FROM meeting_update)),
-            new AS (SELECT k FROM named ANTI JOIN before USING(event_id,k))
-          SELECT count(*) FROM candidate_nominations ANTI JOIN base_nominations USING(nomination_id)
-          WHERE lower(nomination_id) IN (SELECT k FROM new)""")
+    if updated_subjects(d) and 'nomination_id' in d.columns('candidate', 'nominations'):
+        n = d.one("""SELECT count(*) FROM candidate_nominations ANTI JOIN base_nominations USING(nomination_id)
+          WHERE lower(nomination_id) IN (SELECT k FROM new_update_subjects)""")
         groups = split_group(groups, 'added keys', 'no evidence given', n, NEW_SUBJECT)
     return groups, notes
 

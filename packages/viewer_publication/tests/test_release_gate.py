@@ -614,8 +614,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     if other_entity:
         additions['meetings'] = pa.table({'event_id': [119123]})
         baseline['meetings'] = additions['meetings'].slice(0, 0)
-    release_dir(base, base_docs, retired=base_retired, **baseline, **(base_tables or {}))
-    release_dir(candidate, candidate_docs, retired=[], **additions, **(candidate_tables or {}))
+    release_dir(base, base_docs, retired=base_retired, **{**baseline, **(base_tables or {})})
+    release_dir(candidate, candidate_docs, retired=[], **{**additions, **(candidate_tables or {})})
     if filenames:
         pq.write_table(pa.table({'filename': filenames}), candidate / 'list.parquet')
         manifest = json.loads((candidate / 'manifest.json').read_text())
@@ -655,6 +655,16 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
                       captures=line['captures']) if failed_duplicate is not None else
                  dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[]))
     raw = {receipt: gzip.compress(('\n'.join(map(json.dumps, (line, unrelated))) + '\n').encode(), mtime=0)}
+    by_receipt = {}
+    for row in capture_lines:
+        if row['receipt_key'] not in raw:
+            sha_hex = row['sha256'].hex() if row.get('sha256') else None
+            by_receipt.setdefault(row['receipt_key'], {})[row.get('receipt_line', 1)] = json.dumps(dict(
+                record={k: v for k, v in dict(mode=row.get('mode', 'fetch'), requested_url=row.get('requested_url'),
+                                              outcome=row.get('outcome', 'stored')).items() if v is not None},
+                captures=[dict(sha256=sha_hex)] if sha_hex else []))
+    for key, by_line in by_receipt.items():
+        raw[key] = gzip.compress(('\n'.join(by_line.get(i, '{}') for i in range(1, max(by_line) + 1)) + '\n').encode(), mtime=0)
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     def automatic(report):
         return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
@@ -1010,9 +1020,9 @@ def cand_tables(record=NEW_RECORD, receipt=RELIST, at=SEEN_AGAIN, **change):
     return meeting_read(record, receipt, at, **{**default, **change})
 
 
-def capture_line(receipt, body, at, *, url=MEETING_URL, receipt_line=1):
-    return dict(receipt_key=receipt, receipt_line=receipt_line, capture_index=0, sha256=body, requested_url=url, family='congress',
-                retrieved_at=at)
+def capture_line(receipt, body, at, *, url=MEETING_URL, receipt_line=1, family='congress', **extra):
+    return dict(receipt_key=receipt, receipt_line=receipt_line, capture_index=0, sha256=body, requested_url=url, family=family,
+                retrieved_at=at, **extra)
 
 
 def edit(tables, name, change):
@@ -1240,6 +1250,34 @@ def document_names(witness_keys, meeting_keys=()):
                                  'witness_keys': [list(witness_keys)], 'meeting_keys': pa.array([list(meeting_keys)], pa.list_(pa.string()))}))
 
 
+HOUSE_MEETING_XML = 'https://docs.house.gov/meetings/AS/AS00/20250612/118340/HHRG-119-AS00-20250612.xml'
+
+
+def document_injects_subject_beside_update(*, first=False):
+    """A newly captured single-meeting document ('N') carries measure_keys=['119-pn-1022-19'], which
+    entity-meetings.sql copies into meeting 118340's subject_keys and entity-nominations.sql publishes."""
+    nom_schema = pa.schema([('nomination_id', pa.string()), ('description', pa.string())])
+    base_m, cand_m = first_stated() if first else (base_tables(), cand_tables())
+    cand_m = edit(cand_m, 'meetings', lambda rows: rows[0].update(subject_keys=['119-pn-1022-19']))
+    base_list = pa.table({'filename': ['A.pdf'], 'meeting_keys': pa.array([[]], pa.list_(pa.string())),
+                          'measure_keys': pa.array([[]], pa.list_(pa.string()))})
+    cand_list = pa.table({'filename': ['A.pdf', 'N.pdf'],
+                          'meeting_keys': pa.array([[], ['118340']], pa.list_(pa.string())),
+                          'measure_keys': pa.array([[], ['119-pn-1022-19']], pa.list_(pa.string()))})
+    cand_detail = pa.table({'link_key': pa.array([K('A'), K('N')], pa.binary(8)),
+                            'saved_body': pa.array([K('A') + bytes(24), K('N') + sha256(b'N').digest()[:24]], pa.binary(32))})
+    base_url = pa.Table.from_pylist([] if first else [state(MEETING_URL, 1, FIRST_SEEN, 200, 'stored', FIRST_SEEN, 28 * DAY, HEARD)],
+                                    schema=URL_STATE)
+    cand_url = pa.concat_tables([url_states(REQUEST, 1), pa.Table.from_pylist(
+        [state(MEETING_URL, 1 if first else 2, SEEN_AGAIN, 200, 'stored', SEEN_AGAIN, 28 * DAY, HEARD)], schema=URL_STATE)])
+    lines = [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN, family='congress/meetings'),
+             capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN, family='congress/meetings')]
+    return ({**base_m, 'list': base_list, 'url_state': base_url, 'nominations': pa.Table.from_pylist([], schema=nom_schema)},
+            {**cand_m, 'list': cand_list, 'detail': cand_detail, 'url_state': cand_url,
+             'nominations': pa.Table.from_pylist([dict(nomination_id='119-pn-1022-19', description='to be IG')], schema=nom_schema)},
+            lines, (), (['A'], ['A', 'N']))
+
+
 def mods_beside(tables, body, keys, mapped=()):
     """`tables` plus MODS witnesses `keys` on meeting 118340 from `body`, and MODS map rows `mapped` (old, new)."""
     out = edit(tables, 'witnesses', lambda rows: rows.extend(other_witness(k, 'mods', body, i + 1, *PANEL[i % 2]) for i, k in enumerate(keys)))
@@ -1330,6 +1368,15 @@ CASES = {
     'witness_coverage_counts_a_new_witness': (lambda: ({**base_tables(), 'meeting_coverage': coverage(2)},
                                                       {**cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3)), 'meeting_coverage': coverage(3)}), True),
     'a_nomination_the_update_newly_names': (lambda: nomination_named_by_the_update('119-pn-1022-19'), True),
+    'house_xml_unchanged_recheck_beside_an_update': (lambda: (
+        base_tables(), cand_tables(),
+        [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+         dict(capture_line(FIRST_READ, OTHER_BODY, FIRST_SEEN, url=HOUSE_MEETING_XML, receipt_line=2), family='house/meeting-xml'),
+         dict(capture_line(RELIST, OTHER_BODY, SEEN_AGAIN, url=HOUSE_MEETING_XML, receipt_line=2), family='house/meeting-xml', outcome='unchanged')]), True),
+    'house_xml_for_another_meeting_captured_beside_an_update': (lambda: (
+        base_tables(), cand_tables(),
+        [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+         dict(capture_line(RELIST, OTHER_BODY, SEEN_AGAIN, url=HOUSE_MEETING_XML.replace('118340', '999999'), receipt_line=2), family='house/meeting-xml')]), True),
     'read_dated_a_minute_ago': (lambda: (base_tables(), cand_tables(at=(t := datetime.now(timezone.utc).replace(microsecond=0) - timedelta(minutes=1))),
                                          [capture_line(RELIST, NEW_RECORD, t), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), True),
 
@@ -1383,6 +1430,17 @@ CASES = {
                                                cand_tables(house_xml='2026-01-01', held=('canceled', 'publisher_cancellation', 'e2' * 32),
                                                            statuses=[LIVE_STATUS, SEEN_IN_THE_NEW_BODY, HOUSE_SEEN_AGAIN])), 'meetings.parquet|changed outcome'),
     'house_xml_stamp_moved_on_an_update': (lambda: (base_tables(), cand_tables(title='Renamed', house_xml='2026-11-08')), 'meetings.parquet|changed house_xml_updated'),
+    'house_xml_null_status_captured_on_an_update': (lambda: (
+        base_tables(), cand_tables(title='Renamed by House XML'),
+        [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+         dict(capture_line(RELIST, OTHER_BODY, SEEN_AGAIN, url=HOUSE_MEETING_XML, receipt_line=2), family='house/meeting-xml')]),
+        'new House XML body'),
+    'first_stated_meeting_with_house_xml_stamp': (lambda: (first_stated()[0], cand_tables(mapped=[], house_xml='2026-11-08')),
+                                                  'meetings.parquet|added keys|unexplained'),
+    'first_stated_meeting_with_house_xml_status': (lambda: (first_stated()[0], cand_tables(mapped=[], statuses=[SEEN_IN_THE_NEW_BODY, HOUSE_SEEN_AGAIN])),
+                                                   'meetings.parquet|added keys|unexplained'),
+    'new_single_meeting_document_injects_a_nomination_on_an_update': (document_injects_subject_beside_update, 'meetings.parquet|changed subject_keys'),
+    'new_first_stated_meeting_with_document_measure_keys': (lambda: document_injects_subject_beside_update(first=True), 'meetings.parquet|added keys|unexplained'),
     'held_by_a_transcript_on_an_update': (lambda: (base_tables(), cand_tables(held=('held', 'committee_transcript', '256383'))), 'meetings.parquet|changed outcome'),
     # C3: a live outcome from a transcript is not the publisher's to undo.
     'canceled_where_a_transcript_held_it': (lambda: (base_tables(held=('held', 'committee_transcript', '256383')),

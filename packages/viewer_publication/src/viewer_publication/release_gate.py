@@ -358,8 +358,9 @@ def _epoch_us(moment):
     return ((moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)) - EPOCH) // timedelta(microseconds=1)
 
 
-def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work):
-    """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf); empty when it can.
+def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work, updated_events=(),
+                        candidate_receipt_keys=None):
+    """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf, ct-rhqw); empty when it can.
 
     The comparison shows only that the candidate is consistent with itself. Here every body the
     candidate cites for the first time (`release_comparison.new_citations`: cache files, witness
@@ -372,10 +373,12 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     byte-identical re-fetch names an old body in a new line) and fetched at the read's time. The
     comparison requires that time later than the live read's, so the capture line is too. So a
     made-up read, a read the live release already held and a read dated other than its line refuse.
-    One engine job, two joins of a few hundred keys to captures; the evidence file lists each
-    hash's receipts and each read's line. Cannot see: whether the body holds the published values,
-    or the raw receipt line (the capture mapping is trusted for hash and address; documents are
-    checked against raw).
+    When `updated_events` names Congress.gov meeting updates, the same job checks that no new
+    receipt delivered a new House meeting XML body for an updated meeting (a null-status,
+    unchanged-stamp House XML leaves no trace in `meetings.parquet`, yet leads title, date and
+    videos). One engine job; the evidence file lists each hash's receipts and each read's line.
+    Cannot see: whether the body holds the published values, or the raw receipt line (the capture
+    mapping is trusted for hash and address; documents are checked against raw).
     """
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
@@ -389,14 +392,37 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     pq.write_table(pa.table({f: pa.array([r[f] for r in reads], t) for f, t in
                              (('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()))}),
                    work / 'cited-reads.parquet')
-    found = run_job(work / 'citations', engine, inputs=[table_input('captures', _captures_source(captures)),
-        dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet')),
-        dict(name='cited_reads', kind='parquet', path=str(work / 'cited-reads.parquet'))], steps=[], outputs=[],
-        queries=[dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
+    inputs = [table_input('captures', _captures_source(captures)),
+              dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet')),
+              dict(name='cited_reads', kind='parquet', path=str(work / 'cited-reads.parquet'))]
+    queries = [dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
             JOIN captures c ON lower(encode(c.sha256,'hex'))=k.sha WHERE c.sha256 IS NOT NULL ORDER BY 1,2"""),
-                 dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
+               dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
             c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
-            AND c.capture_index=k.capture_index ORDER BY 1,2,3""")])
+            AND c.capture_index=k.capture_index ORDER BY 1,2,3""")]
+    if updated_events:
+        pq.write_table(pa.table({'receipt_key': pa.array(sorted(held), pa.string())}), work / 'held-receipts.parquet')
+        inputs.append(dict(name='held_receipts', kind='parquet', path=str(work / 'held-receipts.parquet')))
+        if candidate_receipt_keys is not None:
+            pq.write_table(pa.table({'receipt_key': pa.array(sorted(set(candidate_receipt_keys) - held), pa.string())}),
+                           work / 'new-receipts.parquet')
+            inputs.append(dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')))
+            new_filter = 'JOIN new_receipts nr ON nr.receipt_key=hx.receipt_key'
+        else:
+            new_filter = 'LEFT JOIN held_receipts hr ON hr.receipt_key=hx.receipt_key WHERE hr.receipt_key IS NULL'
+        addr = "lower(coalesce(c.url,c.requested_url,c.context_url,''))"
+        queries.append(dict(name='house_xml', sql=f"""WITH hx AS (
+                SELECT lower(encode(c.sha256,'hex')) AS sha,c.receipt_key,{addr} AS addr FROM captures c
+                WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
+                  AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
+                  AND coalesce(c.family,'')<>'house/witness-xml' AND {addr} NOT LIKE '%wlist%'
+                  AND (c.family IN ('house/meeting-xml','house/Committees')
+                       OR ({addr} LIKE '%docs.house.gov%' AND {addr} LIKE '%.xml%'))),
+            live_hx AS (SELECT DISTINCT hx.sha FROM hx JOIN held_receipts hr ON hr.receipt_key=hx.receipt_key)
+            SELECT DISTINCT n.sha,n.receipt_key,n.addr
+            FROM (SELECT hx.sha,hx.receipt_key,hx.addr FROM hx {new_filter}) n
+            LEFT JOIN live_hx l ON l.sha=n.sha WHERE l.sha IS NULL ORDER BY 1,2,3"""))
+    found = run_job(work / 'citations', engine, inputs=inputs, steps=[], outputs=[], queries=queries)
     receipts = {}
     for row in found['files']:
         receipts.setdefault(row['sha'], []).append(row['receipt_key'])
@@ -422,6 +448,23 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
             reasons.append(f"automatic causes: read {where} requested {line['requested_url']}, not {read['source_url']}")
         elif read['retrieved_at'] is None or line['t'] != _epoch_us(read['retrieved_at']):
             reasons.append(f"automatic causes: read {where} is dated {read['retrieved_at']}, not its capture line's time")
+    if found.get('house_xml'):
+        updated_set = {int(e) for e in updated_events}
+        meetings_path = Path(candidate_dir) / 'meetings.parquet'
+        non_senate_update = True
+        if meetings_path.exists():
+            schema_names = set(pq.read_schema(meetings_path).names)
+            cols = [c for c in ('event_id', 'chamber', 'congress_gov_detail_observation') if c in schema_names]
+            mrows = [r for r in pq.read_table(meetings_path, columns=cols).to_pylist() if r.get('event_id') in updated_set]
+            non_senate_update = any(
+                (r.get('chamber') or '').lower() != 'senate' if 'chamber' in schema_names
+                else '/senate/' not in (((r.get('congress_gov_detail_observation') or {}).get('successful_read') or {}).get('source_url') or '').lower()
+                for r in mrows)
+        for row in found['house_xml']:
+            ids_in_url = {int(m) for m in re.findall(r'(?:meetings/[^?#]*/|[?&]eventid=)(\d{5,})(?=$|[^0-9])', row['addr'] or '')}
+            if (ids_in_url & updated_set) or (not ids_in_url and non_senate_update):
+                reasons.append(
+                    f"automatic causes: new House XML body {row['sha'][:16]} ({row['receipt_key']}) accompanies an updated meeting")
     (work / 'citation-trace.json').write_text(json.dumps(dict(live_receipts=len(held), files=receipts, reads=found['reads']),
                                                           indent=1, default=str) + '\n')
     return reasons
@@ -893,7 +936,10 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
         # With nothing to be absent from, every receipt would count as new.
         return [], ['automatic causes: the live release has no receipt set to compare with']
     if len(every) > len(differences):
-        reasons = cited_files_are_new(base_dir, candidate_dir, engine=engine, captures=captures, held=held, work=Path(work) / 'cited')
+        updated_events = report['files'].get('meetings.parquet', {}).get('congress_gov_updates') or []
+        reasons = cited_files_are_new(base_dir, candidate_dir, engine=engine, captures=captures, held=held,
+                                      work=Path(work) / 'cited', updated_events=updated_events,
+                                      candidate_receipt_keys=candidate_receipt_keys)
         if reasons or not differences:
             return [], reasons
     d = Diff(Path(base_dir), Path(candidate_dir))
