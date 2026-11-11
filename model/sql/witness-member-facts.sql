@@ -12,7 +12,7 @@
 -- 'Member of Congress'), a committee role ('ranking House Member' included), whether it may state a House seat ('3d
 -- District', '(AR-2)', 'a Delegate'), the words of its name and first field a seat's holder may be named by, and
 -- whether it is a name with no other field at a hearing whose title says Member Day ('Members' Day'; not 'Former
--- Members Day').
+-- Members Day'), whether it says opening statement, and its meeting and print (witness_member_committees).
 -- 'Representative of' or 'for' an organization is not the House. 'eligible' marks the rows the name and seat rules
 -- read: dated, without the publisher's ID of a known Member, and with no words that keep them witnesses.
 -- Its own step: the name, candidate, row, seat and decision steps read it.
@@ -21,7 +21,7 @@ WITH fold(accented,plain) AS (
  VALUES ('áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld')
 ), witness_rows AS (
  SELECT r.witness_key,coalesce(p.superseded_by,r.witness_key) AS person,r.bioguide_id AS publisher_id,
-  k.bioguide_id IS NOT NULL AS publisher_member,r.name,
+  k.bioguide_id IS NOT NULL AS publisher_member,r.event_id,r.package_id,r.name,
   concat_ws(' | ',r.position,r.organization,r.on_behalf_of,r.location) AS fields,
   concat_ws(chr(10),r.name,r.position,r.organization,r.on_behalf_of,r.location) AS name_lines,
   concat_ws(chr(10),r.position,r.organization,r.on_behalf_of,r.location) AS field_lines,
@@ -32,17 +32,17 @@ WITH fold(accented,plain) AS (
   ON p.witness_key=r.witness_key) ON m.event_id=r.event_id) ON f.package_id=r.package_id) ON k.bioguide_id=r.bioguide_id
  WHERE r.name IS NOT NULL AND coalesce(r.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material')
 ), named AS (
- SELECT 'witness' AS side,'name' AS part,witness_key AS id,person,publisher_id,publisher_member,name AS raw,fields,name_lines,field_lines,dates,title,
+ SELECT 'witness' AS side,'name' AS part,witness_key AS id,person,publisher_id,publisher_member,event_id,package_id,name AS raw,fields,name_lines,field_lines,dates,title,
   false AS abbreviated
  FROM witness_rows
  UNION ALL
  SELECT 'member' AS side,'family' AS part,bioguide_id AS id,cast(NULL AS VARCHAR) AS person,cast(NULL AS VARCHAR) AS publisher_id,
-  false AS publisher_member,name_last AS raw,cast(NULL AS VARCHAR) AS fields,cast(NULL AS VARCHAR) AS name_lines,cast(NULL AS VARCHAR) AS field_lines,
+  false AS publisher_member,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS package_id,name_last AS raw,cast(NULL AS VARCHAR) AS fields,cast(NULL AS VARCHAR) AS name_lines,cast(NULL AS VARCHAR) AS field_lines,
   arrow_cast(NULL,'List(Utf8)') AS dates,cast(NULL AS VARCHAR) AS title,false AS abbreviated
  FROM spicy_members WHERE bioguide_id IS NOT NULL
  UNION ALL
  SELECT 'member' AS side,'given' AS part,bioguide_id AS id,cast(NULL AS VARCHAR) AS person,cast(NULL AS VARCHAR) AS publisher_id,
-  false AS publisher_member,regexp_replace(coalesce(name_first,''),'[()]',' ','g')||' '||coalesce(name_nickname,'') AS raw,cast(NULL AS VARCHAR) AS fields,
+  false AS publisher_member,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS package_id,regexp_replace(coalesce(name_first,''),'[()]',' ','g')||' '||coalesce(name_nickname,'') AS raw,cast(NULL AS VARCHAR) AS fields,
   cast(NULL AS VARCHAR) AS name_lines,cast(NULL AS VARCHAR) AS field_lines,arrow_cast(NULL,'List(Utf8)') AS dates,
   cast(NULL AS VARCHAR) AS title,coalesce(regexp_like(name_first,'^\s*[A-Za-z]{2,4}\.\s*$'),false) AS abbreviated
  FROM spicy_members WHERE bioguide_id IS NOT NULL
@@ -65,7 +65,8 @@ WITH fold(accented,plain) AS (
   make_array('','mr','mrs','ms','miss','mx','dr','hon','honorable','the','rev','reverend','sen','senator','rep','representative','gen','general','lt','lieutenant','col','colonel','maj','major','adm','admiral','vadm','radm','ltg','mg','bg','vice','rear','capt','captain','sgt','sergeant','brigadier','chief','ambassador','secretary','judge','governor','mayor','professor','prof','commissioner','chairman','chairwoman','chair','ranking','member','congressman','congresswoman','delegate','jr','sr','ii','iii','iv','phd','md','mph','rn','mba','dvm','esq','cpa','edd','dds','mpa','mpp','msw','ret','usa','usn','usaf','usmc','uscg','ussf')) AS toks
  FROM folded
 ), facts AS (
-SELECT side,part,id,person,publisher_id,publisher_member,toks,abbreviated,
+SELECT side,part,id,person,publisher_id,publisher_member,event_id,package_id,toks,abbreviated,
+ part='name' AND regexp_like(full_text,'\bopening statements?\b') AS says_opening,
  part='name' AND trim(fields)='' AND regexp_like(title_words,'\smembers?\s(s\s)?day\s')
   AND NOT regexp_like(title_words,'\sformer\smembers?\s(s\s)?day\s') AS member_day_name_only,
  CASE WHEN part='name' THEN string_to_array(trim(regexp_replace(seat_text,'[^a-z]+',' ','g')),' ') END AS seat_words,

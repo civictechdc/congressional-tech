@@ -10,7 +10,9 @@ a district code, a name with nothing else, a seat's holder named only by family 
 a seat stated beside a state legislature, a bare initial in the members data (C. Cox) and in the row's own
 reading (JD Vance), an initial another sitting Member shares, 'ranking House Member', 'Representatives in
 Congress', a name alone at a Member Day hearing and at a Former Members Day hearing, a co-chair of a listed
-congressional commission, and a namesake at a commission the list does not hold.
+congressional commission, a namesake at a commission the list does not hold, and committee members' own opening
+statements (on the hearing's committee, on its parent, on a print's committee) beside an opening statement by a
+Member off the committee, a committee member's testimony and an opening statement before the rosters begin.
 """
 import json
 import os
@@ -20,11 +22,14 @@ import pytest
 
 from congress_api.retention.provenance import json_input, list_of, run_job
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_model import REGISTRIES, WITNESSES_SQL
+from congress_api.retention.provenance import struct
+from viewer_publication.archive_model import REGISTRIES, SPICY_SCHEMAS, WITNESSES_SQL
 
 ROOT = Path(__file__).parents[3]
 STEPS = ('member-terms', 'witness-member-facts', 'witness-member-names', 'witness-member-candidates', 'witness-member-rows',
-         'witness-member-mentions', 'witness-member-seats', 'witness-member-tiers', 'witness-member-decisions', 'witness-members')
+         'witness-member-mentions', 'witness-member-seats', 'witness-member-tiers', 'witness-member-decisions', 'entity-rosters',
+         'witness-member-committees', 'witness-members')
+STEP_NAMES = {'entity-rosters': 'roster_seats'}
 
 # bioguide, first, last, nickname, term type, state, start, end
 MEMBERS = [
@@ -59,7 +64,15 @@ MEMBERS = [
     ('S000005', 'F.', 'Sensenbrenner', None, 'rep', 'WI', '1979-01-15', '2021-01-03'),
     ('K000005', 'Angus', 'King', None, 'sen', 'ME', '2013-01-03', '2025-01-03'),
     ('W000008', 'Joe', 'Wilson', None, 'rep', 'SC', '2001-12-18', '2027-01-03'),
+    ('W000009', 'Jackie', 'Walorski', None, 'rep', 'IN', '2013-01-03', '2019-01-03'),
+    ('P000005', 'Collin', 'Peterson', None, 'rep', 'MN', '1991-01-03', '2021-01-03'),
+    ('S000007', 'Austin', 'Scott', None, 'rep', 'GA', '2011-01-05', '2027-01-03'),
+    ('K000009', 'Marcy', 'Kaptur', None, 'rep', 'OH', '1983-01-03', '2027-01-03'),
 ]
+# Pinned roster seats (Congress, committee, Member): Peterson sits on the full committee only, Scott on a subcommittee too.
+SEATS = [(114, 'hsag00', 'W000009'), (114, 'hsag00', 'P000005'), (114, 'hsag00', 'S000007'), (114, 'hsag22', 'S000007'),
+         (116, 'hsap00', 'K000009')]
+COMMITTEES = {9030: ['hsag00'], 9031: ['hsag22'], 9032: ['hsif00'], 9033: ['hsag00'], 9034: ['hsag00']}
 DISTRICTS = {'P000003': 0, 'C000004': 46}  # House seats the seat rule reads; 0 is at large
 MEETINGS = [
     (9001, '2023-03-01', "Members' Day Hearing"),
@@ -91,6 +104,11 @@ MEETINGS = [
     (9027, '2019-05-01', 'Former Members Day Hearing: Speaking from Experience'),
     (9028, '2020-02-11', 'Cybersecurity'),
     (9029, '2008-04-15', 'Veterans health'),
+    (9030, '2015-03-01', 'Nutrition assistance'),
+    (9031, '2015-04-01', 'Subcommittee on commodities'),
+    (9032, '2019-06-01', 'Member Day Hearing'),
+    (9033, '2015-05-01', 'Farm credit'),
+    (9034, '2008-05-01', 'Farm bill'),
 ]
 # witness_key: (source, event_id, package_id, name, position, organization, witness_type, bioguide_id, superseded_by)
 ROWS = {
@@ -142,6 +160,18 @@ ROWS = {
     'listed-commission': ('mods', 9028, None, 'Angus S. King Jr.', 'Co-Chair', 'Cyberspace Solarium Commission', None, None, None),
     'commission-not-listed': ('mods', 9029, None, 'Joseph L. Wilson', 'Deputy Director',
                               'Veterans Affairs and Rehabilitation Commission, American Legion', None, None, None),
+    'committee-opening': ('mods', 9030, None, 'Jackie Walorski', 'a Representative in Congress from Indiana', 'opening statement',
+                          None, None, None),
+    'parent-committee-opening': ('mods', 9031, None, 'Collin C. Peterson', 'a Representative in Congress from Minnesota',
+                                 'opening statement', None, None, None),
+    'print-committee-opening': ('mods', None, 'CHRG-114hhrg99999', 'Austin Scott', 'a Representative in Congress from Georgia',
+                                'opening statement', None, None, None),
+    'opening-off-the-committee': ('mods', 9032, None, 'Marcy Kaptur', 'a Representative in Congress from the State of Ohio',
+                                  'opening statement', None, None, None),
+    'committee-member-testifies': ('mods', 9033, None, 'Jackie Walorski', 'a Representative in Congress from Indiana', None,
+                                   None, None, None),
+    'opening-before-the-rosters': ('mods', 9034, None, 'Collin C. Peterson', 'a Representative in Congress from Minnesota',
+                                   'opening statement', None, None, None),
 }
 
 
@@ -156,12 +186,24 @@ def result(tmp_path_factory):
                                                      term_start=start, term_end=end) for b, _f, _l, _n, t, s, start, end in MEMBERS],
                    bioguide_id='Utf8', term_type='Utf8', term_state='Utf8', term_district='Int32', term_party='Utf8',
                    term_start='Utf8', term_end='Utf8'),
-        json_input(work, 'meetings_input', [dict(event_id=e, meeting_date=d, title=t) for e, d, t in MEETINGS],
-                   event_id='Int64', meeting_date='Utf8', title='Utf8'),
+        json_input(work, 'meetings_input', [dict(event_id=e, meeting_date=d, title=t,
+                                                 committees=[dict(system_code=c, role=None) for c in COMMITTEES.get(e, [])])
+                                            for e, d, t in MEETINGS],
+                   event_id='Int64', meeting_date='Utf8', title='Utf8', committees=list_of(struct(system_code='Utf8', role='Utf8'))),
+        json_input(work, 'spicy_committee_assignments', [
+            {**{k: None for k in SPICY_SCHEMAS['spicy_committee_assignments']}, 'congress': c, 'system_code': code, 'bioguide_id': b,
+             'chamber': 'house'} for c, code, b in SEATS], **SPICY_SCHEMAS['spicy_committee_assignments']),
+        json_input(work, 'committee_codes', json.loads((ROOT / 'model/registries/committee-codes.json').read_text()),
+                   **REGISTRIES['committee_codes']),
+        json_input(work, 'document_packages', [dict(component='print-1', package_id='CHRG-114hhrg99999')],
+                   component='Utf8', package_id='Utf8'),
+        json_input(work, 'document_metadata', [dict(component='print-1', committee_keys=['hsag00'], meeting_keys=[])],
+                   component='Utf8', committee_keys=list_of('Utf8'), meeting_keys=list_of('Utf8')),
         json_input(work, 'congressional_commissions',
                    json.loads((ROOT / 'model/registries/congressional-commissions.json').read_text()),
                    **REGISTRIES['congressional_commissions']),
-        json_input(work, 'package_mods_facts', [dict(package_id='CHRG-rivers', held_dates=['2010-03-02'], title='Rivers')],
+        json_input(work, 'package_mods_facts', [dict(package_id='CHRG-rivers', held_dates=['2010-03-02'], title='Rivers'),
+                                                dict(package_id='CHRG-114hhrg99999', held_dates=['2016-02-01'], title='Cotton')],
                    package_id='Utf8', held_dates=list_of('Utf8'), title='Utf8'),
         json_input(work, 'appearance_rows', [
             dict(witness_key=k, source=s, event_id=e, package_id=p, name=n, position=pos, organization=org, witness_type=t, bioguide_id=b)
@@ -173,7 +215,8 @@ def result(tmp_path_factory):
     ]
     sql = lambda name: (ROOT / 'model/sql' / (name + '.sql')).read_text()
     steps = [
-        dict(name='meetings_resolved', sql='SELECT event_id,cast(meeting_date AS DATE) AS meeting_date,title FROM meetings_input', materialize=True),
+        dict(name='meetings_resolved', sql='SELECT event_id,cast(meeting_date AS DATE) AS meeting_date,title,committees FROM meetings_input',
+             materialize=True),
         dict(name='appearance_records_resolved', sql="""SELECT witness_key,
             CASE WHEN event_id IS NOT NULL THEN 'meeting:'||cast(event_id AS VARCHAR) ELSE 'package:'||package_id END AS occasion,source,
             arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,source||':witness[1]' AS source_locator,
@@ -182,7 +225,7 @@ def result(tmp_path_factory):
             cast(NULL AS SMALLINT) AS panel_order,cast(NULL AS SMALLINT) AS display_order,witness_type,cast(NULL AS BOOLEAN) AS testified,
             bioguide_id FROM appearance_rows""", materialize=True),
         dict(name='witness_precedence', sql='SELECT witness_key,superseded_by FROM precedence_rows', materialize=True),
-        *[dict(name=n.replace('-', '_'), sql=sql(n), materialize=True) for n in STEPS],
+        *[dict(name=STEP_NAMES.get(n, n.replace('-', '_')), sql=sql(n), materialize=True) for n in STEPS],
     ]
     return run_job(work, engine, inputs=inputs, steps=steps, outputs=[], queries=[
         dict(name='members', sql='SELECT witness_key,outcome,matched_bioguide_id,match_basis FROM witness_members ORDER BY witness_key'),
@@ -215,6 +258,9 @@ def decided(result):
     ('representatives-in-congress', ('member', 'S000005', 'name_state')),
     ('member-day-name-alone', ('member', 'S000001', 'member_day')),
     ('listed-commission', ('member', 'K000005', 'name_role')),       # the registry lists the Solarium Commission
+    ('opening-off-the-committee', ('member', 'K000009', 'name_state')),   # an Appropriations member at Energy and Commerce
+    ('committee-member-testifies', ('member', 'W000009', 'name_state')),  # no opening statement
+    ('opening-before-the-rosters', ('member', 'P000005', 'name_state')),  # the rosters begin with the 113th Congress
 ])
 def test_sitting_members_acting_officially_are_member_appearances(result, key, expected):
     assert decided(result)[key] == expected
@@ -226,6 +272,17 @@ def test_sitting_members_acting_officially_are_member_appearances(result, key, e
                                  'seat-in-a-state-legislature', 'former-members-day-name-alone', 'commission-not-listed'])
 def test_these_stay_witnesses_or_statements(result, key):
     assert key not in decided(result)
+
+
+@pytest.mark.parametrize('key,expected', [
+    ('committee-opening', ('statement', 'W000009', 'name_state')),
+    ('parent-committee-opening', ('statement', 'P000005', 'name_state')),  # a full committee member at its subcommittee
+    ('print-committee-opening', ('statement', 'S000007', 'name_state')),   # the print's own document names the committee
+])
+def test_a_committee_members_own_opening_statement_is_a_member_statement(result, key, expected):
+    assert decided(result)[key] == expected
+    row = next(r for r in result['witnesses'] if r['witness_key'] == key)
+    assert (row['witness_type'], row['matched_bioguide_id']) == ('member_statement', expected[1])
 
 
 def test_the_hearings_own_nominee_stays_a_witness(result):

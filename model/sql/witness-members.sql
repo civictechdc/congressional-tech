@@ -17,6 +17,9 @@
 --  member_day    the row is a name alone at a hearing whose title says Member Day (not 'Former Members Day') and its
 --                family and first name agree with exactly one Member sitting on the date;
 --  group         another row of the same appearance (witness_precedence) matched.
+-- A matched appearance one of whose rows says 'opening statement' by a Member the rosters seat on the hearing's
+-- committee or its parent (witness_member_committees) is a committee member's own opening statement: outcome
+-- 'statement', published as member_statement with the matched Member (owner decision 2026-11-10).
 -- The row's own words keep it a witness when it says former or gives a closed span of years, names a state
 -- legislature, a House or Senate officer or staffer, or 'Representative of' an organization. Several fitting Members
 -- leave it 'ambiguous' unless an equal first name singles one out; the hearing's own nominee is 'nominee'. Either
@@ -30,19 +33,20 @@ WITH group_members AS (
  SELECT person,count(bioguide_id) AS members,min(bioguide_id) AS bioguide_id,bool_or(nominee) AS nominee
  FROM group_members GROUP BY person
 ), resolved AS (
- SELECT f.id AS witness_key,d.outcome AS own_outcome,d.basis AS own_basis,g.person AS group_person,g.members,g.nominee,g.bioguide_id
+ SELECT f.id AS witness_key,f.person,d.outcome AS own_outcome,d.basis AS own_basis,g.person AS group_person,g.members,g.nominee,g.bioguide_id
  FROM groups g RIGHT JOIN (witness_member_decisions d RIGHT JOIN (SELECT id,person FROM witness_member_facts WHERE side='witness') f
   ON d.witness_key=f.id) ON g.person=f.person
  WHERE d.witness_key IS NOT NULL OR g.person IS NOT NULL
 ), outcomes AS (
- SELECT witness_key,own_basis,bioguide_id,own_outcome,
+ SELECT witness_key,person,own_basis,bioguide_id,own_outcome,
   CASE WHEN group_person IS NULL THEN own_outcome
    WHEN nominee THEN CASE WHEN own_outcome='member' THEN 'nominee' ELSE own_outcome END
    WHEN members>1 THEN CASE WHEN own_outcome='member' THEN 'ambiguous' ELSE own_outcome END
    ELSE 'member' END AS outcome
  FROM resolved
 )
-SELECT witness_key,outcome,
- CASE WHEN outcome='member' THEN bioguide_id END AS matched_bioguide_id,
- CASE WHEN outcome='member' THEN CASE WHEN own_outcome='member' THEN own_basis ELSE 'group' END END AS match_basis
-FROM outcomes WHERE outcome IS NOT NULL
+SELECT o.witness_key,CASE WHEN o.outcome='member' AND c.person IS NOT NULL THEN 'statement' ELSE o.outcome END AS outcome,
+ CASE WHEN o.outcome='member' THEN o.bioguide_id END AS matched_bioguide_id,
+ CASE WHEN o.outcome='member' THEN CASE WHEN o.own_outcome='member' THEN o.own_basis ELSE 'group' END END AS match_basis
+FROM witness_member_committees c RIGHT JOIN outcomes o ON c.person=o.person AND c.bioguide_id=o.bioguide_id
+WHERE o.outcome IS NOT NULL

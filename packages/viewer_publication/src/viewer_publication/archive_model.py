@@ -920,11 +920,12 @@ def meeting_records_have_document_references(path):
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false"""
-# A sitting Member acting officially is published as witness_type member_appearance (ct-kw85): the archive's
-# classification replaces the source's for those rows, whose own value stays in the appearance record.
+# A sitting Member acting officially is published as witness_type member_appearance, and a committee member's own
+# opening statement as member_statement (ct-kw85): the archive's classification replaces the source's for those rows,
+# whose own value stays in the appearance record.
 WITNESSES_SQL=('SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_locator,r.context_key,r.event_id,r.package_id,r.page_url,'
     'r.name,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,'
-    "CASE WHEN m.outcome='member' THEN 'member_appearance' ELSE r.witness_type END AS witness_type,"
+    "CASE m.outcome WHEN 'member' THEN 'member_appearance' WHEN 'statement' THEN 'member_statement' ELSE r.witness_type END AS witness_type,"
     'r.testified,r.bioguide_id,p.superseded_by,m.matched_bioguide_id,m.match_basis '
     'FROM witness_members m RIGHT JOIN (witness_precedence p RIGHT JOIN appearance_records_resolved r ON p.witness_key=r.witness_key) '
     'ON m.witness_key=r.witness_key')
@@ -989,7 +990,10 @@ def appearance_steps(*,root=ROOT):
         dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(
         ['witness-precedence','witness-key-current','witness-key-priors','witness-key-map',
          'member-terms','witness-member-facts','witness-member-names','witness-member-candidates','witness-member-rows',
-         'witness-member-mentions','witness-member-seats','witness-member-tiers','witness-member-decisions','witness-members'],root=root)
+         'witness-member-mentions','witness-member-seats','witness-member-tiers','witness-member-decisions'],root=root)+[
+        # The pinned rosters as a step: the rosters export and the committee check read the one result.
+        dict(name='roster_seats',sql=(Path(root)/'model/sql/entity-rosters.sql').read_text(),materialize=True)]+_sql_steps(
+        ['witness-member-committees','witness-members'],root=root)
 
 
 def package_link_steps(*,root=ROOT):
@@ -1413,7 +1417,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ('caption_resources','SELECT * FROM caption_resources',['video_key','track_body','ordinal'],['suffix','format','status']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
-            ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
+            ('rosters','SELECT * FROM roster_seats',['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
             ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
             ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
         ]
