@@ -5,17 +5,23 @@ from __future__ import annotations
 import argparse
 from fnmatch import fnmatch
 from hashlib import sha256
+import heapq
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tomllib
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 PIN_FILE = ROOT / 'model/docspec-runtime-pin.json'
+SHARD_DURATIONS_FILE = ROOT / '.github/scripts/test-shard-durations.json'
+DEFAULT_SHARD_DURATION_MS = 5_000
+MIN_SHARD_DURATION_MS = 100
 
 
 def declaration():
@@ -477,14 +483,72 @@ def parse_shard(value):
     return index, count
 
 
-def shard_files(files, roots, shard):
-    """Sort T enrolled files in O(T log T), retaining the lane's pytest filters."""
+def _validate_shard_durations(durations):
+    if not isinstance(durations, dict):
+        raise ValueError('shard durations must be a JSON object mapping test paths to positive integer ms')
+    for key, value in durations.items():
+        if (not isinstance(key, str) or not key.endswith('.py')
+                or isinstance(value, bool) or not isinstance(value, int) or value <= 0):
+            raise ValueError(f'invalid shard duration entry {key!r}: {value!r}')
+    return durations
+
+
+def load_shard_durations(source=SHARD_DURATIONS_FILE):
+    """Load per-file durations in integer milliseconds for deterministic LPT sharding."""
+    return _validate_shard_durations(json.loads(Path(source).read_text()))
+
+
+def junit_shard_durations(xml_paths, files):
+    """Extract per-file integer-ms timings from passing pytest JUnit XMLs, overlaying runs in order."""
+    by_dotted = {item[:-3].replace('/', '.'): item for item in files if item.endswith('.py')}
+    measured = {}
+    for xml_path in xml_paths:
+        try:
+            root = ET.parse(xml_path).getroot()
+        except ET.ParseError as error:
+            raise ValueError(f'malformed JUnit XML in {xml_path}: {error}') from None
+        if root.tag not in {'testsuite', 'testsuites'}:
+            raise ValueError(f'expected JUnit testsuite root in {xml_path}, got {root.tag!r}')
+        cases = list(root.iter('testcase'))
+        if not cases:
+            raise ValueError(f'JUnit file {xml_path} contains no testcase entries')
+        totals = {}
+        for case in cases:
+            if case.find('failure') is not None or case.find('error') is not None:
+                raise ValueError(f'refusing JUnit timings from failed or errored testcase in {xml_path}')
+            classname = case.attrib.get('classname', '')
+            if not classname and case.find('skipped') is not None:
+                classname = case.attrib.get('name', '')
+            parts = classname.split('.') if classname else []
+            matched = next((by_dotted[cand] for k in range(len(parts), 0, -1)
+                            if (cand := '.'.join(parts[:k])) in by_dotted), None)
+            if matched is None:
+                raise ValueError(f'unmapped JUnit classname {classname!r} in {xml_path}')
+            seconds = float(case.attrib.get('time', '0') or 0.0)
+            if not math.isfinite(seconds) or seconds < 0:
+                raise ValueError(f'invalid JUnit testcase time {seconds!r} for {classname!r} in {xml_path}')
+            totals[matched] = totals.get(matched, 0.0) + seconds
+        for matched, seconds in totals.items():
+            measured[matched] = max(MIN_SHARD_DURATION_MS, round(seconds * 1_000))
+    return dict(sorted(measured.items()))
+
+
+def shard_files(files, roots, shard, *, durations=None):
+    """Partition T enrolled files across K shards by greedy longest-first duration in O(T log T)."""
     index, count = shard
     if not 1 <= index <= count:
         raise ValueError('shard must satisfy 1 <= INDEX <= COUNT')
-    candidates = sorted({path for path in files if any(
-        path == root or path.startswith(root.rstrip('/') + '/') for root in roots)})
-    selected = candidates[index - 1::count]
+    table = load_shard_durations() if durations is None else _validate_shard_durations(durations)
+    candidates = {item for item in files if any(
+        item == root or item.startswith(root.rstrip('/') + '/') for root in roots)}
+    ordered = sorted(candidates, key=lambda item: (-table.get(item, DEFAULT_SHARD_DURATION_MS), item))
+    buckets = [[] for _ in range(count)]
+    heap = [(0, 0, i) for i in range(count)]
+    for item in ordered:
+        load, size, target = heapq.heappop(heap)
+        buckets[target].append(item)
+        heapq.heappush(heap, (load + table.get(item, DEFAULT_SHARD_DURATION_MS), size + 1, target))
+    selected = sorted(buckets[index - 1])
     if not selected:
         raise ValueError(f'shard {index}/{count} is empty; no tests were started')
     return selected
@@ -677,6 +741,13 @@ def main(argv=None):
     tests.add_argument('--path', action='append', default=[], help='Restrict to a path or node within this lane (repeatable)')
     tests.add_argument('--shard', type=parse_shard, metavar='INDEX/COUNT',
                        help='Run one disjoint partition of the full lane (one-based; cannot combine with --path)')
+    refresh = sub.add_parser('refresh-shard-durations',
+                             help='Update .github/scripts/test-shard-durations.json from full-shard passing production-offline JUnit XMLs')
+    refresh.add_argument('xml', nargs='+', type=Path,
+                         help='Passing full-shard/full-file production-offline JUnit XML files in chronological order (never -k or ::node slices)')
+    refresh.add_argument('--merge', action='store_true',
+                         help='Keep existing enrolled production-offline entries not present in the supplied XML files')
+    refresh.add_argument('--out', type=Path, default=SHARD_DURATIONS_FILE)
     values = list(sys.argv[1:] if argv is None else argv)
     extra = []
     if '--' in values:
@@ -717,6 +788,15 @@ def main(argv=None):
                 raise ValueError('--analyze goes with --explain')
             query(config, args.sql if args.file is None else args.file.read_text(), args.table, explain=args.explain,
                   analyze=args.analyze, as_json=args.json, memory_gib=args.memory_gib, work=args.work)
+        elif args.command == 'refresh-shard-durations':
+            lane_roots = config['lanes']['production-offline']['roots']
+            enrolled = {item for item in inventory(config) if any(
+                item == root or item.startswith(root.rstrip('/') + '/') for root in lane_roots)}
+            existing = {k: v for k, v in load_shard_durations(args.out).items() if k in enrolled} if (
+                args.merge and args.out.exists()) else {}
+            updated = dict(sorted({**existing, **junit_shard_durations(args.xml, enrolled)}.items()))
+            args.out.write_text(json.dumps(updated, indent=2, sort_keys=True) + '\n')
+            print(f'Wrote {len(updated)} durations to {args.out}')
         else:
             return test(config, args.lane, args.path, extra, shard=args.shard)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
