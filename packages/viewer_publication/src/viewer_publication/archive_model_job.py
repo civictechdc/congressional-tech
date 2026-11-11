@@ -36,10 +36,6 @@ PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
-# The runtime fields that name files; the client resolves them against the runtime file. The third copy
-# of this list (archive_publish_job.publication_configuration and docspec_client's
-# NativeDatasets.from_config hold the others): giving it one owner is W5's (ct-64t4).
-RUNTIME_PATHS=('binary','workspace','remote','limits','credentials')
 RELEASE_ID=re.compile('[a-f0-9]{12,64}')
 
 
@@ -283,6 +279,7 @@ def bind_candidate(candidate,build,runtime):
     candidate's model intent: a changed model is what the command is for, so it is reported, not
     refused (``_require_model_definition`` refuses a publisher resume on the same comparison).
     """
+    from docspec_client.client import runtime_paths
     # Imported here: archive_controller and archive_publish_job import this module.
     from viewer_publication.archive_controller import _read_continuation
     from viewer_publication.archive_model_profile import _definition_hashes
@@ -305,7 +302,7 @@ def bind_candidate(candidate,build,runtime):
     if missing:raise ValueError('Provenance file not in the candidate: '+', '.join(missing))
     settings=json.loads(runtime.read_text())
     if not isinstance(settings,dict):raise ValueError('Engine runtime must be an object: '+str(runtime))
-    settings={name:_local(value,runtime.parent) if name in RUNTIME_PATHS else value for name,value in settings.items()}
+    settings=runtime_paths(settings,runtime.parent)
     (build/'workspace').mkdir(parents=True)
     (build/'runtime.json').write_text(json.dumps(dict(settings,workspace=str(build/'workspace')),indent=1))
     path=build/'model-spec.json'

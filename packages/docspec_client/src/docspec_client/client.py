@@ -87,6 +87,54 @@ def _cleanup_dataset_client(host: Host, responses: set[Any]) -> None:
 
 _VERIFIED_BINARY_CACHE: dict[tuple[str, int, int, int], tuple[str, bytes]] = {}
 
+#: The runtime file's fields that name files, each resolved against the runtime file's own folder. The one list:
+#: from_config, and the pipeline's model-only build (which copies a runtime) and publisher (which reads its remote
+#: configuration), resolve them through runtime_paths (ct-64t4).
+RUNTIME_PATH_FIELDS = ('binary', 'workspace', 'remote', 'limits', 'credentials')
+_RUNTIME_FIELDS = {'version', *RUNTIME_PATH_FIELDS, 'timeout_seconds', 'source_revision', 'platform',
+                   'build_features', 'binary_sha256', 'required_capabilities'}
+
+
+def runtime_paths(settings: Mapping[str, Any], base: Path | str) -> dict[str, Any]:
+    """`settings` with each path field it holds made absolute against `base`, the runtime file's folder."""
+    resolved = dict(settings)
+    for name in RUNTIME_PATH_FIELDS:
+        if name in resolved:
+            value = resolved[name]
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f'DocSpec runtime requires an explicit {name} path')
+            resolved[name] = str((Path(base) / value).resolve())
+    return resolved
+
+
+def _read_runtime(path: Path | str) -> tuple[Path, bytes, dict[str, Any]]:
+    """A runtime file's resolved path, its bytes and its settings with every path field absolute."""
+    p = Path(path).resolve()
+    data = p.read_bytes()
+    settings = json.loads(data)
+    if (not isinstance(settings, dict) or settings.get('version') != 1
+            or type(settings.get('version')) is not int or set(settings) - _RUNTIME_FIELDS):
+        raise ValueError('Invalid DocSpec runtime configuration')
+    for name in ('binary', 'workspace'):
+        if name not in settings:
+            raise ValueError(f'DocSpec runtime requires an explicit {name} path')
+    return p, data, runtime_paths(settings, p.parent)
+
+
+def _binary_digest(binary: Path) -> tuple[str, bytes]:
+    """The binary's sha256 and first four bytes, read once per path, inode, mtime and size in this process."""
+    st = binary.stat()
+    cache_key = (str(binary), st.st_ino, st.st_mtime_ns, st.st_size)
+    cached = _VERIFIED_BINARY_CACHE.get(cache_key)
+    if cached is None:
+        with binary.open('rb') as source:
+            header = source.read(4)
+            source.seek(0)
+            cached = (file_digest(source, 'sha256').hexdigest(), header)
+        if len(_VERIFIED_BINARY_CACHE) < 32:
+            _VERIFIED_BINARY_CACHE[cache_key] = cached
+    return cached
+
 
 class NativeDatasets:
     """Invoke the configured native owner; do not duplicate lifecycle decisions."""
@@ -226,18 +274,7 @@ class NativeDatasets:
         binary = Path(self.binary)
         if not binary.is_file() or not os.access(binary, os.X_OK):
             raise ValueError('The configured native binary is missing or not executable')
-        st = binary.stat()
-        cache_key = (str(binary), st.st_ino, st.st_mtime_ns, st.st_size)
-        cached = _VERIFIED_BINARY_CACHE.get(cache_key)
-        if cached is not None:
-            actual_sha, header = cached
-        else:
-            with binary.open('rb') as source:
-                header = source.read(4)
-                source.seek(0)
-                actual_sha = file_digest(source, 'sha256').hexdigest()
-            if len(_VERIFIED_BINARY_CACHE) < 32:
-                _VERIFIED_BINARY_CACHE[cache_key] = (actual_sha, header)
+        actual_sha, header = _binary_digest(binary)
         if expected_sha is not None and actual_sha != expected_sha:
             raise ValueError('The configured native binary is missing or differs from its approved SHA-256')
         if target_platform == 'linux-amd64' and not header.startswith(b'\x7fELF'):
@@ -257,32 +294,16 @@ class NativeDatasets:
     @classmethod
     def from_config(cls, path: Path | str) -> 'NativeDatasets':
         """Load explicit paths and remote secrets without connecting or writing."""
-        p = Path(path).resolve()
-        settings = json.loads(p.read_text())
-        fields = {'version', 'binary', 'workspace', 'remote', 'limits',
-                  'credentials', 'timeout_seconds', 'source_revision',
-                  'platform', 'build_features', 'binary_sha256',
-                  'required_capabilities'}
-        if (not isinstance(settings, dict) or settings.get('version') != 1
-                or type(settings.get('version')) is not int or set(settings) - fields):
-            raise ValueError('Invalid DocSpec runtime configuration')
-
-        def location(name: str) -> Path:
-            value = settings.get(name)
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError(f'DocSpec runtime requires an explicit {name} path')
-            return (p.parent / value).resolve()
-
+        p, _, settings = _read_runtime(path)
         timeout = settings.get('timeout_seconds', 120)
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0:
             raise ValueError('DocSpec runtime timeout must be a positive finite number')
-        remote = location('remote') if 'remote' in settings else None
-        limits = location('limits') if 'limits' in settings else None
+        remote = Path(settings['remote']) if 'remote' in settings else None
         client = cls(
-            location('binary'),
-            location('workspace'),
+            settings['binary'],
+            settings['workspace'],
             remote=remote,
-            limits=limits,
+            limits=settings.get('limits'),
             timeout=timeout,
             source_revision=settings.get('source_revision'),
             platform=settings.get('platform'),
@@ -298,7 +319,9 @@ class NativeDatasets:
                            or re.fullmatch(r'DOCSPEC_[A-Z0-9_]+', name) is None
                            for name in references.values())):
                 raise ValueError('Remote secrets require explicit DOCSPEC_ environment references')
-            credential_path = location('credentials')
+            if 'credentials' not in settings:
+                raise ValueError('DocSpec runtime requires an explicit credentials path')
+            credential_path = Path(settings['credentials'])
             if credential_path.stat().st_mode & 0o077:
                 raise ValueError('DocSpec credentials require private file permissions (0600)')
             credentials = json.loads(credential_path.read_text())

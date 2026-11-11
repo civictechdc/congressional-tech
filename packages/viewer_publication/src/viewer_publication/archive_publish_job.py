@@ -341,11 +341,10 @@ def publication_configuration(path,*,bucket):
     The model keeps its lake scope. A derived upload runtime changes only the
     owned object prefix, using the same explicit R2 account/bucket and native pins.
     """
+    from docspec_client.client import runtime_paths
     path=Path(path).resolve();settings,runtime_identity=_public_configuration(path)
     if not settings.get('remote'):raise ValueError('Publication requires an explicitly configured remote native engine')
-    settings=dict(settings)
-    for name in ['binary','workspace','remote','limits','credentials']:
-        if name in settings:settings[name]=_local(settings[name],path.parent)
+    settings=runtime_paths(settings,path.parent)
     remote,remote_identity=_public_configuration(settings['remote'])
     properties=remote.get('properties');references=remote.get('secret_env')
     allowed={'uri','warehouse','s3.endpoint','s3.region','s3.path-style-access',
