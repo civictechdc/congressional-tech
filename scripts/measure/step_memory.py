@@ -165,7 +165,7 @@ def read_debug_log(path):
             if REFUSED in text:
                 tally['refusal_lines'] += 1
             elif ADMISSION in text:
-                fields = dict(FIELD.findall(text.partition(ADMISSION)[2]))
+                fields = dict(FIELD.findall(text))  # the event's own fields come last, after any span's
                 try:
                     available, site, number = int(fields['available']), fields['file'].strip('"'), int(fields['line'])
                 except (KeyError, ValueError):
