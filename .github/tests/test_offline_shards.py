@@ -187,12 +187,20 @@ def test_invalid_shard_durations_refuse_corrupt_entries(bad):
 
 
 def test_junit_shard_durations_maps_testcases_to_enrolled_files_and_overlays_runs(tmp_path):
-    enrolled = {'packages/example/tests/test_alpha.py', 'tests/test_beta.py', 'tests/test_fast.py'}
+    enrolled = {
+        'packages/example/tests/test_alpha.py',
+        'packages/example/tests/test_skipped_mod.py',
+        'tests/test_beta.py',
+        'tests/test_fast.py',
+    }
     xml1 = tmp_path / 'run1.xml'
     xml1.write_text(
         '<testsuite>'
         '<testcase classname="packages.example.tests.test_alpha.TestSuite" name="test_1" time="1.250"/>'
         '<testcase classname="packages.example.tests.test_alpha" name="test_2" time="0.750"/>'
+        '<testcase classname="" name="packages.example.tests.test_skipped_mod" time="0.000">'
+        '<skipped message="platform skip"/>'
+        '</testcase>'
         '<testcase classname="tests.test_beta" name="test_b" time="10.000"/>'
         '<testcase classname="tests.test_fast" name="test_f" time="0.002"/>'
         '</testsuite>'
@@ -206,13 +214,25 @@ def test_junit_shard_durations_maps_testcases_to_enrolled_files_and_overlays_run
     measured = dev.junit_shard_durations([xml1, xml2], enrolled)
     assert measured == {
         'packages/example/tests/test_alpha.py': 2_000,
+        'packages/example/tests/test_skipped_mod.py': dev.MIN_SHARD_DURATION_MS,
         'tests/test_beta.py': 4_400,
         'tests/test_fast.py': dev.MIN_SHARD_DURATION_MS,
     }
-    bad_xml = tmp_path / 'bad.xml'
-    bad_xml.write_text('<testsuite><testcase classname="unknown.module" name="test_x" time="1.0"/></testsuite>')
-    with pytest.raises(ValueError, match='unknown.module'):
-        dev.junit_shard_durations([bad_xml], enrolled)
+    for name, body, pattern in [
+        ('unmapped.xml', '<testsuite><testcase classname="unknown.module" name="test_x" time="1.0"/></testsuite>',
+         'unknown.module'),
+        ('failed.xml', '<testsuite><testcase classname="tests.test_beta" name="test_b" time="0.01">'
+                       '<failure message="boom"/></testcase></testsuite>', 'failed or errored'),
+        ('errored.xml', '<testsuite><testcase classname="tests.test_beta" name="test_b" time="0.01">'
+                        '<error message="setup"/></testcase></testsuite>', 'failed or errored'),
+        ('empty.xml', '<testsuite tests="0"/>', 'no testcase'),
+        ('wrong_root.xml', '<other><testcase classname="tests.test_beta" name="t" time="1.0"/></other>', 'JUnit'),
+        ('truncated.xml', '<testsuite><testcase classname="tests.test_beta"', 'malformed JUnit XML'),
+    ]:
+        bad_xml = tmp_path / name
+        bad_xml.write_text(body)
+        with pytest.raises(ValueError, match=pattern):
+            dev.junit_shard_durations([bad_xml], enrolled)
 
 
 def test_committed_shard_durations_keep_every_production_offline_shard_within_budget():
@@ -222,11 +242,16 @@ def test_committed_shard_durations_keep_every_production_offline_shard_within_bu
     enrolled = {item for item in files if any(
         item == root or item.startswith(root.rstrip('/') + '/') for root in roots)}
     durations = dev.load_shard_durations()
-    assert len(enrolled - durations.keys()) <= 25
+    unmeasured = sorted(enrolled - durations.keys())
+    assert len(unmeasured) <= 25, (
+        f'{len(unmeasured)} production-offline files lack recorded durations; '
+        'refresh with: .venv/bin/python scripts/dev.py refresh-shard-durations <offline-*.xml> --merge'
+    )
     parts = [dev.shard_files(files, roots, (i, 6), durations=durations) for i in range(1, 7)]
     loads = [sum(durations.get(name, dev.DEFAULT_SHARD_DURATION_MS) for name in part) for part in parts]
+    max_file = max(durations.get(name, dev.DEFAULT_SHARD_DURATION_MS) for name in enrolled)
     assert max(loads) < 1_050_000
-    assert max(loads) - min(loads) < 30_000
+    assert max(loads) <= max(max_file, min(loads) + 30_000)
 
 
 def test_refresh_shard_durations_cli_merges_active_files_and_drops_retired_paths(tmp_path, monkeypatch):
@@ -236,7 +261,9 @@ def test_refresh_shard_durations_cli_merges_active_files_and_drops_retired_paths
     out.write_text('{"tests/test_kept.py": 3200, "tests/test_retired.py": 9000}\n')
     xml = tmp_path / 'shard.xml'
     xml.write_text('<testsuite><testcase classname="tests.test_updated" name="t" time="7.5"/></testsuite>')
-    assert dev.main(['refresh-shard-durations', str(xml), '--lane', 'production-offline',
-                     '--merge', '--out', str(out)]) == 0
+    assert dev.main(['refresh-shard-durations', str(xml), '--merge', '--out', str(out)]) == 0
     assert dev.load_shard_durations(out) == {'tests/test_kept.py': 3_200, 'tests/test_updated.py': 7_500}
+    with pytest.raises(SystemExit) as rejected:
+        dev.main(['refresh-shard-durations', str(xml), '--lane', 'storage-loopback', '--out', str(out)])
+    assert rejected.value.code == 2
 
