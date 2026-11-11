@@ -157,7 +157,12 @@ re-key groups (witnesses removed and added, the map's added keys and changed `ba
 re-key: the row equal on every column but the key and `record_sha` (occasion, context, locator,
 display order and every stated value; `superseded_by` through the map), each old body replaced
 by one new body that came from it alone, the live release citing the new body on no witness and
-the candidate citing the old one on none. A new order is published too (owner, 2026-11-11): a
+the candidate citing the old one on none. It applies to Congress.gov witnesses only, and the new
+body must be the one the witness's meeting's new detail read names, so the re-fetch proven below
+is the one that moved the witness and two re-fetched meetings cannot trade bodies; a MODS print or
+House list re-fetched with new bytes still needs a person (no such night has been seen, and those
+bodies have no read to tie them to). A successor that is no such re-key, such as a surviving
+witness's key mapped to a new one, is not exempt either. A new order is published too (owner, 2026-11-11): a
 re-key may also move its `display_order` and positional locator (`congress_gov:witness[i]`)
 when the old and new body list the same witnesses, their rows without key, body and place equal
 as multisets, so a reorder hides no swap, addition or removal; `panel` and `panel_order` must
@@ -193,6 +198,14 @@ candidate cites for the first time (cache files, witness records, meeting detail
 capture table: it must be a captured body, and every receipt holding it must be absent from the
 live release's receipt set. Every detail read a meeting names for the first time must be a
 capture line at that receipt, line and index, outside the live receipt set, requesting the
-read's address and holding its body; a byte-identical re-fetch names an old body in a new line.
-A reviewed publish has the comparison and the reviewer. Neither can see whether the body holds
-the published values.
+read's address, holding its body (a byte-identical re-fetch names an old body in a new line) and
+fetched at the read's own time, which the comparison requires later than the live read. A
+reviewed publish has the comparison and the reviewer. Neither can see whether the body holds the
+published values.
+
+A cause record drafted against the comparison before this rule (2026-11-11) no longer matches
+after it: the exempt rows leave their groups, so a recorded count is too large and an entry for
+a group that is now verified is stale. On 619db5f9e08e to 77673bfb8fcf, for example, the meetings'
+`changed congress_gov_detail_observation` group falls from 32 rows to 18 and the
+`witness_key_map | changed basis` entry has no group left. Redraft such a record from a fresh
+report.

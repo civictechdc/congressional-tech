@@ -16,7 +16,7 @@ comparison cannot see.
 and, when the base has no ledger, the explicitly named earlier releases.
 """
 import argparse
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import gzip
 from io import BytesIO
 import json
@@ -31,6 +31,7 @@ import pyarrow.parquet as pq
 from viewer_publication.release_comparison import ATTEMPTED_URLS, QUEUED_URLS
 
 DIGEST = re.compile('[0-9a-f]{64}')
+EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
 ROOT = Path(__file__).resolve().parents[4]  # the checkout running the gate
 TICKETS = ROOT / '.tickets'
@@ -352,6 +353,11 @@ def _captures_source(captures):
     return captures['path'] if captures.get('kind') == 'parquet' else {k: v for k, v in captures.items() if k != 'kind'}
 
 
+def _epoch_us(moment):
+    """Microseconds since the epoch, as the engine's `arrow_cast(<timestamp>,'Int64')` gives a lake time."""
+    return ((moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)) - EPOCH) // timedelta(microseconds=1)
+
+
 def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work):
     """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf); empty when it can.
 
@@ -362,9 +368,10 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     be absent from the live release's receipt set. So a made-up hash, and a body the live release
     could already have cited, both refuse. Every detail read a meeting names for the first time
     (`release_comparison.new_reads`) must be a capture line at that receipt, line and capture
-    index, in a receipt outside the live set, requesting the read's address and holding its body
-    (a byte-identical re-fetch names an old body in a new line). So a made-up read and a read the
-    live release already held both refuse.
+    index, in a receipt outside the live set, requesting the read's address, holding its body (a
+    byte-identical re-fetch names an old body in a new line) and fetched at the read's time. The
+    comparison requires that time later than the live read's, so the capture line is too. So a
+    made-up read, a read the live release already held and a read dated other than its line refuse.
     One engine job, two joins of a few hundred keys to captures; the evidence file lists each
     hash's receipts and each read's line. Cannot see: whether the body holds the published values,
     or the raw receipt line (the capture mapping is trusted for hash and address; documents are
@@ -388,7 +395,7 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
         queries=[dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
             JOIN captures c ON lower(encode(c.sha256,'hex'))=k.sha WHERE c.sha256 IS NOT NULL ORDER BY 1,2"""),
                  dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
-            c.requested_url FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
+            c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
             AND c.capture_index=k.capture_index ORDER BY 1,2,3""")])
     receipts = {}
     for row in found['files']:
@@ -413,6 +420,8 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
             reasons.append(f"automatic causes: read {where} holds body {str(line['sha'])[:16]}, not {str(body)[:16]}")
         elif line['requested_url'] != read['source_url']:
             reasons.append(f"automatic causes: read {where} requested {line['requested_url']}, not {read['source_url']}")
+        elif read['retrieved_at'] is None or line['t'] != _epoch_us(read['retrieved_at']):
+            reasons.append(f"automatic causes: read {where} is dated {read['retrieved_at']}, not its capture line's time")
     (work / 'citation-trace.json').write_text(json.dumps(dict(live_receipts=len(held), files=receipts, reads=found['reads']),
                                                           indent=1, default=str) + '\n')
     return reasons
