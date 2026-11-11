@@ -4,6 +4,7 @@ Expectations come from the bodies' own words and page layout, not from re-runnin
 """
 import gzip
 import hashlib
+from pathlib import Path
 import signal
 import time
 
@@ -242,3 +243,134 @@ def test_body_text_evidence_is_recorded_and_its_drift_is_named():
     # A host without Vision has no OCR build to compare.
     assert not list(diagnostics.drift_messages({'pdf_text': current['pdf_text']},
                                                {'pdf_text': dict(current['pdf_text'], macos_build=None)}))
+
+
+# ct-r91j (owner, 2026-11-11): reading evidence covers only the code a reader runs to turn a body into text.
+BODY_TEXT = ('pdf_text', 'html_text', 'xml_text', 'warc')
+PAGE = ('html', 'xml', 'json')
+
+
+def edited_checkout(tmp_path, relative):
+    """This checkout under tmp_path with one file's bytes changed: every entry is a link into the
+    real tree except the folders leading to `relative` and `relative` itself, an edited copy."""
+    from congress_api.lake.reading_version_diagnostics import ROOT
+    source, mirror = ROOT, tmp_path / 'checkout'
+    for part in Path(relative).parts:
+        mirror.mkdir()
+        for entry in source.iterdir():
+            if entry.name != part:
+                (mirror / entry.name).symlink_to(entry)
+        source, mirror = source / part, mirror / part
+    comment = b'#' if source.suffix == '.py' else b'--'
+    mirror.write_bytes(source.read_bytes() + b'\n' + comment + b' an edit (ct-r91j test)\n')
+    return tmp_path / 'checkout'
+
+
+@pytest.fixture(scope='module')
+def evidence_now():
+    from congress_api.lake import reading_version_diagnostics as diagnostics
+    return diagnostics.snapshot()
+
+
+def moved_entries(before, root):
+    from congress_api.lake import reading_version_diagnostics as diagnostics
+    after = diagnostics.snapshot(root)
+    assert set(after) == set(before)
+    return {entry for entry in before if any(before[entry][field] != after[entry][field]
+                                             for field in ('workspace_sha256', 'locked_sha256'))}
+
+
+# Each was edited this week without any reader running it, and each edit warned on readers:
+# W1 and W5 (client), W1 and W4 (provenance), ct-an6o and ct-p394 (versions), table I/O, and
+# the retention tables the retention package's initializer re-exports.
+@pytest.mark.parametrize('plumbing', [
+    'packages/docspec_client/src/docspec_client/client.py',
+    'packages/congress_api/src/congress_api/retention/provenance.py',
+    'packages/congress_api/src/congress_api/lake/versions.py',
+    'packages/congress_api/src/congress_api/lake/tables.py',
+    'packages/congress_api/src/congress_api/retention/weekly_tables.py',
+])
+def test_an_edit_to_plumbing_no_reader_runs_leaves_every_reading_evidence_value(tmp_path, evidence_now, plumbing):
+    assert moved_entries(evidence_now, edited_checkout(tmp_path, plumbing)) == set()
+
+
+# Code a reader runs to turn a body into text still moves that reader: its parser, the derivation,
+# the format sniff body text routes by, the shared dispatcher and worker, and the bundle's own SQL.
+@pytest.mark.parametrize('code,readers', [
+    ('packages/congress_api/src/congress_api/parsers/body_text.py', set(BODY_TEXT)),
+    ('packages/congress_api/src/congress_api/lake/body_text.py', set(BODY_TEXT)),
+    ('packages/congress_api/src/congress_api/retention/sniff.py', {'sniff', 'readings', *BODY_TEXT}),
+    ('packages/congress_api/src/congress_api/parsers/archive_readings.py', {*PAGE, 'readings', *BODY_TEXT}),
+    ('packages/congress_api/src/congress_api/parsers/html_metadata.py', {'html_metadata'}),
+    ('packages/congress_api/src/congress_api/lake/readings.py',
+     {'sniff', *PAGE, 'html_metadata', 'readings', *BODY_TEXT}),
+    ('packages/congress_api/src/congress_api/retention/parser_worker.py',
+     {'sniff', *PAGE, 'html_metadata', 'readings', *BODY_TEXT}),
+    ('model/sql/sniff-facts.sql', {'readings'}),
+])
+def test_an_edit_to_code_a_reader_runs_moves_that_readers_evidence(tmp_path, evidence_now, code, readers):
+    assert readers <= moved_entries(evidence_now, edited_checkout(tmp_path, code))
+
+
+def test_every_file_a_reader_runs_on_its_fixtures_is_in_its_evidence(tmp_path, monkeypatch):
+    """The declared reader modules, checked against execution: each reader runs its fixture bodies under
+    a profiler, and every workspace file whose functions ran must be among that entry's evidence files.
+    It cannot see branches the fixtures do not reach (the remote read path, most refusals)."""
+    import inspect
+    import json
+    import sys
+    from congress_api.lake import body_text, compatible_versions, readings
+    from congress_api.lake import reading_version_diagnostics as diagnostics
+    root = diagnostics.ROOT
+    monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER', str(tmp_path / 'io.phase'))
+    cases = json.loads((root / 'model/fixtures/parser-cases.json').read_text())
+    bodies = {'pdf': (two_page_pdf(), 'pdf_text'), 'html': (HTML, 'html_text'), 'xml': (XML, 'xml_text'),
+              'web': (WEB_PAGE, 'html_text'), 'warc': (warc_member(HTML), 'warc'), 'gzip': (gzip.compress(HTML), 'html_text'),
+              'cover': ((FIXTURES / 'document-covers/house-hearing.pdf').read_bytes(), 'pdf_text')}
+
+    def body_text_worker():
+        for name, (data, parser) in bodies.items():
+            (tmp_path / name).write_bytes(data)
+            (tmp_path / (name + '-texts')).mkdir()
+            plain = gzip.decompress(data) if name == 'gzip' else data  # a stored gzip is known by its decoded hash
+            body_text.parse_payload(json.dumps(dict(
+                path=str(tmp_path / name), stored_bytes=len(data), body_sha=hashlib.sha256(plain).hexdigest(),
+                parser=parser, strategy=bt.DEFAULT_STRATEGY, page_deadline_seconds=0,
+                texts=str(tmp_path / (name + '-texts')))).encode())
+
+    def bundle():
+        for case in cases:
+            path = tmp_path / ('bundle-' + case['parser'])
+            path.write_bytes(case['body'].encode())
+            readings.parse_once_payload(json.dumps(dict(
+                path=str(path), cache=str(path.with_suffix('.cache')), stored_bytes=len(case['body'].encode()),
+                versions={name: 'sample' for name in compatible_versions.LEAF_PARSERS}, known_format=None,
+                skip_parsers=[], body_sha=hashlib.sha256(case['body'].encode()).hexdigest())).encode())
+
+    runs = {
+        ('sniff',): lambda: [sniff(case['body'].encode()) for case in cases] + [sniff(data) for data, _ in bodies.values()],
+        PAGE: lambda: [readings.read_body(case['body'].encode(), case['parser']) for case in cases],
+        ('html_metadata',): lambda: readings.read_body(
+            (FIXTURES / 'html_metadata/marked-no-statement.html').read_bytes(), 'html_metadata'),
+        ('readings',): bundle,
+        BODY_TEXT: body_text_worker,
+    }
+    evidence = diagnostics.evidence_files(root)
+    for entries, run in runs.items():
+        ran = set()
+
+        def profile(frame, event, arg):
+            # Function bodies only: module and class bodies are import-time code, not reading.
+            name = frame.f_code.co_filename
+            if event == 'call' and frame.f_code.co_flags & inspect.CO_OPTIMIZED and '/src/' in name \
+                    and name.startswith(str(root)) and '/.venv/' not in name:
+                ran.add(Path(name).relative_to(root).as_posix())
+
+        sys.setprofile(profile)
+        try:
+            run()
+        finally:
+            sys.setprofile(None)
+        assert ran, entries
+        for entry in entries:
+            assert ran <= evidence[entry], (entry, sorted(ran - evidence[entry]))
