@@ -136,19 +136,33 @@ Large inputs still run under the watchdog (AGENTS.md).
 ## One model-only build against a release
 
 To prove a model or engine change on a release's exact inputs, with no publish,
-pointer or upload, bind this checkout's model to a completed candidate and run it
-under the watchdog (about 10 GiB and 10 minutes on the full lake):
+pointer or upload, fetch the spicy-regs tables the model pins, bind this checkout's
+model to a completed candidate (plan mode: it checks every pinned input file in
+seconds and names each one missing or changed), then run the bound spec under the
+watchdog (about 10 GiB and 10 minutes on the full lake):
 
 ```bash
+.venv/bin/python -I -m viewer_publication.spicy_regs_inputs --model-spec model/jobs/publish-model.json
+.venv/bin/python -I -m viewer_publication.archive_model_job --from-candidate <candidate> --build <fresh folder> \
+  --runtime <runtime.json>
 python3 scripts/archive_watchdog.py --rss-gb 14 --expect-gb 10.1 --start-available-gb 6 --interval 0.2 -- \
-  .venv/bin/python -I -m viewer_publication.archive_model_job --from-candidate <candidate> --build <fresh folder> \
-  --runtime <runtime.json> --execute --ledger <candidate>/archive-publish/ledger --expect-release-id <release id>
+  .venv/bin/python -I -m viewer_publication.archive_model_job --spec <fresh folder>/model-spec.json --execute \
+  --ledger <candidate>/archive-publish/ledger --expect-release-id <release id>
 ```
 
 It binds the candidate's daily pins and provenance as the publisher does and
 passes the retired-link ledger, so a build of unchanged code reproduces the
-release id. The release id does not cover the evidence files: compare those
+release id. A missing input found only after the watchdog has admitted the build
+costs the admission wait (24 minutes once), so plan first. The release id does not cover the evidence files: compare those
 too. The build folder is kept (about 1.6 GiB); delete it when its result is recorded.
+Its result line's `engine_runtime` (also printed before the build, as a
+`[docspec-runtime]` line on stderr) names the runtime file, binary and limits it ran under,
+each with its sha256, and the limits' values; the publisher seals the same record
+into `archive-publish/model-intent.json` and `completed-model.json`, so two arms
+can be checked for the same limits. It cannot see limits a job narrows from that
+runtime (`provenance.bounded_engine`, as capture staging and queries do), a later
+change to the limits file (nothing re-checks it during a run), or the values the
+engine actually applies.
 
 ## Reading version changes
 

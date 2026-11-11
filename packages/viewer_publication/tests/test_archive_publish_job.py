@@ -484,6 +484,10 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
         assert 'timing is unverified for this release' in capfd.readouterr().err
     else:
         assert recorded==dict(status='owner-approved',basis='real-device',measured_release_id=None,timing='verified')
+    # The candidate folder says which runtime file, binary and limits built its model (ct-64t4).
+    from archive_job_fixture import runtime_ran
+    for name in ('model-intent.json','completed-model.json'):
+        assert json.loads((Path(value['work'])/name).read_text())['engine_runtime']==runtime_ran(runtime)
 
 
 @pytest.mark.parametrize('change',['catalog_account','catalog_bucket','warehouse','namespace','inline_secret','endpoint_override'])

@@ -6,13 +6,17 @@ checkout's model to the completed daily a candidate holds, as the publisher bind
 keeps the spec, the runtime copy and its workspace, the ledger, output and scratch in the
 build folder. ``--ledger``/``--ledger-base`` pass the retired-link ledger the publisher
 passes, and ``--expect-release-id`` fails a control build that does not reproduce a release.
+Every build prints the runtime file, binary and limits it runs under (a ``[docspec-runtime]``
+line on stderr, before the build) and returns them in its result line as ``engine_runtime``.
+``--plan`` checks every pinned local input against its pin and names each one missing or
+changed, in seconds; run it before a watched ``--execute``, which repeats the check before it
+builds a runtime but only after the watchdog has admitted it.
 """
 import argparse
 from contextlib import contextmanager
 from collections.abc import Mapping
 from hashlib import md5
 import json
-import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import re
@@ -36,10 +40,6 @@ PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
-# The runtime fields that name files; the client resolves them against the runtime file. The third copy
-# of this list (archive_publish_job.publication_configuration and docspec_client's
-# NativeDatasets.from_config hold the others): giving it one owner is W5's (ct-64t4).
-RUNTIME_PATHS=('binary','workspace','remote','limits','credentials')
 RELEASE_ID=re.compile('[a-f0-9]{12,64}')
 
 
@@ -162,28 +162,93 @@ def validate_spec(value,*,base):
     return result
 
 
-def _spicy_arguments(pin,hold):
-    """Read the pinned spicy-regs input and hold each table it binds to a stated generation.
+def _spicy_tables(text,base):
+    """The generations a spicy-regs input states and the tables it pins, by name, with local paths.
 
     Each table path is ``generations/<family>/<digest>/<key>``, spicy-regs' own layout, so a
     table cannot be read under a generation other than the one its family states.
     """
     from viewer_publication.archive_model import SPICY_SCHEMAS,spicy_generations
-    value=json.loads(Path(hold(pin)).read_text())
+    value=json.loads(text)
     if not isinstance(value,dict) or set(value)!={'version','source','generations','tables'} or value['version']!=1:
         raise ValueError('spicy-regs input requires version 1, its source, generations and tables')
     generations=spicy_generations(value['generations'])
     tables=value['tables']
     if not isinstance(tables,dict) or set(tables)!=set(SPICY_SCHEMAS):
         raise ValueError('spicy-regs input must pin every table: '+', '.join(sorted(SPICY_SCHEMAS)))
-    base=Path(pin['path']).parent;held={}
+    pinned={}
     for name,table in sorted(tables.items()):
         _pin(table,{'family','key','path','sha256','size','rows'})
         if table['family'] not in generations or table['path']!=(
                 f"generations/{table['family']}/{generations[table['family']]}/{table['key']}"):
             raise ValueError('spicy-regs table is not under its stated generation: '+name)
-        held[name]=dict(kind='parquet',path=hold(dict(table,path=_local(table['path'],base))))
-    return dict(generations=generations,tables=held)
+        pinned[name]=dict(table,path=_local(table['path'],base))
+    return generations,pinned
+
+
+def _spicy_arguments(pin,hold):
+    """Read the pinned spicy-regs input and hold each table it binds to a stated generation."""
+    generations,tables=_spicy_tables(Path(hold(pin)).read_text(),Path(pin['path']).parent)
+    return dict(generations=generations,tables={name:dict(kind='parquet',path=hold(table)) for name,table in tables.items()})
+
+
+class CheckedInputs(dict):
+    """check_inputs' result: {path: VerifiedFile} for every pinned local input of one spec.
+
+    model_arguments refuses an input this mapping lacks instead of reading it itself, so the check
+    and the build cannot drift apart over which spec fields are inputs.
+    """
+
+
+def check_inputs(spec):
+    """Check every pinned local input against its pin and name each one missing, unreadable or changed.
+
+    One sha256 and size pass per physical file (hard-linked aliases share it), by file_identity,
+    the pass model_arguments makes when it holds a file, so a bound but unfetched or changed file
+    is refused in seconds, before any runtime, folder or watchdog admission. Returns CheckedInputs,
+    model_arguments' verified_files, so execution reads each file once. A lake table is pinned by
+    snapshot and is not read here; the spicy-regs input is checked before the tables it names are.
+    """
+    checked,by_file,problems=CheckedInputs(),{},[]
+    def check(label,pin):
+        path=pin['path']
+        try:
+            physical=custody_identity(path)[:2]
+            if physical not in by_file:by_file[physical]=file_identity(path)
+        except FileNotFoundError:
+            problems.append(f'Pinned model input missing: {path} ({label})');return False
+        except (OSError,ValueError) as error:
+            problems.append(f'Pinned model input unreadable: {path} ({label}): {error}');return False
+        try:check_identity(by_file[physical],dict(sha256=pin['sha256'],bytes=pin['size']),path)
+        except ValueError:
+            problems.append(f'Pinned model input changed: {path} ({label})');return False
+        checked[path]=by_file[physical]
+        return True
+    for name in PROVENANCE:
+        for value in spec[name]:check(name+' '+value['key'],value)
+    for name in (*TABLES,*OPTIONAL_TABLES):
+        if spec.get(name) is not None and spec[name]['kind']=='parquet':check(name,spec[name])
+    for name in ('historical_recording_matcher','recovery_requirements'):
+        if spec.get(name) is not None:check(name,spec[name])
+    spicy=spec.get('spicy_regs')
+    if spicy is not None and check('spicy_regs',spicy):
+        for name,table in _spicy_tables(Path(spicy['path']).read_text(),Path(spicy['path']).parent)[1].items():
+            check('spicy_regs '+name,table)
+    if problems:raise ValueError(f'{len(problems)} pinned model inputs missing, unreadable or changed: '+'; '.join(problems))
+    return checked
+
+
+def _require_fresh(spec):
+    for name in ['output','scratch']:
+        path=Path(spec[name])
+        if path.exists() or path.is_symlink():
+            raise ValueError('Model output and scratch must be fresh')
+
+
+def preflight(spec):
+    """What execution checks before it builds a runtime or holds anything: fresh output and scratch, then the inputs."""
+    _require_fresh(spec)
+    return check_inputs(spec)
 
 
 @contextmanager
@@ -194,10 +259,7 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
     Custody checks on exit reject in-place changes before the caller accepts output.
     One physical file has one verification and one retained name, including aliases.
     """
-    for name in ['output','scratch']:
-        path=Path(spec[name])
-        if (path.exists() or path.is_symlink()) and not allow_existing_output:
-            raise ValueError('Model output and scratch must be fresh')
+    if not allow_existing_output:_require_fresh(spec)
     if verified_files is None:verified_files={}
     if not isinstance(verified_files,Mapping):raise ValueError('Verified input custody must be a path mapping')
     etags=None
@@ -232,6 +294,8 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
             if verified is not None:
                 if not isinstance(verified,VerifiedFile):raise ValueError('Expected process-local verified input custody')
                 verified.require(path)
+            elif isinstance(verified_files,CheckedInputs):
+                raise ValueError('Pinned model input was not checked before execution: '+str(path))
             else:
                 verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
             check_identity(verified,expected,key)
@@ -276,13 +340,16 @@ def bind_candidate(candidate,build,runtime):
     must match the digest sealed in the candidate's model intent, and completed_daily_inputs
     binds this checkout's template to its pins, catalog version and provenance records. It
     refuses, as the publisher does, a daily whose entity versions differ from this checkout's.
-    A candidate is a copy, so each record is read from its own archive-daily-provenance; the
-    pins check those bytes when the build holds them. The runtime is copied with its file paths
-    made absolute and its workspace in the build; the credentials file is named, never opened.
-    Returns the spec's path and the model definition files added, removed or changed since the
-    candidate's model intent: a changed model is what the command is for, so it is reported, not
-    refused (``_require_model_definition`` refuses a publisher resume on the same comparison).
+    A candidate is a copy, so each record is read from its own archive-daily-provenance. Every
+    pinned input of the bound spec is checked (check_inputs) before anything is written, so a
+    refused bind runs again as it is once the input is right. The runtime is copied with its file
+    paths made absolute and its workspace in the build; the credentials file is named, never opened.
+    Returns the spec's path, the model definition files added, removed or changed since the
+    candidate's model intent (a changed model is what the command is for, so it is reported, not
+    refused; ``_require_model_definition`` refuses a publisher resume on the same comparison), and
+    the check's result.
     """
+    from docspec_client.client import runtime_paths
     # Imported here: archive_controller and archive_publish_job import this module.
     from viewer_publication.archive_controller import _read_continuation
     from viewer_publication.archive_model_profile import _definition_hashes
@@ -301,17 +368,16 @@ def bind_candidate(candidate,build,runtime):
     held=candidate/'archive-daily-provenance'
     for name in PROVENANCE:
         model[name]=[dict(row,path=str(held/Path(row['path']).name)) for row in model[name]]
-    missing=[Path(row['path']).name for name in PROVENANCE for row in model[name] if not Path(row['path']).is_file()]
-    if missing:raise ValueError('Provenance file not in the candidate: '+', '.join(missing))
     settings=json.loads(runtime.read_text())
     if not isinstance(settings,dict):raise ValueError('Engine runtime must be an object: '+str(runtime))
-    settings={name:_local(value,runtime.parent) if name in RUNTIME_PATHS else value for name,value in settings.items()}
+    settings=runtime_paths(settings,runtime.parent)
+    bound=dict(model,output=str(build/'archive-release'),scratch=str(build/'archive-model'),engine_config=str(build/'runtime.json'))
+    checked=check_inputs(validate_spec(bound,base=build))
     (build/'workspace').mkdir(parents=True)
     (build/'runtime.json').write_text(json.dumps(dict(settings,workspace=str(build/'workspace')),indent=1))
     path=build/'model-spec.json'
-    path.write_text(json.dumps(dict(model,output=str(build/'archive-release'),scratch=str(build/'archive-model'),
-                                    engine_config=str(build/'runtime.json')),indent=1,sort_keys=True))
-    return path,changes
+    path.write_text(json.dumps(bound,indent=1,sort_keys=True))
+    return path,changes,checked
 
 
 def check_ledger(*,ready=None,base=None):
@@ -342,21 +408,24 @@ def ledger_files(spec,*,ready=None,base=None):
     return prior_links(base,[],folder)
 
 
-def execute(spec,*,prior_links=None,base_retired=None):
+def execute(spec,*,prior_links=None,base_retired=None,verified_files=None):
     """Verify inputs, then invoke the one maintained model producer.
 
     prior_links/base_retired are the retired-link ledger (ledger_files); without them the
     model's ledger starts empty, and every key the base had retired vanishes from the release.
+    verified_files is preflight's result when the caller has run it already (the CLI does,
+    before it derives a ledger); otherwise preflight runs here first.
+    The runtime is the spec's engine_config or the client's fallback (choose_runtime; a
+    --from-candidate build names the copy in its build folder, so it never falls back). Its
+    record (runtime_record) is printed before the build and returned as `engine_runtime`.
     """
-    from docspec_client.client import NativeDatasets
+    if verified_files is None:verified_files=preflight(spec)
+    from docspec_client.client import NativeDatasets,choose_runtime,runtime_record
     from viewer_publication.archive_model import build_release
-    engine_config=spec['engine_config']
-    # One owner for this fallback and the publisher's copy is W5's (ct-64t4); a --from-candidate
-    # build names the runtime copy in its build folder, so it never falls back.
-    if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
-        engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
-    with model_arguments(spec) as arguments:
+    engine_config,choice=choose_runtime(spec['engine_config'])
+    with model_arguments(spec,verified_files=verified_files) as arguments:
         with NativeDatasets.from_config(engine_config) as engine:
+            ran=runtime_record(engine_config,choice,log=sys.stderr)
             manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
                 catalog_version=spec['catalog_version'],engine=engine,
                 output=Path(spec['output']),scratch=Path(spec['scratch']),
@@ -365,7 +434,7 @@ def execute(spec,*,prior_links=None,base_retired=None):
         from viewer_publication.archive_text_index import finish_text_index
         manifest=finish_text_index(spec,spec['output'])
     ledger=None if prior_links is None else dict(prior_links=str(prior_links),base_retired=str(base_retired))
-    return dict(status='built',executed=True,release_id=manifest['release_id'],engine_config=engine_config,ledger=ledger,
+    return dict(status='built',executed=True,release_id=manifest['release_id'],engine_config=engine_config,engine_runtime=ran,ledger=ledger,
         output=spec['output'],scratch=spec['scratch'],rows={entry['name']:entry['rows'] for entry in manifest['files']})
 
 
@@ -394,17 +463,23 @@ def main(argv=None):
         parser.error('A candidate build needs the ledger its publisher passed: --ledger or --ledger-base')
     try:
         check_ledger(ready=args.ledger,base=args.ledger_base)
-        path,changes=bind_candidate(args.from_candidate,args.build,args.runtime) if args.from_candidate else (args.spec,None)
+        # A candidate's bind has checked its inputs already; each file is read once.
+        path,changes,verified=(bind_candidate(args.from_candidate,args.build,args.runtime) if args.from_candidate
+                               else (args.spec,None,None))
         spec=load_spec(path)
         if spec.get('status')=='blocked':
             print(json.dumps(spec,sort_keys=True));return 2
         if args.execute:
+            if verified is None:verified=preflight(spec)
             prior,retired=ledger_files(spec,ready=args.ledger,base=args.ledger_base)
-            result=execute(spec,prior_links=prior,base_retired=retired)
+            result=execute(spec,prior_links=prior,base_retired=retired,verified_files=verified)
         else:
+            if verified is None:verified=check_inputs(spec)
+            files={id(identity):identity for identity in verified.values()}  # aliases share one identity
             result=dict(status='planned',executed=False,
                 inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},output=spec['output'],scratch=spec['scratch'],
-                parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version'])
+                parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version'],
+                verified_inputs=dict(files=len(files),bytes=sum(identity['bytes'] for identity in files.values())))
             if spec.get('historical_recording_matcher'):
                 result['inputs']['historical_recording_matcher']=spec['historical_recording_matcher']
             if spec.get('text_index'):

@@ -16,15 +16,22 @@ def write_spec(tmp_path,value):
     path=tmp_path/'spec.json';path.write_text(json.dumps(value));return str(path)
 
 
-def test_plan_is_default_and_opens_no_runtime_or_inputs(tmp_path,capsys):
+def test_plan_is_default_verifies_pinned_inputs_and_opens_no_runtime(tmp_path,capsys):
+    """Plan reads each pinned local input once to check it against its pin (a lake table is pinned by snapshot, not
+    read), and writes nothing: no output, scratch or runtime."""
+    from congress_api.retention.provenance import file_pin
     from viewer_publication.archive_model_job import main
     value=spec(tmp_path)
     value['captures']=dict(kind='native_table',metadata_location='s3://fixture-lake/archive/captures/metadata/00000.metadata.json',
         table_uuid='00000000-0000-4000-8000-000000000001',snapshot=None,schema_id=0)
+    for name in ['readings','filename_readings']:
+        source=tmp_path/(name+'.parquet');source.write_bytes(name.encode())
+        value[name]=dict(kind='parquet',path=str(source),**file_pin(source))
     assert main(['--spec',write_spec(tmp_path,value)])==0
     report=json.loads(capsys.readouterr().out)
     assert report['status']=='planned' and report['executed'] is False
     assert report['inputs']['captures']==value['captures']
+    assert report['verified_inputs']==dict(files=2,bytes=len('readings')+len('filename_readings'))
     assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
     assert not (tmp_path/'unopened-runtime.json').exists()
 
@@ -296,15 +303,82 @@ def test_spicy_regs_input_refuses_anything_not_stated_and_pinned(tmp_path,change
     if change=='changed_bytes':(path.parent/table['path']).write_bytes(b'not the pinned table')
     else:path.write_text(json.dumps(stated))
     value['spicy_regs']=dict(path=str(path),**file_pin(path))
-    for name in ['captures','readings','filename_readings','meeting_records']:
-        source=tmp_path/(name+'.parquet');source.write_bytes(name.encode())
-        value[name]=dict(kind='parquet',path=str(source),**file_pin(source))
+    pin_local_tables(tmp_path,value)
     expected={'missing_family':'generation digest for each','made_up_digest':'generation digest for each',
               'other_generation':'not under its stated generation','unpinned_table':'immutable fields',
               'changed_bytes':'Pinned model input changed'}[change]
     with pytest.raises(ValueError,match=expected):
         with model_arguments(load_spec(write_spec(tmp_path,value))):
             pytest.fail('Unpinned spicy-regs input reached the producer')
+
+
+def pin_local_tables(tmp_path,value,names=('captures','readings','filename_readings','meeting_records')):
+    """Real files behind a spec's local table pins, so only what a test plants is wrong."""
+    from congress_api.retention.provenance import file_pin
+    for name in names:
+        source=tmp_path/(name+'.parquet');source.write_bytes(name.encode())
+        value[name]=dict(kind='parquet',path=str(source),**file_pin(source))
+    return value
+
+
+@pytest.mark.parametrize('mode',[[],['--execute']],ids=['plan','execute'])
+def test_unfetched_or_changed_spicy_tables_are_named_before_anything_runs(tmp_path,capsys,mode):
+    """The 2026-11-11 failure in small: a build whose spicy-regs tables were never fetched waited 24 minutes in the
+    watchdog's admission, then stopped at its first missing file. Plan, and execute before its runtime or any
+    folder, check every pinned file against its pin and name each one missing or changed."""
+    from viewer_publication.archive_model_job import main
+    value=pin_local_tables(tmp_path,entity_spec(tmp_path))
+    base=Path(value['spicy_regs']['path']).parent;stated=json.loads(Path(value['spicy_regs']['path']).read_text())['tables']
+    missing=(base/stated['spicy_committees']['path']).resolve();missing.unlink()
+    resized=(base/stated['spicy_members']['path']).resolve();resized.write_bytes(resized.read_bytes()+b'x')
+    unreadable=(base/stated['spicy_congress_bills']['path']).resolve();unreadable.unlink();unreadable.mkdir()
+    with pytest.raises(SystemExit) as error:
+        main(['--spec',write_spec(tmp_path,value),*mode])
+    err=capsys.readouterr().err
+    assert error.value.code==2
+    assert f'Pinned model input missing: {missing} (spicy_regs spicy_committees)' in err
+    assert f'Pinned model input changed: {resized} (spicy_regs spicy_members)' in err
+    # Present but not readable is not "missing": the reason is named.
+    assert f'Pinned model input unreadable: {unreadable} (spicy_regs spicy_congress_bills): ' in err and 'must be a regular file' in err
+    assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
+
+
+def every_input_spec(tmp_path):
+    """A spec with each kind of pinned local input: three lake-table stand-ins and an entity table, provenance
+    with a hard-linked alias (two keys, one physical file), the matcher, recovery requirements and spicy-regs."""
+    from congress_api.retention.provenance import file_pin
+    value=pin_local_tables(tmp_path,entity_spec(tmp_path))
+    review=tmp_path/'review.jsonl';review.write_bytes(b'{"selected":"A"}\n')
+    alias=tmp_path/'recovery-alias.jsonl';os.link(review,alias)
+    value['review_files']=[dict(key='provenance/reviews/a.jsonl',path=str(review),**file_pin(review))]
+    value['recovery_files']=[dict(key='provenance/recoveries/a.jsonl',path=str(alias),**file_pin(alias))]
+    for name,content in (('historical_recording_matcher',b'package_id,status\n'),('recovery_requirements',b'requirements')):
+        source=tmp_path/name;source.write_bytes(content)
+        value[name]=dict(path=str(source),**file_pin(source))
+    value['recovery_requirements']['acceptance_policy']='recovery-identity-v1'
+    return dict(value,engine_config=os.environ['DOCSPEC_JOB_CONFIG'])
+
+
+def test_execute_reads_each_pinned_input_once(tmp_path,monkeypatch):
+    """The check before execution is execution's own hash pass: model_arguments takes its result, so each
+    physical file is read once, a hard-linked alias included; and an input the check did not cover is refused,
+    not quietly read again, so the check and the build cannot drift apart over which fields are inputs."""
+    import viewer_publication.archive_model as model
+    import viewer_publication.archive_model_job as job
+    value=every_input_spec(tmp_path)
+    hashed=[];original=job.file_identity
+    def record(path,**kwargs):
+        hashed.append(Path(path).stat().st_ino);return original(path,**kwargs)
+    monkeypatch.setattr(job,'file_identity',record)
+    monkeypatch.setattr(model,'build_release',lambda **_:dict(release_id='ab'*32,files=[]))
+    spec=job.load_spec(write_spec(tmp_path,value))
+    assert job.execute(spec)['release_id']=='ab'*32
+    spicy=Path(spec['spicy_regs']['path'])
+    expected=[spec[name]['path'] for name in ('captures','readings','filename_readings','meeting_records',
+              'historical_recording_matcher','recovery_requirements','spicy_regs')]
+    expected+=[spec[name][0]['path'] for name in ('review_files','recovery_files')]
+    expected+=[spicy.parent/table['path'] for table in json.loads(spicy.read_text())['tables'].values()]
+    assert len(expected)==9+14 and sorted(hashed)==sorted({Path(path).stat().st_ino for path in expected})
 
 
 def test_entity_release_never_fabricates_a_generation(tmp_path):
@@ -494,16 +568,27 @@ def engine_runtime(tmp_path):
     return runtime
 
 
-def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys):
+def recorded_input_checks(monkeypatch):
+    """Record the specs plan checks instead of reading their inputs: the checkout's template binds spicy-regs tables
+    that a checkout may not have fetched, and these tests are about binding, not about those tables."""
+    import viewer_publication.archive_model_job as job
+    checked=[]
+    monkeypatch.setattr(job,'check_inputs',lambda spec:checked.append(spec) or {})
+    return checked
+
+
+def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys,monkeypatch):
     """The daily's pins, catalog version and provenance records (read from the candidate's own copies), and
-    the checkout's template for everything else; output, scratch, runtime and workspace in the build folder."""
+    the checkout's template for everything else; output, scratch, runtime and workspace in the build folder.
+    Plan then checks the inputs of exactly the spec it bound."""
     from viewer_publication.archive_model_job import PROVENANCE,TABLES,load_spec,main
     candidate=tmp_path/'candidate';summary=daily_candidate(candidate);runtime=engine_runtime(tmp_path)
-    build=(tmp_path/'arm').resolve()
+    build=(tmp_path/'arm').resolve();checked=recorded_input_checks(monkeypatch)
     assert main(['--from-candidate',str(candidate),'--build',str(build),'--runtime',str(runtime)])==0
     report=json.loads(capsys.readouterr().out)
     assert report['status']=='planned' and report['executed'] is False and report['spec']==str(build/'model-spec.json')
     assert report['model_definition_changes_from_candidate']==[]
+    assert checked==[load_spec(build/'model-spec.json')]
     bound=json.loads((build/'model-spec.json').read_text())
     for name in TABLES:
         assert bound[name]==dict(summary['pins'][name],kind='native_table')
@@ -524,7 +609,7 @@ def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys):
     assert load_spec(build/'model-spec.json')==bound
 
 
-def test_a_changed_model_binds_and_names_the_definition_files_it_changed(tmp_path,capsys):
+def test_a_changed_model_binds_and_names_the_definition_files_it_changed(tmp_path,capsys,monkeypatch):
     """Building a changed model on the candidate's pinned inputs is the command's purpose, and a changed
     model can still reproduce the release id; so nothing is refused, and the result line names every
     definition file added, removed or changed since the candidate's model intent. None: a control build."""
@@ -533,20 +618,24 @@ def test_a_changed_model_binds_and_names_the_definition_files_it_changed(tmp_pat
     from viewer_publication.archive_model_profile import _definition_hashes
     current=_definition_hashes(ROOT);changed,dropped=sorted(current)[:2]
     recorded={**{name:pin for name,pin in current.items() if name!=dropped},changed:'0'*64,'model/sql/retired-step.sql':'1'*64}
-    candidate=tmp_path/'candidate';daily_candidate(candidate,definitions=recorded)
+    candidate=tmp_path/'candidate';daily_candidate(candidate,definitions=recorded);recorded_input_checks(monkeypatch)
     assert main(['--from-candidate',str(candidate),'--build',str(tmp_path/'arm'),'--runtime',str(engine_runtime(tmp_path))])==0
     report=json.loads(capsys.readouterr().out)
     assert report['model_definition_changes_from_candidate']==sorted([changed,dropped,'model/sql/retired-step.sql'])
     assert (tmp_path/'arm/model-spec.json').is_file()
 
 
-@pytest.mark.parametrize('plant',['dropped_provenance_file','edited_daily_summary','no_model_intent'])
+@pytest.mark.parametrize('plant',['dropped_provenance_file','changed_provenance_bytes','edited_daily_summary','no_model_intent'])
 def test_a_candidate_that_differs_from_its_daily_refuses_before_the_build_folder(tmp_path,capsys,plant):
+    """Refused before the build folder is written, so the same command runs again once the input is right."""
     from viewer_publication.archive_model_job import main
     candidate=tmp_path/'candidate';summary=daily_candidate(candidate);runtime=engine_runtime(tmp_path)
-    dropped=Path(summary['publication']['records'][1]['path']).name
+    record=summary['publication']['records'][1]
+    held=candidate.resolve()/'archive-daily-provenance'/Path(record['path']).name
     if plant=='dropped_provenance_file':
-        (candidate/'archive-daily-provenance'/dropped).unlink()
+        held.unlink()
+    elif plant=='changed_provenance_bytes':
+        held.write_bytes(held.read_bytes()+b'\n')
     elif plant=='edited_daily_summary':
         path=candidate/'archive-daily/daily-summary.json';edited=json.loads(path.read_text())
         edited['pins']['captures']['snapshot']+=1;path.write_text(json.dumps(edited,sort_keys=True))
@@ -555,7 +644,8 @@ def test_a_candidate_that_differs_from_its_daily_refuses_before_the_build_folder
     with pytest.raises(SystemExit) as error:
         main(['--from-candidate',str(candidate),'--build',str(tmp_path/'arm'),'--runtime',str(runtime)])
     assert error.value.code==2
-    expected={'dropped_provenance_file':'Provenance file not in the candidate: '+dropped,
+    expected={'dropped_provenance_file':f"Pinned model input missing: {held} (review_files {record['key']})",
+              'changed_provenance_bytes':f"Pinned model input changed: {held} (review_files {record['key']})",
               'edited_daily_summary':'Retained daily summary differs from the model continuation',
               'no_model_intent':'requires a completed model checkpoint or intent'}[plant]
     assert expected in capsys.readouterr().err
@@ -604,6 +694,9 @@ def test_a_control_build_fails_naming_both_ids_when_its_release_differs(tmp_path
     out,err=capsys.readouterr()
     report=json.loads(out)
     assert report['release_id']==built and report['rows']=={'list.parquet':3} and report['output']==value['output']
+    # Before the build every build states its runtime (ct-64t4); a matching one says nothing else.
+    ran,_,err=err.partition('\n')
+    assert ran=='[docspec-runtime] '+json.dumps(report['engine_runtime'],sort_keys=True)
     if expected.startswith('ab'):
         assert code==0 and not err
     else:
