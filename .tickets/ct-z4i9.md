@@ -2,7 +2,7 @@
 id: ct-z4i9
 status: in_progress
 deps: []
-links: []
+links: [ct-1mq9, ct-yndj]
 created: 2026-11-09T02:50:56Z
 type: bug
 priority: 1
