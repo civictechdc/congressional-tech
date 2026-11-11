@@ -63,6 +63,8 @@ class Diff:
             self.history.append(name)
         self.link_causes = False
         self.witness_rekey = None  # set by rekeyed()
+        self.witness_refetch = None  # set by refetched_witnesses()
+        self.meeting_refetch = None  # set by refetched_meetings()
         self.refetched = None  # set by refetched_files()
 
     def has(self, side, table):
@@ -281,6 +283,115 @@ def rekeyed(d: Diff):
     return d.witness_rekey
 
 
+# The re-fetch exemption (ct-syp1, ct-uywf): a source served again moves the rows that cite it, and
+# nothing else. Such a row is set apart as a `verified` group flagged `refetch_only`, which needs no
+# cause entry; the unattended gate lets a flagged group through only after it finds every body and
+# read the candidate cites for the first time in the capture table, in receipts the live release did
+# not read (`release_gate.cited_files_are_new`). Any other change on the row qualifies it for nothing.
+REFETCHED_RECORD = 'a re-fetch of the record: every published value equal'
+BASIS_FOLLOWS = 'the successor was re-keyed by a re-fetch of its record'
+REORDERED = 'the re-fetched record lists the same witnesses in a new order'
+# A witness's place in its list: its display order and, where the locator is the list position
+# (`congress_gov:witness[i]`, appearance_records.py), its locator.
+LIST_PLACE = ('source_locator', 'display_order')
+
+
+def _equal_except(d: Diff, table, skip, compare=None):
+    """SQL for "every column but `skip` equal" on aliases p and l, or None when the check cannot run:
+    the two releases' columns or types differ, and a column with no partner has nothing to be equal
+    to. Every column not skipped counts, so a column added later is compared until someone skips it.
+    `compare` maps a column to the expression it is compared by, as in `Diff.changed`."""
+    types = d.arrow_types('base', table)
+    if types != d.arrow_types('candidate', table) or not set(skip) <= set(types):
+        return None
+    terms = []
+    for c in types:
+        if c not in skip:
+            left, right = ((compare or {}).get(c, 'X.{c}').replace('X', s).format(c=f'"{c}"') for s in 'pl')
+            terms.append(f'{left} IS NOT DISTINCT FROM {right}')
+    return ' AND '.join(terms) or 'true'
+
+
+def refetch_split(groups, counts, cause):
+    """Each `changed <column>` value group with `counts[column]` re-fetch rows, those rows set apart as
+    a verified group flagged `refetch_only`; the rest stay in the unverified group."""
+    out = []
+    for g in groups:
+        column = g['group'].removeprefix('changed ')
+        n = counts.get(column, 0) if g.get('value') else 0
+        if n:
+            out.append(dict(value_group(column, n), cause=cause, status='verified', refetch_only=True))
+            g = dict(g, count=g['count'] - n)
+        if g['count'] or g.get('flag'):
+            out.append(g)
+    return out
+
+
+def refetched_witnesses(d: Diff):
+    """Table `witness_refetch(old_key,new_key,o,n)`: the candidate's re-keys (`rekeyed`) of base
+    witnesses that a re-fetch of their record explains (ct-uywf). True when there is one and every
+    base witness key the candidate no longer publishes is one, so the whole re-key is exempt or none
+    of it is: a key that vanished, or that the map states ambiguous or unresolved, leaves none.
+
+    A witness key hashes its record body (witness-occurrence-v2), so a publisher that serves a record
+    again with other bytes re-keys every witness on it though no witness changed. A re-key qualifies
+    when the row is equal on every column but the key and `record_sha` (occasion, source, context,
+    locator, display order and every stated value), with `superseded_by` compared through the map;
+    both bodies are present and differ; over all re-keys each old body went to one new body that came
+    from that old body only; the base cites the new body on no witness and the candidate cites the
+    old one on none. A re-key that also moved in its list (`LIST_PLACE`) qualifies only when the old
+    and new body list the same witnesses: their rows, without the key, body and list place, are
+    equal as multisets, so a reorder hides no swap, addition or removal (owner, 2026-11-11). Panel and
+    panel order are stated values and must be equal. An edited name or an occasion move stops the
+    release for a person.
+    Congress.gov only: the witness must be on a meeting (`meeting:<event_id>`) whose candidate detail
+    read names the new body, so the re-fetch the meetings rule and the gate prove is the one that
+    moved the witness, and two re-fetched meetings cannot trade bodies. Another source re-keyed by a
+    new body (a MODS print, a House list) needs a person: no such night has been seen, and those
+    bodies have no read to tie them to. Cannot see whether the body was fetched at all: the
+    unattended gate looks each new body and read up in the capture table. One pass over the
+    re-keyed rows and their bodies' rows, hash joins on the keys.
+    Interim: deleted when carried witness keys (ct-46f3: keys that survive a re-fetch) land.
+    """
+    if d.witness_refetch is None:
+        d.witness_refetch = False
+        skip = {'witness_key', 'record_sha', 'superseded_by'}
+        readable = (d.has('base', 'witnesses') and {'source', 'occasion'} <= set(d.columns('base', 'witnesses'))
+                    and d.has('candidate', 'meetings') and DETAIL in d.columns('candidate', 'meetings'))
+        same = readable and rekeyed(d) and _equal_except(d, 'witnesses', skip)
+        # A table without list places has no reorder to allow.
+        placed = same and (_equal_except(d, 'witnesses', skip | set(LIST_PLACE)) or 'false')
+        if same:
+            mapped = 'coalesce(s.witness_key,p.superseded_by) IS NOT DISTINCT FROM l.superseded_by'
+            d.table('witness_refetch_pairs', f"""SELECT x.old_key,x.witness_key new_key,p.record_sha o,l.record_sha n,
+                {mapped} AND ({same}) AS same,{mapped} AND ({placed}) AS moved,
+                p.source='congress_gov' AND coalesce(lower(hex(l.record_sha))=lower(m.{DETAIL}.successful_read.body_sha256),false) AS read_tied
+              FROM witness_rekey x JOIN base_witnesses p ON p.witness_key=x.old_key
+              JOIN candidate_witnesses l ON l.witness_key=x.witness_key LEFT JOIN witness_rekey s ON s.old_key=p.superseded_by
+              LEFT JOIN candidate_meetings m ON l.occasion='meeting:'||m.event_id
+              WHERE x.old_key NOT IN (SELECT witness_key FROM candidate_witnesses)""")
+            # Each old body's rows and its new body's rows, without key, body and list place, as sorted
+            # lists of structs (DuckDB orders and compares nested values with NULLs equal).
+            stated = [c for c in d.arrow_types('base', 'witnesses') if c not in skip | set(LIST_PLACE)]
+            row = lambda alias, superseded: '{' + ','.join(f"'{c}':{alias}.\"{c}\"" for c in stated) + f",'superseded_by':{superseded}}}"
+            d.table('witness_refetch_lists', f"""WITH bodies AS (SELECT DISTINCT o,n FROM witness_refetch_pairs),
+                b AS (SELECT r.o,r.n,list_sort(list({row('p', 'coalesce(s.witness_key,p.superseded_by)')})) v FROM bodies r
+                  JOIN base_witnesses p ON p.record_sha=r.o LEFT JOIN witness_rekey s ON s.old_key=p.superseded_by GROUP BY r.o,r.n),
+                c AS (SELECT r.o,r.n,list_sort(list({row('l', 'l.superseded_by')})) v FROM bodies r
+                  JOIN candidate_witnesses l ON l.record_sha=r.n GROUP BY r.o,r.n)
+              SELECT o,n,true AS same_list FROM b JOIN c USING(o,n) WHERE b.v IS NOT DISTINCT FROM c.v""")
+            d.table('witness_refetch', """WITH olds AS (SELECT o FROM witness_refetch_pairs GROUP BY o HAVING count(DISTINCT n)=1),
+                news AS (SELECT n FROM witness_refetch_pairs GROUP BY n HAVING count(DISTINCT o)=1)
+              SELECT old_key,new_key,o,n FROM witness_refetch_pairs JOIN olds USING(o) JOIN news USING(n)
+              LEFT JOIN witness_refetch_lists USING(o,n)
+              WHERE (same OR (moved AND coalesce(same_list,false))) AND read_tied AND o<>n
+                AND n NOT IN (SELECT record_sha FROM base_witnesses WHERE record_sha IS NOT NULL)
+                AND o NOT IN (SELECT record_sha FROM candidate_witnesses WHERE record_sha IS NOT NULL)""")
+            removed = d.one('SELECT count(*) FROM base_witnesses ANTI JOIN candidate_witnesses USING(witness_key)')
+            d.witness_refetch = removed > 0 and d.one('SELECT count(*) FROM witness_refetch') == removed
+    return d.witness_refetch
+
+
 def rekeyed_lists(d: Diff, relation, row, column):
     """`relation`'s `column` keys mapped through witness_rekey, sorted and distinct, per `row`, as table
     `<relation>_rekeyed_<column>`. A join, not a MAP value per row: a MAP lookup scans the map."""
@@ -307,6 +418,11 @@ def document_file(table):
             n = d.one(f'SELECT count(*) FROM {join} WHERE p.witness_keys IS DISTINCT FROM l.witness_keys AND {left} IS NOT DISTINCT FROM {right}')
             if n:
                 rekeys = [dict(group('changed witness_keys', 're-keyed through witness_key_map', n, 'verified'), value=True)]
+                # Exempt when every key the map moves on either side is a re-fetch (ct-uywf).
+                if refetched_witnesses(d) and not d.one(f"""SELECT count(*) FROM (SELECT unnest(witness_keys) k FROM base_{table}
+                      UNION ALL SELECT unnest(witness_keys) FROM candidate_{table}) u
+                      WHERE k IN (SELECT old_key FROM witness_rekey) AND k NOT IN (SELECT old_key FROM witness_refetch)"""):
+                    rekeys[0]['refetch_only'] = True
         return [*groups, *rekeys, *d.changed(table, join, compare, exclude=OFFSETS | {'file_row_number'})], shape if table == 'list' else {}
     return run
 
@@ -427,11 +543,100 @@ def key_file(table, key):
     return run
 
 
+MEETING_COMPARE = {'transcripts': 'list_transform(X.{c},t->t.package_id)'}  # transcript list_row is release-local
+# ct-uywf: the columns a new read of a meeting's Congress.gov detail record moves on an unchanged
+# meeting, and the fields of a read that say where and when it happened.
+DETAIL, UPDATED, STATUSES = 'congress_gov_detail_observation', 'congress_gov_updated', 'publisher_status_observations'
+READ_LOCATOR = ('retrieved_at', 'receipt_key', 'receipt_line', 'capture_index', 'body_sha256')
+READS = (('successful_read',), ('latest_attempt', 'evidence'))  # the two reads a detail observation names
+MEETING_REFETCHED = 'a new read of the Congress.gov detail record: every other column equal on the meeting'
+
+
+def _leaves(kind, path=()):
+    """Paths of every non-struct field under an arrow struct type."""
+    import pyarrow as pa
+    if not pa.types.is_struct(kind):
+        yield path
+        return
+    for field in kind:
+        yield from _leaves(field.type, (*path, field.name))
+
+
+def refetched_meetings(d: Diff):
+    """Table `meeting_refetch(event_id)`: matched meetings on which nothing moved but what a new read of
+    the Congress.gov detail record moves (ct-uywf); True when there is one.
+
+    Every column but the three below is equal (transcripts by package). Of `congress_gov_detail_observation`
+    only the two reads' locators move (time, receipt, line, capture index and body digest), each read
+    either equal or later than the live read, not later than the moment of comparison and in another
+    receipt; the successful read must move, so a read happened; the latest attempt's outcome may only
+    go between `stored` and `unchanged` (both a 200 fetch: new bytes, or the same bytes again). Its
+    state, coverage, listing, address, HTTP status and reader versions stay equal.
+    `congress_gov_updated` (the publisher's own update stamp) is equal, or later and not later than
+    the comparison, and only where the successful read names another body.
+    `publisher_status_observations`: every live entry is kept with its source, status, date and record;
+    a candidate entry is a live one, the same one seen later, or one that cites the new body and states
+    a source, status and date the live release already states. So a postponement, a cancellation or a
+    moved date on the re-fetched record is a new status entry and stops the meeting.
+    Cannot see whether a read happened: the unattended gate finds each new read's receipt line in the
+    capture table, outside the live release's receipts, holding the named body for the named address.
+    O(matched meetings); the status check unnests only the changed rows.
+    """
+    if d.meeting_refetch is None:
+        import pyarrow as pa
+        d.meeting_refetch = False
+        same = d.has('base', 'meetings') and d.has('candidate', 'meetings') and _equal_except(
+            d, 'meetings', {'event_id', DETAIL, UPDATED, STATUSES}, MEETING_COMPARE)
+        kind = d.arrow_types('base', 'meetings').get(DETAIL) if same else None
+        leaves = set(_leaves(kind)) if kind is not None and pa.types.is_struct(kind) else set()
+        moving = {(*read, f) for read in READS for f in READ_LOCATOR} | {('latest_attempt', 'outcome')}
+        if not same or not moving <= leaves:
+            return False
+        field = lambda side, path: f'{side}.{DETAIL}' + ''.join(f'."{p}"' for p in path)
+        now = f"TIMESTAMPTZ '{d.now.isoformat()}'"
+        terms = [same] + [f'{field("p", leaf)} IS NOT DISTINCT FROM {field("l", leaf)}' for leaf in sorted(leaves - moving)]
+        for read in READS:
+            p, l = field('p', read), field('l', read)
+            terms.append(f"""({p} IS NOT DISTINCT FROM {l} OR coalesce({l}.retrieved_at>{p}.retrieved_at AND {l}.retrieved_at<={now}
+                AND {l}.receipt_key<>{p}.receipt_key,false))""")
+        terms.append(f"{field('p', READS[0])} IS DISTINCT FROM {field('l', READS[0])}")
+        outcome = [field(s, ('latest_attempt', 'outcome')) for s in 'pl']
+        terms.append(f"({outcome[0]} IS NOT DISTINCT FROM {outcome[1]} OR ({outcome[0]} IN ('stored','unchanged') AND {outcome[1]} IN ('stored','unchanged')))")
+        body = [field(s, ('successful_read', 'body_sha256')) for s in 'pl']
+        terms.append(f"""(p.{UPDATED} IS NOT DISTINCT FROM l.{UPDATED} OR coalesce(l.{UPDATED}>p.{UPDATED} AND l.{UPDATED}<={now}
+            AND {body[0]}<>{body[1]},false))""")
+        d.table('meeting_refetch_rows', f"""SELECT event_id,{body[1]} AS body FROM base_meetings p JOIN candidate_meetings l USING(event_id)
+          WHERE {' AND '.join(terms)}""")
+        # Status entries, unnested on the qualifying rows whose statuses differ.
+        same_entry = ' AND '.join(f'a.e.{f} IS NOT DISTINCT FROM b.e.{f}' for f in ('source', 'status', 'meeting_date', 'record_sha'))
+        stated = ' AND '.join(f'a.e.{f} IS NOT DISTINCT FROM b.e.{f}' for f in ('source', 'status', 'meeting_date'))
+        d.table('meeting_refetch', f"""WITH j AS (SELECT r.event_id,r.body,p.{STATUSES} ps,l.{STATUSES} ls
+              FROM meeting_refetch_rows r JOIN base_meetings p USING(event_id) JOIN candidate_meetings l USING(event_id)
+              WHERE p.{STATUSES} IS DISTINCT FROM l.{STATUSES}),
+            pe AS (SELECT event_id,unnest(ps) e FROM j), le AS (SELECT event_id,body,unnest(ls) e FROM j),
+            bad AS (SELECT a.event_id FROM pe a WHERE NOT EXISTS (SELECT 1 FROM le b WHERE b.event_id=a.event_id AND {same_entry})
+              UNION ALL
+              SELECT b.event_id FROM le b WHERE NOT EXISTS (SELECT 1 FROM pe a WHERE a.event_id=b.event_id AND {same_entry}
+                  AND (a.e.observed_at IS NOT DISTINCT FROM b.e.observed_at OR coalesce(b.e.observed_at>a.e.observed_at AND b.e.observed_at<={now},false)))
+                AND NOT (b.e.record_sha IS NOT DISTINCT FROM b.body
+                  AND NOT EXISTS (SELECT 1 FROM pe a WHERE a.event_id=b.event_id AND a.e.record_sha IS NOT DISTINCT FROM b.e.record_sha)
+                  AND EXISTS (SELECT 1 FROM pe a WHERE a.event_id=b.event_id AND {stated})))
+          SELECT event_id FROM meeting_refetch_rows WHERE event_id NOT IN (SELECT event_id FROM bad)""")
+        d.meeting_refetch = d.one('SELECT count(*) FROM meeting_refetch') > 0
+    return d.meeting_refetch
+
+
 def meetings(d: Diff):
+    """Event IDs by multiplicity, then value groups on matched meetings. A swapped or wiped subject key is
+    a `changed subject_keys` group. The rows `refetched_meetings` qualifies are set apart in the three
+    columns a re-fetch moves, as verified groups flagged `refetch_only` (ct-uywf)."""
     groups, _ = key_file('meetings', 'event_id')(d)
-    compare = {'transcripts': 'list_transform(X.{c},t->t.package_id)'}  # transcript list_row is release-local
-    # A swapped or wiped subject key is a `changed subject_keys` group.
-    return groups + d.changed('meetings', 'base_meetings p JOIN candidate_meetings l USING(event_id)', compare, set()), {}
+    groups += d.changed('meetings', 'base_meetings p JOIN candidate_meetings l USING(event_id)', MEETING_COMPARE, set())
+    if refetched_meetings(d):
+        counts = {c: d.one(f"""SELECT count(*) FROM meeting_refetch JOIN base_meetings p USING(event_id)
+            JOIN candidate_meetings l USING(event_id) WHERE p.{c} IS DISTINCT FROM l.{c}""") for c in (DETAIL, UPDATED, STATUSES)}
+        groups = refetch_split(groups, counts, MEETING_REFETCHED)
+    return groups, {}
 
 
 def bills(d: Diff):
@@ -478,17 +683,27 @@ def witnesses(d: Diff):
     value groups skip the occurrence the key hashes, which a direct match makes equal and a re-key
     changes by definition, and compare superseded_by through the map. Cannot see whether the map
     chose the right successor: the model's matching rules and their fixtures own that.
+    When a re-fetch explains every re-key (`refetched_witnesses`, ct-uywf), the removed keys and the
+    successors listed in `witness_refetch`, and the display order of those that only moved in their
+    list, are set apart as groups flagged `refetch_only`. Any other successor, such as a surviving
+    witness's key mapped to a new one, stays a verified group the unattended gate still refuses, and
+    an added witness that is no successor is never exempt.
     """
     if not rekeyed(d):
         return generic('witnesses')(d)
     out = []
-    for status, mapped, collision, n in d.rows("""SELECT coalesce(m.status,''),x.old_key IS NOT NULL,
-          c.witness_key IS NOT NULL AND m.status='unambiguous',count(*)
+    refetch = refetched_witnesses(d)
+    listed = lambda key, column: f'{key} IN (SELECT {column} FROM witness_refetch)' if refetch else 'false'
+    for status, mapped, collision, refetched, n in d.rows(f"""SELECT coalesce(m.status,''),x.old_key IS NOT NULL,
+          c.witness_key IS NOT NULL AND m.status='unambiguous',{listed('b.witness_key', 'old_key')},count(*)
           FROM (SELECT witness_key FROM base_witnesses ANTI JOIN candidate_witnesses USING(witness_key)) b
           LEFT JOIN candidate_witness_key_map m ON m.old_key=b.witness_key LEFT JOIN witness_rekey x ON x.old_key=b.witness_key
           LEFT JOIN witness_rekey_collisions c ON c.witness_key=m.witness_key
           GROUP BY ALL ORDER BY ALL"""):
-        if mapped:
+        if mapped and refetched:
+            out.append(dict(group('removed keys', f're-keyed: witness_key_map names the published successor; {REFETCHED_RECORD}', -n,
+                                  'verified'), refetch_only=True))
+        elif mapped:
             out.append(group('removed keys', 're-keyed: witness_key_map names the published successor', -n, 'verified'))
         elif collision:
             out.append(group('removed keys', 'witness_key_map collapses distinct base occurrences', -n, 'defect'))
@@ -498,16 +713,24 @@ def witnesses(d: Diff):
             out.append(group('removed keys', 'unexplained', -n))  # an unambiguous row whose successor is not published
         else:
             out.append(group('removed keys', 'no evidence given', -n))
-    for successor, n in d.rows("""SELECT witness_key IN (SELECT x.witness_key FROM witness_rekey x JOIN base_witnesses p ON p.witness_key=x.old_key),
-          count(*) FROM candidate_witnesses ANTI JOIN base_witnesses USING(witness_key) GROUP BY 1 ORDER BY 1"""):
-        out.append(group('added keys', 'successor of a re-keyed witness', n, 'verified') if successor
-                   else group('added keys', 'no evidence given', n))
+    for successor, refetched, n in d.rows(f"""SELECT witness_key IN (SELECT x.witness_key FROM witness_rekey x JOIN base_witnesses p ON p.witness_key=x.old_key),
+          {listed('witness_key', 'new_key')},count(*) FROM candidate_witnesses ANTI JOIN base_witnesses USING(witness_key) GROUP BY 1,2 ORDER BY 1,2"""):
+        if successor and refetched:
+            out.append(dict(group('added keys', f'successor of a re-keyed witness; {REFETCHED_RECORD}', n, 'verified'), refetch_only=True))
+        else:
+            out.append(group('added keys', 'successor of a re-keyed witness', n, 'verified') if successor
+                       else group('added keys', 'no evidence given', n))
     d.view('base_witnesses_paired', """SELECT p.* REPLACE (coalesce(x.witness_key,p.witness_key) AS witness_key,
           coalesce(s.witness_key,p.superseded_by) AS superseded_by)
         FROM base_witnesses p LEFT JOIN witness_rekey x ON x.old_key=p.witness_key LEFT JOIN witness_rekey s ON s.old_key=p.superseded_by""")
     d.view('candidate_witnesses_paired', 'SELECT * FROM candidate_witnesses')
-    return out + d.changed('witnesses_paired', 'base_witnesses_paired p JOIN candidate_witnesses_paired l USING(witness_key)',
-                           exclude=OCCURRENCE), {}
+    out += d.changed('witnesses_paired', 'base_witnesses_paired p JOIN candidate_witnesses_paired l USING(witness_key)',
+                     exclude=OCCURRENCE)
+    if refetch and 'display_order' in d.columns('base', 'witnesses'):
+        moved = d.one("""SELECT count(*) FROM witness_refetch r JOIN base_witnesses p ON p.witness_key=r.old_key
+          JOIN candidate_witnesses l ON l.witness_key=r.new_key WHERE p.display_order IS DISTINCT FROM l.display_order""")
+        out = refetch_split(out, {'display_order': moved}, REORDERED)
+    return out, {}
 
 
 def witness_key_map(d: Diff):
@@ -517,15 +740,22 @@ def witness_key_map(d: Diff):
     published (it resolves no key a base reader could hold), and a dropped old key the candidate
     publishes again. A dropped key the candidate does not publish no longer resolves: unverified.
     A successor that moved is the same witness when the base successor itself maps to it.
+    When a re-fetch explains every re-key (`refetched_witnesses`, ct-uywf), an added old key whose
+    unambiguous successor is a re-fetched witness, and a `basis` change on a row whose base successor
+    the re-fetch re-keyed to its candidate successor (every other column equal), are flagged
+    `refetch_only`: the old key now reaches its witness by content, as the body it hashed is gone.
     """
     if not d.has('base', 'witness_key_map'):
         return generic('witness_key_map')(d)
     rekeyed(d)
+    refetch = refetched_witnesses(d)
+    follows = "status='unambiguous' AND witness_key IN (SELECT new_key FROM witness_refetch)" if refetch else 'false'
     out = []
-    for published, n in d.rows("""SELECT old_key IN (SELECT witness_key FROM base_witnesses),count(*)
-          FROM candidate_witness_key_map ANTI JOIN base_witness_key_map USING(old_key) GROUP BY 1 ORDER BY 1"""):
-        out.append(group('added keys', 'key retired from witnesses in this release' if published
-                         else 'a key no base witness carries', n, 'verified'))
+    for published, refetched, n in d.rows(f"""SELECT old_key IN (SELECT witness_key FROM base_witnesses),{follows},count(*)
+          FROM candidate_witness_key_map ANTI JOIN base_witness_key_map USING(old_key) GROUP BY 1,2 ORDER BY 1,2"""):
+        cause = 'key retired from witnesses in this release' if published else 'a key no base witness carries'
+        out.append(dict(group('added keys', f'{cause}; {REFETCHED_RECORD}', n, 'verified'), refetch_only=True) if refetched
+                   else group('added keys', cause, n, 'verified'))
     for again, n in d.rows("""SELECT old_key IN (SELECT witness_key FROM candidate_witnesses),count(*)
           FROM base_witness_key_map ANTI JOIN candidate_witness_key_map USING(old_key) GROUP BY 1 ORDER BY 1"""):
         out.append(group('removed keys', 'published again in witnesses', -n, 'verified') if again
@@ -536,7 +766,13 @@ def witness_key_map(d: Diff):
         join += (f' LEFT JOIN {mapped_keys} {alias} ON {alias}.old_key=p.old_key'
                  f' LEFT JOIN witness_rekey {alias[0]}s ON {alias[0]}s.old_key={alias[0]}.witness_key')
     compare = {'witness_key': 'coalesce(Xs.{c},X.{c})', 'candidate_keys': 'coalesce(Xc.{c},X.{c})'}
-    return out + d.changed('witness_key_map', join, compare, exclude={'old_key'}), {}
+    out += d.changed('witness_key_map', join, compare, exclude={'old_key'})
+    same = refetch and _equal_except(d, 'witness_key_map', {'old_key', 'witness_key', 'basis'})
+    if same:
+        n = d.one(f"""SELECT count(*) FROM base_witness_key_map p JOIN candidate_witness_key_map l USING(old_key)
+          JOIN witness_refetch r ON r.old_key=p.witness_key WHERE l.witness_key=r.new_key AND p.basis IS DISTINCT FROM l.basis AND {same}""")
+        out = refetch_split(out, {'basis': n}, BASIS_FOLLOWS)
+    return out, {}
 
 
 def url_state(d: Diff):
@@ -585,10 +821,7 @@ def _content_equal(d: Diff, table):
     key, cited = CITATIONS[table]
     if not (d.has('base', table) and d.has('candidate', table)) or d.identities.get(table, {}).get('fields') != [key]:
         return None
-    types = d.arrow_types('base', table)
-    if types != d.arrow_types('candidate', table) or not {key, *cited} <= set(types):
-        return None
-    return ' AND '.join(f'p."{c}" IS NOT DISTINCT FROM l."{c}"' for c in types if c != key and c not in cited) or 'true'
+    return _equal_except(d, table, {key, *cited})
 
 
 def refetched_files(d: Diff):
@@ -618,21 +851,52 @@ def refetched_files(d: Diff):
     return d.refetched
 
 
+READ_FIELDS = ('receipt_key', 'receipt_line', 'capture_index', 'body_sha256', 'source_url', 'retrieved_at')
+
+
+def _detail_reads(directory):
+    """Every read the meetings' Congress.gov detail observations name (ct-uywf), as tuples of
+    READ_FIELDS. O(meetings)."""
+    import pyarrow.parquet as pq
+    path = Path(directory) / 'meetings.parquet'
+    if not path.exists() or DETAIL not in pq.read_schema(path).names:
+        return set()
+    found = set()
+    for observation in pq.read_table(path, columns=[DETAIL])[DETAIL].to_pylist():
+        for read in READS:
+            value = observation
+            for name in read:
+                value = (value or {}).get(name)
+            if value and value.get('receipt_key'):
+                found.add(tuple(value.get(f) for f in READ_FIELDS))
+    return found
+
+
 def new_citations(base_dir, candidate_dir):
-    """Hex of every `record_sha` the candidate's channels and videos cite that the base's do not.
+    """Hex of every body a re-fetch row cites in the candidate and the base cites nowhere: the cache
+    files of channels and videos (ct-syp1), and witness record bodies and the bodies of the
+    meetings' detail reads (ct-uywf).
 
     The unattended gate checks each against the capture table (release_gate): a file the
-    candidate cites for the first time must be a body some new receipt delivered. O(rows), 67k.
+    candidate cites for the first time must be a body some new receipt delivered. O(rows): 67k
+    videos, 172k witnesses, 19k meetings.
     """
     import pyarrow.parquet as pq
     def cited(directory):
         found = set()
-        for table in ('channels', 'videos'):
+        for table in ('channels', 'videos', 'witnesses'):
             path = Path(directory) / f'{table}.parquet'
             if path.exists() and 'record_sha' in pq.read_schema(path).names:
-                found.update(v for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
-        return found
-    return sorted(v.hex() for v in cited(candidate_dir) - cited(base_dir))
+                found.update(v.hex() if isinstance(v, bytes) else v.lower()
+                             for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
+        return found | {read[3].lower() for read in _detail_reads(directory) if read[3]}
+    return sorted(cited(candidate_dir) - cited(base_dir))
+
+
+def new_reads(base_dir, candidate_dir):
+    """The meetings' detail reads (`_detail_reads`) the candidate names and the base does not, as
+    dicts: the unattended gate finds each one's receipt line in the capture table (ct-uywf)."""
+    return [dict(zip(READ_FIELDS, read)) for read in sorted(_detail_reads(candidate_dir) - _detail_reads(base_dir), key=str)]
 
 
 def cache_churn(table):
@@ -647,7 +911,7 @@ def cache_churn(table):
         one time the candidate does not supply).
       recording_matches: every column but `source_ref` equal, and `source_ref` is
         `video_records:` plus that video's `record_sha` in each release.
-    Such rows become a `verified` group flagged `citation_only`; the rest of the column's
+    Such rows become a `verified` group flagged `refetch_only`; the rest of the column's
     changed rows stay in the unverified `value differs on matched key` group and still need a
     recorded cause, as does every content column, added key and removed key. A row with any
     content change qualifies for nothing, so its citation change is counted with the
@@ -686,16 +950,7 @@ def cache_churn(table):
               FROM base_videos p JOIN candidate_videos l USING(video_key)
               JOIN refetched_files f ON f.handle=l.handle AND f.o=p.record_sha AND f.n=l.record_sha
               WHERE {same} AND (p.details_checked_at IS NOT DISTINCT FROM l.details_checked_at OR {later})""")[0]
-        out = []
-        for g in groups:
-            column = g['group'].removeprefix('changed ')
-            n = checked[CITATIONS[table][1].index(column)] if g.get('value') and column in CITATIONS[table][1] else 0
-            if n:
-                out.append(dict(value_group(column, n), cause=cause, status='verified', citation_only=True))
-                g = dict(g, count=g['count'] - n)
-            if g['count'] or g.get('flag'):
-                out.append(g)
-        return out, notes
+        return refetch_split(groups, dict(zip(CITATIONS[table][1], checked)), cause), notes
     return run
 
 

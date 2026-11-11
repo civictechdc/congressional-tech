@@ -597,8 +597,9 @@ def write_captures(rows, path):
 
 def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None,
             url=REQUEST, attempts=1, raw_url=REQUEST, capture_url=REQUEST, other_entity=False, nested=True, live_receipts=LIVE_RECEIPTS, failed_duplicate=None,
-            base_tables=None, candidate_tables=None, also_held=None, cache_files=(), base_retired=None):
-    """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
+            base_tables=None, candidate_tables=None, also_held=None, cache_files=(), capture_lines=(), base_retired=None):
+    """Releases plus a captures file and raw receipts; returns the gate's automatic callback.
+    `capture_lines` are further capture rows, each a dict of its own columns."""
     import gzip
     import os
     from docspec_client.client import NativeDatasets
@@ -638,6 +639,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     # Cache files the pipeline captured: (file hash, receipt key).
     capture_rows += [dict(receipt_key=key, receipt_line=1, sha256=file_sha, requested_url=None, mode='fetch', complete=True,
                           attempt=0, outcome='stored', http_status=200) for file_sha, key in cache_files]
+    capture_rows += [dict(dict(receipt_line=1, mode='fetch', complete=True, attempt=0, outcome='stored', http_status=200), **row)
+                     for row in capture_lines]
     write_captures(capture_rows, tmp_path / 'captures.parquet')
     sha = next(iter(bodies.values()), b'').hex() if raw_names_body else '0' * 64
     line = dict(record=dict(mode='fetch', outcome='stored', requested_url=raw_url, url=raw_url,
@@ -656,7 +659,8 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     def automatic(report):
         return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
                                 live_receipt_keys=live_receipts, read_receipt=raw.__getitem__, work=tmp_path / 'auto',
-                                candidate_receipt_keys={*live_receipts, receipt, *(key for _, key in cache_files)})
+                                candidate_receipt_keys={*live_receipts, receipt, *(key for _, key in cache_files),
+                                                        *(row['receipt_key'] for row in capture_lines)})
     return base, candidate, automatic
 
 
@@ -912,6 +916,335 @@ def test_a_check_date_in_the_future_refuses_unattended(tmp_path):
     base, candidate, automatic = refreshed(tmp_path, year=2099)
     with pytest.raises(ValueError, match=r'no recorded cause for videos.parquet\|changed details_checked_at'):
         require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+
+
+# ct-uywf: a Congress.gov meeting record read again. Its witness keys hash the record body, so a
+# new body re-keys both witnesses; the meeting's detail read, status sightings and the publisher's
+# update stamp move. Every expected group below is written by hand from the two releases.
+MEETING_URL = 'https://api.congress.gov/v3/committee-meeting/119/house/118340?format=json'
+FIRST_READ = 'receipts/congress/meetings/2026-10-31/first.jsonl.gz'  # in the live release's receipt set
+RELIST = 'receipts/congress/meetings/2026-11-08/relist.jsonl.gz'
+OLD_RECORD, NEW_RECORD = sha256(b'meeting 118340, first read').digest(), sha256(b'meeting 118340, read again').digest()
+READ = pa.struct([('source_url', pa.string()), ('retrieved_at', TS), ('receipt_key', pa.string()), ('receipt_line', pa.int32()),
+                  ('capture_index', pa.int32()), ('body_sha256', pa.string()), ('meeting_parser_version', pa.string()),
+                  ('proof_parser_version', pa.string())])
+MEETINGS = pa.schema([
+    ('event_id', pa.int64()), ('title', pa.string()), ('document_references', pa.list_(pa.string())), ('congress_gov_updated', TS),
+    ('publisher_status_observations', pa.list_(pa.struct([('source', pa.string()), ('status', pa.string()),
+                                                          ('meeting_date', pa.date32()), ('record_sha', pa.string()), ('observed_at', TS)]))),
+    ('congress_gov_detail_observation', pa.struct([('state', pa.string()), ('coverage', pa.string()), ('successful_read', READ),
+        ('latest_attempt', pa.struct([('evidence', READ), ('state', pa.string()), ('outcome', pa.string()), ('http_status', pa.int32())])),
+        ('has_undated_attempt', pa.bool_())]))])
+WITNESSES = pa.schema([('witness_key', pa.string()), ('occasion', pa.string()), ('source', pa.string()), ('record_sha', pa.binary()),
+                       ('source_locator', pa.string()), ('context_key', pa.string()), ('name', pa.string()), ('organization', pa.string()),
+                       ('panel', pa.string()), ('panel_order', pa.int16()), ('display_order', pa.int16()), ('superseded_by', pa.string())])
+KEY_MAP = pa.schema([('old_key', pa.string()), ('witness_key', pa.string()), ('status', pa.string()), ('basis', pa.string()),
+                     ('candidate_keys', pa.list_(pa.string())), ('occasion', pa.string()), ('source', pa.string())])
+HEARD = datetime(2025, 6, 12).date()
+PANEL = (('Ann Lee', 'GAO'), ('Bo Park', 'CBO'))
+
+
+def meeting_read(record, receipt, at, *, keys, mapped, outcome='stored', updated=datetime(2026, 1, 2, tzinfo=timezone.utc),
+                 statuses=(), documents=('hearing memo',), panel=PANEL, order=(1, 2), panels=None):
+    """The meeting, its witnesses (listed in `order`, each on its (panel, panel order), all on the
+    first panel by default) and the key map, as one read of the record left them."""
+    panels = panels or [('Panel I', 1)] * len(keys)
+    read = dict(source_url=MEETING_URL, retrieved_at=at, receipt_key=receipt, receipt_line=1, capture_index=0,
+                body_sha256=record.hex(), meeting_parser_version='m1', proof_parser_version='p1')
+    meeting = dict(event_id=118340, title='Oversight hearing', document_references=list(documents), congress_gov_updated=updated,
+                   publisher_status_observations=[dict(zip(('source', 'status', 'meeting_date', 'record_sha', 'observed_at'), s))
+                                                  for s in statuses],
+                   congress_gov_detail_observation=dict(state='successful', coverage='selected_release_inputs', successful_read=read,
+                       latest_attempt=dict(evidence=read, state='successful', outcome=outcome, http_status=200), has_undated_attempt=False))
+    witnesses = [dict(witness_key=key, occasion='meeting:118340', source='congress_gov', record_sha=record,
+                      source_locator=f'congress_gov:witness[{place}]', context_key='congress/meetings', name=name,
+                      organization=organization, panel=sitting, panel_order=rank, display_order=place, superseded_by=None)
+                 for key, (name, organization), place, (sitting, rank) in zip(keys, panel, order, panels, strict=True)]
+    key_map = [dict(old_key=old, witness_key=new, status='unambiguous', basis=basis, candidate_keys=[],
+                    occasion='meeting:118340', source='congress_gov') for old, new, basis in mapped]
+    return dict(meetings=pa.Table.from_pylist([meeting], schema=MEETINGS), witnesses=pa.Table.from_pylist(witnesses, schema=WITNESSES),
+                witness_key_map=pa.Table.from_pylist(key_map, schema=KEY_MAP))
+
+
+FIRST_SEEN = datetime(2026, 10, 31, tzinfo=timezone.utc)
+SEEN_AGAIN = datetime(2026, 11, 8, 14, tzinfo=timezone.utc)
+UPDATED_OLD, UPDATED_NEW = datetime(2026, 1, 2, tzinfo=timezone.utc), datetime(2026, 11, 7, tzinfo=timezone.utc)
+FUTURE = datetime(2099, 1, 1, tzinfo=timezone.utc)
+LIVE_STATUS = ('congress_gov', 'Scheduled', HEARD, OLD_RECORD.hex(), FIRST_SEEN)
+NEW_MAP = [('k1', 'n1', 'content'), ('w1', 'n1', 'content'), ('w2', 'n2', 'content'), ('v1', 'n1', 'content')]
+OTHER_BODY, SECOND_BODY = bytes.fromhex('ab' * 32), bytes.fromhex('d2' * 32)
+MODS_OLD, MODS_NEW = bytes.fromhex('c1' * 32), bytes.fromhex('c2' * 32)
+MODS_RECEIPT = 'receipts/govinfo/2026-11-10/mods.jsonl.gz'
+REFETCHED = 'a re-fetch of the record: every published value equal'
+READ_AGAIN = 'a new read of the Congress.gov detail record: every other column equal on the meeting'
+
+
+def base_tables(**change):
+    """The live release: meeting 118340 as first read, with witnesses w1 and w2 and one older key k1."""
+    return meeting_read(OLD_RECORD, FIRST_READ, FIRST_SEEN, **{**dict(keys=('w1', 'w2'), mapped=[('k1', 'w1', 'occurrence')],
+                                                                   statuses=[LIVE_STATUS]), **change})
+
+
+def cand_tables(record=NEW_RECORD, receipt=RELIST, at=SEEN_AGAIN, **change):
+    """The candidate after the relist read the record again from `receipt`: by default new bytes, the
+    same two witnesses re-keyed to n1 and n2, a later update stamp, and the status seen in the new body.
+    With `record=OLD_RECORD` the same bytes came back: keys, stamp and status stay, the status seen again."""
+    new = record != OLD_RECORD
+    default = dict(keys=('n1', 'n2') if new else ('w1', 'w2'), mapped=NEW_MAP if new else [('k1', 'w1', 'occurrence')],
+                   outcome='stored' if new else 'unchanged', updated=UPDATED_NEW if new else UPDATED_OLD,
+                   statuses=[LIVE_STATUS, ('congress_gov', 'Scheduled', HEARD, record.hex(), at)] if new else [LIVE_STATUS[:4] + (at,)])
+    return meeting_read(record, receipt, at, **{**default, **change})
+
+
+def capture_line(receipt, body, at, *, url=MEETING_URL, receipt_line=1):
+    return dict(receipt_key=receipt, receipt_line=receipt_line, capture_index=0, sha256=body, requested_url=url, family='congress',
+                retrieved_at=at)
+
+
+def edit(tables, name, change):
+    """`tables` with `change` applied to the rows of one of them."""
+    rows = tables[name].to_pylist()
+    change(rows)
+    return {**tables, name: pa.Table.from_pylist(rows, schema=tables[name].schema)}
+
+
+def other_witness(key, source, body, place, name, organization):
+    return dict(witness_key=key, occasion='meeting:118340', source=source, record_sha=body, source_locator=f'{source}:witness[{place}]',
+                context_key='ctx/' + source, name=name, organization=organization, panel='Panel I', panel_order=1,
+                display_order=place, superseded_by=None)
+
+
+def documents(keys):
+    """One document whose list and detail rows name `keys` as its witnesses."""
+    return dict(list=pa.table({'filename': ['A.pdf'], 'witness_keys': [list(keys)]}),
+                detail=pa.table({'link_key': pa.array([K('A')], pa.binary(8)), 'saved_body': pa.array([K('A') + bytes(24)], pa.binary(32)),
+                                 'witness_keys': [list(keys)]}))
+
+
+def locators(*places):
+    return lambda rows: [row.update(source_locator=f'congress_gov:witness[{place}]') for row, place in zip(rows, places)]
+
+
+def gate_night(tmp_path, base, candidate, lines=None, cache_files=()):
+    """Gates 1 and 2, unattended, on the two releases; returns (passed, report). By default the
+    capture table holds the candidate's read (its body, address and time, in RELIST) and the live read."""
+    if lines is None:
+        read = candidate['meetings'].to_pylist()[0]['congress_gov_detail_observation']['successful_read']
+        lines = [capture_line(read['receipt_key'], bytes.fromhex(read['body_sha256']), read['retrieved_at']),
+                 capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]
+    base_dir, candidate_dir, automatic = nightly(tmp_path, ['A'], ['A'], base_tables=base, candidate_tables=candidate,
+                                                 live_receipts=LIVE_RECEIPTS | {FIRST_READ}, capture_lines=lines, cache_files=cache_files)
+    try:
+        return True, require_release_gates(base_dir, candidate_dir, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    except ValueError:
+        return False, json.loads((tmp_path / 'r.json').read_text())
+
+
+def groups_of(report):
+    return {(name, g['group'], g['cause']): g['count'] for name, facts in report['files'].items() for g in facts['groups']}
+
+
+def test_a_meeting_read_again_with_unchanged_witnesses_passes_unattended(tmp_path):
+    passed, report = gate_night(tmp_path, base_tables(), cand_tables())
+    assert passed and report['reasons'] == [] and report['automatic_reasons'] == [] and report['failing'] == []
+    assert groups_of(report) == {
+        ('witnesses.parquet', 'removed keys', f're-keyed: witness_key_map names the published successor; {REFETCHED}'): -2,
+        ('witnesses.parquet', 'added keys', f'successor of a re-keyed witness; {REFETCHED}'): 2,
+        ('witness_key_map.parquet', 'added keys', f'key retired from witnesses in this release; {REFETCHED}'): 2,
+        ('witness_key_map.parquet', 'added keys', f'a key no base witness carries; {REFETCHED}'): 1,
+        ('witness_key_map.parquet', 'changed basis', 'the successor was re-keyed by a re-fetch of its record'): 1,
+        ('meetings.parquet', 'changed congress_gov_detail_observation', READ_AGAIN): 1,
+        ('meetings.parquet', 'changed congress_gov_updated', READ_AGAIN): 1,
+        ('meetings.parquet', 'changed publisher_status_observations', READ_AGAIN): 1}
+    assert all(g.get('refetch_only') for facts in report['files'].values() for g in facts['groups'])
+    trace = json.loads((tmp_path / 'auto/cited/citation-trace.json').read_text())
+    assert trace['files'] == {NEW_RECORD.hex(): [RELIST]} and [r['receipt_key'] for r in trace['reads']] == [RELIST]
+
+
+def test_a_byte_identical_read_again_passes_unattended(tmp_path):
+    """Only the date stamps move: the same body read from a new receipt, its status seen again."""
+    passed, report = gate_night(tmp_path, base_tables(), cand_tables(record=OLD_RECORD))
+    assert passed and report['failing'] == []
+    assert {(f, g) for f, g, _ in groups_of(report)} == {('meetings.parquet', 'changed congress_gov_detail_observation'),
+                                                        ('meetings.parquet', 'changed publisher_status_observations')}
+    assert json.loads((tmp_path / 'auto/cited/citation-trace.json').read_text())['files'] == {}
+
+
+def test_a_meeting_read_again_listing_the_same_witnesses_in_a_new_order_passes_unattended(tmp_path):
+    """Owner, 2026-11-11: the new order is published. Both witnesses swap places, nothing else moves."""
+    passed, report = gate_night(tmp_path, base_tables(), cand_tables(order=(2, 1)))
+    assert passed and report['failing'] == []
+    assert groups_of(report)[('witnesses.parquet', 'changed display_order',
+                              'the re-fetched record lists the same witnesses in a new order')] == 2
+    assert all(g.get('refetch_only') for facts in report['files'].values() for g in facts['groups'])
+
+
+# One case per clause of the re-fetch rule (release_comparison.refetched_witnesses, refetched_meetings,
+# the documents' witness_keys flag; release_gate.cited_files_are_new), most from the 2026-11-11
+# independent review. Each builds (base, candidate[, capture lines[, cache files]]) and names the
+# outcome: True passes unattended; a string must appear among the gate's reasons.
+PERSON_MAP = [('k1', 'n2', 'content'), ('w1', 'n2', 'content'), ('w2', 'n1', 'content'), ('v1', 'n2', 'content')]
+REKEY_STOPS = 'witnesses.parquet|removed keys|re-keyed: witness_key_map names the published successor ('
+NOT_A_BODY = f'cited file {NEW_RECORD.hex()[:16]} is not a body in the capture table'
+CY = ('Cy Diaz', 'EPA')
+
+
+def mods(reordered=False):
+    """A MODS print of the meeting re-fetched with new bytes, its witnesses (and the order) otherwise equal."""
+    old = [other_witness('m1', 'mods', MODS_OLD, 1, *PANEL[0]), other_witness('m2', 'mods', MODS_OLD, 2, *PANEL[1])]
+    new = [other_witness('m3', 'mods', MODS_NEW, 2 if reordered else 1, *PANEL[0]),
+           other_witness('m4', 'mods', MODS_NEW, 1 if reordered else 2, *PANEL[1])]
+    mapped = [dict(old_key=o, witness_key=n, status='unambiguous', basis='content', candidate_keys=[], occasion='meeting:118340',
+                   source='mods') for o, n in (('m1', 'm3'), ('m2', 'm4'))]
+    candidate = edit(edit(base_tables(), 'witnesses', lambda rows: rows.extend(new)), 'witness_key_map', lambda rows: rows.extend(mapped))
+    return (edit(base_tables(), 'witnesses', lambda rows: rows.extend(old)), candidate,
+            [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN), capture_line(MODS_RECEIPT, MODS_NEW, SEEN_AGAIN, url='https://www.govinfo.gov/mods')])
+
+
+CASES = {
+    # Pass: the re-fetches the rule is for.
+    'map_follows_the_person_in_a_new_order': (lambda: (base_tables(), cand_tables(panel=(PANEL[1], PANEL[0]), mapped=PERSON_MAP)), True),
+    'display_order_moved_locator_kept': (lambda: (base_tables(), edit(cand_tables(order=(2, 1)), 'witnesses', locators(1, 2))), True),
+    'locator_moved_display_order_kept': (lambda: (base_tables(), edit(cand_tables(), 'witnesses', locators(2, 1))), True),
+    'two_identical_rows_reordered': (lambda: (base_tables(panel=(PANEL[0], PANEL[0])), cand_tables(panel=(PANEL[0], PANEL[0]), order=(2, 1))), True),
+    # D2: documents naming re-keyed witnesses are exempt too; without it every relist night stops
+    # (78 such rows in each document file on 2026-11-10's pair).
+    'documents_name_the_re_keyed_witnesses': (lambda: ({**base_tables(), **documents(('w1', 'w2'))},
+                                                       {**cand_tables(), **documents(('n1', 'n2'))}), True),
+    'video_refresh_beside_a_re_key': (lambda: ({**base_tables(), **video_tables('fetch-1', 1)}, {**cand_tables(), **video_tables('fetch-2', 8)},
+                                               None, [(cache_file('fetch-2'), CACHE_RECEIPT)]), True),
+
+    # Witness rows: equal on every published value.
+    'organization_edited': (lambda: (base_tables(), cand_tables(panel=(PANEL[0], ('Bo Park', 'EPA')))), 'witnesses.parquet|changed organization'),
+    'name_edited_under_a_new_order': (lambda: (base_tables(), cand_tables(order=(2, 1), panel=(PANEL[0], ('Bo Parks', 'CBO')))),
+                                      'witnesses.parquet|changed name'),
+    'superseded_by_set_under_a_new_order': (lambda: (base_tables(), edit(cand_tables(order=(2, 1)), 'witnesses',
+                                                                         lambda rows: rows[0].update(superseded_by='n2'))), 'witnesses.parquet|changed superseded_by'),
+    'witness_moved_to_another_panel': (lambda: (base_tables(), cand_tables(order=(2, 1), panels=[('Panel II', 2), ('Panel I', 1)])),
+                                       'witnesses.parquet|changed panel'),
+    'panel_order_moved_under_a_new_order': (lambda: (base_tables(), cand_tables(order=(2, 1), panels=[('Panel I', 1), ('Panel I', 2)])),
+                                            'witnesses.parquet|changed panel_order'),
+    'null_organization_now_empty_under_a_new_order': (lambda: (edit(base_tables(), 'witnesses', lambda rows: rows[1].update(organization=None)),
+                                                               edit(cand_tables(order=(2, 1)), 'witnesses', lambda rows: rows[1].update(organization=''))),
+                                                      'witnesses.parquet|changed organization'),
+    # A new order lists the same witnesses (multiset), and the map follows the person.
+    'details_swapped_under_a_new_order': (lambda: (base_tables(), cand_tables(order=(2, 1), panel=(('Ann Lee', 'CBO'), ('Bo Park', 'GAO')))),
+                                          'witnesses.parquet|changed organization'),
+    'map_follows_the_place_not_the_person': (lambda: (base_tables(), cand_tables(panel=(PANEL[1], PANEL[0]))), 'witnesses.parquet|changed name'),
+    'new_order_beside_a_new_witness': (lambda: (base_tables(), cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(3, 2, 1))),
+                                       'witnesses.parquet|changed display_order'),
+    'new_order_beside_a_duplicate': (lambda: (base_tables(), cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, PANEL[0]), order=(2, 1, 3))),
+                                     'witnesses.parquet|changed display_order'),
+    'new_order_beside_a_dropped_witness': (lambda: (base_tables(keys=('w1', 'w2', 'w3'), panel=(*PANEL, CY), order=(1, 2, 3)),
+                                                    cand_tables(order=(2, 1))), 'witnesses.parquet|removed keys|no evidence given'),
+    'dropped_witness_key_sent_to_another': (lambda: (base_tables(keys=('w1', 'w2', 'w3'), panel=(*PANEL, CY), order=(1, 2, 3)),
+                                                     cand_tables(order=(2, 1), mapped=NEW_MAP + [('w3', 'n1', 'content')])), 'collapses distinct base occurrences'),
+    'new_order_beside_a_document_change': (lambda: (base_tables(), cand_tables(order=(2, 1), documents=('hearing memo', 'testimony'))),
+                                           'meetings.parquet|changed document_references'),
+    # Every dropped key is a clean re-key; the map pairs one old key with one successor.
+    'map_lost_a_pair': (lambda: (base_tables(), cand_tables(mapped=[m for m in NEW_MAP if m[0] != 'w2'])), 'witnesses.parquet|removed keys|no evidence given'),
+    'a_witness_dropped': (lambda: (base_tables(), cand_tables(keys=('n1',), panel=PANEL[:1], order=(1,), mapped=NEW_MAP[:2])),
+                          'witnesses.parquet|removed keys|no evidence given'),
+    'a_witness_added': (lambda: (base_tables(), cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3))),
+                        'witnesses.parquet|added keys|no evidence given'),
+    'two_old_keys_one_successor': (lambda: (base_tables(), cand_tables(mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'),
+                                                                               ('w2', 'n1', 'content'), ('v1', 'n1', 'content')])), 'collapses distinct base occurrences'),
+    # Must-fix p16: a surviving witness's key mapped to a new duplicate of itself is no re-fetch successor.
+    'surviving_key_mapped_to_a_duplicate': (lambda: (
+        edit(base_tables(), 'witnesses', lambda rows: rows.append(other_witness('h1', 'house_xml', OTHER_BODY, 1, *PANEL[0]))),
+        edit(cand_tables(mapped=NEW_MAP + [('h1', 'd1', 'content')]), 'witnesses', lambda rows: rows.extend([
+            other_witness('h1', 'house_xml', OTHER_BODY, 1, *PANEL[0]), other_witness('d1', 'house_xml', NEW_RECORD, 1, *PANEL[0])]))),
+        'witnesses.parquet|added keys|successor of a re-keyed witness (1) is not an addition'),
+    # Bodies: one old body to one new one, the old one gone, the new one new, and moved at all.
+    'old_body_split_in_two': (lambda: (base_tables(), edit(cand_tables(), 'witnesses', lambda rows: rows[1].update(record_sha=SECOND_BODY)),
+                                       [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(RELIST, SECOND_BODY, SEEN_AGAIN, receipt_line=2),
+                                        capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), REKEY_STOPS),
+    'two_old_bodies_one_new': (lambda: (edit(base_tables(), 'witnesses', lambda rows: rows[1].update(record_sha=OTHER_BODY)), cand_tables()), REKEY_STOPS),
+    'old_body_kept_by_one_witness': (lambda: (base_tables(), edit(cand_tables(keys=('n1', 'w2'), mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'),
+                                                                                                        ('v1', 'n1', 'content')]),
+                                                                  'witnesses', lambda rows: rows[1].update(record_sha=OLD_RECORD))), REKEY_STOPS),
+    'new_body_already_cited_live': (lambda: (edit(base_tables(), 'witnesses', lambda rows: rows.append(other_witness('x1', 'house_xml', NEW_RECORD, 9, 'Di Fox', 'NSF'))),
+                                             edit(cand_tables(), 'witnesses', lambda rows: rows.append(other_witness('x1', 'house_xml', NEW_RECORD, 9, 'Di Fox', 'NSF')))),
+                                    REKEY_STOPS),
+    'same_body_new_keys_in_a_new_order': (lambda: (base_tables(), cand_tables(record=OLD_RECORD, keys=('n1', 'n2'), order=(2, 1), mapped=NEW_MAP[:3])),
+                                          'witnesses.parquet|changed display_order'),
+    # Should-fix: Congress.gov only, and the new body is the meeting's own new read.
+    'witness_body_is_not_its_meetings_read': (lambda: (base_tables(), edit(cand_tables(), 'witnesses', lambda rows: [r.update(record_sha=SECOND_BODY) for r in rows]),
+                                                       [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(RELIST, SECOND_BODY, SEEN_AGAIN, receipt_line=2),
+                                                        capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), REKEY_STOPS),
+    'mods_print_re_fetched': (lambda: mods(), 'witnesses.parquet|removed keys|re-keyed'),
+    'mods_print_re_fetched_in_a_new_order': (lambda: mods(reordered=True), 'witnesses.parquet|changed display_order'),
+    # D1: a document key the map moves that is no re-fetch re-key (here a stale key the live document listed).
+    'document_lists_a_key_no_re_fetch_moved': (lambda: ({**base_tables(), **documents(('v1', 'w2'))}, {**cand_tables(), **documents(('n1', 'n2'))}),
+                                               'list.parquet|changed witness_keys|re-keyed through witness_key_map (1) is not an addition'),
+
+    # Meeting rows: every other column equal.
+    'document_list_changed': (lambda: (base_tables(), cand_tables(documents=('hearing memo', 'testimony'))), 'meetings.parquet|changed document_references'),
+    # The detail observation: only the reads' locators move, later, not in the future.
+    'latest_attempt_failed': (lambda: (base_tables(), edit(cand_tables(), 'meetings', lambda rows: rows[0]['congress_gov_detail_observation']['latest_attempt'].update(state='failed'))),
+                              'meetings.parquet|changed congress_gov_detail_observation'),
+    'outcome_redirected': (lambda: (base_tables(), cand_tables(outcome='redirected')), 'meetings.parquet|changed congress_gov_detail_observation'),
+    'read_dated_before_the_live_read': (lambda: (base_tables(), cand_tables(at=datetime(2026, 10, 1, tzinfo=timezone.utc))),
+                                        'meetings.parquet|changed congress_gov_detail_observation'),
+    'read_dated_in_the_future': (lambda: (base_tables(), cand_tables(at=FUTURE)), 'meetings.parquet|changed congress_gov_detail_observation'),
+    'status_seen_again_with_no_read': (lambda: (base_tables(), meeting_read(OLD_RECORD, FIRST_READ, FIRST_SEEN, keys=('w1', 'w2'), mapped=[('k1', 'w1', 'occurrence')],
+                                                                            statuses=[LIVE_STATUS[:4] + (SEEN_AGAIN,)]), [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]),
+                                       'meetings.parquet|changed publisher_status_observations'),
+    # The update stamp: later, not in the future, only with a new body.
+    'update_stamp_moved_back': (lambda: (base_tables(), cand_tables(updated=datetime(2025, 12, 1, tzinfo=timezone.utc))), 'meetings.parquet|changed congress_gov_updated'),
+    'update_stamp_in_the_future': (lambda: (base_tables(), cand_tables(updated=FUTURE)), 'meetings.parquet|changed congress_gov_updated'),
+    'update_stamp_moved_on_the_same_body': (lambda: (base_tables(), cand_tables(record=OLD_RECORD, updated=UPDATED_NEW)), 'meetings.parquet|changed congress_gov_updated'),
+    # Status entries: live ones kept; a new one only restates a live status and date from the new body.
+    'status_postponed': (lambda: (base_tables(), cand_tables(statuses=[LIVE_STATUS, ('congress_gov', 'Postponed', HEARD, NEW_RECORD.hex(), SEEN_AGAIN)])),
+                         'meetings.parquet|changed publisher_status_observations'),
+    'same_status_new_date': (lambda: (base_tables(), cand_tables(statuses=[LIVE_STATUS, ('congress_gov', 'Scheduled', HEARD + timedelta(days=1), NEW_RECORD.hex(), SEEN_AGAIN)])),
+                             'meetings.parquet|changed publisher_status_observations'),
+    'live_status_dropped': (lambda: (base_tables(), cand_tables(statuses=[('congress_gov', 'Scheduled', HEARD, NEW_RECORD.hex(), SEEN_AGAIN)])),
+                            'meetings.parquet|changed publisher_status_observations'),
+    'status_seen_again_in_the_future': (lambda: (base_tables(), cand_tables(record=OLD_RECORD, statuses=[LIVE_STATUS[:4] + (FUTURE,)])),
+                                        'meetings.parquet|changed publisher_status_observations'),
+    'status_copied_with_an_earlier_date': (lambda: (base_tables(), cand_tables(record=OLD_RECORD, statuses=[LIVE_STATUS, LIVE_STATUS[:4] + (datetime(2026, 10, 1, tzinfo=timezone.utc),)])),
+                                           'meetings.parquet|changed publisher_status_observations'),
+    'status_cites_a_body_no_read_names': (lambda: (base_tables(), cand_tables(statuses=[LIVE_STATUS, ('congress_gov', 'Scheduled', HEARD, OTHER_BODY.hex(), SEEN_AGAIN)])),
+                                          'meetings.parquet|changed publisher_status_observations'),
+
+    # The capture table, which the candidate does not control.
+    'new_body_made_up': (lambda: (base_tables(), cand_tables(), [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), NOT_A_BODY),
+    'new_body_made_up_under_a_new_order': (lambda: (base_tables(), cand_tables(order=(2, 1)), [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), NOT_A_BODY),
+    'new_body_also_in_a_live_receipt': (lambda: (base_tables(), cand_tables(), [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+                                                                              capture_line(FIRST_READ, NEW_RECORD, SEEN_AGAIN, receipt_line=9)]),
+                                        f'cited file {NEW_RECORD.hex()[:16]} was already read by the live release ({FIRST_READ})'),
+    # A meeting with no witnesses: only its own read cites the new body.
+    'meeting_body_also_in_a_live_receipt': (lambda: (base_tables(keys=(), panel=(), order=(), mapped=[]),
+                                                     cand_tables(keys=(), panel=(), order=(), mapped=[]),
+                                                     [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+                                                      capture_line(FIRST_READ, NEW_RECORD, SEEN_AGAIN, receipt_line=9)]),
+                                            f'cited file {NEW_RECORD.hex()[:16]} was already read by the live release ({FIRST_READ})'),
+    'witness_body_uncaptured_beside_a_video_refresh': (lambda: ({**base_tables(), **video_tables('fetch-1', 1)}, {**cand_tables(), **video_tables('fetch-2', 8)},
+                                                                [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)], [(cache_file('fetch-2'), CACHE_RECEIPT)]), NOT_A_BODY),
+    'read_in_a_live_receipt': (lambda: (base_tables(), cand_tables(record=OLD_RECORD, receipt=UNDATED_LIVE_RECEIPT)),
+                               f'read {UNDATED_LIVE_RECEIPT}:1:0 is in a receipt the live release read'),
+    'read_line_absent': (lambda: (base_tables(), cand_tables(record=OLD_RECORD), [capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]),
+                         f'read {RELIST}:1:0 is not a line in the capture table'),
+    'read_line_holds_another_body': (lambda: (base_tables(), cand_tables(record=OLD_RECORD), [capture_line(RELIST, OTHER_BODY, SEEN_AGAIN),
+                                                                                          capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]),
+                                     f'read {RELIST}:1:0 holds body {OTHER_BODY.hex()[:16]}'),
+    'read_line_requests_another_address': (lambda: (base_tables(), cand_tables(), [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN, url=MEETING_URL.replace('118340', '999999')),
+                                                                                capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), f'read {RELIST}:1:0 requested'),
+    'read_line_fetched_at_another_time': (lambda: (base_tables(), cand_tables(), [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN - timedelta(days=1)),
+                                                                               capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), f'read {RELIST}:1:0 is dated'),
+}
+
+
+@pytest.mark.parametrize('case', sorted(CASES))
+def test_a_meeting_read_again_unattended(tmp_path, case):
+    build, expected = CASES[case]
+    passed, report = gate_night(tmp_path, *build())
+    said = '\n'.join(report['reasons'] + report.get('automatic_reasons', []))
+    if expected is True:
+        assert passed, said
+    else:
+        assert not passed and expected in said, said
 
 
 # ct-9j3z: a capture night's url_state bookkeeping, proven from the lines of receipts new to the
