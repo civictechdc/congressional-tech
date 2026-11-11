@@ -270,7 +270,7 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
 def bind_candidate(candidate,build,runtime):
     """Write ``<build>/model-spec.json`` for the completed daily a candidate holds; return its path.
 
-    The binding is the publisher's resume path (``_resume_daily_inputs``): the daily summary
+    The binding is the publisher's resume path (``resume_daily_inputs``): the daily summary
     must match the digest sealed in the candidate's model intent, and completed_daily_inputs
     binds this checkout's template to its pins, catalog version and provenance records. It
     refuses, as the publisher does, a daily whose entity versions differ from this checkout's.
@@ -278,11 +278,12 @@ def bind_candidate(candidate,build,runtime):
     pins check those bytes when the build holds them. The runtime is copied with its file paths
     made absolute and its workspace in the build; the credentials file is named, never opened.
     """
-    from viewer_publication.archive_publish_job import ROOT,_resume_daily_inputs
+    # Imported here: archive_publish_job imports this module.
+    from viewer_publication.archive_publish_job import ROOT,resume_daily_inputs
     candidate,build,runtime=Path(candidate).resolve(),Path(build).resolve(),Path(runtime).resolve()
     if build.exists() or build.is_symlink():raise ValueError('The build folder must be fresh: '+str(build))
     template=load_spec(ROOT/'model/jobs/publish-model.json')
-    model=_resume_daily_inputs(template,dict(work=str(candidate/'archive-daily')),
+    model=resume_daily_inputs(template,dict(work=str(candidate/'archive-daily')),
                                publish_work=candidate/'archive-publish')['model']
     held=candidate/'archive-daily-provenance'
     for name in PROVENANCE:

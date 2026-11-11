@@ -159,7 +159,7 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
         verified_files=snapshot.verified(),**handoff)
 
 
-def _resume_daily_inputs(template,daily,*,publish_work):
+def resume_daily_inputs(template,daily,*,publish_work):
     """Rebind the completed daily inputs before consulting the current selection."""
     from viewer_publication.archive_controller import _read_continuation
     _,checkpoint=_read_continuation(publish_work,daily=True)
@@ -516,7 +516,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 reads=configure_read_retries(storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1}))
                 raw_store=BodyStore(R2Adapter(reads,spec['bucket']))
                 if spec.get('resume'):
-                    daily=_resume_daily_inputs(selected_model,spec['_daily'],publish_work=Path(spec['work']))
+                    daily=resume_daily_inputs(selected_model,spec['_daily'],publish_work=Path(spec['work']))
                 else:
                     retention={'retain':True} if spec.get('_nightly') else {}
                     daily=produce_daily_inputs(selected_model,spec['_daily'],engine=model,
