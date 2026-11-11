@@ -17,3 +17,9 @@ Both appearance-record schema changes so far (2026-11-05, ea2cf179; and the MODS
 
 The engine can add a nullable field to an existing lake table as a recorded table operation; appending rows with the new field to an older table works after it; a CT test shows a MODS-style two-column addition without a new table; old snapshots still read.
 
+
+## Notes
+
+**2026-11-11T09:48:23Z**
+
+2026-11-11 (session congress-1, from the release session and the refactor team, read from source on engine candidate ae12bbd): the one-line engine cannot add a column to a pipeline lake table either (same five table operations; append still refuses a field-name mismatch). It has schema evolution only for the engine's own datasets (docspec schema / plan-schema), which does not serve appearance_records without moving the table into the dataset model. So the MODS fields 36-39 ship through a new table this release (option 1, the 2026-11-05 path). The refactor team scoped X9: a guarded add_columns table operation (optional columns only, fresh field ids, refuses a stale head, idempotent), as a post-pin engine item. The pipeline caller in packages/congress_api/src/congress_api/lake/tables.py is CT's.
