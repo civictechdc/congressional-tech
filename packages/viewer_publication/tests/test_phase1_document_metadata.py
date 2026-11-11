@@ -674,7 +674,7 @@ def test_recovery_only_document_takes_the_recovered_reading_title_else_the_origi
                       meeting_keys=[], measure_keys=[], bioguide_ids=[], package_id=None, facts=[])
     from viewer_publication.archive_model import registry_inputs
     inputs = registry_inputs(tmp_path / 'registries') + [json_input(tmp_path, 'saved_recoveries', recoveries, component='Utf8', saved_rank='Int64', id='Utf8', body_sha='Utf8',
-                         original_url='Utf8', bytes='Int64', imported_at='Utf8', role='Utf8')] + [
+                         original_url='Utf8', bytes='Int64', imported_at='Utf8', role='Utf8', page_shown='Utf8')] + [
         json_input(tmp_path, 'document_identities', [dict(component=c, document_id='doc:' + c, has_real=False) for c in ('read', 'label')],
                    component='Utf8', document_id='Utf8', has_real='Boolean'),
         json_input(tmp_path, 'effective_filenames', [dict(input_id='recovery:' + c, filename=c + '.pdf') for c in ('read', 'label')],

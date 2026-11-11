@@ -37,8 +37,10 @@ JOIN body_evidence b ON r.body_sha=b.body_sha
 -- the candidate set comes first so the join builds on it, not on captures.
 LEFT JOIN (SELECT encode(c.sha256,'hex') AS body_sha,max(c.media_type) AS media_type
  FROM (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s JOIN captures c ON c.sha256=s.sha256 GROUP BY c.sha256) c ON r.body_sha=c.body_sha
+-- A document that showed its dead page keeps the page's title on the file (ct-u9y4; owner, 2026-11-11), not the
+-- hearing record's own title nor none: the title is read from the page the document showed, else the saved file.
 LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,coalesce(nullif(trim(max(p.title)),''),nullif(trim(max(p.heading)),'')) AS title
- FROM (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s JOIN source_annotation_pages p ON p.body_sha=s.sha256 WHERE p.status='completed' GROUP BY p.body_sha) t ON r.body_sha=t.body_sha
+ FROM (SELECT DISTINCT decode(coalesce(page_shown,body_sha),'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s JOIN source_annotation_pages p ON p.body_sha=s.sha256 WHERE p.status='completed' GROUP BY p.body_sha) t ON coalesce(r.page_shown,r.body_sha)=t.body_sha
 LEFT JOIN component_meeting_links ml ON d.component=ml.component
 LEFT JOIN document_witness_keys wk ON d.component=wk.component
 WHERE NOT d.has_real
