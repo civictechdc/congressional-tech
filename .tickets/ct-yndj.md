@@ -23,3 +23,7 @@ One maintenance run finishes green (hosted dispatch or local) with before and af
 **2026-11-10T15:47:02Z**
 
 2026-11-10: prepared, not run (owner decides the run, outside a release window). Being prepared on branch claude/dx-maintenance-prep: the table list checked against the tables the daily and model bind, a disk-budget entry named maintenance, a runbook with the before and after measurements the run should produce and how to stop or undo it midway. Why it matters, measured: readings has 1,907 data files and 1,294 snapshots; one full scan of it takes 23.5 s (profile_reading_duplicates in build c03c43da) and one append took a median 19.6 s (ct-z4i9), and every append anti-joins against every existing file (lake/tables.py append_rows), so the cost of a commit grows with the file count.
+
+**2026-11-11T14:31:18Z**
+
+validated 2026-11-11, left open: preparation is on main (W7: fdc767cb maintenance takes its table list from the daily job spec; 9a470972 rebuild and purge need an explicit tables map; merged ab391575), and .github/archive-jobs.json names a 'maintenance' budget. The run itself has not happened: model/jobs/maintenance.json lake_maintenance is still empty and the weekly schedule stays off (archive-jobs.yml:5-6). Waits on the owner's go for the readings move outside a release window.

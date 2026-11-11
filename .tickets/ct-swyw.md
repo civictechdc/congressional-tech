@@ -17,3 +17,9 @@ test_phase1_model_repeat_cost.py (W6, branch claude/dx-lake-backed-plan-pass) pl
 
 One local-lake model build with a playlist_records input, on the heavy slot under the watchdog; scripts/measure/model_relation_rows.py over it regenerates fixtures/model-relation-rows.json (check its layout assumption: it reads model-scratch/job.json, newer builds keep archive-model/job.json). Every tracked figure in test_phase1_model_repeat_cost.py (REPEAT_COST_TRACKED, OUTER_BUILD_TRACKED) re-recorded from the new rows, each change explained. playlist_records added to LAKE_TABLES and its pinned parser version to submitted_job; the module docstring's seven-of-eight paragraph removed. The pass green (partial), then a lane.
 
+
+## Notes
+
+**2026-11-11T14:31:18Z**
+
+validated 2026-11-11, left open: not done. packages/viewer_publication/tests/test_phase1_model_repeat_cost.py:201 LAKE_TABLES still omits playlist_records and the docstring's seven-of-eight paragraph (lines 34-39) is still there; no local-lake build with playlist_records has been made.

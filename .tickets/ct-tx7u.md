@@ -25,3 +25,9 @@ Check (the coordinator's; read-only on R2; written, not run): refactor/pin-move/
 
 The declared captures and readings schemas state the ids the tables actually have: the created ids, confirmed by the check or a local create. A test creates each declared lake table on a local catalog and asserts that the created schema's ids equal the declared ones (it fails today for captures and readings). The model-definition hash change is recorded with the reason. The pin's byte test takes lake ids from the tables, not from the declared files. The other declared lake schemas (meeting, appearance, video, committee and playlist records, body text) are checked the same way.
 
+
+## Notes
+
+**2026-11-11T14:31:18Z**
+
+validated 2026-11-11, left open: the check ran (decisions-overnight 11:46Z, three read-only GetObjects at 77673bfb8fcf's pins: captures 18 of 39 ids equal the declared file, readings 20 of 34, filename_readings 26 of 26, as predicted), so the premise is confirmed. Not fixed: model/lake/captures.schema.json still declares context_url 14, original_url 31, imported_at 35 (created ids are 10, 32, 36). Remains: correct the declared ids, the create-and-compare test for every declared lake table, and the recorded model-definition hash change.

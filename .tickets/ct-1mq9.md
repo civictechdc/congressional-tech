@@ -21,3 +21,9 @@ Options, cheapest first: (a) repeat the ct-yndj move by hand when data files pas
 
 The owner picks a trigger and cadence (or records why it stays manual), based on two weeks of measured files-per-nightly after the first ct-yndj move; produce_html_metadata either takes a byte bound or records why not.
 
+
+## Notes
+
+**2026-11-11T14:31:18Z**
+
+validated 2026-11-11, left open: depends on the first ct-yndj move, which has not run, and then two weeks of files-per-nightly before the owner picks a cadence; produce_html_metadata still takes a plain batch_size (lake/daily.py).

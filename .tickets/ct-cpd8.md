@@ -66,3 +66,7 @@ Plan for the next intentional filename version step, one commit: raise the start
 **2026-11-10T17:41:12Z**
 
 2026-11-10 17:41Z seen again: with load about 150 on 14 cores (release lanes, OCR, an engine release build, three sessions' tests), two house-naming bounded-backtracking tests timed out at their 8-second subprocess limit in the third release stack's lanes: test_structured_slots.py::test_long_malformed_amendment_identifier_does_not_backtrack_over_digit_partitions (shard 1) and test_filed_targets.py::test_failed_long_filing_shape_is_bounded (shard 4). Both files pass alone at load 30 (106 passed in 7.3 s) and the stack does not touch packages/house-naming. Shards 1 and 4 are being rerun. A wall-clock timeout is the wrong measure for 'does not backtrack'; counting regex steps or comparing against a short input would not depend on load.
+
+**2026-11-11T14:33:14Z**
+
+validated 2026-11-11, left open. The qualification-test half is done (on main since the thread1 lane 489f026f). Two parts remain, both checked on origin/main today: (1) the parser-worker startup wait is still max(5, timeout) (retention/parser_worker.py:111), waiting on the next intentional filename version step because the file is in the filename producer identity; (2) the house-naming backtracking tests still measure with an 8 s wall-clock subprocess limit (test_filed_targets.py:161 timeout=8; test_structured_slots.py:163 timeout=5) and timed out under load about 150 on 2026-11-10 17:41Z; counting steps or a short-input comparison would not depend on load.

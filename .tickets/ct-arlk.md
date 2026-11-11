@@ -17,3 +17,9 @@ Found 2026-11-10 by W3's review (docspec-feedback refactor). archive_model_job -
 
 Model-only build folders have an owner and an end condition through the existing cleanup facility, not a new retention authority: for example, once the identity comparison has recorded the release id and the sha256 of every archive-release and evidence file, output and scratch are removed and the spec, runtime copy, result line, watchdog report and comparison are kept; or a recorded decision keeps them under a measured disk budget (ct-ucwm). Free disk measured before and after.
 
+
+## Notes
+
+**2026-11-11T14:31:18Z**
+
+validated 2026-11-11, left open: nothing removes model-only build folders yet; archive_model_job --from-candidate still leaves output and scratch, and release-next/ still holds build-final-2, build-final-3, build-main-control and build-release-b. Needs an owner and end condition (cleanup facility or a measured budget under ct-ucwm).

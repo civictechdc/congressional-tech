@@ -17,3 +17,9 @@ Follow-up from W5 (ct-64t4). Three jobs choose their engine runtime by a second 
 
 One owner chooses the runtime for all five callers; each run's existing evidence names the runtime file, binary and limits it ran under and how they were chosen; tests with constructed runtimes and a decoy show each caller records the same fields; the choice order is unchanged unless the owner decides otherwise.
 
+
+## Notes
+
+**2026-11-11T14:31:18Z**
+
+validated 2026-11-11, left open: not done. On origin/main 17a283bc only the model job and the publisher use choose_runtime/runtime_record (archive_model_job.py:423-428, archive_publish_job.py:475-485); the backfill (archive_backfill_job.py:345), import (archive_import_job.py:140) and maintenance (archive_maintenance.py:493) still pick engine_config or DOCSPEC_RUNTIME_CONFIG by their own copies and record nothing. Changing the order stays an owner decision.

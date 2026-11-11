@@ -17,3 +17,9 @@ Found 2026-11-11 while planning the MODS appearance activation (.cache/archive-r
 
 Before any producer-record write or body fetch, the job compares the rows it would append with the target table's schema through the engine and refuses with a clear message naming the missing fields; a test plants a new nullable column and shows no write or fetch happens; --plan reports the target schema and the record counts it would touch.
 
+
+## Notes
+
+**2026-11-11T14:32:38Z**
+
+validated 2026-11-11, left open: not done. Neither archive_backfill_job.py nor lake/daily.py compares the rows to append with the target table's schema before producer-record writes or body fetches (rg for schema_mismatch/target schema finds nothing there); --plan still reads no data.

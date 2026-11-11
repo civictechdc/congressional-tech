@@ -23,3 +23,7 @@ The evidence closure contains only files a reader executes when deriving a body,
 **2026-11-11T00:18:36Z**
 
 f6615f13 (claude/dx-reading-evidence) records the readings drift from ct-an6o's lake/versions.py, together with W1's, as equivalence: bundle_version's version_digest(files={}) is unchanged. Measured there: sniff's 32-file closure reaches docspec_client only through retention/__init__.py and weekly_tables, so client plumbing (W1) moved sniff's evidence as well.
+
+**2026-11-11T14:32:38Z**
+
+validated 2026-11-11, left open: not done. reading_version_diagnostics.body_text_evidence still fingerprints the closure from lake/body_text.py (line 73), so the 68-file closure stands; W1 (f6615f13), W4 (030d44b3), W5 (288ba64f) and ct-p394 (a4ec992b) each needed a recorded equivalence this week because of it. The readings drift from ct-an6o was recorded in f6615f13, so that part of the acceptance is met. Remains: narrow the closure (owner's call per decisions-overnight 00:22Z) with its test in test_body_text_derivation.py.

@@ -31,3 +31,7 @@ The repeated daily scans run once per night, or the reason they cannot is writte
 **2026-11-10T20:39:29Z**
 
 2026-11-10 one more figure: the fresh release-night run (nightly/20261110T195322.097664Z, d3ed7ca5) took 1,658.6 s in its publish step (model, export and gate). The captures read-once change (ct-07wr) did not ship in this release; it moved to the next one.
+
+**2026-11-11T14:33:14Z**
+
+validated 2026-11-11, left open. Since filing: item 3 answered (threads are not the limit; do not raise them); the model's lake re-reads are cut for captures by W10 (ct-07wr, closed): statement seconds 778 -> 454 on the like-for-like pair, and the 20261111T103005Z production nightly's publish step took 1,158 s against 1,579 s on 2026-11-10 12:15Z. Not done: item 1 (the daily's three producer passes each run the full pending_bodies/settled_parsers scan, current_page_readings twice), item 2 (uv.lock in the model identity forces a full rebuild on any dependency bump), item 4 (incremental model, a project). Each still needs doing, declining or its own ticket.

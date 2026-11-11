@@ -17,3 +17,9 @@ Found 2026-11-10 by W3's review (docspec-feedback refactor, model-only build com
 
 Step 9 passes the ledger the publisher would pass (archive_model_job.ledger_files over the base the run selects, the same release_gate calls fetch_base makes), or the run state says in so many words that its release id and suite results were made with an empty ledger and why. A test with a base that carries retired_links shows the step-9 build's retired_links rows equal the publisher's for the same inputs.
 
+
+## Notes
+
+**2026-11-11T14:33:14Z**
+
+validated 2026-11-11, left open: not fixed. archive_selective.py:481 still calls execute_model(validate_model(value, base=run.work)) with no prior_links or base_retired. Latent while model/jobs/backfill-selective.json stays blocked.

@@ -1,6 +1,6 @@
 ---
 id: ct-4i2u
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-10T15:41:12Z
@@ -17,3 +17,9 @@ Found 2026-11-10 while recording the MODS branch's reading-version equivalence (
 
 The closure is computed from module names resolved case-exactly; the same digest is shown to come out on the Mac and on the hosted Linux runner for the current tree, or the difference is explained and fixed; a test fails on a path whose case differs from the file on disk.
 
+
+## Notes
+
+**2026-11-11T14:32:38Z**
+
+validated 2026-11-11, closing as duplicate of ct-p394: same cause (house_naming.Engine resolved to Engine.py on the case-insensitive Mac disk), fixed there by the exact-name walker (ed9e37ce, on main). The remaining part of this acceptance, the same digest on the Mac and on hosted Linux, is the one open step on ct-p394.
