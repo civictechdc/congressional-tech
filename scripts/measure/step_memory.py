@@ -179,6 +179,10 @@ def read_debug_log(path):
                     tally['view_copies'] += role == 'copy'
                     if role is None:
                         unknown.add(number)
+    if not any(counted['requests'] for counted in (*statements.values(), tally)):
+        # Every engine job reserves shared budget: none read means the debug log was off, or its format moved.
+        raise Refused(f'{path} holds no readable "{ADMISSION}" line: run the engine with '
+                      'RUST_LOG=docspec=info,docspec::budget=debug, or see whether the line format moved (ADMISSION)')
     return dict(statements=statements, after_last=tally, unreadable_lines=unreadable, unknown_view_lines=sorted(unknown))
 
 
