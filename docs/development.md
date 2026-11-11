@@ -133,6 +133,19 @@ From Python, `congress_api.retention.provenance.query(engine, sql, tables)`,
 `query_result` (column names too) and `explain(...)` do the same with any engine.
 Large inputs still run under the watchdog (AGENTS.md).
 
+An engine failure (`DocSpecFailure`) starts with the engine's refusal code, then
+the statement where the engine names it, then the cause. The code alone does not
+mark a memory refusal on either engine, the pinned b0342a7 or the one line ae12bbd:
+their `src/error.rs` gives every DataFusion error the code `query` unless an engine
+refusal is among its causes. So DataFusion's own memory pool refuses with `query`
+and "Resources exhausted: Failed to allocate"; the engine's budget refuses with
+`capacity` and "shared memory budget exhausted" or "allocation exceeds admission
+granularity" (after "External error: capacity: " when an operator passes it on);
+and `capacity` also names a limit that is not memory, "blocking I/O capacity
+exhausted". Code that must tell a memory refusal apart reads the text for those
+phrases, as `test_the_memory_limit_reaches_the_engine` in
+`packages/congress_api/tests/test_provenance_job.py` does.
+
 ## One model-only build against a release
 
 To prove a model or engine change on a release's exact inputs, with no publish,
