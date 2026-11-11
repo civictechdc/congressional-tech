@@ -252,7 +252,7 @@ def test_two_runs_compare_statement_by_statement_and_one_run_statements_are_list
     result = compared(capsys, pin, fix)
     assert result['thresholds'] == dict(seconds=1.0, gib=0.5)
     assert result['only_in'] == dict(a=['step blip'], b=['step captures'])
-    assert result['moved'] == {'step a': dict(peak_physical_gb=[5.0, 6.0], storage=['memory', 'scratch']),
+    assert result['moved'] == {'step a': dict(peak_physical_gb=[5.0, 6.0], rise_gb=[3.0, 4.0], storage=['memory', 'scratch']),
                                'output big.parquet': dict(seconds=[2.9, 0.9])}
     assert [(row['statement'], row['a'] is None, row['b'] is None) for row in result['statements']] == [
         ('step short', False, False), ('step a', False, False), ('step blip', False, True),
@@ -270,8 +270,8 @@ def test_two_runs_compare_statement_by_statement_and_one_run_statements_are_list
     assert 'copied batches: A not logged by this binary; B 3 in step a (logged on 4 of 5)' in text
     assert 'B above that bound, undetermined: query q1 (2.50 -> 3.50 GiB)' in text
     assert 'in A only: step blip\nin B only: step captures\n' in text
-    assert text.endswith('moved: 2 of 4 statements in both\n  step a: peak physical 5.00 -> 6.00 GiB; storage memory -> scratch\n'
-                         '  output big.parquet: seconds 2.9 -> 0.9\n')
+    assert text.endswith('moved: 2 of 4 statements in both\n  step a: peak physical 5.00 -> 6.00 GiB; rise +3.00 -> +4.00 GiB; '
+                         'storage memory -> scratch\n  output big.parquet: seconds 2.9 -> 0.9\n')
 
 
 def test_a_pool_peak_above_the_other_runs_is_named_whatever_the_thresholds(tmp_path, capsys):
@@ -355,7 +355,7 @@ def test_a_debug_line_counts_for_the_next_statement_in_its_stream(tmp_path, caps
     assert figures == {'short': (1, 10.0, 0, 0), 'a': (6, 3.0, 2, 0), 'blip': (1, 2.0, 0, 1), 'big.parquet': (0, None, 0, 1),
                        'q1': (0, None, 0, 0)}
     assert result['debug'] == dict(log=str(tmp_path / 'engine.log'), statements=5, requests=8, unreadable_lines=1,
-        unknown_view_lines=[999], after_last=dict(requests=2, floor_gb=1.0, view_copies=0, refusal_lines=1))
+        unknown_view_lines=[999], after_last=dict(shared_requests=2, shared_floor_gb=1.0, view_copies=0, refusal_lines=1))
     assert step_memory.main([*paths, '--debug-log', str(tmp_path / 'engine.log'), '--top', '2']) == 0
     text = capsys.readouterr().out
     assert 'lowest available before its own acquisition: 2.00 GiB, in step blip' in text
