@@ -2,7 +2,7 @@
 
     member_appearances_raw_check.py --witnesses witnesses.parquet [--decisions witness_members.parquet]
         --members members.parquet --terms member_terms.parquet --meetings meetings.parquet
-        [--prints prints.parquet] [--mods-bodies DIR] [--plant] --output OUT.json
+        [--prints prints.parquet] [--mods-bodies DIR] [--captures captures.parquet] [--plant] --output OUT.json
 
 The rows under test are a release's witnesses (witness_type member_appearance, matched_bioguide_id, match_basis), or a
 release's witnesses with an engine run's decisions laid over them (--decisions: witness_members).
@@ -33,12 +33,14 @@ family name and initial). It judges in both directions:
    alone at a Member Day hearing that hears no outside witness, has no such words, and names exactly one sitting
    Member, is flagged as left a witness;
  - statements: a row the rule types member_statement for its Member (a committee member's own opening statement) must
-   say opening statement and, for a print, name a Member the print's own MODS lists as a committee member
-   (congMember role COMMMEMBER, read from the raw body under --mods-bodies; the rule reads rosters instead); a Member
-   appearance that says opening statement by a Member that list holds, from the 113th Congress on (where the rule's
-   rosters begin), is flagged as a committee member's opening statement left an appearance.
+   say opening statement and be the Member's own: from the 113th Congress on, where the rule seats Members by the
+   pinned rosters, the print's own MODS must list the Member as a committee member (congMember role COMMMEMBER, read
+   from the raw body under --mods-bodies); before it, where the rule reads that MODS list itself, the print's own
+   transcript (the GovInfo HTML the captures table holds, --captures) must head the Member's 'OPENING STATEMENT OF
+   HON. ...'. The rule and the check never read the same fact for the same row. A Member appearance that says opening
+   statement and that fact holds is flagged as a committee member's opening statement left an appearance.
 Rows not read are counted by reason (no name, record entries, no hearing date, superseded rows for the 'left' side).
-With --plant the twelve planted wrong values below are laid over the decisions (one also renames its row) and each must
+With --plant the fourteen planted wrong values below are laid over the decisions (one also renames its row) and each must
 raise a flag the baseline does not have (tests/test_member_appearances_raw_check.py plants the same kinds on hand rows).
 """
 import argparse
@@ -95,7 +97,8 @@ SEATS = (  # (pattern, which group is the state, which the district); district N
 )
 MEMBER_DAY = re.compile(r"\bmembers?['\u2019]?s?\s+day\b")
 FORMER_MEMBERS_DAY = re.compile(r"\bformer\s+members?['\u2019]?s?\s+day\b")
-OPENING = re.compile(r'\bopening statements?\b')
+OPENING = re.compile(r'\bopening statement')
+OPENING_HEADING = re.compile(r'OPENING\s+STATEMENT\s+OF\s+(?:THE\s+)?HON(?:ORABLE)?\.?\s+([A-Z][A-Z.\'\u2019` -]+?),\s+A\s')
 COMMITTEE_MEMBER = re.compile(r'<congMember\b[^>]*\bbioGuideId="([A-Z]\d{6})"[^>]*\brole="COMMMEMBER"|'
                               r'<congMember\b[^>]*\brole="COMMMEMBER"[^>]*\bbioGuideId="([A-Z]\d{6})"')
 
@@ -116,6 +119,10 @@ PLANTS = {
         ('b0d3c472068029ec', 'J000299', dict(name='Mr. Mike Johnson')),
     "committee member's opening statement left an appearance (Marcy Kaptur, CHRG-118hhrg57786)": ('e43fe83fcaeafc3a', 'K000009'),
     "a Member Day testimony typed a statement (John Garamendi 2021)": ('bae376cd80f85245', ('statement', 'G000559')),
+    "committee member's opening statement left an appearance, the print's own committee (Collin Peterson, CHRG-115hhrg24725)":
+        ('cd32905cc2128c6f', 'P000258'),
+    "committee member's opening statement left an appearance, before the rosters (John Dingell, CHRG-110hhrg35446)":
+        ('06d4a0fec7d98a8a', 'D000355'),
 }
 
 
@@ -200,7 +207,7 @@ class Reference:
 
 
 ROW_KEYS = ('witness_key', 'source', 'name', 'publisher_id', 'person', 'fields', 'dates', 'title', 'shown', 'record_entry',
-            'retyped', 'matched', 'basis', 'occasion', 'statement', 'record_hex')
+            'retyped', 'matched', 'basis', 'occasion', 'statement', 'record_hex', 'package')
 
 
 def read_rows(con, witnesses, decisions, meetings, prints):
@@ -223,7 +230,7 @@ def read_rows(con, witnesses, decisions, meetings, prints):
            as record_entry,
           coalesce({member},false) as retyped,{matched} as matched,{basis} as basis,
           coalesce(cast(w.event_id as varchar),w.package_id,w.witness_key) as occasion,coalesce({statement},false) as statement,
-          lower(hex(w.record_sha)) as record_hex
+          lower(hex(w.record_sha)) as record_hex,w.package_id as package
         from read_parquet('{witnesses}') w left join read_parquet('{meetings}') m using(event_id) {prints_join} {overlay}""").fetchall()
     return {r[0]: dict(zip(ROW_KEYS, r)) for r in rows}
 
@@ -281,20 +288,49 @@ def print_members(record_hex, bodies, cache):
     return cache[record_hex]
 
 
+def transcript_openings(packages, captures, bodies):
+    """Per print, the family names its own transcript heads 'OPENING STATEMENT OF HON. ...' (GovInfo HTML)."""
+    if not captures or not bodies or not packages:
+        return {}
+    con = duckdb.connect()
+    rows = con.execute(f"""select distinct regexp_extract(context_url,'(CHRG-[0-9]+[hsj]hrg[0-9]+)[.]htm$',1) package,
+        unnest([sha256,stored_sha256]) sha from read_parquet('{captures}')
+        where regexp_matches(context_url,'/html/CHRG-[0-9]+[hsj]hrg[0-9]+[.]htm$')
+          and regexp_extract(context_url,'(CHRG-[0-9]+[hsj]hrg[0-9]+)[.]htm$',1) in (select unnest(?))""", [sorted(packages)]).fetchall()
+    found = {}
+    for package, sha in rows:
+        path = Path(bodies) / sha[:2] / f'{sha}.gz' if sha else None
+        if not path or not path.exists():
+            continue
+        text = re.sub(r'<[^>]+>', ' ', gzip.decompress(path.read_bytes()).decode('utf-8', 'replace'))
+        text = re.sub(r'\s+', ' ', text.replace('&nbsp;', ' ').replace('&amp;', '&'))
+        families = found.setdefault(package, set())
+        for name in OPENING_HEADING.findall(text):
+            families |= set(words(name.title()))
+    return found
+
+
 def congress_of(day):
     year = int(day[:4]) - (1 if day[5:10] < '01-03' else 0)
     return (year - 1789) // 2 + 1
 
 
-def read_words(rows, ref, bodies=None):
+def read_words(rows, ref, bodies=None, captures=None):
     """Each row's own words, read once (judge runs again for every plant): the Members it names, its office, places."""
-    cache = {}
+    cache, early = {}, set()
     for row in rows.values():
         if 'found' in row:
             continue
         row['opening'] = bool(OPENING.search(fold((row['name'] or '') + ' | ' + (row['fields'] or ''))))
+        row['early'] = bool(row['dates']) and congress_of(row['dates'].split(',')[0]) < 113
         row['print_members'] = (print_members(row['record_hex'], bodies, cache)
-                                if row['opening'] and row['source'] == 'mods' else None)
+                                if row['opening'] and row['source'] == 'mods' and not row['early'] else None)
+        if row['opening'] and row['early'] and row['package']:
+            early.add(row['package'])
+    openings = transcript_openings(early, captures, bodies)
+    for row in rows.values():
+        if 'transcript' not in row:
+            row['transcript'] = openings.get(row['package']) if row.get('opening') and row.get('early') else None
         text = fold(row['fields'])
         states, chambers = stated(row)
         row.update(found=ref.readings(row) if row['name'] and row['dates'] else {}, states=states, chambers=chambers,
@@ -303,9 +339,9 @@ def read_words(rows, ref, bodies=None):
                    member_day=member_day(row), outside=bool(OUTSIDE.search(text)), nominee=own_nomination(row))
 
 
-def judge(rows, decided, ref, bodies=None):
+def judge(rows, decided, ref, bodies=None, captures=None):
     flags, publisher, not_read = {}, Counter(), Counter()
-    read_words(rows, ref, bodies)
+    read_words(rows, ref, bodies, captures)
     # One appearance stated by several publishers (superseded_by): an office any of its rows states counts for all.
     office_groups = {r['person'] for r in rows.values() if r['office']}
     # Hearings that also hear outside witnesses: a named row with fields that names no sitting Member.
@@ -326,6 +362,12 @@ def judge(rows, decided, ref, bodies=None):
                 why.append('no opening statement in its words')
             if row['print_members'] is not None and matched not in row['print_members']:
                 why.append("not on the print's own committee member list")
+            if row['early']:
+                family = (words(row['name']) or [''])[-1]
+                if row['transcript'] is None:
+                    not_read['statements before the 113th Congress without a held transcript'] += 1
+                elif family not in row['transcript']:
+                    why.append("the print's transcript heads no opening statement of the Member")
             if not ref.sitting(matched, days):
                 why.append('no term covers the date')
             if why:
@@ -363,10 +405,9 @@ def judge(rows, decided, ref, bodies=None):
             if not (row['office'] or row['states'] or row['member_day'] or row['person'] in office_groups):
                 why.append('no congressional office stated')
             if row['opening'] and row['print_members'] and matched in row['print_members']:
-                if congress_of(days[0]) >= 113:
-                    why.append("a committee member's own opening statement (the print lists them)")
-                else:
-                    not_read['committee opening statements before the 113th Congress (no rosters)'] += 1
+                why.append("a committee member's own opening statement (the print lists them)")
+            if row['opening'] and row['transcript'] and (words(row['name']) or [''])[-1] in row['transcript']:
+                why.append("a committee member's own opening statement (the transcript heads it)")
             if row['member_day'] and not row['fields'] and row['occasion'] in outside_heard:
                 why.append('a name alone at a Member Day hearing that also hears outside witnesses')
             if why:
@@ -432,7 +473,7 @@ def run(args):
     ref = Reference(con, args.members, args.terms)
     rows = read_rows(con, args.witnesses, args.decisions, args.meetings, args.prints)
     decided = {k: ('statement' if r['statement'] else r['retyped'], r['matched']) for k, r in rows.items()}
-    flags, publisher, not_read = judge(rows, decided, ref, args.mods_bodies)  # reads every row's words first
+    flags, publisher, not_read = judge(rows, decided, ref, args.mods_bodies, args.captures)  # reads every row's words first
     out = dict(rows=len(rows), retyped=sum(1 for r in rows.values() if r['retyped']),
                retyped_shown=sum(1 for r in rows.values() if r['retyped'] and r['shown']),
                statements=sum(1 for r in rows.values() if r['statement']),
@@ -453,7 +494,8 @@ def main(argv=None):
     for name in ('witnesses', 'members', 'terms', 'meetings', 'output'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--decisions'); parser.add_argument('--prints'); parser.add_argument('--plant', action='store_true')
-    parser.add_argument('--mods-bodies', help="raw body store holding the prints' MODS (<dir>/<sha[:2]>/<sha>.gz)")
+    parser.add_argument('--mods-bodies', help="raw body store holding the prints' MODS and transcripts (<dir>/<sha[:2]>/<sha>.gz)")
+    parser.add_argument('--captures', help="captures table (Parquet) that names each print's GovInfo HTML transcript body")
     out = run(parser.parse_args(argv))
     print(json.dumps({k: v for k, v in out.items() if k not in ('flagged',)}, indent=1, default=str))
 
