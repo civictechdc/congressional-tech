@@ -133,6 +133,23 @@ From Python, `congress_api.retention.provenance.query(engine, sql, tables)`,
 `query_result` (column names too) and `explain(...)` do the same with any engine.
 Large inputs still run under the watchdog (AGENTS.md).
 
+## One model-only build against a release
+
+To prove a model or engine change on a release's exact inputs, with no publish,
+pointer or upload, bind this checkout's model to a completed candidate and run it
+under the watchdog (about 10 GiB and 10 minutes on the full lake):
+
+```bash
+python3 scripts/archive_watchdog.py --rss-gb 14 --expect-gb 10.1 --start-available-gb 6 --interval 0.2 -- \
+  .venv/bin/python -I -m viewer_publication.archive_model_job --from-candidate <candidate> --build <fresh folder> \
+  --runtime <runtime.json> --execute --ledger <candidate>/archive-publish/ledger --expect-release-id <release id>
+```
+
+It binds the candidate's daily pins and provenance as the publisher does and
+passes the retired-link ledger, so a build of unchanged code reproduces the
+release id. The release id does not cover the evidence files: compare those
+too. The build folder is kept (about 1.6 GiB); delete it when its result is recorded.
+
 ## Reading version changes
 
 The lake keys reading rows by body digest, parser, and the declared version in
