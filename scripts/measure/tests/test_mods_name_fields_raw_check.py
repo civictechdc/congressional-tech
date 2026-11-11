@@ -779,3 +779,112 @@ def test_an_office_shed_from_a_name_and_a_member_only_the_table_names_pass(tmp_p
           table=['Richard Roe', 'Vito Fossella', 'James Jeffords', 'Thomas Carper'])
     code, out = run(tmp_path)
     assert code == 0, out['failed']
+
+
+# Round 9 (the sixth review): an office shed with the middle initial, the record's committee lists, a lower-case
+# surname entry read as prose, and a note's sentence or a contents heading run in before an entry.
+VIRGINIA = 'a Representative in Congress from the State of Virginia'
+TEXAS = 'a Representative in Congress from the State of Texas'
+ROUND9_LINES = [f'Moran, Hon. James P. {VIRGINIA}',
+                f'Armey, Hon. Richard K. {TEXAS}, and Majority Leader, U.S. House of Representatives',
+                'de Rugy, Veronique, Senior Research Fellow, Mercatus Center',
+                'record. Scott Cleland, President, Precursor LLC',
+                'Letters: Daschle, Hon. Tom, U.S. Senator from the State of South Dakota']
+ROUND9_BEFORE = [asked('mods:witness[1]', f'James P. {VIRGINIA} Moran', 1, None),
+                 asked('mods:witness[2]', f'Richard K. {TEXAS} Armey', 2, None, position='and Majority Leader',
+                       organization='U.S. House of Representatives'),
+                 asked('mods:witness[3]', 'Veronique de Rugy', 3, None, position='Senior Research Fellow',
+                       organization='Mercatus Center'),
+                 asked('mods:witness[4]', 'record. Scott Cleland', 4, None, position='President', organization='Precursor LLC'),
+                 asked('mods:witness[5]', 'Letters: Daschle', 5, 'member_statement', position='Hon. Tom',
+                       organization='U.S. Senator from the State of South Dakota')]
+ROUND9_AFTER = [asked('mods:witness[1]', 'James P. Moran', 1, None, position=VIRGINIA),
+                asked('mods:witness[2]', 'Richard K. Armey', 2, None, position=TEXAS,
+                      organization='and Majority Leader, U.S. House of Representatives'),
+                ROUND9_BEFORE[2],
+                asked('mods:witness[4]', 'Scott Cleland', 4, None, position='President', organization='Precursor LLC'),
+                asked('mods:witness[5]', 'Tom Daschle', 5, 'member_statement',
+                      position='U.S. Senator from the State of South Dakota')]
+ROUND9_PEOPLE = ('James Moran', 'Richard Armey', 'Veronique de Rugy', 'Scott Cleland', 'Tom Daschle')
+
+
+def round9(tmp_path, after=ROUND9_AFTER, **more):
+    write(tmp_path, before=ROUND9_BEFORE, after=after, lines=ROUND9_LINES, people=ROUND9_PEOPLE,
+          table=['James Moran', 'Richard Armey', 'Tom Daschle'], **more)
+
+
+def test_offices_shed_entries_a_note_ran_into_and_a_lower_case_surname_pass(tmp_path):
+    round9(tmp_path)
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+
+
+@pytest.mark.parametrize('index, row, flag', [
+    # The sixth review's plants: an office shed with the middle initial.
+    (0, dict(ROUND9_AFTER[0], name='James Moran', position=f'P. {VIRGINIA}'), 'person_moved'),
+    (1, dict(ROUND9_AFTER[1], name='Richard Armey', position=f'K. {TEXAS}'), 'person_moved'),
+    # An entry whose surname opens in lower case read as prose.
+    (2, dict(ROUND9_AFTER[2], name=None, position=None, organization=None, witness_type='record_material'), 'words_lost'),
+])
+def test_an_initial_moved_with_an_office_and_an_entry_read_as_prose_fail(tmp_path, index, row, flag):
+    round9(tmp_path, after=[*ROUND9_AFTER[:index], row, *ROUND9_AFTER[index + 1:]])
+    code, out = run(tmp_path)
+    assert code == 1 and [i['locator'] for i in out[flag]] == [row['source_locator']]
+
+
+def committee_prints(tmp_path, prints):
+    """Prints of (digest, committees, members, held): each states `committees` (in its extension, the first again in a
+    constituent item) and `members` as COMMMEMBER entries beside a WITNESS one; the after generation holds `held`
+    (committees, committee_members)."""
+    member = '<congMember bioGuideId="{}" role="{}"><name type="authority-lnf">{}</name></congMember>'
+    row = asked('mods:witness[1]', 'Richard Roe', 1, None, position='Director')
+    sides = dict(before=[], after=[])
+    for digest, committees, members, held in prints:
+        body = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension><congress>118</congress>'
+                + ''.join(f'<congCommittee authorityId="{c.upper()}"/>' for c in committees)
+                + ''.join(member.format(b, 'COMMMEMBER', f'Doe{i}, Jane') for i, b in enumerate(members))
+                + member.format('W000001', 'WITNESS', 'Roe, Richard') + '<witness>Roe, Richard, Director</witness>'
+                + '</extension><relatedItem><extension>' + f'<congCommittee authorityId="{committees[0]}"/>'
+                + '</extension></relatedItem></mods>').encode()
+        (tmp_path / 'raw' / digest[:2]).mkdir(parents=True, exist_ok=True)
+        (tmp_path / 'raw' / digest[:2] / f'{digest}.gz').write_bytes(gzip.compress(body))
+        for side, facts in (('before', (None, None)), ('after', held)):
+            sides[side].append(dict(source='mods', record_sha=bytes.fromhex(digest), package_id=f'CHRG-{digest[:2]}',
+                                    appearances=[row], committees=facts[0], committee_members=facts[1]))
+    for side, rows in sides.items():
+        pq.write_table(pa.Table.from_pylist(rows), tmp_path / f'{side}.parquet')
+    pq.write_table(pa.Table.from_pylist([dict(bioguide_id='X', name='Nobody Here', terms=[])]), tmp_path / 'members.parquet')
+    pq.write_table(pa.Table.from_pylist([dict(source='congress_gov', name='Richard Roe')] * 2), tmp_path / 'people.parquet')
+
+
+@pytest.mark.parametrize('held, flags', [
+    ((['hsag00', 'hsag03'], ['B000001', 'C000002']), []),
+    # Another record's committee; a committee member twice; the members out of the document's order.
+    ((['hsif00', 'hsag03'], ['B000001', 'C000002']), ['committees_differ']),
+    ((['hsag00', 'hsag03'], ['B000001', 'C000002', 'B000001']), ['committee_members_differ']),
+    ((['hsag00', 'hsag03'], ['C000002', 'B000001']), ['committee_members_differ']),
+])
+def test_a_records_committee_lists_are_the_documents_own_in_order(tmp_path, held, flags):
+    committee_prints(tmp_path, [(DIGEST, ['hsag00', 'hsag03'], ['B000001', 'C000002'], held)])
+    code, out = run(tmp_path)
+    assert [flag for flag in ('committees_differ', 'committee_members_differ') if out[flag]] == flags
+    assert code == (1 if flags else 0)
+
+
+def test_the_round9_plants_are_flagged(tmp_path):
+    kinds = ['office-took-initial', 'office-took-initial', 'surname-as-prose']
+    prints = [(f'{n:02d}' * 32, ROUND9_LINES, (), ROUND9_BEFORE, ROUND9_AFTER) for n in range(11, 13)]
+    round9(tmp_path, prints=prints)
+    code, out = run(tmp_path, '--plant', *kinds)
+    assert [(p['kind'], p['flagged']) for p in out['planted']] == [(kind, True) for kind in kinds]
+    assert len({p['body'] for p in out['planted']}) == len(kinds)
+
+
+def test_the_committee_plants_are_flagged(tmp_path):
+    lists = [(['hsag00'], ['B000001', 'C000002']), (['hsif00', 'hsif02'], ['D000003'])]
+    committee_prints(tmp_path, [(f'{n:02d}' * 32, *lists[n % 2], lists[n % 2]) for n in range(11, 14)])
+    kinds = ['committee-from-other-record', 'member-duplicated']
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+    code, out = run(tmp_path, '--plant', *kinds)
+    assert [(p['kind'], p['flagged']) for p in out['planted']] == [(kind, True) for kind in kinds]
