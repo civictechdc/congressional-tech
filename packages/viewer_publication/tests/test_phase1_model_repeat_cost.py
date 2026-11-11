@@ -34,9 +34,10 @@ reused expression and was refused only where filename readings came from the lak
 ct-h8dr), found by a 20-minute lane. So every input the release reads from the lake is bound here
 to an empty table in a throwaway local catalog, created and pinned through the engine as
 production creates one; a Parquet stand-in cannot carry field ids into a plan, because the pinned
-engine strips field metadata from a Parquet input (engine ticket def-9ise). That check sees
-planning only: no refusal that needs rows, statistics or memory, and no statement outside the
-job the build submits.
+engine strips field metadata from a Parquet input (engine ticket def-9ise). A refused step is
+run before any EXPLAIN, so it stops the job and every test errors with the engine's message,
+which names no statement. That check sees planning only: no refusal that needs rows,
+statistics or memory, and no statement outside the job the build submits.
 """
 import collections
 import json
@@ -177,7 +178,8 @@ def lake_refusal_sql():
     assert sql.count(spelling) == 1, 'saved_name_conflicts no longer reads the flag this way; plant another refusal'
     return sql.replace(spelling, 'coalesce(f.valid,false)')
 
-SCAN = re.compile(r'^\s*TableScan: (\S+)', re.M)
+
+SCAN =re.compile(r'^\s*TableScan: (\S+)', re.M)
 JOIN = re.compile(r'^\s*\w+ Join: (.*)$', re.M)
 REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
 # A plan node line; a line of any other shape continues the expression above it.
