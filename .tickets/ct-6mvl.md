@@ -23,3 +23,7 @@ The 21 rows and the Tower row read correctly; the count of MODS rows with an org
 **2026-11-10T13:27:10Z**
 
 2026-11-10 (session congress-1): from the witness recount, a one-row difference between a recount of named, unsuperseded witnesses and meeting_coverage on meeting 102621 exists in both the live and the new release; the change between releases is the same. Unexplained, low priority.
+
+**2026-11-11T14:45:35Z**
+
+validated 2026-11-11, left open: not fixed on main (no commit names ct-6mvl since filing). The MODS + Member-appearances release in flight (claude/ct-mods-and-member-appearances) is congress-1's; whether it changes this shape was not checked here. Note from ct-wy4c: the owner's 'rank and credentials in their own field' parser work was said to join this ticket's version step but is not in its acceptance yet.

@@ -157,3 +157,7 @@ Keep open for the already-owned preservation/reader dispositions, B8/Basin decis
 **2026-11-09T15:55:45Z**
 
 2026-11-09: ct-1l1h closed as won't do by owner decision (no bucket lock); it is no longer a dependency of this ticket.
+
+**2026-11-11T14:45:35Z**
+
+validated 2026-11-11, left open. Dependencies checked today: ct-gi01, ct-t915, ct-m104, ct-082q, cef-96wc, ct-5kto and ct-1l1h are all closed; the weekly 'Update committee data' collector ran on schedule and green on 2026-11-01 and 2026-11-08 (gh run list). Still open under it: scheduled capture (ct-4jms: workflow still disabled_manually, the two hosted secrets missing), unattended publication of a capture night (ct-9j3z: not yet exercised; the Mac nightly has only published nothing-changed nights unattended, e.g. 20261111T103005Z release_unchanged), and the 54 bodies of ct-gi01's paid recapture, which sit under receipts/owner/* that the daily never reads (ct-lft6).
