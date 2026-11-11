@@ -17,3 +17,9 @@ From the same equivalence record (2026-11-10, MODS branch commit 374b9f56). The 
 
 The evidence closure contains only files a reader executes when deriving a body, with a test in test_body_text_derivation.py; an edit to a producer map no longer warns; the readings drift on main has a recorded decision or a re-stamp by its owner.
 
+
+## Notes
+
+**2026-11-11T00:18:36Z**
+
+f6615f13 (claude/dx-reading-evidence) records the readings drift from ct-an6o's lake/versions.py, together with W1's, as equivalence: bundle_version's version_digest(files={}) is unchanged. Measured there: sniff's 32-file closure reaches docspec_client only through retention/__init__.py and weekly_tables, so client plumbing (W1) moved sniff's evidence as well.

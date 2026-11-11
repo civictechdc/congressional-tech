@@ -2,7 +2,7 @@
 id: ct-uywf
 status: open
 deps: []
-links: []
+links: [ct-rhqw, ct-46f3]
 created: 2026-11-10T19:31:06Z
 type: bug
 priority: 1
@@ -27,3 +27,7 @@ Either a witness's key and basis are stable across a re-fetch that does not chan
 **2026-11-10T20:38:46Z**
 
 2026-11-10 seen again in release 77673bfb8fcf after the 11-10 meetings relist (38 receipts). Checked on published release 77673bfb8fcf (2026-11-10T20:27:52Z) against 619db5f9e08e with DuckDB on the published tables. witness_key_map: 37 matched old keys changed basis, all 37 now map to a different witness_key; 78 new rows. The cause record explains it by hand under ct-uywf. Every relist night will need the same until this lands.
+
+**2026-11-11T00:35:01Z**
+
+2026-11-11 (session congress-1): owner decisions: 'Ship it, trim later' (the witness re-key half is interim and is deleted by ct-46f3, carried witness keys) and 'Publish the new order' (a reorder on a record proved re-fetched passes unattended; being added to branch claude/ct-uywf-refetch-gate, under independent review).
