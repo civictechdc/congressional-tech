@@ -1,6 +1,6 @@
 ---
 id: ct-zs48
-status: in_progress
+status: closed
 deps: []
 links: [ct-79j1, ct-3aap, ct-gfo7]
 created: 2026-11-08T20:05:51Z
@@ -56,3 +56,7 @@ Round 2 (2026-11-10, owner decision 'show both senators' applied to every line o
 **2026-11-10T16:55:15Z**
 
 Round 3 (2026-11-10): the asker rule replaces the joint-asker entries; MODS pin e599dff6 -> 63715237. Details and measurements in ct-gfo7's round-3 note.
+
+**2026-11-11T23:55:00Z**
+
+Activated via appearance_records_committees_20261111 (MODS pin 704ba567) and published live in archive release 46ebbdf8dcafd67e945ef37e7eb7dc76ec9751ce3fe1ac6cafc68fd1d9b713ca (2026-11-11T23:52:00Z; cause record model/jobs/release-causes/77673bfb8fcf-46ebbdf8dcaf.json, release note docs/releases/2026-11-11-46ebbdf8dcaf.md).

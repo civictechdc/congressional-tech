@@ -1,6 +1,6 @@
 ---
 id: ct-3aap
-status: in_progress
+status: closed
 deps: []
 links: [ct-rg34, ct-zs48, ct-gfo7]
 created: 2026-11-09T03:09:09Z
@@ -36,3 +36,7 @@ Owner decision 2026-11-10 (organization on titles), MODS pin 0b58c1a2 -> e39e365
 **2026-11-10T13:27:10Z**
 
 2026-11-10 (session congress-1): see ct-zs48 for the branch state. The 16 reviewed title rows keep their line in organization (no title field exists; three name no organization). Owner decision 2026-11-10: the FTC and National Commission on Hunger rows become record_material.
+
+**2026-11-11T23:55:00Z**
+
+Activated via appearance_records_committees_20261111 (MODS pin 704ba567) and published live in archive release 46ebbdf8dcafd67e945ef37e7eb7dc76ec9751ce3fe1ac6cafc68fd1d9b713ca (2026-11-11T23:52:00Z; cause record model/jobs/release-causes/77673bfb8fcf-46ebbdf8dcaf.json, release note docs/releases/2026-11-11-46ebbdf8dcaf.md).
