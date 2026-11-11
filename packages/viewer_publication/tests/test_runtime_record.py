@@ -53,15 +53,11 @@ def model_job(tmp_path, monkeypatch, capsys, engine_config):
 
 
 def model_only_build(tmp_path, monkeypatch, capsys, runtime):
-    """A candidate build; its inputs are not held here (the bound template's spicy-regs tables are fetched
-    data this checkout need not have), since only the runtime binding is under test."""
-    from contextlib import contextmanager
+    """A candidate build. The bound template's spicy-regs tables are fetched data this checkout need not
+    have, so they are not held; every other input is, as the build holds it."""
     import viewer_publication.archive_model_job as job
     from viewer_publication.release_gate import prior_links
-    @contextmanager
-    def unheld(_spec):
-        yield {}
-    monkeypatch.setattr(job, 'model_arguments', unheld)
+    monkeypatch.setattr(job, '_spicy_arguments', lambda *_: {})
     candidate = tmp_path / 'candidate'
     daily_candidate(candidate)
     ready = tmp_path / 'ready'

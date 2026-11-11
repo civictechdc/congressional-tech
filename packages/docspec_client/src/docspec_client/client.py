@@ -2,7 +2,7 @@
 import base64
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
-from hashlib import file_digest
+from hashlib import file_digest, sha256
 import json
 import math
 import os
@@ -134,6 +134,45 @@ def _binary_digest(binary: Path) -> tuple[str, bytes]:
         if len(_VERIFIED_BINARY_CACHE) < 32:
             _VERIFIED_BINARY_CACHE[cache_key] = cached
     return cached
+
+
+#: A job whose named runtime file is missing runs under the file this variable names (choose_runtime).
+RUNTIME_FALLBACK_ENV = 'DOCSPEC_RUNTIME_CONFIG'
+
+
+def choose_runtime(named: Path | str) -> tuple[Path | str, dict[str, Any]]:
+    """The runtime file a job runs under, and how it was chosen, for runtime_record.
+
+    `named` when a file is there; otherwise the file RUNTIME_FALLBACK_ENV names, when that is set and not empty.
+    This is the pipeline's fallback as it always was (the Mac nightly sets the variable to its remote runtime and
+    the model spec names a file the nightly lacks): kept unchanged until the owner decides it, and recorded (ct-64t4).
+    """
+    fallback = os.environ.get(RUNTIME_FALLBACK_ENV)
+    if not Path(named).exists() and fallback:
+        return fallback, dict(chosen='fallback', named=str(named),
+                              reason=f'no runtime file at the named path; {RUNTIME_FALLBACK_ENV} names this one')
+    return named, dict(chosen='named', named=str(named), reason=None)
+
+
+def runtime_record(path: Path | str, choice: Mapping[str, Any], *, log: Any = None) -> dict[str, Any]:
+    """What a job runs under, for its evidence: `choice` (choose_runtime's), the runtime file `path` and the binary
+    and limits it names, each by absolute path and the sha256 of its bytes read now, and the limits' values (None
+    for a runtime without limits).
+
+    The paths resolve as from_config resolves them, so they are what the client hands the engine; the binary is
+    hashed from its bytes (once per process, shared with verify_runtime), never taken from the file's own
+    binary_sha256. With `log`, the record is also written there as one `[docspec-runtime] ` JSON line.
+    """
+    p, data, settings = _read_runtime(path)
+    binary = Path(settings['binary'])
+    record = dict(choice, runtime=dict(path=str(p), sha256=sha256(data).hexdigest()),
+                  binary=dict(path=str(binary), sha256=_binary_digest(binary)[0]), limits=None)
+    if 'limits' in settings:
+        limits = Path(settings['limits']).read_bytes()
+        record['limits'] = dict(path=settings['limits'], sha256=sha256(limits).hexdigest(), values=json.loads(limits))
+    if log is not None:
+        print('[docspec-runtime] ' + json.dumps(record, sort_keys=True), file=log, flush=True)
+    return record
 
 
 class NativeDatasets:

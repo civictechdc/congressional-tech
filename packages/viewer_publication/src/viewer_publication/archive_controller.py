@@ -69,6 +69,8 @@ def _read_continuation(work, *, daily=False):
             raise ValueError('Retained nightly continuation checksum differs')
     fields={'version','identity','profile','entity_digests','admitted_names','pointer','pointer_etag'}
     if 'stage' in checkpoint:fields.add('stage')
+    # Evidence only, outside the identity; continuations written before ct-64t4 have none.
+    if isinstance(checkpoint.get('engine_runtime'),dict):fields.add('engine_runtime')
     if source==checkpoint_path:fields|={'manifest_pin','result_pin'}
     if daily:fields|={'daily_summary_sha256','input_digest'}
     if set(checkpoint)!=fields:
@@ -192,13 +194,15 @@ def _probe_evidence(reports):
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
                 public_origin,contract,canary,verified_files=None,measured_release_id=None,comparison_acceptance=None,
                 resume=False,release_causes=None,link_history=(),first_release=False,automatic_causes=False,
-                daily_summary_sha256=None,check_current_daily=None,receipt_client=None):
+                daily_summary_sha256=None,check_current_daily=None,receipt_client=None,engine_runtime=None):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
     Only external SDK, native runtime and site probes are supplied by startup.
     Receipt/provenance metadata identifies the prospective inputs; native results
     prove their actual receipt population before any release or input-record PUT.
+    ``engine_runtime`` (docspec_client.client.runtime_record) is sealed into the model
+    intent and then the checkpoint: the record of the runtime that built the model.
     """
     from viewer_publication.archive_comparison_acceptance import require_comparison
     require_comparison(comparison_acceptance,captures=model_spec['captures'])
@@ -216,6 +220,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         if not isinstance(daily_summary_sha256,str) or not re.fullmatch('[a-f0-9]{64}',daily_summary_sha256):
             raise ValueError('Invalid daily summary digest')
         daily_pin['daily_summary_sha256']=daily_summary_sha256
+    ran={} if engine_runtime is None else dict(engine_runtime=engine_runtime)
     work=_publication_directory(work,fresh=not resume)
     identity=_continuation_digest(dict(model=model_spec,receipt_keys=keys,provenance=provenance,run=run,
         bucket=bucket,public_origin=public_origin,measured_release_id=measured_release_id))
@@ -339,7 +344,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 # exporter finishes and before this controller regains control.
                 _save_continuation(intent_path,dict(version=1,identity=identity,profile=profile,
                     entity_digests=entity_digests,admitted_names=admitted_names,pointer=pointer,pointer_etag=etag,stage=stage,
-                    **daily_pin),seal=bool(daily_pin))
+                    **daily_pin,**ran),seal=bool(daily_pin))
                 manifest=build_prepared_release(prepared,engine=engine,output=stage['output'])
                 if model_spec.get('text_index'):
                     from viewer_publication.archive_text_index import finish_text_index
@@ -382,9 +387,11 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             result_pin=pin(prepared['scratch']/'result.json')) if checkpoint is None else
             {name:checkpoint[name] for name in ('manifest_pin','result_pin')})
         if checkpoint is None or promote_checkpoint:
+            # A promoted intent keeps the record of the attempt that built its model, not this one's.
+            built=ran if checkpoint is None else {k:checkpoint[k] for k in ('engine_runtime',) if k in checkpoint}
             saved=dict(version=1,identity=identity,profile=profile,entity_digests=entity_digests,
                        admitted_names=admitted_names if checkpoint is None else checkpoint['admitted_names'],
-                       pointer=pointer,pointer_etag=etag,stage=stage,**artifacts,**daily_pin)
+                       pointer=pointer,pointer_etag=etag,stage=stage,**artifacts,**daily_pin,**built)
             _save_continuation(checkpoint_path,saved,seal=bool(daily_pin))
         delegate=True
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/('candidate-'+uuid4().hex),

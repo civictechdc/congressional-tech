@@ -6,13 +6,14 @@ checkout's model to the completed daily a candidate holds, as the publisher bind
 keeps the spec, the runtime copy and its workspace, the ledger, output and scratch in the
 build folder. ``--ledger``/``--ledger-base`` pass the retired-link ledger the publisher
 passes, and ``--expect-release-id`` fails a control build that does not reproduce a release.
+Every build prints the runtime file, binary and limits it runs under (a ``[docspec-runtime]``
+line on stderr, before the build) and returns them in its result line as ``engine_runtime``.
 """
 import argparse
 from contextlib import contextmanager
 from collections.abc import Mapping
 from hashlib import md5
 import json
-import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import re
@@ -344,16 +345,16 @@ def execute(spec,*,prior_links=None,base_retired=None):
 
     prior_links/base_retired are the retired-link ledger (ledger_files); without them the
     model's ledger starts empty, and every key the base had retired vanishes from the release.
+    The runtime is the spec's engine_config or the client's fallback (choose_runtime; a
+    --from-candidate build names the copy in its build folder, so it never falls back). Its
+    record (runtime_record) is printed before the build and returned as `engine_runtime`.
     """
-    from docspec_client.client import NativeDatasets
+    from docspec_client.client import NativeDatasets,choose_runtime,runtime_record
     from viewer_publication.archive_model import build_release
-    engine_config=spec['engine_config']
-    # One owner for this fallback and the publisher's copy is W5's (ct-64t4); a --from-candidate
-    # build names the runtime copy in its build folder, so it never falls back.
-    if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
-        engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
+    engine_config,choice=choose_runtime(spec['engine_config'])
     with model_arguments(spec) as arguments:
         with NativeDatasets.from_config(engine_config) as engine:
+            ran=runtime_record(engine_config,choice,log=sys.stderr)
             manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
                 catalog_version=spec['catalog_version'],engine=engine,
                 output=Path(spec['output']),scratch=Path(spec['scratch']),
@@ -362,7 +363,7 @@ def execute(spec,*,prior_links=None,base_retired=None):
         from viewer_publication.archive_text_index import finish_text_index
         manifest=finish_text_index(spec,spec['output'])
     ledger=None if prior_links is None else dict(prior_links=str(prior_links),base_retired=str(base_retired))
-    return dict(status='built',executed=True,release_id=manifest['release_id'],engine_config=engine_config,ledger=ledger,
+    return dict(status='built',executed=True,release_id=manifest['release_id'],engine_config=engine_config,engine_runtime=ran,ledger=ledger,
         output=spec['output'],scratch=spec['scratch'],rows={entry['name']:entry['rows'] for entry in manifest['files']})
 
 

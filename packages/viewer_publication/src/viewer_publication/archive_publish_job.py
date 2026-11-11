@@ -472,17 +472,17 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
         if not spec.get('resume') and any(p.exists() or p.is_symlink() for p in [path,path.with_name(path.name+'-provenance')]):
             raise ValueError('Daily production work and provenance cache must be fresh')
     if not Path(spec['site_dist']).is_dir():raise ValueError('Publication site_dist must already exist; build the site first')
-    from docspec_client.client import NativeDatasets
+    from docspec_client.client import NativeDatasets,choose_runtime,runtime_record
     from congress_shared.storage import connect_r2
     from viewer_publication.archive_controller import run_publish,_publication_directory
     runtime_factory=runtime_factory or NativeDatasets.from_config
     storage_factory=storage_factory or connect_r2
     process_runner=process_runner or subprocess.run
-    engine_config=spec['_model']['engine_config']
-    if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
-        engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
+    engine_config,choice=choose_runtime(spec['_model']['engine_config'])
     settings,remote,endpoint,configuration_pins=publication_configuration(engine_config,bucket=spec['bucket'])
     require_end_to_end(end_to_end_runner)
+    # Printed before any engine work, and sealed with the model's continuation in the candidate folder.
+    ran=runtime_record(engine_config,choice,log=sys.stderr)
     def require_configuration():
         for path,identity in configuration_pins:identity.require(path)
         require_comparison(acceptance)
@@ -563,7 +563,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             if 'release_causes' in spec:
                 from viewer_publication.release_gate import load_causes
                 causes=load_causes(spec['release_causes'])
-            result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
+            result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,engine_runtime=ran,
                 measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=spec.get('resume',False),
                 release_causes=causes,link_history=spec.get('link_history',[]),
                 first_release=spec.get('first_release',False),automatic_causes=spec.get('automatic_causes',False),**options)
