@@ -462,15 +462,16 @@ def test_a_model_runtime_change_resumes_and_a_predicate_change_still_refuses(tmp
     spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,through='tables')
     assert execute(spec)['status']=='tables_built'
     # Defect guarded: identity covering the model runtime, so a retry with a new pool redoes D1-D4.
+    from archive_job_fixture import runtime_ran
+    from docspec_client.client import runtime_paths
     original=Path(os.environ['DOCSPEC_JOB_CONFIG']).resolve()
-    runtime=json.loads(original.read_text())
     # Preserve each path's meaning when the retry config moves to another directory.
-    for name in ('binary', 'workspace', 'limits'):
-        if name in runtime and not Path(runtime[name]).is_absolute():
-            runtime[name]=str((original.parent/runtime[name]).resolve())
+    runtime=runtime_paths(json.loads(original.read_text()),original.parent)
     other=tmp_path/'model-runtime.json';other.write_text(json.dumps(runtime))
     retry=dict(spec,resume=True,through='model',selective=dict(spec['selective'],model=dict(spec['selective']['model'],engine_config=str(other))))
     assert execute(retry)['status']=='built'
+    # The state keeps the record of the runtime the model ran under: the retry's (ct-64t4).
+    assert json.loads((Path(spec['work'])/'state.json').read_text())['model']['runtime']==runtime_ran(other)
     with pytest.raises(ValueError,match='identity changed'):
         execute(dict(spec,resume=True,selective=dict(spec['selective'],where=dict(captures=BOTH))))
 

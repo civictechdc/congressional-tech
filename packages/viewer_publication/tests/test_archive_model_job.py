@@ -604,6 +604,9 @@ def test_a_control_build_fails_naming_both_ids_when_its_release_differs(tmp_path
     out,err=capsys.readouterr()
     report=json.loads(out)
     assert report['release_id']==built and report['rows']=={'list.parquet':3} and report['output']==value['output']
+    # Before the build every build states its runtime (ct-64t4); a matching one says nothing else.
+    ran,_,err=err.partition('\n')
+    assert ran=='[docspec-runtime] '+json.dumps(report['engine_runtime'],sort_keys=True)
     if expected.startswith('ab'):
         assert code==0 and not err
     else:

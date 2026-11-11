@@ -486,7 +486,7 @@ def _model(run):
         if not rows or any(type(v) is int and v for row in rows for v in row.values()):
             raise SelectiveStop('Model suite absent or positive: '+name)
     run.state['model']=dict(release_id=built['release_id'],output=built['output'],rows=built['rows'],
-        runtime=dict(path=run.selective['model']['engine_config'],**file_pin(run.selective['model']['engine_config'])));run.save()
+        runtime=built['engine_runtime']);run.save()
 
 
 def _tables_report(run,started):

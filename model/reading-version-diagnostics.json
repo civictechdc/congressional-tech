@@ -56,7 +56,7 @@
       "version": "0.84.0"
     },
     "version": "e1928f25e2803cd6bc8546d1673ff7ba01a11ae861c322165c78af9d32380941",
-    "workspace_sha256": "06d44495cf9a30b17760e43459f076aa4b25b78474479fcce71da46f5659fbe5"
+    "workspace_sha256": "e7d50ffa93c488c14fb664b05173ba3d908a8988d9f51aa8b6233faab4b5718c"
   },
   "json": {
     "limits": {
@@ -101,7 +101,7 @@
       "version": "0.84.0"
     },
     "version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
-    "workspace_sha256": "06d44495cf9a30b17760e43459f076aa4b25b78474479fcce71da46f5659fbe5"
+    "workspace_sha256": "e7d50ffa93c488c14fb664b05173ba3d908a8988d9f51aa8b6233faab4b5718c"
   },
   "readings": {
     "limits": {
@@ -118,7 +118,7 @@
     },
     "sample_sha256": "475a2288edeaf9a7dc8e8c91be51524729eeb54b750bb99d28ebb81996393982",
     "version": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
-    "workspace_sha256": "b3da735e20717fea6e90a730cee64edcabf3d86bbcda599bb942bec1acc1ac79"
+    "workspace_sha256": "c790c00e0ec29365e5c1b689b92db0f4be258aab6d25b799725fb302f43f1a3e"
   },
   "sniff": {
     "locked_sha256": "4712044f1e68920433b7352425e350d3e301037e7ddf2b0943378193d7d35dec",
@@ -129,7 +129,7 @@
     },
     "sample_sha256": "a65c8c35474262329806ea3ebcc90e962c6df3aecf509ab9246f599253bb8357",
     "version": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
-    "workspace_sha256": "0638983e80b53f1c2ee2b91b247a36898f7abdc3b89a50b877b85e9d9cb96a97"
+    "workspace_sha256": "7bd96b2876e91ab2aaaa76975a305ebe08f804c4f3ff7440a2bba53aecced3b6"
   },
   "warc": {
     "limits": {
@@ -163,7 +163,7 @@
       "version": "0.84.0"
     },
     "version": "e835fb8116a0ed204706c7cbed136cab4f7e49885e773369c663232672d5e397",
-    "workspace_sha256": "06d44495cf9a30b17760e43459f076aa4b25b78474479fcce71da46f5659fbe5"
+    "workspace_sha256": "e7d50ffa93c488c14fb664b05173ba3d908a8988d9f51aa8b6233faab4b5718c"
   },
   "xml": {
     "limits": {
@@ -196,6 +196,6 @@
       "version": "0.84.0"
     },
     "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
-    "workspace_sha256": "06d44495cf9a30b17760e43459f076aa4b25b78474479fcce71da46f5659fbe5"
+    "workspace_sha256": "e7d50ffa93c488c14fb664b05173ba3d908a8988d9f51aa8b6233faab4b5718c"
   }
 }
