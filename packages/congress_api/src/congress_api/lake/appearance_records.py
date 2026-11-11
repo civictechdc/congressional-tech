@@ -119,12 +119,17 @@ ARROW_SCHEMA = pa.schema(
         pa.field("title", pa.string(), nullable=True),
         # House XML only: the witness list's create-date as stated.
         pa.field("created", pa.string(), nullable=True),
+        # GovInfo MODS only: the print's committees (congCommittee authorityId, lower case) and their members
+        # (congMember bioGuideId, role COMMMEMBER), each once in the publisher's order; null elsewhere.
+        pa.field("committees", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=True),
+        pa.field("committee_members", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=True),
     ]
 )
 SCHEMA = ARROW_SCHEMA
 
 # Every column ARROW_SCHEMA carries besides the shared record columns; a field missing here is written null.
-_EXTRA_COLS = ("event_id", "package_id", "declared_base", "collection_state", "held_dates", "title", "created")
+_EXTRA_COLS = ("event_id", "package_id", "declared_base", "collection_state", "held_dates", "title", "created",
+               "committees", "committee_members")
 
 # The table write shapes every staged row, so every source's version covers it (a column it dropped was written
 # null under unchanged versions, 3fb41ddd).
@@ -189,6 +194,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "preserve_appearances",
         "_PACKAGE_ID_IN_URL_RE",
         "mods_held_dates",
+        "mods_committee_facts",
         "_MEMBER_STYLE",
         "_MEMBER_STATEMENT",
         "_RECORD_ENTRY",
@@ -1325,6 +1331,18 @@ def mods_entry_kind(line: str, name: str | None, organization: str | None = None
     return "statement_for_record" if _RECORD_ENTRY.search(text) or organization_document else None
 
 
+def mods_committee_facts(doc: ModsDocument) -> dict[str, list[str]]:
+    """The committees and their members the print states, root and constituent items (a print in parts states them
+    on its items only, CHRG-117hhrg49906), each once in the publisher's order: every <congCommittee> authorityId,
+    lower case, and every <congMember> bioGuideId whose role is COMMMEMBER."""
+    scopes = (doc.root, *(doc.related_items or ()))
+    committees = ((c.authority_id or "").strip().lower() for scope in scopes for c in scope.committees or ())
+    members = ((m.bio_guide_id or "").strip() for scope in scopes for m in scope.members or ()
+               if (m.role or "").strip().upper() == "COMMMEMBER")
+    return {"committees": list(dict.fromkeys(filter(None, committees))),
+            "committee_members": list(dict.fromkeys(filter(None, members)))}
+
+
 def mods_held_dates(doc: ModsDocument) -> list[str]:
     """Every heldDate the print states, root and constituent items, as distinct sorted ISO dates."""
     found = set()
@@ -1773,8 +1791,9 @@ def extract_mods_observation(
                 break
 
     # What the print states about its sitting: every held date and its published title, so a
-    # package-to-meeting link can be checked against the meeting's own date and title (ct-dx22).
-    facts = {"held_dates": mods_held_dates(doc), "title": _opt_str(mods_title(doc.root))}
+    # package-to-meeting link can be checked against the meeting's own date and title (ct-dx22); and its
+    # committees and their members, so the model can tell a Member's own statement from a witness's (ct-kw85).
+    facts = {"held_dates": mods_held_dates(doc), "title": _opt_str(mods_title(doc.root)), **mods_committee_facts(doc)}
 
     member_bioguides: dict[str, str] = {}
     for mem in doc.members or []:
@@ -2001,6 +2020,8 @@ def build_appearance_record_row(
         "held_dates": obs.get("held_dates"),
         "title": obs.get("title"),
         "created": obs.get("created"),
+        "committees": obs.get("committees"),
+        "committee_members": obs.get("committee_members"),
     }
 
 
@@ -2074,6 +2095,8 @@ def _normalize_row_for_table(row: Mapping[str, Any]) -> dict[str, Any]:
         "held_dates": list(row["held_dates"]) if row.get("held_dates") is not None else None,
         "title": _opt_str(row.get("title")),
         "created": _opt_str(row.get("created")),
+        **{column: list(row[column]) if row.get(column) is not None else None
+           for column in ("committees", "committee_members")},
     }
 
 

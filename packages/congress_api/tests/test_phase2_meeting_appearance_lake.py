@@ -121,6 +121,8 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "held_dates",
         "title",
         "created",
+        "committees",
+        "committee_members",
     ]
 
     appearances_field = next(f for f in a_schema["fields"] if f["name"] == "appearances")
@@ -651,6 +653,8 @@ def test_s2_fixture_2_empty_witness_and_meeting_rows_retained_for_anti_join():
         "held_dates": None,
         "title": None,
         "created": None,
+        "committees": None,
+        "committee_members": None,
     }
 
     # Second run at the same parser_version skips via anti-join before touching payload
@@ -759,6 +763,10 @@ def test_appearance_records_from_congress_gov_senate_page_and_mods():
     assert mods_row["held_dates"] == ["2013-06-13"]
     assert mods_row["title"] == "TAX REFORM: TAX HAVENS, BASE EROSION AND PROFIT-SHIFTING"
     assert cg_row["held_dates"] is None and cg_row["title"] is None
+    # Its committee and that committee's members, which tell a Member's own statement from a witness's (ct-kw85).
+    assert mods_row["committees"] == ["hswm00"]
+    assert len(mods_row["committee_members"]) == 37 and mods_row["committee_members"][:2] == ["B000287", "B000574"]
+    assert cg_row["committees"] is None and cg_row["committee_members"] is None
 
     # Round-trip through PyArrow table builder
     tbl = appearance_records.table([cg_row, senate_row, mods_row])
@@ -2857,6 +2865,26 @@ def test_a_members_opening_statement_keeps_the_words(lines, members, expected):
     found = appearance_records.extract_mods_appearances(_mods_lines(*lines, members=members))
     assert [(a["name"], a["position"], a["organization"]) for a in found] == expected
     assert all(a["witness_type"] is None for a in found)
+
+
+def test_a_prints_committees_and_members_are_its_own_facts():
+    """A print's congCommittee codes, lower case, and its committee members' bioGuideIds, root and constituent items,
+    each once in the publisher's order; a print in parts states them on its items only (CHRG-117hhrg49906). The
+    entry behind a date heading starts at a family of two words the print's roster names."""
+    line = ("Wednesday, June 8, 2022--Subcommittee on Nutrition, Oversight, and Department Operations Torres Small, Hon. "
+            "Xochitl, a Representative in Congress from New Mexico, opening statement")
+    member = '<congMember bioGuideId="{}" chamber="H" role="{}"><name type="authority-lnf">{}</name></congMember>'
+    xml = ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>'
+           f'<witness>{escape(line)}</witness></extension>'
+           '<relatedItem type="constituent"><extension><congCommittee authorityId="HSAG00" chamber="H"/>'
+           + member.format("T000484", "COMMMEMBER", "Torres Small, Xochitl")
+           + member.format("S001234", "WITNESS", "Smith, Jane") + '</extension></relatedItem>'
+           '<relatedItem type="constituent"><extension><congCommittee authorityId="HSAG03" chamber="H"/>'
+           '<congCommittee authorityId="HSAG00" chamber="H"/>' + member.format("B001298", "COMMMEMBER", "Bacon, Don")
+           + member.format("T000484", "COMMMEMBER", "Torres Small, Xochitl") + '</extension></relatedItem></mods>')
+    row = appearance_records.build_appearance_record_row(_sha("committee-facts"), "mods", xml.encode())
+    assert (row["committees"], row["committee_members"]) == (["hsag00", "hsag03"], ["T000484", "B001298"])
+    assert [(a["name"], a["organization"]) for a in row["appearances"]] == [("Xochitl Torres Small", "opening statement")]
 
 
 def test_a_biography_appendix_is_read_by_rule_in_a_real_print():
