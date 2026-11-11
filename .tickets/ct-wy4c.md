@@ -2,7 +2,7 @@
 id: ct-wy4c
 status: open
 deps: []
-links: []
+links: [ct-17op]
 created: 2026-11-10T03:26:29Z
 type: task
 priority: 3
@@ -27,3 +27,7 @@ The owner's decision is recorded here and, if rank or credentials are kept, a pa
 **2026-11-11T14:43:58Z**
 
 validated 2026-11-11, left open: the owner's decision is recorded (2026-11-10: rank and credentials in their own field), but the parser ticket the acceptance asks for does not exist: ct-6mvl's text and acceptance do not mention rank or credentials, and the MODS release branch claude/ct-mods-and-member-appearances adds no such field (its SQL drops credentials as words, appearance-people.sql:4-5). Remains: file or fold the parser work (own field, 299 + 944 rank and 6,474 + 291 credential rows) into ct-6mvl's acceptance, then close this.
+
+**2026-11-11T14:57:19Z**
+
+2026-11-11 (session congress-1): the parser ticket this decision asks for is ct-17op (filed after the release session's audit found the follow-up was not on ct-6mvl).

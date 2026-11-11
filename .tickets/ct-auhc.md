@@ -2,7 +2,7 @@
 id: ct-auhc
 status: open
 deps: []
-links: [ct-x00f]
+links: [ct-x00f, ct-17op]
 created: 2026-11-11T09:47:37Z
 type: feature
 priority: 3

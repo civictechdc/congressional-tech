@@ -2,7 +2,7 @@
 id: ct-6mvl
 status: open
 deps: []
-links: []
+links: [ct-17op]
 created: 2026-11-10T03:26:29Z
 type: bug
 priority: 2
