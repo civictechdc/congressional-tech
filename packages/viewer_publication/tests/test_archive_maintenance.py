@@ -56,6 +56,15 @@ def add_input(store,release,identity,runtime_pins=None):
     return write_input_receipts(store,release,record['input_digest'],record,keys)
 
 
+JOBS=Path(__file__).resolve().parents[3]/'model/jobs'
+
+
+def committed_maintenance():
+    """The committed spec, its daily table reference made absolute so a copy can live elsewhere."""
+    spec=json.loads((JOBS/'maintenance.json').read_text())
+    return dict(spec,tables=str(JOBS/spec['tables']))
+
+
 def fixture():
     store=Store();records=[add_input(store,LIVE,'one'),add_input(store,LIVE,'two'),
                            add_input(store,PREVIOUS,'previous'),add_input(store,PINNED,'external')]
@@ -323,7 +332,7 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys,mon
     assert archive_maintenance.main(['--spec',str(root/'model/jobs/maintenance.json'),'--plan'])==0
     maint_plan=json.loads(capsys.readouterr().out)
     assert maint_plan['status']=='planned' and maint_plan['executed'] is False
-    assert set(maint_plan['tables'])==set(ALL_TABLE_NAMES)
+    assert maint_plan['tables']==json.loads((root/'model/jobs/publish-daily.json').read_text())['tables']
     assert maint_plan['raw_verification']['captures']==json.loads(
         (root/'model/jobs/publish-model.json').read_text())['captures']
     assert maint_plan['raw_verification']['body_workers']==8
@@ -353,17 +362,24 @@ def test_maintenance_names_exactly_the_tables_the_shipped_daily_writes():
     # missing committee, playlist and video records. The daily owns the list.
     # Cannot see: whether a table exists in the live catalog (none is opened here).
     from viewer_publication.archive_maintenance import load_spec
-    jobs=Path(__file__).resolve().parents[3]/'model/jobs'
-    publish=json.loads((jobs/'publish.json').read_text())
-    daily=json.loads((jobs/publish['daily']['path']).read_text())['tables']
-    model=json.loads((jobs/publish['model_spec']['path']).read_text())
-    backfill=json.loads((jobs/'backfill.json').read_text())['tables']
-    tables=load_spec(jobs/'maintenance.json')['tables']
+    publish=json.loads((JOBS/'publish.json').read_text())
+    daily=json.loads((JOBS/publish['daily']['path']).read_text())['tables']
+    model=json.loads((JOBS/publish['model_spec']['path']).read_text())
+    backfill=json.loads((JOBS/'backfill.json').read_text())['tables']
+    tables=load_spec(JOBS/'maintenance.json')['tables']
     assert tables==daily
-    assert all(backfill[name]==daily[name] for name in backfill)
+    assert backfill=={name:daily.get(name) for name in backfill}
     for name,table in tables.items():
         # The shipped release was built from this physical table, so it existed then.
         assert '/'+'/'.join([*table['namespace'],table['name']])+'/metadata/' in model[name]['metadata_location'],name
+
+
+def test_maintenance_tables_must_name_a_spec_that_lists_tables(tmp_path):
+    from viewer_publication.archive_maintenance import load_spec
+    (tmp_path/'daily.json').write_text(json.dumps(dict(version=1)))
+    path=tmp_path/'maintenance.json'
+    path.write_text(json.dumps(dict(json.loads((JOBS/'maintenance.json').read_text()),tables='daily.json')))
+    with pytest.raises(ValueError,match='lists its tables'):load_spec(path)
 
 
 def test_a_daily_backfill_of_the_r2_lake_refuses_without_producer_anchors(tmp_path):
@@ -620,8 +636,7 @@ def test_cli_dry_run_stages_bucket_receipts_and_verification_for_native_checks(t
 
     captures=tmp_path/'captures.parquet'
     pq.write_table(pa.table({'body_key':pa.array([],type=pa.string())}),captures)
-    root=Path(__file__).resolve().parents[3]
-    spec=json.loads((root/'model/jobs/maintenance.json').read_text())
+    spec=committed_maintenance()
     spec.pop('external_pins_source')
     work=tmp_path/'run'
     spec.update(work=str(work),engine_config=os.environ['DOCSPEC_JOB_CONFIG'],external_pins=[PINNED],
@@ -662,8 +677,7 @@ def test_maintenance_can_stage_a_verifier_baseline_above_the_unreadable_file_lim
 def test_maintenance_spec_rejects_invalid_raw_body_worker_count(tmp_path,workers):
     from viewer_publication.archive_maintenance import load_spec
 
-    root=Path(__file__).resolve().parents[3]
-    spec=json.loads((root/'model/jobs/maintenance.json').read_text())
+    spec=committed_maintenance()
     spec['raw_verification'].update(captures='captures.parquet',body_workers=workers)
     path=tmp_path/'maintenance.json'
     path.write_text(json.dumps(spec))
