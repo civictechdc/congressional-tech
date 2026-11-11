@@ -60,9 +60,10 @@ JOBS=Path(__file__).resolve().parents[3]/'model/jobs'
 
 
 def committed_maintenance():
-    """The committed spec, its daily table reference made absolute so a copy can live elsewhere."""
+    """The committed spec, its references to other job files made absolute so a copy can live elsewhere."""
     spec=json.loads((JOBS/'maintenance.json').read_text())
-    return dict(spec,tables=str(JOBS/spec['tables']))
+    captures=dict(spec['raw_verification']['captures'],model_spec=str(JOBS/spec['raw_verification']['captures']['model_spec']))
+    return dict(spec,tables=str(JOBS/spec['tables']),raw_verification=dict(spec['raw_verification'],captures=captures))
 
 
 def fixture():
@@ -372,6 +373,20 @@ def test_maintenance_names_exactly_the_tables_the_shipped_daily_writes():
     for name,table in tables.items():
         # The shipped release was built from this physical table, so it existed then.
         assert '/'+'/'.join([*table['namespace'],table['name']])+'/metadata/' in model[name]['metadata_location'],name
+
+
+@pytest.mark.parametrize('entry',[dict(rebuild=dict(readings={})),dict(purge=[dict(table='readings',pin={})])])
+def test_lake_rebuild_and_purge_need_an_explicit_table_map(tmp_path,entry):
+    # The daily reference follows the live tables: a rebuild would aim at a live table and a
+    # purge target would move whenever the daily moves. Both name their targets explicitly.
+    from viewer_publication.archive_maintenance import load_spec
+    lake={**dict(observations={},rebuild={},purge=[]),**entry}
+    path=tmp_path/'maintenance.json'
+    path.write_text(json.dumps(dict(committed_maintenance(),lake_maintenance=lake)))
+    with pytest.raises(ValueError,match='explicit tables map'):load_spec(path)
+    daily=json.loads((JOBS/'publish-daily.json').read_text())['tables']
+    path.write_text(json.dumps(dict(committed_maintenance(),tables=daily,lake_maintenance=lake)))
+    assert load_spec(path)['lake_maintenance']==lake
 
 
 def test_maintenance_tables_must_name_a_spec_that_lists_tables(tmp_path):
