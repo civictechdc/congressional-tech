@@ -41,3 +41,7 @@ Open for the owner: whether the 15,691 label-only pages ("House Hearing, 111th C
 **2026-11-11T16:25:45Z**
 
 2026-11-11 tests (runner, partial lines): nearest model files 242 + 18 rerun, test_phase2_model_entities.py 52, release e2e/provenance/evidence/page metadata + test_capture_scheduler.py 134, all passed. Repeat-cost lint: retired_links_export records +932,789 (one more scan of source_rows and details; 2a405428). No full lane or full build run.
+
+**2026-11-11T16:58:12Z**
+
+2026-11-11 owner: hold the title change (titles get one composition rule, designed first; the hearing number becomes its own field shown beside the title). Part 2 is out of this branch: 0c313021 removes the title fill; the work is parked whole on branch claude/ct-egoo-title-fill-parked, commit 1e5b751a (one commit on 0c313021 restoring landing-page-titles.sql, the normalized fill, page signal govinfo_details_title with its samples, the test assertions and DM text; measurements gs-10..12). Parts 1 (list parts) and 3 (stop fetching) stay as built; the title counts in the note above no longer apply to this branch. Owner on label-only titles: numbers only (for the design).

@@ -51,3 +51,7 @@ Not done here: the release note line ("the kind words changed; amendment and bio
 **2026-11-11T16:25:45Z**
 
 2026-11-11 tests: schema 32 passed; Explorer lane (full lane) 224 passed, 4 skipped; site npm run test:explorer 115 pass. Site and Explorer code unchanged.
+
+**2026-11-11T16:58:12Z**
+
+2026-11-11 owner answers built (1d749138 tests, af3308cf change): member-statement = opening-statement and committee-transcript = transcript added to the synonyms map (five groups now). Labelling: a committee's 'transcript' whose saved text opens with a GPO printed hearing's cover (page signal gpo_printed_hearing_cover: hearing number + GPO imprint) reads published-hearing in kind and family; 'committee-transcript' documents keep their label. The model reads no PDF text, so PDFs keep their label. Per-label counts on 77673bfb8fcf (DuckDB, not a build): retagged 17 (7 recovered GPO texts, 10 House Veterans' Affairs pages reproducing the print); transcript 1,134 -> 1,117; committee-transcript 2,735 -> 2,735; either transcript word 3,869 -> 3,852; published-hearing 36,867 -> 36,884. Cannot tell apart: 1,113 transcripts whose text the model does not read (pdf 1,072, other 37, doc 3, docx 1), left as they are; 4 HTML transcripts were read and show no cover. Statement words: opening-statement 4,693, member-statement 6,245, either 10,938. Follow-up: parsers/document_cover.py already recognises House and Senate print covers on a PDF's first page; once PDF text reaches the model it can tag the PDFs the same way.
