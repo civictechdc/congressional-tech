@@ -41,7 +41,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "0119c2cee370d9f3ce0163e1685031a59408c9861251aa573b65674c1a2d1592",
+    "locked_sha256": "49f3dbe851ab8ae66c71c1e891e2d93ddfb4aca5a85421fdacb4098d92c912cc",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -56,7 +56,7 @@
       "version": "0.84.0"
     },
     "version": "e1928f25e2803cd6bc8546d1673ff7ba01a11ae861c322165c78af9d32380941",
-    "workspace_sha256": "7ccc9047e4b3431bbc8a2834f23ce5c752557637bd3712a3e919dd0b66139f4b"
+    "workspace_sha256": "b7390a2d13ff92a2b9d48bdc75cffc783322712d50baa36a5122688cf618d642"
   },
   "json": {
     "limits": {
@@ -74,7 +74,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "0119c2cee370d9f3ce0163e1685031a59408c9861251aa573b65674c1a2d1592",
+    "locked_sha256": "49f3dbe851ab8ae66c71c1e891e2d93ddfb4aca5a85421fdacb4098d92c912cc",
     "macos_build": "25G5057c",
     "ocr_rule": {
       "bands": 3,
@@ -101,7 +101,7 @@
       "version": "0.84.0"
     },
     "version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
-    "workspace_sha256": "7ccc9047e4b3431bbc8a2834f23ce5c752557637bd3712a3e919dd0b66139f4b"
+    "workspace_sha256": "b7390a2d13ff92a2b9d48bdc75cffc783322712d50baa36a5122688cf618d642"
   },
   "readings": {
     "limits": {
@@ -109,7 +109,7 @@
       "page_parse_bytes": 25165824,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "0e7b77aac9057cefc2f19dc15b71c9dfde7b3e4f3e5b88c72a86ffa304d55280",
+    "locked_sha256": "a071f55862f23d586775b69133822ad263f5a8aed83c2077448d3def86e12b21",
     "policy": {
       "max_input_bytes": 65536,
       "max_output_bytes": 8388608,
@@ -118,10 +118,10 @@
     },
     "sample_sha256": "475a2288edeaf9a7dc8e8c91be51524729eeb54b750bb99d28ebb81996393982",
     "version": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
-    "workspace_sha256": "9eb6a999993b5aa8c0f839bab595a668d382254d69dd501f4e58e298b77b1dbd"
+    "workspace_sha256": "7a72e6cafe5aa23ccbb7c8de350e1ca2ab860d56ad2019715c06361a1d0bb42f"
   },
   "sniff": {
-    "locked_sha256": "4712044f1e68920433b7352425e350d3e301037e7ddf2b0943378193d7d35dec",
+    "locked_sha256": "8d24595591a79984bb7ba208d33396d57c31b23817b844bb0e7c1361e25e746b",
     "readers": {
       "pdfinfo": "pdfinfo version 26.10.0",
       "pdftotext": "pdftotext version 26.10.0",
@@ -129,14 +129,14 @@
     },
     "sample_sha256": "a65c8c35474262329806ea3ebcc90e962c6df3aecf509ab9246f599253bb8357",
     "version": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
-    "workspace_sha256": "7bd96b2876e91ab2aaaa76975a305ebe08f804c4f3ff7440a2bba53aecced3b6"
+    "workspace_sha256": "df961f837667b67042b3ed8d4b744abc2d7c95a39bb498d77a8bc78de80ad7af"
   },
   "warc": {
     "limits": {
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "0119c2cee370d9f3ce0163e1685031a59408c9861251aa573b65674c1a2d1592",
+    "locked_sha256": "49f3dbe851ab8ae66c71c1e891e2d93ddfb4aca5a85421fdacb4098d92c912cc",
     "macos_build": "25G5057c",
     "ocr_rule": {
       "bands": 3,
@@ -163,7 +163,7 @@
       "version": "0.84.0"
     },
     "version": "e835fb8116a0ed204706c7cbed136cab4f7e49885e773369c663232672d5e397",
-    "workspace_sha256": "7ccc9047e4b3431bbc8a2834f23ce5c752557637bd3712a3e919dd0b66139f4b"
+    "workspace_sha256": "b7390a2d13ff92a2b9d48bdc75cffc783322712d50baa36a5122688cf618d642"
   },
   "xml": {
     "limits": {
@@ -181,7 +181,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "0119c2cee370d9f3ce0163e1685031a59408c9861251aa573b65674c1a2d1592",
+    "locked_sha256": "49f3dbe851ab8ae66c71c1e891e2d93ddfb4aca5a85421fdacb4098d92c912cc",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -196,6 +196,6 @@
       "version": "0.84.0"
     },
     "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
-    "workspace_sha256": "7ccc9047e4b3431bbc8a2834f23ce5c752557637bd3712a3e919dd0b66139f4b"
+    "workspace_sha256": "b7390a2d13ff92a2b9d48bdc75cffc783322712d50baa36a5122688cf618d642"
   }
 }
