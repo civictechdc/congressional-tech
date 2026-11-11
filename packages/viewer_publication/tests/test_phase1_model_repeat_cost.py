@@ -6,7 +6,7 @@ CTE that is itself read twice runs four times. Each run is one `TableScan` in th
 optimized logical plan, so counting scans counts the work, nesting and views included.
 
 The job is the one the build submits (every step, export and query), planned over zero-row
-inputs with the producers' schemas: nothing corpus-sized runs, and the lint sees plan shape,
+inputs with the lake's schemas: nothing corpus-sized runs, and the lint sees plan shape,
 not memory or time. A reader's score is the sum, over relations its plan scans more than
 once, of (scans - 1) x rows, the extra row-scans the materialization audit ranked by
 (.cache/archive-release/investigations/model-step-materialization-audit-20261104.md, M40).
@@ -23,7 +23,7 @@ The same plans show which statements read a lake table itself. Every statement t
 reads it again from the object store: 31 statements scanned `captures` 42 times, about 10 s
 each, in a 867 s build. The job therefore reads the lake `captures` in one statement, its first
 step, and every other reader scans that retained step. That check names the lake input by the
-stand-in file it is bound to, so it sees the scans whatever the job calls the input; it sees
+stand-in table it is bound to, so it sees the scans whatever the job calls the input; it sees
 neither the admission job nor any other job that binds `captures` itself.
 
 The same EXPLAIN also builds each reader's physical plan, where the engine can refuse a plan the
@@ -31,8 +31,12 @@ logical planner accepted. It reports that refusal as a `physical_plan_error` row
 fail, so only a check of that row sees one. A refusal can depend on the input being a lake table:
 `coalesce(f.valid,false)` in saved_name_conflicts carried the column's Iceberg field id into a
 reused expression and was refused only where filename readings came from the lake (f8541b6d,
-ct-h8dr), found by a 20-minute lane. That check sees planning only: no refusal that needs rows,
-statistics or memory, and no statement outside the job the build submits.
+ct-h8dr), found by a 20-minute lane. So every input the release reads from the lake is bound here
+to an empty table in a throwaway local catalog, created and pinned through the engine as
+production creates one; a Parquet stand-in cannot carry field ids into a plan, because the pinned
+engine strips field metadata from a Parquet input (engine ticket def-9ise). That check sees
+planning only: no refusal that needs rows, statistics or memory, and no statement outside the
+job the build submits.
 """
 import collections
 import json
@@ -40,11 +44,10 @@ import os
 import re
 from pathlib import Path
 
-import pyarrow.parquet as pq
 import pytest
 
-from archive_job_fixture import _Capture, _Submitted, real_model_spec, spicy_input
-from congress_api.lake import appearance_records, committee_records, meeting_records, video_records
+from archive_job_fixture import _Capture, _Submitted, spicy_input, versions
+from congress_api.lake import appearance_records, committee_records, meeting_records, tables, video_records
 from congress_api.retention.provenance import parquet_output, run_job
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model import build_prepared_release, prepare_model_inputs
@@ -181,22 +184,27 @@ REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
 NODE = re.compile(r'^( *)([A-Z]\w*(?: Join)?)(?:: (\S*).*)?$')
 
 
+#: The tables the release job reads from the lake (model/jobs/publish-model.json), each bound here to an empty one.
+LAKE_TABLES = ('captures', 'readings', 'filename_readings', 'meeting_records', 'appearance_records',
+               'video_records', 'committee_records')
+
+
 def submitted_job(root, engine):
-    """The release job over empty inputs with every producer schema: entities and Explorer tables included."""
-    value, _digest, _html = real_model_spec(root)
-    empty = {}
-    for name in ('captures', 'readings', 'filename_readings'):
-        empty[name] = root/f'empty-{name}.parquet'
-        pq.write_table(pq.read_schema(value[name]['path']).empty_table(), empty[name])
-    for name, lake in dict(meeting_records=meeting_records, appearance_records=appearance_records,
-                           video_records=video_records, committee_records=committee_records).items():
-        empty[name] = root/f'empty-{name}.parquet'
-        pq.write_table(lake.table([]), empty[name])
+    """The release job over empty lake tables: entities and Explorer tables included.
+
+    One throwaway catalog under `root`; each table created and pinned through the engine as production
+    creates one (archive_selective), so its schema and Iceberg field ids are the lake's."""
+    refs = {name: dict(namespace=['archive'], name=name) for name in LAKE_TABLES}
+    for i, (name, ref) in enumerate(refs.items()):
+        tables.create_table(engine=engine, work=root/f'create-{name}', catalog_root=root/'catalog', table=ref,
+            schema=tables.load_schema(name), location=root/f'lake-{name}', create_namespace=not i)
+    pins = tables.resolve_tables(engine=engine, work=root/'resolve', catalog_root=root/'catalog', tables=refs)
+    parsers, catalog_version = versions()
     decisions = root/'recording-decisions.jsonl'; decisions.write_text('')
-    versions = dict(value['parser_versions'], meeting_records=meeting_records.current_versions(),
-                    appearance_records=appearance_records.current_versions(),
-                    video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'}, committee_records={'house_xml': 'pc'})
-    prepared = prepare_model_inputs(**empty, parser_versions=versions, catalog_version=value['catalog_version'],
+    parsers.update(meeting_records=meeting_records.current_versions(), appearance_records=appearance_records.current_versions(),
+                   video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'}, committee_records={'house_xml': 'pc'})
+    prepared = prepare_model_inputs(**{name: dict(pin, kind='native_table') for name, pin in pins.items()},
+        parser_versions=parsers, catalog_version=catalog_version,
         engine=engine, scratch=root/'prepared', spicy_regs=spicy_input(), include_entities=True,
         recording_decision_files=[dict(key='provenance/recording_decisions/empty.jsonl', path=str(decisions))])
     with pytest.raises(_Submitted):
@@ -205,8 +213,9 @@ def submitted_job(root, engine):
 
 
 def lake_input(job, table):
-    """The job input bound to a lake table's stand-in file, under whatever name the job gives it."""
-    [name] = [item['name'] for item in job['inputs'] if Path(item.get('path', '')).name == f'empty-{table}.parquet']
+    """The job input bound to a lake table's stand-in, under whatever name the job gives it."""
+    [name] = [item['name'] for item in job['inputs']
+              if Path(item.get('metadata_location', '')).parent.parent.name == f'lake-{table}']
     return name
 
 
@@ -237,9 +246,10 @@ def explain(engine, root, job, statements):
 
 def parquet_stand_ins(engine, root, job):
     """The job with each lake stand-in bound instead to an empty Parquet file of its schema, written by the engine."""
-    lake = [item['name'] for item in job['inputs'] if item['kind'] == 'native_table']
+    lake = {lake_input(job, table): table for table in LAKE_TABLES}
     run_job(root, engine, inputs=[item for item in job['inputs'] if item['name'] in lake], steps=[],
-            outputs=[parquet_output(root, name, 'SELECT * FROM ' + name, []) for name in lake])
+            outputs=[parquet_output(root, name, 'SELECT * FROM ' + name, tables.TABLE_SPECS[table]['primary_key'])
+                     for name, table in lake.items()])
     return dict(job, inputs=[dict(name=item['name'], kind='parquet', path=str(root/(item['name']+'.parquet')))
                              if item['name'] in lake else item for item in job['inputs']])
 
@@ -358,6 +368,7 @@ def test_every_reader_builds_its_physical_plan_on_lake_backed_inputs(explained):
 def test_the_pass_refuses_the_spelling_that_failed_26_lane_tests_which_parquet_stand_ins_plan(explained):
     # f8541b6d (ct-h8dr): refused only where filename readings came from the lake. The pinned engine
     # strips field metadata from a Parquet input (engine ticket def-9ise), so Parquet stand-ins plan it.
+    # Once the engine keeps that metadata, the last assertion fails: revisit this half then.
     _job, explains, on_parquet = explained
     assert set(refused(explains)) == {PLANTED_LAKE_REFUSAL}
     reason = refused(explains)[PLANTED_LAKE_REFUSAL]
