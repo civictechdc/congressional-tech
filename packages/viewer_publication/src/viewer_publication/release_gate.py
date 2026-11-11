@@ -634,6 +634,115 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     return reasons, summary, pages, lines, result['trace']
 
 
+MEETING_UPDATES = 'meeting-updates'  # the morning report's file stem in the gate's work folder (ct-rhqw)
+# Meeting columns every read moves; the report names them only in its count of meetings.
+QUIET = ('congress_gov_detail_observation', 'congress_gov_updated', 'publisher_status_observations')
+
+
+def meeting_updates(report, base_dir, candidate_dir):
+    """The morning report (ct-rhqw): for each Congress.gov meeting the comparison set apart as updated
+    (`release_comparison.updated_meetings`), what changed between the live release and the candidate:
+    title, date, status, witnesses added and removed (Congress.gov rows, by name and organization),
+    and document and video links added and removed. Returns a list of dicts, one per meeting.
+    Reads the two releases' meetings and witnesses for those meetings only."""
+    import duckdb
+    ids = report['files'].get('meetings.parquet', {}).get('congress_gov_updates') or []
+    if not ids:
+        return []
+    con = duckdb.connect()
+    con.execute("SET threads=1")
+    listed = ','.join(str(int(i)) for i in ids)
+    def side(directory):
+        directory = Path(directory)
+        meetings = {r['event_id']: r for r in con.execute(
+            f"SELECT * FROM read_parquet('{directory / 'meetings.parquet'}') WHERE event_id IN ({listed})").to_arrow_table().to_pylist()}
+        people = {}
+        if (directory / 'witnesses.parquet').exists():
+            for row in con.execute(f"""SELECT * FROM read_parquet('{directory / 'witnesses.parquet'}') WHERE source='congress_gov'
+                  AND occasion IN ({','.join(f"'meeting:{int(i)}'" for i in ids)})""").to_arrow_table().to_pylist():
+                name = (row.get('name') or '(unnamed)') + (f" ({row['organization']})" if row.get('organization') else '')
+                people.setdefault(int(row['occasion'].split(':')[1]), []).append((row.get('display_order') or 0, name))
+        return meetings, {event: [name for _, name in sorted(names)] for event, names in people.items()}
+    (old, old_people), (new, new_people) = side(base_dir), side(candidate_dir)
+    def gone(before, after):
+        rest, out = list(after), []
+        for item in before:
+            if item in rest:
+                rest.remove(item)
+            else:
+                out.append(item)
+        return out
+    def links(values):
+        """(address, label) of each document or video link; a plain string is both."""
+        return [(v.get('url'), v.get('name') or v.get('description') or v.get('url')) if isinstance(v, dict) else (v, v)
+                for v in values or []]
+    def moved(before, after):
+        kept = {url for url, _ in after}
+        return [label for url, label in before if url not in kept]
+    result = []
+    for event in ids:
+        now, was = new[event], old.get(event)
+        entry = dict(event_id=event, title=now.get('title'), meeting_date=str(now['meeting_date']) if now.get('meeting_date') else None,
+                     first_stated=was is None)
+        for key in ('title', 'meeting_date', 'publisher_status'):
+            if was is not None and was.get(key) != now.get(key):
+                entry[key + '_was'] = None if was.get(key) is None else str(was.get(key))
+                entry[key + '_now'] = None if now.get(key) is None else str(now.get(key))
+        for key in ('document_references', 'videos'):
+            before, after = links((was or {}).get(key)), links(now.get(key))
+            label = 'documents' if key == 'document_references' else 'videos'
+            entry[label + '_added'], entry[label + '_removed'] = moved(after, before), moved(before, after)
+        entry['witnesses_added'] = gone(new_people.get(event, []), old_people.get(event, []))
+        entry['witnesses_removed'] = gone(old_people.get(event, []), new_people.get(event, []))
+        shown = {'event_id', 'title', 'meeting_date', 'publisher_status', 'document_references', 'videos', *QUIET}
+        entry['also_changed'] = sorted(k for k in now if k not in shown and was is not None and was.get(k) != now.get(k))
+        result.append(entry)
+    return result
+
+
+def _plural(n, word):
+    return f'{n} {word}' + ('' if n == 1 else 'es' if word.endswith('s') else 's')
+
+
+def write_meeting_updates(report, base_dir, candidate_dir, work):
+    """Write the morning report as `meeting-updates.txt` (plain, one block per meeting) and
+    `meeting-updates.json` (the entries and one summary `line` for the nightly summary) into `work`,
+    when the comparison names any Congress.gov meeting update; returns the line, or None."""
+    entries = meeting_updates(report, base_dir, candidate_dir)
+    if not entries:
+        return None
+    parts, text = [], [f"Congress.gov meeting updates: {_plural(len(entries), 'meeting')}, "
+                       f"{report['base_release'][:12]} to {report['candidate_release'][:12]} (ct-rhqw)", '']
+    for e in entries:
+        head = f"{e['event_id']} {e['title'] or '(no title)'} ({e['meeting_date'] or 'no date'})"
+        text.append(head + (' - first stated' if e['first_stated'] else ''))
+        changed = ['new'] if e['first_stated'] else []
+        for key, label in (('title', 'title'), ('meeting_date', 'date'), ('publisher_status', 'status')):
+            if key + '_was' in e:
+                text.append(f"  {label}: {e[key + '_was']} -> {e[key + '_now']}")
+                changed.append(label)
+        for key, label in (('witnesses_added', 'witnesses added'), ('witnesses_removed', 'witnesses removed'),
+                           ('documents_added', 'documents added'), ('documents_removed', 'documents removed'),
+                           ('videos_added', 'videos added'), ('videos_removed', 'videos removed')):
+            if e[key]:
+                text.append(f"  {label}: " + '; '.join(e[key]))
+                noun = {'witnesses': 'witness', 'documents': 'document', 'videos': 'video'}[key.split('_')[0]]
+                changed.append(('+' if key.endswith('added') else '-') + _plural(len(e[key]), noun))
+        if e['also_changed']:
+            text.append('  also changed: ' + ', '.join(e['also_changed']))
+            changed += e['also_changed']
+        if text[-1] == head and not e['first_stated']:
+            text.append('  read again with new bytes; no title, date, status, witness, document or video change')
+        parts.append(f"{e['event_id']} ({', '.join(changed) or 'read again'})")
+        text.append('')
+    shown = parts[:12] + ([f'and {len(parts) - 12} more'] if len(parts) > 12 else [])
+    line = f"{_plural(len(entries), 'Congress.gov meeting')} updated: " + '; '.join(shown)
+    work.mkdir(parents=True, exist_ok=True)
+    (work / f'{MEETING_UPDATES}.txt').write_text('\n'.join(text))
+    (work / f'{MEETING_UPDATES}.json').write_text(json.dumps(dict(line=line, meetings=entries), indent=1, default=str) + '\n')
+    return line
+
+
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work,
                      candidate_receipt_keys=None):
     """Cause entries for a difference whose every row comes from receipts new to the release.
@@ -662,6 +771,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     new row whose receipts are new while the code that made it changed; the other gates still run.
     """
     from viewer_publication.release_comparison import Diff, documents
+    write_meeting_updates(report, base_dir, candidate_dir, Path(work))
     reasons = []
     groups = report['failing']
     if not report['link_rule']['ok']:
