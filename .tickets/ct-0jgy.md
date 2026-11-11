@@ -23,3 +23,7 @@ On a local run of the pinned binary with the debug log on, the per-step table ag
 **2026-11-10T17:12:34Z**
 
 2026-11-10: also to fix here, from the review of ct-01kq (same script): refuse with exit 2 a timeline sample whose epoch or read_seconds is null or not a number (step_memory.py:81,128 give a TypeError traceback today); refuse two runs concatenated in one timeline (epoch minus seconds is constant within a run).
+
+**2026-11-11T01:27:23Z**
+
+Later, not now (W9 re-review): native_reserved, which every shared admission request line logs, could bound a pinned run's pool peak more tightly than its pool before/after, but only if counted from lines stamped inside the statement's [start_epoch, end_epoch]. Each tracing line carries a wall-clock timestamp (tracing_subscriber::fmt, src/main.rs:537); attribution by stream order alone is unsound for it, since a line logged after the previous event and before its releases can carry a pool above the next statement's whole peak (step_memory.py docstring).
