@@ -3,6 +3,9 @@
 This reads the plan on empty inputs, so it checks join placement only. It sees neither
 memory, Iceberg pruning, pool pressure, nor whether the expression key blocks pushdown.
 The original memory failure needs a full job, and this gate does not claim to detect it.
+It keeps Parquet stand-ins on purpose: it finds each captures scan by the stand-in's file name
+in the physical plan, and a lake scan prints none. A lake-only refusal in these statements is
+for test_phase1_model_repeat_cost, which plans these statements on lake-backed inputs.
 """
 import json
 import os

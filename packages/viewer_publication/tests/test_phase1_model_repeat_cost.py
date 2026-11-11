@@ -31,13 +31,22 @@ logical planner accepted. It reports that refusal as a `physical_plan_error` row
 fail, so only a check of that row sees one. A refusal can depend on the input being a lake table:
 `coalesce(f.valid,false)` in saved_name_conflicts carried the column's Iceberg field id into a
 reused expression and was refused only where filename readings came from the lake (f8541b6d,
-ct-h8dr), found by a 20-minute lane. So every input the release reads from the lake is bound here
-to an empty table in a throwaway local catalog, created and pinned through the engine as
-production creates one; a Parquet stand-in cannot carry field ids into a plan, because the pinned
-engine strips field metadata from a Parquet input (engine ticket def-9ise). A refused step is
-run before any EXPLAIN, so it stops the job and every test errors with the engine's message,
-which names no statement. That check sees planning only: no refusal that needs rows,
-statistics or memory, and no statement outside the job the build submits.
+ct-h8dr), found by a 20-minute lane. So seven of the eight inputs the release reads from the lake
+are bound here to empty tables in a throwaway local catalog, created with the lake's schemas and
+pinned through the engine; a Parquet stand-in cannot carry field ids into a plan, because the
+pinned engine strips field metadata from a Parquet input (engine ticket def-9ise). The tables are
+unpartitioned, where production partitions readings and filename_readings, so a refusal that
+depends on partitioning is not seen. The eighth, playlist_records, is not bound: its readers plan
+over the job's stand-in step of NULL literals, which differs from the lake table in nullability
+and field ids, so their lake-only refusals are not seen. Binding it waits for its rows in
+fixtures/model-relation-rows.json (selected-records.sql scans it twice): the local-lake build those
+rows come from predates it, and newer builds pin remote snapshots the measuring script cannot
+count. A refused step is run before any EXPLAIN, so it stops the job and every test errors with
+the engine's message, which names no statement. That check sees planning only: no refusal that
+needs rows, statistics or memory, and no statement outside the job the build submits.
+test_model_candidate_joins keeps Parquet stand-ins: it finds each captures scan by the stand-in's
+file name in the physical plan, and a lake scan prints none; this pass plans its statements on
+lake-backed inputs.
 """
 import collections
 import json
@@ -187,7 +196,8 @@ REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
 NODE = re.compile(r'^( *)([A-Z]\w*(?: Join)?)(?:: (\S*).*)?$')
 
 
-#: The tables the release job reads from the lake (model/jobs/publish-model.json), each bound here to an empty one.
+#: Seven of the eight tables the release job reads from the lake (model/jobs/publish-model.json), each bound
+#: here to an empty one; playlist_records is not yet (the module docstring says why).
 LAKE_TABLES = ('captures', 'readings', 'filename_readings', 'meeting_records', 'appearance_records',
                'video_records', 'committee_records')
 
@@ -195,8 +205,8 @@ LAKE_TABLES = ('captures', 'readings', 'filename_readings', 'meeting_records', '
 def submitted_job(root, engine):
     """The release job over empty lake tables: entities and Explorer tables included.
 
-    One throwaway catalog under `root`; each table created and pinned through the engine as production
-    creates one (archive_selective), so its schema and Iceberg field ids are the lake's."""
+    One throwaway catalog under `root`; each table created with the lake's schema and pinned through the
+    engine, unpartitioned as archive_selective creates one, so its Iceberg field ids are the lake's."""
     refs = {name: dict(namespace=['archive'], name=name) for name in LAKE_TABLES}
     for i, (name, ref) in enumerate(refs.items()):
         tables.create_table(engine=engine, work=root/f'create-{name}', catalog_root=root/'catalog', table=ref,
