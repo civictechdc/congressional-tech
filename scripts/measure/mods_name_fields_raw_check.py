@@ -49,7 +49,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   it, "P. a Representative ...", is no office);
 - ``name_not_in_line``: a new or added name with a word its raw line lacks;
 - ``name_cut``: a new or changed name printed in its line's order that lacks a capitalised word (no initial) the line
-  prints just before its family name in the same run of name words ("Leong" on "... docs.house.gov. Brenda Leong");
+  prints just before its family name in the same run of name words, back to a title or a heading, document or office
+  word ("Leong" on "... docs.house.gov. Brenda Leong"; a line in capitals is not read);
 - ``words_lost``: a changed occurrence that loses a word across name, position, organization and
   on_behalf_of (credentials such as "M.D." and titles such as "Hon." may go, as for every witness line, and the
   label "Accompanied by"; on an asking line, so may its heading's words and a contents column's "Page"; a word
@@ -824,12 +825,19 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
             """Does a name printed in the line's order lack a capitalised word the line prints just before its family
             name, in the same run of name words ("Leong" on "... docs.house.gov. Brenda Leong, ...")?"""
             word = family_word(name)
-            if not word or not in_order(name, line):
-                return False
+            printed = re.search(rf"\b{re.escape(word)}\b", line, re.I) if word else None
+            if not printed or printed.group().isupper() or not in_order(name, line):
+                return False  # a line in capitals says nothing by case
             runs = [run for run, _ in name_runs(line) if word in run]
             run = next((r for r in runs if opening(name) in r), runs[-1] if runs else [])
-            held = {plain(w) for w in words(name)}
-            return bool({w for w in run[:run.index(word)] if len(w) > 1} - held) if run else False
+            held, cut = {plain(w) for w in words(name)}, set()
+            # The given names are the run's words just before the family name, back to a title or a heading,
+            # document or office word ("Post- Hearing Questions Mr. Emil H. Frankel" -> emil).
+            for w in reversed(run[:run.index(word)] if run else []):
+                if w in TITLES or w in NOT_PERSON or w in COMMITTEE:
+                    break
+                cut |= {w} - held if len(w) > 1 else set()
+            return bool(cut)
 
         def transcript(line):
             """The words after a speaker's turn in a raw line, which are transcript, no entry's."""
