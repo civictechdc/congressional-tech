@@ -27,3 +27,7 @@ Each budget's measurement text states a measured figure with its run folder, not
 **2026-11-10T20:39:29Z**
 
 2026-11-10 not resolved by release 77673bfb8fcf. The release runs at d3ed7ca5 still admitted against budget revision 8c3a2633, whose publish-fresh text still says 'carried forward'. The fresh run (nightly/20261110T195322.097664Z) gives figures to use: publish step 1,658.6 s, peak 9.74 GiB RSS (publish-watchdog.json). Its disk-admission files hold free space at admission only, not the drawdown, so that number still has to come from a measured run.
+
+**2026-11-11T11:56:39Z**
+
+2026-11-11 (session congress-1): disk budgets added to .cache/archive-release/disk-budgets.json (outside git; backup disk-budgets.json.before-20261111T1011Z) for the record-only backfill replay ('backfill') and the import ('import'), each 1 GiB plus 15 GiB headroom, from measured runs of the MODS appearance activation (record-only replay of 35,020 MODS rows over 327,659 reused: 205-470 s, peak 1.58-1.70 GiB RSS, 33.6-33.9 MiB own folders; local import rehearsal 11-14 s, 1.44-1.45 GiB, 42 MiB); evidence .cache/archive-release/investigations/mods-backfill-activation-20261111/ (ba-findings.md, ba-runbook.md, run-m17/). run-archive-job.py backfill --check-disk still refuses, now on roots rather than a missing budget, because its default daily mode is unmeasured; deliberately left refusing. Related: ct-eav2 (check the target schema before any write or fetch), ct-auhc (engine add-column operation).
