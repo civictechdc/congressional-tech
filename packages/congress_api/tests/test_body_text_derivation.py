@@ -323,65 +323,91 @@ def test_a_stopped_folder_is_neither_walked_nor_hashed(monkeypatch):
     assert not [path for path in diagnostics.evidence_files()['html'] if path.startswith(folder.as_posix() + '/')]
 
 
-def test_every_file_a_reader_runs_on_its_fixtures_is_in_its_evidence(tmp_path, monkeypatch):
-    """The declared reader modules, checked against execution: each reader runs its fixture bodies under
-    a profiler, and every workspace file whose functions ran must be among that entry's evidence files.
-    It cannot see branches the fixtures do not reach (the remote read path, most refusals)."""
-    import inspect
+def reader_runs(tmp_path):
+    """Each group of entries and a call that runs its reader's worker callable over its fixture bodies:
+    readings.parse_payload for the sniff, page and HTML metadata readers, parse_once_payload for the
+    bundle, and lake/body_text.parse_payload for the body-text readers."""
     import json
-    import sys
     from congress_api.lake import body_text, compatible_versions, readings
-    from congress_api.lake import reading_version_diagnostics as diagnostics
-    root = diagnostics.ROOT
-    monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER', str(tmp_path / 'io.phase'))
-    cases = json.loads((root / 'model/fixtures/parser-cases.json').read_text())
+    from congress_api.lake.reading_version_diagnostics import ROOT
+    cases = [(case['body'].encode(), case['parser']) for case in json.loads((ROOT / 'model/fixtures/parser-cases.json').read_text())]
     bodies = {'pdf': (two_page_pdf(), 'pdf_text'), 'html': (HTML, 'html_text'), 'xml': (XML, 'xml_text'),
               'web': (WEB_PAGE, 'html_text'), 'warc': (warc_member(HTML), 'warc'), 'gzip': (gzip.compress(HTML), 'html_text'),
               'cover': ((FIXTURES / 'document-covers/house-hearing.pdf').read_bytes(), 'pdf_text')}
+    metadata = (FIXTURES / 'html_metadata/marked-no-statement.html').read_bytes()
+    written = iter(range(10 ** 6))
+
+    def payload(stored, **fields):
+        path = tmp_path / f'body-{next(written)}'
+        path.write_bytes(stored)
+        # The gzip storage case is known by its decoded hash; every other body by its stored bytes.
+        plain = HTML if stored is bodies['gzip'][0] else stored
+        return json.dumps(dict(fields, path=str(path), stored_bytes=len(stored),
+                               body_sha=hashlib.sha256(plain).hexdigest())).encode()
 
     def body_text_worker():
-        for name, (data, parser) in bodies.items():
-            (tmp_path / name).write_bytes(data)
-            (tmp_path / (name + '-texts')).mkdir()
-            plain = gzip.decompress(data) if name == 'gzip' else data  # a stored gzip is known by its decoded hash
-            body_text.parse_payload(json.dumps(dict(
-                path=str(tmp_path / name), stored_bytes=len(data), body_sha=hashlib.sha256(plain).hexdigest(),
-                parser=parser, strategy=bt.DEFAULT_STRATEGY, page_deadline_seconds=0,
-                texts=str(tmp_path / (name + '-texts')))).encode())
+        for data, parser in bodies.values():
+            texts = tmp_path / f'texts-{next(written)}'
+            texts.mkdir()
+            body_text.parse_payload(payload(data, parser=parser, strategy=bt.DEFAULT_STRATEGY,
+                                            page_deadline_seconds=0, texts=str(texts)))
 
     def bundle():
-        for case in cases:
-            path = tmp_path / ('bundle-' + case['parser'])
-            path.write_bytes(case['body'].encode())
-            readings.parse_once_payload(json.dumps(dict(
-                path=str(path), cache=str(path.with_suffix('.cache')), stored_bytes=len(case['body'].encode()),
-                versions={name: 'sample' for name in compatible_versions.LEAF_PARSERS}, known_format=None,
-                skip_parsers=[], body_sha=hashlib.sha256(case['body'].encode()).hexdigest())).encode())
+        for data, _ in cases:
+            path = tmp_path / f'cache-{next(written)}'
+            readings.parse_once_payload(payload(data, cache=str(path), known_format=None, skip_parsers=[],
+                versions={name: 'sample' for name in compatible_versions.LEAF_PARSERS}))
 
-    runs = {
-        ('sniff',): lambda: [sniff(case['body'].encode()) for case in cases] + [sniff(data) for data, _ in bodies.values()],
-        PAGE: lambda: [readings.read_body(case['body'].encode(), case['parser']) for case in cases],
-        ('html_metadata',): lambda: readings.read_body(
-            (FIXTURES / 'html_metadata/marked-no-statement.html').read_bytes(), 'html_metadata'),
+    return {
+        ('sniff',): lambda: [readings.parse_payload(payload(data, parser='sniff'))
+                             for data in [data for data, _ in cases] + [data for data, _ in bodies.values()]],
+        PAGE: lambda: [readings.parse_payload(payload(data, parser=parser)) for data, parser in cases],
+        ('html_metadata',): lambda: readings.parse_payload(payload(metadata, parser='html_metadata')),
         ('readings',): bundle,
         BODY_TEXT: body_text_worker,
     }
-    evidence = diagnostics.evidence_files(root)
-    for entries, run in runs.items():
-        ran = set()
 
-        def profile(frame, event, arg):
-            # Function bodies only: module and class bodies are import-time code, not reading.
-            name = frame.f_code.co_filename
-            if event == 'call' and frame.f_code.co_flags & inspect.CO_OPTIMIZED and '/src/' in name \
-                    and name.startswith(str(root)) and '/.venv/' not in name:
-                ran.add(Path(name).relative_to(root).as_posix())
 
-        sys.setprofile(profile)
-        try:
-            run()
-        finally:
-            sys.setprofile(None)
+def traced(run, evidence, monkeypatch):
+    """Workspace files whose functions ran in `run`, with every reader cache emptied first, so what a run
+    reaches does not depend on what ran before it in this process. Function bodies only: module and
+    class bodies are import-time code, not reading."""
+    import inspect
+    import sys
+    from congress_api.lake import body_text
+    from congress_api.lake.reading_version_diagnostics import ROOT
+    held = {str(ROOT / path) for files in evidence.values() for path in files}
+    for module in list(sys.modules.values()):
+        if getattr(module, '__file__', None) in held:
+            for value in list(vars(module).values()):
+                if callable(getattr(value, 'cache_clear', None)):
+                    value.cache_clear()
+    monkeypatch.setattr(body_text, '_STRATEGIES', {})
+    ran = set()
+
+    def profile(frame, event, arg):
+        name = frame.f_code.co_filename
+        if event == 'call' and frame.f_code.co_flags & inspect.CO_OPTIMIZED and '/src/' in name \
+                and name.startswith(str(ROOT)) and '/.venv/' not in name:
+            ran.add(Path(name).relative_to(ROOT).as_posix())
+
+    sys.setprofile(profile)
+    try:
+        run()
+    finally:
+        sys.setprofile(None)
+    return ran
+
+
+def test_every_file_a_reader_runs_on_its_fixtures_is_in_its_evidence(tmp_path, monkeypatch):
+    """The declared reader modules, checked against execution: each reader's worker callable runs its fixture
+    bodies under a profiler, and every workspace file whose functions ran must be among that entry's evidence
+    files. It cannot see branches the fixtures do not reach (the remote read path, most refusals)."""
+    from congress_api.lake import reading_version_diagnostics as diagnostics
+    monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER', str(tmp_path / 'io.phase'))
+    evidence = diagnostics.evidence_files()
+    for entries, run in reader_runs(tmp_path).items():
+        ran = traced(run, evidence, monkeypatch)
         assert ran, entries
         for entry in entries:
             assert ran <= evidence[entry], (entry, sorted(ran - evidence[entry]))
