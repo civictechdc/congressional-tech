@@ -1,6 +1,6 @@
 ---
 id: ct-r91j
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-10T15:41:13Z
@@ -27,3 +27,7 @@ f6615f13 (claude/dx-reading-evidence) records the readings drift from ct-an6o's 
 **2026-11-11T14:32:38Z**
 
 validated 2026-11-11, left open: not done. reading_version_diagnostics.body_text_evidence still fingerprints the closure from lake/body_text.py (line 73), so the 68-file closure stands; W1 (f6615f13), W4 (030d44b3), W5 (288ba64f) and ct-p394 (a4ec992b) each needed a recorded equivalence this week because of it. The readings drift from ct-an6o was recorded in f6615f13, so that part of the acceptance is met. Remains: narrow the closure (owner's call per decisions-overnight 00:22Z) with its test in test_body_text_derivation.py.
+
+**2026-11-11T15:50:44Z**
+
+Built on claude/dx-narrow-reading-evidence (owner decision 2026-11-11: narrow it to what readers run). 451931a4 has the tests first, in test_body_text_derivation.py: an edit to plumbing no reader runs (client, provenance, versions, tables, weekly_tables) moves no evidence value; an edit to code a reader runs still moves that reader; every file a reader runs on its fixtures is in its evidence. 87c9b3f6 has the change: reading_version_diagnostics.READERS lists, per entry, the reader modules it walks and the dispatcher and producer files it hashes by bytes only; the walk stops at retention/weekly_tables.py; evidence_files owns what is hashed. lake/versions.py is untouched. Files per entry: sniff 33 to 19, readings 57 to 27, body text 68 to 24, the others unchanged. Three plants caught. Remains: the one equivalence re-stamp (sniff, readings and the four body-text readers) after the rebase onto the MODS merge, then doctor. Design note: .cache/archive-release/investigations/docspec-feedback-20261110/refactor/narrow-evidence/ne_design-note.txt
