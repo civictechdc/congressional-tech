@@ -50,10 +50,18 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   the row or another row of the line still shows is not lost (a name printed again in a heading, "... for Damon
   Stevens", may go), nor page numbers fused to a kept word, "EPA173-198"; a row whose
   name or raw line opened in lower case, a fragment of prose, loses nothing when it comes to name no one; nor do words printed
-  after a speaker's turn, "Mr. Yoder. We will ...", which are transcript). A raw line that opens
+  after a speaker's turn, "Mr. Yoder. We will ...", which are transcript; nor the words a line prints before a row's
+  own name when they hold a date, a weekday or "opening statement(s)" and none of their name runs is a Member serving
+  in the print's Congress, a <congMember> family or a known given and family name: a heading run into the entry,
+  "Tuesday, May 24, 2016--Subcommittee on ... Costa, Hon. Jim"; ``person_moved`` does not count them either). A raw line that opens
   in lower case is a fragment of prose run into the list: ``member_unnamed`` and ``person_left_in_organization`` do
   not read it, and ``person_moved`` reads only names that open in capitals;
-- ``words_gained``: a changed occurrence that gains a word its raw line lacks;
+- ``words_gained``: a changed occurrence that gains a word its raw line lacks, except "opening statement" on a
+  Member's row whose line says it or stands under an opening statements heading (below);
+- ``opening_statement_dropped``: any after occurrence, changed or not, naming a Member (either count) whose raw line
+  says "opening statement(s)" or stands under an opening statements heading, with the words in none of its fields.
+  The heading is read without the rule: a line printing the words before the first Member a row of it names heads
+  the lines after it while each names a Member;
 - ``person_left_in_organization``: a changed occurrence left without a name whose raw line still has a
   later segment opening with a known given name;
 - ``reorder_unsupported``: a new or restored name whose words are not in the raw line in that order (a surname
@@ -81,7 +89,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   that names their statement or a paper
   (``PAPERS``, a Member's submission); or, for a named person on an asking line who is not one of its Members, to
   none when they testified on a line of the print that asks nothing and to ``statement_for_record`` when they did not
-  (an answerer); or it is ``record_material`` on an asking line for a row with no name, a Member's family
+  (an answerer); or to none for a Member's opening statement (``opening_statement_dropped``'s reading, round 8);
+  or it is ``record_material`` on an asking line for a row with no name, a Member's family
   word, on a line of names alone, or on a line naming a paper, or with no name where the before row held prose (a
   name or a raw line opening in lower case). Every ``record_material`` row on an asking line is
   held to that, its type changed or not; and an added row typed a statement on an asking line for a person who
@@ -177,7 +186,17 @@ asking line whose before row there was nameless record material, and ``answerer-
 who testified as a statement (both ``type_unsupported``); ``document-cut`` cuts a document's text at its last comma
 (``text_cut``); ``position-from-other-row`` gives an asker another row's position and ``position-heading-word``
 cuts a position one word late, "Commissioner Responses" (both ``position_not_in_line``); ``answerer-untestified-witness``
-types an added answerer who answered only in writing as a witness (``type_unsupported``).
+types an added answerer who answered only in writing as a witness (``type_unsupported``); ``opening-dropped`` drops
+the words from a Member's row under an opening statements heading (``opening_statement_dropped``),
+``opening-on-witness`` gives a witness who is no Member an opening statement their line lacks (``words_gained``),
+``heading-took-given`` sheds a sitting's heading with the Member's given name and ``heading-strip-organization`` sheds
+an organization printed before its official as if it were a heading (both ``words_lost``), and
+``member-statement-untyped`` leaves a Member's statement that says no opening statement untyped (``type_unsupported``).
+
+The opening statements reading shares the rule's notion of a heading (the words before the first Member's name, carried
+over Member lines); it differs in who is a Member (the print's <congMember> names and the members table, never a
+style), so a carried line printing a Member's name in a witness's entry carries the heading on. Its heading-words
+allowance sees no person the members table, the print's roster and other publishers' names all miss.
 """
 import argparse
 from collections import Counter, defaultdict
@@ -200,7 +219,7 @@ TITLES = set('the hon honorable mr mrs ms miss dr prof professor rev reverend se
 COMMITTEE = {'chairman', 'chairwoman', 'ranking', 'member'}
 SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'iv'}
 KEYED = (*FIELDS, 'honorific', 'witness_type', 'bioguide_id', 'display_order')
-FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'words_lost', 'words_gained',
+FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'words_lost', 'words_gained', 'opening_statement_dropped',
          'person_left_in_organization', 'reorder_unsupported', 'order_unsupported', 'order_across_lines',
          'name_not_person', 'split_unsupported', 'type_unsupported', 'question_asker_as_witness', 'member_unnamed',
          'members_merged', 'position_not_in_line', 'text_cut', 'record_as_witness')
@@ -216,6 +235,9 @@ PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported'
           'roster-gap-dropped': 'member_unnamed', 'answerer-to-record': 'type_unsupported',
           'answerer-mistyped': 'type_unsupported', 'document-cut': 'text_cut',
           'position-from-other-row': 'position_not_in_line', 'position-heading-word': 'position_not_in_line',
+          'opening-dropped': 'opening_statement_dropped', 'opening-on-witness': 'words_gained',
+          'heading-strip-organization': 'words_lost', 'heading-took-given': 'words_lost',
+          'member-statement-untyped': 'type_unsupported',
           'answerer-untestified-witness': 'type_unsupported'}
 # Words that make a line ask: what was asked or requested, read anywhere in the line, in any case.
 ASKING = {'question', 'questions', 'request', 'requests'}
@@ -230,6 +252,10 @@ LIST_WORDS = set('the of and a in from congress state commonwealth district colu
                  'member'.split())
 # What a document's title prints and an organization's name does not: a quotation, or a date.
 QUOTED = re.compile(r"\"|''|``")
+# A printed date in any case ("Tuesday, May 24, 2016--...", "JUNE 3, 1999--...").
+ANY_DATE = re.compile(r"(?i)\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},\s*\d{4}\b")
+OPENING = re.compile(r"(?i)\bopening\s+statements?\b")
+WEEKDAYS = {'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'}
 DATED = re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(?:\d{1,2},\s*)?\d{4}\b")
 # Words that name a document submitted for the record, read anywhere in a line.
 DOCUMENTS = set('statement statements letter letters memorandum memo article articles paper papers report reports '
@@ -675,6 +701,47 @@ def judge(before, after, raw_root, given, family, serving=None):
                 testified |= {run[-1] for run, _ in name_runs(text[listed.end():])}
         testified.discard(None)
 
+        rows_at = defaultdict(list)
+        for k, r in sorted(new.items()):
+            rows_at[position(k)].append((k, r))
+
+        def first_member_at(n, text):
+            """Where line n first prints the family word of a Member a row of it names (either count), or None."""
+            found = [m.start() for k, r in rows_at.get(n, []) if r.get('name') and a_member(r['name'], k)
+                     for m in [re.search(rf"\b{re.escape(family_word(r['name']))}\b", text, re.I)] if m]
+            return min(found) if found else None
+
+        # Lines under an opening statements heading, read without the rule: a line printing "opening statement(s)"
+        # before the first Member it names heads the lines after it, each naming a Member, to the first that names
+        # none. A Member is either count's (the print's <congMember> names, the members table).
+        under, carry = set(), False
+        for n, text in enumerate(lines, start=1):
+            first, said = first_member_at(n, text), OPENING.search(text)
+            carry = first is not None and (bool(said and said.start() < first) or carry)
+            if carry:
+                under.add(n)
+
+        def opening_due(name, locator):
+            """Is this a Member's row whose line says "opening statement(s)" or stands under such a heading?"""
+            return (bool(name) and a_member(name, locator)
+                    and (bool(OPENING.search(line_of(locator))) or position(locator) in under))
+
+        def heading_words(line, name):
+            """The words a raw line prints before a row's own name (its family word) when they are a heading that names
+            no one: they hold a date, a weekday or "opening statement(s)", and none of their runs of name words names a Member
+            serving in the print's Congress, ends in a <congMember> family name, or opens with a known given name and
+            ends with a known family name."""
+            word = family_word(name)
+            at = re.search(rf"\b{re.escape(word)}\b", line, re.I) if word else None
+            head = line[:at.start()] if at else ''
+            if not (ANY_DATE.search(head) or OPENING.search(head) or WEEKDAYS & {plain(w) for w in words(head)}):
+                return set()
+            for run, after_run in name_runs(head):
+                if (table_member(run, serving_now, after_run) or any(tuple(run[-len(f):]) == f for f in member_families)
+                        or len(run) > 1 and run[0] in given and run[-1] in family):
+                    return set()
+            return {plain(w) for w in words(head)} - {''}
+
         def transcript(line):
             """The words after a speaker's turn in a raw line, which are transcript, no entry's."""
             turn = SPEAKER_TURN.search(line)
@@ -810,12 +877,22 @@ def judge(before, after, raw_root, given, family, serving=None):
                                                   words=sorted(missing),
                                                   after={f: [r.get(f) for r in rows] for f in ('name', 'witness_type')}))
 
+        for locator, b in sorted(new.items()):
+            if opening_due(b.get('name'), locator) and not any(OPENING.search(b.get(f) or '') for f in FIELDS):
+                out['opening_statement_dropped'].append(dict(package=package, body=digest, locator=locator,
+                                                             line=line_of(locator), after={f: b.get(f) for f in KEYED},
+                                                             under_heading=position(locator) in under))
+
         def type_supported(a, b, line, locator):
             if b.get('witness_type') == 'record_material':
                 # ... or a row that held a fragment of prose (a name opening in lower case) and now names no one.
                 prose = bool(re.match(r"[a-z$]", (a.get('name') or '').strip())) or line[:1].islower()
                 return record_supported(b, locator) or (not b.get('name') and prose)
             said = {plain(w) for w in words(line)}
+            # A Member's opening statement is untyped, for the model step to type from the committee's roster
+            # (round 8), whatever the before side typed it.
+            if b.get('witness_type') is None and opening_due(b.get('name'), locator):
+                return True
             if b.get('witness_type') == 'member_statement':
                 # A Member's own statement or submission: the row names one of the line's Members and the line names
                 # their statement or a paper.
@@ -924,8 +1001,9 @@ def judge(before, after, raw_root, given, family, serving=None):
             old_name, new_name = a.get('name'), b.get('name')
             reordered = bool(new_name) and not in_order(new_name, line)
             counts['no_name' if not new_name else 'reordered' if reordered else 'name_read'] += 1
+            head = heading_words(line, new_name) if new_name else set()
             if (old_name and old_name[:1].isupper() and person(old_name)
-                    and not set(name_words(old_name)) - transcript(line) <= set(name_words(new_name))):
+                    and not set(name_words(old_name)) - transcript(line) - head <= set(name_words(new_name))):
                 out['person_moved'].append(item)
             if new_name and not set(map(plain, words(new_name))) <= set(map(plain, words(line))):
                 out['name_not_in_line'].append(item)
@@ -940,7 +1018,7 @@ def judge(before, after, raw_root, given, family, serving=None):
             # and a contents column's "Page". "Accompanied by:" is a label any line may shed.
             shed = HEADING | MEMBER_TITLES | {'member', 'the', 'to', 'by', 'from', 'of', 'for', 'and', 'following',
                                               'page'} if position(locator) in asking else set()
-            shed |= {'accompanied'} | transcript(line)
+            shed |= {'accompanied'} | transcript(line) | head
             # A word another row of the same line now shows (an asker appended at /part[2]) is not lost to a reader,
             # nor page numbers fused to a kept word ("EPA173-198" for "EPA").
             shown = {w for r in by_line.get(position(locator), []) if r is not b for w in bag(r)}
@@ -955,6 +1033,8 @@ def judge(before, after, raw_root, given, family, serving=None):
                 out['words_lost'].append(dict(item, words=sorted(lost.elements())))
             # A gained word must come from the raw line; a re-read may restore line text the old one dropped.
             gained = Counter(w for w in (new_words - old_words).elements() if w not in {plain(x) for x in words(line)})
+            if set(gained) <= {'opening', 'statement'} and opening_due(new_name, locator):
+                gained = Counter()  # a Member's opening statement, from the line or the heading over it
             if gained:
                 out['words_gained'].append(dict(item, words=sorted(gained.elements())))
             if not new_name and not line[:1].islower() and any(person(s) for s in re.split(r'[,;:]', line)[1:]):
@@ -1018,6 +1098,54 @@ def plant(kind, before, after, given, family, raw_root, serving=None, taken=()):
                         and family_word(b['name']) in witnesses):
                     new[locator] = dict(b, witness_type='statement_for_record')
                     return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted='statement_for_record')
+            continue
+        says = lambda locator: bool(OPENING.search(lines(digest, locator)))  # noqa: E731
+        if kind == 'opening-dropped':
+            # A Member's row under an opening statements heading that loses the words (round 8).
+            for locator, b in sorted(new.items()):
+                text = b.get('organization') or ''
+                if b.get('name') and OPENING.search(text) and not says(locator):
+                    new[locator] = dict(b, organization=OPENING.sub('', text).strip(' ,') or None)
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'],
+                                planted=new[locator]['organization'])
+            continue
+        if kind == 'opening-on-witness':
+            # A witness who is no Member given an opening statement their line does not print.
+            families = {f[-1] for f in (read(digest) or [None, None, set()])[2]}
+            for locator, b in sorted(new.items()):
+                if (b.get('name') and b.get('witness_type') is None and old.get(locator) == b and not says(locator)
+                        and not asks(locator) and family_word(b['name']) not in families):
+                    new[locator] = dict(b, organization=', '.join(filter(None, (b.get('organization'), 'opening statement'))))
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'],
+                                planted=new[locator]['organization'])
+            continue
+        if kind == 'heading-strip-organization':
+            # An organization printed before its official ("U.S. Department of the Treasury, Hon. Robert E. Rubin") shed
+            # as if it were a heading.
+            for locator, b in sorted(new.items()):
+                text, line = b.get('organization') or '', lines(digest, locator)
+                if (b.get('name') and text and old.get(locator) == b and line.startswith(text + ', Hon. ')
+                        and not OPENING.search(line) and not ANY_DATE.search(line)):
+                    new[locator] = dict(b, organization=None)
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=None)
+            continue
+        if kind == 'heading-took-given':
+            # A heading shed with the Member's given name after it ("Tuesday, May 24, 2016--... Costa, Hon. Jim" ->
+            # "Costa").
+            for locator, b in sorted(new.items()):
+                a, line = old.get(locator) or {}, lines(digest, locator)
+                if (b.get('name') and a.get('name') and a['name'] != b['name'] and len(b['name'].split()) > 1
+                        and (ANY_DATE.search(line.split('--')[0]) or re.search(r"(?i)opening\s+statements?\W+\w+,\s+Hon\.", line))):
+                    new[locator] = dict(b, name=' '.join(b['name'].split()[1:]))
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=new[locator]['name'])
+            continue
+        if kind == 'member-statement-untyped':
+            # A Member's statement that says no opening statement left untyped.
+            for locator, b in sorted(new.items()):
+                if (b.get('name') and b.get('witness_type') == 'member_statement' and old.get(locator) == b
+                        and not says(locator)):
+                    new[locator] = dict(b, witness_type=None)
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=None)
             continue
         if kind == 'position-heading-word':
             # A position cut one word late, keeping the question heading's first word ("Commissioner Responses").

@@ -685,3 +685,75 @@ def test_the_round7_plants_are_flagged(tmp_path):
     code, out = run(tmp_path, '--plant', 'position-heading-word', 'answerer-untestified-witness')
     assert [(p['kind'], p['flagged']) for p in out['planted']] == [
         ('position-heading-word', True), ('answerer-untestified-witness', True)]
+
+
+# Round 8: a Member's opening statement keeps the words, from its line or an opening statements heading over it; a
+# heading or a sitting's date run into a Member's entry is shed; a Member's opening statement is untyped.
+OHIO = 'a Representative in Congress from the State of Ohio'
+ROUND8_LINES = [f'OPENING STATEMENTS Roe, Hon. Richard, {OHIO}',
+                f'Doe, Hon. Jane, {OHIO}',
+                'Tuesday, May 24, 2023--Subcommittee on Livestock Smith, Hon. Eleanor, a Representative in Congress from '
+                'Ohio, opening statement',
+                'Weidman, Richard F., Executive Director for Policy, Vietnam Veterans of America',
+                f'Herrera Beutler, Hon. Jaime, {WASHINGTON}, prepared statement',
+                'Doe, Hon. John a Representative in Congress from Ohio, opening statement',
+                'U.S. Department of the Treasury, Hon. Robert Rubin, Secretary']
+ROUND8_MEMBERS = ['Roe, Richard', 'Doe, Jane', 'Smith, Eleanor', 'Herrera Beutler, Jaime', 'Doe, John']
+ROUND8_BEFORE = [asked('mods:witness[1]', 'Richard Roe', 1, None, position=OHIO),
+                 asked('mods:witness[2]', 'Jane Doe', 2, None, position=OHIO),
+                 asked('mods:witness[3]', 'May 24 Tuesday', 3, None, position='2023--Subcommittee on Livestock Smith',
+                       organization='Hon. Eleanor, a Representative in Congress from Ohio, opening statement'),
+                 asked('mods:witness[4]', 'Richard F. Weidman', 4, None, position='Executive Director for Policy',
+                       organization='Vietnam Veterans of America'),
+                 asked('mods:witness[5]', 'Jaime Herrera Beutler', 5, 'member_statement', position=WASHINGTON),
+                 asked('mods:witness[6]', 'John Doe', 6, 'member_statement'),
+                 asked('mods:witness[7]', 'Robert Rubin', 7, None, position='Secretary',
+                       organization='U.S. Department of the Treasury')]
+ROUND8_AFTER = [dict(ROUND8_BEFORE[0], organization='opening statement'),
+                dict(ROUND8_BEFORE[1], organization='opening statement'),
+                asked('mods:witness[3]', 'Eleanor Smith', 3, None, position='a Representative in Congress from Ohio',
+                      organization='opening statement'),
+                ROUND8_BEFORE[3], ROUND8_BEFORE[4],
+                asked('mods:witness[6]', 'John Doe', 6, None, position='a Representative in Congress from Ohio',
+                      organization='opening statement'),
+                ROUND8_BEFORE[6]]
+ROUND8_TABLE = ['Richard Roe', 'Jane Doe', 'Eleanor Smith', 'Jaime Herrera Beutler', 'John Doe']
+ROUND8_PEOPLE = ('Richard Roe', 'Jane Doe', 'John Doe', 'Richard Weidman', 'Robert Rubin')
+
+
+def round8(tmp_path, after=ROUND8_AFTER, **more):
+    write(tmp_path, before=ROUND8_BEFORE, after=after, lines=ROUND8_LINES, members=ROUND8_MEMBERS, table=ROUND8_TABLE,
+          people=ROUND8_PEOPLE, **more)
+
+
+def test_members_opening_statements_pass_from_their_line_or_the_heading_over_it(tmp_path):
+    round8(tmp_path)
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+
+
+@pytest.mark.parametrize('index, row, flag', [
+    # The heading's words dropped from a Member under it.
+    (1, dict(ROUND8_AFTER[1], organization=None), 'opening_statement_dropped'),
+    # A witness who is no Member given an opening statement.
+    (3, dict(ROUND8_AFTER[3], organization='Vietnam Veterans of America, opening statement'), 'words_gained'),
+    # A date heading shed with the Member's given name.
+    (2, dict(ROUND8_AFTER[2], name='Smith'), 'words_lost'),
+    # A Member's prepared statement untyped: only an opening statement is left to the model step.
+    (4, dict(ROUND8_AFTER[4], witness_type=None), 'type_unsupported'),
+    # An organization printed before its official shed as if it were a heading.
+    (6, dict(ROUND8_AFTER[6], organization=None), 'words_lost'),
+])
+def test_a_dropped_opening_statement_or_a_heading_shed_wrongly_fails(tmp_path, index, row, flag):
+    round8(tmp_path, after=[*ROUND8_AFTER[:index], row, *ROUND8_AFTER[index + 1:]])
+    code, out = run(tmp_path)
+    assert code == 1 and [i['locator'] for i in out[flag]] == [row['source_locator']]
+
+
+def test_the_round8_plants_are_flagged(tmp_path):
+    kinds = ['opening-dropped', 'opening-on-witness', 'heading-took-given', 'member-statement-untyped',
+             'heading-strip-organization']
+    prints = [(f'{n:02d}' * 32, ROUND8_LINES, ROUND8_MEMBERS, ROUND8_BEFORE, ROUND8_AFTER) for n in range(11, 15)]
+    round8(tmp_path, prints=prints)
+    code, out = run(tmp_path, '--plant', *kinds)
+    assert [(p['kind'], p['flagged']) for p in out['planted']] == [(kind, True) for kind in kinds]
