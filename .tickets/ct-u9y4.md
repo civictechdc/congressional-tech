@@ -139,3 +139,8 @@ Predicted on 77673bfb8fcf (DuckDB, dr2_30..34): recoveries -81, 18 rows move; +1
 Owner should know before release: the 27 change title (20 to the hearing's title, 7 to none, so the filename shows; the page title is the ct-m878 question on ct-egoo); the gate's link rule lists 27 link and 27 lookup keys answering another file (dr2-33-changed-*.csv) that need a cause record; edition body b3b270 (House Report 107-539 pt 1) becomes a new row beside row 321977 that already shows it under another dead link.
 
 Tests (focused, worktree runner): fail before (4 failed), pass after (10 passed), plus the focused files listed in the report. A full model build must confirm the numbers above.
+
+**2026-11-11T16:52:12Z**
+
+2026-11-11 owner answers applied on claude/ct-doc-roles-2 (tests cca2425b, fix see branch log): "Keep the page's old title". A document that showed its dead page (the page first in the recovery order) keeps the page's title on the file. On 77673bfb8fcf exactly the 27 are affected and all keep their published title (dr2-34-title-changes.csv: published / without the rule / with it); without it 20 took the hearing record's title and 7 had none. Focused files all pass (focused/SUMMARY.txt in the report folder).
+Duplicate the split makes: edition body b3b270 (House Report 107-539 pt 1) becomes its own document while row 321977 (views.pdf, another dead link, shown through the same report) already shows those bytes. No existing rule joins them: the same-body edge and the recovered-copy move need a real file, and a duplicate_of review cannot name the edition's body key (initial keys precede the split). Same class as today's 191 recovered files each shown by 2+ recovery-only rows (446 rows); not folded here.

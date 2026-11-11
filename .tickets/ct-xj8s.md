@@ -33,3 +33,7 @@ Rule: page-signals kind wrapper_url (the ct-aoxp kind, so no SQL change): a site
 Predicted on 77673bfb8fcf from capture rows, DuckDB (dr2_16, dr2_17): 192 html documents leave (323,087 -> 322,895); 208 link keys retire, no successor; 267 lookup pairs and 208 addresses go (no address listed elsewhere); 0 meetings, witnesses, measures or recoveries; 446 documents keep one of them as their listing page. Left as documents on purpose: 199 dated floor schedules (docs.house.gov/floor/Default.aspx?date=), owner to say.
 
 Tests (focused, worktree runner): role cases and registry samples fail before (2 failed), pass after (4 passed); nearest five files 31 passed. A full model build must confirm the count before and after; then this closes.
+
+**2026-11-11T16:52:12Z**
+
+2026-11-11 owner: the 199 dated floor schedules (docs.house.gov/floor/Default.aspx?date=) stay documents ("Keep them as documents"); no change to the list.
