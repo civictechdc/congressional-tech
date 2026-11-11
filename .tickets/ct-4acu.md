@@ -2,7 +2,7 @@
 id: ct-4acu
 status: closed
 deps: []
-links: [ct-w564]
+links: [ct-w564, ct-wzyo]
 created: 2026-11-10T13:27:30Z
 type: task
 priority: 1
