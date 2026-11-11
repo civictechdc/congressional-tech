@@ -307,9 +307,20 @@ def test_an_edit_to_plumbing_no_reader_runs_leaves_every_reading_evidence_value(
     ('packages/congress_api/src/congress_api/retention/parser_worker.py',
      {'sniff', *PAGE, 'html_metadata', 'readings', *BODY_TEXT}),
     ('model/sql/sniff-facts.sql', {'readings'}),
+    # The selection rule pinned-readings.sql reads (selected_readings_steps).
+    ('packages/congress_api/src/congress_api/lake/compatible_versions.py', {'readings'}),
 ])
 def test_an_edit_to_code_a_reader_runs_moves_that_readers_evidence(tmp_path, evidence_now, code, readers):
     assert readers <= moved_entries(evidence_now, edited_checkout(tmp_path, code))
+
+
+def test_a_stopped_folder_is_neither_walked_nor_hashed(monkeypatch):
+    """The walk stops at a STOP prefix, folder or file; evidence must drop by the same rule, not only exact files."""
+    from congress_api.lake import reading_version_diagnostics as diagnostics
+    folder = diagnostics.SOURCE / 'models'  # the page readers import from it
+    assert any(path.startswith(folder.as_posix() + '/') for path in diagnostics.evidence_files()['html'])
+    monkeypatch.setattr(diagnostics, 'STOP', (*diagnostics.STOP, folder))
+    assert not [path for path in diagnostics.evidence_files()['html'] if path.startswith(folder.as_posix() + '/')]
 
 
 def test_every_file_a_reader_runs_on_its_fixtures_is_in_its_evidence(tmp_path, monkeypatch):
