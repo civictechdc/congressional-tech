@@ -2817,6 +2817,48 @@ def test_one_member_style_reader_for_both_chambers(line, expected):
     assert found[0]["witness_type"] == expected
 
 
+@pytest.mark.parametrize("lines,members,expected", [
+    # A heading run into the first entry under it carries over the Member lines that follow (CHRG-106shrg59372).
+    (["OPENING STATEMENTS Crapo, Hon. Michael D., U.S. Senator from the State of Idaho",
+      "Lautenberg, Hon. Frank R., U.S. Senator from the State of New Jersey",
+      "Barry, Hon. Donald J., Assistant Secretary for Fish, Wildlife and Parks, U.S. Department of the Interior"], (),
+     [("Michael D. Crapo", "U.S. Senator from the State of Idaho", "opening statement"),
+      ("Frank R. Lautenberg", "U.S. Senator from the State of New Jersey", "opening statement"),
+      ("Donald J. Barry", "Assistant Secretary for Fish", "Wildlife and Parks, U.S. Department of the Interior")]),
+    # A section title before the heading (CHRG-112jhrg71179 #8, #9 and #10).
+    (["Overview of Previous Debt Proposals Opening Statements Hensarling, Hon. Jeb, a U.S. Representative from Texas, "
+      "co- chairman, Joint Select Committee on Deficit Reduction",
+      "Murray, Hon. Patty, a U.S. Senator from Washington, co-chairman, Joint Select Committee on Deficit Reduction",
+      "Bowles, Erskine, Co-Chair, National Commission on Fiscal Responsibility and Reform"], (),
+     [("Jeb Hensarling", "a U.S. Representative from Texas",
+       "co- chairman, Joint Select Committee on Deficit Reduction, opening statement"),
+      ("Patty Murray", "a U.S. Senator from Washington",
+       "co-chairman, Joint Select Committee on Deficit Reduction, opening statement"),
+      ("Erskine Bowles", "Co-Chair", "National Commission on Fiscal Responsibility and Reform")]),
+    # A contents heading and its dot leader; a Member the print's roster names, with no style (CHRG-106hhrg61647).
+    (["Appendix Opening statements:...................................... Talent, Hon. James M", "Velazquez, Hon. Nydia",
+      "Prepared statements:..................................... LaMura, Marianne"], ("James M. Talent", "Nydia Velazquez"),
+     [("James M Talent", None, "opening statement"), ("Nydia Velazquez", None, "opening statement"),
+      ("Marianne LaMura", None, None)]),
+    # A sitting's date heading (CHRG-114hhrg99853 #35), the words as a label (CHRG-117shrg53977 #1), and a given name
+    # run into the Member's style (CHRG-117hhrg49906 #73).
+    (["Tuesday, May 24, 2016--Subcommittee on Livestock and Foreign Agriculture Costa, Hon. Jim, a Representative in "
+      "Congress from California, opening statement"], (),
+     [("Jim Costa", "a Representative in Congress from California", "opening statement")]),
+    (["Opening Statement of Hon. Patrick J. Leahy, a U.S. Senator from the State of Vermont"], (),
+     [("Patrick J. Leahy", "a U.S. Senator from the State of Vermont", "opening statement")]),
+    (["Thompson, Hon. Glenn a Representative in Congress from Pennsylvania, opening statement"], (),
+     [("Glenn Thompson", "a Representative in Congress from Pennsylvania", "opening statement")]),
+])
+def test_a_members_opening_statement_keeps_the_words(lines, members, expected):
+    """Round 8: a Member's opening statement keeps "opening statement" in its organization, from its own text or an
+    opening statements heading over it, for the model step that types it from the committee's roster; the parser
+    leaves it untyped. A heading or a sitting's date run into the entry names no one."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(*lines, members=members))
+    assert [(a["name"], a["position"], a["organization"]) for a in found] == expected
+    assert all(a["witness_type"] is None for a in found)
+
+
 def test_a_biography_appendix_is_read_by_rule_in_a_real_print():
     """CHRG-108hhrg85516 (real bytes): five witnesses, then "Appendix 1: Biographies, ... Questions" run into the
     first biography and one line per witness ending "Biography". Each biography is record material named for its

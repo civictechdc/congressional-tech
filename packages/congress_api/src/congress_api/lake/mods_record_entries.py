@@ -56,7 +56,10 @@ The transcript prose those fragments belong to is read by a rule since round 7
 (appearance_records._mods_prose: CHRG-109hhrg29389, CHRG-109hhrg29726,
 CHRG-115hhrg30357 and two lines of CHRG-119hhrg60291), which replaced twenty
 entries; CHRG-119hhrg58952 #8, prose the rule's shape does not reach (no
-sentence break in 65 words), stays an entry.
+sentence break in 65 words), stays an entry. Three Members' opening statements
+that an entry named without their fields (CHRG-112jhrg71179 #8, CHRG-114hhrg99853
+#35, CHRG-117hhrg49906 #73) are read by the heading rule since round 8
+(appearance_records._mods_member_entry) and keep them.
 
 Round 6 (owner decision 2026-11-10): the answerer a written-answer line names
 ("Submitted questions: Avalos, Hon. Edward M") is read by the answerer rule, as
@@ -303,9 +306,6 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-112hhrg82216': {
         15: ('a5d7355a8f5538d2113e4c19e822d4a7cb5381b066f8892448b77310bc1f7d6d', None),
     },
-    'CHRG-112jhrg71179': {
-        8: ('9d7a754bdfe0d10426617de592fe8de5f531c3e8318070fe78057122e6b430a8', 'Jeb Hensarling'),
-    },
     'CHRG-112jhrg73772': {
         5: ('6b741a67c55d9a2e336a1c3b963fe7b141ec0e441825d7bc4b74144892e2213b', None),
     },
@@ -349,9 +349,6 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-114hhrg98359': {
         22: ('afb2f393f470baee8c43bcee90c9991b5d3508300bd8130a4f0c51bf975ec206', 'Peter Weber'),
     },
-    'CHRG-114hhrg99853': {
-        35: ('7696891183014b4cc8059d06b1b5b478d5d9e1f6850d5d024e19853e264b2136', 'Jim Costa'),
-    },
     'CHRG-114shrg52546': {
         2: ('fc4c1c8480de1e4fc107c8e9214b16a0597d8a610e306830038f60c7f193321c', None),
     },
@@ -383,9 +380,6 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     },
     'CHRG-116shrg39734': {
         4: ('6abeb975664b585397deb125ca9ce09dfcf0c227737d91d9270c589e3a885c0a', None, 'record_material'),
-    },
-    'CHRG-117hhrg49906': {
-        73: ('90fad09498efeba8e1f7def4b216fe40478737e6790fff0f055b18d4763fa13a', 'Glenn Thompson'),
     },
     'CHRG-118hhrg53922': {
         15: ('c954bacf7fd3c1693b6ac1f429e74381dc43426a921ebcd69e8d6b326e842204', None),

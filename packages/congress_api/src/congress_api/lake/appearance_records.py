@@ -249,6 +249,12 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_SPEAKER_TURN",
         "_mods_prose",
         "_mods_accompanied",
+        "_MODS_OPENING_WORDS",
+        "_MODS_OPENING_HEADING",
+        "_MODS_DATE_HEADING",
+        "_MODS_HON_ENTRY",
+        "_mods_member_line",
+        "_mods_member_entry",
         "_MODS_BIOGRAPHY_APPENDIX",
         "_MODS_BIOGRAPHY",
         "_mods_entry_before_heading",
@@ -1615,6 +1621,50 @@ def _mods_accompanied(text: str, name: str) -> bool:
     return bool(listed) and bool(re.search(rf"(?<![\w'’-]){re.escape(name)}(?![\w'’-])", text[listed.end():], re.I))
 
 
+# A Member's opening statement (round 8): the model step types it from the committee's roster, so the row keeps the
+# words in its organization, from the line's own text or from an opening statements heading over the Member lines that
+# follow it. GPO runs such a heading, or a sitting's date heading, into the first entry under it ("OPENING STATEMENTS
+# Crapo, Hon. Michael D., U.S. Senator from the State of Idaho", "Overview of Previous Debt Proposals Opening
+# Statements Hensarling, Hon. Jeb, ...", "Appendix Opening statements:..... Talent, Hon. James M", "Tuesday, May 24,
+# 2016--Subcommittee on Livestock and Foreign Agriculture Costa, Hon. Jim, ..."). The heading names no one.
+_MODS_OPENING_WORDS = re.compile(r"\bopening\s+statements?\b", re.I)
+_MODS_OPENING_HEADING = re.compile(r"\bopening\s+statements?:?(?:\.{3,})?$", re.I)
+_MODS_DATE_HEADING = re.compile(
+    r"^\W*(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s+)?(?:January|February|March|April|May|June|July|August"
+    r"|September|October|November|December)\s+\d{1,2},\s+\d{4}\s*--", re.I)
+_MODS_HON_ENTRY = re.compile(r"(?<![\w'’-])[A-Z][\w'’-]+,\s+Hon\.\s")
+
+
+def _mods_member_line(text: str, roster: Mapping[tuple[str, ...], set[str]]) -> bool:
+    """Is this a Member's line: a Member's style, or an entry "Family, Hon. Given" whose family the print's
+    <congMember> roster names ("Velazquez, Hon. Nydia")?"""
+    if _MEMBER_STYLE.search(text):
+        return True
+    entry = re.match(r"\W*([A-Z][\w'’ -]*?),\s+Hon\.\s", text)
+    return bool(entry) and tuple(_MODS_SUFFIX.sub("", entry.group(1)).lower().split()) in roster
+
+
+def _mods_member_entry(line: str, roster: Mapping[tuple[str, ...], set[str]]) -> tuple[str, bool]:
+    """A Member's entry without the heading run into it (see above), and whether that heading is an opening
+    statements heading. The entry starts at its "Family, Hon." (earlier for a family of more words the roster
+    names) and counts only when it reads as a Member's line. A given name run into the Member's style with no comma
+    ("Thompson, Hon. Glenn a Representative in Congress from Pennsylvania") takes one."""
+    entry, opening = line, False
+    found = _MODS_HON_ENTRY.search(line)
+    head = line[:found.start()].strip() if found else ""
+    if head and ", Hon." not in head and (_MODS_DATE_HEADING.match(head) or _MODS_OPENING_HEADING.search(head)):
+        words, family = head.split(), line[found.start():].split(",", 1)[0]
+        take = next((k for k in (2, 1) if len(words) > k
+                     and tuple(w.lower() for w in (*words[-k:], family)) in roster), 0)
+        candidate = " ".join([*words[len(words) - take:], line[found.start():]])
+        if _mods_member_line(candidate, roster):
+            entry, opening = candidate, bool(_MODS_OPENING_HEADING.search(" ".join(words[:len(words) - take])))
+    style, given = _MEMBER_STYLE.search(entry), re.match(r"\W*[^,]+,\s+Hon\.\s+([^,]+)", entry)
+    if style and given and given.start(1) < style.start() < given.end(1):
+        entry = entry[:style.start()].rstrip() + ", " + entry[style.start():]
+    return entry, opening
+
+
 def _mods_record_rows(names: Sequence[str | None], locators: Iterable[str], witness_type: str,
                       **kept: str | None) -> list[dict[str, Any]]:
     """A reviewed entry's rows, one per name, at the line's next locators."""
@@ -1793,15 +1843,22 @@ def extract_mods_observation(
 
     roster = _mods_roster(doc.members)
     reviewed_entries = MODS_RECORD_ENTRIES.get(resolved_pkg or "", {})
-    after_question, biographies = 0, False
+    after_question, biographies, carried = 0, False, False
     for idx, w_line in enumerate(raw_witness_lines, start=1):
         cleaned_line = (w_line or "").strip()
+        # The entry without a heading run into it; a Member's line keeps an opening statement its own text or an
+        # opening statements heading over it says (see _MODS_OPENING_WORDS). A reviewed reading keeps its line.
+        entry_line, heading = (_mods_member_entry(cleaned_line, roster) if idx not in MODS_PERSON_FIELDS.get(
+            resolved_pkg or "", {}) else (cleaned_line, False))
+        member_line = _mods_member_line(entry_line, roster)
+        carried = member_line and (heading or carried)
+        opening = member_line and (carried or bool(_MODS_OPENING_WORDS.search(cleaned_line)))
         # A line's first row reads at its locator; a joined line's second entry at /part[2]; every further row the
         # line yields (a Member who asked) at the next part.
         parts = (f"mods:witness[{idx}]" + (f"/part[{n}]" if n > 1 else "") for n in itertools.count(1))
         reviewed = reviewed_entries.get(idx)
         reviewed = reviewed if reviewed and sha256(cleaned_line.encode()).hexdigest() == reviewed[0] else None
-        segments = [cleaned_line]
+        segments = [entry_line]
         if reviewed:
             names = reviewed[1] if isinstance(reviewed[1], tuple) else (reviewed[1],)
             how = reviewed[2] if len(reviewed) == 3 else None
@@ -1864,10 +1921,13 @@ def extract_mods_observation(
                 found.append((0, row(source_locator, {}, "record_material")))  # a heading that names no one
             elif not only and not skip:
                 at = cleaned_line.find((w_name or "").split()[-1]) if w_name else 0
-                found.append((max(at, 0), row(source_locator, parsed, kind)))
-                printed[id(found[-1][1])] = cleaned_line
+                own = row(source_locator, parsed, kind)
+                found.append((max(at, 0), own))
+                if opening and w_name and not _MODS_OPENING_WORDS.search(own["organization"] or ""):
+                    own["organization"] = ", ".join(filter(None, (own["organization"], "opening statement")))
+                printed[id(own)] = cleaned_line
                 if w_name and _MODS_WRITTEN_ANSWER.match(cleaned_line):
-                    answering.append(found[-1][1])
+                    answering.append(own)
             lead = w_name if only and askers and w_name and not skip else None
             emit(found, askers, itertools.chain([] if found else [source_locator], parts), answerers, lead)
 
