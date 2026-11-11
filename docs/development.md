@@ -153,7 +153,10 @@ Its result line's `engine_runtime` (also printed before the build, as a
 `[docspec-runtime]` line on stderr) names the runtime file, binary and limits it ran under,
 each with its sha256, and the limits' values; the publisher seals the same record
 into `archive-publish/model-intent.json` and `completed-model.json`, so two arms
-can be checked for the same limits.
+can be checked for the same limits. It cannot see limits a job narrows from that
+runtime (`provenance.bounded_engine`, as capture staging and queries do), a later
+change to the limits file (nothing re-checks it during a run), or the values the
+engine actually applies.
 
 ## Reading version changes
 

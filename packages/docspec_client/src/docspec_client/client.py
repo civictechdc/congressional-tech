@@ -162,6 +162,9 @@ def runtime_record(path: Path | str, choice: Mapping[str, Any], *, log: Any = No
     The paths resolve as from_config resolves them, so they are what the client hands the engine; the binary is
     hashed from its bytes (once per process, shared with verify_runtime), never taken from the file's own
     binary_sha256. With `log`, the record is also written there as one `[docspec-runtime] ` JSON line.
+    It cannot see: a job's limits narrowed later from this runtime (the pipeline's provenance.bounded_engine
+    writes a lowered limits file per job), a change to the limits file after this reading (the engine rereads
+    it on every call; nothing re-checks it during a run), or the values the engine actually applies.
     """
     p, data, settings = _read_runtime(path)
     binary = Path(settings['binary'])
