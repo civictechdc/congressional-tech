@@ -28,9 +28,11 @@ READERS = {
     'sniff': ((SOURCE / 'retention/sniff.py',), (*SHARED_READING_FILES, SCHEMA)),
     'page': ((SOURCE / 'parsers/archive_readings.py',), (*SHARED_READING_FILES, SCHEMA)),
     'html_metadata': ((SOURCE / 'parsers/html_metadata.py',), (*SHARED_READING_FILES, SCHEMA)),
-    # parse_once_payload runs the sniff and the page reader.
+    # parse_once_payload runs the sniff and the page reader. compatible_versions builds the
+    # selected_readings that pinned-readings.sql reads; by bytes, since it imports job plumbing.
     'readings': ((SOURCE / 'retention/sniff.py', SOURCE / 'parsers/archive_readings.py'),
-                 (*SHARED_READING_FILES, SCHEMA, *(Path('model/sql') / f'{name}.sql' for name in BUNDLE_SQL))),
+                 (*SHARED_READING_FILES, SOURCE / 'lake/compatible_versions.py', SCHEMA,
+                  *(Path('model/sql') / f'{name}.sql' for name in BUNDLE_SQL))),
     # The worker (lake/body_text.parse_payload) routes each body by read_sniff, then derives it.
     'body_text': ((SOURCE / 'parsers/body_text.py', SOURCE / 'retention/sniff.py'),
                   (SOURCE / 'lake/body_text.py', *SHARED_READING_FILES, BODY_TEXT_SCHEMA)),
@@ -50,8 +52,10 @@ def _evidence(closure, group):
     """One group's evidence files (relative path: path) and the external modules its reader modules import."""
     walked, hashed = READERS[group]
     workspace, modules = closure.reachable(walked, stop=STOP)
+    # reachable() lists a file under a STOP prefix (file or folder) without following it; drop it by the same test.
     stopped = {(closure.root / path).resolve() for path in STOP}
-    files = {path for path in workspace if path.resolve() not in stopped} | {closure.root / path for path in hashed}
+    files = {path for path in workspace if stopped.isdisjoint({resolved := path.resolve(), *resolved.parents})}
+    files |= {closure.root / path for path in hashed}
     # Declared IDs already appear in the snapshot. A bump for a
     # separate parser does not change this parser's source evidence.
     return {path.relative_to(closure.root).as_posix(): path for path in files
