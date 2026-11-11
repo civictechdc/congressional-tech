@@ -1155,6 +1155,13 @@ CASES = {
         edit(cand_tables(mapped=NEW_MAP + [('h1', 'd1', 'content')]), 'witnesses', lambda rows: rows.extend([
             other_witness('h1', 'house_xml', OTHER_BODY, 1, *PANEL[0]), other_witness('d1', 'house_xml', NEW_RECORD, 1, *PANEL[0])]))),
         'witnesses.parquet|added keys|successor of a re-keyed witness (1) is not an addition'),
+    # Final review s6: an added map row is exempt only when it sends its key to a re-fetched witness.
+    'map_row_added_for_a_witness_the_night_left_alone': (lambda: (
+        edit(base_tables(), 'witnesses', lambda rows: rows.append(other_witness('h1', 'house_xml', OTHER_BODY, 1, *PANEL[0]))),
+        edit(edit(cand_tables(), 'witnesses', lambda rows: rows.append(other_witness('h1', 'house_xml', OTHER_BODY, 1, *PANEL[0]))),
+             'witness_key_map', lambda rows: rows.append(dict(old_key='z9', witness_key='h1', status='unambiguous', basis='content',
+                                                              candidate_keys=[], occasion='meeting:118340', source='house_xml')))),
+        'witness_key_map.parquet|added keys|a key no base witness carries (1) is not an addition'),
     # Bodies: one old body to one new one, the old one gone, the new one new, and moved at all.
     'old_body_split_in_two': (lambda: (base_tables(), edit(cand_tables(), 'witnesses', lambda rows: rows[1].update(record_sha=SECOND_BODY)),
                                        [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(RELIST, SECOND_BODY, SEEN_AGAIN, receipt_line=2),
@@ -1233,6 +1240,12 @@ CASES = {
                                                                                 capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), f'read {RELIST}:1:0 requested'),
     'read_line_fetched_at_another_time': (lambda: (base_tables(), cand_tables(), [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN - timedelta(days=1)),
                                                                                capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), f'read {RELIST}:1:0 is dated'),
+    # Final review s4 and s5: the time holds to the microsecond, and for each read the meeting names.
+    'read_line_fetched_one_microsecond_apart': (lambda: (base_tables(), cand_tables(), [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN + timedelta(microseconds=1)),
+                                                                                     capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN)]), f'read {RELIST}:1:0 is dated'),
+    'latest_attempt_dated_apart_from_its_line': (lambda: (base_tables(), edit(cand_tables(), 'meetings', lambda rows: rows[0]['congress_gov_detail_observation']
+                                                                              ['latest_attempt']['evidence'].update(retrieved_at=SEEN_AGAIN + timedelta(minutes=1)))),
+                                                 f'read {RELIST}:1:0 is dated'),
 }
 
 
