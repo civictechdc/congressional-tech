@@ -37,10 +37,10 @@ family name and initial). It judges in both directions:
    pinned rosters, the print's own MODS must list the Member as a committee member (congMember role COMMMEMBER, read
    from the raw body under --mods-bodies); before it, where the rule reads that MODS list itself, the print's own
    transcript (the GovInfo HTML the captures table holds, --captures) must head the Member's 'OPENING STATEMENT OF
-   HON. ...'. The rule and the check never read the same fact for the same row. A Member appearance that says opening
+   HON. ...' in the House, joint or Senate form. The rule and the check never read the same fact for the same row. A Member appearance that says opening
    statement and that fact holds is flagged as a committee member's opening statement left an appearance.
 Rows not read are counted by reason (no name, record entries, no hearing date, superseded rows for the 'left' side).
-With --plant the fourteen planted wrong values below are laid over the decisions (one also renames its row) and each must
+With --plant the fifteen planted wrong values below are laid over the decisions (one also renames its row) and each must
 raise a flag the baseline does not have (tests/test_member_appearances_raw_check.py plants the same kinds on hand rows).
 """
 import argparse
@@ -98,7 +98,11 @@ SEATS = (  # (pattern, which group is the state, which the district); district N
 MEMBER_DAY = re.compile(r"\bmembers?['\u2019]?s?\s+day\b")
 FORMER_MEMBERS_DAY = re.compile(r"\bformer\s+members?['\u2019]?s?\s+day\b")
 OPENING = re.compile(r'\bopening statement')
-OPENING_HEADING = re.compile(r'OPENING\s+STATEMENT\s+OF\s+(?:THE\s+)?HON(?:ORABLE)?\.?\s+([A-Z][A-Z.\'\u2019` -]+?),\s+A\s')
+# The forms the held pre-113 transcripts print (25 prints read 2026-11-11): '..., A REPRESENTATIVE IN CONGRESS FROM',
+# '..., A U.S. SENATOR FROM', '..., U.S. SENATOR FROM' (Senate prints, 106th-108th), '..., U.S. REPRESENTATIVE FROM', and
+# a suffix before them ('FRANK PALLONE, JR., A REPRESENTATIVE').
+OPENING_HEADING = re.compile(r'OPENING\s+STATEMENT\s+OF\s+(?:THE\s+)?HON(?:ORABLE)?\.?\s+([A-Z][A-Z.\'\u2019` -]+?)'
+                             r'(?:,\s+(?:JR|SR|II|III|IV)\.?)?,\s+(?:A\s|U\.\s?S\.\s+(?:SENATOR|REPRESENTATIVE)\b)')
 COMMITTEE_MEMBER = re.compile(r'<congMember\b[^>]*\bbioGuideId="([A-Z]\d{6})"[^>]*\brole="COMMMEMBER"|'
                               r'<congMember\b[^>]*\brole="COMMMEMBER"[^>]*\bbioGuideId="([A-Z]\d{6})"')
 
@@ -123,6 +127,8 @@ PLANTS = {
         ('cd32905cc2128c6f', 'P000258'),
     "committee member's opening statement left an appearance, before the rosters (John Dingell, CHRG-110hhrg35446)":
         ('06d4a0fec7d98a8a', 'D000355'),
+    "a Senator's opening statement left an appearance, before the rosters (Max Baucus, CHRG-106shrg66376)":
+        ('17ca83fecc8359b8', 'B000243'),
 }
 
 

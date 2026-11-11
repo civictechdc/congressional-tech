@@ -5,7 +5,7 @@ the hearing's own nominee (Pompeo), a former Member (Campbell), a Member whose n
 Katie Hill), two Levins, two Mike Rogers told apart by a seat, Member Day rows naming only the Member or a seat, a
 seat's holder named only by family name (Pomeroy), a bare initial (C. Cox), a Member Day hearing that also hears an
 outside witness, committee members' own opening statements typed Member statements (the print's MODS lists one; before
-the 113th Congress the print's own transcript heads the other),
+the 113th Congress the print's own transcript heads the others, in the House form, with a suffix and in the Senate form),
 the publisher's own IDs in both directions with another publisher's copy, and rows the check cannot read.
 """
 import gzip
@@ -42,6 +42,8 @@ MEMBERS = [  # bioguide, first, last, nickname, (term type, state, start, end, d
     ('J000299', 'Mike', 'Johnson', None, ('rep', 'LA', '2017-01-03', '2027-01-03', '4')),
     ('K000009', 'Marcy', 'Kaptur', None, ('rep', 'OH', '1983-01-03', '2027-01-03', '9')),
     ('D000355', 'John', 'Dingell', None, ('rep', 'MI', '1955-12-13', '2015-01-03', '12')),
+    ('P000034', 'Frank', 'Pallone', None, ('rep', 'NJ', '1988-11-08', '2027-01-03', '6')),
+    ('B000243', 'Max', 'Baucus', None, ('sen', 'MT', '1978-12-15', '2014-02-06', None)),
 ]
 MEETINGS = [(1, '2007-05-01', 'Border security'), (2, '2013-09-24', 'Black carbon'),
             (3, '2017-01-12', 'Nomination of Mike Pompeo to be Director of the Central Intelligence Agency'),
@@ -49,7 +51,8 @@ MEETINGS = [(1, '2007-05-01', 'Border security'), (2, '2013-09-24', 'Black carbo
             (7, '2015-04-23', 'Health'), (8, '2025-02-05', 'Defense'), (9, None, 'Undated'), (10, '2019-09-11', 'Ferguson'),
             (11, '2019-09-20', 'Member Day Hearing'), (12, '2019-06-04', "Members' Day"), (13, '2013-07-09', 'Veterans care'),
             (14, '2001-06-28', 'Trade with Russia'), (15, '2006-05-10', 'Farm policy'), (16, '2026-03-17', 'Member Day'),
-            (17, '2024-03-20', 'Energy and Water appropriations'), (18, '2008-03-01', 'Energy and Commerce')]
+            (17, '2024-03-20', 'Energy and Water appropriations'), (18, '2008-03-01', 'Energy and Commerce'),
+            (19, '2000-02-03', 'Environment and Public Works')]
 # key: (source, event, name, position, organization, publisher id, witness type, published as member, matched)
 WITNESSES = {
     'reyes': ('mods', 1, 'Silvestre Reyes', 'a Representative in Congress from the State of Texas', None, None, None, True, 'R000170'),
@@ -75,6 +78,10 @@ WITNESSES = {
                        'member_statement', False, 'K000009'),
     'dingell-early-opening': ('mods', 18, 'John D. Dingell', 'a Representative in Congress from the State of Michigan',
                               'opening statement', None, 'member_statement', False, 'D000355'),
+    'pallone-early-opening': ('mods', 18, 'Frank Pallone, Jr.', 'a Representative in Congress from the State of New Jersey',
+                              'opening statement', None, 'member_statement', False, 'P000034'),
+    'baucus-early-opening': ('mods', 19, 'Max Baucus', 'U.S. Senator from the State of Montana', 'opening statement', None,
+                             'member_statement', False, 'B000243'),
     'undated': ('mods', 9, 'Silvestre Reyes', 'a Representative in Congress from the State of Texas', None, None, None, False, None),
     'letter': ('mods', 1, 'Letter from the Sheriff', None, None, None, 'record_material', False, None),
 }
@@ -94,10 +101,16 @@ PLANTS = {
     "committee member's opening statement left an appearance": ('kaptur-opening', 'K000009'),
     'a Member Day testimony typed a statement': ('newhouse', ('statement', 'N000189')),
     "committee member's opening statement left an appearance, before the rosters": ('dingell-early-opening', 'D000355'),
+    "a Senator's opening statement left an appearance, before the rosters": ('baucus-early-opening', 'B000243'),
 }
-PACKAGES = {'dingell-early-opening': 'CHRG-110hhrg77777'}
-# The prints' own GovInfo HTML transcripts, as the captures table names them.
-TRANSCRIPTS = {'CHRG-110hhrg77777': '<p>OPENING STATEMENT OF HON. JOHN D. DINGELL, A REPRESENTATIVE IN\n CONGRESS FROM MICHIGAN</p>'}
+PACKAGES = {'dingell-early-opening': 'CHRG-110hhrg77777', 'pallone-early-opening': 'CHRG-110hhrg77777',
+            'baucus-early-opening': 'CHRG-106shrg77778'}
+# The prints' own GovInfo HTML transcripts, as the captures table names them: the House form, a suffix before it, and
+# the Senate prints' form without 'A'.
+TRANSCRIPTS = {'CHRG-110hhrg77777': '<p>OPENING STATEMENT OF HON. JOHN D. DINGELL, A REPRESENTATIVE IN\n CONGRESS FROM MICHIGAN</p>'
+                                    '<p>OPENING STATEMENT OF HON. FRANK PALLONE, JR., A REPRESENTATIVE IN CONGRESS FROM THE STATE'
+                                    ' OF NEW JERSEY</p>',
+               'CHRG-106shrg77778': '<p>OPENING STATEMENT OF HON. MAX BAUCUS, U.S. SENATOR FROM THE STATE OF MONTANA</p>'}
 # The prints' own MODS: the committee members each lists (congMember role COMMMEMBER).
 PRINT_MEMBERS = {'kaptur-opening': ['K000009', 'A000055']}
 
@@ -195,6 +208,8 @@ def test_each_planted_wrong_value_is_flagged(tmp_path):
     assert results['a Member Day testimony typed a statement'] == 'caught: statement: no opening statement in its words (matched N000189)'
     assert "a committee member's own opening statement (the transcript heads it)" in results[
         "committee member's opening statement left an appearance, before the rosters"]
+    assert "a committee member's own opening statement (the transcript heads it)" in results[
+        "a Senator's opening statement left an appearance, before the rosters"]
     # Only because the hearing also hears an outside witness: the row alone cannot tell the namesake from the Member.
     assert 'a name alone at a Member Day hearing that also hears outside witnesses' in results[
         'outside namesake at a Member Day hearing retyped']
