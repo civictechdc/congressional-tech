@@ -363,6 +363,22 @@ JOB_FIELDS={'version','bucket','catalog_root','work','external_pins','tables','t
 JOB_OPTIONAL={'engine_config','external_pins_source','raw_verification','lake_maintenance'}
 
 
+def _daily_tables(value,base):
+    """The daily job owns the table list, so the committed spec names its file (ct-yndj).
+
+    A copied list drifted: ea2cf179 moved the daily to new tables and left this one naming
+    superseded generations. An explicit map remains, and lake rebuild and purge entries require
+    one (load_spec), for a one-off spec whose targets the daily does not write, such as a
+    superseded generation to purge.
+    """
+    from viewer_publication.archive_model_job import _local
+    if not isinstance(value,str):return value
+    daily=json.loads(Path(_local(value,base)).read_text(encoding='utf-8'))
+    if not isinstance(daily,dict) or 'tables' not in daily:
+        raise ValueError('Maintenance tables must name a daily job spec that lists its tables')
+    return daily['tables']
+
+
 def load_spec(path):
     """Validate the committed maintenance job specification without opening runtime or storage."""
     from congress_api.lake.daily import ALL_TABLE_NAMES
@@ -396,7 +412,7 @@ def load_spec(path):
     if not isinstance(external_pins,list):
         raise ValueError('Maintenance external_pins must be a list of release IDs')
     pins=[_release(pin) for pin in external_pins]
-    validated_tables=_tables(value['tables'])
+    validated_tables=_tables(_daily_tables(value['tables'],base))
     thresholds=value['thresholds']
     maintenance_decision({metric:0 for metric in METRICS},thresholds)
     result=dict(
@@ -458,6 +474,10 @@ def load_spec(path):
         lake_cfg=value['lake_maintenance']
         if not isinstance(lake_cfg,dict):
             raise ValueError('Maintenance lake_maintenance must be an object')
+        # tables are also the rebuild and purge targets: through the daily reference a rebuild
+        # would aim at a live table and a purge target would move whenever the daily moves.
+        if isinstance(value['tables'],str) and (lake_cfg.get('rebuild') or lake_cfg.get('purge')):
+            raise ValueError('Lake rebuild and purge name their targets: give an explicit tables map')
         result['lake_maintenance']=dict(lake_cfg)
     return result
 

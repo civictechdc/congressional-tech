@@ -5,38 +5,7 @@
   "work": "../../output/archive-maintenance",
   "external_pins": [],
   "external_pins_source": "https://data.spicygov.ai/pins/archive-releases.json",
-  "tables": {
-    "captures": {
-      "namespace": [
-        "archive_r1b"
-      ],
-      "name": "captures"
-    },
-    "readings": {
-      "namespace": [
-        "archive_r1b"
-      ],
-      "name": "readings"
-    },
-    "filename_readings": {
-      "namespace": [
-        "archive_r1b"
-      ],
-      "name": "filename_readings_act_citation"
-    },
-    "meeting_records": {
-      "namespace": [
-        "archive_r1b"
-      ],
-      "name": "meeting_records_act_citation"
-    },
-    "appearance_records": {
-      "namespace": [
-        "archive_r1b"
-      ],
-      "name": "appearance_records"
-    }
-  },
+  "tables": "publish-daily.json",
   "thresholds": {
     "file_count": 256,
     "manifest_count": 64,
