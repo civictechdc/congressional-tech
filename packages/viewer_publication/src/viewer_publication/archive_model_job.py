@@ -1,4 +1,12 @@
-"""Plan or execute the maintained archive model over exact immutable inputs."""
+"""Plan or execute the maintained archive model over exact immutable inputs.
+
+A model-only build (no publish, pointer or upload) proves a model or engine change:
+``--from-candidate <candidate> --build <fresh folder> --runtime <runtime.json>`` binds this
+checkout's model to the completed daily a candidate holds, as the publisher binds it, and
+keeps the spec, the runtime copy and its workspace, the ledger, output and scratch in the
+build folder. ``--ledger``/``--ledger-base`` pass the retired-link ledger the publisher
+passes, and ``--expect-release-id`` fails a control build that does not reproduce a release.
+"""
 import argparse
 from contextlib import contextmanager
 from collections.abc import Mapping
@@ -8,6 +16,7 @@ import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import re
+import sys
 from urllib.parse import urlsplit
 from uuid import UUID
 
@@ -27,6 +36,9 @@ PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
+# The runtime fields that name files; the client resolves them against the runtime file.
+RUNTIME_PATHS=('binary','workspace','remote','limits','credentials')
+RELEASE_ID=re.compile('[a-f0-9]{12,64}')
 
 
 def provenance_record_kind(key):
@@ -255,43 +267,132 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
         for _source,verified in retained.values():verified.require(verified.path)
 
 
-def execute(spec):
-    """Verify inputs, then invoke the one maintained model producer."""
+def bind_candidate(candidate,build,runtime):
+    """Write ``<build>/model-spec.json`` for the completed daily a candidate holds; return its path.
+
+    The binding is the publisher's resume path (``_resume_daily_inputs``): the daily summary
+    must match the digest sealed in the candidate's model intent, and completed_daily_inputs
+    binds this checkout's template to its pins, catalog version and provenance records. It
+    refuses, as the publisher does, a daily whose entity versions differ from this checkout's.
+    A candidate is a copy, so each record is read from its own archive-daily-provenance; the
+    pins check those bytes when the build holds them. The runtime is copied with its file paths
+    made absolute and its workspace in the build; the credentials file is named, never opened.
+    """
+    from viewer_publication.archive_publish_job import ROOT,_resume_daily_inputs
+    candidate,build,runtime=Path(candidate).resolve(),Path(build).resolve(),Path(runtime).resolve()
+    if build.exists() or build.is_symlink():raise ValueError('The build folder must be fresh: '+str(build))
+    template=load_spec(ROOT/'model/jobs/publish-model.json')
+    model=_resume_daily_inputs(template,dict(work=str(candidate/'archive-daily')),
+                               publish_work=candidate/'archive-publish')['model']
+    held=candidate/'archive-daily-provenance'
+    for name in PROVENANCE:
+        model[name]=[dict(row,path=str(held/Path(row['path']).name)) for row in model[name]]
+    missing=[Path(row['path']).name for name in PROVENANCE for row in model[name] if not Path(row['path']).is_file()]
+    if missing:raise ValueError('Provenance file not in the candidate: '+', '.join(missing))
+    settings=json.loads(runtime.read_text())
+    if not isinstance(settings,dict):raise ValueError('Engine runtime must be an object: '+str(runtime))
+    # archive_publish_job.publication_configuration resolves the same fields for its upload runtime.
+    settings={name:_local(value,runtime.parent) if name in RUNTIME_PATHS else value for name,value in settings.items()}
+    (build/'workspace').mkdir(parents=True)
+    (build/'runtime.json').write_text(json.dumps(dict(settings,workspace=str(build/'workspace')),indent=1))
+    path=build/'model-spec.json'
+    path.write_text(json.dumps(dict(model,output=str(build/'archive-release'),scratch=str(build/'archive-model'),
+                                    engine_config=str(build/'runtime.json')),indent=1,sort_keys=True))
+    return path
+
+
+def ledger_files(spec,*,ready=None,base=None):
+    """The retired-link ledger the publisher passes, as (prior_links, base_retired) paths.
+
+    ``ready`` holds the files a past publish wrote (its ``archive-publish/ledger``); ``base`` is
+    a release folder carrying retired_links.parquet, derived beside the output by the same two
+    release_gate calls the publisher's fetch_base makes. Neither: (None, None), an empty ledger.
+    """
+    if ready is not None:
+        ready=Path(ready).resolve()
+        for name in ('prior_links','prior_sources','base_retired'):
+            if not (ready/(name+'.parquet')).is_file():raise ValueError(f'Ledger folder lacks {name}.parquet: {ready}')
+        return ready/'prior_links.parquet',ready/'base_retired.parquet'
+    if base is None:return None,None
+    from viewer_publication.release_gate import prior_links,require_ledger_history
+    require_ledger_history(base,[])
+    folder=Path(spec['output']).parent/'ledger'
+    if folder.exists() or folder.is_symlink():raise ValueError('The derived ledger folder must be fresh: '+str(folder))
+    return prior_links(base,[],folder)
+
+
+def execute(spec,*,prior_links=None,base_retired=None):
+    """Verify inputs, then invoke the one maintained model producer.
+
+    prior_links/base_retired are the retired-link ledger (ledger_files); without them the
+    model's ledger starts empty, and every key the base had retired vanishes from the release.
+    """
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_model import build_release
     engine_config=spec['engine_config']
+    # One owner for this fallback and the publisher's copy is W5's (ct-64t4); a --from-candidate
+    # build names the runtime copy in its build folder, so it never falls back.
     if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
         engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
     with model_arguments(spec) as arguments:
         with NativeDatasets.from_config(engine_config) as engine:
             manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
                 catalog_version=spec['catalog_version'],engine=engine,
-                output=Path(spec['output']),scratch=Path(spec['scratch']))
+                output=Path(spec['output']),scratch=Path(spec['scratch']),
+                prior_links=prior_links,base_retired=base_retired)
     if spec.get('text_index'):
         from viewer_publication.archive_text_index import finish_text_index
         manifest=finish_text_index(spec,spec['output'])
-    return dict(status='built',executed=True,release_id=manifest['release_id'],
+    ledger=None if prior_links is None else dict(prior_links=str(prior_links),base_retired=str(base_retired))
+    return dict(status='built',executed=True,release_id=manifest['release_id'],engine_config=engine_config,ledger=ledger,
         output=spec['output'],scratch=spec['scratch'],rows={entry['name']:entry['rows'] for entry in manifest['files']})
 
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--spec',type=Path,required=True)
+    source=parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--spec',type=Path)
+    source.add_argument('--from-candidate',type=Path,metavar='CANDIDATE',
+        help='a completed daily candidate (archive-daily, archive-daily-provenance, archive-publish) to bind into --build')
+    parser.add_argument('--build',type=Path,help='fresh folder for the spec, runtime copy, workspace, ledger, output and scratch')
+    parser.add_argument('--runtime',type=Path,help='the engine runtime file the build copies, its workspace moved into --build')
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
+    ledger=parser.add_mutually_exclusive_group()
+    ledger.add_argument('--ledger',type=Path,help='folder with ready-made prior_links, prior_sources and base_retired Parquet')
+    ledger.add_argument('--ledger-base',type=Path,help='release folder carrying retired_links.parquet to derive the ledger from')
+    parser.add_argument('--expect-release-id',help='fail unless the built release id starts with these 12 to 64 hex characters')
     args=parser.parse_args(argv)
+    if args.from_candidate is None and (args.build or args.runtime) or args.from_candidate and not (args.build and args.runtime):
+        parser.error('--from-candidate needs --build and --runtime, and --spec takes neither')
+    if not args.execute and (args.ledger or args.ledger_base or args.expect_release_id):
+        parser.error('--ledger, --ledger-base and --expect-release-id apply only with --execute')
+    if args.expect_release_id is not None and not RELEASE_ID.fullmatch(args.expect_release_id):
+        parser.error('An expected release id is 12 to 64 lowercase hex characters')
+    if args.from_candidate and args.execute and not (args.ledger or args.ledger_base):
+        parser.error('A candidate build needs the ledger its publisher passed: --ledger or --ledger-base')
     try:
-        spec=load_spec(args.spec)
+        path=bind_candidate(args.from_candidate,args.build,args.runtime) if args.from_candidate else args.spec
+        spec=load_spec(path)
         if spec.get('status')=='blocked':
             print(json.dumps(spec,sort_keys=True));return 2
-        result=(execute(spec) if args.execute else dict(status='planned',executed=False,
-            inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},output=spec['output'],scratch=spec['scratch'],
-            parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version']))
-        if not args.execute and spec.get('historical_recording_matcher'):
-            result['inputs']['historical_recording_matcher']=spec['historical_recording_matcher']
-        if not args.execute and spec.get('text_index'):
-            result['text_index']=spec['text_index']
+        if args.execute:
+            prior,retired=ledger_files(spec,ready=args.ledger,base=args.ledger_base)
+            result=execute(spec,prior_links=prior,base_retired=retired)
+        else:
+            result=dict(status='planned',executed=False,
+                inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},output=spec['output'],scratch=spec['scratch'],
+                parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version'])
+            if spec.get('historical_recording_matcher'):
+                result['inputs']['historical_recording_matcher']=spec['historical_recording_matcher']
+            if spec.get('text_index'):
+                result['text_index']=spec['text_index']
+        if args.from_candidate:result['spec']=str(path)
     except (ValueError,OSError) as error:parser.error(str(error))
-    print(json.dumps(result,sort_keys=True));return 0
+    print(json.dumps(result,sort_keys=True))
+    if args.expect_release_id and not result['release_id'].startswith(args.expect_release_id):
+        print(f"Built release {result['release_id']} differs from the expected {args.expect_release_id}",file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__=='__main__':raise SystemExit(main())
