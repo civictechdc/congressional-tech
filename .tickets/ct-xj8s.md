@@ -1,6 +1,6 @@
 ---
 id: ct-xj8s
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-10T20:37:59Z
@@ -23,3 +23,13 @@ An owner view on which index pages are documents is recorded; the chosen rule (o
 **2026-11-11T14:44:36Z**
 
 validated 2026-11-11, left open: waits on the owner's view of which index pages are documents; no commit names ct-xj8s since its filing.
+
+**2026-11-11T16:09:08Z**
+
+2026-11-11 BUILT on branch claude/ct-doc-roles-2 (local; tests bc445b69, fix 1a78b492; not pushed, not model-built). Owner decision 2026-11-11: "Per-site list of app pages". Report: .cache/archive-release/investigations/doc-roles-2-20261111/NOTES.md.
+
+Rule: page-signals kind wrapper_url (the ct-aoxp kind, so no SQL change): a site's bare home page on any host (no path, no query), and one entry per committee host for the pages that only index it (calendars and event lists, hearing, markup and news indexes, the Repository's committee list and week and month calendars, a search page). Such a page is a wrapper: no document, its link keys retire with a notice, and it still lists what it links (listed_on). Pages under those indexes stay documents however often linked (event pages, press releases, the 23 parts of CHRG-117hhrg44535).
+
+Predicted on 77673bfb8fcf from capture rows, DuckDB (dr2_16, dr2_17): 192 html documents leave (323,087 -> 322,895); 208 link keys retire, no successor; 267 lookup pairs and 208 addresses go (no address listed elsewhere); 0 meetings, witnesses, measures or recoveries; 446 documents keep one of them as their listing page. Left as documents on purpose: 199 dated floor schedules (docs.house.gov/floor/Default.aspx?date=), owner to say.
+
+Tests (focused, worktree runner): role cases and registry samples fail before (2 failed), pass after (4 passed); nearest five files 31 passed. A full model build must confirm the count before and after; then this closes.

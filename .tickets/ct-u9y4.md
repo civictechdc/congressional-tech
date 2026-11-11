@@ -124,3 +124,18 @@ Write from a clean worktree at origin/main; the tools are byte-identical there.
 **2026-11-11T14:44:47Z**
 
 validated 2026-11-11, left open: nothing changed since the 2026-11-10 20:38Z note (no commit names ct-u9y4 since). Bowman is two rows in 77673bfb8fcf and no unrelated documents are fused, so the core defect is fixed; what remains are decisions and one guard: (1) the owner's choice on the 83 page-plus-file rows (one row or two), (2) the 18 editions (one document or split), (3) read the 3 recordings, (4) recovery_documents_with_several_files is a report only (25 text_differs ship without a refusal): make it an invariant with a reviewed list, or record why a report is enough.
+
+**2026-11-11T16:09:08Z**
+
+2026-11-11 BUILT on branch claude/ct-doc-roles-2 (local; tests 3d98c0f2, fix 90b61c03; not pushed, not model-built). Owner decisions 2026-11-11: "One document, file shown" (83) and "Split into separate documents" (18). Report: .cache/archive-release/investigations/doc-roles-2-20261111/NOTES.md.
+
+One reviewed registry, model/registries/recovered-file-roles.json, per (dead link, recovered body) like a provenance decision: source_page 81, edition 18, same_document 41, undecided 6.
+- source_page (the 81 veterans pages): the capture of the dead page itself leaves recoveries; the document shows the file; the dead address is an unsaved sources row with its listing page (ct-m878 shape). The other 2 of the 83 (armedservices statement + print, science roll-call sheets) have no web page and already show the file: same_document.
+- edition: each other edition moves to the row holding that body as a real file, else a new recovery-only row keyed by its body; the link keeps its URL key and its file; the dead address's lookup key names both. 17 of 18 split (15 new rows, 1 to live hearing row 82476). The 18th (frwebgate CHRG-111hhrg61759) is the GovInfo PDF and its own HTML, already one document by the rendition rule: same_document.
+- Item 4 settled as a refusing invariant, recovered_file_invariants: several_files_unreviewed (several recovered files whose text is unread or differs, any unreviewed) and links_without_a_file. The report stays as metadata; recovered_file_roles_unused counts stale entries. Reason: the Bowman fusions were text_unread PDFs a report counted and nobody read; recovery rows come only from deliberate imports, so the refusal lands on the importer.
+- Item 3 (the 3 recordings): undecided, out of scope.
+
+Predicted on 77673bfb8fcf (DuckDB, dr2_30..34): recoveries -81, 18 rows move; +15 documents; +78 sources; 27 documents show the file instead of the page; +15 body keys, no key lost; report after same_text 31 / text_differs 4 / text_unread 16, all reviewed; invariants 0/0.
+Owner should know before release: the 27 change title (20 to the hearing's title, 7 to none, so the filename shows; the page title is the ct-m878 question on ct-egoo); the gate's link rule lists 27 link and 27 lookup keys answering another file (dr2-33-changed-*.csv) that need a cause record; edition body b3b270 (House Report 107-539 pt 1) becomes a new row beside row 321977 that already shows it under another dead link.
+
+Tests (focused, worktree runner): fail before (4 failed), pass after (10 passed), plus the focused files listed in the report. A full model build must confirm the numbers above.
