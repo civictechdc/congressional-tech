@@ -2199,23 +2199,26 @@ def _landing_fixture(tmp_path, engine):
     """Three GovInfo hearings, each with its Content Details page, as raw receipt lines.
 
     LANDED: a ZIP of its PDF and HTML text, the direct PDF, and another site's different copy of
-    the PDF under the same GovInfo name; its page links the ZIP. TEXT_ONLY: the .htm alone, its page
-    requested at GPO's retired search address and answered at GovInfo's (the CHRG-113hhrg85449
-    shape). PARTS: a multi-part package with no package-level file, so its package page names no
-    saved file; its part 1 has its own granule page."""
+    the PDF under the same GovInfo name; its page links the ZIP. TEXT_ONLY: the .htm alone, titled as
+    GovInfo's text is ("- RURAL ROADS": the hearing number left out), its page requested at GPO's
+    retired search address and answered at GovInfo's (the CHRG-113hhrg85449 shape). PARTS: a
+    multi-part package with no package-level file, so its package page names no saved file; each of
+    its two parts has its own granule page (the CHRG-115hhrg24725 shape)."""
     raw = tmp_path / 'raw'
     pdf = f'%PDF-1.7\n{LANDED} transcript\n%%EOF\n'.encode()
     other = f'%PDF-1.7\n{LANDED} transcript as the committee posted it\n%%EOF\n'.encode()
-    member, text_only = _transcript_html(7, 'clerk@mail.house.gov'), _transcript_html(8, 'clerk@mail.senate.gov')
-    part = f'%PDF-1.7\n{PARTS} part 1\n%%EOF\n'.encode()
+    member = _transcript_html(7, 'clerk@mail.house.gov')
+    text_only = _transcript_html(8, 'clerk@mail.senate.gov').replace(b'<title>Hearing 8</title>', b'<title>- RURAL ROADS</title>')
+    parts = [f'%PDF-1.7\n{PARTS} part {n}\n%%EOF\n'.encode() for n in (1, 2)]
     zip_bytes = _govinfo_zip(LANDED, member, pdf)
     content = f'{GOVINFO}/content/pkg'
     pages = {
         f'{GOVINFO}/app/details/{LANDED}': _landing_page(LANDED, 'Serial No. 119-7 - FARM PROGRAMS', [(f'{content}/{LANDED}.zip', 'ZIP')]),
         f'{GOVINFO}/app/details/{TEXT_ONLY}': _landing_page(TEXT_ONLY, 'S. Hrg. 119-8 - RURAL ROADS', [(f'{content}/{TEXT_ONLY}/html/{TEXT_ONLY}.htm', 'Text')]),
-        f'{GOVINFO}/app/details/{PARTS}': _landing_page(PARTS, 'Serial No. 119-9 - PUBLIC LANDS', [(f'{GOVINFO}/app/details/{PARTS}/{PARTS}-pt1', 'Part 1')]),
-        f'{GOVINFO}/app/details/{PARTS}/{PARTS}-pt1': _landing_page(f'{PARTS}-pt1', 'Serial No. 119-9, Part 1 - PUBLIC LANDS',
-                                                                    [(f'{content}/{PARTS}/pdf/{PARTS}-pt1.pdf', 'PDF')])}
+        f'{GOVINFO}/app/details/{PARTS}': _landing_page(PARTS, 'Serial No. 119-9 - PUBLIC LANDS',
+                                                        [(f'{GOVINFO}/app/details/{PARTS}/{PARTS}-pt{n}', f'Part {n}') for n in (1, 2)]),
+        **{f'{GOVINFO}/app/details/{PARTS}/{PARTS}-pt{n}': _landing_page(f'{PARTS}-pt{n}', f'Serial No. 119-9, Part {n} - PUBLIC LANDS',
+                                                                         [(f'{content}/{PARTS}/pdf/{PARTS}-pt{n}.pdf', 'PDF')]) for n in (1, 2)}}
     retired_search = f'http://www.gpo.gov/fdsys/search/pagedetails.action?packageId={TEXT_ONLY}'
     lines = [_fetched(url, [_stored(raw, data, 'html')], requested_url=retired_search if TEXT_ONLY in url else None)
              for url, data in pages.items()]
@@ -2225,8 +2228,8 @@ def _landing_fixture(tmp_path, engine):
         _fetched(f'{content}/{LANDED}/pdf/{LANDED}.pdf', [_stored(raw, pdf, 'pdf')]),
         _fetched(f'https://www.indian.senate.gov/wp-content/uploads/documents/{LANDED}.pdf', [_stored(raw, other, 'pdf')]),
         _fetched(f'{content}/{TEXT_ONLY}/html/{TEXT_ONLY}.htm', [_stored(raw, text_only, 'html')]),
-        _fetched(f'{content}/{PARTS}/pdf/{PARTS}-pt1.pdf', [_stored(raw, part, 'pdf')])]
-    files = dict(pdf=pdf, other=other, member=member, text_only=text_only, part=part)
+        *[_fetched(f'{content}/{PARTS}/pdf/{PARTS}-pt{n}.pdf', [_stored(raw, data, 'pdf')]) for n, data in zip((1, 2), parts)]]
+    files = dict(pdf=pdf, other=other, member=member, text_only=text_only, part=parts[0], part2=parts[1])
     return _staged_lines(tmp_path, engine, raw, lines), pages, files, retired_search
 
 
@@ -2242,9 +2245,12 @@ def test_a_govinfo_landing_page_is_another_address_of_the_hearing_it_names(tmp_p
     in, no redirect. The page is a wrapper. Its address and lookup keys answer the document named for
     it, as a ZIP's address stays on its contents: the PDF before the HTML text, the .htm when it is the
     only file, and the package's own copy, which the page links, before another site's copy under the
-    same name. Its link key retires with the ordinary notice, which lists that document. A package page
-    that names no saved file retires with a plain notice. Built twice from one capture set: without the
-    rule (as published) and with it, against the first as the live release; the publish gate passes."""
+    same name. Its link key retires with the ordinary notice, which lists that document. Owner,
+    2026-11-11 (ct-egoo): a package page that names no saved file is an address of each of its parts
+    (the documents its granule pages took), so its notice and lookup key list them; and the page's title,
+    the only one GovInfo prints the hearing number in, fills a hearing title that is empty or has that
+    number left out ("- RURAL ROADS"). Built twice from one capture set: without the rule (as
+    published) and with it, against the first as the live release; the publish gate passes."""
     from viewer_publication.archive_model import build_release
     from viewer_publication.archive_model_profile import ROOT, _definition_hashes
     from viewer_publication.release_comparison import compare
@@ -2270,26 +2276,34 @@ def test_a_govinfo_landing_page_is_another_address_of_the_hearing_it_names(tmp_p
     sources = read('after', 'sources')
     assert not [s for s in sources if s['is_saved'] and '/app/details/' in s['url']]
     held = lambda rows: sorted((d['saved_body'], tuple(a['body'] for a in d['alternates'])) for d in rows)
-    assert held(after) == held(d for d in before if d['link_key'] not in landing_keys) and len(after) == len(before) - 4
+    assert held(after) == held(d for d in before if d['link_key'] not in landing_keys) and len(after) == len(before) - 5
     row_of = lambda data: next(i for i, d in enumerate(after) if d['saved_body'] == hashlib.sha256(data).digest())
-    hearing, text_only, part = row_of(files['pdf']), row_of(files['text_only']), row_of(files['part'])
+    hearing, text_only, part, part2 = (row_of(files[name]) for name in ('pdf', 'text_only', 'part', 'part2'))
     assert [a['format'] for a in after[hearing]['alternates']] == ['html'] and row_of(files['other']) != hearing
-    # Each page's address is an unsaved address of the document named for it, never of another site's copy.
-    landed = {url: hearing for url in pages if url.endswith(LANDED)}
-    landed |= {url: text_only for url in pages if url.endswith(TEXT_ONLY)} | {url: part for url in pages if url.endswith('-pt1')}
-    assert {s['url']: s['list_row'] for s in sources if '/app/details/' in s['url']} == landed
-    # Its lookup keys, the retired GPO request included, answer that row alone; the package page's answer nothing.
+    # Each page's address is an unsaved address of the document named for it, never of another site's copy;
+    # the package page's, which names no saved file, of each of its parts.
+    package = f'{GOVINFO}/app/details/{PARTS}'
+    landed = {url: [hearing] for url in pages if url.endswith(LANDED)} | {url: [text_only] for url in pages if url.endswith(TEXT_ONLY)}
+    landed |= {f'{package}/{PARTS}-pt1': [part], f'{package}/{PARTS}-pt2': [part2], package: sorted([part, part2])}
+    assert sorted((s['url'], s['list_row']) for s in sources if '/app/details/' in s['url']) == sorted(
+        (url, row) for url, rows in landed.items() for row in rows)
+    # Its lookup keys, the retired GPO request included, answer those rows alone.
     urls = read('after', 'urls')
-    for url, row in [*landed.items(), (retired_search, text_only)]:
-        assert [u['list_row'] for u in urls if u['lookup_key'] == _lookup_key(url)] == [row], url
-    assert not [u for u in urls if u['lookup_key'] == _lookup_key(f'{GOVINFO}/app/details/{PARTS}')]
-    # Each page's link key retires with the ordinary notice: no successor, the document at its address listed.
+    for url, rows in [*landed.items(), (retired_search, [text_only])]:
+        assert sorted(u['list_row'] for u in urls if u['lookup_key'] == _lookup_key(url)) == rows, url
+    # Each page's link key retires with the ordinary notice: no successor, the documents at its address listed.
     assert not landing_keys & {k['link_key'] for k in read('after', 'links')}
     notices = {r['link_key']: (r['successor_key'], r['address_versions']) for r in read('after', 'retired_links')}
-    assert notices == {key(pages[url]): (None, [after[row]['link_key']]) for url, row in landed.items()} | {
-        key(pages[f'{GOVINFO}/app/details/{PARTS}']): (None, None)}
+    assert notices == {key(pages[url]): (None, sorted(after[row]['link_key'] for row in rows)) for url, rows in landed.items()}
     reports = {q['name']: q['data'] for q in json.loads((tmp_path / 'after-model/result.json').read_text())['queries']}
-    assert reports['unplaced_landing_pages'] == [dict(url=f'{GOVINFO}/app/details/{PARTS}')]
+    assert reports['unplaced_landing_pages'] == []
+    # The page's title fills a hearing title that is empty (a part's PDF) or GovInfo's with the number left
+    # out; a hearing's own title stays. As published, before the rule, the titles were the files' own.
+    titles = lambda rows, at: [rows[row]['title'] for row in at]
+    assert titles(after, [hearing, text_only, part, part2]) == [
+        'Hearing 7', 'S. Hrg. 119-8 - RURAL ROADS', 'Serial No. 119-9, Part 1 - PUBLIC LANDS', 'Serial No. 119-9, Part 2 - PUBLIC LANDS']
+    before_row = lambda data: next(i for i, d in enumerate(before) if d['saved_body'] == hashlib.sha256(data).digest())
+    assert titles(before, [before_row(files[name]) for name in ('text_only', 'part')]) == ['- RURAL ROADS', None]
     assert reports['landing_page_invariants'] == [dict(saved_landing_addresses=0, unaddressed_landing_pages=0, lost_landing_addresses=0)]
     # The publish gate's link rule: no key vanishes, and no live key, lookup key or address answers another file.
     rule = compare(tmp_path / 'before', tmp_path / 'after')['link_rule']
@@ -2298,13 +2312,14 @@ def test_a_govinfo_landing_page_is_another_address_of_the_hearing_it_names(tmp_p
 
 @pytest.mark.parametrize('sql, sound, broken, invariant, count', [
     # The role rule lost: every page stays a document saved at its details address.
-    ('locator-signals.sql', "IN ('wrapper_url', 'landing_url')", "IN ('wrapper_url')", 'saved_landing_addresses', 4),
-    # The fold lost: the three pages that name a saved file leave no address on it.
-    ('document-addresses.sql', 'FROM landing_pages l', 'FROM (SELECT * FROM landing_pages WHERE false) l', 'unaddressed_landing_pages', 3),
+    ('locator-signals.sql', "IN ('wrapper_url', 'landing_url')", "IN ('wrapper_url')", 'saved_landing_addresses', 5),
+    # The fold lost: the four pages that name a saved file, and the package page on each of its two parts,
+    # leave no address on the document.
+    ('document-addresses.sql', 'FROM landing_pages l', 'FROM (SELECT * FROM landing_pages WHERE false) l', 'unaddressed_landing_pages', 6),
     # A page the fold never admits (here: its role is not exactly wrapper, as when a source mixes roles) is
-    # neither a document nor a landing page: all four addresses vanish, which unaddressed_landing_pages,
+    # neither a document nor a landing page: all five addresses vanish, which unaddressed_landing_pages,
     # starting from landing_pages, cannot see (review finding 3, 2026-11-10).
-    ('landing-page-files.sql', "m.record_role='wrapper'", "m.record_role='wrapper-never'", 'lost_landing_addresses', 4)])
+    ('landing-page-files.sql', "m.record_role='wrapper'", "m.record_role='wrapper-never'", 'lost_landing_addresses', 5)])
 def test_a_lost_landing_rule_refuses_the_build(tmp_path, sql, sound, broken, invariant, count):
     """Planted defects for the three landing-page invariants (ct-m878): each refuses before the manifest."""
     from viewer_publication.archive_model import build_release
@@ -2330,8 +2345,9 @@ def test_a_details_sub_page_that_is_no_govinfo_id_names_no_file_and_is_counted(t
     to an unrelated summary.pdf. Its stem must be a GovInfo ID (page signals govinfo_details_name). Such a
     page then is neither a document nor a landing page: lost_landing_addresses counts its address. An error
     page or an unread page at a details address is not counted."""
+    from congress_api.lake.model_sql import model_steps
     from congress_api.retention.provenance import json_input
-    from viewer_publication.archive_model import LANDING_PAGE_INVARIANTS, ROOT, registry_inputs
+    from viewer_publication.archive_model import LANDING_PAGE_INVARIANTS, registry_inputs
     package = f'{GOVINFO}/app/details/{LANDED}'
     members = [
         dict(component='page', source_id='page', body_sha='1' * 64, source_url=package, filename=LANDED, record_role='wrapper', is_real_file=False, format='html'),
@@ -2358,8 +2374,7 @@ def test_a_details_sub_page_that_is_no_govinfo_id_names_no_file_and_is_counted(t
             dict(doc_key='hearing', url=package, is_saved=False, member_path=None)],
             doc_key='Utf8', url='Utf8', is_saved='Boolean', member_path='Utf8')]
     steps = [dict(name='document_members', sql="SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM members"),
-             dict(name='landing_page_files', sql=(ROOT / 'model/sql/landing-page-files.sql').read_text(), materialize=True),
-             dict(name='landing_pages', sql=(ROOT / 'model/sql/landing-pages.sql').read_text(), materialize=True)]
+             *model_steps(['landing-pages'], provided={'document_members', 'publisher_links', 'page_signals', 'formats'}, materialize=True)]
     result = run_job(tmp_path / 'job', NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
                      queries=[dict(name='files', sql='SELECT page_id,source_id FROM landing_page_files ORDER BY 1,2'),
                               dict(name='pages', sql='SELECT source_id,component FROM landing_pages ORDER BY 1'), LANDING_PAGE_INVARIANTS])

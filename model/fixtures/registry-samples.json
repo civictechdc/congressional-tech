@@ -211,6 +211,54 @@
       "source": "Authored boundary: hyphenated words without an upper-case GovInfo collection code are no package or granule ID"
     },
     {
+      "id": "page-signals:govinfo_details_title",
+      "registry": "page-signals",
+      "entry": "govinfo_details_title",
+      "value": "S. Hrg. 117-336 - THE 2021 FILING SEASON AND 21ST-CENTURY IRS - CHRG-117shrg48296 | Content Details | GovInfo",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: one of 12,638 GovInfo Content Details page titles that print a Senate hearing number, the only GovInfo page that does (ct-egoo); the hearing's own .htm title is '- THE 2021 FILING SEASON ...'"
+    },
+    {
+      "id": "page-signals:govinfo_details_title_part",
+      "registry": "page-signals",
+      "entry": "govinfo_details_title",
+      "value": "Serial No. 115-3, Part 1 - The Next Farm Bill - CHRG-115hhrg24725-pt1 | Content Details | GovInfo",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: a granule page's title, part 1 of the multi-part package CHRG-115hhrg24725 (one of 5,356 'Serial No.' titles)"
+    },
+    {
+      "id": "page-signals:govinfo_details_title_committee_number",
+      "registry": "page-signals",
+      "entry": "govinfo_details_title",
+      "value": "H.A.S.C. No. 114-130 - [H.A.S.C. No. 114-130] Goldwater-Nichols Reform: The Way Ahead - CHRG-114hhrg20817 | Content Details | GovInfo",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: one of 1,141 titles with a committee's own number (H.A.S.C. No., Small Business Committee Document Number, Joint Committee Print CSCE-)"
+    },
+    {
+      "id": "page-signals:govinfo_details_title_upper_case",
+      "registry": "page-signals",
+      "entry": "govinfo_details_title",
+      "value": "S. HRG. 119-79 - Reducing Waste, Fraud and Abuse Through Innovation: How AI & Data Can Improve Government Efficiency - CHRG-119jhrg60491 | Content Details | GovInfo",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: one of 2 Senate numbers printed in capitals"
+    },
+    {
+      "id": "page-signals:govinfo_details_title_label",
+      "registry": "page-signals",
+      "entry": "govinfo_details_title",
+      "value": "House Hearing, 111th Congress - RECOVERY ACT: 10-WEEK PROGRESS REPORT FOR TRANSPORTATION AND INFRASTRUCTURE PROGRAMS - CHRG-111hhrg49497 | Content Details | GovInfo",
+      "expected": false,
+      "source": "Published release 77673bfb8fcf: one of 15,691 titles where GovInfo prints only a chamber-and-Congress label, no hearing number; such a page fills no title (ct-egoo, owner: the number fills the title)"
+    },
+    {
+      "id": "page-signals:govinfo_details_title_other_page",
+      "registry": "page-signals",
+      "entry": "govinfo_details_title",
+      "value": "S. Hrg. 117-336 - THE 2021 FILING SEASON AND 21ST-CENTURY IRS",
+      "expected": false,
+      "source": "Authored boundary: a title without GovInfo's ' - <package ID> | Content Details | GovInfo' ending is no Content Details page's"
+    },
+    {
       "id": "formats:preference-pdf",
       "registry": "formats",
       "entry": "preference-pdf",
