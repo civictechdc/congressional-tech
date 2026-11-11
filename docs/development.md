@@ -187,9 +187,26 @@ also depends on the four leaf versions and the combined worker limits.
 `doctor` and the shared CI setup compare source, locked package, tool, and
 worker policy evidence with `model/reading-version-diagnostics.json`.
 A warning reports the result of a fixed fixture and leaves saved rows eligible.
-The import check follows static imports,
-including function-local imports, and may conservatively include shared code.
-Dynamic imports and externally supplied inputs need separate review.
+Source evidence covers only the code a reader runs to turn a body into text
+(`READERS` in `congress_api.lake.reading_version_diagnostics`, ct-r91j):
+- each entry's reader modules are walked through their static imports,
+  function-local ones included;
+- the dispatcher and producer files it runs are hashed by their bytes only:
+  `readings.py`, `parser_worker.py` and `process_resources.py` for every entry,
+  `lake/body_text.py` for body text, and `compatible_versions.py` for the bundle;
+- the walk stops at `retention/weekly_tables.py`, plumbing that the `retention`
+  package re-exports, and does not hash it.
+
+A test runs each reader's worker callable over its fixture bodies and fails when
+a file whose functions ran is missing from that entry's evidence. That guards
+the helpers the bytes-only files call. It cannot see:
+- the remote read path;
+- a helper called only off the fixture paths;
+- a page rule loaded by name from another module;
+- the bundle's version naming (`lake/versions.py`; the IDs are pinned in
+  `publish-daily.json`).
+
+Review those, and any externally supplied input, by hand.
 
 On drift, inspect the change and run the relevant bounded reading fixtures. For
 an original-backed comparison, fix the body keys and local copies in advance.
