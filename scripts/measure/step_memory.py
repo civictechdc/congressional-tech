@@ -424,9 +424,16 @@ def compare(run_a, run_b, *, seconds, gib):
                     peak_physical_gb=result['run_peak']['peak_physical_gb'], peak_rss_gb=result['run_peak']['peak_rss_gb'],
                     debug_log=debug.get('log'), unknown_view_lines=debug.get('unknown_view_lines', []))
     only_b = [label for label in rows_b if label not in rows_a]
+    counts = {field: dict(a=_logged(rows_a, field), b=_logged(rows_b, field)) for field in COUNTS}
+    # B refused if its counts or its debug log show a refusal. The engine restarts the counts at each step and query
+    # (one-line src/job/spec.rs:472, 622), so a refusal while an output exports shows only as a line.
+    counted, lines = counts['refused_copies']['b'], counts['refusal_lines']['b']
+    after = ((b.get('debug') or {}).get('after_last') or {}).get('refusal_lines')
+    refused = any(found and found['statements'] for found in (counted, lines)) or bool(after)
+    refusals = dict(verdict='FAIL' if refused else 'PASS' if counted or lines else 'UNDETERMINED',
+                    after_last_lines=after, counts_logged=counted is not None)
     return dict(
-        runs=dict(a=run(path_a, a, rows_a), b=run(path_b, b, rows_b)), thresholds=limit,
-        counts={field: dict(a=_logged(rows_a, field), b=_logged(rows_b, field)) for field in COUNTS},
+        runs=dict(a=run(path_a, a, rows_a), b=run(path_b, b, rows_b)), thresholds=limit, counts=counts, refusals=refusals,
         pool_peak=dict(pool, not_judged=dict(not_judged)), memory_compared=compared_memory, memory_in_one_run=one_run,
         only_in=dict(a=[label for label in rows_a if label not in rows_b], b=only_b), moved=moved,
         statements=[dict(statement=label, a=rows_a.get(label), b=rows_b.get(label)) for label in [*rows_a, *only_b]])
@@ -444,21 +451,27 @@ def render_compare(result):
         return ', '.join(f'{number} {kind if number == 1 else "queries" if kind == "query" else kind + "s"}'
                          for kind, number in counted.items())
 
-    def logged(title, field):
-        def side(run):
-            count, unknown = counts[field][run], ', '.join(map(str, runs[run]['unknown_view_lines']))
-            if count is None:
-                return ('not logged by this binary' if field not in FROM_DEBUG else 'no debug log read'
-                        if not runs[run]['debug_log'] else f'not counted: {VIEWS} lines {unknown} unknown')
-            found = ', '.join(f'{number} in {label}' for label, number in count['statements'].items()) or '0'
-            skipped = f'; not on {kinds(count["not_logged"])}' if count['not_logged'] else ''
-            return f'{found} (logged on {count["logged"]} of {runs[run]["statements"]}{skipped})'
-        return f'{title}: A {side("a")}; B {side("b")}'
+    def side(field, run):
+        count, unknown = counts[field][run], ', '.join(map(str, runs[run]['unknown_view_lines']))
+        if count is None:
+            return ('not logged by this binary' if field not in FROM_DEBUG else 'no debug log read'
+                    if not runs[run]['debug_log'] else f'not counted: {VIEWS} lines {unknown} unknown')
+        found = ', '.join(f'{number} in {label}' for label, number in count['statements'].items()) or '0'
+        skipped = f'; not on {kinds(count["not_logged"])}' if count['not_logged'] else ''
+        return f'{found} (logged on {count["logged"]} of {runs[run]["statements"]}{skipped})'
 
-    # Refusals 0 on every statement of B, by its event counts, or by its debug log's lines where its binary writes none.
-    refusals = 'refused_copies' if counts['refused_copies']['b'] or not counts['refusal_lines']['b'] else 'refusal_lines'
-    found = counts[refusals]['b']
-    refused = 'UNDETERMINED' if found is None else 'FAIL' if found['statements'] else 'PASS'
+    def logged(title, field):
+        return f'{title}: A {side(field, "a")}; B {side(field, "b")}'
+
+    refusals = result['refusals']
+    after = refusals['after_last_lines']
+    refused = (f'refused copies (pass: 0 on every statement of B, by its counts and its debug log): {refusals["verdict"]}: '
+               f'A {side("refused_copies", "a")}; B {side("refused_copies", "b")}'
+               + (f'; B\'s debug log: {side("refusal_lines", "b")}' if runs['b']['debug_log'] else '')
+               + (f'; {after} refusal line{"s" * (after != 1)} in B after its last statement' if after else '')
+               + ('; PASS rests on refusal lines alone: a binary that writes no count, as the pin b0342a7, cannot write '
+                  'that line either, and passes only because a refusal there fails the statement'
+                  if refusals['verdict'] == 'PASS' and not refusals['counts_logged'] else ''))
     by_a = pool['judged'] - pool['against_a_bound']
     verdict = ([f'B above A on {_pairs(pool["above"])}' if pool['above'] else f'none above A on the {by_a} statements both log']
                if by_a else [])
@@ -477,8 +490,7 @@ def render_compare(result):
     lines += [
         f'thresholds: seconds moved by more than {limit["seconds"]:g} s; peak physical, rise, pool peak and shared floor by more '
         f'than {limit["gib"]:g} GiB; storage and counts on any change; a figure one run lacks is not compared',
-        logged('refused copies (pass: 0 on every statement' + ('' if refusals == 'refused_copies' else
-               ", from B's debug log where its binary logs no count") + f'): {refused}', refusals),
+        refused,
         f"pool peak (pass: none in B above A's): {peaked}: " + ('; '.join(verdict) or 'no statement in both'),
         logged('copied batches', 'copied_batches'),
     ]
