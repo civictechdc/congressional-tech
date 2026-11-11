@@ -153,6 +153,14 @@
           [
             "witness-biography",
             "biography"
+          ],
+          [
+            "member-statement",
+            "opening-statement"
+          ],
+          [
+            "committee-transcript",
+            "transcript"
           ]
         ]
       },

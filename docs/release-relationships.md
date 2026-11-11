@@ -49,7 +49,7 @@ Nullability: Nullability transcribes data model §8.1 (list.parquet bullet): a t
 - `document_kind[]`: Embedded classification values, not foreign keys. Words listed together under synonyms name one kind (the first is the House naming guide's word); filter them as one.
 - `document_family[]`: Embedded filename classification values.
 - `chambers[]`: Embedded chamber labels.
-- `document_kind[]` synonyms: `witness-statement` = `testimony`; `committee-amendment` = `amendment`; `witness-biography` = `biography`.
+- `document_kind[]` synonyms: `witness-statement` = `testimony`; `committee-amendment` = `amendment`; `witness-biography` = `biography`; `member-statement` = `opening-statement`; `committee-transcript` = `transcript`.
 
 Outgoing: `document_detail`, `document_meetings`, `document_committees`, `document_bills`, `document_nominations`, `document_members`, `witness_submitted_documents`, `document_editions`.
 

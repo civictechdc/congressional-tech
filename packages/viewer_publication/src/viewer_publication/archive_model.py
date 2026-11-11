@@ -1253,7 +1253,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += appearance_steps(root=root)+witness_key_steps(root=root)+[
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
-    steps += _sql_steps(['document-hearing-date-corrections'],root=root)
+    steps += _sql_steps(['document-hearing-date-corrections','transcript-print-covers'],root=root)
     from viewer_publication.archive_model_profile import completeness_checks
     steps += application_steps(root=root)
     steps += _sql_steps(PAGE_METADATA_STEPS,root=root)
@@ -1261,14 +1261,18 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     page=','.join(f'coalesce(pm.{c},{PAGE_DEFAULTS[c]}) AS {c}' if c in ('publisher_labels','page_metadata') else f'pm.{c}' for c in PAGE_COLUMNS)
     # hidden is IS TRUE, not coalesce(..., false): same values, and the column stays required when an
     # engine types it from the optimized plan (test_required_flags.py).
-    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
-        coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
+    # A committee's 'transcript' whose own text is a GPO printed hearing's cover is that print (ct-isnv):
+    # kind and family published-hearing; a review override still wins for the kind.
+    printed=lambda column:f"CASE WHEN pc.doc_key IS NULL THEN n.{column} ELSE array_sort(array_distinct(array_replace_all(n.{column},'transcript','published-hearing'))) END"
+    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(title,document_kind,document_family,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
+        coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,{printed('document_kind')}) AS document_kind,
+        {printed('document_family')} AS document_family,
         r.hidden IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
         CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
         CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source,{page}
         FROM document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
-            (document_identities d JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)
-             ON n.doc_key=d.document_id)
+            (document_identities d JOIN (transcript_print_covers pc RIGHT JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)
+             ON n.doc_key=pc.doc_key) ON n.doc_key=d.document_id)
             ON d.component=r.component) ON d.component=x.component) ON pm.doc_key=n.doc_key""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
