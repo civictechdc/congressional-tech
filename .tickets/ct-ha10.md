@@ -18,3 +18,9 @@ See .cache/archive-release/investigations/witness-identity-20261110/PLAN.md sect
 
 At least 95% precision on 100 random people read against raw records; no name-only merges; a raw check judging sampled people by facts the rule does not use (dates, titles, middle initials, Member terms), both directions, with a planted merge of two different people, confirmed by a second reviewer.
 
+
+## Notes
+
+**2026-11-11T03:02:45Z**
+
+2026-11-11 (session congress-1): the joint person-identity contract with spicy-regs is drafted, reviewed by the spicy-stack session (ENDORSE WITH CHANGES, all applied) and revised: .cache/archive-release/investigations/person-identity-contract-20261111/pc-contract-draft.md (v1 kept beside it; spicy-regs review in spicy-regs-review/). Ownership: CT builds and keeps people from its hearing records and shows their pages; spicy-regs stores only cross-source decisions, which name a CT appearance (witness_key), never a CT person key; digests cover content only. Owner decisions: 'Design it jointly first'; first slice 'Just do the simplest/fastest thing with the best results and the least errors. It doesn't need to be perfect. We'll come back to this' = Members by Bioguide, everyone else on Unicode-normalized case-folded exact name plus the FULL normalized organization (no first-comma cut: it collapsed 17,495 organization strings into 4,734), middle-initial and suffix guards, never an empty organization; no cross-employer links, model extraction, web search or LinkedIn in this slice; corrections via the site's existing 'Public GitHub issues' link. Reach on 77673bfb8fcf: 12,111 non-Member people at 2+ hearings (38,207 appearances) plus 593 Members by publisher Bioguide. CT-2 can ship on a computed person key with alias rows without waiting for ct-46f3. Replace the acceptance's '95% on 100 random people' with: every risky group (guards, accents, suffixes) read plus 200 random people, at most 2 wrong.
