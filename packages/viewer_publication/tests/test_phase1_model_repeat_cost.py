@@ -30,13 +30,12 @@ import collections
 import json
 import os
 import re
-import shutil
 from pathlib import Path
 
 import pyarrow.parquet as pq
 import pytest
 
-from archive_job_fixture import real_model_spec, spicy_input
+from archive_job_fixture import _Capture, _Submitted, real_model_spec, spicy_input
 from congress_api.lake import appearance_records, committee_records, meeting_records, video_records
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model import build_prepared_release, prepare_model_inputs
@@ -161,23 +160,6 @@ JOIN = re.compile(r'^\s*\w+ Join: (.*)$', re.M)
 REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
 # A plan node line; a line of any other shape continues the expression above it.
 NODE = re.compile(r'^( *)([A-Z]\w*(?: Join)?)(?:: (\S*).*)?$')
-
-
-class _Submitted(Exception):
-    pass
-
-
-class _Capture:
-    """Records the job the build submits instead of running it."""
-    def __init__(self, engine, path):
-        self.engine, self.path = engine, path
-
-    def __getattr__(self, name):
-        return getattr(self.engine, name)
-
-    def run_job(self, path, log=None):
-        shutil.copy(path, self.path)
-        raise _Submitted
 
 
 def submitted_job(root, engine):
