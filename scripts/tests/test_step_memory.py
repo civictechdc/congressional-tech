@@ -333,7 +333,10 @@ SHORT, A, RETAIN, BLIP, BIG, Q1 = EVENTS
 DEBUG = ''.join([
     admission(10),  # before the first statement (input registration): the first statement's
     metric(SHORT),
-    admission(8, size=GIB), admission(6, size=5 * GIB), admission(3, size=0),  # left after the second: 1 GiB
+    # The same request as admission(8, size=GIB), message last and inside a span with a field named like one of its own.
+    '2026-11-11T00:00:00Z DEBUG reserve{line=1}: docspec::budget: bytes=1073741824 available=8589934592 native_reserved=0 '
+    'file="src/job/export.rs" line=234 shared admission request\n',
+    admission(6, size=5 * GIB), admission(3, size=0),  # left after the second: 1 GiB
     admission(5, site=DEDUP), admission(4, site=COPY), admission(4.5, site=COPY),
     metric(A), metric(RETAIN),
     admission(2), REFUSAL,  # after a's event: the next statement's, blip
