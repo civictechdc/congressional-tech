@@ -1,6 +1,6 @@
 ---
 id: ct-r91j
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T15:41:13Z
@@ -31,3 +31,7 @@ validated 2026-11-11, left open: not done. reading_version_diagnostics.body_text
 **2026-11-11T15:50:44Z**
 
 Built on claude/dx-narrow-reading-evidence (owner decision 2026-11-11: narrow it to what readers run). 451931a4 has the tests first, in test_body_text_derivation.py: an edit to plumbing no reader runs (client, provenance, versions, tables, weekly_tables) moves no evidence value; an edit to code a reader runs still moves that reader; every file a reader runs on its fixtures is in its evidence. 87c9b3f6 has the change: reading_version_diagnostics.READERS lists, per entry, the reader modules it walks and the dispatcher and producer files it hashes by bytes only; the walk stops at retention/weekly_tables.py; evidence_files owns what is hashed. lake/versions.py is untouched. Files per entry: sniff 33 to 19, readings 57 to 27, body text 68 to 24, the others unchanged. Three plants caught. Remains: the one equivalence re-stamp (sniff, readings and the four body-text readers) after the rebase onto the MODS merge, then doctor. Design note: .cache/archive-release/investigations/docspec-feedback-20261110/refactor/narrow-evidence/ne_design-note.txt
+
+**2026-11-11T23:05:43Z**
+
+Rebased onto origin/main e3b5235b (after MODS merge 78933231, preserving lake/versions.py untouched; tip a356d2a8) and recorded the single equivalence re-stamp in 580b55b8 (cause: the evidence definition changed, ct-r91j; no reader's output can change). Verified field-by-field against origin/main: only workspace_sha256 and locked_sha256 on sniff, readings, pdf_text, html_text, xml_text and warc moved; html, xml, json and html_metadata had zero diffs and all declared versions, limits and fixture samples matched. Post-restamp doctor passed with 0 WARNING lines. Full stacked lane set (.cache/archive-release/lanes-dx-stack-r91j-hhym-fc874b7c, 22:49:02Z to 23:04:55Z): all 6 production-offline shards exit 0 (13,020 passed, 39 skipped) and storage-loopback exit 0 (35 passed).
