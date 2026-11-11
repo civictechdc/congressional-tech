@@ -98,6 +98,41 @@ syncs the lock, prepares the historical object and runs doctor/inventory. The
 devcontainer uses the same sync and checks. Native lane success still requires
 reviewing pytest's reported skips.
 
+## One engine query, no job file
+
+`query` runs one statement through the pinned engine on the local runtime above,
+so a check or a proof is written in the model's own SQL dialect, not DuckDB's:
+
+```bash
+# cited.sha holds the binary hashes: a plain key on both sides, and the small side first (it builds).
+python scripts/dev.py query --table cited=cited.parquet --table captures=<candidate>/archive-model/evidence/capture_evidence.parquet \
+  "SELECT k.sha, c.receipt_key FROM cited k JOIN captures c ON c.sha256 = k.sha"
+python scripts/dev.py query --file model/sql/<file>.sql --table <relation>=<file>.parquet --explain
+```
+
+Each `--table NAME=PATH` binds a Parquet file, or the exact table pin a `.json`
+file holds (`metadata_location`, `table_uuid`, `snapshot`, `schema_id`). Only a pin
+on this machine binds: a production lake pin is on the object store and needs the
+remote runtime and its credentials, which `query` refuses to open. `--explain`
+prints the logical and physical plans and runs nothing; `--explain --analyze`
+runs the statement and prints the plan with what each operator did. Rows print
+tab-separated in the statement's column order, `NULL` for null, binary as
+lowercase hex; `--json` prints the rows as JSON. Name every column once: the
+engine returns each row as a map and keeps only the last of two columns of one
+name (ct-pyai), so `SELECT k.sha, c.sha` or `SELECT *` over a join is refused.
+The engine gets 2 GiB of memory (`--memory-gib`) and 2 GiB of scratch, never more
+than the runtime allows. A result must fit the runtime's `max_metadata_bytes`,
+and the engine charges it to memory at many times its JSON size (a 2 MiB result
+needed over 32 MB), so ask for counts or narrow columns. The client stops a query
+after the runtime's `timeout_seconds`, 120 s unless the runtime file sets it.
+Nothing is written: the job has no steps or outputs, and the engine plans no DDL
+or DML in a query. The job folder is temporary and removed on exit or TERM;
+`--work DIR` (new or empty) keeps `job.json`, `engine.log` and, when a limit was
+lowered, `limits.json`.
+From Python, `congress_api.retention.provenance.query(engine, sql, tables)`,
+`query_result` (column names too) and `explain(...)` do the same with any engine.
+Large inputs still run under the watchdog (AGENTS.md).
+
 ## Reading version changes
 
 The lake keys reading rows by body digest, parser, and the declared version in

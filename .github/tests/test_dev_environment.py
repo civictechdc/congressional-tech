@@ -354,6 +354,87 @@ def test_write_local_runtime_passes_preflight_and_refuses_an_unpinned_binary(tmp
     assert list(tmp_path.glob('*refused.json*')) == []
 
 
+def query_table(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    pq.write_table(pa.table({'sha': ['aa', 'bb'], 'n': [1, None]}), tmp_path / 'cited.parquet')
+    return f'cited={tmp_path / "cited.parquet"}'
+
+
+def test_query_prints_rows_a_reader_can_read_or_the_engines_json(tmp_path, capsys):
+    """One statement on this checkout's local runtime, from an argument or a file; no job file to write (cause F)."""
+    import json
+    sql = 'SELECT sha, n FROM cited ORDER BY sha'
+    assert dev.main(['query', sql, '--table', query_table(tmp_path)]) == 0
+    assert capsys.readouterr().out == 'sha\tn\naa\t1\nbb\tNULL\n'  # columns in the statement's order
+    assert dev.main(['query', 'SELECT n, sha FROM cited WHERE false', '--table', query_table(tmp_path)]) == 0
+    assert capsys.readouterr().out == 'n\tsha\n'  # no rows still names the columns
+    (tmp_path / 'q.sql').write_text('-- a committed SQL file\n' + sql + '\n')
+    assert dev.main(['query', '--file', str(tmp_path / 'q.sql'), '--table', query_table(tmp_path), '--json']) == 0
+    assert json.loads(capsys.readouterr().out) == [dict(sha='aa', n=1), dict(sha='bb', n=None)]
+    assert dev.main(['query', sql, '--table', query_table(tmp_path), '--explain']) == 0
+    plans = capsys.readouterr().out
+    assert plans.startswith('logical_plan\n') and '\nphysical_plan\n' in plans and 'TableScan: cited' in plans
+    assert dev.main(['query', sql, '--table', query_table(tmp_path), '--explain', '--analyze']) == 0
+    assert 'Plan with Metrics\n' in capsys.readouterr().out
+
+
+def test_a_stopped_query_leaves_no_engine_and_no_temporary_folder(tmp_path):
+    """The watchdog stops a job with TERM, then KILL 5 s later; the query's folder (up to its scratch limit of
+    spill) is removed on TERM. TERM goes to dev.py alone, so the engine is stopped by dev.py's exit path
+    (subprocess.run kills its child), not by a signal of its own. Plants: no TERM handler leaves the folder;
+    a handler that exits at once leaves the engine running."""
+    import time
+    temporary = tmp_path / 'tmp'
+    temporary.mkdir()
+    process = subprocess.Popen([sys.executable, str(ROOT / 'scripts/dev.py'), 'query',
+                                'SELECT count(*) AS n FROM generate_series(1, 100000000000)'],  # about a minute
+                               env={**os.environ, 'TMPDIR': str(temporary)}, start_new_session=True,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        deadline = time.monotonic() + 30
+        while not list(temporary.glob('docspec-query-*/engine.log')) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert list(temporary.glob('docspec-query-*/engine.log')), process.stderr.read() if process.poll() else ''
+        time.sleep(0.3)
+        os.kill(process.pid, signal.SIGTERM)
+        assert process.wait(timeout=5) != 0
+        with pytest.raises(ProcessLookupError):  # nothing of the job is left running, the engine included
+            os.killpg(process.pid, 0)
+    finally:
+        with suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+    assert list(temporary.iterdir()) == []
+
+
+def test_query_says_the_engines_error_first(tmp_path, capsys):
+    assert dev.main(['query', 'SELECT nope FROM cited', '--table', query_table(tmp_path)]) == 1
+    assert capsys.readouterr().err.startswith('ERROR: query: Schema error: No field named nope.')
+
+
+def test_query_refuses_a_lake_pin_held_elsewhere_before_loading_any_runtime(tmp_path, monkeypatch, capsys):
+    """A production pin is on the object store: reading it needs the remote runtime and credentials, never opened here."""
+    import json
+    from docspec_client import NativeDatasets
+    pin = tmp_path / 'captures.json'
+    pin.write_text(json.dumps(dict(metadata_location='s3://bucket/captures/metadata/v1.metadata.json',
+                                   table_uuid='11111111-1111-4111-8111-111111111111', snapshot=1, schema_id=0)))
+    monkeypatch.setattr(NativeDatasets, 'from_config', lambda *a, **k: pytest.fail('no runtime may be loaded'))
+    assert dev.main(['query', 'SELECT count(*) FROM captures', '--table', f'captures={pin}']) == 1
+    assert 'remote runtime' in capsys.readouterr().err
+
+
+def test_query_refuses_a_runtime_with_remote_or_credentials_without_loading_it(tmp_path, monkeypatch, capsys):
+    import json
+    from docspec_client import NativeDatasets
+    config = tmp_path / 'runtime.json'
+    config.write_text(json.dumps({'version': 1, 'remote': 'not-to-be-opened', 'credentials': 'not-to-be-opened'}))
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(config))
+    monkeypatch.setattr(NativeDatasets, 'from_config', lambda *a, **k: pytest.fail('no runtime may be loaded'))
+    assert dev.main(['query', 'SELECT 1 AS n']) == 1
+    assert 'remote/credentials are forbidden' in capsys.readouterr().err
+
+
 def linked_worktree(tmp_path):
     """A repository whose .gitignore covers data and environments, with one linked worktree."""
     repo, tree = tmp_path / 'repo', tmp_path / 'tree'
