@@ -1,11 +1,15 @@
 """The model CLI plans without input access and executes the maintained producer."""
+from contextlib import contextmanager
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 
-from archive_job_fixture import model_spec as spec, real_model_spec
+from archive_job_fixture import _Capture, _Submitted, fake_release, model_spec as spec, real_model_spec, versions
+
+TEMPLATE = Path(__file__).resolve().parents[3]/'model/jobs/publish-model.json'
 
 
 def write_spec(tmp_path,value):
@@ -394,3 +398,187 @@ def test_model_job_publishes_pinned_historical_matcher_rows(tmp_path):
     table, = [entry for entry in schema['files'] if entry['name']=='historical_recording_matches.parquet']
     assert table['available'] and table['identity']['fields']==['source_snapshot_sha256','source_record_ordinal']
     assert json.loads((Path(built['scratch'])/'profile.json').read_text())['profile']['historical_recording_matcher']==pin
+
+
+# The model-only build (W3): a completed daily's candidate bound into one build folder, the
+# retired-link ledger its publisher passed, and a control build's expected release id.
+
+@pytest.fixture(scope='module')
+def fixture_inputs(tmp_path_factory):
+    """One engine-derived input set for the tests that stop where the job is submitted."""
+    value,_digest,_html=real_model_spec(tmp_path_factory.mktemp('inputs'))
+    return value
+
+
+def submitted_inputs(monkeypatch,tmp_path,argv):
+    """Run the CLI with an engine that records the job it would run; return the job's inputs by name."""
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_model_job import main
+    real=NativeDatasets.from_config
+    @contextmanager
+    def capturing(path):
+        with real(path) as engine:
+            yield _Capture(engine,tmp_path/'submitted-job.json')
+    monkeypatch.setattr(NativeDatasets,'from_config',capturing)
+    with pytest.raises(_Submitted):
+        main(argv)
+    return {item['name']:item for item in json.loads((tmp_path/'submitted-job.json').read_text())['inputs']}
+
+
+RETIRED_KEY=b'rrrrrrrr'
+
+
+def base_release(tmp_path,*,ledger=True):
+    """A live release as the ledger reads it; with its own ledger it carries one retired key."""
+    retired=[dict(link_key=RETIRED_KEY,successor_key=None,last_release_id='d'*64,last_filename='r.pdf')] if ledger else None
+    return fake_release(tmp_path/'base','b'*64,[('gone.pdf',b'gggggggg',[b'gggggggg'])],retired=retired)
+
+
+@pytest.mark.parametrize('named',[None,'--ledger','--ledger-base'])
+def test_the_named_ledger_reaches_the_model_job(tmp_path,monkeypatch,fixture_inputs,named):
+    """Without a ledger the job's ledger inputs are the empty ones in its scratch (today's behaviour);
+    a named one, ready-made or derived from a release as the publisher derives it, is what the job reads."""
+    import pyarrow.parquet as pq
+    from viewer_publication.release_gate import prior_links
+    base=base_release(tmp_path);ready=tmp_path/'ready'
+    prior_links(base,[],ready)
+    build=tmp_path/'build'
+    value=dict(fixture_inputs,output=str(build/'archive-release'),scratch=str(build/'archive-model'))
+    argv=['--spec',write_spec(tmp_path,value),'--execute']
+    if named:argv+=[named,str(ready if named=='--ledger' else base)]
+    inputs=submitted_inputs(monkeypatch,tmp_path,argv)
+    folder={None:build/'archive-model/ledger','--ledger':ready,'--ledger-base':build/'ledger'}[named]
+    for name in ('prior_links','prior_sources','base_retired'):
+        assert Path(inputs[name]['path'])==(folder/(name+'.parquet')).resolve()
+    retired=pq.read_table(inputs['base_retired']['path'])['link_key'].to_pylist()
+    assert retired==([] if named is None else [RETIRED_KEY])
+
+
+def daily_candidate(root):
+    """A candidate folder as the nightly leaves it: the completed daily's summary with its publication
+    records, their provenance files, and the model intent sealed by the controller's own writer."""
+    from hashlib import md5,sha256
+    from viewer_publication.archive_controller import _save_continuation
+    from viewer_publication.archive_model_job import TABLES
+    parsers,catalog=versions()
+    held=root/'archive-daily-provenance';held.mkdir(parents=True)
+    records=[]
+    for index,family in enumerate(['recoveries','reviews','unreadable','verification','recording_decisions']):
+        body=json.dumps(dict(fixture=index)).encode()+b'\n';name=f'{index:064x}-{index:032x}.jsonl'
+        (held/name).write_bytes(body)
+        records.append(dict(key=f'provenance/{family}/{index}.jsonl',etag=md5(body).hexdigest(),size=len(body),
+            path='/elsewhere/nightly/candidate/archive-daily-provenance/'+name,sha256=sha256(body).hexdigest()))
+    pins={name:dict(metadata_location=f's3://fixture-lake/archive/{name}/metadata/00001.metadata.json',
+        table_uuid=f'00000000-0000-4000-8000-00000000000{index}',snapshot=1000+index,schema_id=0)
+        for index,name in enumerate(TABLES)}
+    summary=dict(status='completed',pins=pins,receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],new_receipt_keys=[],
+        currentversions=dict(parsers=parsers,filename_readings=catalog),producers={},carried={},
+        publication=dict(records=records,provenance=[dict(key=row['key'],etag=row['etag']) for row in records],deferred='0'*64))
+    daily=root/'archive-daily';daily.mkdir()
+    (daily/'daily-summary.json').write_text(json.dumps(summary,sort_keys=True))
+    publish=root/'archive-publish';publish.mkdir()
+    _save_continuation(publish/'model-intent.json',dict(version=1,identity='1'*64,profile={},entity_digests={},admitted_names=[],
+        pointer=None,pointer_etag=None,input_digest='2'*64,
+        daily_summary_sha256=sha256((daily/'daily-summary.json').read_bytes()).hexdigest()),seal=True)
+    return summary
+
+
+def engine_runtime(tmp_path):
+    """A runtime file with paths relative to itself; never the real remote one."""
+    runtime=tmp_path/'engine/runtime.json';runtime.parent.mkdir()
+    runtime.write_text(json.dumps(dict(version=1,binary='bin/docspec',limits='limits.json',workspace='shared',timeout_seconds=60)))
+    return runtime
+
+
+def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys):
+    """The daily's pins, catalog version and provenance records (read from the candidate's own copies), and
+    the checkout's template for everything else; output, scratch, runtime and workspace in the build folder."""
+    from viewer_publication.archive_model_job import PROVENANCE,TABLES,load_spec,main
+    candidate=tmp_path/'candidate';summary=daily_candidate(candidate);runtime=engine_runtime(tmp_path)
+    build=(tmp_path/'arm').resolve()
+    assert main(['--from-candidate',str(candidate),'--build',str(build),'--runtime',str(runtime)])==0
+    report=json.loads(capsys.readouterr().out)
+    assert report['status']=='planned' and report['executed'] is False and report['spec']==str(build/'model-spec.json')
+    bound=json.loads((build/'model-spec.json').read_text())
+    for name in TABLES:
+        assert bound[name]==dict(summary['pins'][name],kind='native_table')
+    assert bound['catalog_version']==summary['currentversions']['filename_readings']
+    held=candidate.resolve()/'archive-daily-provenance'
+    for field,family in PROVENANCE.items():
+        assert bound[field]==[dict(key=row['key'],path=str(held/Path(row['path']).name),sha256=row['sha256'],size=row['size'])
+                              for row in summary['publication']['records'] if row['key'].split('/')[1]==family]
+    assert sum(map(len,(bound[field] for field in PROVENANCE)))==len(summary['publication']['records'])
+    assert (bound['output'],bound['scratch'],bound['engine_config'])==(
+        str(build/'archive-release'),str(build/'archive-model'),str(build/'runtime.json'))
+    origin=runtime.parent.resolve()
+    assert json.loads((build/'runtime.json').read_text())==dict(version=1,binary=str(origin/'bin/docspec'),
+        limits=str(origin/'limits.json'),workspace=str(build/'workspace'),timeout_seconds=60)
+    template=load_spec(TEMPLATE)
+    rest=set(template)-{*TABLES,*PROVENANCE,'catalog_version','output','scratch','engine_config'}
+    assert rest and {name:bound[name] for name in rest}=={name:template[name] for name in rest}
+    assert load_spec(build/'model-spec.json')==bound
+
+
+@pytest.mark.parametrize('plant',['dropped_provenance_file','edited_daily_summary','no_model_intent'])
+def test_a_candidate_that_differs_from_its_daily_refuses_before_the_build_folder(tmp_path,capsys,plant):
+    from viewer_publication.archive_model_job import main
+    candidate=tmp_path/'candidate';summary=daily_candidate(candidate);runtime=engine_runtime(tmp_path)
+    dropped=Path(summary['publication']['records'][1]['path']).name
+    if plant=='dropped_provenance_file':
+        (candidate/'archive-daily-provenance'/dropped).unlink()
+    elif plant=='edited_daily_summary':
+        path=candidate/'archive-daily/daily-summary.json';edited=json.loads(path.read_text())
+        edited['pins']['captures']['snapshot']+=1;path.write_text(json.dumps(edited,sort_keys=True))
+    else:
+        (candidate/'archive-publish/model-intent.json').unlink()
+    with pytest.raises(SystemExit) as error:
+        main(['--from-candidate',str(candidate),'--build',str(tmp_path/'arm'),'--runtime',str(runtime)])
+    assert error.value.code==2
+    expected={'dropped_provenance_file':'Provenance file not in the candidate: '+dropped,
+              'edited_daily_summary':'Retained daily summary differs from the model continuation',
+              'no_model_intent':'requires a completed model checkpoint or intent'}[plant]
+    assert expected in capsys.readouterr().err
+    assert not (tmp_path/'arm').exists()
+
+
+@pytest.mark.parametrize('case',['ledger_file_missing','base_without_its_ledger','ledger_without_execute',
+    'malformed_expected_id','candidate_build_without_a_ledger','candidate_without_a_build','existing_build'])
+def test_build_options_refuse_before_inputs_or_runtime(tmp_path,capsys,case):
+    from viewer_publication.archive_model_job import main
+    value=spec(tmp_path);path=write_spec(tmp_path,value)
+    partial=tmp_path/'partial-ledger';partial.mkdir();(partial/'prior_links.parquet').write_bytes(b'')
+    candidate=tmp_path/'candidate';daily_candidate(candidate);runtime=engine_runtime(tmp_path);arm=tmp_path/'arm'
+    from_candidate=['--from-candidate',str(candidate),'--runtime',str(runtime)]
+    if case=='existing_build':arm.mkdir()
+    argv,expected={
+        'ledger_file_missing':(['--spec',path,'--execute','--ledger',str(partial)],'Ledger folder lacks prior_sources.parquet'),
+        'base_without_its_ledger':(['--spec',path,'--execute','--ledger-base',str(base_release(tmp_path,ledger=False))],
+                                   'has no retired_links'),
+        'ledger_without_execute':(['--spec',path,'--ledger',str(partial)],'apply only with --execute'),
+        'malformed_expected_id':(['--spec',path,'--execute','--expect-release-id','77673bf'],'12 to 64 lowercase hex'),
+        'candidate_build_without_a_ledger':([*from_candidate,'--build',str(arm),'--execute'],'needs the ledger its publisher passed'),
+        'candidate_without_a_build':(from_candidate,'--from-candidate needs --build and --runtime'),
+        'existing_build':([*from_candidate,'--build',str(arm)],'The build folder must be fresh'),
+    }[case]
+    with pytest.raises(SystemExit) as error:main(argv)
+    assert error.value.code==2 and expected in capsys.readouterr().err
+    assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
+    assert case=='existing_build' or not arm.exists()
+
+
+@pytest.mark.parametrize('expected',['ab'*6,'ab'*32,'cd'*6])
+def test_a_control_build_fails_naming_both_ids_when_its_release_differs(tmp_path,capsys,monkeypatch,expected):
+    """The result line is printed either way, so a differing arm still reports its id, rows and paths."""
+    import viewer_publication.archive_model as model
+    from viewer_publication.archive_model_job import main
+    value=dict(pinned_local_spec(tmp_path),engine_config=os.environ['DOCSPEC_JOB_CONFIG'])
+    built='ab'*32
+    monkeypatch.setattr(model,'build_release',lambda **_:dict(release_id=built,files=[dict(name='list.parquet',rows=3)]))
+    code=main(['--spec',write_spec(tmp_path,value),'--execute','--expect-release-id',expected])
+    out,err=capsys.readouterr()
+    report=json.loads(out)
+    assert report['release_id']==built and report['rows']=={'list.parquet':3} and report['output']==value['output']
+    if expected.startswith('ab'):
+        assert code==0 and not err
+    else:
+        assert code==1 and built in err and expected in err
