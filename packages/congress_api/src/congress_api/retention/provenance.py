@@ -1,4 +1,5 @@
-"""Append-only provenance records and pinned, local-only import stages."""
+"""Append-only provenance records, pinned local-only import stages, and the engine job helpers they run on."""
+from collections import Counter
 from contextlib import nullcontext
 from datetime import datetime
 from hashlib import file_digest, sha256
@@ -371,30 +372,62 @@ def bounded_engine(engine,directory,**ceilings):
 
 
 QUERY_MEMORY_BYTES=2<<30
+QUERY_SCRATCH_BYTES=2<<30
 
 
-def query(engine,sql,tables,*,memory_bytes=QUERY_MEMORY_BYTES,work=None):
-    """Rows of one read-only statement over `tables`, each name bound to a Parquet path or an exact table pin.
+def _query_job(engine,queries,tables,*,memory_bytes=QUERY_MEMORY_BYTES,scratch_bytes=QUERY_SCRATCH_BYTES,work=None):
+    """One throwaway `run_job` of `queries` over `tables`: no steps, no outputs, memory and scratch lowered.
 
-    A throwaway `run_job`: no steps and no outputs, and the engine plans no DDL or DML in a job query, so
-    nothing is written outside the job's folder. Engine memory is lowered to `memory_bytes`; the result is
-    bounded by the runtime's `max_metadata_bytes`. Rows are the engine's JSON: keys in name order, binary as
-    lowercase hex, timestamps as RFC 3339 text. `work` keeps the job (`job.json`, `limits.json`,
-    `engine.log`, `result.json`); otherwise a temporary folder is removed on return. A pin is read through
-    whatever object connection `engine` has: none for a local runtime."""
+    The engine plans no DDL or DML in a job query, so nothing is written outside the job's folder. `work`
+    keeps the job (`job.json`, `limits.json`, `engine.log`, `result.json`) and must be absent or empty, so no
+    earlier run's file sits beside it. Otherwise the folder is temporary and removed on return; dev.py turns
+    the watchdog's TERM into a return, and a KILLed query leaves at most `scratch_bytes` of spill behind."""
     from congress_api.lake.tables import table_input
     inputs=[table_input(name,source) for name,source in tables.items()]
+    if work is not None and Path(work).is_dir() and any(Path(work).iterdir()):
+        raise ValueError(f'{work} is not empty: a kept query needs a folder of its own')
     with nullcontext(work) if work is not None else TemporaryDirectory(prefix='docspec-query-') as root:
-        bounded=bounded_engine(engine,root,memory_bytes=memory_bytes)
+        bounded=bounded_engine(engine,root,memory_bytes=memory_bytes,scratch_bytes=scratch_bytes)
         try:
-            return run_job(root,bounded,inputs=inputs,steps=[],outputs=[],queries=[dict(name='query',sql=sql)])['query']
+            return run_job(root,bounded,inputs=inputs,steps=[],outputs=[],queries=queries)
         finally:
             if bounded is not engine:bounded.close()
 
 
-def explain(engine,sql,tables,**options):
-    """The engine's plans for `sql`, keyed by plan type (`logical_plan`, `physical_plan`); nothing is run."""
-    return {row['plan_type']:row['plan'] for row in query(engine,'EXPLAIN '+sql,tables,**options)}
+def query_result(engine,sql,tables,**options):
+    """Column names and rows of one read-only statement over `tables` (name: Parquet path or exact table pin).
+
+    The engine returns each row as a JSON map, sorted by name, and keeps only the last of two columns of one
+    name (ct-pyai). So the same job first plans the statement (`EXPLAIN FORMAT pgjson`, nothing run) for its
+    output names: a name given twice (`SELECT k.sha, c.sha`, `SELECT *` over a join) is refused after the
+    statement has run, and rows come back in the statement's column order. An EXPLAIN statement cannot be
+    planned that way; plans come from `explain`. Values are the engine's JSON: binary as lowercase hex,
+    timestamps as RFC 3339 text. The result must fit the runtime's `max_metadata_bytes`, and the engine
+    charges it to memory at many times its JSON size. Options are `_query_job`'s. A pin is read through
+    whatever object connection `engine` has: none for a local runtime."""
+    found=_query_job(engine,[dict(name='columns',sql='EXPLAIN FORMAT pgjson '+sql),dict(name='query',sql=sql)],
+                     tables,**options)
+    columns=json.loads(found['columns'][0]['plan'])[0]['Plan']['Output']
+    if repeated:=[f'{count} columns named {name!r}' for name,count in Counter(columns).items() if count>1]:
+        raise ValueError('The statement returns '+', '.join(repeated)+'; the engine would keep only the last '
+                         'of each (ct-pyai). Name every column once, with AS.')
+    rows=found['query']
+    if rows and sorted(rows[0])!=sorted(columns):
+        raise ValueError(f'The engine returned columns {sorted(rows[0])}, its plan names {columns}')
+    return columns,[{name:row[name] for name in columns} for row in rows]
+
+
+def query(engine,sql,tables,**options):
+    """Rows of one read-only statement over `tables`, in the statement's column order (`query_result`)."""
+    return query_result(engine,sql,tables,**options)[1]
+
+
+def explain(engine,sql,tables,*,analyze=False,**options):
+    """The engine's plans for `sql` by plan type (`logical_plan`, `physical_plan`); nothing is run.
+
+    With `analyze` the statement runs and its plan says what each operator did (`Plan with Metrics`)."""
+    sql=('EXPLAIN ANALYZE ' if analyze else 'EXPLAIN ')+sql
+    return {row['plan_type']:row['plan'] for row in _query_job(engine,[dict(name='plan',sql=sql)],tables,**options)['plan']}
 
 
 def parquet_records(path):

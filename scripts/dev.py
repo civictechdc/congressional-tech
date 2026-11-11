@@ -256,28 +256,38 @@ def table_sources(pairs):
     return sources
 
 
-def query(config, sql, pairs, *, explain=False, as_json=False, memory_gib=None, work=None):
+def query(config, sql, pairs, *, explain=False, analyze=False, as_json=False, memory_gib=None, work=None):
     """Run one read-only statement on this checkout's local runtime and print its rows, or its plans.
 
     The runtime is the one the offline lane tests with (DOCSPEC_JOB_CONFIG), verified against this
-    checkout's pin and refused if it names a remote or credentials, before anything is loaded."""
+    checkout's pin and refused if it names a remote or credentials, before anything is loaded. Rows
+    print in the statement's column order; a statement naming one column twice is refused, because
+    the engine would keep only the last (provenance.query_result). TERM (how the watchdog stops a
+    job) exits through the query's cleanup, so its temporary folder goes with it."""
     import csv
+    import signal
     sources = table_sources(pairs)
     location = job_runtime(config, 'production-offline')
     from docspec_client import NativeDatasets
     from congress_api.retention import provenance
     options = dict(work=work) if memory_gib is None else dict(work=work, memory_bytes=int(memory_gib * 2**30))
-    with NativeDatasets.from_config(location) as engine:
-        result = (provenance.explain if explain else provenance.query)(engine, sql, sources, **options)
+    stop = signal.signal(signal.SIGTERM, lambda number, frame: sys.exit(128 + number))
+    try:
+        with NativeDatasets.from_config(location) as engine:
+            if explain:
+                result = provenance.explain(engine, sql, sources, analyze=analyze, **options)
+            else:
+                columns, result = provenance.query_result(engine, sql, sources, **options)
+    finally:
+        signal.signal(signal.SIGTERM, stop)
     if as_json:
         print(json.dumps(result, indent=1))
     elif explain:
         for kind, plan in result.items():
             print(kind, plan, sep='\n')
     else:
-        columns = list(dict.fromkeys(name for row in result for name in row))
         writer = csv.writer(sys.stdout, dialect='excel-tab', lineterminator='\n')
-        writer.writerows([columns, *([cell(row.get(name)) for name in columns] for row in result)] if result else [])
+        writer.writerows([columns, *([cell(row[name]) for name in columns] for row in result)])
         print(f'{len(result)} rows', file=sys.stderr)
 
 
@@ -647,15 +657,20 @@ def main(argv=None):
                          help='Inspect only disposable attestation scratch in this compatibility proof work directory')
     clean_p.add_argument('--nightly-spill', action='store_true',
                          help='Inspect only declared native spill in the locked nightly candidate')
-    ask = sub.add_parser('query', help='Run one read-only engine statement on named Parquet files or local table pins')
+    ask = sub.add_parser('query', help='Run one read-only engine statement on named Parquet files or local table pins',
+                         description='Rows print tab-separated in the statement\'s column order. Name every column '
+                                     'once: the engine keeps only the last of two columns of one name, so such a '
+                                     'statement is refused (SELECT k.sha, c.sha, or SELECT * over a join).')
     ask.add_argument('sql', nargs='?', help='The statement (or --file)')
     ask.add_argument('--file', type=Path, help='Read the statement from this SQL file')
     ask.add_argument('--table', action='append', default=[], metavar='NAME=PATH',
                      help='Bind NAME to a Parquet file, or to the exact table pin a .json file holds (repeatable)')
     ask.add_argument('--explain', action='store_true', help='Print the logical and physical plans; nothing is run')
+    ask.add_argument('--analyze', action='store_true', help='With --explain: run it and print the plan with metrics')
     ask.add_argument('--json', action='store_true', help="Print the engine's JSON instead of tab-separated rows")
     ask.add_argument('--memory-gib', type=float, help='Engine memory for the query (default 2; never above the runtime)')
-    ask.add_argument('--work', type=Path, help='Keep the job here (job.json, limits.json, engine.log, result.json)')
+    ask.add_argument('--work', type=Path,
+                     help='Keep the job in this new or empty folder (job.json, limits.json, engine.log, result.json)')
     tests = sub.add_parser('test')
     tests.add_argument('lane', choices=config['lanes'], nargs='?', default='production-offline')
     tests.add_argument('--path', action='append', default=[], help='Restrict to a path or node within this lane (repeatable)')
@@ -697,8 +712,10 @@ def main(argv=None):
         elif args.command == 'query':
             if (args.sql is None) == (args.file is None):
                 raise ValueError('Give the statement as an argument or with --file, not both')
+            if args.analyze and not args.explain:
+                raise ValueError('--analyze goes with --explain')
             query(config, args.sql if args.file is None else args.file.read_text(), args.table, explain=args.explain,
-                  as_json=args.json, memory_gib=args.memory_gib, work=args.work)
+                  analyze=args.analyze, as_json=args.json, memory_gib=args.memory_gib, work=args.work)
         else:
             return test(config, args.lane, args.path, extra, shard=args.shard)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
