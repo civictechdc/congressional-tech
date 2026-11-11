@@ -367,8 +367,9 @@ def _daily_tables(value,base):
     """The daily job owns the table list, so the committed spec names its file (ct-yndj).
 
     A copied list drifted: ea2cf179 moved the daily to new tables and left this one naming
-    superseded generations. An explicit map remains for a one-off spec whose targets the
-    daily does not write, such as a superseded generation to purge.
+    superseded generations. An explicit map remains, and lake rebuild and purge entries require
+    one (load_spec), for a one-off spec whose targets the daily does not write, such as a
+    superseded generation to purge.
     """
     from viewer_publication.archive_model_job import _local
     if not isinstance(value,str):return value
@@ -473,6 +474,10 @@ def load_spec(path):
         lake_cfg=value['lake_maintenance']
         if not isinstance(lake_cfg,dict):
             raise ValueError('Maintenance lake_maintenance must be an object')
+        # tables are also the rebuild and purge targets: through the daily reference a rebuild
+        # would aim at a live table and a purge target would move whenever the daily moves.
+        if isinstance(value['tables'],str) and (lake_cfg.get('rebuild') or lake_cfg.get('purge')):
+            raise ValueError('Lake rebuild and purge name their targets: give an explicit tables map')
         result['lake_maintenance']=dict(lake_cfg)
     return result
 
