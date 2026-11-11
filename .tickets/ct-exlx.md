@@ -2,7 +2,7 @@
 id: ct-exlx
 status: open
 deps: []
-links: [ct-x00f, ct-swyw]
+links: [ct-x00f, ct-swyw, ct-tx7u]
 created: 2026-11-10T17:12:33Z
 type: task
 priority: 1
