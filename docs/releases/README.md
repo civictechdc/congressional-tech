@@ -102,11 +102,15 @@ of the candidate's receipts outside the live set imply, folded by the model's ow
 the address (a line without one refuses): attempts grow by the new lines; the newest new line,
 when later than the live one (a tie refuses), sets the latest attempt, and `next_attempt_at` is
 its time plus the band of the published `recheck_meeting_date`, which must equal the live value
-where the live release had scheduled the address; `last_good_at` is the later of the live value
+where the live release had scheduled the address unless a Congress.gov meeting update moved that
+meeting's date (`_mark_moved_meeting_dates`, ct-rhqw), in which case `recheck_meeting_date`
+equals the updated effective date and a row with no later new line moves `next_attempt_at` to the
+live `last_attempt` plus its band under that date (checked over `held_receipts` in `capture_job`);
+`last_good_at` is the later of the live value
 and the newest new line the model's own good-fetch steps call good. A newly queued link's pages
-(`linked_from`) must each come only from new receipts, traced like a new document's body. A row
-that changed with no new line (a meeting link that moved), a meeting date that moved on a
-scheduled address, a removed address or any other column change still needs a record. An added
+(`linked_from`) must each come only from new receipts, traced like a new document's body. Any
+other row that changed with no new line (a meeting link that moved), an unverified meeting date
+move on a scheduled address, a removed address or any other column change still needs a record. An added
 attempted address no longer has to have supplied a new document: a failed or repeated fetch is
 still a fetch. Cannot see: a wrong meeting date on an address scheduled for the first time, or
 whether a page really links its queued address; those are the model's. So one unattended night
@@ -155,34 +159,51 @@ Congress.gov publishes": a Congress.gov meeting update publishes without a perso
 report; only lost links or keys stop the night. A meeting is updated when the candidate's
 successful detail read for that `event_id` names a body the live release cites nowhere (no witness,
 no meeting read), in another receipt than its live read, later than it and not later than the
-comparison, with non-Congress.gov status sightings unchanged; or when Congress.gov states the
-meeting for the first time and its detail read names such a body. On it, set apart as verified
-groups flagged `refetch_only`:
+comparison, with non-Congress.gov status sightings and `house_xml_updated` unchanged; or when
+Congress.gov states the meeting for the first time and its detail read names such a body with no
+non-Congress.gov sightings, `house_xml_updated`, `transcripts` or single-meeting document
+`measure_keys`. On it, set apart as verified groups flagged `refetch_only`:
 
 - the explicit `UPDATE_COLUMNS` the record states (title, date, status and its sightings, sittings,
-  committees, subjects, documents, videos, the update stamp, the detail read itself) and a first
-  stated meeting's row. Never `transcripts` or `house_xml_updated` (GovInfo and House XML move
-  them), and the outcome columns only where the candidate cites the new read's body and the live
-  outcome was publisher-based (a cancellation, or no evidence): a print or transcript basis is
-  another source, and its reference is a release-local row that shifts with unrelated documents;
+  committees, `subject_keys` when untouched by transcript changes or single-meeting document
+  `measure_keys`, documents, videos, the update stamp, the detail read itself) and a first stated
+  meeting's row. Never `transcripts` or `house_xml_updated` (GovInfo and House XML move them);
+  the outcome columns only where the candidate cites the new read's body and the live outcome was
+  publisher-based (a cancellation, or no evidence), since a print or transcript basis is another
+  source and its reference is a release-local row that shifts with unrelated documents; and
+  `rescheduled_to` / `rescheduled_basis` (`publisher_status` or `recording_on_later_twin`) between
+  updated meetings (with unchanged transcripts) and unchanged or byte-identical re-fetched twins;
 - its Congress.gov witnesses: new ones (re-key successors or not) whose body is the meeting's new
-  read, so the proven read is the one that moved them; live ones removed with an `unambiguous` map
-  row naming a published successor; every value changed on a pair of them (names, organizations,
-  panels, order). This witness half is interim: carried witness keys (ct-46f3, the first slice of
-  the witness-identity epic ct-woj3) end the re-keys;
-- the `unambiguous` key-map rows of those keys (added, or with a changed successor or basis), the
-  documents whose `witness_keys` gained or lost only such witnesses, added `nominations` newly
-  named in an updated meeting's `subject_keys`, and the meeting's `witnesses` coverage, with every
-  coverage row of a first stated meeting.
+  read, so the proven read is the one that moved them; live ones removed with a non-colliding
+  `unambiguous` map row naming a published same-meeting Congress.gov successor; every value changed
+  on a pair of them on that meeting (names, organizations, panels, order). This witness half is
+  interim: carried witness keys (ct-46f3, the first slice of the witness-identity epic ct-woj3) end
+  the re-keys;
+- the `unambiguous` key-map rows of those keys resolving through `witness_rekey` to one of that
+  meeting's updated Congress.gov witnesses (added, where any live witness key belonged to that
+  meeting's live Congress.gov witnesses, or with a changed value on that meeting); the documents
+  whose `witness_keys` gained or lost only such witnesses; added `nominations` and `bills` newly
+  introduced in `new_update_subjects` (not previously a meeting subject, and not supplied by a
+  document's `measure_keys` or a transcript change); `publisher_link` rows of `recording_matches`
+  matching `meetings.videos` (added on first stated or updated meetings, removed or with a changed
+  `video_key` or `url` on updated meetings); and `meeting_coverage` (every coverage row of a first
+  stated meeting, and on a matched updated meeting its `witnesses` aspect with unchanged
+  transcripts, `recording` and `captions` when moved by `meetings.videos` alone without
+  non-`publisher_link` match or caption/track changes, zero-count `transcript` jacket status with
+  unchanged transcripts, and zero-count `documents` status).
 
 Still stopping: anything the link rule refuses (a lost or changed link or lookup key, a removed
 meeting); a removed witness key with no map row, an `ambiguous` or `unresolved` map row (lost keys
-until dropped witnesses are kept as "no longer listed"), a map row whose successor is not published
-or that turns `ambiguous` or `unresolved`, a map that collapses two witnesses; any row of another
-source (MODS, House XML, Senate pages) or of a meeting not updated; a column another source moves;
-a meeting Congress.gov only lists (no detail read); and any read or body the capture table does not
-prove (below). A byte-identical read moves only bookkeeping, which passes when every other column
-is equal:
+until dropped witnesses are kept as "no longer listed"), a map row whose successor is not published,
+not on that meeting or not Congress.gov, or that turns `ambiguous` or `unresolved`, a map that
+collapses distinct base occurrences; any row of another source (MODS, House XML, Senate pages) or
+of a meeting not updated (aside from an unchanged twin's `rescheduled_to` / `rescheduled_basis` to
+or from an updated meeting); a column another source moves (`transcripts`, `house_xml_updated`, or
+`subject_keys` carrying a single-meeting document's `measure_keys` or a transcript change); a
+meeting Congress.gov only lists (no detail read); and any read or body the capture table does not
+prove, or a new House meeting XML body in `captures` accompanying an updated meeting (below). A
+byte-identical read moves only bookkeeping, which passes when every other column (or `rescheduled_to`
+/ `rescheduled_basis` to or from an updated meeting) is equal:
 
 - `congress_gov_detail_observation`: only the locators of its two reads (time, receipt, line,
   capture index, body), each later than the live read, not later than the comparison and in
@@ -197,11 +218,16 @@ witnesses, documents, videos and sittings added and removed, lost witness keys, 
 that moved; marked stopped with its reasons when the gates refuse) and `meeting-updates.json`
 beside `release-gate.json`; the nightly keeps both with the run's evidence and puts the report's
 one line in `summary.json` (`meeting_updates`). Replayed on 2026-11-10's pairs, the rule sets
-apart 23 updated meetings (2 first stated) on 619db5f9e08e to 77673bfb8fcf, including the 4 new
-witnesses of meeting 119590 and 25 added `nominations`, and 31 (13 first stated) on 630164505301
-to 619db5f9e08e, including the 22 reordered witnesses and 10 added `nominations`; what still stops
-on those pairs is other sources (transcripts, transcript-based outcomes, the MODS reader change)
-and one meeting only listed.
+apart 23 updated meetings (2 first stated) and 8 byte-identical reads on 619db5f9e08e to
+77673bfb8fcf, including the 4 new witnesses of meeting 119590, 25 added `nominations`, 8 added
+`publisher_link` `recording_matches` (leaving 2 on listed-only meeting 338820) and
+`meeting_coverage` (10 first-stated rows plus 2 basis, 3 count, 2 reason and 7 state changes on
+updated meetings; 54 blocking groups), and 31 updated meetings (13 first stated) and 9
+byte-identical reads on 630164505301 to 619db5f9e08e, including 22 reordered witnesses, 10 added
+`nominations`, 1 added bill (`119-s-5289`), 18 added `publisher_link` `recording_matches` and
+`meeting_coverage` (65 first-stated rows plus 4 zero-count `transcript` state changes; 74 blocking
+groups); what still stops on those pairs is other sources (transcripts, transcript-based outcomes,
+newly captured documents and recordings, the MODS reader change) and one meeting only listed.
 
 These checks compare the candidate with the live release and read no file, so they show only
 that the candidate is consistent with itself: a made-up hash applied to every row of one old
@@ -211,9 +237,14 @@ capture table: it must be a captured body, and every receipt holding it must be 
 live release's receipt set. Every detail read a meeting names for the first time must be a
 capture line at that receipt, line and index, outside the live receipt set, requesting the
 read's address, holding its body (a byte-identical re-fetch names an old body in a new line) and
-fetched at the read's own time, which the comparison requires later than the live read. A
-reviewed publish has the comparison and the reviewer. Neither can see whether the body holds the
-published values.
+fetched at the read's own time, which the comparison requires later than the live read; and when
+any Congress.gov meeting update is present, no new receipt in the capture table may hold a new
+House meeting XML body accompanying an updated meeting (catching a null-status, unchanged-stamp
+House XML read, which leaves no trace in `meetings.parquet` yet leads title, date and videos). A
+reviewed publish has the comparison and the reviewer. Cannot see: whether the body holds the
+published values; a Senate committee page fetched on the same night without moving status
+sightings; or a multi-meeting document's `measure_keys` already present in base documents entering
+an updated meeting's `subject_keys` on the same night.
 
 A cause record drafted against the comparison before these rules (2026-11-11) no longer matches
 after them: the exempt rows leave their groups, so a recorded count is too large and an entry for
