@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { handleRequest } from "../src/gateway.ts";
 
-const publication = "https://congressional-data.spicygov.ai/viewer-publications/releases/63016450530114d8ebc03d2936dc8293250ffd546bf00d5205909345216e5e78/manifest.json";
+const publication = "https://congressional-data.spicygov.ai/viewer-publications/releases/77673bfb8fcfde6d6745e01218069a2a7aeac25f060d70899d011908919cd82c/manifest.json";
 const env: Pick<Env, "PUBLICATION" | "MCP_RATE_LIMITER"> = {
   PUBLICATION: publication, MCP_RATE_LIMITER: { limit: async () => ({ success: true }) },
 };
