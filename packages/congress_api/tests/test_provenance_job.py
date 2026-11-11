@@ -25,8 +25,8 @@ def test_native_job_creates_a_fresh_work_root_before_writing_its_spec(tmp_path):
 
 STEPS=[dict(name='one',sql='SELECT 1 AS x')]
 # An engine failure's first line is its code, then (on an engine that names it, the one line's X2) the failing
-# statement, then the cause.
-STATEMENT=r'(?:(?:query|step|output) \d+ "[^"]+": )?'
+# statement, then the cause. A query() job holds only its planning query "columns" and the statement "query".
+QUERY_STATEMENT=r'(?:query \d+ "(?:columns|query)": )?'
 
 
 def native():
@@ -152,8 +152,8 @@ def test_the_memory_limit_reaches_the_engine(tmp_path):
     assert query(native(),sql,dict(big=tmp_path/'big.parquet'))==[dict(n=5000)]
     with pytest.raises(DocSpecFailure) as raised:
         query(native(),sql,dict(big=tmp_path/'big.parquet'),memory_bytes=1<<20)
-    assert re.match(r'(?:capacity|query): '+STATEMENT+
-                    r'(?:External error: capacity: shared memory budget exhausted|Resources exhausted): ',
+    assert re.match(r'(?:capacity|query): '+QUERY_STATEMENT+  # a memory refusal; not a disk one
+                    r'(?:External error: capacity: shared memory budget exhausted: |Resources exhausted: Failed to allocate )',
                     str(raised.value)),str(raised.value)
 
 
@@ -180,7 +180,7 @@ def test_a_failing_statement_raises_the_engines_own_error_first(tmp_path):
     from congress_api.retention.provenance import query
     with pytest.raises(DocSpecFailure) as raised:
         query(native(),'SELECT nope FROM cited',capture_files(tmp_path))
-    assert re.fullmatch('query: '+STATEMENT+r'Schema error: No field named nope\. Valid fields are cited\.sha\.',
+    assert re.fullmatch('query: '+QUERY_STATEMENT+r'Schema error: No field named nope\. Valid fields are cited\.sha\.',
                         str(raised.value).splitlines()[0]),str(raised.value)
     assert '[docspec-metric]' not in str(raised.value)
 
