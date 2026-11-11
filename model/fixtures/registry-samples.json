@@ -9668,6 +9668,246 @@
       "value": "description_repeat",
       "expected": 50,
       "source": "Provisional: Round 2 Unit F sets it from the top 50 (host, description) repeats over the replay rows"
+    },
+    {
+      "id": "page-signals:site_home_page",
+      "registry": "page-signals",
+      "entry": "site_home_page",
+      "value": "https://www.govinfo.gov/",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 95: a web page linked from 35,363 captured pages and published as a document (ct-xj8s); GovInfo's home page"
+    },
+    {
+      "id": "page-signals:site_home_page_query",
+      "registry": "page-signals",
+      "entry": "site_home_page",
+      "value": "https://oversight.house.gov/?option=com_content&view=article&id=1223%253A3-31-11-qwhy-isnt-the-department-of-homeland-security-meeting-the-presidents-standard-on-foiaq&catid=12&Itemid=1",
+      "expected": false,
+      "source": "Authored boundary: an article served at a site's root with a query (a Joomla article, list row 305426) is no home page"
+    },
+    {
+      "id": "page-signals:site_home_page_path",
+      "registry": "page-signals",
+      "entry": "site_home_page",
+      "value": "https://www.senate.gov/committees/help",
+      "expected": false,
+      "source": "Authored boundary: any path after the host is not the home page"
+    },
+    {
+      "id": "page-signals:furniture_docs_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_docs_house_gov",
+      "value": "https://docs.house.gov/Committee/Committees.aspx?Code=AG00",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 116601: a web page linked from 583 captured pages and published as a document (ct-xj8s); the Committee Repository committee list"
+    },
+    {
+      "id": "page-signals:furniture_docs_house_gov_meeting",
+      "registry": "page-signals",
+      "entry": "furniture_docs_house_gov",
+      "value": "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=118730",
+      "expected": false,
+      "source": "Authored boundary: the Repository's meeting page is a meeting's own page, never furniture"
+    },
+    {
+      "id": "page-signals:furniture_docs_house_gov_floor",
+      "registry": "page-signals",
+      "entry": "furniture_docs_house_gov",
+      "value": "https://docs.house.gov/floor/Default.aspx?date=2020-01-06",
+      "expected": false,
+      "source": "Authored boundary: a dated floor schedule (199 published, linked from no captured page) is left a document until the owner decides"
+    },
+    {
+      "id": "page-signals:furniture_agriculture_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_agriculture_house_gov",
+      "value": "https://agriculture.house.gov/calendar/eventslisting.aspx?EventTypeID=213&Timeframe=All",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 291515: a web page linked from 582 captured pages and published as a document (ct-xj8s); an event list"
+    },
+    {
+      "id": "page-signals:furniture_agriculture_house_gov_event",
+      "registry": "page-signals",
+      "entry": "furniture_agriculture_house_gov",
+      "value": "https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=3939",
+      "expected": false,
+      "source": "Authored boundary: an event page (list row 291171, linked from 18 pages) is a real page"
+    },
+    {
+      "id": "page-signals:furniture_democrats_agriculture_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_democrats_agriculture_house_gov",
+      "value": "https://democrats-agriculture.house.gov/calendar/default.aspx?CategoryID=14892&Page=2",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 288561: a web page linked from 1 captured page and published as a document (ct-xj8s); a calendar page"
+    },
+    {
+      "id": "page-signals:furniture_armedservices_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_armedservices_house_gov",
+      "value": "https://armedservices.house.gov/calendar/?EventTypeID=213",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 4: a web page linked from 108 captured pages and published as a document (ct-xj8s); the markups calendar"
+    },
+    {
+      "id": "page-signals:furniture_edworkforce_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_edworkforce_house_gov",
+      "value": "https://edworkforce.house.gov/calendar/list.aspx?EventTypeID=189",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 307960: a web page linked from 409 captured pages and published as a document (ct-xj8s); a calendar list"
+    },
+    {
+      "id": "page-signals:furniture_democrats_financialservices_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_democrats_financialservices_house_gov",
+      "value": "https://democrats-financialservices.house.gov/events/eventslisting.aspx?EventTypeID=575",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 291524: a web page linked from 88 captured pages and published as a document (ct-xj8s); an event list"
+    },
+    {
+      "id": "page-signals:furniture_transportation_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_transportation_house_gov",
+      "value": "https://transportation.house.gov/calendar/?EventTypeID=541",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: the committee calendar, published as a document (ct-xj8s)"
+    },
+    {
+      "id": "page-signals:furniture_democrats_transportation_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_democrats_transportation_house_gov",
+      "value": "https://democrats-transportation.house.gov/committee-activity/markups",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 308859: a web page linked from 1,491 captured pages and published as a document (ct-xj8s); the markups index"
+    },
+    {
+      "id": "page-signals:furniture_democrats_waysandmeans_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_democrats_waysandmeans_house_gov",
+      "value": "https://democrats-waysandmeans.house.gov/committee-activity/markups/all?page=2",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 281756: a web page linked from 5 captured pages and published as a document (ct-xj8s); the markups index, page 3"
+    },
+    {
+      "id": "page-signals:furniture_democrats_waysandmeans_house_gov_markup",
+      "registry": "page-signals",
+      "entry": "furniture_democrats_waysandmeans_house_gov",
+      "value": "https://democrats-waysandmeans.house.gov/committee-activity/markups/health-markup-3",
+      "expected": false,
+      "source": "Authored boundary: a markup page under the index is a real page"
+    },
+    {
+      "id": "page-signals:furniture_waysandmeans_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_waysandmeans_house_gov",
+      "value": "https://waysandmeans.house.gov/hearings/",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 296731: a web page linked from 6 captured pages and published as a document (ct-xj8s); the hearings index"
+    },
+    {
+      "id": "page-signals:furniture_foreignaffairs_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_foreignaffairs_house_gov",
+      "value": "https://foreignaffairs.house.gov/committee-activity/hearings/all",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 281758: a web page linked from 8 captured pages and published as a document (ct-xj8s); the hearings index"
+    },
+    {
+      "id": "page-signals:furniture_energy_senate_gov",
+      "registry": "page-signals",
+      "entry": "furniture_energy_senate_gov",
+      "value": "https://www.energy.senate.gov/committee-activity/business-meetings/?mt_page=2",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 8: a web page linked from 2 captured pages and published as a document (ct-xj8s); the business meetings index, page 2"
+    },
+    {
+      "id": "page-signals:furniture_energy_senate_gov_hearing",
+      "registry": "page-signals",
+      "entry": "furniture_energy_senate_gov",
+      "value": "https://www.energy.senate.gov/hearings/hearings-2019-11-full-committee/",
+      "expected": false,
+      "source": "Authored boundary: a hearing page is a real page"
+    },
+    {
+      "id": "page-signals:furniture_energycommerce_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_energycommerce_house_gov",
+      "value": "https://republicans-energycommerce.house.gov/news",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 311317: a web page linked from 125 captured pages and published as a document (ct-xj8s); the news index, where three removed press releases redirect"
+    },
+    {
+      "id": "page-signals:furniture_democrats_budget_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_democrats_budget_house_gov",
+      "value": "https://democrats-budget.house.gov/news/press-releases",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 314516: a web page linked from 115 captured pages and published as a document (ct-xj8s); the press release index"
+    },
+    {
+      "id": "page-signals:furniture_budget_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_budget_house_gov",
+      "value": "https://budget.house.gov/hearings?PageNum_rs=2&",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 296737: a web page linked from 2 captured pages and published as a document (ct-xj8s); the hearings index, page 2"
+    },
+    {
+      "id": "page-signals:furniture_budget_house_gov_hearing",
+      "registry": "page-signals",
+      "entry": "furniture_budget_house_gov",
+      "value": "https://budget.house.gov/hearing/04/30/2025/the-fiscal-state-of-the-nation",
+      "expected": false,
+      "source": "Authored boundary: a hearing detail page is a real page"
+    },
+    {
+      "id": "page-signals:furniture_democrats_veterans_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_democrats_veterans_house_gov",
+      "value": "https://democrats-veterans.house.gov/events/roundtables",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 316713: a web page linked from 73 captured pages and published as a document (ct-xj8s); the roundtables index"
+    },
+    {
+      "id": "page-signals:furniture_humanrightscommission_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_humanrightscommission_house_gov",
+      "value": "https://humanrightscommission.house.gov/events/hearings",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 296345: a web page linked from 6 captured pages and published as a document (ct-xj8s); the hearings index"
+    },
+    {
+      "id": "page-signals:furniture_appropriations_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_appropriations_house_gov",
+      "value": "https://appropriations.house.gov/committee-activity/enacted-legislation/fiscal-year-2020-enacted-legislation",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 292857: a web page linked from 68 captured pages and published as a document (ct-xj8s); one fiscal year of the enacted-legislation index"
+    },
+    {
+      "id": "page-signals:furniture_science_house_gov",
+      "registry": "page-signals",
+      "entry": "furniture_science_house_gov",
+      "value": "https://science.house.gov/markups?label_id=3506B7CC-B79A-433B-B6BE-5810DC769F84",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 308856: a markups label listing published as a document (ct-xj8s)"
+    },
+    {
+      "id": "page-signals:furniture_science_house_gov_markup",
+      "registry": "page-signals",
+      "entry": "furniture_science_house_gov",
+      "value": "https://republicans-science.house.gov/markups?ID=1965D20D-9159-418E-8B04-D4445D08A00E",
+      "expected": false,
+      "source": "Authored boundary: a markup page addressed by its ID is a real page"
+    },
+    {
+      "id": "page-signals:furniture_judiciary_senate_gov",
+      "registry": "page-signals",
+      "entry": "furniture_judiciary_senate_gov",
+      "value": "https://www.judiciary.senate.gov/search",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, list row 317266: the site search page published as a document (ct-xj8s)"
     }
   ]
 }
