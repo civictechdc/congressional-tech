@@ -23,3 +23,7 @@ Phase 1: a failing step, output and query are each named with the code unchanged
 **2026-11-10T16:39:20Z**
 
 2026-11-10: re-homed with the same owner decision (ct-x00f): phase 1 continues on the pinned line until reviewed, then lands on dx/one-line by merge. Expect conflicts there in the four files the one line also changed: src/job/spec.rs, src/job.rs, src/main.rs, src/job/json_lines.rs (predicted from both lines having changed them; to be measured by a trial merge). Phase 2 (everything written through src/job/metrics.rs: start line, real memory, the shared half's lowest available per statement beside the count of refused copies) is built on dx/one-line after the memory fix's final tip is merged there.
+
+**2026-11-11T00:45:17Z**
+
+2026-11-11 (W3 builder, for the second manager): one pipeline test matches an engine error line whole: packages/congress_api/tests/test_provenance_job.py:58 asserts that the first line is 'query: Execution error: absent line 1: source open failed' (added by b1121f14, W1's tests, now on main; line and commit checked here). The one line already changes that text (it adds the path and the OS error), and X2 adds the failing statement's name ('query 1 "q": '), so the pin move to the one line must update that assertion: the acceptance's 'no pipeline caller that matches engine error text breaks' holds only with that update. Managed jobs and job-plan run their own statement loops, so X2 phase 1 leaves their errors unnamed. (The engine-side statements are the manager's reading of the two lines, not re-read here.)

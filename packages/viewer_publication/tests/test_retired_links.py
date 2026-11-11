@@ -7,30 +7,11 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from archive_job_fixture import real_model_spec
+from archive_job_fixture import fake_release, real_model_spec
 from docspec_client.client import NativeDatasets
 
 K = lambda letter: (letter * 8).encode()
 BASE, HISTORY = 'b' * 64, 'c' * 64
-
-
-def fake_release(directory, release_id, rows, retired=None, addresses=None):
-    """rows: [(filename, primary_key, [keys])]; only the files the ledger reads.
-    addresses: [(list_row, url)] source addresses."""
-    directory.mkdir(parents=True)
-    addresses = addresses or []
-    pq.write_table(pa.table({'list_row': pa.array([r for r, _ in addresses], pa.int32()), 'url': [u for _, u in addresses],
-                             'member_path': pa.array([None] * len(addresses), pa.string())}), directory / 'sources.parquet')
-    pq.write_table(pa.table({'filename': [r[0] for r in rows]}), directory / 'list.parquet')
-    pq.write_table(pa.table({'link_key': pa.array([r[1] for r in rows], pa.binary(8))}), directory / 'detail.parquet')
-    links = [(key, i) for i, r in enumerate(rows) for key in r[2]]
-    pq.write_table(pa.table({'link_key': pa.array([k for k, _ in links], pa.binary(8)),
-                             'list_row': pa.array([i for _, i in links], pa.int32())}), directory / 'links.parquet')
-    if retired is not None:
-        from viewer_publication.release_gate import RETIRED
-        pq.write_table(pa.Table.from_pylist(retired, schema=RETIRED), directory / 'retired_links.parquet')
-    (directory / 'manifest.json').write_text(json.dumps({'release_id': release_id}))
-    return directory
 
 
 def build(tmp_path, spec, prior, retired, root=None):
