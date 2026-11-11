@@ -2,7 +2,7 @@
 id: ct-b7bv
 status: open
 deps: []
-links: []
+links: [ct-arlk]
 created: 2026-11-10T13:27:30Z
 type: chore
 priority: 3
