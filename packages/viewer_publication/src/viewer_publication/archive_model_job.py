@@ -6,6 +6,9 @@ checkout's model to the completed daily a candidate holds, as the publisher bind
 keeps the spec, the runtime copy and its workspace, the ledger, output and scratch in the
 build folder. ``--ledger``/``--ledger-base`` pass the retired-link ledger the publisher
 passes, and ``--expect-release-id`` fails a control build that does not reproduce a release.
+``--plan`` checks every pinned local input against its pin and names each one missing or
+changed, in seconds; run it before a watched ``--execute``, which repeats the check before it
+builds a runtime but only after the watchdog has admitted it.
 """
 import argparse
 from contextlib import contextmanager
@@ -162,28 +165,80 @@ def validate_spec(value,*,base):
     return result
 
 
-def _spicy_arguments(pin,hold):
-    """Read the pinned spicy-regs input and hold each table it binds to a stated generation.
+def _spicy_tables(text,base):
+    """The generations a spicy-regs input states and the tables it pins, by name, with local paths.
 
     Each table path is ``generations/<family>/<digest>/<key>``, spicy-regs' own layout, so a
     table cannot be read under a generation other than the one its family states.
     """
     from viewer_publication.archive_model import SPICY_SCHEMAS,spicy_generations
-    value=json.loads(Path(hold(pin)).read_text())
+    value=json.loads(text)
     if not isinstance(value,dict) or set(value)!={'version','source','generations','tables'} or value['version']!=1:
         raise ValueError('spicy-regs input requires version 1, its source, generations and tables')
     generations=spicy_generations(value['generations'])
     tables=value['tables']
     if not isinstance(tables,dict) or set(tables)!=set(SPICY_SCHEMAS):
         raise ValueError('spicy-regs input must pin every table: '+', '.join(sorted(SPICY_SCHEMAS)))
-    base=Path(pin['path']).parent;held={}
+    pinned={}
     for name,table in sorted(tables.items()):
         _pin(table,{'family','key','path','sha256','size','rows'})
         if table['family'] not in generations or table['path']!=(
                 f"generations/{table['family']}/{generations[table['family']]}/{table['key']}"):
             raise ValueError('spicy-regs table is not under its stated generation: '+name)
-        held[name]=dict(kind='parquet',path=hold(dict(table,path=_local(table['path'],base))))
-    return dict(generations=generations,tables=held)
+        pinned[name]=dict(table,path=_local(table['path'],base))
+    return generations,pinned
+
+
+def _spicy_arguments(pin,hold):
+    """Read the pinned spicy-regs input and hold each table it binds to a stated generation."""
+    generations,tables=_spicy_tables(Path(hold(pin)).read_text(),Path(pin['path']).parent)
+    return dict(generations=generations,tables={name:dict(kind='parquet',path=hold(table)) for name,table in tables.items()})
+
+
+def check_inputs(spec):
+    """Check every pinned local input against its pin and name each one missing or changed.
+
+    One sha256 and size pass per file, by file_identity, the pass model_arguments makes when it
+    holds a file, so a bound but unfetched or changed file is refused in seconds, before any
+    runtime, folder or watchdog admission. Returns {path: VerifiedFile}, model_arguments'
+    verified_files, so execution reads each file once. A lake table is pinned by snapshot and is
+    not read here; the spicy-regs input is checked before the tables it names are.
+    """
+    identities,problems={},[]
+    def check(label,pin):
+        path=pin['path']
+        try:
+            if path not in identities:identities[path]=file_identity(path)
+            check_identity(identities[path],dict(sha256=pin['sha256'],bytes=pin['size']),path)
+            return True
+        except OSError:problems.append(f'Pinned model input missing: {path} ({label})')
+        except ValueError:problems.append(f'Pinned model input changed: {path} ({label})')
+        return False
+    for name in PROVENANCE:
+        for value in spec[name]:check(name+' '+value['key'],value)
+    for name in (*TABLES,*OPTIONAL_TABLES):
+        if spec.get(name) is not None and spec[name]['kind']=='parquet':check(name,spec[name])
+    for name in ('historical_recording_matcher','recovery_requirements'):
+        if spec.get(name) is not None:check(name,spec[name])
+    spicy=spec.get('spicy_regs')
+    if spicy is not None and check('spicy_regs',spicy):
+        for name,table in _spicy_tables(Path(spicy['path']).read_text(),Path(spicy['path']).parent)[1].items():
+            check('spicy_regs '+name,table)
+    if problems:raise ValueError(f'{len(problems)} pinned model inputs missing or changed: '+'; '.join(problems))
+    return identities
+
+
+def _require_fresh(spec):
+    for name in ['output','scratch']:
+        path=Path(spec[name])
+        if path.exists() or path.is_symlink():
+            raise ValueError('Model output and scratch must be fresh')
+
+
+def preflight(spec):
+    """What execution checks before it builds a runtime or holds anything: fresh output and scratch, then the inputs."""
+    _require_fresh(spec)
+    return check_inputs(spec)
 
 
 @contextmanager
@@ -194,10 +249,7 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
     Custody checks on exit reject in-place changes before the caller accepts output.
     One physical file has one verification and one retained name, including aliases.
     """
-    for name in ['output','scratch']:
-        path=Path(spec[name])
-        if (path.exists() or path.is_symlink()) and not allow_existing_output:
-            raise ValueError('Model output and scratch must be fresh')
+    if not allow_existing_output:_require_fresh(spec)
     if verified_files is None:verified_files={}
     if not isinstance(verified_files,Mapping):raise ValueError('Verified input custody must be a path mapping')
     etags=None
@@ -342,12 +394,15 @@ def ledger_files(spec,*,ready=None,base=None):
     return prior_links(base,[],folder)
 
 
-def execute(spec,*,prior_links=None,base_retired=None):
+def execute(spec,*,prior_links=None,base_retired=None,verified_files=None):
     """Verify inputs, then invoke the one maintained model producer.
 
     prior_links/base_retired are the retired-link ledger (ledger_files); without them the
     model's ledger starts empty, and every key the base had retired vanishes from the release.
+    verified_files is preflight's result when the caller has run it already (the CLI does,
+    before it derives a ledger); otherwise preflight runs here first.
     """
+    if verified_files is None:verified_files=preflight(spec)
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_model import build_release
     engine_config=spec['engine_config']
@@ -355,7 +410,7 @@ def execute(spec,*,prior_links=None,base_retired=None):
     # build names the runtime copy in its build folder, so it never falls back.
     if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
         engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
-    with model_arguments(spec) as arguments:
+    with model_arguments(spec,verified_files=verified_files) as arguments:
         with NativeDatasets.from_config(engine_config) as engine:
             manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
                 catalog_version=spec['catalog_version'],engine=engine,
@@ -399,12 +454,15 @@ def main(argv=None):
         if spec.get('status')=='blocked':
             print(json.dumps(spec,sort_keys=True));return 2
         if args.execute:
+            verified=preflight(spec)
             prior,retired=ledger_files(spec,ready=args.ledger,base=args.ledger_base)
-            result=execute(spec,prior_links=prior,base_retired=retired)
+            result=execute(spec,prior_links=prior,base_retired=retired,verified_files=verified)
         else:
+            verified=check_inputs(spec)
             result=dict(status='planned',executed=False,
                 inputs={name:spec[name] for name in (*TABLES,*OPTIONAL_TABLES) if spec.get(name) is not None},output=spec['output'],scratch=spec['scratch'],
-                parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version'])
+                parser_versions=spec['parser_versions'],catalog_version=spec['catalog_version'],
+                verified_inputs=dict(files=len(verified),bytes=sum(identity['bytes'] for identity in verified.values())))
             if spec.get('historical_recording_matcher'):
                 result['inputs']['historical_recording_matcher']=spec['historical_recording_matcher']
             if spec.get('text_index'):

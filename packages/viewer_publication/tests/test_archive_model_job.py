@@ -542,16 +542,27 @@ def engine_runtime(tmp_path):
     return runtime
 
 
-def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys):
+def recorded_input_checks(monkeypatch):
+    """Record the specs plan checks instead of reading their inputs: the checkout's template binds spicy-regs tables
+    that a checkout may not have fetched, and these tests are about binding, not about those tables."""
+    import viewer_publication.archive_model_job as job
+    checked=[]
+    monkeypatch.setattr(job,'check_inputs',lambda spec:checked.append(spec) or {})
+    return checked
+
+
+def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys,monkeypatch):
     """The daily's pins, catalog version and provenance records (read from the candidate's own copies), and
-    the checkout's template for everything else; output, scratch, runtime and workspace in the build folder."""
+    the checkout's template for everything else; output, scratch, runtime and workspace in the build folder.
+    Plan then checks the inputs of exactly the spec it bound."""
     from viewer_publication.archive_model_job import PROVENANCE,TABLES,load_spec,main
     candidate=tmp_path/'candidate';summary=daily_candidate(candidate);runtime=engine_runtime(tmp_path)
-    build=(tmp_path/'arm').resolve()
+    build=(tmp_path/'arm').resolve();checked=recorded_input_checks(monkeypatch)
     assert main(['--from-candidate',str(candidate),'--build',str(build),'--runtime',str(runtime)])==0
     report=json.loads(capsys.readouterr().out)
     assert report['status']=='planned' and report['executed'] is False and report['spec']==str(build/'model-spec.json')
     assert report['model_definition_changes_from_candidate']==[]
+    assert checked==[load_spec(build/'model-spec.json')]
     bound=json.loads((build/'model-spec.json').read_text())
     for name in TABLES:
         assert bound[name]==dict(summary['pins'][name],kind='native_table')
@@ -572,7 +583,7 @@ def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys):
     assert load_spec(build/'model-spec.json')==bound
 
 
-def test_a_changed_model_binds_and_names_the_definition_files_it_changed(tmp_path,capsys):
+def test_a_changed_model_binds_and_names_the_definition_files_it_changed(tmp_path,capsys,monkeypatch):
     """Building a changed model on the candidate's pinned inputs is the command's purpose, and a changed
     model can still reproduce the release id; so nothing is refused, and the result line names every
     definition file added, removed or changed since the candidate's model intent. None: a control build."""
@@ -581,7 +592,7 @@ def test_a_changed_model_binds_and_names_the_definition_files_it_changed(tmp_pat
     from viewer_publication.archive_model_profile import _definition_hashes
     current=_definition_hashes(ROOT);changed,dropped=sorted(current)[:2]
     recorded={**{name:pin for name,pin in current.items() if name!=dropped},changed:'0'*64,'model/sql/retired-step.sql':'1'*64}
-    candidate=tmp_path/'candidate';daily_candidate(candidate,definitions=recorded)
+    candidate=tmp_path/'candidate';daily_candidate(candidate,definitions=recorded);recorded_input_checks(monkeypatch)
     assert main(['--from-candidate',str(candidate),'--build',str(tmp_path/'arm'),'--runtime',str(engine_runtime(tmp_path))])==0
     report=json.loads(capsys.readouterr().out)
     assert report['model_definition_changes_from_candidate']==sorted([changed,dropped,'model/sql/retired-step.sql'])
