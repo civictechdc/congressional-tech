@@ -36,7 +36,9 @@ PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
-# The runtime fields that name files; the client resolves them against the runtime file.
+# The runtime fields that name files; the client resolves them against the runtime file. The third copy
+# of this list (archive_publish_job.publication_configuration and docspec_client's
+# NativeDatasets.from_config hold the others): giving it one owner is W5's (ct-64t4).
 RUNTIME_PATHS=('binary','workspace','remote','limits','credentials')
 RELEASE_ID=re.compile('[a-f0-9]{12,64}')
 
@@ -268,7 +270,7 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
 
 
 def bind_candidate(candidate,build,runtime):
-    """Write ``<build>/model-spec.json`` for the completed daily a candidate holds; return its path.
+    """Write ``<build>/model-spec.json`` for the completed daily a candidate holds.
 
     The binding is the publisher's resume path (``resume_daily_inputs``): the daily summary
     must match the digest sealed in the candidate's model intent, and completed_daily_inputs
@@ -277,14 +279,25 @@ def bind_candidate(candidate,build,runtime):
     A candidate is a copy, so each record is read from its own archive-daily-provenance; the
     pins check those bytes when the build holds them. The runtime is copied with its file paths
     made absolute and its workspace in the build; the credentials file is named, never opened.
+    Returns the spec's path and the model definition files added, removed or changed since the
+    candidate's model intent: a changed model is what the command is for, so it is reported, not
+    refused (``_require_model_definition`` refuses a publisher resume on the same comparison).
     """
-    # Imported here: archive_publish_job imports this module.
+    # Imported here: archive_controller and archive_publish_job import this module.
+    from viewer_publication.archive_controller import _read_continuation
+    from viewer_publication.archive_model_profile import _definition_hashes
     from viewer_publication.archive_publish_job import ROOT,resume_daily_inputs
     candidate,build,runtime=Path(candidate).resolve(),Path(build).resolve(),Path(runtime).resolve()
     if build.exists() or build.is_symlink():raise ValueError('The build folder must be fresh: '+str(build))
     template=load_spec(ROOT/'model/jobs/publish-model.json')
     model=resume_daily_inputs(template,dict(work=str(candidate/'archive-daily')),
                                publish_work=candidate/'archive-publish')['model']
+    _,intent=_read_continuation(candidate/'archive-publish',daily=True)
+    try:
+        recorded,current=intent['profile']['profile']['file_hashes'],_definition_hashes(ROOT)
+        changes=sorted(name for name in recorded.keys()|current.keys() if recorded.get(name)!=current.get(name))
+    except (KeyError,TypeError,AttributeError):
+        raise ValueError("The candidate's model intent lacks its model definition hashes") from None
     held=candidate/'archive-daily-provenance'
     for name in PROVENANCE:
         model[name]=[dict(row,path=str(held/Path(row['path']).name)) for row in model[name]]
@@ -292,18 +305,28 @@ def bind_candidate(candidate,build,runtime):
     if missing:raise ValueError('Provenance file not in the candidate: '+', '.join(missing))
     settings=json.loads(runtime.read_text())
     if not isinstance(settings,dict):raise ValueError('Engine runtime must be an object: '+str(runtime))
-    # archive_publish_job.publication_configuration resolves the same fields for its upload runtime.
     settings={name:_local(value,runtime.parent) if name in RUNTIME_PATHS else value for name,value in settings.items()}
     (build/'workspace').mkdir(parents=True)
     (build/'runtime.json').write_text(json.dumps(dict(settings,workspace=str(build/'workspace')),indent=1))
     path=build/'model-spec.json'
     path.write_text(json.dumps(dict(model,output=str(build/'archive-release'),scratch=str(build/'archive-model'),
                                     engine_config=str(build/'runtime.json')),indent=1,sort_keys=True))
-    return path
+    return path,changes
+
+
+def check_ledger(*,ready=None,base=None):
+    """Refuse a ledger the build cannot read, before a candidate is bound or anything is written."""
+    if ready is not None:
+        for name in ('prior_links','prior_sources','base_retired'):
+            if not (Path(ready)/(name+'.parquet')).is_file():
+                raise ValueError(f'Ledger folder lacks {name}.parquet: {Path(ready).resolve()}')
+    if base is not None:
+        from viewer_publication.release_gate import require_ledger_history
+        require_ledger_history(base,[])
 
 
 def ledger_files(spec,*,ready=None,base=None):
-    """The retired-link ledger the publisher passes, as (prior_links, base_retired) paths.
+    """The retired-link ledger the publisher passes, as (prior_links, base_retired) paths; check_ledger first.
 
     ``ready`` holds the files a past publish wrote (its ``archive-publish/ledger``); ``base`` is
     a release folder carrying retired_links.parquet, derived beside the output by the same two
@@ -311,12 +334,9 @@ def ledger_files(spec,*,ready=None,base=None):
     """
     if ready is not None:
         ready=Path(ready).resolve()
-        for name in ('prior_links','prior_sources','base_retired'):
-            if not (ready/(name+'.parquet')).is_file():raise ValueError(f'Ledger folder lacks {name}.parquet: {ready}')
         return ready/'prior_links.parquet',ready/'base_retired.parquet'
     if base is None:return None,None
-    from viewer_publication.release_gate import prior_links,require_ledger_history
-    require_ledger_history(base,[])
+    from viewer_publication.release_gate import prior_links
     folder=Path(spec['output']).parent/'ledger'
     if folder.exists() or folder.is_symlink():raise ValueError('The derived ledger folder must be fresh: '+str(folder))
     return prior_links(base,[],folder)
@@ -355,7 +375,8 @@ def main(argv=None):
     source.add_argument('--spec',type=Path)
     source.add_argument('--from-candidate',type=Path,metavar='CANDIDATE',
         help='a completed daily candidate (archive-daily, archive-daily-provenance, archive-publish) to bind into --build')
-    parser.add_argument('--build',type=Path,help='fresh folder for the spec, runtime copy, workspace, ledger, output and scratch')
+    parser.add_argument('--build',type=Path,help='fresh folder for the spec, runtime copy, workspace, ledger, output and scratch; '
+                        'nothing removes it (a full build leaves about 1.6 GiB)')
     parser.add_argument('--runtime',type=Path,help='the engine runtime file the build copies, its workspace moved into --build')
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
     ledger=parser.add_mutually_exclusive_group()
@@ -372,7 +393,8 @@ def main(argv=None):
     if args.from_candidate and args.execute and not (args.ledger or args.ledger_base):
         parser.error('A candidate build needs the ledger its publisher passed: --ledger or --ledger-base')
     try:
-        path=bind_candidate(args.from_candidate,args.build,args.runtime) if args.from_candidate else args.spec
+        check_ledger(ready=args.ledger,base=args.ledger_base)
+        path,changes=bind_candidate(args.from_candidate,args.build,args.runtime) if args.from_candidate else (args.spec,None)
         spec=load_spec(path)
         if spec.get('status')=='blocked':
             print(json.dumps(spec,sort_keys=True));return 2
@@ -387,7 +409,7 @@ def main(argv=None):
                 result['inputs']['historical_recording_matcher']=spec['historical_recording_matcher']
             if spec.get('text_index'):
                 result['text_index']=spec['text_index']
-        if args.from_candidate:result['spec']=str(path)
+        if args.from_candidate:result.update(spec=str(path),model_definition_changes_from_candidate=changes)
     except (ValueError,OSError) as error:parser.error(str(error))
     print(json.dumps(result,sort_keys=True))
     if args.expect_release_id and not result['release_id'].startswith(args.expect_release_id):
