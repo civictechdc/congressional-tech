@@ -441,7 +441,8 @@ def render_compare(result):
     runs, counts, pool, limit = result['runs'], result['counts'], result['pool_peak'], result['thresholds']
 
     def kinds(counted):
-        return ', '.join(f'{number} {kind}' + ('s' * (number != 1)) for kind, number in counted.items())
+        return ', '.join(f'{number} {kind if number == 1 else "queries" if kind == "query" else kind + "s"}'
+                         for kind, number in counted.items())
 
     def logged(title, field):
         def side(run):
