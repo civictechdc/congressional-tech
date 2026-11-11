@@ -1,6 +1,6 @@
 ---
 id: ct-egoo
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-10T20:37:59Z
@@ -23,3 +23,17 @@ Each of the three is decided by the owner and either built with a before/after c
 **2026-11-11T14:44:37Z**
 
 validated 2026-11-11, left open: all three are owner questions and none has been answered (no commit or note since the split from ct-m878).
+
+**2026-11-11T16:08:44Z**
+
+2026-11-11 BUILT on branch claude/ct-govinfo-synonyms (404dcf97 tests, 6d2f9b19 fix; local, not pushed, no full build). Owner's choice: list parts, keep number, stop fetching. Investigation: .cache/archive-release/investigations/govinfo-synonyms-20261111/NOTES.md (gs_* scripts, gs-* outputs). Predictions are DuckDB on the live 77673bfb8fcf tables, not a build.
+
+1. List parts. A package page that names no saved file is now an address of each document its granule pages took (landing-pages.sql; the per-page pick moved to landing-page-picks.sql). Because the live ledger carries the two notices as written (empty), retired-links.sql now lists, for a landing page's key, the documents at the page's own address. Predicted: CHRG-115hhrg24725 -> list_rows 93905 (pt1.pdf), 93908 (pt2.pdf); CHRG-116hhrg49571 -> 97784 (add1.pdf), 97786 (err.pdf). +4 unsaved sources rows, +4 urls rows, notices CB0383AF1FD10C1E and 97FB468681B8AC87 list 2 parts each; the other 34,824 page notices are identical under the new rule; unplaced_landing_pages 2 -> 0. Documents and link keys unchanged.
+
+2. Keep number. The number is also in the package's own MODS (<preferredCitation>S. Hrg. 116-439</preferredCitation>, House "Serial No. 115-3"), which capture fetches (govinfo/mods); no model input reads that field yet (neither MODS branch adds it), so this build reads it from the details page title already held (source_annotations.reading_title, all 34,826 pages). Page signal govinfo_details_title keeps only titles that print a number: 19,133 of 34,826 pages; 15,691 print only GovInfo's "House Hearing, 111th Congress" label and fill nothing. The number-bearing title fills a hearing title that is empty or starts "- " (GovInfo's text title with the number slot empty). Predicted: 19,032 of the 34,720 hearing rows change (18,593 "- X" -> "S. Hrg. 118-265 - X", 439 empty filled); 15,677 keep theirs (label-only page); 11 own titles kept. For new packages (no details page) the number needs MODS preferredCitation: follow-up once the MODS hearing-records release lands.
+
+3. Stop fetching. Finding: capture already does not fetch details pages. No capture-scope family ever matched /app/details/ (registry born 2026-10-27) and plan_queue queues only URLs with a family; capture ran 2026-10-30 and 11-08 with no details fetch. The 34,831 url_state rows were captured by the one-off 2026-10-05 CI download as family documents and still read eligible, due weekly. Change: the documents family names ^https?://(www.)?govinfo.gov/app/details/ as an exclusion, so url_state marks those rows excluded (scope_exclusion) and the scheduler counts them done. Predicted: 34,831 url_state rows eligible -> excluded; capture_scope.json changes.
+
+Tests (runner, partial): 404dcf97 failed first (5 failed, 5 passed); after the fix 22 passed (two-build landing test with two parts and the title fill, planted-defect counts, carried-notice ledger test, url_state exclusion with the real registry, scheduler refusal, registry samples). A full build must confirm the counts above and needs cause records for: titles (19,032), sources/urls (+4 each), retired_links address_versions (2), url_state capture_disposition (34,831).
+
+Open for the owner: whether the 15,691 label-only pages ("House Hearing, 111th Congress - X") should also fill "- X" titles (GovInfo's display title, but no number).
