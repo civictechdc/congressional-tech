@@ -9,6 +9,45 @@ SPICY_GENERATIONS={'amendments':'6'*64,'bill-family':'3'*64,'committee-rosters':
                    'members':'2'*64,'nominations':'4'*64,'roll-call-votes':'5'*64}
 
 
+class _Submitted(Exception):
+    pass
+
+
+class _Capture:
+    """Records the job the build submits instead of running it."""
+    def __init__(self, engine, path):
+        self.engine, self.path = engine, path
+
+    def __getattr__(self, name):
+        return getattr(self.engine, name)
+
+    def run_job(self, path, log=None):
+        import shutil
+        shutil.copy(path, self.path)
+        raise _Submitted
+
+
+def fake_release(directory, release_id, rows, retired=None, addresses=None):
+    """rows: [(filename, primary_key, [keys])]; only the files the ledger reads.
+    addresses: [(list_row, url)] source addresses."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    directory.mkdir(parents=True)
+    addresses = addresses or []
+    pq.write_table(pa.table({'list_row': pa.array([r for r, _ in addresses], pa.int32()), 'url': [u for _, u in addresses],
+                             'member_path': pa.array([None] * len(addresses), pa.string())}), directory / 'sources.parquet')
+    pq.write_table(pa.table({'filename': [r[0] for r in rows]}), directory / 'list.parquet')
+    pq.write_table(pa.table({'link_key': pa.array([r[1] for r in rows], pa.binary(8))}), directory / 'detail.parquet')
+    links = [(key, i) for i, r in enumerate(rows) for key in r[2]]
+    pq.write_table(pa.table({'link_key': pa.array([k for k, _ in links], pa.binary(8)),
+                             'list_row': pa.array([i for _, i in links], pa.int32())}), directory / 'links.parquet')
+    if retired is not None:
+        from viewer_publication.release_gate import RETIRED
+        pq.write_table(pa.Table.from_pylist(retired, schema=RETIRED), directory / 'retired_links.parquet')
+    (directory / 'manifest.json').write_text(json.dumps({'release_id': release_id}))
+    return directory
+
+
 def spicy_input(generations=None,**tables):
     """In-memory spicy-regs input: every table stated, absent ones as explicitly empty rows."""
     from viewer_publication.archive_model import SPICY_SCHEMAS
