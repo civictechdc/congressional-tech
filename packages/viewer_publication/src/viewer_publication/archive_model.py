@@ -12,6 +12,8 @@ ROOT=Path(__file__).parents[4]
 REGISTRIES={
     'file_shapes':dict(id='Utf8',pattern='Utf8'),
     'page_signals':dict(id='Utf8',kind='Utf8',pattern='Utf8',number='Int64'),
+    'title_rules':dict(id='Utf8',kind='Utf8',pattern='Utf8'),
+    'title_overrides':dict(link_key='Utf8',title='Utf8',replaces='Utf8',evidence='Utf8'),
     'formats':dict(id='Utf8',kind='Utf8',value='Utf8',rank='Int32'),
     'publisher_kinds':dict(id='Utf8',basis='Utf8',pattern='Utf8',document_kind='Utf8'),
     'display_facts':dict(id='Utf8',field='Utf8',label='Utf8'),
@@ -512,7 +514,21 @@ def _validate_saved_name_decisions(rows):
         ('official','committee','undecided','neither') or not names(row.get('official_name')) or not names(row.get('committee_name')))
 
 
-REVIEWED_REGISTRIES={'bill_package_evidence':_validate_bill_evidence,'saved_name_decisions':_validate_saved_name_decisions}
+def _validate_title_overrides(rows):
+    """Hand corrections (title design Q3): one per document link key, each naming its title, the title it replaced and its
+    evidence, so a later rule change can show a correction is stale (titles.sql applies them first)."""
+    keys=set()
+    for row in rows:
+        key=row.get('link_key')
+        if (set(row)!={'link_key','title','replaces','evidence'} or not isinstance(key,str) or re.fullmatch('[0-9a-f]{16}',key) is None
+                or key in keys or any(not isinstance(row[k],str) or not row[k].strip() or row[k]!=row[k].strip() for k in ('title','evidence'))
+                or row['replaces'] is not None and not isinstance(row['replaces'],str)):
+            raise ValueError('Invalid or duplicate title override: '+str(key))
+        keys.add(key)
+
+
+REVIEWED_REGISTRIES={'bill_package_evidence':_validate_bill_evidence,'saved_name_decisions':_validate_saved_name_decisions,
+    'title_overrides':_validate_title_overrides}
 
 
 def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False,recovered_copies=False):
@@ -606,21 +622,21 @@ SELECT b.doc_key,CASE WHEN coalesce(s.named,false) THEN NULL
 FROM blank b LEFT JOIN seen s ON s.doc_key=b.doc_key"""
 
 
-# A title that is only format, size and download words, checked apart from the page-signals
-# link_word registry that the title rule uses: delete a small vocabulary and every non-letter, and
+# A title that is only format, size and download words, checked apart from the title-rules
+# link_word entries that the title rule uses: delete a small vocabulary and every non-letter, and
 # nothing may remain. "PDF (48.1 MB)" and "Download XML (6KB)" are generic; "Overview" is not.
 # A title with no letter in any script is no title, whatever its length (review finding 7: that class
 # came only from the rule's own link_word_no_name pattern).
 GENERIC_TITLE_SQL="""(o.title IS NOT NULL AND (NOT regexp_like(o.title,'\\p{L}') OR regexp_like(o.title,'[A-Za-z]') AND regexp_replace(lower(o.title),
  '(download|view|click|here|link|pdf|zip|xml|html?|docx?|txt|json|csv|xlsx?|pptx?|kb|mb|gb|bytes?)|[^a-z]','','g')=''))"""
 
-# Listed documents whose title is a link word by the page-signals registry (the rule titles use)
+# Listed documents whose title is a link word by the title-rules registry (the rule titles use)
 # or by GENERIC_TITLE_SQL (an independent small vocabulary): either one refuses the release.
 # The 64-character bound is the rule's (source-annotations-pages.sql): a longer page title that
 # starts like a link word is a real title ("Click Here: Accessible Federal Technolog… | Senate
 # Committee On Aging", a 2022 hearing).
 GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
- LEFT JOIN (SELECT pattern FROM page_signals WHERE kind='link_word') g
+ LEFT JOIN (SELECT pattern FROM title_rules WHERE kind='link_word') g
   ON length(o.title)<=64 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)
  WHERE g.pattern IS NOT NULL OR {GENERIC_TITLE_SQL}"""
 
@@ -1248,11 +1264,12 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += [dict(name='filename_conflicts',sql=FILENAME_CONFLICTS_SQL,materialize=True)]
     steps += _sql_steps(['document-members','archive-container-links','landing-page-files','landing-pages','document-bodies','document-identities','saved-name-standing','saved-files','saved-name-conflicts','document-alternates',
         'document-version-keys','document-versions','document-bill-decisions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
-        'document-rendition-titles','recovered-copy-fills','document-filename-facts'],root=root)
+        'recovered-copy-fills','document-filename-facts'],root=root)
     steps += package_link_steps(root=root)
     steps += appearance_steps(root=root)+witness_key_steps(root=root)+[
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
+    steps += _sql_steps(['titles'],root=root)
     steps += _sql_steps(['document-hearing-date-corrections'],root=root)
     from viewer_publication.archive_model_profile import completeness_checks
     steps += application_steps(root=root)
@@ -1261,15 +1278,15 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     page=','.join(f'coalesce(pm.{c},{PAGE_DEFAULTS[c]}) AS {c}' if c in ('publisher_labels','page_metadata') else f'pm.{c}' for c in PAGE_COLUMNS)
     # hidden is IS TRUE, not coalesce(..., false): same values, and the column stays required when an
     # engine types it from the optimized plan (test_required_flags.py).
-    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
-        coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
+    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(own_title,own_title_source,link_title,component,document_kind,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
+        t.title,t.title_source,coalesce(r.kind_override,n.document_kind) AS document_kind,
         r.hidden IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
         CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
         CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source,{page}
-        FROM document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
+        FROM titles t RIGHT JOIN (document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
             (document_identities d JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)
              ON n.doc_key=d.document_id)
-            ON d.component=r.component) ON d.component=x.component) ON pm.doc_key=n.doc_key""",materialize=True),
+            ON d.component=r.component) ON d.component=x.component) ON pm.doc_key=n.doc_key) ON t.doc_key=n.doc_key""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
     url_state_meeting_dates_sql="""SELECT requested_url,cast(meeting_date AS DATE) AS meeting_date FROM url_state_meeting_dates_input
@@ -1551,6 +1568,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM body_review_key_conflicts) AS body_key_collisions,
             (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
             (SELECT count(*) FROM review_value_diagnostics) AS invalid_review_values,
+            -- Title corrections live in title-overrides.json (title design Q3); a review title_override is refused, never dropped.
+            (SELECT count(*) FROM review_overrides WHERE title_override IS NOT NULL) AS retired_title_reviews,
             (SELECT count(*) FROM document_bill_decisions bd
                 JOIN document_identities d ON bd.component=d.component JOIN ordered o ON d.document_id=o.doc_key
                 WHERE o.package_id IS NOT NULL OR coalesce(array_has_any(o.measure_keys,bd.excluded_measure_keys),false)

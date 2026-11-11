@@ -642,30 +642,8 @@ def test_a_decision_led_by_a_name_the_review_never_read_is_counted(tmp_path):
     assert result['saved_name_decisions_unused']==[dict(entries=1)]
 
 
-def test_a_document_named_by_an_unlisted_copy_keeps_the_link_text_of_its_listed_copy(tmp_path):
-    """ct-h8dr: the name can come from an official copy that no page lists. The fallback title is still the
-    reading title of the first other-format file; with none it is the listing-link text of another copy
-    of the same bytes, in saved-file order. Text on a link to other bytes of the same format titles nothing."""
-    def saved(component,source_id,body,rank,fmt='pdf'):
-        return dict(component=component,source_id=source_id,body_sha=body*64,format=fmt,saved_rank=rank)
-    files=[saved('official','house','1',1),saved('official','site','1',2),saved('official','mirror','1',3),
-           saved('formats','pdf','3',1),saved('formats','html','4',2,'html'),
-           saved('both','chrg','5',1),saved('both','transcript','5',2),saved('both','htm','6',3,'html'),
-           saved('edition','new','7',1),saved('edition','old','8',2),
-           saved('none','only','9',1)]
-    titles=dict(site=(None,'Mr. Steve Mathison'),mirror=(None,'Mathison testimony'),html=('H.R. 5376',None),
-                transcript=(None,'GPO_FINAL_5.19.21.pdf (10.25 MB)'),htm=('- HEARING ON PENDING NOMINATIONS',None),old=(None,'An earlier edition'))
-    inputs=[json_input(tmp_path,'saved_files',files,component='Utf8',source_id='Utf8',body_sha='Utf8',format='Utf8',saved_rank='Int64'),
-            json_input(tmp_path,'source_annotations',[dict(source_id=row['source_id'],reading_title=titles.get(row['source_id'],(None,None))[0],
-                listing_title=titles.get(row['source_id'],(None,None))[1]) for row in files],source_id='Utf8',reading_title='Utf8',listing_title='Utf8')]
-    result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,steps=[],outputs=[],
-        queries=[dict(name='t',sql='SELECT * FROM ('+(ROOT/'model/sql/document-rendition-titles.sql').read_text()+') t ORDER BY component')])
-    assert result['t']==[dict(component='both',title='- HEARING ON PENDING NOMINATIONS'),dict(component='formats',title='H.R. 5376'),
-                         dict(component='official',title='Mr. Steve Mathison')]
-
-
-def test_recovery_only_document_takes_the_recovered_reading_title_else_the_original_label(tmp_path):
-    """068f2a40 hard-coded NULL; DM 7.5 gives a recovery-only row a title like any other."""
+def test_recovery_only_document_reads_the_recovered_page_title_and_the_original_link_text(tmp_path):
+    """068f2a40 hard-coded NULL; DM 7.5 gives a recovery-only row the title evidence of any other (titles.sql chooses)."""
     from congress_api.retention.provenance import list_of, struct
     strings = list_of('Utf8')
     recoveries = [dict(component=c, saved_rank=1, id=c, body_sha=b, original_url=f'https://x.test/{c}.pdf', bytes=10,
@@ -681,8 +659,8 @@ def test_recovery_only_document_takes_the_recovered_reading_title_else_the_origi
                    input_id='Utf8', filename='Utf8'),
         json_input(tmp_path, 'source_files', [dict(source_id='s:' + c, body_sha=None, source_url=f'https://x.test/{c}.pdf', filename=c + '.pdf')
                    for c in ('read', 'label')], source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8'),
-        json_input(tmp_path, 'source_annotations', [dict(annotation, source_id='s:read', title='Original label'),
-                   dict(annotation, source_id='s:label', title='Hearing on Rural Lands')], source_id='Utf8', title='Utf8',
+        json_input(tmp_path, 'source_annotations', [dict(annotation, source_id='s:read', listing_title='Original label'),
+                   dict(annotation, source_id='s:label', listing_title='Hearing on Rural Lands')], source_id='Utf8', listing_title='Utf8',
                    document_kind=strings, document_family=strings, committee_keys=strings, chambers=strings, congress='Int32',
                    filename_date='Utf8', meeting_keys=strings, measure_keys=strings, bioguide_ids=strings, package_id='Utf8',
                    facts=list_of(struct(field='Utf8', value='Utf8'))),
@@ -700,9 +678,11 @@ def test_recovery_only_document_takes_the_recovered_reading_title_else_the_origi
              dict(name='captures', sql="SELECT decode(body_hex,'hex') AS sha256,media_type FROM capture_rows"),
              dict(name='recovery_rows', sql=(ROOT / 'model/sql/document-recovery-normalized.sql').read_text())]
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
-        queries=[dict(name='titles', sql='SELECT doc_key,title,media_type FROM recovery_rows ORDER BY doc_key')])
-    assert result['titles'] == [dict(doc_key='doc:label', title='Hearing on Rural Lands', media_type='application/octet-stream'),
-                                dict(doc_key='doc:read', title='Recovered hearing record', media_type='text/html')]
+        queries=[dict(name='titles', sql='SELECT doc_key,own_title,own_title_source,link_title,media_type FROM recovery_rows ORDER BY doc_key')])
+    assert result['titles'] == [dict(doc_key='doc:label', own_title=None, own_title_source=None, link_title='Hearing on Rural Lands',
+                                     media_type='application/octet-stream'),
+                                dict(doc_key='doc:read', own_title='Recovered hearing record', own_title_source='page_title',
+                                     link_title='Original label', media_type='text/html')]
 
 
 def test_a_blank_filename_needs_a_recorded_reason(tmp_path):
@@ -743,13 +723,13 @@ def test_the_generic_title_check_is_its_own_rule(tmp_path):
 
 def test_a_letterless_title_refuses_with_the_rules_pattern_removed(tmp_path):
     """Review finding 7 (2026-11-10): the gate's letterless class came only from the rule's own pattern
-    (page signals link_word_no_name). Planted: that entry removed from the registry; the gate still
+    (title-rules link_word_no_name). Planted: that entry removed from the registry; the gate still
     refuses every letterless title, of any length, and still keeps letters of any script."""
     import json, shutil
     from viewer_publication.archive_model import GENERIC_TITLES_SQL, registry_inputs
     root = tmp_path / 'root'
     shutil.copytree(ROOT / 'model/registries', root / 'model/registries')
-    signals = root / 'model/registries/page-signals.json'
+    signals = root / 'model/registries/title-rules.json'
     kept = [r for r in json.loads(signals.read_text()) if r['id'] != 'link_word_no_name']
     assert len(kept) == len(json.loads(signals.read_text())) - 1
     signals.write_text(json.dumps(kept))
@@ -798,7 +778,7 @@ def test_a_bill_number_placeholder_is_a_link_word(tmp_path):
     rows = [dict(source_id=source, text=text, doc_type=None, first_good_at=f'2026-10-0{i + 1}T12:00:00Z', context='c', page_body='p',
                  link_index=i, split_position=0) for i, (source, text) in enumerate(links)]
     sources = sorted({source for source, _ in links})
-    inputs = [i for i in registry_inputs(tmp_path / 'registries') if i['name'] in ('page_signals', 'publisher_kinds')] + [
+    inputs = [i for i in registry_inputs(tmp_path / 'registries') if i['name'] in ('title_rules', 'publisher_kinds')] + [
         json_input(tmp_path, 'links', rows, source_id='Utf8', text='Utf8', doc_type='Utf8', first_good_at='Utf8', context='Utf8',
                    page_body='Utf8', link_index='Int64', split_position='Int64'),
         json_input(tmp_path, 'source_files', [dict(source_id=s) for s in sources], source_id='Utf8'),

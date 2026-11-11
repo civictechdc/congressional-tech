@@ -9414,192 +9414,192 @@
       "source": "Authored boundary: a member outside the container's own directory has no published address"
     },
     {
-      "id": "page-signals:link_word_formats",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_formats",
+      "registry": "title-rules",
       "entry": "link_word_formats",
       "value": "ZIP",
       "expected": true,
       "source": "apps/site/src/components/explorer/archive/archive-metadata.ts:618-626 genericAnchorTitles and isGenericTitle; live 448651e7 titles: ZIP 34,019, PDF 3,731, XML 198, here 44, Download PDF 44, Email 38"
     },
     {
-      "id": "page-signals:link_word_actions",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_actions",
+      "registry": "title-rules",
       "entry": "link_word_actions",
       "value": "Download PDF",
       "expected": true,
       "source": "apps/site/src/components/explorer/archive/archive-metadata.ts:618-626 genericAnchorTitles and isGenericTitle; live 448651e7 titles: ZIP 34,019, PDF 3,731, XML 198, here 44, Download PDF 44, Email 38"
     },
     {
-      "id": "page-signals:link_word_click_here",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_click_here",
+      "registry": "title-rules",
       "entry": "link_word_click_here",
       "value": "Click here for the transcript",
       "expected": true,
       "source": "apps/site/src/components/explorer/archive/archive-metadata.ts:618-626 genericAnchorTitles and isGenericTitle; live 448651e7 titles: ZIP 34,019, PDF 3,731, XML 198, here 44, Download PDF 44, Email 38"
     },
     {
-      "id": "page-signals:link_word_download",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_download",
+      "registry": "title-rules",
       "entry": "link_word_download",
       "value": "Download Witness Testimony (PDF)",
       "expected": true,
       "source": "apps/site/src/components/explorer/archive/archive-metadata.ts:618-626 genericAnchorTitles and isGenericTitle; live 448651e7 titles: ZIP 34,019, PDF 3,731, XML 198, here 44, Download PDF 44, Email 38"
     },
     {
-      "id": "page-signals:link_word_formats_title",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_formats_title",
+      "registry": "title-rules",
       "entry": "link_word_formats",
       "value": "PDF of the Hearing on Rural Transportation",
       "expected": false,
       "source": "Authored boundary: a format word inside a title is not a link word"
     },
     {
-      "id": "page-signals:link_word_download_named",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_download_named",
+      "registry": "title-rules",
       "entry": "link_word_actions",
       "value": "Downloads and Hearing Records",
       "expected": false,
       "source": "Authored boundary: only the whole text is a link word"
     },
     {
-      "id": "page-signals:link_word_format_size",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_format_size",
+      "registry": "title-rules",
       "entry": "link_word_format_size",
       "value": "Download XML (6KB)",
       "expected": true,
       "source": "green-g review of r1b-g: 611 live 448651e7 titles such as \"Download XML (6KB)\"; Run B \"PDF (48.1 MB)\""
     },
     {
-      "id": "page-signals:link_word_format_size_mb",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_format_size_mb",
+      "registry": "title-rules",
       "entry": "link_word_format_size",
       "value": "PDF (48.1 MB)",
       "expected": true,
       "source": "green-g review of r1b-g: 611 live 448651e7 titles such as \"Download XML (6KB)\"; Run B \"PDF (48.1 MB)\""
     },
     {
-      "id": "page-signals:link_word_format_size_title",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_format_size_title",
+      "registry": "title-rules",
       "entry": "link_word_format_size",
       "value": "Testimony of Jane Doe (PDF, 2 MB)",
       "expected": false,
       "source": "Authored boundary: a name beside the format and size is a title"
     },
     {
-      "id": "page-signals:link_word_phrases",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_phrases",
+      "registry": "title-rules",
       "entry": "link_word_phrases",
       "value": "Printable PDF of this Document",
       "expected": true,
       "source": "red-g2 review of r1b-g: link texts that say what a link does"
     },
     {
-      "id": "page-signals:link_word_phrases_report",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_phrases_report",
+      "registry": "title-rules",
       "entry": "link_word_phrases",
       "value": "Download Report",
       "expected": true,
       "source": "red-g2 review of r1b-g: link texts that say what a link does"
     },
     {
-      "id": "page-signals:link_word_format_size_version",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_format_size_version",
+      "registry": "title-rules",
       "entry": "link_word_format_size",
       "value": "Version 2",
       "expected": false,
       "source": "Authored boundary (red-g2): a version or file number is a title, not a format word"
     },
     {
-      "id": "page-signals:link_word_no_name",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_no_name",
+      "registry": "title-rules",
       "entry": "link_word_no_name",
       "value": "12",
       "expected": true,
       "source": "Published release 619db5f9e08e, list.parquet titles taken from link text: 194 with no letter (148 distinct, such as '12', '_3', '16-4', '19-26-03-26-19'), 61 of the form 'no. 3' and one '.'; every one has a filename (ct-ccsi)"
     },
     {
-      "id": "page-signals:link_word_no_name_ordinal",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_no_name_ordinal",
+      "registry": "title-rules",
       "entry": "link_word_no_name",
       "value": "no. 3",
       "expected": true,
       "source": "Published release 619db5f9e08e: 61 documents titled 'no. 1' to 'no. 9' and 'no 4' from Financial Services amendment lists (bills-119-hres1007-s001213-amdt-1.pdf is 'no. 1')"
     },
     {
-      "id": "page-signals:link_word_no_name_mark",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_no_name_mark",
+      "registry": "title-rules",
       "entry": "link_word_no_name",
       "value": ".",
       "expected": true,
       "source": "Published release 619db5f9e08e: one document titled '.' (ct-ccsi)"
     },
     {
-      "id": "page-signals:link_word_no_name_stem",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_no_name_stem",
+      "registry": "title-rules",
       "entry": "link_word_no_name",
       "value": "19-26-03-26-19",
       "expected": true,
       "source": "Published release 619db5f9e08e: Senate Armed Services transcripts titled by their number and date, the filename stem (19-26-03-26-19.pdf)"
     },
     {
-      "id": "page-signals:link_word_no_name_named_number",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_no_name_named_number",
+      "registry": "title-rules",
       "entry": "link_word_no_name",
       "value": "Amendment No. 3",
       "expected": false,
       "source": "Authored boundary: a number after a name is part of the name"
     },
     {
-      "id": "page-signals:link_word_no_name_exhibit",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_no_name_exhibit",
+      "registry": "title-rules",
       "entry": "link_word_no_name",
       "value": "Exhibit 3",
       "expected": false,
       "source": "Authored boundary (red-g2): an exhibit, appendix, version or file number is a title"
     },
     {
-      "id": "page-signals:link_word_no_name_word_no",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_no_name_word_no",
+      "registry": "title-rules",
       "entry": "link_word_no_name",
       "value": "No",
       "expected": false,
       "source": "Authored boundary: the word alone is not a numbering"
     },
     {
-      "id": "page-signals:link_word_no_name_other_script",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_no_name_other_script",
+      "registry": "title-rules",
       "entry": "link_word_no_name",
       "value": "\u4e2d\u6587",
       "expected": false,
       "source": "Authored boundary: letters of any script are a name (published title of A_HRC_WG6_4_CHN_2_C.pdf)"
     },
     {
-      "id": "page-signals:link_word_bill_placeholder",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_bill_placeholder",
+      "registry": "title-rules",
       "entry": "link_word_bill_placeholder",
       "value": "H.R. ___",
       "expected": true,
       "source": "Release build c03c43da: 33 documents titled 'H.R. ___' (69 bill-number placeholders in all) from another same-bytes copy's link text; all 86 matching link texts are H.R. or S. followed only by underscores (review finding 9, 2026-11-10)"
     },
     {
-      "id": "page-signals:link_word_bill_placeholder_senate",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_bill_placeholder_senate",
+      "registry": "title-rules",
       "entry": "link_word_bill_placeholder",
       "value": "S. ____",
       "expected": true,
       "source": "Release build c03c43da: 4 Senate link texts 'S. ____'"
     },
     {
-      "id": "page-signals:link_word_bill_placeholder_number",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_bill_placeholder_number",
+      "registry": "title-rules",
       "entry": "link_word_bill_placeholder",
       "value": "H.R. 5430",
       "expected": false,
       "source": "Authored boundary: a bill with its number is a title"
     },
     {
-      "id": "page-signals:link_word_bill_placeholder_named",
-      "registry": "page-signals",
+      "id": "title-rules:link_word_bill_placeholder_named",
+      "registry": "title-rules",
       "entry": "link_word_bill_placeholder",
       "value": "S. ___, Traumatic Brain Injury Program Reauthorization Act of 2018.pdf",
       "expected": false,
@@ -9668,6 +9668,14 @@
       "value": "description_repeat",
       "expected": 50,
       "source": "Provisional: Round 2 Unit F sets it from the top 50 (host, description) repeats over the replay rows"
+    },
+    {
+      "id": "title-rules:label_alone",
+      "registry": "title-rules",
+      "entry": "label_alone",
+      "value": "Witness Testimony",
+      "expected": true,
+      "source": "document-normalized.sql:11-14 label list (ct-ccsi), live 77673bfb8fcf: 560 label + witness titles, e.g. \"Biography - Ms. Amy Mathers\" (row 259778)"
     }
   ]
 }

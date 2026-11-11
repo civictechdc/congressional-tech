@@ -73,7 +73,7 @@ PAGE_COLUMNS = ['description', 'published_on', 'modified_on', 'publisher_labels'
 
 
 DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 'saved_bytes',
-    'document_date_source', 'document_date_status', 'in_archive_since', 'removed_on', 'review_note', 'review_decided_at',
+    'document_date_source', 'document_date_status', 'title_source', 'in_archive_since', 'removed_on', 'review_note', 'review_decided_at',
     'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts', *PAGE_COLUMNS]
 
 
@@ -96,7 +96,7 @@ DOCUMENT_COLUMNS = [*DETAIL_COLUMNS, *LIST_COLUMNS]
 LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'date_kind', 'saved_kind']
 
 
-DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'document_date_status', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field',
+DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'document_date_status', 'title_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field',
     'publisher_labels.list.item', 'page_metadata.list.item.field', 'page_metadata.list.item.format', 'page_metadata.list.item.precision', 'main_content.outcome']
 
 
@@ -163,7 +163,7 @@ CORE_RELATIONS = {'list': 'ordered', 'detail': 'details', 'links': 'links', 'url
 def _core(steps, output,*,lookup_extra=None):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
     detail_inputs = ','.join('o.'+name for name in dict.fromkeys([*order,*LIST_COLUMNS,'list_row',
-        'document_date_source','document_date_status','in_archive_since','removed_on','review_note','review_decided_at',
+        'document_date_source','document_date_status','title_source','in_archive_since','removed_on','review_note','review_decided_at',
         'alternates','package_id','facts',*PAGE_COLUMNS]))
     steps += [_step('ordered', f"SELECT *,{DOCUMENT_DATE_STATUS} AS document_date_status,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True),
         _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS ordinal,

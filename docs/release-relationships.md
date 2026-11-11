@@ -74,6 +74,7 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 | `saved_bytes` | `int64` | no | Size of original bytes before storage compression |
 | `document_date_source` | `dict` | yes | Filename, content or meeting date basis |
 | `document_date_status` | `dict` | yes | accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated |
+| `title_source` | `dict` | yes | Which candidate gave the title: correction, page_title, page_heading, link_text, other_format_page_title, other_format_page_heading, copy_link_text, recovered_copy, or label_witness (a label with the witness name); null when untitled |
 | `in_archive_since` | `date32` | yes | Earliest known archive import date |
 | `removed_on` | `date32` | yes | Date the publisher removed the document |
 | `review_note` | `string` | yes | Review explanation |

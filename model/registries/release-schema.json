@@ -196,6 +196,12 @@
           "nullable": true
         },
         {
+          "name": "title_source",
+          "type": "dict",
+          "meaning": "Which candidate gave the title: correction, page_title, page_heading, link_text, other_format_page_title, other_format_page_heading, copy_link_text, recovered_copy, or label_witness (a label with the witness name); null when untitled",
+          "nullable": true
+        },
+        {
           "name": "in_archive_since",
           "type": "date32",
           "meaning": "Earliest known archive import date",

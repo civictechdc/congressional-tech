@@ -1,12 +1,5 @@
 SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
- CASE
-  WHEN wk.witness_name IS NOT NULL THEN coalesce(
-   CASE WHEN NOT regexp_like(trim(t.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN t.title END,
-   CASE WHEN NOT regexp_like(trim(a.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN a.title END,
-   CASE WHEN coalesce(t.title,a.title) IS NOT NULL THEN coalesce(t.title,a.title)||' - '||wk.witness_name END
-  )
-  ELSE coalesce(t.title,a.title)
- END AS title,
+ t.title AS own_title,t.source AS own_title_source,a.listing_title AS link_title,d.component,
  a.document_kind,a.document_family,
  array_sort(array_distinct(array_concat(a.committee_keys,coalesce(ml.committee_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS committee_keys,
  array_sort(array_distinct(array_concat(a.chambers,coalesce(ml.chambers,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS chambers,
@@ -27,6 +20,7 @@ SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
  a.package_id,a.facts,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS link_bodies
 FROM saved_recoveries r JOIN document_identities d ON d.component=r.component AND r.saved_rank=1
 JOIN effective_filenames n ON n.input_id='recovery:'||r.id
+-- The original address has no body, so its annotation's only title is its link text.
 JOIN source_files f ON f.body_sha IS NULL AND f.source_url=r.original_url AND f.filename=n.filename
 JOIN source_annotations a ON f.source_id=a.source_id
 JOIN body_evidence b ON r.body_sha=b.body_sha
@@ -34,7 +28,8 @@ JOIN body_evidence b ON r.body_sha=b.body_sha
 -- the candidate set comes first so the join builds on it, not on captures.
 LEFT JOIN (SELECT encode(c.sha256,'hex') AS body_sha,max(c.media_type) AS media_type
  FROM (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s JOIN captures c ON c.sha256=s.sha256 GROUP BY c.sha256) c ON r.body_sha=c.body_sha
-LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,coalesce(nullif(trim(max(p.title)),''),nullif(trim(max(p.heading)),'')) AS title
+LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,coalesce(nullif(trim(max(p.title)),''),nullif(trim(max(p.heading)),'')) AS title,
+ CASE WHEN nullif(trim(max(p.title)),'') IS NOT NULL THEN 'page_title' WHEN nullif(trim(max(p.heading)),'') IS NOT NULL THEN 'page_heading' END AS source
  FROM (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s JOIN source_annotation_pages p ON p.body_sha=s.sha256 WHERE p.status='completed' GROUP BY p.body_sha) t ON r.body_sha=t.body_sha
 LEFT JOIN component_meeting_links ml ON d.component=ml.component
 LEFT JOIN document_witness_keys wk ON d.component=wk.component

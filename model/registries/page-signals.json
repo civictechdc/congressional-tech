@@ -96,54 +96,6 @@
     "sample_id": "page-signals:feed_urls"
   },
   {
-    "id": "link_word_formats",
-    "kind": "link_word",
-    "pattern": "(?i)^(zip|pdf|html?|xml|docx?|txt|text|json|csv|xlsx?|pptx?|mp3|mp4)[.!:]*$",
-    "sample_id": "page-signals:link_word_formats"
-  },
-  {
-    "id": "link_word_actions",
-    "kind": "link_word",
-    "pattern": "(?i)^(click here|please click here|here|link|document|file|download|download file|download pdf|download testimony|download witness testimony|download executive business meeting results|view|view pdf|view testimony|open|read more|more|email|print|share|website|webpage|untitled|attachment)[.!:]*$",
-    "sample_id": "page-signals:link_word_actions"
-  },
-  {
-    "id": "link_word_click_here",
-    "kind": "link_word",
-    "pattern": "(?i)^(please\\s+)?click\\s+here\\b",
-    "sample_id": "page-signals:link_word_click_here"
-  },
-  {
-    "id": "link_word_download",
-    "kind": "link_word",
-    "pattern": "(?i)^(download|view|open)\\s+(witness\\s+)?(testimony|statement|document|pdf|file|results)\\b",
-    "sample_id": "page-signals:link_word_download"
-  },
-  {
-    "id": "link_word_format_size",
-    "kind": "link_word",
-    "pattern": "(?i)^[\\s\\W\\d_]*(?:(?:zip|pdf|html?|xml|docx?|txt|text|json|csv|xlsx?|pptx?|rtf|mp3|mp4|download|view|open|click|here|[kmg]i?b|bytes?)\\b[\\s\\W\\d_]*)+$",
-    "sample_id": "page-signals:link_word_format_size"
-  },
-  {
-    "id": "link_word_phrases",
-    "kind": "link_word",
-    "pattern": "(?i)^(printable\\s+(pdf|version)(\\s+of\\s+this\\s+(document|page))?|download\\s+(the\\s+)?(report|document|file|attachment))[.!:]*$",
-    "sample_id": "page-signals:link_word_phrases"
-  },
-  {
-    "id": "link_word_no_name",
-    "kind": "link_word",
-    "pattern": "(?i)^(?:[^\\p{L}]*|(?:nos?|number)[.]?[^\\p{L}]*[0-9][^\\p{L}]*)$",
-    "sample_id": "page-signals:link_word_no_name"
-  },
-  {
-    "id": "link_word_bill_placeholder",
-    "kind": "link_word",
-    "pattern": "(?i)^(?:H\\.?\\s?R\\.?|S\\.)\\s*_+[.!:]*$",
-    "sample_id": "page-signals:link_word_bill_placeholder"
-  },
-  {
     "id": "description_templates",
     "kind": "description_template",
     "pattern": "^(?:official publications from the u[.]s[.] government publishing office|house committee on natural resources - democrats|education & workforce committee democrats|the house committee on science, space and technology|the house committee on transportation and infrastructure|the official website of|congressional website|the committee on energy and commerce is the oldest standing legislative committee)",
