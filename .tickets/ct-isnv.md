@@ -47,3 +47,7 @@ Pair (House word = committee word) | moved | committee word before -> after | ei
 - published-hearing vs transcript | 67 | - | - | NOT a synonym: a GPO print is another publication.
 
 Not done here: the release note line ("the kind words changed; amendment and biography now filter with their House words") belongs to the next release's notes; Explorer needs no new release (0.6.6 reads the groups).
+
+**2026-11-11T16:25:45Z**
+
+2026-11-11 tests: schema 32 passed; Explorer lane (full lane) 224 passed, 4 skipped; site npm run test:explorer 115 pass. Site and Explorer code unchanged.

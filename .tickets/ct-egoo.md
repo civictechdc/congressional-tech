@@ -37,3 +37,7 @@ validated 2026-11-11, left open: all three are owner questions and none has been
 Tests (runner, partial): 404dcf97 failed first (5 failed, 5 passed); after the fix 22 passed (two-build landing test with two parts and the title fill, planted-defect counts, carried-notice ledger test, url_state exclusion with the real registry, scheduler refusal, registry samples). A full build must confirm the counts above and needs cause records for: titles (19,032), sources/urls (+4 each), retired_links address_versions (2), url_state capture_disposition (34,831).
 
 Open for the owner: whether the 15,691 label-only pages ("House Hearing, 111th Congress - X") should also fill "- X" titles (GovInfo's display title, but no number).
+
+**2026-11-11T16:25:45Z**
+
+2026-11-11 tests (runner, partial lines): nearest model files 242 + 18 rerun, test_phase2_model_entities.py 52, release e2e/provenance/evidence/page metadata + test_capture_scheduler.py 134, all passed. Repeat-cost lint: retired_links_export records +932,789 (one more scan of source_rows and details; 2a405428). No full lane or full build run.
