@@ -23,3 +23,7 @@ The ~22 rows change as measured and no other row changes unexplained; the produc
 **2026-11-11T09:48:04Z**
 
 2026-11-11 (session congress-1): also for this ticket: 17 pre-113th-Congress committee members' opening statements stay Member appearances in the coming release because the pinned rosters start at the 113th and the print's own MODS member list omits them; the print's transcript gives 11 of them an 'OPENING STATEMENT OF HON.' heading (the ct-kw85 raw check flags those as leads). Rows: Jeffords (CHRG-107shrg78075 #14); Murphy and Butterfield (CHRG-110hhrg38829); Kingston (CHRG-110hhrg50592); Steve King (CHRG-110hhrg51569); Bright and Mike Rogers (CHRG-111hhrg57926); Conaway (CHRG-112hhrg64659 #8); Fudge and Costa (CHRG-112hhrg68336); Schilling, Crawford and Huelskamp (CHRG-112hhrg74371); Pingree, Schmidt and Conaway (CHRG-112hhrg74372, Conaway #53); Noem (CHRG-112hhrg76176). Source: .cache/archive-release/investigations/member-appearances-20261110/v6/. With transcripts deciding, these become member_statement through the ct-kw85 committee rule; the speaker-turn check stays independent.
+
+**2026-11-11T10:57:59Z**
+
+2026-11-11 (session congress-1): also Dona Abbott (CHRG-109, meeting 108846): her statement_for_record type is read from the cut-off end of a GPO note, but Congress.gov lists her among that meeting's witnesses; it equals the live value, so not a regression; the transcript should decide (seventh MODS review, .cache/archive-release/investigations/mods-rebase-20261110/review-6/r7-signed-verdicts.json).
