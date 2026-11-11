@@ -366,13 +366,41 @@ def test_query_prints_rows_a_reader_can_read_or_the_engines_json(tmp_path, capsy
     import json
     sql = 'SELECT sha, n FROM cited ORDER BY sha'
     assert dev.main(['query', sql, '--table', query_table(tmp_path)]) == 0
-    assert capsys.readouterr().out == 'n\tsha\n1\taa\nNULL\tbb\n'  # the engine's JSON rows list columns by name
+    assert capsys.readouterr().out == 'sha\tn\naa\t1\nbb\tNULL\n'  # columns in the statement's order
+    assert dev.main(['query', 'SELECT n, sha FROM cited WHERE false', '--table', query_table(tmp_path)]) == 0
+    assert capsys.readouterr().out == 'n\tsha\n'  # no rows still names the columns
     (tmp_path / 'q.sql').write_text('-- a committed SQL file\n' + sql + '\n')
     assert dev.main(['query', '--file', str(tmp_path / 'q.sql'), '--table', query_table(tmp_path), '--json']) == 0
     assert json.loads(capsys.readouterr().out) == [dict(sha='aa', n=1), dict(sha='bb', n=None)]
     assert dev.main(['query', sql, '--table', query_table(tmp_path), '--explain']) == 0
     plans = capsys.readouterr().out
     assert plans.startswith('logical_plan\n') and '\nphysical_plan\n' in plans and 'TableScan: cited' in plans
+    assert dev.main(['query', sql, '--table', query_table(tmp_path), '--explain', '--analyze']) == 0
+    assert 'Plan with Metrics\n' in capsys.readouterr().out
+
+
+def test_a_stopped_query_leaves_no_temporary_folder(tmp_path):
+    """The watchdog stops a job with TERM to its group, then KILL 5 s later; the query's folder (up to its scratch
+    limit of spill) is removed on TERM. Plant: without dev.py's TERM handler the folder stays."""
+    import time
+    temporary = tmp_path / 'tmp'
+    temporary.mkdir()
+    process = subprocess.Popen([sys.executable, str(ROOT / 'scripts/dev.py'), 'query',
+                                'SELECT count(*) AS n FROM generate_series(1, 100000000000)'],  # about a minute
+                               env={**os.environ, 'TMPDIR': str(temporary)}, start_new_session=True,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        deadline = time.monotonic() + 30
+        while not list(temporary.glob('docspec-query-*/engine.log')) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert list(temporary.glob('docspec-query-*/engine.log')), process.stderr.read() if process.poll() else ''
+        time.sleep(0.3)
+        os.killpg(process.pid, signal.SIGTERM)
+        assert process.wait(timeout=5) != 0
+    finally:
+        with suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+    assert list(temporary.iterdir()) == []
 
 
 def test_query_says_the_engines_error_first(tmp_path, capsys):

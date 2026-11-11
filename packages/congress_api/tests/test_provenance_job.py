@@ -86,24 +86,49 @@ def test_one_call_returns_the_rows_of_a_statement_over_named_parquet_files(tmp_p
     from congress_api.retention.provenance import query
     monkeypatch.setattr(tempfile,'tempdir',str(tmp_path/'tmp'));(tmp_path/'tmp').mkdir()
     tables=capture_files(tmp_path)
-    assert query(native(),JOINED,tables)==[dict(sha=A.hex(),receipt_key='r1'),dict(sha=A.hex(),receipt_key='r2')]
+    rows=query(native(),JOINED,tables)
+    assert rows==[dict(sha=A.hex(),receipt_key='r1'),dict(sha=A.hex(),receipt_key='r2')]
+    assert list(rows[0])==['sha','receipt_key']  # the statement's order; the engine's JSON sorts names
     # The engine's JSON: binary as lowercase hex, SQL NULL as None.
     assert query(native(),"SELECT sha256,NULL AS nothing FROM captures WHERE receipt_key='r3'",tables)==[
         dict(sha256=B.hex(),nothing=None)]
     assert list((tmp_path/'tmp').iterdir())==[]  # the throwaway job leaves nothing behind
 
 
-def test_a_kept_query_is_a_job_with_no_steps_or_outputs_under_a_small_memory_limit(tmp_path):
-    from congress_api.retention.provenance import QUERY_MEMORY_BYTES,query
-    engine=native()
-    assert query(engine,'SELECT count(*) AS n FROM captures',capture_files(tmp_path),work=tmp_path/'kept')==[dict(n=3)]
+def test_a_kept_query_is_a_job_with_no_steps_or_outputs_under_small_memory_and_scratch(tmp_path):
+    from congress_api.retention.provenance import QUERY_MEMORY_BYTES,QUERY_SCRATCH_BYTES,query
+    engine=native();sql='SELECT count(*) AS n FROM captures'
+    assert query(engine,sql,capture_files(tmp_path),work=tmp_path/'kept')==[dict(n=3)]
     spec=json.loads((tmp_path/'kept/job.json').read_text())
     assert spec['steps']==spec['outputs']==[] and [i['name'] for i in spec['inputs']]==['captures','cited']
-    assert spec['queries']==[dict(name='query',sql='SELECT count(*) AS n FROM captures')]
+    assert spec['queries']==[dict(name='columns',sql='EXPLAIN FORMAT pgjson '+sql),dict(name='query',sql=sql)]
     runtime=json.loads(engine.limits.read_text())
-    assert runtime['memory_bytes']>QUERY_MEMORY_BYTES  # the local runtime allows more; a query gets less
-    assert json.loads((tmp_path/'kept/limits.json').read_text())=={**runtime,'memory_bytes':QUERY_MEMORY_BYTES}
+    # The local runtime allows more of both; a query gets less, so a stopped query leaves at most this much spill.
+    assert runtime['memory_bytes']>QUERY_MEMORY_BYTES and runtime['scratch_bytes']>QUERY_SCRATCH_BYTES
+    assert json.loads((tmp_path/'kept/limits.json').read_text())=={
+        **runtime,'memory_bytes':QUERY_MEMORY_BYTES,'scratch_bytes':QUERY_SCRATCH_BYTES}
     assert (tmp_path/'kept/engine.log').read_text().startswith('[docspec-metric] ')
+
+
+def test_a_kept_query_refuses_a_folder_that_already_holds_files(tmp_path):
+    """A rerun into the same folder would leave the last run's result.json or limits.json beside the new job."""
+    from congress_api.retention.provenance import query
+    kept=tmp_path/'kept';kept.mkdir();(kept/'result.json').write_text('{}')
+    with pytest.raises(ValueError,match='not empty'):
+        query(native(),'SELECT 1 AS n',{},work=kept)
+    assert [path.name for path in kept.iterdir()]==['result.json']
+    (tmp_path/'empty').mkdir()
+    assert query(native(),'SELECT 1 AS n',{},work=tmp_path/'empty')==[dict(n=1)]
+
+
+@pytest.mark.parametrize('sql',['SELECT k.sha,c.sha FROM cited k LEFT JOIN cited c ON c.sha=k.sha',
+                                'SELECT * FROM cited k LEFT JOIN cited c ON c.sha=k.sha'])
+def test_a_statement_returning_two_columns_of_one_name_is_refused(tmp_path,sql):
+    """The engine returns each row as a map, so one `sha` would silently replace the other: in a LEFT JOIN the right
+    side's NULL replaced the left key (engine src/job/query_result.rs:58-76 at the pin). The plan names them first."""
+    from congress_api.retention.provenance import query
+    with pytest.raises(ValueError,match="2 columns named 'sha'"):
+        query(native(),sql,capture_files(tmp_path))
 
 
 def test_the_memory_limit_reaches_the_engine(tmp_path):
@@ -131,6 +156,10 @@ def test_explain_returns_the_logical_and_physical_plans_without_running_the_stat
     assert 'CAST' in explain(native(),failing,tables)['logical_plan'].upper()
     with pytest.raises(DocSpecFailure):
         query(native(),failing,tables)
+    measured=explain(native(),JOINED,tables,analyze=True)  # this one runs, and says what each operator did
+    assert 'HashJoinExec' in measured['Plan with Metrics'] and 'output_rows=2' in measured['Plan with Metrics']
+    with pytest.raises(DocSpecFailure,match='Nested EXPLAINs'):  # plans come from explain(), not query()
+        query(native(),'EXPLAIN '+JOINED,tables)
 
 
 def test_a_failing_statement_raises_the_engines_own_error_first(tmp_path):
