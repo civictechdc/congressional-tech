@@ -48,6 +48,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   office printed inside the name, "Emanuel a Representative in Congress from ... Cleaver"; an initial moved with
   it, "P. a Representative ...", is no office);
 - ``name_not_in_line``: a new or added name with a word its raw line lacks;
+- ``name_cut``: a new or changed name printed in its line's order that lacks a capitalised word (no initial) the line
+  prints just before its family name in the same run of name words ("Leong" on "... docs.house.gov. Brenda Leong");
 - ``words_lost``: a changed occurrence that loses a word across name, position, organization and
   on_behalf_of (credentials such as "M.D." and titles such as "Hon." may go, as for every witness line, and the
   label "Accompanied by"; on an asking line, so may its heading's words and a contents column's "Page"; a word
@@ -57,8 +59,9 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   one, unless the line's second comma segment is a given name (an entry with a lower-case surname, "de Rugy,
   Veronique, ..."); nor do words printed
   after a speaker's turn, "Mr. Yoder. We will ...", which are transcript; nor the words a line prints before a row's
-  own name when they hold a date, a weekday or "opening statement(s)", end a note's run-in sentence on a line that
-  opens in lower case ("record. Scott Cleland"), or are a contents heading of document words ("Letters:"), and none
+  own name when they hold a date, a weekday or "opening statement(s)", or are a contents heading of document words
+  ("Letters:"), or, on a line that opens in lower case, are a note's run-in sentence up to its last full stop
+  ("record." of "record. Scott Cleland"), and none
   of their name runs is a Member serving
   in the print's Congress, a <congMember> family or a known given and family name: a heading run into the entry,
   "Tuesday, May 24, 2016--Subcommittee on ... Costa, Hon. Jim"; ``person_moved`` does not count them either). A raw line that opens
@@ -211,7 +214,8 @@ an organization printed before its official as if it were a heading (both ``word
 ...", ``person_moved``); ``committee-from-other-record`` gives a record another record's committees
 (``committees_differ``) and ``member-duplicated`` repeats a record's first committee member
 (``committee_members_differ``); ``surname-as-prose`` reads an entry whose surname opens in lower case as nameless
-record material (``words_lost``).
+record material (``words_lost``); ``note-took-given`` sheds a note's run-in sentence with the given name after it
+("Leong", ``name_cut``).
 
 The opening statements reading shares the rule's notion of a heading (the words before the first Member's name, carried
 over Member lines); it differs in who is a Member (the print's <congMember> names and the members table, never a
@@ -239,7 +243,8 @@ TITLES = set('the hon honorable mr mrs ms miss dr prof professor rev reverend se
 COMMITTEE = {'chairman', 'chairwoman', 'ranking', 'member'}
 SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'iv'}
 KEYED = (*FIELDS, 'honorific', 'witness_type', 'bioguide_id', 'display_order')
-FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'words_lost', 'words_gained', 'opening_statement_dropped',
+FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'name_cut', 'words_lost', 'words_gained',
+         'opening_statement_dropped',
          'committees_differ', 'committee_members_differ',
          'person_left_in_organization', 'reorder_unsupported', 'order_unsupported', 'order_across_lines',
          'name_not_person', 'split_unsupported', 'type_unsupported', 'question_asker_as_witness', 'member_unnamed',
@@ -260,7 +265,7 @@ PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported'
           'heading-strip-organization': 'words_lost', 'heading-took-given': 'words_lost',
           'member-statement-untyped': 'type_unsupported', 'office-took-initial': 'person_moved',
           'committee-from-other-record': 'committees_differ', 'member-duplicated': 'committee_members_differ',
-          'surname-as-prose': 'words_lost',
+          'surname-as-prose': 'words_lost', 'note-took-given': 'name_cut',
           'answerer-untestified-witness': 'type_unsupported'}
 # Words that make a line ask: what was asked or requested, read anywhere in the line, in any case.
 ASKING = {'question', 'questions', 'request', 'requests'}
@@ -803,15 +808,28 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
             at = re.search(rf"\b{re.escape(word)}\b", line, re.I) if word else None
             head = line[:at.start()] if at else ''
             said = {plain(w) for w in words(head)} - {''}
-            note = line[:1].islower() and bool(re.search(r"[a-z]{2,}\.\s", head))  # a note's run-in last sentence
+            stops = list(re.finditer(r"[a-z]{2,}\.\s", head)) if line[:1].islower() else []  # a note's run-in sentence
             contents = bool(re.fullmatch(r"\W*[A-Za-z ]+:\s*", head)) and said <= DOCUMENTS | HEADING
-            if not (ANY_DATE.search(head) or OPENING.search(head) or WEEKDAYS & said or note or contents):
-                return set()
+            if not (ANY_DATE.search(head) or OPENING.search(head) or WEEKDAYS & said or contents):
+                if not stops:
+                    return set()
+                head = head[:stops[-1].end()]  # a note sheds only its own words, up to its last full stop
             for run, after_run in name_runs(head):
                 if (table_member(run, serving_now, after_run) or any(tuple(run[-len(f):]) == f for f in member_families)
                         or len(run) > 1 and run[0] in given and run[-1] in family):
                     return set()
             return {plain(w) for w in words(head)} - {''}
+
+        def name_cut(name, line):
+            """Does a name printed in the line's order lack a capitalised word the line prints just before its family
+            name, in the same run of name words ("Leong" on "... docs.house.gov. Brenda Leong, ...")?"""
+            word = family_word(name)
+            if not word or not in_order(name, line):
+                return False
+            runs = [run for run, _ in name_runs(line) if word in run]
+            run = next((r for r in runs if opening(name) in r), runs[-1] if runs else [])
+            held = {plain(w) for w in words(name)}
+            return bool({w for w in run[:run.index(word)] if len(w) > 1} - held) if run else False
 
         def transcript(line):
             """The words after a speaker's turn in a raw line, which are transcript, no entry's."""
@@ -983,6 +1001,8 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
         def new_name_checks(item, name, line):
             if not set(map(plain, words(name))) <= set(map(plain, words(line))):
                 out['name_not_in_line'].append(item)
+            if name_cut(name, line):
+                out['name_cut'].append(item)
             if not in_order(name, line) and not reorder_supported(name):
                 out['reorder_unsupported'].append(item)
 
@@ -1086,6 +1106,8 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
                 out['person_moved'].append(item)
             if new_name and not set(map(plain, words(new_name))) <= set(map(plain, words(line))):
                 out['name_not_in_line'].append(item)
+            if new_name and old_name != new_name and name_cut(new_name, line):
+                out['name_cut'].append(item)
             if reordered and not reorder_supported(new_name):
                 out['reorder_unsupported'].append(item)
             if new_name and not_person(new_name, line, members):
@@ -1205,6 +1227,15 @@ def plant(kind, before, after, given, family, raw_root, serving=None, taken=(), 
                     continue
             facts[digest] = dict(facts[digest], **{column: planted})
             return dict(kind=kind, body=digest, locator=column, name=None, planted=planted)
+        if kind == 'note-took-given':
+            # A note's run-in sentence shed with the given name after it ("Leong" for "... docs.house.gov. Brenda Leong").
+            for locator, b in sorted(new.items()):
+                line, name = lines(digest, locator), b.get('name') or ''
+                if (line[:1].islower() and len(name.split()) > 1 and (old.get(locator) or {}).get('name') != name
+                        and in_order(name, line)):
+                    new[locator] = dict(b, name=name.split()[-1])
+                    return dict(kind=kind, body=digest, locator=locator, name=name, planted=new[locator]['name'])
+            continue
         if kind == 'surname-as-prose':
             # An entry whose surname opens in lower case read as prose: nameless record material.
             for locator, b in sorted(new.items()):

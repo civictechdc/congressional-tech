@@ -900,3 +900,39 @@ def test_the_committee_plants_are_flagged(tmp_path):
     assert code == 0, out['failed']
     code, out = run(tmp_path, '--plant', *kinds)
     assert [(p['kind'], p['flagged']) for p in out['planted']] == [(kind, True) for kind in kinds]
+
+
+# The seventh review: a note's run-in sentence may be shed only up to its last full stop, and a name printed in order
+# keeps the capitalised words printed just before its family name.
+NOTE_LINES = ['are available at: docs.house.gov. Brenda Leong, Senior Counsel, Future of Privacy Forum',
+              'record. Scott Cleland, President, Precursor LLC']
+NOTE_BEFORE = [asked('mods:witness[1]', None, 1, None),
+               asked('mods:witness[2]', 'record. Scott Cleland', 2, None, position='President', organization='Precursor LLC')]
+NOTE_AFTER = [asked('mods:witness[1]', 'Brenda Leong', 1, None, position='Senior Counsel',
+                    organization='Future of Privacy Forum'),
+              asked('mods:witness[2]', 'Scott Cleland', 2, None, position='President', organization='Precursor LLC')]
+
+
+def notes(tmp_path, after=NOTE_AFTER, **more):
+    write(tmp_path, before=NOTE_BEFORE, after=after, lines=NOTE_LINES, people=('Brenda Leong', 'Scott Cleland'), **more)
+
+
+@pytest.mark.parametrize('index, name, flags', [
+    (None, None, []),
+    # The reviewer's plants: the note shed with the given name after it.
+    (0, 'Leong', ['name_cut']),
+    (1, 'Cleland', ['name_cut', 'words_lost']),
+])
+def test_a_note_is_shed_up_to_its_last_full_stop_and_no_further(tmp_path, index, name, flags):
+    after = NOTE_AFTER if index is None else [*NOTE_AFTER[:index], dict(NOTE_AFTER[index], name=name),
+                                              *NOTE_AFTER[index + 1:]]
+    notes(tmp_path, after=after)
+    code, out = run(tmp_path)
+    assert [flag for flag in ('name_cut', 'words_lost') if out[flag]] == flags
+    assert code == (1 if flags else 0)
+
+
+def test_the_note_plant_is_flagged(tmp_path):
+    notes(tmp_path, prints=[('11' * 32, NOTE_LINES, (), NOTE_BEFORE, NOTE_AFTER)])
+    code, out = run(tmp_path, '--plant', 'note-took-given', 'note-took-given')
+    assert [(p['kind'], p['flagged']) for p in out['planted']] == [('note-took-given', True)] * 2
