@@ -347,6 +347,25 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys,mon
         name:(Path(pin['path']).name,pin['sha256']) for name,pin in publisher.items()}
 
 
+def test_maintenance_names_exactly_the_tables_the_shipped_daily_writes():
+    # 2026-11-11 (ct-yndj): ea2cf179 moved the daily, backfill, model and producer anchors to the
+    # *_mvp_20261105 tables and left maintenance.json naming two superseded generations and
+    # missing committee, playlist and video records. The daily owns the list.
+    # Cannot see: whether a table exists in the live catalog (none is opened here).
+    from viewer_publication.archive_maintenance import load_spec
+    jobs=Path(__file__).resolve().parents[3]/'model/jobs'
+    publish=json.loads((jobs/'publish.json').read_text())
+    daily=json.loads((jobs/publish['daily']['path']).read_text())['tables']
+    model=json.loads((jobs/publish['model_spec']['path']).read_text())
+    backfill=json.loads((jobs/'backfill.json').read_text())['tables']
+    tables=load_spec(jobs/'maintenance.json')['tables']
+    assert tables==daily
+    assert all(backfill[name]==daily[name] for name in backfill)
+    for name,table in tables.items():
+        # The shipped release was built from this physical table, so it existed then.
+        assert '/'+'/'.join([*table['namespace'],table['name']])+'/metadata/' in model[name]['metadata_location'],name
+
+
 def test_a_daily_backfill_of_the_r2_lake_refuses_without_producer_anchors(tmp_path):
     from viewer_publication import archive_backfill_job
     root=Path(__file__).resolve().parents[3]
