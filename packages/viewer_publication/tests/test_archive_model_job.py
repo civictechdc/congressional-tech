@@ -331,28 +331,54 @@ def test_unfetched_or_changed_spicy_tables_are_named_before_anything_runs(tmp_pa
     base=Path(value['spicy_regs']['path']).parent;stated=json.loads(Path(value['spicy_regs']['path']).read_text())['tables']
     missing=(base/stated['spicy_committees']['path']).resolve();missing.unlink()
     resized=(base/stated['spicy_members']['path']).resolve();resized.write_bytes(resized.read_bytes()+b'x')
+    unreadable=(base/stated['spicy_congress_bills']['path']).resolve();unreadable.unlink();unreadable.mkdir()
     with pytest.raises(SystemExit) as error:
         main(['--spec',write_spec(tmp_path,value),*mode])
     err=capsys.readouterr().err
     assert error.value.code==2
     assert f'Pinned model input missing: {missing} (spicy_regs spicy_committees)' in err
     assert f'Pinned model input changed: {resized} (spicy_regs spicy_members)' in err
+    # Present but not readable is not "missing": the reason is named.
+    assert f'Pinned model input unreadable: {unreadable} (spicy_regs spicy_congress_bills): ' in err and 'must be a regular file' in err
     assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
 
 
+def every_input_spec(tmp_path):
+    """A spec with each kind of pinned local input: three lake-table stand-ins and an entity table, provenance
+    with a hard-linked alias (two keys, one physical file), the matcher, recovery requirements and spicy-regs."""
+    from congress_api.retention.provenance import file_pin
+    value=pin_local_tables(tmp_path,entity_spec(tmp_path))
+    review=tmp_path/'review.jsonl';review.write_bytes(b'{"selected":"A"}\n')
+    alias=tmp_path/'recovery-alias.jsonl';os.link(review,alias)
+    value['review_files']=[dict(key='provenance/reviews/a.jsonl',path=str(review),**file_pin(review))]
+    value['recovery_files']=[dict(key='provenance/recoveries/a.jsonl',path=str(alias),**file_pin(alias))]
+    for name,content in (('historical_recording_matcher',b'package_id,status\n'),('recovery_requirements',b'requirements')):
+        source=tmp_path/name;source.write_bytes(content)
+        value[name]=dict(path=str(source),**file_pin(source))
+    value['recovery_requirements']['acceptance_policy']='recovery-identity-v1'
+    return dict(value,engine_config=os.environ['DOCSPEC_JOB_CONFIG'])
+
+
 def test_execute_reads_each_pinned_input_once(tmp_path,monkeypatch):
-    """The check before execution is execution's own hash pass: model_arguments takes its result, so no file is
-    read twice (here three tables share one file and a review file is the fourth input)."""
+    """The check before execution is execution's own hash pass: model_arguments takes its result, so each
+    physical file is read once, a hard-linked alias included; and an input the check did not cover is refused,
+    not quietly read again, so the check and the build cannot drift apart over which fields are inputs."""
     import viewer_publication.archive_model as model
     import viewer_publication.archive_model_job as job
-    value=dict(pinned_local_spec(tmp_path),engine_config=os.environ['DOCSPEC_JOB_CONFIG'])
+    value=every_input_spec(tmp_path)
     hashed=[];original=job.file_identity
     def record(path,**kwargs):
-        hashed.append(str(path));return original(path,**kwargs)
+        hashed.append(Path(path).stat().st_ino);return original(path,**kwargs)
     monkeypatch.setattr(job,'file_identity',record)
     monkeypatch.setattr(model,'build_release',lambda **_:dict(release_id='ab'*32,files=[]))
-    assert job.execute(job.load_spec(write_spec(tmp_path,value)))['release_id']=='ab'*32
-    assert sorted(hashed)==sorted({value['captures']['path'],value['review_files'][0]['path']})
+    spec=job.load_spec(write_spec(tmp_path,value))
+    assert job.execute(spec)['release_id']=='ab'*32
+    spicy=Path(spec['spicy_regs']['path'])
+    expected=[spec[name]['path'] for name in ('captures','readings','filename_readings','meeting_records',
+              'historical_recording_matcher','recovery_requirements','spicy_regs')]
+    expected+=[spec[name][0]['path'] for name in ('review_files','recovery_files')]
+    expected+=[spicy.parent/table['path'] for table in json.loads(spicy.read_text())['tables'].values()]
+    assert len(expected)==9+14 and sorted(hashed)==sorted({Path(path).stat().st_ino for path in expected})
 
 
 def test_entity_release_never_fabricates_a_generation(tmp_path):
@@ -599,13 +625,17 @@ def test_a_changed_model_binds_and_names_the_definition_files_it_changed(tmp_pat
     assert (tmp_path/'arm/model-spec.json').is_file()
 
 
-@pytest.mark.parametrize('plant',['dropped_provenance_file','edited_daily_summary','no_model_intent'])
+@pytest.mark.parametrize('plant',['dropped_provenance_file','changed_provenance_bytes','edited_daily_summary','no_model_intent'])
 def test_a_candidate_that_differs_from_its_daily_refuses_before_the_build_folder(tmp_path,capsys,plant):
+    """Refused before the build folder is written, so the same command runs again once the input is right."""
     from viewer_publication.archive_model_job import main
     candidate=tmp_path/'candidate';summary=daily_candidate(candidate);runtime=engine_runtime(tmp_path)
-    dropped=Path(summary['publication']['records'][1]['path']).name
+    record=summary['publication']['records'][1]
+    held=candidate.resolve()/'archive-daily-provenance'/Path(record['path']).name
     if plant=='dropped_provenance_file':
-        (candidate/'archive-daily-provenance'/dropped).unlink()
+        held.unlink()
+    elif plant=='changed_provenance_bytes':
+        held.write_bytes(held.read_bytes()+b'\n')
     elif plant=='edited_daily_summary':
         path=candidate/'archive-daily/daily-summary.json';edited=json.loads(path.read_text())
         edited['pins']['captures']['snapshot']+=1;path.write_text(json.dumps(edited,sort_keys=True))
@@ -614,7 +644,8 @@ def test_a_candidate_that_differs_from_its_daily_refuses_before_the_build_folder
     with pytest.raises(SystemExit) as error:
         main(['--from-candidate',str(candidate),'--build',str(tmp_path/'arm'),'--runtime',str(runtime)])
     assert error.value.code==2
-    expected={'dropped_provenance_file':'Provenance file not in the candidate: '+dropped,
+    expected={'dropped_provenance_file':f"Pinned model input missing: {held} (review_files {record['key']})",
+              'changed_provenance_bytes':f"Pinned model input changed: {held} (review_files {record['key']})",
               'edited_daily_summary':'Retained daily summary differs from the model continuation',
               'no_model_intent':'requires a completed model checkpoint or intent'}[plant]
     assert expected in capsys.readouterr().err
