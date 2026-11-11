@@ -48,7 +48,7 @@ from ..parsers.xml_repair import parse_xml_with_repairs
 from ..parsers.senate_page import plain_testimony_address, plain_witness_links
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
-from ..parsers.witness_names import LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
+from ..parsers.witness_names import FOOTNOTE_TEXT, LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
 from .mods_person_fields import MODS_JOINED_LINES, MODS_PERSON_FIELDS
 from .mods_record_entries import MODS_MIXED_RECORD_ENTRIES, MODS_RECORD_ENTRIES
 from ._record_producer import (
@@ -189,6 +189,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "preserve_appearances",
         "_PACKAGE_ID_IN_URL_RE",
         "mods_held_dates",
+        "_MEMBER_STYLE",
         "_MEMBER_STATEMENT",
         "_RECORD_ENTRY",
         "_RECORD_OPENING",
@@ -244,6 +245,10 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_mods_family",
         "_mods_same_person",
         "_mods_document_text",
+        "_MODS_SENTENCE_BREAK",
+        "_MODS_SPEAKER_TURN",
+        "_mods_prose",
+        "_mods_accompanied",
         "_MODS_BIOGRAPHY_APPENDIX",
         "_MODS_BIOGRAPHY",
         "_mods_entry_before_heading",
@@ -1016,10 +1021,22 @@ def extract_senate_page_appearances(
 _PACKAGE_ID_IN_URL_RE = re.compile(r"\b(CHRG-\d+[hsj]hrg\d+)\b", re.IGNORECASE)
 
 
+# One reader of a Member's style, both chambers, with or without the article: "a U.S. Senator from", "U.S. Senator
+# from", "a Senator from", "a Representative in Congress from", "U.S. Representative in Congress from", "U.S.
+# Representative from", "a Delegate in Congress from", "Resident Commissioner", "Congressman", "Member of Congress"
+# (round 7). "State Senator from", "a representative from the X Association" are no Member's.
+_MEMBER_STYLE = re.compile(
+    r"\b(?:(?:a |the )?(?:(?:u\.\s?s\.|united states)\s+)?representative\s+in\s+congress"
+    r"|(?:u\.\s?s\.|united states)\s+representative\s+from|a\s+delegate\s+(?:in\s+congress\s+)?from"
+    r"|delegate\s+in\s+congress\s+from|resident\s+commissioner|congress(?:man|woman)\b"
+    r"|united\s+states\s+house\s+of\s+representatives|member\s+of\s+congress"
+    r"|(?:\ba\s+|\bthe\s+|(?:u\.\s?s\.|united\s+states)\s+)senator\s+from)", re.I)
+# The styles read before round 7 (no "U.S."), for which a prepared statement alone still makes a Member's statement.
+# For the styles read since, a prepared statement waits for the hearing transcript to say whether the Member
+# testified (owner decision 2026-11-10, "Transcripts decide in the rule"); a line that names a submission does not.
 _MEMBER_STATEMENT = re.compile(
     r"\b(?:a representative in congress|a delegate (?:in congress )?from|resident commissioner|congress(?:man|woman)\b"
-    r"|united states house of representatives|member of congress|a (?:united states |u\.\s?s\.\s+)?senator from)",
-    re.I)
+    r"|united states house of representatives|member of congress|a (?:united states )?senator from)", re.I)
 # Explicit record entries only (red-f3): something submitted for the record by someone who did not testify. A
 # witness's own entries, their prepared statement or their answers to submitted questions, mark that they
 # testified (D4 gate); a name a parser cannot read is not evidence of a statement.
@@ -1033,7 +1050,8 @@ _RECORD_ENTRY = re.compile(
 # article: ...", "...: May 2008 Executive Summary ...", "..., letter, dated Sept. 3, 2014"; round 5).
 _STATEMENT_WORD = re.compile(r"\bprepared statements?\b", re.I)
 _MEMBER_SUBMISSION = re.compile(
-    r"\b(?:articles?|(?:executive )?summary|letters?|reports?|editorials?|op-eds?|memorand(?:um|a))\b", re.I)
+    r"\b(?:articles?|(?:executive )?summary|letters?|reports?|editorials?|op-eds?|memorand(?:um|a)|press releases?"
+    r"|submitted|on behalf of)\b", re.I)
 # A line that says the person testified or was the nominee is a witness whatever else it says.
 _TESTIFIED_WORDS = re.compile(r"\b(?:testimony|testified|nominee|nominated)\b", re.I)
 # ...unless the line opens with a record entry's own marker ("Letter from the nominee to the Office of General
@@ -1283,16 +1301,20 @@ def mods_entry_kind(line: str, name: str | None, organization: str | None = None
     askers are typed by _mods_askers_named, not here."""
     line = line or ""
     if _RECORD_OPENING.match(line) or (_RETAINED_IN_FILES.match(line) and not drop_footnote_text(line)):
-        return "member_statement" if _MEMBER_STATEMENT.search(line) else "statement_for_record"
+        # A question heading's opening belongs to the answers it lists, not to the entry run in after it ("Responses to
+        # additional questions from: Senator Inhofe ... Sessions, Hon. Jeff, U.S. Senator from ..."): its Member typing
+        # keeps the earlier styles until the transcript says who testified.
+        style = _MEMBER_STATEMENT if re.match(r"\W*responses? to", line, re.I) else _MEMBER_STYLE
+        return "member_statement" if style.search(line) else "statement_for_record"
     organization_document = bool(not name and organization and _MODS_ORGANIZATION_DOCUMENT.search(line))
     # Footnote text that runs into a witness's line says nothing about that witness (green-f4).
     text = drop_footnote_text(line)
     # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
     if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text):
         return "statement_for_record" if organization_document else None
-    member = _MEMBER_STATEMENT.search(text)
-    if member and (_STATEMENT_WORD.search(text) or _RECORD_ENTRY.search(text)
-                   or _MEMBER_SUBMISSION.search(text, member.end())):
+    member = _MEMBER_STYLE.search(text)
+    if member and (_RECORD_ENTRY.search(text) or _MEMBER_SUBMISSION.search(text, member.end())
+                   or _STATEMENT_WORD.search(text) and _MEMBER_STATEMENT.search(text)):
         return "member_statement"
     return "statement_for_record" if _RECORD_ENTRY.search(text) or organization_document else None
 
@@ -1570,6 +1592,29 @@ def _mods_entry_before_heading(line: str, roster: Mapping[tuple[str, ...], set[s
     return line
 
 
+# Transcript text printed as witness lines (CHRG-109hhrg29389, CHRG-109hhrg29726, CHRG-115hhrg30357): a line that
+# opens in lower case mid-sentence and holds two sentence breaks, or one in forty words or more, is a fragment of
+# prose, record material that names no one (round 7: it replaced twenty reviewed entries). GPO's footnote text and an
+# "accompanied by" list also open in lower case and hold people, so neither is prose here.
+_MODS_SENTENCE_BREAK = re.compile(r"[a-z]{2,}[.?!]['’\"]*\s+[A-Z][a-z]")
+# A speaker's turn run in after a panel's names ("... R STREET INSTITUTE Mr. Yoder. We will call forward ...").
+_MODS_SPEAKER_TURN = re.compile(r"^(?:Mr|Ms|Mrs|Dr|Chairman|Chairwoman|Senator)\.?\s+[A-Z][A-Za-z'’-]+\.\s+[A-Z]")
+
+
+def _mods_prose(line: str) -> bool:
+    """Is a line a fragment of transcript prose run into the witness list (see above)?"""
+    if not re.match(r"[a-z$]", line) or FOOTNOTE_TEXT.search(line) or re.search(r"\baccompanied by\b", line, re.I):
+        return False
+    breaks = len(_MODS_SENTENCE_BREAK.findall(line))
+    return breaks >= 2 or breaks >= 1 and len(line.split()) >= 40
+
+
+def _mods_accompanied(text: str, name: str) -> bool:
+    """Does a witness's printed entry list this person after "accompanied by" (an official at the witness table)?"""
+    listed = re.search(r"\baccompanied by\b", text, re.I)
+    return bool(listed) and bool(re.search(rf"(?<![\w'’-]){re.escape(name)}(?![\w'’-])", text[listed.end():], re.I))
+
+
 def _mods_record_rows(names: Sequence[str | None], locators: Iterable[str], witness_type: str,
                       **kept: str | None) -> list[dict[str, Any]]:
     """A reviewed entry's rows, one per name, at the line's next locators."""
@@ -1705,6 +1750,7 @@ def extract_mods_observation(
 
     raw_rows: list[dict[str, Any]] = []
     answering: list[dict[str, Any]] = []  # answerer rows, typed once the whole print is read
+    printed: dict[int, str] = {}  # each line-read row's printed line, for the answerers it lists as accompanying
 
     def row(locator: str, parsed: Mapping[str, Any], kind: str | None) -> dict[str, Any]:
         w_name = _opt_str(parsed.get("name"))
@@ -1788,11 +1834,17 @@ def extract_mods_observation(
             continue
         joined = MODS_JOINED_LINES.get(resolved_pkg or "", {}).get(idx)
         if joined and sha256(cleaned_line.encode()).hexdigest() == joined[0]:
-            segments = [part.strip() for part in re.split(joined[1], cleaned_line, maxsplit=1)]
+            segments = [part.strip() for part in re.split(joined[1], cleaned_line)]
+            # A speaker's turn run in after the entries is transcript, no entry.
+            segments = segments[:1] + [segment for segment in segments[1:] if not _MODS_SPEAKER_TURN.match(segment)]
         for source_locator, cleaned_line in [(next(parts), segment) for segment in segments]:
             if not cleaned_line:
                 after_question = 0
                 emit([(0, {"source_locator": source_locator, "name": None, "document_links": []})], (), parts)
+                continue
+            if _mods_prose(cleaned_line):
+                after_question = 0
+                emit([(0, row(source_locator, {}, "record_material"))], (), parts)
                 continue
             askers, answerers, only, after_question = _mods_askers_named(cleaned_line, roster, after_question)
             # The line's own reading: what it reads as when it is more than askers, and on a line of askers and
@@ -1813,17 +1865,21 @@ def extract_mods_observation(
             elif not only and not skip:
                 at = cleaned_line.find((w_name or "").split()[-1]) if w_name else 0
                 found.append((max(at, 0), row(source_locator, parsed, kind)))
+                printed[id(found[-1][1])] = cleaned_line
                 if w_name and _MODS_WRITTEN_ANSWER.match(cleaned_line):
                     answering.append(found[-1][1])
             lead = w_name if only and askers and w_name and not skip else None
             emit(found, askers, itertools.chain([] if found else [source_locator], parts), answerers, lead)
 
-    # An answerer is typed as their own testimony row in the print (another row of the same person), else as a
-    # statement for the record: they answered only in writing. Never as record material.
+    # An answerer is typed as their own testimony row in the print (another row of the same person); one a witness's
+    # entry lists as accompanying them sat at the table and appeared; anyone else answered only in writing, a
+    # statement for the record (owner decisions 2026-11-10). Never as record material.
     for r in answering:
         same = next((o for o in raw_rows if o.get("name") and all(o is not a for a in answering)
                      and o.get("witness_type") != "record_material" and _mods_same_person(o["name"], r["name"])), None)
-        r["witness_type"] = same.get("witness_type") if same else "statement_for_record"
+        table = next((o for o in raw_rows if o.get("witness_type") is None and all(o is not a for a in answering)
+                      and _mods_accompanied(printed.get(id(o), ""), r["name"])), None)
+        r["witness_type"] = (same or table or {"witness_type": "statement_for_record"}).get("witness_type")
 
     appearances = preserve_appearances(raw_rows, default_source="mods")
     return {

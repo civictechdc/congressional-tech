@@ -2467,7 +2467,7 @@ def _mods_lines(*lines, members=()):
                      f'<name type="authority-lnf">{name.rsplit(" ", 1)[1]}, {name.rsplit(" ", 1)[0]}</name></congMember>'
                      for name in members)
     return ('<mods xmlns="http://www.loc.gov/mods/v3"><extension>' + roster
-            + "".join(f"<witness>{line}</witness>" for line in lines) + "</extension></mods>")
+            + "".join(f"<witness>{escape(line)}</witness>" for line in lines) + "</extension></mods>")
 
 
 def _askers(found):
@@ -2641,11 +2641,12 @@ def test_a_question_line_shows_its_answerer_beside_its_askers(context, line, mem
 
 
 @pytest.mark.parametrize("package,lines,rows", [
-    ("CHRG-111shrg58333", (5, 6, 7), [("mods:witness[5]", "Caitlin Thompson", "statement_for_record", 6),
+    # Round 7: Thompson, Zeiss and Gleason are listed as accompanying Gerald Cross (line 4), at the witness table.
+    ("CHRG-111shrg58333", (5, 6, 7), [("mods:witness[5]", "Caitlin Thompson", None, 6),
                                       ("mods:witness[5]/part[2]", "Daniel K. Akaka", "record_material", 5),
-                                      ("mods:witness[6]", "Antonette Zeiss", "statement_for_record", 8),
+                                      ("mods:witness[6]", "Antonette Zeiss", None, 8),
                                       ("mods:witness[6]/part[2]", "Daniel K. Akaka", "record_material", 7),
-                                      ("mods:witness[7]", "Theresa Gleason", "statement_for_record", 10),
+                                      ("mods:witness[7]", "Theresa Gleason", None, 10),
                                       ("mods:witness[7]/part[2]", "Daniel K. Akaka", "record_material", 9)]),
     ("CHRG-113shrg88369", (5, 6), [("mods:witness[5]", "John D. Kulick", None, 6),
                                    ("mods:witness[5]/part[2]", "Grassley", "record_material", 5),
@@ -2659,9 +2660,9 @@ def test_a_question_line_shows_its_answerer_beside_its_askers(context, line, mem
     ("CHRG-111shrg47762", (2,), [("mods:witness[2]", "Richard Burr", "record_material", 2),
                                  ("mods:witness[2]/part[2]", "William P. Greene Jr.", "statement_for_record", 3)]),
     # Round 6: written-answer lines name the answering official. Taylor and Avalos testified (their own rows);
-    # Ramaswamy accompanied Woteki (named inside her row only) and has no testimony row of his own.
+    # round 7: Ramaswamy is listed as accompanying Woteki (line 6), at the witness table.
     ("CHRG-114hhrg96269", (2, 7, 13), [("mods:witness[2]", "Alexis Taylor", None, 2),
-                                       ("mods:witness[7]", "Sonny Ramaswamy", "statement_for_record", 7),
+                                       ("mods:witness[7]", "Sonny Ramaswamy", None, 7),
                                        ("mods:witness[13]", "Edward M Avalos", None, 13)]),
 ])
 def test_answerers_and_confirmed_askers_in_real_prints(package, lines, rows):
@@ -2715,7 +2716,7 @@ def test_the_rows_the_third_and_fourth_reviews_rejected(entry):
     elif entry["how"] == "nameless":
         assert mods_record_entries.MODS_RECORD_ENTRIES[package][index] in (
             (digest, None), (digest, None, "record_material"))
-    else:
+    else:  # read by a rule: a biography, a heading cut, a Member's submission, transcript prose
         assert index not in mods_record_entries.MODS_RECORD_ENTRIES.get(package, {})
     found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
     row = found[index - 1]
@@ -2753,6 +2754,67 @@ def test_a_us_senators_submitted_article_is_a_members_statement():
     assert [(a["name"], a["witness_type"]) for a in found] == [
         ("Orrin G. Hatch", "member_statement"), ("Benjamin L. Cardin", None), ("Jane Doe", "member_statement"),
         ("Eleanor Holmes Norton", "member_statement")]
+
+
+REVIEW5_LINES = json.loads((Path(__file__).parent / "fixtures/source_models/mods-review5-lines.json").read_text())
+
+
+@pytest.mark.parametrize("entry", REVIEW5_LINES, ids=[f"{r['package']}#{r['index']}" for r in REVIEW5_LINES])
+def test_the_fifth_reviews_lines(entry):
+    """Round 7 (the fifth review), from each line's real text. A line that hides witnesses behind another's entry is
+    split at its printed separator into every entry, the next at /part[2], /part[3] (bound to its SHA-256 in
+    MODS_JOINED_LINES); a speaker's turn run in after a panel's names is no entry; transcript prose is nameless
+    record material by rule."""
+    package, index, line = entry["package"], entry["index"], entry["line"]
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * (index - 1), line), package_id=package)
+    mine = [(a["source_locator"], a["name"], a["witness_type"]) for a in found
+            if a["source_locator"].split("/")[0] == f"mods:witness[{index}]"]
+    assert mine == [tuple(row) for row in entry["rows"]]
+    joined = mods_person_fields.MODS_JOINED_LINES.get(package, {}).get(index)
+    assert (joined is not None) == (len(entry["rows"]) > 1 or entry["how"] == "joined")
+    assert not joined or joined[0] == hashlib.sha256(line.encode()).hexdigest()
+
+
+@pytest.mark.parametrize("line,prose", [
+    ("for participating in today's hearing and I know the subcommittee is eager to hear your testimony. Nearly two years "
+     "ago Congress passed the Project BioShield Act with tremendous bipartisan support. Democrats and Republicans", True),
+    ("de Rugy, Veronique, Ph.D., George Gibbs chair in political economy and senior research fellow, Mercatus Center", False),
+    ("accompanied by Patrick Murray, National Legislative Director, Veteran of Foreign Wars. Ryan Gallucci, National "
+     "Veterans Service Director. Kristina Keenan, Director", False),
+    ("is available at https://docs.house.gov/meetings/IF/IF03/x.pdf. Dr. Jones answered. David Mallino, Director", False),
+])
+def test_transcript_prose_is_read_by_its_shape(line, prose):
+    """A line that opens in lower case mid-sentence with two sentence breaks (or one in forty words) is transcript
+    prose; a surname with a lower-case particle, an "accompanied by" list and GPO's footnote text are not."""
+    assert appearance_records._mods_prose(line) is prose
+    found = appearance_records.extract_mods_appearances(_mods_lines(line))
+    assert (found[0]["name"] is None and found[0]["witness_type"] == "record_material") is prose
+
+
+@pytest.mark.parametrize("line,expected", [
+    # A line naming a submission is a Member's statement under every style.
+    ("Miller, Hon. Zell, a U.S. Senator from the State of Georgia, December 5, 2001, press release", "member_statement"),
+    ("Stabenow, Hon. Debbie, U.S. Senator from Michigan, prepared statement submitted by Hon. Patrick Leahy",
+     "member_statement"),
+    ("Cornyn, John, a U.S. Senator from Texas, On Behalf Of Former U.S. Attorney General John Ashcroft",
+     "member_statement"),
+    ("Jackson Lee, Hon. Sheila, a Representative in Congress from the State of Texas, submitted statement",
+     "member_statement"),
+    # A prepared statement alone waits for the transcript under the styles read since round 7 ...
+    ("Wyden, Hon. Ron, U.S. Senator from Oregon, prepared statement", None),
+    ("McCollum, Hon. Bill, U.S. Representative in Congress from the State of Florida, prepared statement", None),
+    ("Gorton, Hon. Slade, a U.S. Senator from the State of Washington, prepared statement", None),
+    # ... and keeps its earlier reading under the styles read before.
+    ("Hon. Jane Doe, a Representative in Congress from the State of Ohio, prepared statement", "member_statement"),
+    # A State senator is no Member.
+    ("Kirkendoll, Hon. Art, Senator, West Virginia State Senate, letter", None),
+])
+def test_one_member_style_reader_for_both_chambers(line, expected):
+    """Owner decision 2026-11-10, round 7 ("Transcripts decide in the rule"): one reader of a Member's style for both
+    chambers; a line that names a submission is a Member's statement; a prepared statement alone is decided by the
+    hearing transcript (to come), so under the newly read styles it stays as printed."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(line))
+    assert found[0]["witness_type"] == expected
 
 
 def test_a_biography_appendix_is_read_by_rule_in_a_real_print():

@@ -48,15 +48,15 @@ Responses to additional questions from: Senator Crapo"); and seven rows with
 no person that published as witnesses, record_material with no name: the
 contents heading "Page QUESTIONS AND ANSWERS Questions and Answers", the note
 "Questions submitted, classified responses received", and two prose fragments (a budget
-request, a hearing exchange). A shape rule is not right on these: other lines
+request, a hearing exchange; now read by rule, below). A shape rule is not right on these: other lines
 that open "Report," hold a witness after the report ("Report, Plant Life
 Extension.....58-63 ... Moore, W. Henson, President ..."). The five people
 those rows named with heading text are reviewed fields in mods_person_fields.
-Round 5 (the fourth review): every other prose line of the two transcripts
-those fragments came from (CHRG-109hhrg29389 #1-9 and #11-15; CHRG-115hhrg30357
-#3, #6, #9 and #10, whose panel lines #1, #2, #4, #7, #8 and #11 name witnesses
-and stay) is record_material with no name too, #9 and #10 typed so explicitly
-since their prose names Members ("Congressman Ryan's district").
+The transcript prose those fragments belong to is read by a rule since round 7
+(appearance_records._mods_prose: CHRG-109hhrg29389, CHRG-109hhrg29726,
+CHRG-115hhrg30357 and two lines of CHRG-119hhrg60291), which replaced twenty
+entries; CHRG-119hhrg58952 #8, prose the rule's shape does not reach (no
+sentence break in 65 words), stays an entry.
 
 Round 6 (owner decision 2026-11-10): the answerer a written-answer line names
 ("Submitted questions: Avalos, Hon. Edward M") is read by the answerer rule, as
@@ -189,23 +189,6 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     },
     'CHRG-109hhrg28454': {
         5: ('b0f16ef3d5d901ed7d56964368ab28f1859827ec0c9e632dae843553ecec4fe0', 'Robert Brandewie'),
-    },
-    'CHRG-109hhrg29389': {
-        1: ('c3e6e007ea722d606338a5aad08ab763e6e88adf896c1443ea5d0536f3b54f73', None),
-        2: ('9bc4c83c5a48af273cd6872c830782b88ea4f703339f3000993332a29b0ec215', None),
-        3: ('ae485d69979dbd0997a33284fc7dcaa7ea49b33ced9281beec7757c3a724b154', None),
-        4: ('75cc0021a52ff9f3e71a30bfc9f96847cfe9fd3edc5bb9950df368c7e75fb959', None),
-        5: ('60a09a2313e9bdd247b49e4885f076dec7736bc49764e00d6986080fb1f7d1fe', None),
-        6: ('b4f585feb7ade627ca21d4795ce4682619c08d2d478f9aa4717cfa1b75da072f', None),
-        7: ('a98c5f0b3e57ee73c93465954c2b3d22ca76f1e68008d94d90167470a645f3f6', None),
-        8: ('27ff6950308816347520622e28be9e2c8c389a6b952f3e94a45263d2f7c07ecb', None),
-        9: ('06567d53e840ef8c8682cfcaee536a4c830202f28f03b62d8ff1e0ddaf18c555', None),
-        10: ('731103ed8d32d0377ed680dc122f25de4561567a48124d199fcb67f625ade684', None),
-        11: ('0475f6391a537db96a1a82cfb52bce826e225d120f19c2f0c4c0a0c18f8a5df5', None),
-        12: ('c63358031a8936bce589b320cb2d544194c1966665cb0f85e6889c80821b0881', None),
-        13: ('e42ba33a59baaaad319b0319503a677097775512aafd8ec8cd30daf85d3c913f', None),
-        14: ('cd7b8c1d371e5dc0ad631992a0cf52f58c3e12872e0dca46adc77e2ec8bf86fa', None),
-        15: ('a4254d8d6e22ca2bd70fa3fd3ed6123656bf284fceedd80feffa68cb5d1361ea', None),
     },
     'CHRG-109hhrg29565': {
         3: ('c6d37563b7cbd3caafc255f118db8e98f49144163c788018dc12d16f2f36d6aa', None),
@@ -382,13 +365,6 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
         2: ('8e8e80c14aa8efd74682837c08390a1a726ec44c3336510f2e87475c28072f2c',
             ('Frank A. LoBiondo', 'Paul Mitchell'), 'record_material'),
     },
-    'CHRG-115hhrg30357': {
-        3: ('f9878746d79ba59b29fecae28a3046aaca96e97621fe424bb62a097a9845cf9c', None),
-        5: ('9948113420f78df911cd5bf210ce36b044e4b55cb67b8048ee0110f20b206ace', None),
-        6: ('6ae2fa3beade990414934ae3d1fa238d4e0a1c16953010c5c135fba190f1d24e', None),
-        9: ('d867fe7c677e6608b1320b5cc28fef98e6b673cd87533be43901a05254b1615e', None, 'record_material'),
-        10: ('1f690b53083c00c1c583616a9d32830ef1777b49826dc51b6b47284af66cb3d1', None, 'record_material'),
-    },
     'CHRG-115shrg26915': {
         5: ('b27836ef058075b90e1a1d9efefd7f3d5e648f4da0bcb6be94aff16b2eedbd72', None, 'record_material'),
     },
@@ -414,6 +390,9 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     'CHRG-118hhrg53922': {
         15: ('c954bacf7fd3c1693b6ac1f429e74381dc43426a921ebcd69e8d6b326e842204', None),
         16: ('774ebc969f6ceb94be35717b1b7e19d5bc7f819ee24887b42160b8284dc7452b', None),
+    },
+    'CHRG-119hhrg58952': {
+        8: ('f2cfc889c60844958764a48ed5e5192180989578ceddf38a525b534ff61ccbc4', None),
     },
     'CHRG-119hhrg60291': {
         9: ('375bdc6921b733f41b2ba4f7bf5f645e3dc125ed6115b5f5d68342db0af015d8', None),
