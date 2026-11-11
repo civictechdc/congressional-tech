@@ -77,9 +77,13 @@ def test_release_availability_keeps_unavailable_definitions_and_identity():
 
 def test_release_publishes_kind_synonyms_for_readers_to_filter_as_one():
     """ct-isnv: the House guide titles one type 'Written Witness Testimony or Witness Statement'.
-    The site and the MCP read this from each release's schema.json and filter the words as one kind."""
+    The site and the MCP read this from each release's schema.json and filter the words as one kind.
+    Owner, 2026-11-11: add the pairs that mean the same thing on real documents, the House guide's word
+    first (investigation govinfo-synonyms-20261111): a committee's markup amendment, and a biography of
+    someone appearing before the committee. Words that are broader or name another publication stay apart."""
     listed = next(t for t in build_schema(['list.parquet']) ['files'] if t['name'] == 'list.parquet')
-    assert listed['synonyms'] == {'document_kind[]': [['witness-statement', 'testimony']]}
+    assert listed['synonyms'] == {'document_kind[]': [['witness-statement', 'testimony'], ['committee-amendment', 'amendment'],
+                                                      ['witness-biography', 'biography']]}
     assert 'synonyms' not in next(t for t in build_schema()['files'] if t['name'] == 'detail.parquet')
 
 
