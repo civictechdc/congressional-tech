@@ -145,6 +145,14 @@
           [
             "witness-statement",
             "testimony"
+          ],
+          [
+            "committee-amendment",
+            "amendment"
+          ],
+          [
+            "witness-biography",
+            "biography"
           ]
         ]
       },
