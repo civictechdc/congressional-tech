@@ -377,6 +377,9 @@ def test_a_debug_log_from_another_run_or_none_at_all_is_refused(tmp_path, capsys
     (tmp_path / 'other.log').write_text(moved)
     assert 'not from this run' in refusal(capsys, *paths, '--debug-log', str(tmp_path / 'other.log'))
     assert 'absent.log' in refusal(capsys, *paths, '--debug-log', str(tmp_path / 'absent.log'))
+    # Every engine job makes admission requests: a stderr without one was written with the debug log off, and would
+    # otherwise report 0 refusal lines on every statement.
+    assert 'RUST_LOG=docspec=info,docspec::budget=debug' in refusal(capsys, *paths, '--debug-log', paths[0])
 
 
 def test_two_runs_compare_their_shared_floors_when_both_read_a_debug_log(tmp_path, capsys):
