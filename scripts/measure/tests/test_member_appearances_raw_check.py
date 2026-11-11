@@ -4,9 +4,11 @@ Hand rows: a Member rightly retyped (Reyes), an outside witness with a sitting S
 the hearing's own nominee (Pompeo), a former Member (Campbell), a Member whose namesake also sits (French Hill beside
 Katie Hill), two Levins, two Mike Rogers told apart by a seat, Member Day rows naming only the Member or a seat, a
 seat's holder named only by family name (Pomeroy), a bare initial (C. Cox), a Member Day hearing that also hears an
-outside witness, the publisher's own IDs in both directions with another publisher's copy, and rows the check cannot
-read.
+outside witness, a committee member's own opening statement typed a Member statement (the print's MODS lists them),
+the publisher's own IDs in both directions with another publisher's copy, and rows the check cannot read.
 """
+import gzip
+import hashlib
 import importlib.util
 from pathlib import Path
 
@@ -37,13 +39,15 @@ MEMBERS = [  # bioguide, first, last, nickname, (term type, state, start, end, d
     ('C000830', 'C.', 'Cox', None, ('rep', 'CA', '1989-01-03', '2005-08-02', '48')),
     ('P000422', 'Earl', 'Pomeroy', None, ('rep', 'ND', '1993-01-05', '2011-01-03', '0')),
     ('J000299', 'Mike', 'Johnson', None, ('rep', 'LA', '2017-01-03', '2027-01-03', '4')),
+    ('K000009', 'Marcy', 'Kaptur', None, ('rep', 'OH', '1983-01-03', '2027-01-03', '9')),
 ]
 MEETINGS = [(1, '2007-05-01', 'Border security'), (2, '2013-09-24', 'Black carbon'),
             (3, '2017-01-12', 'Nomination of Mike Pompeo to be Director of the Central Intelligence Agency'),
             (4, '2017-07-07', 'Public lands'), (5, '2019-09-10', 'Banking'), (6, '2009-04-01', 'Trade'),
             (7, '2015-04-23', 'Health'), (8, '2025-02-05', 'Defense'), (9, None, 'Undated'), (10, '2019-09-11', 'Ferguson'),
             (11, '2019-09-20', 'Member Day Hearing'), (12, '2019-06-04', "Members' Day"), (13, '2013-07-09', 'Veterans care'),
-            (14, '2001-06-28', 'Trade with Russia'), (15, '2006-05-10', 'Farm policy'), (16, '2026-03-17', 'Member Day')]
+            (14, '2001-06-28', 'Trade with Russia'), (15, '2006-05-10', 'Farm policy'), (16, '2026-03-17', 'Member Day'),
+            (17, '2024-03-20', 'Energy and Water appropriations')]
 # key: (source, event, name, position, organization, publisher id, witness type, published as member, matched)
 WITNESSES = {
     'reyes': ('mods', 1, 'Silvestre Reyes', 'a Representative in Congress from the State of Texas', None, None, None, True, 'R000170'),
@@ -65,6 +69,8 @@ WITNESSES = {
     'outside-at-member-day': ('house_xml', 16, 'Mr. Kel McClanahan', 'Executive Director', 'National Security Counselors',
                               None, None, False, None),
     'namesake-at-member-day': ('house_xml', 16, 'Mr. Mike Johnson', None, None, None, None, False, None),
+    'kaptur-opening': ('mods', 17, 'Marcy Kaptur', 'a Representative in Congress from the State of Ohio', 'opening statement', None,
+                       'member_statement', False, 'K000009'),
     'undated': ('mods', 9, 'Silvestre Reyes', 'a Representative in Congress from the State of Texas', None, None, None, False, None),
     'letter': ('mods', 1, 'Letter from the Sheriff', None, None, None, 'record_material', False, None),
 }
@@ -81,7 +87,11 @@ PLANTS = {
     'Member Day row stating only a seat left a witness': ('curtis', None),
     'wrong one of two on a seat row': ('rogers', 'R000572'),
     'outside namesake at a Member Day hearing retyped': ('namesake-at-member-day', 'J000299'),
+    "committee member's opening statement left an appearance": ('kaptur-opening', 'K000009'),
+    'a Member Day testimony typed a statement': ('newhouse', ('statement', 'N000189')),
 }
+# The prints' own MODS: the committee members each lists (congMember role COMMMEMBER).
+PRINT_MEMBERS = {'kaptur-opening': ['K000009', 'A000055']}
 
 
 def tables(tmp_path):
@@ -103,8 +113,16 @@ def tables(tmp_path):
                                  bioguide_id=col(5), superseded_by=[SUPERSEDED.get(k) for k in keys],
                                  witness_type=['member_appearance' if WITNESSES[k][7] else WITNESSES[k][6] for k in keys],
                                  matched_bioguide_id=col(8),
-                                 match_basis=[BASIS.get(k, 'name_state') if WITNESSES[k][7] else None for k in keys])),
+                                 match_basis=[BASIS.get(k, 'name_state') if WITNESSES[k][7] or WITNESSES[k][8] else None for k in keys],
+                                 record_sha=[hashlib.sha256(k.encode()).digest() for k in keys])),
                    tmp_path / 'witnesses.parquet')
+    for key, members in PRINT_MEMBERS.items():
+        digest = hashlib.sha256(key.encode()).hexdigest()
+        body = tmp_path / 'bodies' / digest[:2] / f'{digest}.gz'
+        body.parent.mkdir(parents=True, exist_ok=True)
+        body.write_bytes(gzip.compress(('<mods><extension>' + ''.join(
+            f'<congMember bioGuideId="{b}" chamber="H" congress="118" role="COMMMEMBER"/>' for b in members)
+            + '</extension></mods>').encode()))
 
 
 def run(tmp_path, plant=False):
@@ -113,7 +131,7 @@ def run(tmp_path, plant=False):
             '--terms', str(tmp_path / 'terms.parquet'), '--meetings', str(tmp_path / 'meetings.parquet'),
             '--output', str(tmp_path / 'out.json')]
     parser_args = check.argparse.Namespace(witnesses=args[1], members=args[3], terms=args[5], meetings=args[7], output=args[9],
-                                           decisions=None, prints=None, plant=plant)
+                                           decisions=None, prints=None, plant=plant, mods_bodies=tmp_path / 'bodies')
     return check.run(parser_args)
 
 
@@ -122,7 +140,7 @@ def read(tmp_path):
     con = check.duckdb.connect()
     ref = check.Reference(con, tmp_path / 'members.parquet', tmp_path / 'terms.parquet')
     rows = check.read_rows(con, tmp_path / 'witnesses.parquet', None, tmp_path / 'meetings.parquet', None)
-    return ref, rows, {k: (r['retyped'], r['matched']) for k, r in rows.items()}
+    return ref, rows, {k: ('statement' if r['statement'] else r['retyped'], r['matched']) for k, r in rows.items()}
 
 
 def test_the_published_decisions_raise_no_flag_and_the_publisher_labels_agree(tmp_path):
@@ -143,7 +161,7 @@ def test_the_seat_and_initial_readings_name_the_member(tmp_path):
 
 def test_each_planted_wrong_value_is_flagged(tmp_path):
     ref, rows, decided = read(tmp_path)
-    baseline, _p, _n = check.judge(rows, decided, ref)
+    baseline, _p, _n = check.judge(rows, decided, ref, tmp_path / 'bodies')
     results = check.plant_results(rows, decided, baseline, PLANTS, ref)
     assert all(v.startswith('caught') for v in results.values()), results
     assert 'left a witness' in results['member left a witness']
@@ -153,6 +171,9 @@ def test_each_planted_wrong_value_is_flagged(tmp_path):
     assert results['Member Day row naming only the Member left a witness'] == 'caught: left a witness: names sitting N000189'
     assert results['Member Day row stating only a seat left a witness'] == 'caught: left a witness: names sitting C001114'
     assert results['wrong one of two on a seat row'].endswith('(names R000575; matched R000572)')
+    assert "a committee member's own opening statement (the print lists them)" in results[
+        "committee member's opening statement left an appearance"]
+    assert results['a Member Day testimony typed a statement'] == 'caught: statement: no opening statement in its words (matched N000189)'
     # Only because the hearing also hears an outside witness: the row alone cannot tell the namesake from the Member.
     assert 'a name alone at a Member Day hearing that also hears outside witnesses' in results[
         'outside namesake at a Member Day hearing retyped']

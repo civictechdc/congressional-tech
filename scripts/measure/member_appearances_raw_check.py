@@ -2,7 +2,7 @@
 
     member_appearances_raw_check.py --witnesses witnesses.parquet [--decisions witness_members.parquet]
         --members members.parquet --terms member_terms.parquet --meetings meetings.parquet
-        [--prints prints.parquet] [--plant] --output OUT.json
+        [--prints prints.parquet] [--mods-bodies DIR] [--plant] --output OUT.json
 
 The rows under test are a release's witnesses (witness_type member_appearance, matched_bioguide_id, match_basis), or a
 release's witnesses with an engine run's decisions laid over them (--decisions: witness_members).
@@ -31,13 +31,19 @@ family name and initial). It judges in both directions:
    row tells a Member from an outside witness who shares the name, and this check cannot either;
  - left: each shown row that is not one, has a date, states a congressional office or seat in a field or is a name
    alone at a Member Day hearing that hears no outside witness, has no such words, and names exactly one sitting
-   Member, is flagged as left a witness.
+   Member, is flagged as left a witness;
+ - statements: a row the rule types member_statement for its Member (a committee member's own opening statement) must
+   say opening statement and, for a print, name a Member the print's own MODS lists as a committee member
+   (congMember role COMMMEMBER, read from the raw body under --mods-bodies; the rule reads rosters instead); a Member
+   appearance that says opening statement by a Member that list holds, from the 113th Congress on (where the rule's
+   rosters begin), is flagged as a committee member's opening statement left an appearance.
 Rows not read are counted by reason (no name, record entries, no hearing date, superseded rows for the 'left' side).
-With --plant the ten planted wrong values below are laid over the decisions (one also renames its row) and each must
+With --plant the twelve planted wrong values below are laid over the decisions (one also renames its row) and each must
 raise a flag the baseline does not have (tests/test_member_appearances_raw_check.py plants the same kinds on hand rows).
 """
 import argparse
 from collections import Counter, defaultdict
+import gzip
 import json
 from pathlib import Path
 import re
@@ -89,6 +95,9 @@ SEATS = (  # (pattern, which group is the state, which the district); district N
 )
 MEMBER_DAY = re.compile(r"\bmembers?['\u2019]?s?\s+day\b")
 FORMER_MEMBERS_DAY = re.compile(r"\bformer\s+members?['\u2019]?s?\s+day\b")
+OPENING = re.compile(r'\bopening statements?\b')
+COMMITTEE_MEMBER = re.compile(r'<congMember\b[^>]*\bbioGuideId="([A-Z]\d{6})"[^>]*\brole="COMMMEMBER"|'
+                              r'<congMember\b[^>]*\brole="COMMMEMBER"[^>]*\bbioGuideId="([A-Z]\d{6})"')
 
 # The planted wrong values (reviews of c98dab56 and d8e1b039): release witness keys and the value laid over them.
 PLANTS = {
@@ -105,6 +114,8 @@ PLANTS = {
     # 2026-03-17), renamed to share a sitting Member's name and retyped as that Member.
     "outside witness sharing a sitting Member's name at a Member Day hearing, retyped (renamed Mike Johnson)":
         ('b0d3c472068029ec', 'J000299', dict(name='Mr. Mike Johnson')),
+    "committee member's opening statement left an appearance (Marcy Kaptur, CHRG-118hhrg57786)": ('e43fe83fcaeafc3a', 'K000009'),
+    "a Member Day testimony typed a statement (John Garamendi 2021)": ('bae376cd80f85245', ('statement', 'G000559')),
 }
 
 
@@ -189,7 +200,7 @@ class Reference:
 
 
 ROW_KEYS = ('witness_key', 'source', 'name', 'publisher_id', 'person', 'fields', 'dates', 'title', 'shown', 'record_entry',
-            'retyped', 'matched', 'basis', 'occasion')
+            'retyped', 'matched', 'basis', 'occasion', 'statement', 'record_hex')
 
 
 def read_rows(con, witnesses, decisions, meetings, prints):
@@ -202,14 +213,17 @@ def read_rows(con, witnesses, decisions, meetings, prints):
     held = "array_to_string(p.held_dates,',')" if prints else 'NULL'
     title = 'coalesce(m.title,p.print_title)' if prints else 'm.title'
     member = ("d.outcome='member'" if decisions else "w.witness_type='member_appearance'")
+    statement = ("d.outcome='statement'" if decisions else "(w.witness_type='member_statement' and w.matched_bioguide_id is not null)")
     matched = ("d.decided_id" if decisions else "w.matched_bioguide_id")
     basis = ("d.decided_basis" if decisions else "w.match_basis")
     rows = con.execute(f"""select w.witness_key,w.source,w.name,w.bioguide_id,coalesce(w.superseded_by,w.witness_key) as person,
           concat_ws(' | ',w.position,w.organization,w.on_behalf_of,w.location) as fields,
           coalesce(cast(m.meeting_date as varchar),{held}) as dates,{title} as title,w.superseded_by is null as shown,
-          coalesce(w.witness_type,'') in ('statement_for_record','member_statement','record_material') as record_entry,
+          coalesce(w.witness_type,'') in ('statement_for_record','member_statement','record_material') and not coalesce({statement},false)
+           as record_entry,
           coalesce({member},false) as retyped,{matched} as matched,{basis} as basis,
-          coalesce(cast(w.event_id as varchar),w.package_id,w.witness_key) as occasion
+          coalesce(cast(w.event_id as varchar),w.package_id,w.witness_key) as occasion,coalesce({statement},false) as statement,
+          lower(hex(w.record_sha)) as record_hex
         from read_parquet('{witnesses}') w left join read_parquet('{meetings}') m using(event_id) {prints_join} {overlay}""").fetchall()
     return {r[0]: dict(zip(ROW_KEYS, r)) for r in rows}
 
@@ -255,11 +269,32 @@ def member_day(row):
     return bool(MEMBER_DAY.search(title)) and not FORMER_MEMBERS_DAY.search(title)
 
 
-def read_words(rows, ref):
+def print_members(record_hex, bodies, cache):
+    """The Members a print's own MODS lists as committee members, read once per body; None when it cannot be read."""
+    if record_hex not in cache:
+        path = Path(bodies) / record_hex[:2] / f'{record_hex}.gz' if bodies and record_hex else None
+        try:
+            text = gzip.decompress(path.read_bytes()).decode('utf-8', 'replace') if path else None
+        except OSError:
+            text = None
+        cache[record_hex] = None if text is None else {a or b for a, b in COMMITTEE_MEMBER.findall(text)}
+    return cache[record_hex]
+
+
+def congress_of(day):
+    year = int(day[:4]) - (1 if day[5:10] < '01-03' else 0)
+    return (year - 1789) // 2 + 1
+
+
+def read_words(rows, ref, bodies=None):
     """Each row's own words, read once (judge runs again for every plant): the Members it names, its office, places."""
+    cache = {}
     for row in rows.values():
         if 'found' in row:
             continue
+        row['opening'] = bool(OPENING.search(fold((row['name'] or '') + ' | ' + (row['fields'] or ''))))
+        row['print_members'] = (print_members(row['record_hex'], bodies, cache)
+                                if row['opening'] and row['source'] == 'mods' else None)
         text = fold(row['fields'])
         states, chambers = stated(row)
         row.update(found=ref.readings(row) if row['name'] and row['dates'] else {}, states=states, chambers=chambers,
@@ -268,9 +303,9 @@ def read_words(rows, ref):
                    member_day=member_day(row), outside=bool(OUTSIDE.search(text)), nominee=own_nomination(row))
 
 
-def judge(rows, decided, ref):
+def judge(rows, decided, ref, bodies=None):
     flags, publisher, not_read = {}, Counter(), Counter()
-    read_words(rows, ref)
+    read_words(rows, ref, bodies)
     # One appearance stated by several publishers (superseded_by): an office any of its rows states counts for all.
     office_groups = {r['person'] for r in rows.values() if r['office']}
     # Hearings that also hear outside witnesses: a named row with fields that names no sitting Member.
@@ -285,6 +320,17 @@ def judge(rows, decided, ref):
             not_read['no hearing date'] += 1; continue
         retyped, matched = decided.get(key, (False, None))
         days = row['dates'].split(',')
+        if retyped == 'statement':  # the rule's committee opening statement, typed member_statement
+            why = []
+            if not row['opening']:
+                why.append('no opening statement in its words')
+            if row['print_members'] is not None and matched not in row['print_members']:
+                why.append("not on the print's own committee member list")
+            if not ref.sitting(matched, days):
+                why.append('no term covers the date')
+            if why:
+                flags[key] = f'statement: {"; ".join(why)} (matched {matched})'
+            continue
         if row['publisher_id'] in ref.names:  # the publisher's own label, both directions
             expected = bool(ref.sitting(row['publisher_id'], days)) and not row['nominee']
             publisher[(expected, retyped)] += 1
@@ -316,6 +362,11 @@ def judge(rows, decided, ref):
                 why.append('former, state legislature or outside words')
             if not (row['office'] or row['states'] or row['member_day'] or row['person'] in office_groups):
                 why.append('no congressional office stated')
+            if row['opening'] and row['print_members'] and matched in row['print_members']:
+                if congress_of(days[0]) >= 113:
+                    why.append("a committee member's own opening statement (the print lists them)")
+                else:
+                    not_read['committee opening statements before the 113th Congress (no rosters)'] += 1
             if row['member_day'] and not row['fields'] and row['occasion'] in outside_heard:
                 why.append('a name alone at a Member Day hearing that also hears outside witnesses')
             if why:
@@ -366,7 +417,7 @@ def plant_results(rows, decided, baseline, plants, ref):
         if key not in rows:
             results[label] = 'not in these rows'; continue
         planted = dict(decided)
-        planted[key] = (value is not None, value)
+        planted[key] = value if isinstance(value, tuple) else (value is not None, value)
         planted_rows = rows
         if renamed:  # a fresh row: its words are read again
             planted_rows = dict(rows)
@@ -380,10 +431,11 @@ def run(args):
     con = duckdb.connect()
     ref = Reference(con, args.members, args.terms)
     rows = read_rows(con, args.witnesses, args.decisions, args.meetings, args.prints)
-    decided = {k: (r['retyped'], r['matched']) for k, r in rows.items()}
-    flags, publisher, not_read = judge(rows, decided, ref)  # reads every row's words first
+    decided = {k: ('statement' if r['statement'] else r['retyped'], r['matched']) for k, r in rows.items()}
+    flags, publisher, not_read = judge(rows, decided, ref, args.mods_bodies)  # reads every row's words first
     out = dict(rows=len(rows), retyped=sum(1 for r in rows.values() if r['retyped']),
                retyped_shown=sum(1 for r in rows.values() if r['retyped'] and r['shown']),
+               statements=sum(1 for r in rows.values() if r['statement']),
                cross_publisher=cross_publisher(rows, decided, ref),
                publisher_rows={f'expected {"member" if e else "witness"}, published {"member" if p else "witness"}': n
                                for (e, p), n in sorted(publisher.items())},
@@ -401,6 +453,7 @@ def main(argv=None):
     for name in ('witnesses', 'members', 'terms', 'meetings', 'output'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--decisions'); parser.add_argument('--prints'); parser.add_argument('--plant', action='store_true')
+    parser.add_argument('--mods-bodies', help="raw body store holding the prints' MODS (<dir>/<sha[:2]>/<sha>.gz)")
     out = run(parser.parse_args(argv))
     print(json.dumps({k: v for k, v in out.items() if k not in ('flagged',)}, indent=1, default=str))
 
