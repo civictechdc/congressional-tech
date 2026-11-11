@@ -170,11 +170,25 @@ def _meetings(base, versions, selection, **stage):
     return output, dict(reused_rows=len(rows) - len(expected), appended=len(expected))
 
 
+def _moved_sources(current, prior):
+    """Sources whose producer version moved from the base model's pin; the rest are reused verbatim.
+
+    The base model and this code must name the same sources, and at least one must move: replaying
+    nothing would re-import an unchanged table.
+    """
+    unexpected = sorted(current.keys() ^ prior.keys())
+    if unexpected:
+        raise ValueError('Record-only appearances: the base model and this code name different sources: '
+                         + ', '.join(unexpected))
+    moved = {source for source in current if current[source] != prior[source]}
+    if not moved:
+        raise ValueError('Record-only appearances: no source producer version moved from the base model')
+    return moved
+
+
 def _appearances(base, versions, *, directory, **stage):
     current = appearance_records.current_versions()
-    changed = {source for source in current if current[source] != versions.get(source)}
-    if changed != {'mods', 'senate_page'} or current.keys() != versions.keys():
-        raise ValueError('Record-only appearances requires the MODS and Senate page transition')
+    changed = _moved_sources(current, versions)
     current_rows = _base_keys(base, versions, history=True)
     rows = [row for row in current_rows if row['source'] in changed]
     if len(rows) > stage['limit']:
@@ -189,7 +203,7 @@ def _appearances(base, versions, *, directory, **stage):
     if history & new:
         raise ValueError('Record-only replay overlaps an already retained appearance version')
     output = pa.concat_tables([base, replay], promote_options='default').sort_by([('record_sha', 'ascending'), ('source', 'ascending'), ('parser_version', 'ascending')])
-    return output, dict(reused_rows=base.num_rows, appended=replay.num_rows)
+    return output, dict(reused_rows=base.num_rows, appended=replay.num_rows, replayed_sources=sorted(changed))
 
 
 def _from_captures(name, capture, expected, *, engine, work, raw_root, mirror, unreadable, limit):
