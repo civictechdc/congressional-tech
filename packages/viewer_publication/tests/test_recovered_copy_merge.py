@@ -339,6 +339,8 @@ VETS_PRINT = 'https://www.govinfo.gov/content/pkg/CHRG-113hhrg85864/pdf/CHRG-113
 REPORT = 'http://thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr467):'
 REPORT_PT1 = 'https://www.govinfo.gov/content/pkg/CRPT-105hrpt467/pdf/CRPT-105hrpt467-pt1.pdf'
 SAME = DEM + 'imo/media/doc/Russell%20Testimony.pdf'
+DAV = 'https://veterans.house.gov/submission-for-the-record/disabled-american-veterans-1'
+DAV_PRINT = 'https://www.govinfo.gov/content/pkg/CHRG-113hhrg82238/html/CHRG-113hhrg82238.htm'
 
 
 def _several_files(tmp_path):
@@ -348,13 +350,19 @@ def _several_files(tmp_path):
     with two copies of one testimony whose text the model does not read (PDFs)."""
     raw = tmp_path / 'raw'
     page = _page('Between Peril and Promise | House Committee on Veterans Affairs', [(VETS_PRINT, 'Hearing Transcript')])
+    # A submission page beside the official hearing record offered as containing it (20 such rows; the record's
+    # own title is the hearing's).
+    dav_page = _page('Disabled American Veterans | House Committee on Veterans Affairs', [(DAV_PRINT, 'Hearing record')])
+    dav_print = _page("- WHY ARE VETERANS WAITING YEARS ON APPEAL?: A REVIEW OF THE POST- DECISION PROCESS", [])
     transcript = b'%PDF-1.7\nBETWEEN PERIL AND PROMISE: hearing before the Committee on Veterans Affairs\n%%EOF\n'
     part1 = b'%PDF-1.7\nHouse Report 105-467 Part 1\n%%EOF\n'
     part2 = b'%PDF-1.7\nHouse Report 105-467 Part 2\n%%EOF\n'
     copy_a = b'%PDF-1.7\nTestimony of Deb Russell\n%%EOF\n'
     copy_b = b'%PDF-1.7\nTestimony of Deb Russell \n%%EOF\n'
     hearings = _page('Hearings | House Committee on Veterans Affairs', [(VETS, 'Between Peril and Promise')])
-    lines = [_fetch(raw, VETS_HEARINGS, hearings), *(_fetch(raw, url, status=404) for url in (VETS, REPORT, SAME)),
+    lines = [_fetch(raw, VETS_HEARINGS, hearings), *(_fetch(raw, url, status=404) for url in (VETS, REPORT, SAME, DAV)),
+        _recovered(raw, DAV, dav_page, 'recovered_document', DAV, EARLIER, fmt='html'),
+        _recovered(raw, DAV, dav_print, 'requested_content_in_official_hearing', DAV_PRINT, LATER, fmt='html'),
         _recovered(raw, VETS, page, 'recovered_document', VETS, LATER, fmt='html'),
         _recovered(raw, VETS, transcript, 'recovered_document', VETS_PRINT, EARLIER),
         _recovered(raw, REPORT, part1, 'recovered_document', REPORT_PT1, LATER),
@@ -362,9 +370,10 @@ def _several_files(tmp_path):
         _recovered(raw, SAME, copy_a, 'recovered_document', SAME, LATER),
         _recovered(raw, SAME, copy_b, 'recovered_document', SAME, EARLIER)]
     staged = _stage(tmp_path, lines, [])
-    files = dict(page=page, transcript=transcript, part1=part1, part2=part2, copy_a=copy_a, copy_b=copy_b)
-    accepted = [(VETS, page), (VETS, transcript), (REPORT, part1), (REPORT, part2), (SAME, copy_a), (SAME, copy_b)]
-    decided = [(VETS, page, 'source_page'), (REPORT, part2, 'edition'), (SAME, copy_a, 'same_document'), (SAME, copy_b, 'same_document')]
+    files = dict(page=page, transcript=transcript, part1=part1, part2=part2, copy_a=copy_a, copy_b=copy_b, dav_page=dav_page, dav_print=dav_print)
+    accepted = [(VETS, page), (VETS, transcript), (REPORT, part1), (REPORT, part2), (SAME, copy_a), (SAME, copy_b), (DAV, dav_page), (DAV, dav_print)]
+    decided = [(VETS, page, 'source_page'), (REPORT, part2, 'edition'), (SAME, copy_a, 'same_document'), (SAME, copy_b, 'same_document'),
+        (DAV, dav_page, 'source_page')]
     return staged, files, accepted, decided
 
 
@@ -374,11 +383,14 @@ def test_a_page_capture_is_the_source_of_its_file_and_an_edition_is_its_own_docu
     came from (an unsaved sources row with its listing page), not as a recovered copy, as a GovInfo details page
     is folded into its hearing (ct-m878). "Split into separate documents": each other edition of the file a dead
     link shows is its own document, keyed by its body; the link keeps its key and the file it shows, and the
-    link's address finds both. Built twice from one capture set: as published (every file reviewed undecided,
-    which changes nothing) and with the decisions, against the first as the live release."""
+    link's address finds both. "Keep the page's old title" (owner, same day): a document that showed the page keeps
+    the page's title on the file, not the hearing record's own title and not none. Built twice from one capture set:
+    as published (every file reviewed undecided, which changes nothing) and with the decisions, against the first as
+    the live release."""
     from viewer_publication.release_comparison import compare
     staged, files, accepted, decided = _several_files(tmp_path)
-    _release_from(tmp_path, staged, _root(tmp_path, 'before-root', [(o, c, 'undecided') for o, c in accepted]), 'before', 'before-model')
+    before, _ = _release_from(tmp_path, staged, _root(tmp_path, 'before-root', [(o, c, 'undecided') for o, c in accepted]), 'before', 'before-model')
+    title_before = lambda url: next(before['detail'][r['list_row']]['title'] for r in before['links'] if r['link_key'] == _url_key(url))
     after, result = _release_from(tmp_path, staged, _root(tmp_path, 'after-root', decided), 'after', 'after-model')
     sha = lambda name: hashlib.sha256(files[name]).digest()
     details, links = after['detail'], {r['link_key']: r['list_row'] for r in after['links']}
@@ -394,6 +406,13 @@ def test_a_page_capture_is_the_source_of_its_file_and_an_edition_is_its_own_docu
     assert [(s['url'], s['is_saved'], s['listed_on'], s['link_text']) for s in after['sources'] if s['list_row'] == vets] == [
         (VETS, False, VETS_HEARINGS, 'Between Peril and Promise')]
     assert lookup(VETS) == [vets]
+    # It showed the page, so the page's title stays: the transcript PDF has none of its own.
+    assert details[vets]['title'] == title_before(VETS) == 'Between Peril and Promise | House Committee on Veterans Affairs'
+
+    # The submission: the link's row shows the hearing record now, under the page's title, not the hearing's.
+    dav = links[_url_key(DAV)]
+    assert (details[dav]['saved_body'], served(dav)) == (sha('dav_print'), [sha('dav_print')])
+    assert details[dav]['title'] == title_before(DAV) == 'Disabled American Veterans | House Committee on Veterans Affairs'
 
     # The report: the link keeps part 1; part 2 is its own document under its body key, and the dead
     # address finds both.
@@ -407,7 +426,7 @@ def test_a_page_capture_is_the_source_of_its_file_and_an_edition_is_its_own_docu
     same = links[_url_key(SAME)]
     assert served(same) == sorted([sha('copy_a'), sha('copy_b')])
     # Beside them only the live hearings page that listed the veterans page.
-    assert [d['saved_kind'] for i, d in enumerate(details) if i not in {vets, report, part2, same}] == ['original']
+    assert [d['saved_kind'] for i, d in enumerate(details) if i not in {vets, report, part2, same, dav}] == ['original']
 
     queries = {q['name']: q['data'] for q in result['queries']}
     assert queries['recovered_file_invariants'] == [dict(several_files_unreviewed=0, links_without_a_file=0)]
@@ -415,13 +434,13 @@ def test_a_page_capture_is_the_source_of_its_file_and_an_edition_is_its_own_docu
     assert queries['recovered_file_roles_unused'] == [dict(entries=0)]
     assert queries['model_invariants'][0]['unaccounted_merged_signal'] == 0
 
-    # The publish gate's link rule: no key vanishes; only the page's link and lookup key answer another
-    # file (the page capture before, the transcript now), which a cause record names as a correction.
+    # The publish gate's link rule: no key vanishes; only the pages' link and lookup keys answer another
+    # file (the page capture before, the file now), which a cause record names as a correction.
     rule = compare(tmp_path / 'before', tmp_path / 'after')['link_rule']
     assert (rule['missing'], rule['dangling'], rule['address_changed']) == (0, 0, 0)
-    assert [(a['key'], a['live_body'], a['candidate_body']) for a in rule['changed_answers']] == [
-        (_url_key(VETS).hex(), sha('page').hex(), sha('transcript').hex())]
-    assert rule['lookup_changed'] == 1
+    assert sorted((a['key'], a['live_body'], a['candidate_body']) for a in rule['changed_answers']) == sorted([
+        (_url_key(VETS).hex(), sha('page').hex(), sha('transcript').hex()), (_url_key(DAV).hex(), sha('dav_page').hex(), sha('dav_print').hex())])
+    assert rule['lookup_changed'] == 2
 
 
 @pytest.mark.parametrize('dropped, added, invariant', [
