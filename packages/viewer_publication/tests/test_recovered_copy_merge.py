@@ -321,7 +321,8 @@ def test_the_merge_audit_names_each_signal_a_merged_link_would_lose(tmp_path, ad
         json_input(tmp_path, 'source_rows', [dict(list_row=0, url=COPY_A), dict(list_row=0, url=kept)], list_row='Int32', url='Utf8'),
         json_input(tmp_path, 'lookup_sources', [dict(list_row=0, url=kept)], list_row='Int32', url='Utf8'),
         json_input(tmp_path, 'current_recoveries', [dict(original_url=u, body_sha='b' * 64) for u in (kept, lost)], original_url='Utf8', body_sha='Utf8'),
-        json_input(tmp_path, 'recovery_rows', [dict(list_row=0, original_url=kept, body_hex='b' * 64)], list_row='Int32', original_url='Utf8', body_hex='Utf8')]
+        json_input(tmp_path, 'recovery_rows', [dict(list_row=0, original_url=kept, body_hex='b' * 64)], list_row='Int32', original_url='Utf8', body_hex='Utf8'),
+        json_input(tmp_path, 'recovered_file_roles', [], original_url='Utf8', body_sha='Utf8', role='Utf8')]
     steps = [dict(name='links', sql=f"SELECT decode(substr(encode(sha256('url:{kept}'),'hex'),1,16),'hex') AS link_key,cast(0 AS INT) AS list_row"),
              dict(name='recovery_rows_typed', sql="SELECT list_row,original_url,decode(body_hex,'hex') AS body FROM recovery_rows")]
     sql = MERGED_RECOVERY_SQL.replace('recovery_rows r ON', 'recovery_rows_typed r ON')
@@ -405,7 +406,8 @@ def test_a_page_capture_is_the_source_of_its_file_and_an_edition_is_its_own_docu
     # Reviewed as one document: two copies of one testimony stay on one row.
     same = links[_url_key(SAME)]
     assert served(same) == sorted([sha('copy_a'), sha('copy_b')])
-    assert len(details) == 4 and sorted(links.values()) == sorted([vets, report, part2, same])
+    # Beside them only the live hearings page that listed the veterans page.
+    assert [d['saved_kind'] for i, d in enumerate(details) if i not in {vets, report, part2, same}] == ['original']
 
     queries = {q['name']: q['data'] for q in result['queries']}
     assert queries['recovered_file_invariants'] == [dict(several_files_unreviewed=0, links_without_a_file=0)]

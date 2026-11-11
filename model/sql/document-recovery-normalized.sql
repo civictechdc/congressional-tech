@@ -24,7 +24,10 @@ SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
  cast(NULL AS VARCHAR) AS review_note,cast(NULL AS DATE) AS review_decided_at,
  array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR),'body',arrow_cast(NULL,'FixedSizeBinary(32)'),
  'suffix',cast(NULL AS VARCHAR),'size',cast(NULL AS BIGINT))),1,0) AS alternates,
- a.package_id,a.facts,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS link_bodies
+ a.package_id,a.facts,
+ -- An edition on a document of its own (ct-u9y4) is found by its body key; any other recovery-only row by its link.
+ CASE WHEN r.role='edition' THEN arrow_cast(make_array(r.body_sha),'List(Utf8)')
+  ELSE arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') END AS link_bodies
 FROM saved_recoveries r JOIN document_identities d ON d.component=r.component AND r.saved_rank=1
 JOIN effective_filenames n ON n.input_id='recovery:'||r.id
 JOIN source_files f ON f.body_sha IS NULL AND f.source_url=r.original_url AND f.filename=n.filename

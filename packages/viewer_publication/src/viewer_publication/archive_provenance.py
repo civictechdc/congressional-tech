@@ -15,7 +15,8 @@ REVIEW_FIELDS={name:'Utf8' for name in ('id','target','verdict','note','reviewer
 # hold recovered files that are not the same document and shows only the first. This counts, per
 # build, the documents holding several different recovered files by what their text says:
 # same_text (equal fingerprints), text_differs, or text_unread (a file with no fingerprint, as every
-# PDF today). Reported, not refused: 215 such documents were published in 619db5f9e08e.
+# PDF today). 215 such documents were published in 619db5f9e08e. Since 2026-11-11 the reviewed roles
+# decide them and archive_model.RECOVERED_FILE_INVARIANTS refuses one whose files are not all reviewed.
 RECOVERY_FILE_AGREEMENT=dict(name='recovery_documents_with_several_files',sql="""SELECT agreement,count(*) AS documents FROM (
  SELECT r.component,CASE WHEN count(f.fingerprint)<count(*) THEN 'text_unread'
   WHEN min(f.fingerprint)<>max(f.fingerprint) THEN 'text_differs' ELSE 'same_text' END AS agreement

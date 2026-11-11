@@ -31,6 +31,7 @@ REGISTRIES={
         package_disposition='Utf8',rejected_package_ids=list_of('Utf8'),excluded_measure_keys=list_of('Utf8'),
         supported_measure_keys=list_of('Utf8'),evidence='Utf8'),
     'saved_name_decisions':dict(body_sha='Utf8',decision='Utf8',official_name='Utf8',committee_name='Utf8',evidence='Utf8'),
+    'recovered_file_roles':dict(original_url='Utf8',body_sha='Utf8',role='Utf8',evidence='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
 }
 
@@ -512,7 +513,23 @@ def _validate_saved_name_decisions(rows):
         ('official','committee','undecided','neither') or not names(row.get('official_name')) or not names(row.get('committee_name')))
 
 
-REVIEWED_REGISTRIES={'bill_package_evidence':_validate_bill_evidence,'saved_name_decisions':_validate_saved_name_decisions}
+RECOVERED_FILE_ROLES=('source_page','edition','same_document','undecided')
+
+
+def _validate_recovered_file_roles(rows):
+    """One reviewed role per (dead link, recovered body), the key of a provenance recovery decision (ct-u9y4):
+    a misspelled role would act as no review, and a repeated pair would make the role ambiguous."""
+    pairs=set()
+    for row in rows:
+        pair=(row.get('original_url'),row.get('body_sha'))
+        if (not isinstance(pair[0],str) or not pair[0] or not isinstance(pair[1],str) or re.fullmatch('[0-9a-f]{64}',pair[1]) is None
+                or pair in pairs or row.get('role') not in RECOVERED_FILE_ROLES or not row.get('evidence')):
+            raise ValueError('Invalid or duplicate reviewed recovered file role: '+str(pair))
+        pairs.add(pair)
+
+
+REVIEWED_REGISTRIES={'bill_package_evidence':_validate_bill_evidence,'saved_name_decisions':_validate_saved_name_decisions,
+    'recovered_file_roles':_validate_recovered_file_roles}
 
 
 def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False,recovered_copies=False):
@@ -648,6 +665,25 @@ LANDING_PAGE_INVARIANTS=dict(name='landing_page_invariants',sql="""SELECT
   LEFT ANTI JOIN source_rows s ON s.url=d.url) AS lost_landing_addresses""")
 
 
+# ct-u9y4 item 4, refusing (owner, 2026-11-11). 25 documents whose recovered files' text differs, and 93 whose text the
+# model cannot read (PDFs), shipped in 77673bfb8fcf with only a report (recovery_documents_with_several_files); the
+# 56 unrelated documents under one dead link of 619db5f9e08e were of that kind. A document holding several recovered
+# files needs every one reviewed (recovered-file-roles.json) unless their text is equal (one document, DM 7.5); and a
+# review may not take every file from its link (all a page or editions), which would leave the link's key no file.
+# Only the bodies of documents with several files are grouped: one row per (document, body) first, never a grouped
+# count(DISTINCT) (AGENTS.md).
+RECOVERED_FILE_INVARIANTS=dict(name='recovered_file_invariants',sql="""SELECT
+ (SELECT count(*) FROM (
+  SELECT b.component FROM (SELECT component,body_sha,bool_and(role IS NOT NULL) AS reviewed FROM saved_recoveries GROUP BY component,body_sha) b
+  LEFT JOIN fingerprints f ON f.body_sha=b.body_sha GROUP BY b.component
+  HAVING count(*)>1 AND (count(f.fingerprint)<count(*) OR min(f.fingerprint)<>max(f.fingerprint)) AND NOT bool_and(b.reviewed))) AS several_files_unreviewed,
+ (SELECT count(*) FROM (SELECT original_url FROM final_recovery_attachments GROUP BY original_url
+  HAVING bool_and(coalesce(role IN ('source_page','edition'),false)))) AS links_without_a_file""")
+# Reviewed roles that name no recovery of this build (metadata, as saved_name_decisions_unused).
+RECOVERED_FILE_ROLES_UNUSED=dict(name='recovered_file_roles_unused',sql="""SELECT count(*) AS entries FROM recovered_file_roles v
+ LEFT ANTI JOIN final_recovery_attachments r ON r.original_url=v.original_url AND r.body_sha=v.body_sha""")
+
+
 # Owner, 2026-11-02 ("don't lose signal"): every recovered-copy link moved into a published document
 # (recovered_copy_members) keeps, on that document, its address (sources), its link key (links), its
 # lookup address and every recovery row of its URL, and each value its own annotation gives: shown
@@ -677,9 +713,11 @@ MERGED_RECOVERY_SQL="""WITH merged AS (
  SELECT DISTINCT g.source_id FROM merged g JOIN lookup_sources u ON u.list_row=g.list_row AND u.url=g.source_url
 ), recovered AS (
  SELECT source_id,count(*) FILTER (WHERE NOT moved) AS unmoved FROM (
-  SELECT g.source_id,c.original_url,c.body_sha,bool_or(r.list_row IS NOT NULL) AS moved
+  SELECT g.source_id,c.original_url,c.body_sha,bool_or(r.list_row IS NOT NULL OR coalesce(v.role IN ('source_page','edition'),false)) AS moved
   FROM merged g JOIN current_recoveries c ON c.original_url=g.source_url
   LEFT JOIN recovery_rows r ON r.list_row=g.list_row AND r.original_url=c.original_url AND encode(r.body,'hex')=c.body_sha
+  -- ct-u9y4: the dead page's own capture is accounted by its address (addressed), an edition by its own row.
+  LEFT JOIN recovered_file_roles v ON v.original_url=c.original_url AND v.body_sha=c.body_sha
   GROUP BY g.source_id,c.original_url,c.body_sha) GROUP BY source_id
 )
 SELECT g.* EXCLUDE(component),bd.id AS bill_decision_id,bd.rejected_package_ids,bd.excluded_measure_keys,
@@ -1463,7 +1501,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         SAVED_NAME_KINDS,SAVED_NAME_DECISIONS_UNUSED,SAVED_NAME_DECISIONS_UNMET,
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
-        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,RECOVERY_FILE_AGREEMENT,FILENAME_BOTH_NAMES,
+        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,RECOVERY_FILE_AGREEMENT,RECOVERED_FILE_ROLES_UNUSED,FILENAME_BOTH_NAMES,
         # Main-content outcomes and page-metadata conflicts per release (ct-c5xf D7); unread is a reading gap.
         dict(name='html_main_content',sql="""SELECT main_content['outcome'] AS outcome,count(*) AS documents,
             count(*) FILTER (WHERE description IS NOT NULL) AS described,
@@ -1604,7 +1642,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                     UNION SELECT substr(right_node,3,16) AS prefix FROM body_review_edges WHERE right_node IS NOT NULL
                 ) rev ON substr(o.bh,1,16)=rev.prefix
             ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}"""),
-            LANDING_PAGE_INVARIANTS]+explorer_diagnostics+url_state_diagnostics()+completeness_checks(
+            LANDING_PAGE_INVARIANTS,RECOVERED_FILE_INVARIANTS]+explorer_diagnostics+url_state_diagnostics()+completeness_checks(
             catalog_version=catalog_version,
             include_entities=bool(prepared.get('include_entities')),
             meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
