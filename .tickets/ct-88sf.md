@@ -27,3 +27,7 @@ Phase 1: a failing step, output and query are each named with the code unchanged
 **2026-11-11T00:45:17Z**
 
 2026-11-11 (W3 builder, for the second manager): one pipeline test matches an engine error line whole: packages/congress_api/tests/test_provenance_job.py:58 asserts that the first line is 'query: Execution error: absent line 1: source open failed' (added by b1121f14, W1's tests, now on main; line and commit checked here). The one line already changes that text (it adds the path and the OS error), and X2 adds the failing statement's name ('query 1 "q": '), so the pin move to the one line must update that assertion: the acceptance's 'no pipeline caller that matches engine error text breaks' holds only with that update. Managed jobs and job-plan run their own statement loops, so X2 phase 1 leaves their errors unnamed. (The engine-side statements are the manager's reading of the two lines, not re-read here.)
+
+**2026-11-11T12:47:00Z**
+
+2026-11-11: for readers of engine errors, docs/development.md (One engine query, no job file) now says a memory refusal is told by its text, not its code, on both b0342a7 and ae12bbd: DataFusion's pool refuses with code query ('Resources exhausted: Failed to allocate'), the engine's budget with capacity ('shared memory budget exhausted', 'allocation exceeds admission granularity'), and capacity also names the blocking-I/O limit. X2 phase 1 names the statement but keeps these codes.
