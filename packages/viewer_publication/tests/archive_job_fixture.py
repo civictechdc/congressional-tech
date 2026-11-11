@@ -89,6 +89,36 @@ def versions():
     return {p:readings.current_version(p) for p in ['sniff','html','xml','json']},filenames.current_version()
 
 
+#: The Mac's real model limits (PLAN "Limits in force"), never the local test limits a pytest session runs under.
+MAC_LIMITS=dict(compute_threads=2,memory_bytes=25769803776,scratch_bytes=68719476736,batch_rows=8192,
+                max_batch_bytes=67108864,max_metadata_bytes=134217728)
+
+
+def constructed_runtime(folder,*,limits=MAC_LIMITS,**settings):
+    """A runtime file naming a stand-in binary (never run) and limits beside it, both relative to its folder."""
+    from pathlib import Path
+    folder=Path(folder);binary=folder/'bin'/'docspec';binary.parent.mkdir(parents=True)
+    binary.write_bytes(b'\xcf\xfa\xed\xfe stand-in engine for '+folder.name.encode());binary.chmod(0o755)
+    (folder/'limits.json').write_text(json.dumps(limits))
+    runtime=folder/'runtime.json'
+    runtime.write_text(json.dumps(dict(version=1,binary='bin/docspec',limits='limits.json',workspace='workspace',
+                                       timeout_seconds=60,**settings)))
+    return runtime
+
+
+def runtime_ran(runtime,*,named=None):
+    """What a run under `runtime` must record, read here from the files themselves: the file (a fallback when the
+    spec `named` another, missing, one; its reason is the test's to check), the binary and limits it names
+    resolved against its folder, each with the sha256 of its bytes, and the limits' values."""
+    from pathlib import Path
+    runtime=Path(runtime).resolve();settings=json.loads(runtime.read_text())
+    binary,limits=((runtime.parent/settings[name]).resolve() for name in ('binary','limits'))
+    digest=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
+    chosen=dict(chosen='named',named=str(runtime),reason=None) if named is None else dict(chosen='fallback',named=str(named))
+    return dict(chosen,runtime=dict(path=str(runtime),sha256=digest(runtime)),binary=dict(path=str(binary),sha256=digest(binary)),
+                limits=dict(path=str(limits),sha256=digest(limits),values=json.loads(limits.read_text())))
+
+
 def model_spec(tmp_path):
     parsers,catalog=versions()
     return dict(version=1,engine_config=str(tmp_path/'unopened-runtime.json'),
