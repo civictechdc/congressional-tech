@@ -447,7 +447,9 @@ ROUND4_BEFORE = [asked('mods:witness[1]', 'Jane Doe', 1, None, position='a Repre
                  asked('mods:witness[5]', 'Anne Moe', 8, None, position='Professor', organization='College of Things'),
                  asked('mods:witness[6]', 'Edgar Poe', 9, None, position='Director', organization='Office of Ravens')]
 ROUND4_AFTER = [ROUND4_BEFORE[0], asked('mods:witness[2]', 'Richard Roe', 2), asked('mods:witness[2]/part[2]', 'Joe Doe', 3),
-                asked('mods:witness[3]', 'Frank Lautenberg', 4), asked('mods:witness[3]/part[2]', 'Jaime Herrera Beutler', 5, None),
+                asked('mods:witness[3]', 'Frank Lautenberg', 4),
+                # Herrera Beutler answered only in writing (no line of hers asks nothing): a statement for the record.
+                asked('mods:witness[3]/part[2]', 'Jaime Herrera Beutler', 5, 'statement_for_record'),
                 asked('mods:witness[3]/part[3]', 'Moe', 6, None), *ROUND4_BEFORE[1:]]
 # Joe Doe, Jane Doe and Frank Lautenberg serve in the 118th by the members table; the print's <congMember> list
 # names Roe.
@@ -619,3 +621,67 @@ def test_an_answerers_type_follows_whether_they_testified(tmp_path, before, afte
     code, out = run(tmp_path)
     assert [i['locator'] for i in out['type_unsupported']] == flagged
     assert code == (1 if flagged else 0), out['failed']
+
+
+# Round 7 (the fifth review): a position cut one word late, an added answerer who never testified typed a witness, an
+# official listed as accompanying a witness (at the table), and a line split into three people and a speaker's turn.
+ROUND7_LINES = ['Cross, Gerald, M.D., Acting Under Secretary; accompanied by Caitlin Thompson, Ph.D., Coordinator',
+                'Response to questions submitted by Senator Klobuchar to Caitlin Thompson, Ph.D',
+                'Ostendorff, Hon. William C., Commissioner Responses to additional questions from Senator Klobuchar',
+                'Roe, Mr. Richard, Director, Office of Things....... Prepared statement of............ Smith, Ms. Eleanor, '
+                'Director, Office of Stuff Mr. Yoder. We will call the panel now. Thank you all.']
+ROUND7_MEMBERS = ['Klobuchar, Amy']
+ROUND7_BEFORE = [asked('mods:witness[1]', 'Gerald Cross', 1, None, position='Acting Under Secretary',
+                       organization='accompanied by Caitlin Thompson, Ph.D., Coordinator'),
+                 asked('mods:witness[3]', 'William C. Ostendorff', 4, None,
+                       position='Commissioner Responses to additional questions from Senator Klobuchar'),
+                 asked('mods:witness[4]', 'Richard Roe', 6, None, position='Director',
+                       organization='Office of Things....... Prepared statement of, Smith, Ms. Eleanor, Director, Office of '
+                                    'Stuff Mr. Yoder. We will call the panel now. Thank you all.')]
+ROUND7_AFTER = [ROUND7_BEFORE[0], asked('mods:witness[2]', 'Klobuchar', 2),
+                asked('mods:witness[2]/part[2]', 'Caitlin Thompson', 3, None),
+                dict(ROUND7_BEFORE[1], position='Commissioner'), asked('mods:witness[3]/part[2]', 'Klobuchar', 5),
+                asked('mods:witness[4]', 'Richard Roe', 6, None, position='Director', organization='Office of Things'),
+                asked('mods:witness[4]/part[2]', 'Eleanor Smith', 7, None, position='Director', organization='Office of Stuff')]
+
+
+def round7(tmp_path, after=ROUND7_AFTER, **more):
+    write(tmp_path, before=ROUND7_BEFORE, after=after, lines=ROUND7_LINES, members=ROUND7_MEMBERS,
+          people=('Gerald Cross', 'Caitlin Thompson', 'William Ostendorff'), **more)
+
+
+def test_an_accompanying_official_answers_as_a_witness_and_a_line_splits_into_its_people(tmp_path):
+    round7(tmp_path)
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+    assert [i['locator'] for i in out['answerer']] == ['mods:witness[2]/part[2]']
+    assert [i['locator'] for i in out['split']] == ['mods:witness[4]/part[2]']
+
+
+@pytest.mark.parametrize('row, index, flag', [
+    # The fifth review's R5-2: a position cut one word late.
+    (dict(ROUND7_AFTER[3], position='Commissioner Responses'), 3, 'position_not_in_line'),
+    # Thompson sat at the table: answering in writing is wrong for her.
+    (dict(ROUND7_AFTER[2], witness_type='statement_for_record'), 2, 'type_unsupported'),
+])
+def test_a_position_with_a_heading_word_and_a_mistyped_answerer_fail(tmp_path, row, index, flag):
+    after = [*ROUND7_AFTER[:index], row, *ROUND7_AFTER[index + 1:]]
+    round7(tmp_path, after=after)
+    code, out = run(tmp_path)
+    assert code == 1 and [i['locator'] for i in out[flag]] == [row['source_locator']]
+
+
+def test_an_added_answerer_who_never_testified_typed_a_witness_fails(tmp_path):
+    """The fifth review's R5-5 (Greene): Herrera Beutler answered only in writing; typed a witness she fails."""
+    after = [*ROUND4_AFTER[:4], dict(ROUND4_AFTER[4], witness_type=None), *ROUND4_AFTER[5:]]
+    round4(tmp_path, after=after)
+    code, out = run(tmp_path)
+    assert code == 1 and [i['locator'] for i in out['type_unsupported']] == ['mods:witness[3]/part[2]']
+
+
+def test_the_round7_plants_are_flagged(tmp_path):
+    prints = [('01' * 32, ROUND4_LINES, ['Roe, Richard'], ROUND4_BEFORE, ROUND4_AFTER)]
+    round7(tmp_path, prints=prints, table=ROUND4_TABLE)
+    code, out = run(tmp_path, '--plant', 'position-heading-word', 'answerer-untestified-witness')
+    assert [(p['kind'], p['flagged']) for p in out['planted']] == [
+        ('position-heading-word', True), ('answerer-untestified-witness', True)]

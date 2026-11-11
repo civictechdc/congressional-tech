@@ -49,7 +49,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   label "Accompanied by"; on an asking line, so may its heading's words and a contents column's "Page"; a word
   the row or another row of the line still shows is not lost (a name printed again in a heading, "... for Damon
   Stevens", may go), nor page numbers fused to a kept word, "EPA173-198"; a row whose
-  name opened in lower case, a fragment of prose, loses nothing when it comes to name no one). A raw line that opens
+  name opened in lower case, a fragment of prose, loses nothing when it comes to name no one; nor do words printed
+  after a speaker's turn, "Mr. Yoder. We will ...", which are transcript). A raw line that opens
   in lower case is a fragment of prose run into the list: ``member_unnamed`` and ``person_left_in_organization`` do
   not read it, and ``person_moved`` reads only names that open in capitals;
 - ``words_gained``: a changed occurrence that gains a word its raw line lacks;
@@ -66,11 +67,13 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   state), or that opens with no known given name, is not made of the print's ``<congMember>`` words, and either
   a later segment of its raw line opens with a known given name (a committee title such as "Chairman" before it
   aside) or the line names a document and no person;
-- ``split_unsupported``: an added ``<locator>/part[2]`` (a joined line read as two people, ct-zs48) unless it is
-  an asker, or its parent occurrence is on both sides with the same name, the words the parent loses are exactly
-  the words the new occurrence holds, and the new name is in the raw line in order, opening with a known given
-  name and ending with a known family name. A passing split is listed under ``split`` and its parent's moved
-  words are not counted as lost;
+- ``split_unsupported``: an added ``<locator>/part[2]``, ``/part[3]`` and on (a joined line read as several people,
+  ct-zs48) that is no asker or answerer, unless its parent occurrence is on both sides with the same name, the
+  parts' words are words the parent lost, the parent lost nothing else but the separator's contents label
+  ("Prepared statement of") and transcript after a speaker's turn ("Mr. Yoder. We will ..."), and each part's name
+  is in the raw line in order (or written surname first, as ``reorder_unsupported`` allows), opening with a known
+  given name and ending with a known family name. A passing
+  split is listed under ``split`` and its parent's moved words are not counted as lost;
 - ``type_unsupported``: a changed ``witness_type`` unless it goes from none to ``statement_for_record`` on an
   occurrence with no name, an organization, and a raw line that names a document anywhere (any of
   ``DOCUMENTS``) and no person (no segment opening with a known given name, no civil title) (ct-3aap); or to
@@ -82,7 +85,9 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   word, on a line of names alone, or on a line naming a paper, or with no name where the before row held prose (a
   name opening in lower case). Every ``record_material`` row on an asking line is
   held to that, its type changed or not; and an added row typed a statement on an asking line for a person who
-  testified on a line that asks nothing fails (an answerer who testified answers as a witness);
+  testified on a line that asks nothing fails (an answerer who testified answers as a witness), and so does an
+  added answerer typed a witness who did not. "Testified" is read from the raw print: a witness row on a line that
+  asks nothing, or an official such a line lists after "accompanied by" (sitting at the table);
 - ``question_asker_as_witness``: any after occurrence, changed or not, left a witness (no type) or a member's
   statement on an asking line,
   unless it names a person who is not one of the line's Members: two name words or more the line prints, none a
@@ -95,7 +100,8 @@ Both directions, per occurrence key (body, locator); every flag fails the check:
   reported with the line's Member count and its rows naming exactly one Member;
 - ``position_not_in_line``: a new or changed position whose words the raw line does not print in that order, next
   to each other ("a Senator in Congress from ..." on a Representative's line), or prints only before its row's name
-  or after another row's name ("Commissioner" given to the Senator who asked the Commissioner);
+  or after another row's name ("Commissioner" given to the Senator who asked the Commissioner), or that holds a
+  question heading's word on an asking line ("Commissioner Responses");
 - ``text_cut``: a new or changed nameless row whose text stops inside the segment of the raw line it starts in, a
   word following it before a dot leader, page numbers, a question heading or the line's end ("Report, Arsenic and
   Old Laws" on "Report, Arsenic and Old Laws, NRDC.......267-285 Responses ...");
@@ -169,7 +175,9 @@ omits and the members table counts (``question_asker_as_witness``), and ``roster
 further part of its line (``member_unnamed``); ``answerer-to-record`` types as record material a named witness on an
 asking line whose before row there was nameless record material, and ``answerer-mistyped`` types an added answerer
 who testified as a statement (both ``type_unsupported``); ``document-cut`` cuts a document's text at its last comma
-(``text_cut``); ``position-from-other-row`` gives an asker another row's position (``position_not_in_line``).
+(``text_cut``); ``position-from-other-row`` gives an asker another row's position and ``position-heading-word``
+cuts a position one word late, "Commissioner Responses" (both ``position_not_in_line``); ``answerer-untestified-witness``
+types an added answerer who answered only in writing as a witness (``type_unsupported``).
 """
 import argparse
 from collections import Counter, defaultdict
@@ -207,7 +215,8 @@ PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported'
           'rotate-across-lines': 'order_across_lines', 'roster-gap-reverted': 'question_asker_as_witness',
           'roster-gap-dropped': 'member_unnamed', 'answerer-to-record': 'type_unsupported',
           'answerer-mistyped': 'type_unsupported', 'document-cut': 'text_cut',
-          'position-from-other-row': 'position_not_in_line'}
+          'position-from-other-row': 'position_not_in_line', 'position-heading-word': 'position_not_in_line',
+          'answerer-untestified-witness': 'type_unsupported'}
 # Words that make a line ask: what was asked or requested, read anywhere in the line, in any case.
 ASKING = {'question', 'questions', 'request', 'requests'}
 # The words of an asking line's heading, which are no person's.
@@ -237,7 +246,12 @@ OFFICES = set('director president secretary administrator chief officer counsel 
               'university institute agency bureau council board foundation company inc commission former'.split())
 # Words no person's name is made of, read for a witness row on an asking line.
 NOT_PERSON = HEADING | DOCUMENTS | OFFICES | {'press', 'release', 'accompanied', 'appendix', 'prepared'}
-SPLIT = re.compile(r"(mods:witness\[\d+\])/part\[2\]")
+SPLIT = re.compile(r"(mods:witness\[\d+\])/part\[(\d+)\]")
+# A speaker's turn in a raw line ("... R STREET INSTITUTE Mr. Yoder. We will call forward ..."): what follows is
+# transcript, which no row need show.
+SPEAKER_TURN = re.compile(r"\b(?:Mr|Ms|Mrs|Dr|Chairman|Chairwoman|Senator)\.?\s+[A-Z][A-Za-z'’-]+\.\s+[A-Z]")
+# The contents label a joined line's separator prints between entries ("..... Prepared statement of .....").
+SEPARATOR_WORDS = {'prepared', 'statement', 'statements', 'of'}
 # U.S. states and the District, by name and postal code, as places a name can never be.
 STATES = {s.lower() for s in (
     'Alabama Alaska Arizona Arkansas California Colorado Connecticut Delaware Florida Georgia Hawaii Idaho Illinois '
@@ -654,6 +668,17 @@ def judge(before, after, raw_root, given, family, serving=None):
         # Family words of the print's witnesses on lines that ask nothing ("Penny Rue" for "Dr. Rue" on an asking line).
         testified = {family_word(r.get('name')) for k, r in new.items()
                      if r.get('name') and r.get('witness_type') is None and position(k) not in asking}
+        # ... and every official a line that asks nothing lists as accompanying a witness (at the table).
+        for n, text in enumerate(lines, start=1):
+            listed = None if n in asking else re.search(r"\baccompanied by\b", text, re.I)
+            if listed:
+                testified |= {run[-1] for run, _ in name_runs(text[listed.end():])}
+        testified.discard(None)
+
+        def transcript(line):
+            """The words after a speaker's turn in a raw line, which are transcript, no entry's."""
+            turn = SPEAKER_TURN.search(line)
+            return {plain(w) for w in words(line[turn.start():])} if turn else set()
 
         def someone(name, locator):
             """A person who is not one of the line's Members: two name words or more the line prints, none a heading,
@@ -674,6 +699,10 @@ def judge(before, after, raw_root, given, family, serving=None):
             name = b.get('name')
             return (b.get('witness_type') in (None, 'statement_for_record') and position(locator) in asking
                     and bool(name) and in_order(name, line_of(locator)) and someone(name, locator))
+
+        def heading_in_position(b, locator):
+            """A position holding a question heading's word on an asking line ("Commissioner Responses")."""
+            return position(locator) in asking and bool(HEADING_OPENING & {plain(w) for w in words(b.get('position'))})
 
         def record_supported(b, locator):
             """record_material on an asking line: nameless, a Member's, on a line of names alone, or a person's own
@@ -791,7 +820,8 @@ def judge(before, after, raw_root, given, family, serving=None):
                 # A Member's own statement or submission: the row names one of the line's Members and the line names
                 # their statement or a paper.
                 return (a.get('witness_type') in (None, 'statement_for_record') and bool(b.get('name'))
-                        and a_member(b['name'], locator) and bool((PAPERS | {'statement', 'statements'}) & said))
+                        and a_member(b['name'], locator)
+                        and bool((PAPERS | {'statement', 'statements', 'release', 'submitted', 'behalf'}) & said))
             # An answerer on an asking line, a person who is not one of its Members: a witness when they testified on a
             # line of the print that asks nothing, a statement for the record when they did not.
             if (b.get('name') and position(locator) in asking and not a_member(b['name'], locator)
@@ -808,18 +838,21 @@ def judge(before, after, raw_root, given, family, serving=None):
             if not in_order(name, line) and not reorder_supported(name):
                 out['reorder_unsupported'].append(item)
 
-        moved = {}  # a split parent's locator -> the words its second person took
+        moved = {}  # a split parent's locator -> the words its further parts took
+        pending = {}  # a split parent's locator -> its further parts, judged together
         for locator in sorted(new.keys() - old.keys()):
             item = dict(package=package, body=digest, locator=locator)
             b, line = new[locator], line_of(locator)
             item.update(line=line, after={f: b.get(f) for f in KEYED})
-            if b.get('position') and not (in_order(b['position'], line) and beside_name(b, locator)):
+            if b.get('position') and not (in_order(b['position'], line) and beside_name(b, locator)
+                                          and not heading_in_position(b, locator)):
                 out['position_not_in_line'].append(item)
             if cut_short(b, line):
                 out['text_cut'].append(item)
-            if (b.get('witness_type') == 'statement_for_record' and position(locator) in asking
-                    and family_word(b.get('name')) in testified):
-                out['type_unsupported'].append(item)  # an answerer who testified answers as a witness
+            # An answerer who testified (or sat at the table) answers as a witness; one who did not answered in writing.
+            if (position(locator) in asking and answerer(b, locator)
+                    and (b.get('witness_type') is None) != (family_word(b.get('name')) in testified)):
+                out['type_unsupported'].append(item)
                 continue
             if asker(b, locator):
                 out['asker'].append(item)
@@ -833,7 +866,7 @@ def judge(before, after, raw_root, given, family, serving=None):
             if not parent:
                 # A line the old reading dropped, now kept at its own locator: its raw line must exist and hold the
                 # new name in order, the name must be a person's (not heading text that happens to be in the line),
-                # and its type must be supported like any other. Any further part of a line (/part[3] on) is added.
+                # and its type must be supported like any other. Further parts are judged as a split, below.
                 if ('/part[' not in locator and line and not any(position(k) == position(locator) for k in old)
                         and (not b.get('name') or (set(map(plain, words(b['name']))) <= set(map(plain, words(line)))
                                                    and (in_order(b['name'], line) or reorder_supported(b['name']))
@@ -843,15 +876,24 @@ def judge(before, after, raw_root, given, family, serving=None):
                 else:
                     out['added'].append(item)
                 continue
-            parent = parent.group(1)
-            took = bag(b)
-            if (parent in old and parent in new and old[parent].get('name') == new[parent].get('name')
-                    and b.get('name') and in_order(b['name'], line) and person(b['name'])
-                    and name_words(b['name'])[-1] in family and took and took == bag(old[parent]) - bag(new[parent])):
-                moved[parent] = took
-                out['split'].append(item)
+            pending.setdefault(parent.group(1), []).append(item)
+        # A joined line read as several people: every further part names a person in the line's order, the words the
+        # parts hold are words the parent lost, and the parent lost nothing else but the joined line's separator
+        # label and transcript after a speaker's turn.
+        for parent, items in sorted(pending.items()):
+            parts = [new[i['locator']] for i in items]
+            took = sum((bag(b) for b in parts), Counter())
+            lost = bag(old.get(parent)) - bag(new.get(parent))
+            spare = SEPARATOR_WORDS | transcript(line_of(parent))
+            if (parent in old and parent in new and old[parent].get('name') == new[parent].get('name') and took
+                    and all(b.get('name') and (in_order(b['name'], line_of(parent)) or reorder_supported(b['name']))
+                            and person(b['name'])
+                            and name_words(b['name'])[-1] in family for b in parts)
+                    and not took - lost and all(w in spare for w in (lost - took))):
+                moved[parent] = lost
+                out['split'].extend(items)
             else:
-                out['split_unsupported'].append(item)
+                out['split_unsupported'].extend(items)
         for locator in sorted(old.keys() | new.keys()):
             item = dict(package=package, body=digest, locator=locator)
             if locator not in new:
@@ -868,7 +910,8 @@ def judge(before, after, raw_root, given, family, serving=None):
                 if not type_supported(a, b, line, locator):
                     out['type_unsupported'].append(item)
             if (b.get('position') and a.get('position') != b['position']
-                    and not (in_order(b['position'], line) and beside_name(b, locator))):
+                    and not (in_order(b['position'], line) and beside_name(b, locator)
+                             and not heading_in_position(b, locator))):
                 out['position_not_in_line'].append(item)
             if a.get('organization') != b.get('organization') and cut_short(b, line):
                 out['text_cut'].append(item)
@@ -897,7 +940,7 @@ def judge(before, after, raw_root, given, family, serving=None):
             # and a contents column's "Page". "Accompanied by:" is a label any line may shed.
             shed = HEADING | MEMBER_TITLES | {'member', 'the', 'to', 'by', 'from', 'of', 'for', 'and', 'following',
                                               'page'} if position(locator) in asking else set()
-            shed |= {'accompanied'}
+            shed |= {'accompanied'} | transcript(line)
             # A word another row of the same line now shows (an asker appended at /part[2]) is not lost to a reader,
             # nor page numbers fused to a kept word ("EPA173-198" for "EPA").
             shown = {w for r in by_line.get(position(locator), []) if r is not b for w in bag(r)}
@@ -975,6 +1018,23 @@ def plant(kind, before, after, given, family, raw_root, serving=None, taken=()):
                         and family_word(b['name']) in witnesses):
                     new[locator] = dict(b, witness_type='statement_for_record')
                     return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted='statement_for_record')
+            continue
+        if kind == 'position-heading-word':
+            # A position cut one word late, keeping the question heading's first word ("Commissioner Responses").
+            for locator, b in sorted(new.items()):
+                line = lines(digest, locator)
+                position_ = b.get('position') or ''
+                cut = line.find(position_ + ' Responses') if position_ else -1
+                if b.get('name') and position_ and cut >= 0 and asks(locator):
+                    new[locator] = dict(b, position=position_ + ' Responses')
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=new[locator]['position'])
+            continue
+        if kind == 'answerer-untestified-witness':
+            # An added answerer who answered only in writing typed a witness (the fifth review's Greene case).
+            for locator, b in sorted(new.items()):
+                if locator not in old and b.get('witness_type') == 'statement_for_record' and b.get('name') and asks(locator):
+                    new[locator] = dict(b, witness_type=None)
+                    return dict(kind=kind, body=digest, locator=locator, name=b['name'], planted=None)
             continue
         if kind == 'document-cut':
             # A document's printed text cut at its last comma ("Report, Arsenic and Old Laws, NRDC" -> "..., Old Laws").
