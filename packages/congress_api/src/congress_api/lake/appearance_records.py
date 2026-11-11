@@ -261,6 +261,8 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_MODS_HON_ENTRY",
         "_mods_member_line",
         "_mods_member_entry",
+        "_MODS_NOTE_TAIL",
+        "_MODS_ABBREVIATION",
         "_MODS_BIOGRAPHY_APPENDIX",
         "_MODS_BIOGRAPHY",
         "_mods_entry_before_heading",
@@ -1620,7 +1622,10 @@ def _mods_entry_before_heading(line: str, roster: Mapping[tuple[str, ...], set[s
 # opens in lower case mid-sentence and holds two sentence breaks, or one in forty words or more, is a fragment of
 # prose, record material that names no one (round 7: it replaced twenty reviewed entries). GPO's footnote text and an
 # "accompanied by" list also open in lower case and hold people, so neither is prose here.
-_MODS_SENTENCE_BREAK = re.compile(r"[a-z]{2,}[.?!]['’\"]*\s+[A-Z][a-z]")
+_MODS_SENTENCE_BREAK = re.compile(r"([A-Za-z]*[a-z]{2,})[.?!]['’\"]*\s+[A-Z][a-z]")
+# ...but an honorific's or a title's abbreviation ends no sentence ("de Lugo, Hon. Ron, ... Hon. Oscar ...", round 9).
+_MODS_ABBREVIATION = frozenset(("hon", "mrs", "messrs", "sen", "rep", "gen", "col", "capt", "sgt", "prof", "esq",
+                                "rev", "adm", "cmdr"))
 # A speaker's turn run in after a panel's names ("... R STREET INSTITUTE Mr. Yoder. We will call forward ...").
 _MODS_SPEAKER_TURN = re.compile(r"^(?:Mr|Ms|Mrs|Dr|Chairman|Chairwoman|Senator)\.?\s+[A-Z][A-Za-z'’-]+\.\s+[A-Z]")
 
@@ -1629,7 +1634,7 @@ def _mods_prose(line: str) -> bool:
     """Is a line a fragment of transcript prose run into the witness list (see above)?"""
     if not re.match(r"[a-z$]", line) or FOOTNOTE_TEXT.search(line) or re.search(r"\baccompanied by\b", line, re.I):
         return False
-    breaks = len(_MODS_SENTENCE_BREAK.findall(line))
+    breaks = sum(word.lower() not in _MODS_ABBREVIATION for word in _MODS_SENTENCE_BREAK.findall(line))
     return breaks >= 2 or breaks >= 1 and len(line.split()) >= 40
 
 
@@ -1684,6 +1689,12 @@ def _mods_member_entry(line: str, roster: Mapping[tuple[str, ...], set[str]]) ->
     if style and given and given.start(1) < style.start() < given.end(1):
         entry = entry[:style.start()].rstrip() + ", " + entry[style.start():]
     return entry, opening
+
+
+# A note's last sentence run in before a witness's entry on a line that opens in lower case ("are available at:
+# docs.house.gov. Brenda Leong, ...", "record. Scott Cleland, ...", round 9): the entry starts at the person after it.
+# The line's type is still read from the whole line.
+_MODS_NOTE_TAIL = re.compile(r"^[a-z][^,]*?[a-z]{2,}\.\s+(?=[A-Z][a-z]+(?:\s+[A-Z]\.)?\s+[A-Z][\w'’-]+,\s)")
 
 
 def _mods_record_rows(names: Sequence[str | None], locators: Iterable[str], witness_type: str,
@@ -1929,8 +1940,10 @@ def extract_mods_observation(
             # The line's own reading: what it reads as when it is more than askers, and on a line of askers and
             # answerers the row a reader saw before the rule (which then named an answerer, "...to Caitlin Thompson").
             # A question heading and its askers after the entry are not the entry's (a reviewed reading keeps its line).
-            entry = (_mods_entry_before_heading(cleaned_line, roster) if askers and not only
-                     and idx not in MODS_PERSON_FIELDS.get(resolved_pkg or "", {}) else cleaned_line)
+            reviewed_fields = idx in MODS_PERSON_FIELDS.get(resolved_pkg or "", {})
+            entry = (_mods_entry_before_heading(cleaned_line, roster) if askers and not only and not reviewed_fields
+                     else cleaned_line)
+            entry = entry if reviewed_fields else _MODS_NOTE_TAIL.sub("", entry, count=1)
             parsed = _mods_witness_fields(entry, package_id=resolved_pkg, source_index=idx)
             w_name = _opt_str(parsed.get("name"))
             kind = mods_entry_kind(cleaned_line, w_name, _opt_str(parsed.get("organization")))

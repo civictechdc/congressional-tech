@@ -2790,6 +2790,8 @@ def test_the_fifth_reviews_lines(entry):
     ("accompanied by Patrick Murray, National Legislative Director, Veteran of Foreign Wars. Ryan Gallucci, National "
      "Veterans Service Director. Kristina Keenan, Director", False),
     ("is available at https://docs.house.gov/meetings/IF/IF03/x.pdf. Dr. Jones answered. David Mallino, Director", False),
+    # An honorific's abbreviation ends no sentence (round 9; the sixth review's "Hon. Oscar").
+    ("de Lugo, Hon. Ron, Delegate of the Virgin Islands, and Hon. Oscar Garcia, Mayor of Ponce", False),
 ])
 def test_transcript_prose_is_read_by_its_shape(line, prose):
     """A line that opens in lower case mid-sentence with two sentence breaks (or one in forty words) is transcript
@@ -2797,6 +2799,31 @@ def test_transcript_prose_is_read_by_its_shape(line, prose):
     assert appearance_records._mods_prose(line) is prose
     found = appearance_records.extract_mods_appearances(_mods_lines(line))
     assert (found[0]["name"] is None and found[0]["witness_type"] == "record_material") is prose
+
+
+@pytest.mark.parametrize("line,row", [
+    ("are available at: docs.house.gov. Brenda Leong, Senior Counsel and Director of AI and Ethics Future of Privacy Forum",
+     ("Brenda Leong", "Senior Counsel and Director of AI and Ethics Future of Privacy Forum", None, None)),
+    ("record. Scott Cleland, President, Precursor LLC", ("Scott Cleland", "President", "Precursor LLC", None)),
+    # The line's type is read from the whole line, as before.
+    ("statement for the record. Dona Abbott, Vice President of Refugee and Immigrant Services, Bethany Christian Services",
+     ("Dona Abbott", "Vice President of Refugee and Immigrant Services", "Bethany Christian Services",
+      "statement_for_record")),
+])
+def test_a_notes_last_sentence_run_into_an_entry_names_no_one(line, row):
+    """Round 9 (CHRG-116hhrg39581 #1, CHRG-111hhrg74087 #7, CHRG-116hhrg35404 #8): a line that opens in lower case
+    with a note's last sentence before a person's entry reads the person, not the note."""
+    found = appearance_records.extract_mods_appearances(_mods_lines(line))
+    assert [(a["name"], a["position"], a["organization"], a["witness_type"]) for a in found] == [row]
+
+
+def test_a_letter_under_a_letters_heading_names_its_member():
+    """Round 9 (the sixth review's rejection): "Letters: Daschle, Hon. Tom, ..." (CHRG-106shrg71515 #10) reads Tom
+    Daschle by reviewed fields, his letter typed a Member's statement by the rules."""
+    line = "Letters: Daschle, Hon. Tom, U.S. Senator from the State of South Dakota"
+    found = appearance_records.extract_mods_appearances(_mods_lines(*[""] * 9, line), package_id="CHRG-106shrg71515")
+    assert [(a["name"], a["position"], a["organization"], a["witness_type"]) for a in found[9:]] == [
+        ("Tom Daschle", "U.S. Senator from the State of South Dakota", None, "member_statement")]
 
 
 @pytest.mark.parametrize("line,expected", [

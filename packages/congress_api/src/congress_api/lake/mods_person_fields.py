@@ -82,7 +82,9 @@ MODS_JOINED_LINES: dict[str, dict[int, tuple[str, str]]] = {
 # organization reads "opening statement", as Marcy Kaptur's on the next line does; round 7). Round 7: two lines open
 # with GPO's note that an item is "not included in this hearing record but is available on the ... Web" and run it
 # into the witness's own entry: Charles Pellicane (CHRG-118shrg54562 #4) and Serena McIlwain (CHRG-118shrg52811 #2,
-# after the American Lung Association's "State of the Air, 2023 Report" and its link).
+# after the American Lung Association's "State of the Air, 2023 Report" and its link). Round 9 (the sixth review's
+# rejection): Tom Daschle's letter under a "Letters:" heading (CHRG-106shrg71515 #10), the only line printing a
+# heading of that word before a "Family, Hon." entry, typed member_statement by the rules.
 MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'CHRG-106hhrg57366': {9: ('7409e3e059e4a34a44b1d0051d29d0b52acbcdda5994016eb97ea4000ce610cc',
                             {'honorific': None,
                              'name': 'Barbara D. Bovbjerg',
@@ -138,6 +140,12 @@ MODS_PERSON_FIELDS: dict[str, dict[int, tuple[str, dict[str, str | None]]]] = {'
  'CHRG-106shrg66382': {4: ('df2cb23c8d88297645467349e84949ad8a5d33a4b5b06afc45b8eaaee228b5a0',
                            {'organization': 'General Accounting Office',
                             'position': 'Associate Director of Energy, Resources, and Science Issues'})},
+ 'CHRG-106shrg71515': {10: ('5361b5a0a6c16db582f90cb4d67c722e4889cc1b3b1869a8084c7851cf2fd993',
+                            {'honorific': None,
+                             'name': 'Tom Daschle',
+                             'on_behalf_of': None,
+                             'organization': None,
+                             'position': 'U.S. Senator from the State of South Dakota'})},
  'CHRG-106shrg71523': {6: ('2a9b091c041330b1abbb6d043bdc1d41bd7302403e90bc6625ceb7e8392021e8',
                            {'honorific': None,
                             'name': 'Robert Raben',
