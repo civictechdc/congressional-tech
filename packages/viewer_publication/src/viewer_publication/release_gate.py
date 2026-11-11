@@ -647,9 +647,10 @@ def _sitting(value):
     start = value.get('start')
     if hasattr(start, 'astimezone') and getattr(start, 'tzinfo', None) is not None:
         start = start.astimezone(timezone.utc)
-    when = start.strftime('%Y-%m-%d %H:%MZ') if hasattr(start, 'strftime') else str(start)
-    where = ' '.join(str(value[k]) for k in ('room', 'building', 'place') if value.get(k))
-    return f'{when} {where}'.strip()
+    when = '' if start is None else start.strftime('%Y-%m-%d %H:%MZ') if hasattr(start, 'strftime') else str(start)
+    where = str(value['place']) if value.get('place') else ' '.join(
+        str(value[k]) for k in ('room', 'building', 'address') if value.get(k))
+    return f'{when} {where}'.strip() or '(unnamed)'
 
 
 def _link(value):
@@ -698,15 +699,71 @@ def meeting_updates(report, base_dir, candidate_dir):
                 people.setdefault(int(w['occasion'].split(':')[1]), []).append((w.get('display_order') or 0, w['witness_key'], name))
         return meetings, {event: sorted(found) for event, found in people.items()}
     (old, old_people), (new, new_people) = side(base_dir), side(candidate_dir)
+    base_dir, candidate_dir = Path(base_dir), Path(candidate_dir)
+    quote = lambda keys: ','.join("'" + str(k).replace("'", "''") + "'" for k in keys)
     lost = {}
     old_keys = {key: (event, name) for event, found in old_people.items() for _, key, name in found}
-    if old_keys and (Path(candidate_dir) / 'witness_key_map.parquet').exists():
-        listed = ','.join(f"'{k}'" for k in old_keys)
-        resolved = {r['old_key']: r['status'] for r in rows(Path(candidate_dir) / 'witness_key_map.parquet', f'old_key IN ({listed})')}
-        current = {key for found in new_people.values() for _, key, _ in found}
-        for key, (event, name) in old_keys.items():
-            if key not in current and resolved.get(key) != 'unambiguous':
-                lost.setdefault(event, []).append(f"{key} ({name}): {resolved.get(key) or 'no map row'}")
+    hist_keys = {}
+    if (base_dir / 'witness_key_map.parquet').exists():
+        map_cols = set(pq.read_schema(base_dir / 'witness_key_map.parquet').names)
+        if {'old_key', 'status', 'occasion', 'source'} <= map_cols:
+            for r in rows(base_dir / 'witness_key_map.parquet', f"source='congress_gov' AND occasion IN ({occasions})"):
+                if r['old_key'] not in old_keys:
+                    hist_keys[r['old_key']] = (int(r['occasion'].split(':')[1]), 'historical', r['status'] == 'unambiguous')
+    tracked = [(k, ev, name, True) for k, (ev, name) in old_keys.items()] + [
+        (k, ev, label, ok) for k, (ev, label, ok) in hist_keys.items()]
+    if tracked:
+        current_by_event = {event: {key for _, key, _ in found} for event, found in new_people.items()}
+        cand_map = ({r['old_key']: r for r in rows(candidate_dir / 'witness_key_map.parquet', f"old_key IN ({quote([k for k, *_ in tracked])})")}
+                    if (candidate_dir / 'witness_key_map.parquet').exists() else {})
+        targets = {m['witness_key'] for m in cand_map.values() if m.get('witness_key')} | {k for k, *_ in tracked}
+        published = ({r['witness_key'] for r in rows(candidate_dir / 'witnesses.parquet', f'witness_key IN ({quote(targets)})')}
+                     if targets and (candidate_dir / 'witnesses.parquet').exists() else set())
+        collisions = set()
+        check_targets = ({m['witness_key'] for m in cand_map.values() if m.get('status') == 'unambiguous' and m.get('witness_key') in published}
+                         | {k for keys in current_by_event.values() for k in keys})
+        if check_targets and (candidate_dir / 'witness_key_map.parquet').exists() and (candidate_dir / 'witnesses.parquet').exists():
+            prior = []
+            if (base_dir / 'witnesses.parquet').exists():
+                prior.append(f"SELECT witness_key AS old_key,'w:'||witness_key AS base_key FROM read_parquet('{base_dir / 'witnesses.parquet'}')")
+            if (base_dir / 'witness_key_map.parquet').exists() and {'old_key', 'witness_key', 'status'} <= set(pq.read_schema(base_dir / 'witness_key_map.parquet').names):
+                prior.append(f"""SELECT old_key,CASE WHEN status='unambiguous' AND witness_key IS NOT NULL
+                    THEN 'w:'||witness_key ELSE 'm:'||old_key END AS base_key FROM read_parquet('{base_dir / 'witness_key_map.parquet'}')""")
+            if prior:
+                surviving = (f"UNION SELECT rc.witness_key,'w:'||s.witness_key FROM rc JOIN read_parquet('{base_dir / 'witnesses.parquet'}') s USING(witness_key)"
+                             if (base_dir / 'witnesses.parquet').exists() else '')
+                collisions = {r[0] for r in con.execute(f"""WITH rc AS (SELECT m.old_key,m.witness_key
+                      FROM read_parquet('{candidate_dir / 'witness_key_map.parquet'}') m
+                      JOIN read_parquet('{candidate_dir / 'witnesses.parquet'}') w USING(witness_key)
+                      WHERE m.status='unambiguous' AND m.witness_key IN ({quote(check_targets)})),
+                    prior AS ({' UNION '.join(prior)}),
+                    held AS (SELECT rc.witness_key,p.base_key FROM rc JOIN prior p USING(old_key) {surviving})
+                  SELECT witness_key FROM held GROUP BY 1 HAVING count(*)>1""").fetchall()}
+        for key, event, label, was_unambiguous in tracked:
+            on_event = current_by_event.get(event, set())
+            if key in on_event:
+                if key in collisions:
+                    lost.setdefault(event, []).append(f'{key} ({label}): collides on {key}')
+                continue
+            if not was_unambiguous:
+                if key not in cand_map and key not in published:
+                    lost.setdefault(event, []).append(f'{key} ({label}): no map row')
+                continue
+            m = cand_map.get(key)
+            if m is None:
+                reason = f'not on meeting:{event}' if key in published else 'no map row'
+                lost.setdefault(event, []).append(f'{key} ({label}): {reason}')
+            elif m['status'] != 'unambiguous':
+                lost.setdefault(event, []).append(f"{key} ({label}): {m['status']}")
+            else:
+                wk = m.get('witness_key')
+                if not wk or wk not in published:
+                    lost.setdefault(event, []).append(f'{key} ({label}): successor {wk} not published')
+                elif wk not in on_event or (m.get('occasion') is not None and m.get('occasion') != f'meeting:{event}') or (
+                        m.get('source') is not None and m.get('source') != 'congress_gov'):
+                    lost.setdefault(event, []).append(f'{key} ({label}): successor {wk} not on meeting:{event}')
+                elif wk in collisions:
+                    lost.setdefault(event, []).append(f'{key} ({label}): collides on {wk}')
     result = []
     for event in ids:
         now, was = new[event], old.get(event)

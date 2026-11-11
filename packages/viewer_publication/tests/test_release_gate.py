@@ -1148,6 +1148,36 @@ def test_the_report_shows_a_renamed_video(tmp_path):
     assert passed and report_lines(tmp_path)[2:] == ['118340 Oversight hearing (2025-06-12)', '  videos added: v1 (renamed)', '  videos removed: v1']
 
 
+def test_the_report_formats_real_sittings_without_none_or_doubled_rooms(tmp_path):
+    """Real meetings populate `place` alongside `room` and `building` (meeting-records-resolved.sql),
+    and a sitting may have no start time."""
+    sitting = dict(start=None, end=None, place='366, Dirksen Senate Office Building',
+                   room='366', building='Dirksen Senate Office Building', address=None)
+    candidate = edit(cand_tables(), 'meetings', lambda rows: rows[0].update(sittings=[sitting]))
+    passed, _ = gate_night(tmp_path, base_tables(), candidate)
+    assert passed and report_lines(tmp_path)[2:] == [
+        '118340 Oversight hearing (2025-06-12)',
+        '  sittings added: 366, Dirksen Senate Office Building']
+
+
+@pytest.mark.parametrize('case,expected_lost', [
+    ('map_names_an_unpublished_successor', ['w2 (Bo Park (CBO)): successor gone not published']),
+    ('two_old_keys_one_successor', [
+        'k1 (historical): collides on n1',
+        'w1 (Ann Lee (GAO)): collides on n1',
+        'w2 (Bo Park (CBO)): collides on n1']),
+    ('historical_key_names_an_unpublished_successor', ['k1 (historical): successor gone not published']),
+    ('historical_key_successor_on_another_meeting', ['k1 (historical): successor bn9 not on meeting:118340']),
+    ('successor_on_another_updated_meeting', ['w2 (Bo Park (CBO)): successor bn9 not on meeting:118340']),
+])
+def test_the_report_names_unambiguous_map_rows_that_still_lose_a_key(tmp_path, case, expected_lost):
+    passed, _ = gate_night(tmp_path, *CASES[case][0]())
+    assert not passed
+    summary = json.loads((tmp_path / 'meeting-updates.json').read_text())
+    entry = next(m for m in summary['meetings'] if m['event_id'] == 118340)
+    assert entry['keys_lost'] == expected_lost
+
+
 def first_stated():
     """The live release does not hold meeting 118340; the relist reads it with two witnesses."""
     return (edit(base_tables(keys=(), panel=(), order=(), mapped=[]), 'meetings', lambda rows: rows.clear()),
@@ -1278,8 +1308,8 @@ CASES = {
                                                 {**cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3)), **documents(('n1', 'n3'))}), True),
     'video_refresh_beside_a_re_key': (lambda: ({**base_tables(), **video_tables('fetch-1', 1)}, {**cand_tables(), **video_tables('fetch-2', 8)},
                                                None, [(cache_file('fetch-2'), CACHE_RECEIPT)]), True),
-    # The map's locator tier pairs an edited name at the same place (witness-key-map.sql).
-    'name_edited_in_place': (lambda: (base_tables(), cand_tables(panel=(PANEL[0], ('Bo Parks', 'CBO')),
+    # The map's locator tier pairs an edited given name at the same place (witness-key-map.sql).
+    'name_edited_in_place': (lambda: (base_tables(), cand_tables(panel=(PANEL[0], ('Bob Park', 'CBO')),
                                                                  mapped=[('k1', 'n1', 'content'), ('w1', 'n1', 'content'), ('w2', 'n2', 'locator')])), True),
     'superseded_by_set_under_a_new_order': (lambda: (base_tables(), edit(cand_tables(order=(2, 1)), 'witnesses',
                                                                          lambda rows: rows[0].update(superseded_by='n2'))), True),
