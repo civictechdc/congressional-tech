@@ -454,12 +454,15 @@ def test_the_named_ledger_reaches_the_model_job(tmp_path,monkeypatch,fixture_inp
     assert retired==([] if named is None else [RETIRED_KEY])
 
 
-def daily_candidate(root):
+def daily_candidate(root,*,definitions=None):
     """A candidate folder as the nightly leaves it: the completed daily's summary with its publication
-    records, their provenance files, and the model intent sealed by the controller's own writer."""
+    records, their provenance files, and the model intent sealed by the controller's own writer, whose
+    profile holds the model definition hashes it was made with (by default this checkout's)."""
     from hashlib import md5,sha256
     from viewer_publication.archive_controller import _save_continuation
+    from viewer_publication.archive_model import ROOT
     from viewer_publication.archive_model_job import TABLES
+    from viewer_publication.archive_model_profile import _definition_hashes
     parsers,catalog=versions()
     held=root/'archive-daily-provenance';held.mkdir(parents=True)
     records=[]
@@ -477,7 +480,8 @@ def daily_candidate(root):
     daily=root/'archive-daily';daily.mkdir()
     (daily/'daily-summary.json').write_text(json.dumps(summary,sort_keys=True))
     publish=root/'archive-publish';publish.mkdir()
-    _save_continuation(publish/'model-intent.json',dict(version=1,identity='1'*64,profile={},entity_digests={},admitted_names=[],
+    profile=dict(profile=dict(file_hashes=_definition_hashes(ROOT) if definitions is None else definitions))
+    _save_continuation(publish/'model-intent.json',dict(version=1,identity='1'*64,profile=profile,entity_digests={},admitted_names=[],
         pointer=None,pointer_etag=None,input_digest='2'*64,
         daily_summary_sha256=sha256((daily/'daily-summary.json').read_bytes()).hexdigest()),seal=True)
     return summary
@@ -499,6 +503,7 @@ def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys):
     assert main(['--from-candidate',str(candidate),'--build',str(build),'--runtime',str(runtime)])==0
     report=json.loads(capsys.readouterr().out)
     assert report['status']=='planned' and report['executed'] is False and report['spec']==str(build/'model-spec.json')
+    assert report['model_definition_changes_from_candidate']==[]
     bound=json.loads((build/'model-spec.json').read_text())
     for name in TABLES:
         assert bound[name]==dict(summary['pins'][name],kind='native_table')
@@ -517,6 +522,22 @@ def test_a_candidate_binds_its_daily_into_one_build_folder(tmp_path,capsys):
     rest=set(template)-{*TABLES,*PROVENANCE,'catalog_version','output','scratch','engine_config'}
     assert rest and {name:bound[name] for name in rest}=={name:template[name] for name in rest}
     assert load_spec(build/'model-spec.json')==bound
+
+
+def test_a_changed_model_binds_and_names_the_definition_files_it_changed(tmp_path,capsys):
+    """Building a changed model on the candidate's pinned inputs is the command's purpose, and a changed
+    model can still reproduce the release id; so nothing is refused, and the result line names every
+    definition file added, removed or changed since the candidate's model intent. None: a control build."""
+    from viewer_publication.archive_model import ROOT
+    from viewer_publication.archive_model_job import main
+    from viewer_publication.archive_model_profile import _definition_hashes
+    current=_definition_hashes(ROOT);changed,dropped=sorted(current)[:2]
+    recorded={**{name:pin for name,pin in current.items() if name!=dropped},changed:'0'*64,'model/sql/retired-step.sql':'1'*64}
+    candidate=tmp_path/'candidate';daily_candidate(candidate,definitions=recorded)
+    assert main(['--from-candidate',str(candidate),'--build',str(tmp_path/'arm'),'--runtime',str(engine_runtime(tmp_path))])==0
+    report=json.loads(capsys.readouterr().out)
+    assert report['model_definition_changes_from_candidate']==sorted([changed,dropped,'model/sql/retired-step.sql'])
+    assert (tmp_path/'arm/model-spec.json').is_file()
 
 
 @pytest.mark.parametrize('plant',['dropped_provenance_file','edited_daily_summary','no_model_intent'])
@@ -542,21 +563,26 @@ def test_a_candidate_that_differs_from_its_daily_refuses_before_the_build_folder
 
 
 @pytest.mark.parametrize('case',['ledger_file_missing','base_without_its_ledger','ledger_without_execute',
-    'malformed_expected_id','candidate_build_without_a_ledger','candidate_without_a_build','existing_build'])
+    'malformed_expected_id','candidate_build_without_a_ledger','candidate_build_with_an_incomplete_ledger',
+    'candidate_build_with_a_base_without_its_ledger','candidate_without_a_build','existing_build'])
 def test_build_options_refuse_before_inputs_or_runtime(tmp_path,capsys,case):
+    """A bad ledger refuses before the candidate is bound, so the build folder stays fresh for a rerun."""
     from viewer_publication.archive_model_job import main
     value=spec(tmp_path);path=write_spec(tmp_path,value)
     partial=tmp_path/'partial-ledger';partial.mkdir();(partial/'prior_links.parquet').write_bytes(b'')
+    bare=str(base_release(tmp_path,ledger=False))
     candidate=tmp_path/'candidate';daily_candidate(candidate);runtime=engine_runtime(tmp_path);arm=tmp_path/'arm'
     from_candidate=['--from-candidate',str(candidate),'--runtime',str(runtime)]
+    candidate_build=[*from_candidate,'--build',str(arm),'--execute']
     if case=='existing_build':arm.mkdir()
     argv,expected={
         'ledger_file_missing':(['--spec',path,'--execute','--ledger',str(partial)],'Ledger folder lacks prior_sources.parquet'),
-        'base_without_its_ledger':(['--spec',path,'--execute','--ledger-base',str(base_release(tmp_path,ledger=False))],
-                                   'has no retired_links'),
+        'base_without_its_ledger':(['--spec',path,'--execute','--ledger-base',bare],'has no retired_links'),
         'ledger_without_execute':(['--spec',path,'--ledger',str(partial)],'apply only with --execute'),
         'malformed_expected_id':(['--spec',path,'--execute','--expect-release-id','77673bf'],'12 to 64 lowercase hex'),
-        'candidate_build_without_a_ledger':([*from_candidate,'--build',str(arm),'--execute'],'needs the ledger its publisher passed'),
+        'candidate_build_without_a_ledger':(candidate_build,'needs the ledger its publisher passed'),
+        'candidate_build_with_an_incomplete_ledger':([*candidate_build,'--ledger',str(partial)],'Ledger folder lacks prior_sources.parquet'),
+        'candidate_build_with_a_base_without_its_ledger':([*candidate_build,'--ledger-base',bare],'has no retired_links'),
         'candidate_without_a_build':(from_candidate,'--from-candidate needs --build and --runtime'),
         'existing_build':([*from_candidate,'--build',str(arm)],'The build folder must be fresh'),
     }[case]
