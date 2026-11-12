@@ -404,6 +404,29 @@ def _read_reason(error):
 _STRATEGIES = {}
 
 
+def _child_peak_rss_bytes():
+    import resource
+    import sys
+    ru = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    ru_bytes = int(ru) if sys.platform == 'darwin' else int(ru) * 1024
+    return max(resident_bytes(os.getpid()), ru_bytes)
+
+
+class _MeasuredWorker(ParserWorker):
+    last_peak_rss_bytes = None
+
+    def parse(self, input_id, payload):
+        self.last_peak_rss_bytes = None
+        return super().parse(input_id, payload)
+
+    def _stop(self):
+        if self._process is not None and self._process.poll() is None:
+            rss = resident_bytes(self._process.pid)
+            if rss > 0:
+                self.last_peak_rss_bytes = max(self.last_peak_rss_bytes or 0, rss)
+        super()._stop()
+
+
 def parse_payload(payload):
     """Worker callable: read one body, derive its reading, write its text to the named directory.
 
@@ -427,10 +450,10 @@ def parse_payload(payload):
             page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
             max_bytes=MAX_DECODED_BYTES)
     except derivation.OcrRequired:
-        return dict(pending='ocr_required', peak_rss_bytes=resident_bytes(os.getpid()))
+        return dict(pending='ocr_required', peak_rss_bytes=_child_peak_rss_bytes())
     except derivation.PageDeadline:
-        return dict(retry='page_deadline', peak_rss_bytes=resident_bytes(os.getpid()))
-    child_rss = resident_bytes(os.getpid())
+        return dict(retry='page_deadline', peak_rss_bytes=_child_peak_rss_bytes())
+    child_rss = _child_peak_rss_bytes()
     del data
     value = dict(row=reading.row(), peak_rss_bytes=child_rss)
     if reading.text is not None:
@@ -484,7 +507,7 @@ def _write_texts(path, texts):
     return len(texts)
 
 
-def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadable_store=None,
+def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unreadable_store=None,
           parser_workers=1, parser_memory_bytes=PARSER_MEMORY_BYTES,
           strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS, origin=None):
     """Read one batch with bounded workers; stage its texts, readings rows and decisions.
@@ -697,7 +720,7 @@ def create_table(*, engine, work, catalog_root, table, location, create_namespac
 
 def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=None, origin=None, execute=False,
         unreadable_store=None, unreadable_files=(), max_cache_bytes=MAX_CACHE_BYTES, max_batch_items=MAX_BATCH_ITEMS,
-        max_batches=None, worker_factory=ParserWorker, parser_workers=1,
+        max_batches=None, worker_factory=_MeasuredWorker, parser_workers=1,
         parser_memory_bytes=PARSER_MEMORY_BYTES, strategy=None,
         page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None, body_listing=None):
     """Plan once against current `readings`, then stage and commit batches in work-list order.

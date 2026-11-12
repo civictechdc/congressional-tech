@@ -15,7 +15,7 @@ import pyarrow.parquet as pq
 from congress_api.lake.tables import table_input
 from congress_api.lake.versions import producer_version
 from congress_api.retention.body_store import BodyStore, LocalAdapter
-from congress_api.retention.provenance import active_unreadable_where, field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage, imported_unreadable_provenance
+from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage, imported_unreadable_provenance
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -159,12 +159,12 @@ def _work_inputs(captures, recovery_files, unreadable_files, existing, work):
         inputs.append(json_input(work, 'recoveries', [], id='Utf8', original_url='Utf8',
                                  body_sha256='Utf8', recovered_filename='Utf8', kind='Utf8', decided_at='Utf8', supersedes='Utf8'))
     unreadable_schema = dict(fields=[field(name, 'Utf8') for name in
-        ('id', 'record_sha', 'parser', 'parser_version', 'reason', 'supersedes')], metadata={})
+        ('id', 'record_sha', 'parser', 'parser_version', 'supersedes')], metadata={})
     if unreadable_files:
         inputs.append(dict(name='unreadable',kind='json_lines',files=unreadable_files,schema=unreadable_schema))
     else:
         inputs.append(json_input(work, 'unreadable', [], id='Utf8', record_sha='Utf8',
-                                 parser='Utf8', parser_version='Utf8', reason='Utf8', supersedes='Utf8'))
+                                 parser='Utf8', parser_version='Utf8', supersedes='Utf8'))
     params = json.loads(PARAMETERS.read_text())
     priorities = [row['priority'] for row in params]
     names = [row['parameter'] for row in params]
@@ -213,7 +213,7 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
     version_sql = "'" + version.replace("'", "''") + "'"
     missing = (' WHERE NOT EXISTS (SELECT 1 FROM unreadable u WHERE u.record_sha=p.input_id '
         "AND u.parser='filename' AND u.parser_version=" + version_sql +
-        ' AND ' + active_unreadable_where() + ')')
+        ' AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id))')
     if existing is not None:
         missing += (' AND NOT EXISTS (SELECT 1 FROM existing e WHERE e.filename=p.filename '
                     'AND e.source_url=p.source_url AND e.catalog_version=' + version_sql + ')')

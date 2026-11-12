@@ -24,46 +24,29 @@ import tomllib
 # MODS-only record columns to the shared appearance_records table, whose bytes
 # every source hashes (3fb41ddd); congress_gov, house_xml and senate_page keep
 # their published IDs under reviewed equivalence (2026-11-11, orchestrating
-# session, on mods-rebase-20261110/round-8/m8-equivalence.json). ct-a73a
-# (2026-11-12) unified active-unreadable filtering (reason <> 'withdrawn') in
-# lake/_record_producer.py and lake/filenames/__init__.py and added supervisor
-# peak-RSS sampling in retention/parser_worker.py (work-list and supervisor
-# telemetry only; zero change to parsed row values or schemas), so the record
-# and filename producers keep their published IDs under reviewed equivalence.
+# session, on mods-rebase-20261110/round-8/m8-equivalence.json).
 _REVIEWED_PRODUCER_VERSIONS = {
     # appearance_records.congress_gov
-    "08210281b8914df0b3b0797259020ec04a7272579d3391f54b53db06b4775371":
+    "25751e32be9a279abf93d207b12c5f41d59f06296a9e2062656a15117bb4d6b6":
         "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
     # appearance_records.house_xml
-    "9ff81215d58b8331e75799686696eb9873000ec8f4f14b841564019951ccd5c9":
+    "374e9eee2a7a1d8ab7b1ab7f938450724edf82fc129b1a33d5270ceff4dbd0cc":
         "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
-    # appearance_records.mods
-    "c0fe33cb3f06af5b9eb653589925ddc80a58184b57a540ab2005713a21f0bec3":
-        "704ba567914cba4466954297a5fa24ba5869b2c3c59a8258d767ffc2dd225ac4",
     # appearance_records.senate_page
-    "b1240e8eb23360950a54eb0d97552fe6dd03ec3a1796df7468d0c26a09e7b509":
+    "5cc97181e78b4cde1469ffb8bc310a15bee26db7f82ef11e39f4f62f3e6a07ae":
         "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb",
     # committee_records.house_xml
-    "67115f315bbe0990d75629fbbc933c2899201b243e90191354d41e56c90f25f4":
+    "6c2519acf32de655f13ca491eaa3808dd68a9328ed49d76663989a3d18044b28":
         "e1c6ad0d1398f1d1985e085a0fb9b94c6c42ad38a2d9175ad3e8908eb46c531e",
     # filename_readings
-    "a08c7d9bc779c33047db55c366b066039143f4a61dd9a1d4da1194cca41fecdb":
+    "59d2a03312cff0ac590bf8b3da6aee712f39b6cbc37af96b2ce8d4e79b3a5312":
         "c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09",
     # meeting_records.congress_gov
-    "ca89c3c86a7e4b9ae27d91f6964d82ae9e508b2527f95006137cd7bae062a31f":
+    "5a7309c794d57c040addbb5db3d3cf18acd02faf56dfb703129383709c3d8f8c":
         "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
     # meeting_records.house_xml
-    "4aab0f35642604d49dcaf17b7361598a18bbc85ad76e927b3590aa5e5d50155c":
+    "75cb286456a185f89c0081658d4569ced72a148324155df91d2f0945681f3c71":
         "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5",
-    # playlist_records.hls
-    "415c89e149470ab532c64cdb7dc028398569e41aa04b28626ba9431c597bd14d":
-        "53e6d0904cbc43c20c215505d012fdd054a5eb262d842478dfbdd6891ee4a557",
-    # video_records.youtube_api
-    "135af0c4bdd27729991bbf71138f145a1edbbc49eb945634cce1dd0cb1e38815":
-        "8a15a14d1921489d4adb5b6f41e594c1d17b67466f716e9cb5994441a0738a4b",
-    # video_records.youtube_cache
-    "a57c3a1cd95e63d64a11b88c0e84ecb24ee0a247194d342a68b76eb6016266d1":
-        "6efbae6d2d009baf72e0de5e60eba12307cd427f4900a2c892d36d6cc08ef3ba",
 }
 
 # Content-addressed body custody, table I/O, worker transport and this module.
@@ -107,11 +90,6 @@ def version_digest(*, packages, files, values=None):
     return digest.hexdigest()
 
 
-def reviewed_producer_version(fingerprint):
-    """Map a reviewed-equivalent producer fingerprint to its published ID, or return it unchanged."""
-    return _REVIEWED_PRODUCER_VERSIONS.get(fingerprint, fingerprint)
-
-
 def producer_version(*, root, module, files, packages=None, values=None):
     """A record producer's identity: its declared inputs plus the locked packages it imports.
 
@@ -126,7 +104,7 @@ def producer_version(*, root, module, files, packages=None, values=None):
     locked = ImportClosure(root).locked_versions(seeds, stop=_PLUMBING)
     fingerprint = version_digest(packages=packages, files=files,
                                  values={**(values or {}), 'locked_imports': locked})
-    return reviewed_producer_version(fingerprint)
+    return _REVIEWED_PRODUCER_VERSIONS.get(fingerprint, fingerprint)
 
 
 def _normalized(name):

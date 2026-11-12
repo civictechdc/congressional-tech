@@ -639,7 +639,6 @@ def stage_record_table(
     """
     from ..retention.body_store import BodyStore, LocalAdapter
     from ..retention.provenance import (
-        active_unreadable_where,
         field,
         finish_stage,
         import_unreadable,
@@ -670,7 +669,7 @@ def stage_record_table(
     elif "current_page_readings" in candidate_sql:
         raise ValueError(f"{parser_name} candidates route by XML root and need the readings table")
     unreadable_schema = dict(
-        fields=[field(name, "Utf8") for name in ("id", "body_sha256", "record_sha", "parser", "parser_version", "reason", "supersedes")],
+        fields=[field(name, "Utf8") for name in ("id", "body_sha256", "record_sha", "parser", "parser_version", "supersedes")],
         metadata={},
     )
     if unreadable_files:
@@ -686,7 +685,6 @@ def stage_record_table(
                 record_sha="Utf8",
                 parser="Utf8",
                 parser_version="Utf8",
-                reason="Utf8",
                 supersedes="Utf8",
             )
         )
@@ -728,7 +726,7 @@ def stage_record_table(
         f"WHERE lower(coalesce(u.record_sha, u.body_sha256))=lower(c.record_sha) "
         f"AND u.parser IN ('{parser_name}', '{short_name}', '{parser_name}.' || c.source) "
         f"AND u.parser_version=c.parser_version "
-        f"AND {active_unreadable_where()})"
+        f"AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id))"
     )
     if existing is not None:
         src_cond = " AND e.source=c.source" if existing_has_source else ""
@@ -748,7 +746,7 @@ def stage_record_table(
                 f"AND u.parser_version="
                 + inline_ver_sql
                 + " AND coalesce(u.record_sha, u.body_sha256) IS NOT NULL"
-                + f" AND {active_unreadable_where()}"
+                + " AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)"
             ),
         ),
     ]

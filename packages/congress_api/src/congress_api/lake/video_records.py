@@ -14,7 +14,7 @@ import pyarrow as pa
 
 from ..parsers.youtube_video import api_rows, cache_rows
 from ._record_producer import append_record_table, create_record_table, PK, build_record_table, normalize_record_sha, stage_record_table
-from .versions import reviewed_producer_version, version_digest
+from .versions import version_digest
 
 ROOT = Path(__file__).resolve().parents[5]
 TABLE_SCHEMA = ROOT / "model/lake/video-records.schema.json"
@@ -63,12 +63,12 @@ def current_versions(*, root: Path = ROOT) -> dict[str, str]:
     package = Path(__file__).resolve().parents[1]
     files = {"producer": Path(__file__), "shared_producer": package / "lake/_record_producer.py",
              "parser": package / "parsers/youtube_video.py", "schema": Path(root) / "model/lake/video-records.schema.json"}
-    return {SOURCE: reviewed_producer_version(version_digest(packages={}, files={**files,
+    return {SOURCE: version_digest(packages={}, files={**files,
         "cache": package.parents[1].parent / "congress_shared/src/congress_shared/youtube_cache.py",
         "selection": Path(root) / "model/sql/youtube-cache-bodies.sql",
-    }, values={"source": SOURCE})), API_SOURCE: reviewed_producer_version(version_digest(packages={}, files={**files,
+    }, values={"source": SOURCE}), API_SOURCE: version_digest(packages={}, files={**files,
         "selection": Path(root) / "model/sql/youtube-api-bodies.sql",
-    }, values={"source": API_SOURCE}))}
+    }, values={"source": API_SOURCE})}
 
 
 def candidate_sql(*, root: Path = ROOT) -> str:

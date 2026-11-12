@@ -352,8 +352,8 @@ def test_html_reread_set_is_the_readers_own_rule(tmp_path):
             for row in result['keys']}==expected
 
 
-def test_withdrawn_unreadable_reopens_readings_filenames_and_dispositions_until_retried(tmp_path):
-    """[BLOCKER-1] A withdrawn unreadable decision reopens readings, filenames, record producers, and XML dispositions."""
+def test_withdrawn_unreadable_reopens_readings_and_dispositions_until_retried(tmp_path):
+    """A withdrawn unreadable decision reopens readings and XML dispositions until a new failure settles it."""
     from viewer_publication import archive_house_xml_dispositions as dispositions
     from viewer_publication import archive_house_xml_transition as transition
     from congress_api.retention.provenance import file_pin
