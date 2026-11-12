@@ -1,8 +1,8 @@
 ---
 id: ct-gfo7
-status: open
+status: closed
 deps: []
-links: [ct-3aap, ct-zs48]
+links: [ct-3aap, ct-zs48, ct-uz8q, ct-sfra, ct-kw85]
 created: 2026-11-09T23:05:48Z
 type: task
 priority: 3
@@ -102,3 +102,7 @@ Round 9 (2026-11-11, the sixth review's corrections). MODS pin 96f7c89e -> 704ba
 **2026-11-11T23:55:00Z**
 
 MODS round 9 (pin 704ba567, table appearance_records_committees_20261111) published live in archive release 46ebbdf8dcafd67e945ef37e7eb7dc76ec9751ce3fe1ac6cafc68fd1d9b713ca (2026-11-11T23:52:00Z). Kept open for the accepted-defect parser follow-ups recorded in model/jobs/release-causes/77673bfb8fcf-46ebbdf8dcaf.json (Paulsen CHRG-113hhrg91127, Richmond CHRG-114hhrg96873, Walberg CHRG-114hhrg94823, Tierney CHRG-112hhrg73706, Messer CHRG-113hhrg89535) and any remaining non-shipped items above.
+
+**2026-11-12T00:18:56Z**
+
+Closing ct-gfo7 after MODS round 9 (pin 704ba567) shipped live in archive release 46ebbdf8dcaf; accepted-defect parser lines (Paulsen, Richmond, Walberg, Tierney, Messer) and remaining non-shipped residuals moved to ct-uz8q (pre-113th opening statements and transcript-heading cases tracked on ct-sfra).

@@ -2,7 +2,7 @@
 id: ct-sfra
 status: open
 deps: []
-links: []
+links: [ct-gfo7, ct-uz8q, ct-kw85]
 created: 2026-11-11T02:06:19Z
 type: feature
 priority: 2
