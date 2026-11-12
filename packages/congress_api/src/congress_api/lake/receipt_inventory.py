@@ -13,6 +13,7 @@ from congress_api.retention.provenance import json_input, run_job
 
 METADATA_BYTES=64<<20
 ITEM_BYTES=16<<10
+INCREMENTAL_LOOKBACK_DAYS=14
 MULTIPART_ETAG=re.compile(r'[0-9a-fA-F]{32}-([1-9][0-9]{0,4})')
 
 
@@ -64,15 +65,21 @@ def select_receipts(files,existing,*,engine,work):
     return [json.loads(row['metadata_json']) for row in result['missing']]
 
 
-def discover_receipts(adapter,families,*,existing,engine,work,mode='incremental'):
-    """List dated prefixes inclusively; only backfill/raw-check list non-dates.
+def discover_receipts(adapter,families,*,existing,engine,work,mode='incremental',
+                      lookback_days=INCREMENTAL_LOOKBACK_DAYS):
+    """List dated prefixes inclusively within lookback_days; only backfill/raw-check list non-dates.
 
     Adapter.prefixes returns immediate child prefix strings; Adapter.files
     yields file metadata below a selected prefix. Neither operation reads
-    contents. A family with no dated existing key starts at every known date.
+    contents. Incremental mode lists each family's dated prefixes from
+    `newest - lookback_days` onward so late receipts in recent prior day
+    prefixes are discovered without scanning full history; a family with no
+    dated existing key starts at every known date.
     """
     if mode not in {'incremental','backfill','raw-check'}:
         raise ValueError('Receipt discovery mode must be incremental, backfill or raw-check')
+    if type(lookback_days) is not int or lookback_days<0:
+        raise ValueError('Receipt discovery lookback_days must be a non-negative integer')
     rows=[];seen=set();metadata_bytes=0
     for family in families:
         prefix='receipts/'+family+'/'
@@ -109,7 +116,8 @@ def discover_receipts(adapter,families,*,existing,engine,work,mode='incremental'
             GROUP BY regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\1')''')],outputs=[],queries=[dict(name='prefixes',sql=f'''
             SELECT DISTINCT p.prefix FROM prefixes p LEFT JOIN watermarks w ON p.family=w.family
             WHERE {full} OR (p.day IS NOT NULL AND
-                (w.newest IS NULL OR cast(p.day AS DATE)>=w.newest)) ORDER BY p.prefix''')])
+                (w.newest IS NULL OR cast(p.day AS DATE)>=w.newest - INTERVAL '{lookback_days} days'))
+            ORDER BY p.prefix''')])
     def listed():
         for row in result['prefixes']:
             for item in adapter.files(row['prefix']):

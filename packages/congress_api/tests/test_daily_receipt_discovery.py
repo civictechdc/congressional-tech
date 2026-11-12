@@ -26,6 +26,34 @@ def test_daily_discovers_new_receipts_by_family_and_then_finds_none(tmp_path):
     assert second['status'] == 'completed' and second['discovered_receipts'] == 0 and second['new_receipt_keys'] == []
 
 
+def test_daily_discovers_late_receipt_planted_in_older_day_prefix(tmp_path):
+    """ct-mt88: after daily ingests a newer day prefix, a late receipt written into a recent older day prefix is discovered."""
+    import shutil
+    value, engine, store = native_fixture(tmp_path, 2)
+    for sidecar in (tmp_path / 'raw/receipts').rglob('*.qualification.json'):
+        sidecar.unlink()
+    sources = sorted((tmp_path / 'raw/receipts/documents').rglob('*.jsonl*'))
+    assert len(sources) == 2
+    newer_dir = tmp_path / 'raw/receipts/documents/2026-11-08'
+    older_dir = tmp_path / 'raw/receipts/documents/2026-10-31'
+    newer_dir.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(sources[0]), str(newer_dir / sources[0].name))
+    late_bytes = sources[1].read_bytes()
+    late_name = sources[1].name
+    sources[1].unlink()
+
+    spec_val = dict(value, receipt_inventory=[], receipt_families=['documents'])
+    first = daily.produce_daily(spec_val, engine=engine, raw_store=store)
+    assert first['status'] == 'completed' and first['discovered_receipts'] == 1
+    assert first['new_receipt_keys'] == [f'receipts/documents/2026-11-08/{sources[0].name}']
+
+    older_dir.mkdir(parents=True, exist_ok=True)
+    (older_dir / late_name).write_bytes(late_bytes)
+    second = daily.produce_daily(dict(spec_val, work=str(tmp_path / 'second')), engine=engine, raw_store=store)
+    assert second['status'] == 'completed' and second['discovered_receipts'] == 1
+    assert second['new_receipt_keys'] == [f'receipts/documents/2026-10-31/{late_name}']
+
+
 def test_discovery_takes_no_pinned_inventory(tmp_path):
     value = dict(spec(tmp_path), receipt_families=['documents'], receipt_inventory=[dict(key='receipts/documents/x')])
     with pytest.raises(ValueError, match='take no pinned inventory'):

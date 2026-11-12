@@ -264,9 +264,10 @@ def _stale_mapping_receipts(captures_pin,current,*,engine,work):
 def _discovered_receipts(families,raw_store,captures_head,*,engine,work):
     """Receipts in the raw store that captures lacks, copied and qualified under work.
 
-    Lists each family's dated prefixes from its newest captured date on (inclusive), so a
-    run costs one listing per new day, not the whole history; the native anti-join drops
-    keys already in captures.
+    Lists each family's dated prefixes within INCREMENTAL_LOOKBACK_DAYS of its newest
+    captured date and onward (inclusive), so late receipts in recent prior day prefixes
+    are picked up without listing full history; the native anti-join drops keys already
+    in captures.
     """
     adapter=raw_store.adapter
     store=(R2ReceiptStore(adapter.client,adapter.bucket) if isinstance(adapter,R2Adapter)

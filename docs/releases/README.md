@@ -91,7 +91,15 @@ or lookup row on one. Each new document's body is joined to `captures`, and each
 line is read from raw. The receipt key must be outside the live release's receipt set (the
 key list its input record names, `inputs/receipts/<sha256>.json.gz`), and the line must name
 the body. The key's date does not matter (ct-gc99): the daily reads a backlog oldest first,
-so its receipts are new to the release without being newer than it. Every capture line of a
+so its receipts are new to the release without being newer than it. Specifically,
+`daily.py` (`_within_budget`) keeps a prefix of selected receipts in `(day, key)` order up to
+one night's `max_work_items` budget, and because keys start with `receipts/<family>/`, families
+within a single day drain alphabetically — so an alphabetical family tail deferred out of one
+build and ingested on a later run is by design, not a discovery fault (ct-mt88). Incremental
+discovery (`receipt_inventory.discover_receipts`, `INCREMENTAL_LOOKBACK_DAYS = 14`) lists each
+family's dated prefixes from 14 days before its newest ingested day onward, picking up late
+receipts written into a recent prior day prefix without scanning full bucket history (`backfill`
+and `raw-check` modes list full history and non-date segments such as `undated`). Every capture line of a
 new document must qualify, so a body the live release also read is not new. Any other changed or
 removed value, a split or merge, a new key or address on a document the live release has, a
 recovered document (its key is a link, not a body), or a row that cannot be traced still
