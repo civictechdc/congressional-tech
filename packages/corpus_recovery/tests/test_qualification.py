@@ -278,7 +278,7 @@ def test_exact_configured_input_decoding_and_page_capacity_with_two_workers(tmp_
         bodies.append(verify_local_file(path))
         assert bodies[-1].size_bytes == input_ceiling
     config = q.QualificationConfig(max_input_bytes=input_ceiling, max_decoded_bytes=len(content) * 2,
-                                   max_pages=2, timeout_seconds=5, max_cpu_seconds=3,
+                                   max_pages=2, timeout_seconds=30, max_cpu_seconds=3,
                                    max_memory_bytes=512 * 1024 * 1024)
     with ThreadPoolExecutor(max_workers=2) as pool:
         records = list(pool.map(lambda body: q.qualify(body, tmp_path / 'cache', config=config), bodies))

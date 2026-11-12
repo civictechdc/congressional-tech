@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {startArchiveServer} from './archive-server.mjs';
 import {verifyArchive} from './verify-archive.mjs';
 import {writeTargets,checkTargets} from './archive-targets.mjs';
-import {browserDependency} from './archive-browser.mjs';
+import {browserDependency,routeWhileOpen} from './archive-browser.mjs';
 
 test('the site pins the one playwright that contract:archive loads',async()=>{
   const pin=JSON.parse(await readFile(new URL('../package.json',import.meta.url))).devDependencies.playwright;
@@ -148,4 +148,105 @@ for(const origin of [{kind:'model'},{kind:'model',display_only:false}])test('raw
     assert.throws(()=>checkTargets({...sample,heapBytes:61},targets,origin,'phone'),/heapBytes/);
     assert.equal(Object.hasOwn(targets,'measured_release_id'),false);
   }finally{await rm(folder,{recursive:true,force:true});}
+});
+
+test('routeWhileOpen ignores worker fulfill disposal during context or browser close and rethrows while open',async()=>{
+  const {EventEmitter}=await import('node:events');
+  function fakeHarness(){
+    const browser=Object.assign(new EventEmitter(),{
+      connected:true,
+      isConnected(){return this.connected;},
+      async close(){
+        await this.onBeforeClose?.();
+        this.connected=false;
+        this.emit('disconnected');
+      },
+    });
+    const pages=[];
+    const context=Object.assign(new EventEmitter(),{
+      routes:[],
+      browser(){return browser;},
+      pages(){return pages;},
+      async route(_matcher,handler){this.routes.push(handler);},
+      async close(){
+        await this.onBeforeClose?.();
+        this.emit('close');
+      },
+    });
+    const page=Object.assign(new EventEmitter(),{
+      closed:false,
+      context(){return context;},
+      isClosed(){return this.closed;},
+      routes:[],
+      async route(_matcher,handler){this.routes.push(handler);},
+      async close(){
+        await this.onBeforeClose?.();
+        this.closed=true;
+        const idx=pages.indexOf(this);if(idx>=0)pages.splice(idx,1);
+        this.emit('close');
+      },
+    });
+    pages.push(page);
+    return {browser,context,page};
+  }
+  const workerRoute={request:()=>({frame:()=>null})};
+
+  // 1. Open context/page: errors must NOT be masked.
+  {
+    const {context}=fakeHarness();
+    await routeWhileOpen(context,'**/*',async()=>{throw new Error('real fixture failure');});
+    await assert.rejects(context.routes[0](workerRoute),/real fixture failure/);
+  }
+
+  // 2. Worker request failing mid-context.close() BEFORE 'close' event arrives on client.
+  {
+    const {context}=fakeHarness();
+    let inFlight;
+    await routeWhileOpen(context,'**/*',async()=>{
+      await new Promise(resolve=>{context.onBeforeClose=resolve;});
+      throw new Error('route.fulfill: Fetch response has been disposed');
+    });
+    inFlight=context.routes[0](workerRoute);
+    await context.close();
+    await inFlight;
+  }
+
+  // 3. Worker request failing mid-browser.close() BEFORE 'close'/'disconnected' event arrives.
+  {
+    const {browser,context}=fakeHarness();
+    await routeWhileOpen(context,'**/*',async()=>{
+      await new Promise(resolve=>{browser.onBeforeClose=resolve;});
+      throw new Error('route.fulfill: Fetch response has been disposed');
+    });
+    const inFlight=context.routes[0](workerRoute);
+    await browser.close();
+    await inFlight;
+  }
+
+  // 4. Worker request routed on context failing when its sole page is closing.
+  {
+    const {context,page}=fakeHarness();
+    await routeWhileOpen(context,'**/*',async()=>{
+      await new Promise(resolve=>{page.onBeforeClose=resolve;});
+      throw new Error('Target page, context or browser has been closed');
+    });
+    const inFlight=context.routes[0](workerRoute);
+    await page.close();
+    await inFlight;
+  }
+
+  // 5. Two-tab context: closing one tab does NOT mask worker route errors while the second tab remains open.
+  {
+    const {context,page}=fakeHarness();
+    const secondPage=Object.assign(new EventEmitter(),{
+      closed:false,
+      context(){return context;},
+      isClosed(){return this.closed;},
+    });
+    context.pages().push(secondPage);
+    context.emit('page',secondPage);
+    await routeWhileOpen(context,'**/*',async()=>{throw new Error('real second-tab failure');});
+    await page.close();
+    await assert.rejects(context.routes[0](workerRoute),/real second-tab failure/);
+  }
 });

@@ -1,6 +1,6 @@
 """Explicit source slots remain visible before broad token scans."""
-import subprocess
-import sys
+import re
+import time
 
 import pytest
 
@@ -152,12 +152,19 @@ def test_explicit_underscores_separate_a_subject_title_from_a_missing_number(eng
     assert not fields(result, 'measure_number')
 
 
-def test_long_malformed_amendment_identifier_does_not_backtrack_over_digit_partitions():
-    code = '''
-from house_naming import Engine
-name = 'BILLS-119-HR12-A000055-Amdt-' + '9' * 12000 + '@.pdf'
-result = Engine().extract(name)
-assert not any(f['name'] == 'amendment_identifier' for m in result['observations'] for f in m['fields'])
-assert any(f['name'] == 'amendment_token' and f['raw'] == '9' * 12000 + '@' for m in result['observations'] for f in m['fields'])
-'''
-    subprocess.run([sys.executable, '-c', code], check=True, timeout=5)
+def test_long_malformed_amendment_identifier_does_not_backtrack_over_digit_partitions(engine):
+    # Measure process CPU time in-process on the warm Engine rather than a subprocess
+    # wall-clock timeout, which flaked under heavy host load (ct-cpd8).
+    engine.extract('BILLS-119-HR12-A000055-Amdt-9@.pdf')
+    pattern = next(r['pattern'] for r in engine.extraction_rules() if r['id'] == 'amendment-tree-identifier')
+    compiled = re.compile(pattern, re.IGNORECASE | re.ASCII)
+    token = '9' * 12000 + '@'
+    cpu_start = time.process_time()
+    for _ in range(100):
+        assert compiled.search(token) is None
+    assert time.process_time() - cpu_start < 1.0
+    cpu_start = time.process_time()
+    result = engine.extract(f'BILLS-119-HR12-A000055-Amdt-{token}.pdf')
+    assert time.process_time() - cpu_start < 5.0
+    assert not any(f['name'] == 'amendment_identifier' for m in result['observations'] for f in m['fields'])
+    assert any(f['name'] == 'amendment_token' and f['raw'] == token for m in result['observations'] for f in m['fields'])

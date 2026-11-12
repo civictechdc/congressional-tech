@@ -1,6 +1,6 @@
 """Literal filing wording and bounded targets inside compound local filenames."""
-import subprocess
-import sys
+import re
+import time
 
 import pytest
 
@@ -155,7 +155,18 @@ def test_local_number_refinement_keeps_its_non_official_role(engine):
     assert not fields(result, 'amendment_identifier')
 
 
-def test_failed_long_filing_shape_is_bounded():
-    subprocess.run([sys.executable, '-c',
-        'from house_naming import Engine; Engine().extract("BILLS-118-HR9-C001097-Amdt-" + "1" * 12000 + "XMLtoHR.pdf")'],
-        check=True, timeout=8, capture_output=True)
+def test_failed_long_filing_shape_is_bounded(engine):
+    # Measure process CPU time in-process on the warm Engine rather than a subprocess
+    # wall-clock timeout, which flaked under heavy host load (ct-cpd8).
+    engine.extract('BILLS-118-HR9-C001097-Amdt-1XMLtoHR.pdf')
+    pattern = next(r['pattern'] for r in engine.extraction_rules() if r['id'] == 'compound-filing-target')
+    compiled = re.compile(pattern, re.IGNORECASE | re.ASCII)
+    token = '1' * 12000 + 'XMLtoHR'
+    cpu_start = time.process_time()
+    for _ in range(100):
+        assert compiled.search(token) is None
+    assert time.process_time() - cpu_start < 1.0
+    cpu_start = time.process_time()
+    result = engine.extract(f'BILLS-118-HR9-C001097-Amdt-{token}.pdf')
+    assert time.process_time() - cpu_start < 5.0
+    assert not filing(result)

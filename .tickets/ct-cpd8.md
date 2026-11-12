@@ -1,6 +1,6 @@
 ---
 id: ct-cpd8
-status: in_progress
+status: closed
 deps: []
 links: [ct-68e1]
 created: 2026-11-09T04:47:42Z
@@ -70,3 +70,10 @@ Plan for the next intentional filename version step, one commit: raise the start
 **2026-11-11T14:33:14Z**
 
 validated 2026-11-11, left open. The qualification-test half is done (on main since the thread1 lane 489f026f). Two parts remain, both checked on origin/main today: (1) the parser-worker startup wait is still max(5, timeout) (retention/parser_worker.py:111), waiting on the next intentional filename version step because the file is in the filename producer identity; (2) the house-naming backtracking tests still measure with an 8 s wall-clock subprocess limit (test_filed_targets.py:161 timeout=8; test_structured_slots.py:163 timeout=5) and timed out under load about 150 on 2026-11-10 17:41Z; counting steps or a short-input comparison would not depend on load.
+
+**2026-11-12T02:55:00Z**
+
+Closed on `claude/ct-wave-1ab-safety`:
+1. `packages/house-naming/tests/test_filed_targets.py` and `packages/house-naming/tests/test_structured_slots.py`: replaced wall-clock `subprocess.run(..., timeout=8/5)` with in-process `time.process_time()` CPU-time bounds on both 100 direct regex scans (`< 1.0` CPU s; ~0.03 CPU s actual vs > 40 CPU s on a planted digit-partition backtrack) and warm `engine.extract(...)` (`< 5.0` CPU s; ~0.64 CPU s actual), completely independent of host scheduler load.
+2. `packages/corpus_recovery/tests/test_qualification.py::test_exact_configured_input_decoding_and_page_capacity_with_two_workers`: raised the wall-clock worker start ceiling from 5 s to 30 s while keeping `max_cpu_seconds=3` intact. Note: `retention/parser_worker.py` remains untouched here because it is byte-hashed into `filenames.current_version` (scheduled with Wave 3 `ct-29n4`).
+3. Bonus hosted CI flake fix (`apps/site/scripts/archive-browser.mjs` `routeWhileOpen`): synchronously marks teardown at the start of `page.close()`, `context.close()` and `browser.close()` (before Playwright disposes `fetchResponses` on the server prior to emitting client `close`), handles worker requests whose `route.request().frame()` is `null`, and keeps real route failures rethrown while tabs remain open (`archive-tools.test.mjs` 15/15 green; `test_filed_targets.py` + `test_structured_slots.py` + `test_qualification.py` 128/128 green).

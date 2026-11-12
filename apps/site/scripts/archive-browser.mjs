@@ -13,16 +13,67 @@ export function browserDependency(name){
  * to the fixture server, which serves the same layout under /data/archive/. */
 export const ARCHIVE_ORIGIN='https://congressional-data.spicygov.ai';
 const archivePath=/^\/viewer-publications\/(manifest\.json|releases\/[a-f0-9]{64}\/[a-z_0-9.-]+)$/;
+const teardownHooks=Symbol('teardownHooks');
+function onTeardown(emitter,mark){
+  if(!emitter)return ()=>{};
+  let hooks=emitter[teardownHooks];
+  if(!hooks){
+    hooks=new Set();
+    emitter[teardownHooks]=hooks;
+    const notify=()=>{for(const fn of [...hooks])fn();hooks.clear();};
+    emitter.once?.('close',notify);
+    emitter.once?.('disconnected',notify);
+    if(typeof emitter.close==='function'){
+      const originalClose=emitter.close;
+      emitter.close=function(...args){notify();return originalClose.apply(this,args);};
+    }
+  }
+  hooks.add(mark);
+  return ()=>hooks.delete(mark);
+}
 /** Route `matcher` on a page or context. A handler can still be running when
- * its page or context closes (a harness finishing while the worker prefetches);
- * Playwright then disposes the fetched response and fulfill rejects ("Fetch
- * response has been disposed"). Only that teardown race is ignored: a failure
- * while the owner is still open is rethrown. */
+ * its page, context or browser begins closing (for example while the archive
+ * worker prefetches); Playwright disposes in-flight fetch responses before its
+ * client close event arrives, and worker requests have a null `frame()`. Only
+ * that teardown race is ignored: a failure while open is rethrown. */
 export async function routeWhileOpen(target,matcher,handler){
-  let closed=false;target.once('close',()=>{closed=true;});
+  let closed=false;
+  const context=typeof target.context==='function'?target.context():target;
+  const browser=typeof context?.browser==='function'?context.browser():null;
+  const closingPages=new WeakSet();
+  let sawPage=false;
+  const trackPage=page=>{
+    sawPage=true;
+    onTeardown(page,()=>{closingPages.add(page);});
+  };
+  if(context===target&&typeof context?.pages==='function'){
+    for(const page of context.pages())trackPage(page);
+    context.on?.('page',trackPage);
+  }
+  const cleanups=[];
+  const mark=()=>{
+    closed=true;
+    if(context===target)context?.off?.('page',trackPage);
+    while(cleanups.length)cleanups.pop()();
+  };
+  onTeardown(target,mark);
+  if(context&&context!==target)cleanups.push(onTeardown(context,mark));
+  if(browser)cleanups.push(onTeardown(browser,mark));
   const tornDown=route=>{
     if(closed)return true;
-    try{return route.request().frame().page().isClosed();}catch{return false;}
+    if(typeof target.isClosed==='function'&&target.isClosed())return true;
+    if(browser&&typeof browser.isConnected==='function'&&!browser.isConnected())return true;
+    try{
+      const frame=route.request().frame();
+      if(frame){
+        const page=frame.page();
+        return page.isClosed()||closingPages.has(page);
+      }
+      if(context===target&&sawPage&&typeof context.pages==='function'){
+        return context.pages().every(page=>page.isClosed()||closingPages.has(page));
+      }
+    }catch{}
+    return false;
   };
   await target.route(matcher,async route=>{
     try{await handler(route);}catch(error){if(!tornDown(route))throw error;}
