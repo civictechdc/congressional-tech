@@ -1,6 +1,6 @@
 ---
 id: ct-wzyo
-status: open
+status: closed
 deps: []
 links: [ct-4acu]
 created: 2026-11-11T00:44:06Z
@@ -23,3 +23,9 @@ Step 9 passes the ledger the publisher would pass (archive_model_job.ledger_file
 **2026-11-11T14:33:14Z**
 
 validated 2026-11-11, left open: not fixed. archive_selective.py:481 still calls execute_model(validate_model(value, base=run.work)) with no prior_links or base_retired. Latent while model/jobs/backfill-selective.json stays blocked.
+
+**2026-11-12T03:23:00Z**
+
+Resolved and closed:
+- `archive_selective.py` (`validate_selective`, `_verify_pins`, `_open_state`, `_clear_unaccepted_model`, `_model`, `_outputs`): `selective.model` now accepts optional mutually exclusive `ledger` or `ledger_base` (validated up front via `archive_model_job.check_ledger`), clears any derived `work/ledger` alongside `model-output`/`model-scratch` on unaccepted model retry, and in step 9 (`_model`) passes `archive_model_job.ledger_files(...)` (`prior_links` and `base_retired`) to `execute_model` — matching `release_gate.fetch_base` in the publisher. When neither `ledger` nor `ledger_base` is supplied (such as a bootstrap/fixture build), `run.state['model']['ledger']` and `selective-report.json` record `{'empty': True, 'reason': ...}` explicitly.
+- Regression test `test_step_9_model_build_passes_base_retired_ledger_matching_publisher` in `packages/viewer_publication/tests/test_archive_selective.py` verifies `Red -> Green` that (1) invalid `ledger`/`ledger_base` options refuse at `load_spec` before any effect, (2) empty-ledger builds record the explicit reason in `state.json` and `selective-report.json`, and (3) with a base release carrying `retired_links.parquet`, step 9's `retired_links.parquet` rows and `release_id` match `archive_controller.run_publish` on the same inputs.

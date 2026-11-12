@@ -33,7 +33,9 @@ from congress_api.retention.body_store import BodyStore,LocalAdapter
 from congress_api.retention.provenance import file_pin,parquet_output,run_job
 from docspec_client.models import DocSpecFailure
 from viewer_publication.archive_controller import _save_continuation
-from viewer_publication.archive_model_job import PROVENANCE,_local,_pin,_selector,execute as execute_model,validate_spec as validate_model
+from viewer_publication.archive_model_job import (
+    PROVENANCE,_local,_pin,_selector,check_ledger,execute as execute_model,ledger_files,validate_spec as validate_model,
+)
 from viewer_publication.archive_selective_records import EXPLORER_TABLES,RECORD_TABLES,SelectiveStop,Bodies,complete_d4,differential,stage_d4
 
 PREDICATE_TABLES=('captures','filename_readings','meeting_records','appearance_records')
@@ -91,16 +93,23 @@ def validate_selective(value,*,base,catalog_root,tables):
     if 'gpo_mods' in fallback:
         result['body_fallback']=dict(gpo_mods={name:_local(fallback['gpo_mods'][name],base) for name in ('receipts','root')})
     model=value['model']
-    if not isinstance(model,dict) or {'template','engine_config'}-model.keys() or model.keys()-{'template','engine_config','spicy_regs'}:
+    if (not isinstance(model,dict) or {'template','engine_config'}-model.keys()
+            or model.keys()-{'template','engine_config','spicy_regs','ledger','ledger_base'}):
         raise ValueError('Selective model requires its template and runtime; the job owns work/model-{output,scratch}')
+    if 'ledger' in model and 'ledger_base' in model:
+        raise ValueError('Selective model takes ledger or ledger_base, not both')
     result['model']=dict(model,**{name:_local(model[name],base) for name in ('template','engine_config')})
     if model.get('spicy_regs') is not None:result['model']['spicy_regs']=pinned(model['spicy_regs'])
+    for name in ('ledger','ledger_base'):
+        if name in model:result['model'][name]=_local(model[name],base)
+    check_ledger(ready=result['model'].get('ledger'),base=result['model'].get('ledger_base'))
     result['publish_template']=_local(value['publish_template'],base)
     return result
 
 
 def _verify_pins(selective):
     """A digest mismatch or a remote model runtime stops the run before the first effect."""
+    check_ledger(ready=selective['model'].get('ledger'),base=selective['model'].get('ledger_base'))
     selectors=[pin for pin in selective['base'].values() if pin['kind']=='parquet']
     selectors+=[selective[name] for name in ('receipt_inventory','source_counts','source_qualifications','input_manifest') if name in selective]
     selectors+=[row for rows in selective['provenance'].values() for row in rows]
@@ -205,7 +214,7 @@ def _open_state(spec,engine):
     work=Path(spec['work'])
     # A model retry with another runtime keeps D1-D4; only the tables' definition is identity.
     definition={k:v for k,v in spec.items() if k not in ('work','resume','decided_at','through')}
-    definition['selective']=dict(definition['selective'],model={k:v for k,v in spec['selective']['model'].items() if k!='engine_config'})
+    definition['selective']=dict(definition['selective'],model={k:v for k,v in spec['selective']['model'].items() if k not in ('engine_config','ledger','ledger_base')})
     versioned_tables=set(RECORD_TABLES)|(set(EXPLORER_TABLES)&set(spec['tables']))
     identity=sha256(json.dumps(dict(definition=definition,captures=captures.current_version(),
         versions=_versions(versioned_tables),parsers={p:readings.current_version(p)
@@ -463,13 +472,13 @@ def _model_value(run):
 
 
 def _clear_unaccepted_model(run):
-    """Delete an unaccepted model attempt's output and scratch, before any scratch check.
+    """Delete an unaccepted model attempt's output, scratch and derived ledger before any scratch check.
 
     The runtime is not identity, so a retry with a larger pool resumes after D4. Each failed
     attempt leaves up to SCRATCH_BYTES; the invocation's first check would refuse on it.
     """
     if 'model' in run.state:return
-    for name in ('model-output','model-scratch'):
+    for name in ('model-output','model-scratch','ledger'):
         if (run.work/name).exists():shutil.rmtree(run.work/name)
 
 
@@ -477,16 +486,24 @@ def _model(run):
     """Step 9: one owned output and scratch, checked again after the tables grew the work."""
     if 'model' in run.state:return
     value=_model_value(run)
+    model=run.selective['model']
+    check_ledger(ready=model.get('ledger'),base=model.get('ledger_base'))
     run.check_scratch()
-    built=execute_model(validate_model(value,base=run.work))
+    validated=validate_model(value,base=run.work)
+    prior,retired=ledger_files(validated,ready=model.get('ledger'),base=model.get('ledger_base'))
+    built=execute_model(validated,prior_links=prior,base_retired=retired)
     result=json.loads((Path(value['scratch'])/'result.json').read_text())
     observed={query['name']:query['data'] for query in result.get('queries',[])}
     for name in SUITES:
         rows=observed.get(name)
         if not rows or any(type(v) is int and v for row in rows for v in row.values()):
             raise SelectiveStop('Model suite absent or positive: '+name)
+    ledger=(dict(empty=True,reason='selective.model named neither ledger nor ledger_base; '
+                'release_id and suite results were built with an empty retired-link ledger')
+            if prior is None else dict(built['ledger'],
+                source='ledger' if 'ledger' in model else 'ledger_base'))
     run.state['model']=dict(release_id=built['release_id'],output=built['output'],rows=built['rows'],
-        runtime=built['engine_runtime']);run.save()
+        runtime=built['engine_runtime'],ledger=ledger);run.save()
 
 
 def _tables_report(run,started):
@@ -516,7 +533,7 @@ def _outputs(run,started):
     publish['targets']=dict(publish['targets'],path=str((template.parent/publish['targets']['path']).resolve()))
     (work/'candidate-publish.json').write_text(json.dumps(publish,indent=1,sort_keys=True))
     report=dict(status='built',executed=True,work=str(work),release_id=state['model']['release_id'],release=state['model']['output'],seconds=round(time.monotonic()-started,1),
-        producers=state.get('producers'),
+        ledger=state['model'].get('ledger'),producers=state.get('producers'),
         differential=state['differential'],rebuilt_diff=state.get('rebuilt_diff'),filenames_recomputed=state['daily']['filenames_recomputed'],
         tables={name:_table_counts(run,name) for name in (*ALL_TABLE_NAMES,*EXPLORER_TABLES) if name in run.spec['tables']},
         completion=state.get('completion'))

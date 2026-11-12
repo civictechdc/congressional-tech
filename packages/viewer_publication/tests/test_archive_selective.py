@@ -670,6 +670,84 @@ def test_candidate_goes_through_the_controller_and_resumes_after_canary_failure(
     assert len(built)==1
 
 
+def test_step_9_model_build_passes_base_retired_ledger_matching_publisher(tmp_path,fixture,monkeypatch):
+    """ct-wzyo: when selective.model names ledger_base (or ledger), step 9 passes the retired-link ledger
+    the publisher derives from the base release, producing identical retired_links rows and release_id;
+    when neither is named, run.state['model']['ledger'] states explicitly that the build used an empty ledger."""
+    from hashlib import md5,sha256
+    from archive_job_fixture import fake_release
+    from test_archive_controller import Runtime
+    from test_archive_publish import Store
+    import viewer_publication.archive_controller as controller
+    import viewer_publication.archive_publish as archive_publish
+    from viewer_publication.archive_backfill_job import load_spec as load_backfill
+    from viewer_publication.archive_format import release_identity
+    from viewer_publication.archive_model_job import load_spec
+
+    # 1. Invalid ledger options refuse at load_spec before any effect.
+    spec_dir=tmp_path/'bad'
+    selective_spec(spec_dir,fixture,dict(captures=B),differential_rows=0)
+    raw_spec=json.loads((spec_dir/'spec.json').read_text())
+    bare_base=fake_release(tmp_path/'bare','a'*64,[('gone.pdf',b'gggggggg',[b'gggggggg'])],retired=None)
+    for bad,msg in [
+        (dict(ledger=str(tmp_path/'missing-ready')),'Ledger folder lacks prior_links.parquet'),
+        (dict(ledger_base=str(bare_base)),'has no retired_links'),
+        (dict(ledger=str(tmp_path/'r'),ledger_base=str(bare_base)),'ledger or ledger_base, not both'),
+    ]:
+        edited=dict(raw_spec,selective=dict(raw_spec['selective'],model=dict(raw_spec['selective']['model'],**bad)))
+        p=tmp_path/'bad-spec.json';p.write_text(json.dumps(edited))
+        with pytest.raises(ValueError,match=msg):load_backfill(p)
+        assert not (spec_dir/'work').exists()
+
+    # 2. Without ledger or ledger_base, state and report say explicitly that the ledger was empty.
+    empty_spec=selective_spec(tmp_path/'empty',fixture,dict(captures=B),differential_rows=0)
+    empty_report=execute(empty_spec)
+    empty_state=json.loads((Path(empty_spec['work'])/'state.json').read_text())
+    assert empty_state['model']['ledger']['empty'] is True
+    assert 'empty retired-link ledger' in empty_state['model']['ledger']['reason']
+    assert empty_report['ledger']==empty_state['model']['ledger']
+
+    # 3. With a base release carrying retired_links, step 9's retired_links rows and release_id equal the publisher's.
+    base_dir=fake_release(tmp_path/'base','0'*64,[('gone.pdf',b'gggggggg',[b'gggggggg'])],
+        retired=[dict(link_key=b'rrrrrrrr',successor_key=None,last_release_id='d'*64,last_filename='r.pdf')])
+    entries=[]
+    for f in sorted(base_dir.glob('*.parquet')):
+        data=f.read_bytes()
+        entries.append(dict(name=f.name,sha256=sha256(data).hexdigest(),md5=md5(data).hexdigest(),
+            size=len(data),rows=pq.read_metadata(f).num_rows))
+    base_id=release_identity(1,entries)
+    (base_dir/'manifest.json').write_text(json.dumps(dict(schema_version=1,files=entries,facet_counts=[],release_id=base_id)))
+
+    seeded_dir=tmp_path/'seeded'
+    selective_spec(seeded_dir,fixture,dict(captures=B),differential_rows=0)
+    seeded_json=json.loads((seeded_dir/'spec.json').read_text())
+    seeded_json['selective']['model']['ledger_base']=str(base_dir)
+    (seeded_dir/'spec.json').write_text(json.dumps(seeded_json))
+    spec=load_backfill(seeded_dir/'spec.json')
+    report=execute(spec)
+
+    store=Store()
+    for f in base_dir.iterdir():
+        store.objects[f'viewer-publications/releases/{base_id}/{f.name}']=f.read_bytes()
+    store.objects['viewer-publications/manifest.json']=json.dumps(dict(release_id=base_id,previous_release_id=None)).encode()
+    monkeypatch.setattr(archive_publish,'require_release_gates',lambda *a,**k:None)
+    candidate=Path(spec['work'])/'candidate-model.json'
+    publish=json.loads((Path(spec['work'])/'candidate-publish.json').read_text())
+    def passed(**ctx):return dict(status='passed',releaseId=ctx['release_id'],targets='owner-approved')
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        pub_result=controller.run_publish(load_spec(candidate),canary=passed,contract=passed,
+            client=store,engine=Runtime(native,store),bucket='derived-fixture',work=tmp_path/'publish',
+            receipt_keys=publish['receipt_keys'],provenance=[],run={'id':'selective'},
+            public_origin='https://archive.fixture.test')
+    assert pub_result['status']=='published'
+    step9_retired=pq.read_table(Path(report['release'])/'retired_links.parquet').to_pylist()
+    pub_retired=pq.read_table(Path(spec['work'])/'candidate-output'/'retired_links.parquet').to_pylist()
+    assert step9_retired==pub_retired
+    assert {r['link_key'] for r in step9_retired}=={b'gggggggg',b'rrrrrrrr'}
+    assert report['release_id']==pub_result['release_id']
+    assert report['ledger']['source']=='ledger_base'
+
+
 def test_the_selective_job_records_the_producer_of_every_snapshot_it_pins(tmp_path,fixture,monkeypatch):
     """Gate 5 refused spec-run's D1-D4 candidate: nothing wrote a producer record. The job that
     made the snapshots now writes them, named honestly, and pins them in candidate-publish.json."""
