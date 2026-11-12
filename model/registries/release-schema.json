@@ -1211,6 +1211,12 @@
           "type": "list<struct<body fixed[32],suffix dict,format dict,language dict,production dict>>",
           "meaning": "Captured caption, subtitle, and playlist tracks from their latest good fetch",
           "nullable": false
+        },
+        {
+          "name": "recording_scope",
+          "type": "dict",
+          "meaning": "full, excerpt or unknown",
+          "nullable": false
         }
       ],
       "gaps": [],

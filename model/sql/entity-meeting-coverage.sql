@@ -11,8 +11,8 @@ WITH observations AS (
 ), recording_refs AS (
  -- Each locator counts once, even if independent observations cite it.
  SELECT m.event_id,m.ref,
-  bool_or(m.scope='event' AND (m.status='asserted' OR (m.status='decided' AND m.recording_scope='full'))) AS full_recording,
-  bool_or(m.scope='event' AND m.status='decided' AND m.recording_scope='excerpt') AS excerpt,
+  bool_or(m.scope='event' AND ((m.status='asserted' AND coalesce(r.recording_scope,'unknown')<>'excerpt') OR (m.status='decided' AND m.recording_scope='full'))) AS full_recording,
+  bool_or(m.scope='event' AND ((m.status='asserted' AND r.recording_scope='excerpt') OR (m.status='decided' AND m.recording_scope='excerpt'))) AS excerpt,
   bool_or(m.scope='event' AND m.status='claimed') AS claimed,
   bool_or(m.scope='event' AND m.basis='curated' AND m.status='decided' AND m.decision='not_public') AS not_public,
   bool_or(m.scope='event' AND m.basis='curated' AND m.status='decided' AND m.decision='no_video_found') AS confirmed_absent,

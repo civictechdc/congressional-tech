@@ -50,7 +50,7 @@ def tables(tmp_path_factory):
         # 1008 is a Senate meeting with nothing linked; 1009 lists documents not held; 1010 has a linked
         # package whose witnesses are unattached; 1011 is named only by a package's MODS.
         # 1009 holds a caption track and its committee's transcript file (ct-1i4q).
-        dict(name='meetings_export', sql="""SELECT cast(event_id AS BIGINT) AS event_id,chamber,CASE WHEN event_id=1009 THEN make_array(
+        dict(name='meetings_export', sql="""SELECT cast(event_id AS BIGINT) AS event_id,chamber,cast('Hearing' AS VARCHAR) AS meeting_type,CASE WHEN event_id=1009 THEN make_array(
               named_struct('source','captions','package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),'video_key','youtube:v','language','en','production','asr'),
               named_struct('source','committee_transcript','package_id',cast(NULL AS VARCHAR),'list_row',cast(3 AS INT),'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR)))
              ELSE array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
@@ -69,10 +69,10 @@ def tables(tmp_path_factory):
         dict(name='package_meeting_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id
             UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-qualified',1002 UNION ALL SELECT 'CHRG-qualified',1004""", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(1009 AS BIGINT) AS event_id,'https://docs.house.gov/x.pdf' AS url", materialize=True),
-        dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption
+        dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption,cast(3600 AS INT) AS duration_seconds,cast('Hearing' AS VARCHAR) AS title
             UNION ALL SELECT 'youtube:nocaption',arrow_cast(decode(repeat('ac',32),'hex'),'FixedSizeBinary(32)'),
-              arrow_cast(make_array(cast(1003 AS BIGINT)),'List(Int64)'),false
-            UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false""", materialize=True),
+              arrow_cast(make_array(cast(1003 AS BIGINT)),'List(Int64)'),false,cast(3600 AS INT) AS duration_seconds,cast('Hearing' AS VARCHAR) AS title
+            UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false,cast(NULL AS INT) AS duration_seconds,cast(NULL AS VARCHAR) AS title""", materialize=True),
         dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
         dict(name='recording_page_video_events', sql="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref WHERE false", materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
@@ -100,7 +100,7 @@ def tables(tmp_path_factory):
             UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Hon. Ivy Member' AS name,'CHRG-member-and-outside' AS package_id,'member_appearance' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
             UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Jon Outside' AS name,'CHRG-member-and-outside' AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
             UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Senator Kay Introducer' AS name,'CHRG-introducer-only' AS package_id,'member_appearance' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by""", materialize=True),
-        dict(name='recordings_export', sql="SELECT 'youtube:unmatched' AS video_key,make_array(1) AS tracks", materialize=True),
+        dict(name='recordings_export', sql="SELECT 'youtube:unmatched' AS video_key,make_array(1) AS tracks,'unknown' AS recording_scope", materialize=True),
         dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
     ]
     inputs += [json_input(work, 'appearance_records_input', [
@@ -415,7 +415,7 @@ def test_recording_matches_is_single_owner_of_video_to_meeting_links(tmp_path):
             UNION ALL SELECT 1004,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
             UNION ALL SELECT 1005,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
             UNION ALL SELECT 119546,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)""", materialize=True),
-        dict(name='meetings_export', sql="SELECT event_id FROM meetings_resolved", materialize=True),
+        dict(name='meetings_export', sql="SELECT event_id,cast('Hearing' AS VARCHAR) AS meeting_type,cast('Hearing' AS VARCHAR) AS title FROM meetings_resolved", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT 'CHRG-pkg' AS package_id,cast(1004 AS BIGINT) AS event_id", materialize=True),
         dict(name='package_meeting_links', sql="SELECT 'CHRG-pkg' AS package_id,cast(1004 AS BIGINT) AS event_id", materialize=True),
         dict(name='recording_video_links', sql="""SELECT 'aa' AS page_body,'youtube:0YtytQuMCT8' AS extracted_key
@@ -433,7 +433,8 @@ def test_recording_matches_is_single_owner_of_video_to_meeting_links(tmp_path):
             GROUP BY video_key,event_id""", materialize=True),
         dict(name='videos_export', sql="""SELECT 'youtube:0YtytQuMCT8' AS video_key,
             arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,
-            arrow_cast(make_array(cast(119546 AS BIGINT)),'List(Int64)') AS stated_event_ids,false AS has_caption""", materialize=True),
+            arrow_cast(make_array(cast(119546 AS BIGINT)),'List(Int64)') AS stated_event_ids,false AS has_caption,
+            cast(5400 AS INT) AS duration_seconds,cast('Hearing' AS VARCHAR) AS title""", materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='recordings_export', sql=recordings_sql, materialize=True),
     ]
@@ -462,5 +463,136 @@ def test_recording_matches_is_single_owner_of_video_to_meeting_links(tmp_path):
         if link['scope'] == 'event' and link['event_id'] is not None
     }
     assert rec_pairs == match_pairs
+
+
+def test_committee_page_recording_links_and_recording_scope(tmp_path):
+    """ct-ywz2: committee pages link provable proceedings to meetings; recordings mark full vs excerpt vs unknown."""
+    from viewer_publication import archive_model
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    inputs = [
+        json_input(tmp_path, 'active_recording_decisions', [],
+                   id='Utf8', subject_kind='Utf8', subject_id='Utf8', verdict='Utf8', video_refs=_list(),
+                   note='Utf8', disputed_by='Utf8', decided_at='Utf8', supersedes='Utf8'),
+        json_input(tmp_path, 'recording_sources',
+                   json.loads((ROOT / 'model/registries/recording-sources.json').read_text()),
+                   id='Utf8', kind='Utf8', pattern='Utf8', key_template='Utf8',
+                   format='Utf8', default_language='Utf8', default_production='Utf8'),
+    ]
+    steps = [
+        dict(name='recording_url_sources', sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'", materialize=True),
+        dict(name='meetings_resolved', sql="""SELECT *,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS transcript_jackets FROM (
+            SELECT cast(118500 AS BIGINT) AS event_id,'house' AS chamber,cast('2025-09-15' AS DATE) AS meeting_date,
+              'Hearing' AS meeting_type,'Exploring State Options in SNAP' AS title,false AS not_held,
+              make_array(named_struct('system_code','hsag00','role','host')) AS committees,
+              arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS subject_keys,
+              array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0) AS videos
+            UNION ALL SELECT 117410,'house',cast('2024-06-13' AS DATE),'Markup' AS meeting_type,'Markup' AS title,false,
+              make_array(named_struct('system_code','hssy00','role','host')),
+              arrow_cast(make_array('118-hr-8613','118-hr-8665'),'List(Utf8)'),
+              array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
+            UNION ALL SELECT 104357,'house',cast('2016-02-11' AS DATE),'Hearing','To consider the impacts of EPA actions on the rural economy',false,
+              make_array(named_struct('system_code','hsag00','role','host')),
+              arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),
+              array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
+            UNION ALL SELECT 115900,'house',cast('2023-03-08' AS DATE),'Hearing','Clearing the Air: Science-Based Strategies to Protect Workers from COVID-19 Infections',false,
+              make_array(named_struct('system_code','hsed00','role','host')),
+              arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),
+              array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0))""", materialize=True),
+        dict(name='meetings_export', sql="""SELECT event_id,chamber,meeting_type,title,
+            array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
+             'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS transcripts
+            FROM meetings_resolved""", materialize=True),
+        dict(name='recording_video_links', sql="""SELECT repeat('11',32) AS page_body,'youtube:-Ii51ySKWUc' AS extracted_key
+            UNION ALL SELECT repeat('22',32),'youtube:xv-3QApZs7o'
+            UNION ALL SELECT repeat('33',32),'youtube:ezLNq2qeJxU'
+            UNION ALL SELECT repeat('44',32),'youtube:e8tGWFo6s2c'
+            UNION ALL SELECT repeat('55',32),'youtube:29FzR1Hadpk'""", materialize=True),
+        dict(name='recording_video_pages', sql="SELECT DISTINCT page_body,arrow_cast(decode(page_body,'hex'),'FixedSizeBinary(32)') AS body_sha FROM recording_video_links", materialize=True),
+        dict(name='capture_source_contexts', sql="""SELECT 's1' AS source_id,repeat('11',32) AS body_sha
+            UNION ALL SELECT 's2',repeat('22',32)
+            UNION ALL SELECT 's3',repeat('33',32)
+            UNION ALL SELECT 's4',repeat('44',32)
+            UNION ALL SELECT 's5',repeat('55',32)""", materialize=True),
+        dict(name='source_addresses', sql="""SELECT 's1' AS source_id,'https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=7972' AS url
+            UNION ALL SELECT 's2','https://republicans-science.house.gov/markups?ID=409C'
+            UNION ALL SELECT 's3','https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=3123'
+            UNION ALL SELECT 's4','https://edworkforce.house.gov/calendar/eventsingle.aspx?EventID=407227'
+            UNION ALL SELECT 's5','https://democrats-veterans.house.gov/events/hearings/econ-06252026'""", materialize=True),
+        dict(name='recording_page_sources', sql="SELECT DISTINCT c.source_id,c.body_sha AS page_body FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body", materialize=True),
+        dict(name='page_facts', sql="""SELECT arrow_cast(decode(repeat('11',32),'hex'),'FixedSizeBinary(32)') AS body_sha,'completed' AS status,
+              'Exploring State Options in SNAP | House Agriculture Committee' AS title,'Exploring State Options in SNAP' AS heading,
+              cast('2025-09-15' AS VARCHAR) AS content_date,'September 15, 2025' AS text_head,arrow_cast(NULL,'List(Int64)') AS named_meetings
+            UNION ALL SELECT arrow_cast(decode(repeat('22',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Full Committee Markup of H.R. 8613 & H.R. 8665' AS title,'Full Committee Markup of H.R. 8613 & H.R. 8665' AS heading,
+              '2024-06-13','June 13, 2024',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('33',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Subcommittee on Livestock and Foreign Agriculture: Foot and Mouth Disease','Foot and Mouth Disease',
+              '2016-02-11','February 11, 2016',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('44',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Clearing the Air: Science-Based Strategies to Protect Workers from COVID-19 Infections','Clearing the Air',
+              '2023-03-08','March 8, 2023',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('55',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'The House Committee on Veterans Affairs','Economic Opportunity Hearing',
+              cast(NULL AS VARCHAR),'Date: 06.25.26',arrow_cast(NULL,'List(Int64)')""", materialize=True),
+        dict(name='publisher_links', sql="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS source_id WHERE false", materialize=True),
+        dict(name='document_members', sql="SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS BIGINT) AS component,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false", materialize=True),
+        dict(name='component_meeting_links', sql="SELECT cast(NULL AS BIGINT) AS component,arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
+        dict(name='source_annotation_addresses', sql="SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS VARCHAR) AS meeting_key WHERE false", materialize=True),
+        dict(name='senate_page_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS banking_hearing_url WHERE false", materialize=True),
+        dict(name='house_page_meeting_links', sql=sql('house-page-meeting-links'), materialize=True),
+        dict(name='recording_page_meetings', sql="""SELECT page_body,event_id FROM house_page_meeting_links
+            UNION SELECT vp.page_body,s.event_id FROM recording_video_pages vp JOIN senate_page_meeting_links s ON s.record_sha_hex=vp.page_body""", materialize=True),
+        dict(name='recording_tracks', sql="""SELECT cast(NULL AS VARCHAR) AS video_key,
+            array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),
+             'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false""", materialize=True),
+        dict(name='recordings_entity', sql=sql('entity-recordings'), materialize=True),
+        dict(name='recording_page_video_events', sql="""SELECT video_key,event_id,'committee_page:'||min(page_body) AS source_ref
+            FROM (SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id
+                  FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
+                  WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL)
+            GROUP BY video_key,event_id""", materialize=True),
+        dict(name='videos_export', sql="""SELECT 'youtube:-Ii51ySKWUc' AS video_key,arrow_cast(decode(repeat('a1',32),'hex'),'FixedSizeBinary(32)') AS record_sha,
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS stated_event_ids,false AS has_caption,
+              cast(461 AS INT) AS duration_seconds,'Hearing Highlights | Exploring State Options in SNAP' AS title
+            UNION ALL SELECT 'youtube:xv-3QApZs7o',arrow_cast(decode(repeat('a2',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(5911 AS INT),'Full Committee Markup of H.R. 8613'
+            UNION ALL SELECT 'youtube:ezLNq2qeJxU',arrow_cast(decode(repeat('a3',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(6275 AS INT),'Foot and Mouth Disease'
+            UNION ALL SELECT 'youtube:e8tGWFo6s2c',arrow_cast(decode(repeat('a4',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(241 AS INT),'Meeting to Approve New Subcommittee Assignments'
+            UNION ALL SELECT 'youtube:29FzR1Hadpk',arrow_cast(decode(repeat('a5',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(0 AS INT),'Subcommittee Hearing 6.25.2026'""", materialize=True),
+        dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
+        dict(name='package_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
+        dict(name='package_mods_facts', sql="SELECT cast(NULL AS VARCHAR) AS package_id,arrow_cast(NULL,'List(Int64)') AS named_meetings WHERE false", materialize=True),
+        dict(name='meeting_document_urls', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false", materialize=True),
+        dict(name='ordered', sql="SELECT arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
+        dict(name='witnesses_export', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by WHERE false", materialize=True),
+        dict(name='selected_appearance_records', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS status,cast(NULL AS VARCHAR) AS collection_state,arrow_cast(NULL,'List(Utf8)') AS appearances WHERE false", materialize=True),
+        dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
+        dict(name='recordings_export', sql=archive_model.recordings_export_sql(root=ROOT, explorer_inputs=True), materialize=True),
+        dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
+    ]
+    run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=[
+        parquet_output(tmp_path, 'recordings', 'SELECT * FROM recordings_export', ['video_key']),
+        parquet_output(tmp_path, 'meeting_coverage', 'SELECT * FROM meeting_coverage_export', ['event_id', 'aspect']),
+    ], queries=[])
+    rec = {r['video_key']: r for r in rows(tmp_path, 'recordings')}
+    assert rec['youtube:-Ii51ySKWUc']['event_ids'] == [118500]
+    assert rec['youtube:-Ii51ySKWUc']['recording_scope'] == 'excerpt'
+    assert rec['youtube:xv-3QApZs7o']['event_ids'] == [117410]
+    assert rec['youtube:xv-3QApZs7o']['recording_scope'] == 'full'
+    assert rec['youtube:ezLNq2qeJxU']['event_ids'] == []
+    assert rec['youtube:ezLNq2qeJxU']['recording_scope'] == 'full'
+    assert rec['youtube:e8tGWFo6s2c']['event_ids'] == []
+    assert rec['youtube:e8tGWFo6s2c']['recording_scope'] == 'full'
+    assert rec['youtube:29FzR1Hadpk']['recording_scope'] == 'unknown'
+
+    cov = {(r['event_id'], r['aspect']): (r['state'], r['reason']) for r in rows(tmp_path, 'meeting_coverage')}
+    assert cov[118500, 'recording'] == ('partial', 'excerpts_only')
+    assert cov[117410, 'recording'] == ('present', None)
+    assert cov[104357, 'recording'] == ('unknown', None)
+    assert cov[115900, 'recording'] == ('unknown', None)
 
 

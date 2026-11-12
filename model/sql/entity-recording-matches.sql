@@ -7,14 +7,28 @@ WITH publisher AS (
   cast('unknown' AS VARCHAR) AS recording_scope,cast('asserted' AS VARCHAR) AS status,
   cast(NULL AS VARCHAR) AS note,cast('meetings.videos' AS VARCHAR) AS source_ref
  FROM publisher
+), page_video_titles AS (
+ SELECT k.video_key,v.title
+ FROM (SELECT DISTINCT video_key FROM recording_page_video_events WHERE video_key IS NOT NULL) k
+ JOIN videos_export v ON v.video_key=k.video_key
 ), page_rows AS (
  SELECT DISTINCT cast('event' AS VARCHAR) AS subject_kind,cast(p.event_id AS VARCHAR) AS subject_id,
   p.event_id,cast(NULL AS VARCHAR) AS package_id,p.video_key,cast(NULL AS VARCHAR) AS url,
   cast('committee_page' AS VARCHAR) AS basis,cast('linked' AS VARCHAR) AS decision,cast(100 AS SMALLINT) AS score,
   cast('unknown' AS VARCHAR) AS recording_scope,cast('asserted' AS VARCHAR) AS status,
   cast(NULL AS VARCHAR) AS note,p.source_ref
- FROM recording_page_video_events p
+ FROM page_video_titles vt
+ RIGHT JOIN (
+  recording_page_video_events p
+  JOIN meetings_export m ON m.event_id=p.event_id
+ ) ON vt.video_key=p.video_key
  WHERE p.video_key IS NOT NULL AND p.event_id IS NOT NULL
+  AND NOT (
+   vt.title IS NOT NULL
+   AND regexp_like(vt.title,'(?i)\b(markup|organizational\s+meeting|subcommittee\s+assignments)\b')
+   AND lower(coalesce(m.meeting_type,''))<>'markup'
+   AND NOT regexp_like(coalesce(m.title,''),'(?i)\b(markup|business\s+meeting|organizational|subcommittee\s+assignments)\b')
+  )
 ), stated AS (
  SELECT video_key,encode(record_sha,'hex') AS record_hex,unnest(stated_event_ids) AS stated_id FROM videos_export
 ), stated_rows AS (
@@ -26,7 +40,7 @@ WITH publisher AS (
   cast('unknown' AS VARCHAR) AS recording_scope,cast('claimed' AS VARCHAR) AS status,
   CASE WHEN m.event_id IS NULL THEN concat('stated event id ',cast(s.stated_id AS VARCHAR),' has no meeting') END AS note,
   concat('video_records:',s.record_hex) AS source_ref
- FROM stated s LEFT JOIN meetings_export m ON m.event_id=s.stated_id
+ FROM meetings_export m RIGHT JOIN stated s ON m.event_id=s.stated_id
 ), linked_packages AS (
  SELECT DISTINCT l.package_id FROM meeting_transcript_links l
  JOIN (SELECT event_id FROM publisher_rows UNION SELECT event_id FROM page_rows) p ON p.event_id=l.event_id
@@ -78,7 +92,9 @@ SELECT r.match_id,r.subject_kind,r.subject_id,r.event_id,r.package_id,r.video_ke
   'basis',arrow_cast(NULL,'Dictionary(Int32, Utf8)'),
   'scope',arrow_cast(NULL,'Dictionary(Int32, Utf8)')
  )),1,0)) END AS meeting_links
-FROM ranked r
-LEFT JOIN meetings_export e ON r.event_id=e.event_id
-LEFT JOIN package_links p ON r.package_id=p.package_id
+FROM package_links p
+RIGHT JOIN (
+ meetings_export e
+ RIGHT JOIN ranked r ON r.event_id=e.event_id
+) ON r.package_id=p.package_id
 WHERE r.rn=1

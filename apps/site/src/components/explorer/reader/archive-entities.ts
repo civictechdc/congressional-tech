@@ -198,7 +198,8 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const tracks = (Array.isArray(r.tracks) ? r.tracks : Array.isArray(r.transcripts) ? r.transcripts : []).map((t: any) => ({
       ...t, sha256: t?.sha256 ?? (t?.body instanceof Uint8Array ? hex(t.body) : typeof t?.body === 'string' ? t.body : null),
     }));
-    return { ...r, congress: r.congress != null ? Number(r.congress) : null, duration_s: r.duration_s != null ? Number(r.duration_s) : null, event_ids: eventIds, meeting_keys: meetingKeys, tracks, transcripts: Array.isArray(r.transcripts) ? r.transcripts : tracks };
+    const recordingScope = r.recording_scope != null ? String(r.recording_scope) : null;
+    return { ...r, congress: r.congress != null ? Number(r.congress) : null, duration_s: r.duration_s != null ? Number(r.duration_s) : null, recording_scope: recordingScope, event_ids: eventIds, meeting_keys: meetingKeys, tracks, transcripts: Array.isArray(r.transcripts) ? r.transcripts : tracks };
   };
 
   const normalizeCommittee = (c: any) => {
@@ -592,7 +593,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       const captionRow = v.video_key && recRows.find(r => !r.url && r.video_key === v.video_key);
       if (!captionRow) return v;
       joined.add(captionRow);
-      return { ...v, tracks: [...(v.tracks ?? v.transcripts ?? []), ...captionRow.tracks] };
+      return { ...v, recording_scope: v.recording_scope ?? captionRow.recording_scope ?? null, tracks: [...(v.tracks ?? v.transcripts ?? []), ...captionRow.tracks] };
     });
     const allVideos = [
       ...recRows.filter(r => !joined.has(r)),

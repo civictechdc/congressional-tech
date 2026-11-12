@@ -400,6 +400,7 @@ Identity: `video_key` (primary_key; published identifier).
 | `video_key` | `string` | no | Provider-prefixed recording identifier |
 | `event_ids` | `list<int64>` | no | Sorted meeting event IDs associated with this recording |
 | `tracks` | `list<struct<body fixed[32],suffix dict,format dict,language dict,production dict>>` | no | Captured caption, subtitle, and playlist tracks from their latest good fetch |
+| `recording_scope` | `dict` | no | full, excerpt or unknown |
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 

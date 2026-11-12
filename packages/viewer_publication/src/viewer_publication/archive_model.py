@@ -978,7 +978,7 @@ def meeting_records_have_document_references(path):
 
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
-  'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false"""
+  'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks,cast(NULL AS VARCHAR) AS recording_scope WHERE false"""
 EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref WHERE false"
 
 
@@ -1408,13 +1408,19 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 FROM recording_video_links WHERE page_body IS NOT NULL""",materialize=True),
             dict(name='recording_page_sources',sql="""SELECT DISTINCT c.source_id,c.body_sha AS page_body
                 FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body""",materialize=True),
+            dict(name='house_page_meeting_links',sql=(Path(root)/'model/sql/house-page-meeting-links.sql').read_text(),materialize=True),
             dict(name='recording_page_meetings',sql="""SELECT vp.page_body,unnest(pf.named_meetings) AS event_id
                 FROM recording_video_pages vp JOIN page_facts pf ON pf.body_sha=vp.body_sha
                 WHERE pf.status='completed' AND pf.named_meetings IS NOT NULL
                 UNION
                 SELECT DISTINCT vps.page_body,try_cast(a.meeting_key AS BIGINT) AS event_id
                 FROM recording_page_sources vps JOIN source_annotation_addresses a ON a.source_id=vps.source_id
-                WHERE try_cast(a.meeting_key AS BIGINT) IS NOT NULL""",materialize=True),
+                WHERE try_cast(a.meeting_key AS BIGINT) IS NOT NULL
+                UNION
+                SELECT vp.page_body,s.event_id
+                FROM recording_video_pages vp JOIN senate_page_meeting_links s ON s.record_sha_hex=vp.page_body
+                UNION
+                SELECT page_body,event_id FROM house_page_meeting_links""",materialize=True),
             dict(name='recording_fetch_candidates',sql=f"""SELECT c.receipt_key,c.receipt_line,c.capture_index,c.sha256,
                 coalesce(c.stored_suffix,'.gz') AS suffix,
                 coalesce(c.sniffed_format,CASE lower(split_part(c.media_type,';',1)) WHEN 'text/vtt' THEN 'vtt' WHEN 'application/vnd.apple.mpegurl' THEN 'm3u8' WHEN 'application/x-mpegurl' THEN 'm3u8' END) AS body_format,
@@ -1505,7 +1511,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         auxiliary += [
             ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id','match_basis']),
             ('witness_key_map','SELECT old_key,witness_key,status,basis,candidate_keys,occasion,source FROM witness_key_map',['old_key'],['occasion','source','status','basis']),
-            ('recordings',recordings_export_sql(root=root,explorer_inputs=bool(prepared.get('explorer_inputs'))),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
+            ('recordings',recordings_export_sql(root=root,explorer_inputs=bool(prepared.get('explorer_inputs'))),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production','recording_scope']),
             ('caption_resources','SELECT * FROM caption_resources',['video_key','track_body','ordinal'],['suffix','format','status']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),

@@ -44,7 +44,8 @@ SELECT k.video_key,
   'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),
   'production',cast(NULL AS VARCHAR)
- )),1,0)) AS tracks
+ )),1,0)) AS tracks,
+ cast('unknown' AS VARCHAR) AS recording_scope
 FROM all_keys k
 LEFT JOIN events_agg e ON k.video_key=e.video_key
 LEFT JOIN tracks_agg t ON k.video_key=t.video_key

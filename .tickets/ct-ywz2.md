@@ -1,6 +1,6 @@
 ---
 id: ct-ywz2
-status: open
+status: closed
 deps: []
 links: [ct-jcnd, cat2-8ai9, ct-yizl]
 created: 2026-11-10T03:26:30Z
@@ -23,3 +23,10 @@ Committee pages are linked to their meeting where the page identifies one, with 
 **2026-11-11T14:43:58Z**
 
 validated 2026-11-11, left open: not started (no commit names ct-ywz2); recordings.parquet in 77673bfb8fcf still has no full-or-excerpt column.
+
+**2026-11-12T05:29:00Z**
+
+Closed:
+- Added `model/sql/house-page-meeting-links.sql` (resolving House committee proceeding pages holding recordings either by a unique single-meeting proceeding document linked from the page or by parent `.house.gov` committee + proceeding date corroborated by substantive title/measure word overlap, vetoing misplaced markup/organizational videos on non-markup hearing pages in `entity-recording-matches.sql`) and wired both `house_page_meeting_links` and `senate_page_meeting_links` into `recording_page_meetings`.
+- Measured on the 274 House committee pages / 284 recordings (`recordings-284-traced.json` against `46ebbdf8dcaf`): `216` of `274` House pages link to a canonical meeting (`58` unlinked: informal listening sessions, roundtables, member briefings, and field events with no canonical row in `meetings.parquet`, or undated pages), with `18/18` (`0` disagreements) between direct proceeding-document links and dated-committee-title links; `226` of `284` recordings link via `committee_page` (`228` of `284` total with `recording_matches`, `56` unlinked).
+- Added `recording_scope` (`'full'`, `'excerpt'`, `'unknown'`, dictionary-encoded) to `recordings.parquet` (`model/sql/entity-recordings-matched.sql`, `model/registries/release-schema.json`, `docs/release-relationships.md`, `apps/site`) and updated `entity-meeting-coverage.sql` so asserted excerpt-only recordings count as `partial` (`excerpts_only`) rather than `present` (`full_recording`). Validated against all `2,460` curated `video_key`s in `recording_matches.parquet` (`2,008/2,009` = `99.95%` precision on `full` and `100/102` = `98.0%` on `excerpt` before curated override, `100.0%` with curated override; all 6 short clips in the 284 batch marked `'excerpt'`, short full business/organizational meetings marked `'full'`, and `0`-duration placeholders marked `'unknown'`).

@@ -201,10 +201,11 @@ export function HearingDetail({
             seenTracks.add(k);
             return true;
           });
+          const scopeTag=rec.recording_scope==='excerpt'?'excerpt':null;
+          const metaParts=[rec.source,scopeTag,duration].filter(Boolean);
           return <li key={rec.video_key||rec.video_id||i} data-recording-key={rec.video_key||undefined}>
             {rec.url?<PublicLink url={rec.url}>{label}</PublicLink>:<strong>{label}</strong>}
-            {rec.source&&<span className="archive-source-meta"> ({rec.source}{duration?`, ${duration}`:''})</span>}
-            {!rec.source&&duration&&<span className="archive-source-meta"> ({duration})</span>}
+            {metaParts.length>0&&<span className="archive-source-meta"> ({metaParts.join(', ')})</span>}
             {tracks.length>0&&<span className="archive-source-meta">
               <span aria-hidden="true"> · </span>
               Captions: {tracks.map((t:any,ti:number)=>{
