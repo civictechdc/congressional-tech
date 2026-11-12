@@ -121,7 +121,11 @@ def meetings(tmp_path_factory):
         dict(name='recordings_entity', sql=RECORDINGS, materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='details', sql="""SELECT 'CHRG-own' AS package_id,cast(7 AS INT) AS list_row,'pdf' AS format,
-            array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates""", materialize=True),
+            array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates,
+            arrow_cast(decode('0000000000000007','hex'),'FixedSizeBinary(8)') AS link_key
+            UNION ALL SELECT cast(NULL AS VARCHAR),cast(3 AS INT),'pdf',
+            array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0),
+            arrow_cast(decode('0000000000000023','hex'),'FixedSizeBinary(8)')""", materialize=True),
         dict(name='formats', sql="SELECT 'preference' AS kind,'pdf' AS value,cast(1 AS INT) AS rank", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(11 AS BIGINT) AS event_id,'https://www.congress.gov/118/meeting/house/116450/documents/HHRG-118-VR09-Transcript-20231108.pdf' AS url UNION ALL SELECT 21,'https://www.congress.gov/118/meeting/house/9/documents/HHRG-118-XX00-Transcript-20231109.pdf' "
              # 23's record lists its transcript; the other dated file is held and linked but not listed by the record.

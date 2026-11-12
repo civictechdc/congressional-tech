@@ -1,6 +1,6 @@
 ---
 id: ct-v8us
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-10T13:26:44Z
@@ -27,3 +27,7 @@ The reference is stored or compared through a release-stable key (the link key, 
 **2026-11-11T14:43:58Z**
 
 validated 2026-11-11, left open: not fixed; release 77673bfb8fcf still shows 516 renumber-only rows of 530 changed outcome_source_reference values against 619db5f9e08e (2026-11-10 note), and no commit names ct-v8us since its filing.
+
+**2026-11-12T02:50:30Z**
+
+Implemented on `claude/ct-wave-4-model`: `model/sql/entity-meetings.sql` now joins `committee_transcript` rows of `transcript_ranked` (left build side) to `details` on `list_row` and publishes `lower(encode(d.link_key,'hex'))` as `outcome_source_reference` instead of `cast(list_row AS VARCHAR)`. Updated `model/registries/release-schema.json`, regenerated `docs/release-relationships.md`, updated the `release_comparison.py` comment, and verified all repo readers (`HearingDetail.tsx` renders the string directly; `release_comparison.py` only compares 64-hex `record_sha` on publisher outcomes). Added unit + row-shift stability test in `test_meeting_outcome_evidence.py`. Ready to close once the Wave 4 release ships and the subsequent release comparison shows zero renumbering rows.

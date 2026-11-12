@@ -84,7 +84,14 @@ def sample(tmp_path_factory, request):
         'ordered': "SELECT make_array('505') AS meeting_keys,array_slice(make_array(cast(NULL AS VARCHAR)),1,0) AS measure_keys,'print.pdf' AS filename,'pdf' AS format,cast(0 AS INT) AS list_row UNION ALL SELECT make_array('506'),array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'" + TRANSCRIPT + "','pdf',cast(1 AS INT)",
         'recordings_entity': "SELECT cast(NULL AS VARCHAR) AS video_key,make_array(cast(NULL AS BIGINT)) AS event_ids,make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))) AS tracks WHERE false",
         'meeting_transcript_links': "SELECT 'CHRG-micro' AS package_id,cast(505 AS BIGINT) AS event_id",
-        'details': "SELECT 'CHRG-micro' AS package_id,cast(0 AS INT) AS list_row,'pdf' AS format,array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates",
+        'details': (
+            "SELECT 'CHRG-micro' AS package_id,cast(0 AS INT) AS list_row,'pdf' AS format,"
+            "array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates,"
+            "arrow_cast(decode('0000000000000505','hex'),'FixedSizeBinary(8)') AS link_key "
+            "UNION ALL SELECT cast(NULL AS VARCHAR),cast(1 AS INT),'pdf',"
+            "array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0),"
+            "arrow_cast(decode('c0ffee123456789a','hex'),'FixedSizeBinary(8)')"
+        ),
         'formats': "SELECT 'preference' AS kind,'pdf' AS value,cast(1 AS INT) AS rank",
         'appearance_records_resolved': "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS source WHERE false",
         'package_meeting_links': "SELECT 'CHRG-micro' AS package_id,cast(505 AS BIGINT) AS event_id",
@@ -135,8 +142,61 @@ def test_print_committee_transcript_and_video_locator_outcomes(sample):
     rows, _expected, _day, _work = sample
     found = {row['event_id']: row for row in rows}
     assert found[504]['outcome'] == 'unknown'
-    assert (found[505]['outcome'], found[505]['outcome_basis']) == ('held', 'printed_hearing')
-    assert (found[506]['outcome'], found[506]['outcome_basis']) == ('held', 'committee_transcript')
+    assert (found[505]['outcome'], found[505]['outcome_basis'], found[505]['outcome_source_reference']) == (
+        'held', 'printed_hearing', 'CHRG-micro'
+    )
+    assert (found[506]['outcome'], found[506]['outcome_basis'], found[506]['outcome_source_reference']) == (
+        'held', 'committee_transcript', 'c0ffee123456789a'
+    )
+
+
+def test_committee_transcript_outcome_reference_stays_stable_when_list_row_shifts(tmp_path):
+    records = [_record('99', 506, 'Scheduled', '2025-07-01', None, document_urls=['https://fixture.test/' + TRANSCRIPT])]
+    inputs = [
+        json_input(tmp_path, 'meeting_records_input', _normalize_meeting_rows(records, 'v'), **MEETING_RECORD_FIELDS),
+        json_input(tmp_path, 'parser_versions', [dict(parser='meeting_records.congress_gov', version='v')], parser='Utf8', version='Utf8'),
+    ]
+    for name in ['meeting_sources', 'recording_sources', 'meeting_status_conflicts', 'committee_codes']:
+        value = json.loads((ROOT / 'model/registries' / (name.replace('_', '-') + '.json')).read_text())
+        inputs.append(json_input(tmp_path, name, value, **REGISTRIES[name]))
+    for name in ['spicy_bill_committee_activities', 'spicy_congress_bills', 'spicy_nominations']:
+        inputs.append(json_input(tmp_path, name, [], **SPICY_SCHEMAS[name]))
+
+    def run_at_row(tx_row):
+        sub = tmp_path / f'row-{tx_row}'
+        sub.mkdir()
+        empty = {
+            'meeting_detail_observations': EMPTY_OBSERVATIONS,
+            'captures': "SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false",
+            'ordered': f"SELECT make_array('506') AS meeting_keys,array_slice(make_array(cast(NULL AS VARCHAR)),1,0) AS measure_keys,'{TRANSCRIPT}' AS filename,'pdf' AS format,cast({tx_row} AS INT) AS list_row",
+            'recordings_entity': "SELECT cast(NULL AS VARCHAR) AS video_key,make_array(cast(NULL AS BIGINT)) AS event_ids,make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))) AS tracks WHERE false",
+            'meeting_transcript_links': "SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false",
+            'details': (
+                f"SELECT cast(NULL AS VARCHAR) AS package_id,cast({tx_row} AS INT) AS list_row,'pdf' AS format,"
+                "array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates,"
+                "arrow_cast(decode('c0ffee123456789a','hex'),'FixedSizeBinary(8)') AS link_key"
+            ),
+            'formats': "SELECT 'preference' AS kind,'pdf' AS value,cast(1 AS INT) AS rank",
+            'appearance_records_resolved': "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS source WHERE false",
+            'package_meeting_links': "SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false",
+            'package_mods_facts': "SELECT cast(NULL AS VARCHAR) AS package_id WHERE false",
+        }
+        sql = lambda name: (ROOT / 'model/sql' / (name + '.sql')).read_text()
+        steps = [
+            dict(name='captures', sql=empty.pop('captures'), materialize=True),
+            selected_record_step('meeting_records', 'meeting_records_input'),
+            *meeting_steps(),
+            dict(name='meeting_document_urls', sql=sql('meeting-document-urls'), materialize=True),
+            *(dict(name=name, sql=text, materialize=True) for name, text in empty.items()),
+            dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
+        ]
+        run_job(sub, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps,
+                outputs=[parquet_output(sub, 'meetings', 'SELECT * FROM meetings_export', ['event_id'])])
+        return pq.read_table(sub / 'meetings.parquet').to_pylist()[0]
+
+    before, after = run_at_row(1), run_at_row(42)
+    assert before['outcome_source_reference'] == after['outcome_source_reference'] == 'c0ffee123456789a'
+    assert before['transcripts'][0]['list_row'] == 1 and after['transcripts'][0]['list_row'] == 42
 
 
 def test_independent_multiset_check_rejects_omission_and_extra_observation(sample):

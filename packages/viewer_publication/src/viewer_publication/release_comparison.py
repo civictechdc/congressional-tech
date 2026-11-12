@@ -332,7 +332,7 @@ UPDATE_COLUMNS = ('chamber', 'chamber_basis', 'title', 'meeting_date', 'meeting_
                   'publisher_status_observations', 'congress_gov_detail_observation')
 # The outcome moves with an update only when the candidate bases it on the new read (a Congress.gov
 # cancellation names the read's body) and the live outcome was the publisher's too: a print or a
-# transcript is another source, and its reference is a release-local row.
+# transcript is another source, and its reference is a package ID or document link key.
 OUTCOME = ('outcome', 'outcome_basis', 'outcome_source_reference', 'outcome_reason')
 PUBLISHER_OUTCOMES = ('publisher_cancellation', 'no_outcome_evidence')
 RESCHEDULED = ('rescheduled_to', 'rescheduled_basis')

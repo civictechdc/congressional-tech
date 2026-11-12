@@ -170,9 +170,10 @@ WITH keys AS (
   'A published hearing print identifies this event on its meeting date.' AS reason,1 AS priority
  FROM package_meeting_links
  UNION ALL
- SELECT event_id,'held','committee_transcript',cast(list_row AS VARCHAR),
+ SELECT t.event_id,'held','committee_transcript',lower(encode(d.link_key,'hex')),
   'The meeting lists a retained transcript named for its meeting date.',2
- FROM transcript_ranked WHERE source='committee_transcript'
+ FROM (SELECT event_id,list_row FROM transcript_ranked WHERE source='committee_transcript') t
+ JOIN details d ON d.list_row=t.list_row
  UNION ALL
  SELECT m.event_id,'held','curated_source_review',cast(m.event_id AS VARCHAR) AS source_reference,sc.evidence,0
  FROM meeting_status_conflicts sc

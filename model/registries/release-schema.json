@@ -915,7 +915,7 @@
           "name": "outcome_source_reference",
           "type": "string",
           "nullable": true,
-          "meaning": "Print package ID, transcript list_row, or event ID with source observations/review"
+          "meaning": "Print package ID, transcript document link_key, event ID with curated review, or cancellation record_sha"
         },
         {
           "name": "outcome_reason",
