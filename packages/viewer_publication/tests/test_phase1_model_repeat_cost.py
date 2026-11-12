@@ -31,19 +31,15 @@ logical planner accepted. It reports that refusal as a `physical_plan_error` row
 fail, so only a check of that row sees one. A refusal can depend on the input being a lake table:
 `coalesce(f.valid,false)` in saved_name_conflicts carried the column's Iceberg field id into a
 reused expression and was refused only where filename readings came from the lake (f8541b6d,
-ct-h8dr), found by a 20-minute lane. So seven of the eight inputs the release reads from the lake
-are bound here to empty tables in a throwaway local catalog, created with the lake's schemas and
-pinned through the engine; a Parquet stand-in cannot carry field ids into a plan, because the
-pinned engine strips field metadata from a Parquet input (engine ticket def-9ise). The tables are
+ct-h8dr), found by a 20-minute lane. So all eight inputs the release reads from the lake are bound
+here to empty tables in a throwaway local catalog, created with the lake's schemas and pinned
+through the engine; a Parquet stand-in cannot carry field ids into a plan, because the pinned
+engine strips field metadata from a Parquet input (engine ticket def-9ise). The tables are
 unpartitioned, where production partitions readings and filename_readings, so a refusal that
-depends on partitioning is not seen. The eighth, playlist_records, is not bound: its readers plan
-over the job's stand-in step of NULL literals, which differs from the lake table in nullability
-and field ids, so their lake-only refusals are not seen. Binding it waits for its rows in
-fixtures/model-relation-rows.json (selected-records.sql scans it twice): the local-lake build those
-rows come from predates it, and newer builds pin remote snapshots the measuring script cannot
-count. A refused step is run before any EXPLAIN, so it stops the job and every test errors with
-the engine's message, which names no statement. That check sees planning only: no refusal that
-needs rows, statistics or memory, and no statement outside the job the build submits.
+depends on partitioning is not seen. A refused step is run before any EXPLAIN, so it stops the job
+and every test errors with the engine's message, which names no statement. That check sees planning
+only: no refusal that needs rows, statistics or memory, and no statement outside the job the build
+submits.
 test_model_candidate_joins keeps Parquet stand-ins: it finds each captures scan by the stand-in's
 file name in the physical plan, and a lake scan prints none; this pass plans its statements on
 lake-backed inputs.
@@ -57,7 +53,14 @@ from pathlib import Path
 import pytest
 
 from archive_job_fixture import _Capture, _Submitted, spicy_input, versions
-from congress_api.lake import appearance_records, committee_records, meeting_records, tables, video_records
+from congress_api.lake import (
+    appearance_records,
+    committee_records,
+    meeting_records,
+    playlist_records,
+    tables,
+    video_records,
+)
 from congress_api.retention.provenance import run_job
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_model import build_prepared_release, prepare_model_inputs
@@ -71,30 +74,30 @@ MEASURED = json.loads((Path(__file__).parent/'fixtures/model-relation-rows.json'
 # names the repeated CTE or view. Each is a ct-6v77 follow-up; fix one and delete its entry. A reader
 # that is not listed may not cross the line.
 REPEAT_COST_TRACKED = {
-    'entity_profile_completeness': 49_033_171,  # query; captures x10, readings x9 (M17, M28)
-    'model_invariants': 50_877_106,             # merged join x5 (M13), plus independent final bill-identity check
-    'merged_recovery_fields': 43_005_605,       # query; the merged 7-way join x5 (M13)
-    'bills_export': 33_468_701,                 # spicy_congress_bills x30, ordered x27 (M17)
-    'component_meeting_links': 32_189_482,      # effective_filenames x4, source_annotations x6 (M17)
-    'retired_links_export': 32_708_507,         # the links view: ordered x29, prior_links x21 (M16); a landing page's
-                                                # notice reads source_rows and details once more (ct-egoo, +932,789)
-    'profile_completeness': 23_295_486,         # query; readings through the current selected_readings (M28)
-    'model_url_keys': 18_289_579,               # url_normalized x11 through mappings (M17)
-    'source_url_keys': 13_842_862,              # source_url_normalized x11 through mappings (M17)
-    'pinned_readings': 14_177_632,              # current compatible reading selection (M28)
-    'link_inputs': 14_177_632,                  # current compatible reading selection (M28)
-    'publisher_links': 11_093_345,              # resolved_links x2, model_url_keys x4 (M17)
+    'entity_profile_completeness': 52_486_704,  # query; captures x10, readings x9, appearance_records_input x5 (M17, M28)
+    'model_invariants': 50_844_619,             # merged join x5 (M13), plus independent final bill-identity check
+    'merged_recovery_fields': 43_910_562,       # query; the merged 7-way join x5 (M13)
+    'component_meeting_links': 32_795_656,      # effective_filenames x4, source_annotations x6 (M17)
+    'bills_export': 32_624_273,                 # spicy_congress_bills x30, ordered x27 (M17)
+    'retired_links_export': 30_804_350,         # the links view: ordered x29, prior_links x21 (M16); a landing page's
+                                                # notice reads source_rows and details once more (ct-egoo, +906,198)
+    'profile_completeness': 26_698_918,         # query; readings x15 through the current selected_readings (M28)
+    'model_url_keys': 18_746_431,               # url_normalized x11 through mappings (M17)
+    'pinned_readings': 16_552_860,              # current compatible reading selection (M28)
+    'link_inputs': 16_552_860,                  # current compatible reading selection (M28)
+    'source_url_keys': 14_165_195,              # source_url_normalized x11 through mappings (M17)
+    'publisher_links': 11_536_883,              # resolved_links x2, model_url_keys x4 (M17)
 }
 # Reconciled against df3a9c91 and the caption-resource candidate with native zero-row
-# plans in mcp-research-20261106/hearings/repeat-cost-baseline/comparison.json.
+# plans in mcp-research-20261106/hearings/repeat-cost-baseline/comparison.json, then
+# re-recorded from pin-move/candidate-build-2 (ct-swyw, all eight lake inputs bound).
 # Only caption_resources added work in that reconciliation. The later legislative
 # leaf counts and meetings regex baseline are bound by before/after tiny job replays
 # in parallel-sessions/ct-m104/repeat-audit-{before-v2,after-v1}/report.json.
 # The window repair did not change those scores. Later, aggregating required-column counts
 # once per export took relationship_invariants below the threshold. The independent final
-# bill-identity check adds one decision, document identity and ordered scan to model_invariants;
-# the decision count uses the largest-input fallback. These are estimated row-scan scores,
-# never measured time or RSS.
+# bill-identity check adds one decision, document identity and ordered scan to model_invariants.
+# These are estimated row-scan scores, never measured time or RSS.
 # Readers whose plan runs the same regex join more than once, with that join's runs: a nested-loop
 # regex join costs CPU per rule and row, which the row score cannot see (audit M15). Tracked under
 # ct-6v77 likewise.
@@ -119,40 +122,36 @@ OUTER_BUILD_ROWS = 100_000
 # Each note gives the largest estimated build, the relation that sets it and that build's widest
 # column count: hints for ranking from an empty plan, never measured memory.
 OUTER_BUILD_TRACKED = {
-    'recovery_candidates': 3,                  # 4.1M rows by captures, 16 cols
-    'meeting_detail_evidence': 2,              # 4.1M rows by congress_gov_routes (unmeasured: its largest input), 16 cols
-    'meeting_detail_observations': 3,          # 4.1M rows by meeting_detail_evidence (unmeasured: its largest input), 15 cols
-    'url_state_lines': 2,                      # 4.1M rows by captures, 11 cols
-    'entity_profile_completeness': 3,          # query; 4.1M rows by captures, 5 cols
-    'recording_tracks': 1,                     # 2.8M rows by recording_track_candidates, 11 cols
+    'recovery_candidates': 3,                  # 4.2M rows by captures, 16 cols
+    'url_state_lines': 2,                      # 4.2M rows by captures, 11 cols
+    'entity_profile_completeness': 3,          # query; 4.2M rows by captures, 5 cols
     'source_addresses': 1,                     # 2.1M rows by source_files, 3 cols
     'source_annotations': 1,                   # 2.1M rows by source_files, 2 cols
     'document_identities': 2,                  # 2.1M rows by document_members, 4 cols
     'document_metadata': 1,                    # 2.1M rows by document_members, 10 cols
-    'component_meeting_links': 4,              # 2.0M rows by document_metadata, 5 cols
-    'review_overrides': 3,                     # 1.8M rows by document_identities, 5 cols
+    'component_meeting_links': 4,              # 2.1M rows by document_metadata, 5 cols
+    'review_overrides': 3,                     # 1.9M rows by document_identities, 5 cols
     'model_url_keys': 1,                       # 1.7M rows by url_inputs, 1 cols
-    'page_dates': 1,                           # 1.4M rows by page_metadata_values (unmeasured: its largest input), 5 cols
-    'document_page_metadata': 7,               # 1.4M rows by html_metadata_readings (unmeasured: its largest input), 19 cols
     'source_filename_readings': 1,             # 1.4M rows by filename_readings, 27 cols
     'source_url_keys': 1,                      # 1.3M rows by source_url_inputs, 1 cols
-    'document_packages': 2,                    # 569K rows by saved_files, 3 cols
-    'retired_links_export': 12,                # 440K rows by prior_links, 6 cols
+    'document_packages': 2,                    # 540K rows by saved_files, 3 cols
+    'caption_resources': 1,                    # 455K rows by caption_resource_requests, 9 cols
     'bills_export': 7,                         # 422K rows by spicy_congress_bills, 19 cols
-    'meetings_export': 9,                      # 374K rows by ordered, 31 cols
-    'page_descriptions': 4,                    # 356K rows by base_normalized, 8 cols
-    'document_page_metadata_entries': 5,       # 356K rows by page_metadata_documents (unmeasured: its largest input), 15 cols
-    'source_members.parquet': 1,               # export; 356K rows by ordered, 6 cols
-    'model_invariants': 2,                     # query; 356K rows by ordered, 2 cols
-    'blank_filename_reasons': 1,               # query; 356K rows by ordered, 2 cols
-    'source_annotation_pages': 2,              # 313K rows by page_facts, 5 cols
-    'document_witness_keys': 2,                # 205K rows by document_witness_raw_matches, 3 cols
-    'witness_key_map': 1,                      # 177K rows by witness_key_priors (unmeasured: its largest input), 3 cols
-    'relationship_invariants': 1,              # query; 177K rows by witness_key_map_export (unmeasured: its largest input), 2 cols
+    'retired_links_export': 12,                # 408K rows by prior_links, 6 cols
+    'meetings_export': 9,                      # 341K rows by ordered, 31 cols
+    'source_annotation_pages': 2,              # 334K rows by page_facts, 5 cols
+    'source_members.parquet': 1,               # export; 323K rows by ordered, 6 cols
+    'model_invariants': 2,                     # query; 323K rows by ordered, 2 cols
+    'blank_filename_reasons': 1,               # query; 323K rows by ordered, 2 cols
+    'meeting_detail_evidence': 2,              # 217K rows by congress_gov_routes, 16 cols
+    'meeting_detail_observations': 3,          # 217K rows by meeting_detail_evidence, 15 cols
+    'document_witness_keys': 2,                # 204K rows by document_witness_raw_matches, 3 cols
     'witness_key_current': 1,                  # 173K rows by appearance_records_resolved, 15 cols
     'document_witness_url_matches': 1,         # 173K rows by appearance_records_resolved, 4 cols
     'document_witness_meeting_witnesses': 1,   # 173K rows by appearance_records_resolved, 5 cols
     'coverage': 3,                             # query; 173K rows by witnesses_export, 7 cols
+    'witness_key_map': 1,                      # 156K rows by witness_key_priors, 3 cols
+    'relationship_invariants': 1,              # query; 156K rows by witness_key_map_export, 2 cols
 }
 
 # New offenders the lint must catch, and ones it must let through.
@@ -196,10 +195,18 @@ REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
 NODE = re.compile(r'^( *)([A-Z]\w*(?: Join)?)(?:: (\S*).*)?$')
 
 
-#: Seven of the eight tables the release job reads from the lake (model/jobs/publish-model.json), each bound
-#: here to an empty one; playlist_records is not yet (the module docstring says why).
-LAKE_TABLES = ('captures', 'readings', 'filename_readings', 'meeting_records', 'appearance_records',
-               'video_records', 'committee_records')
+#: All eight tables the release job reads from the lake (model/jobs/publish-model.json), each bound
+#: here to an empty table in a throwaway local catalog.
+LAKE_TABLES = (
+    'captures',
+    'readings',
+    'filename_readings',
+    'meeting_records',
+    'appearance_records',
+    'video_records',
+    'committee_records',
+    'playlist_records',
+)
 
 
 def submitted_job(root, engine):
@@ -214,8 +221,13 @@ def submitted_job(root, engine):
     pins = tables.resolve_tables(engine=engine, work=root/'resolve', catalog_root=root/'catalog', tables=refs)
     parsers, catalog_version = versions()
     decisions = root/'recording-decisions.jsonl'; decisions.write_text('')
-    parsers.update(meeting_records=meeting_records.current_versions(), appearance_records=appearance_records.current_versions(),
-                   video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'}, committee_records={'house_xml': 'pc'})
+    parsers.update(
+        meeting_records=meeting_records.current_versions(),
+        appearance_records=appearance_records.current_versions(),
+        video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'},
+        committee_records={'house_xml': 'pc'},
+        playlist_records=playlist_records.current_versions(),
+    )
     prepared = prepare_model_inputs(**{name: dict(pin, kind='native_table') for name, pin in pins.items()},
         parser_versions=parsers, catalog_version=catalog_version,
         engine=engine, scratch=root/'prepared', spicy_regs=spicy_input(), include_entities=True,
@@ -355,7 +367,10 @@ def refused(explains):
 
 
 def test_every_reader_builds_its_physical_plan_on_lake_backed_inputs(explained):
-    _job, explains = explained
+    job, explains = explained
+    assert len(LAKE_TABLES) == 8
+    assert {table: lake_input(job, table) for table in LAKE_TABLES}
+    assert 'playlist_records' not in {step['name'] for step in job['steps']}
     model = model_plans(explains)
     assert refused(model) == {}
     assert all('physical_plan' in rows for rows in model.values())
