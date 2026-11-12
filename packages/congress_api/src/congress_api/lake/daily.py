@@ -970,7 +970,7 @@ def _count_query(name, present_columns):
             f'FROM "captures"'
         )
     if name == 'readings':
-        if not {'parser', 'parser_version'} <= present_columns:
+        if not {'body_sha', 'parser', 'parser_version'} <= present_columns:
             return 'SELECT count(*) AS total_rows, 0 AS current_rows, count(*) AS stale_records FROM "readings"'
         pins = compatible_versions.current_pins()
         terms = ' OR '.join(
@@ -978,10 +978,12 @@ def _count_query(name, present_columns):
             for p, ver in sorted(pins.items()) if isinstance(ver, str)
         ) or 'false'
         return (
-            f'SELECT count(*) AS total_rows, '
-            f'count(*) FILTER (WHERE {terms}) AS current_rows, '
-            f'count(*) FILTER (WHERE parser_version IS NULL OR NOT ({terms})) AS stale_records '
-            f'FROM "readings"'
+            f'WITH cur AS (SELECT DISTINCT body_sha, parser FROM "readings" WHERE {terms}), '
+            f'all_keys AS (SELECT DISTINCT body_sha, parser FROM "readings") '
+            f'SELECT (SELECT count(*) FROM "readings") AS total_rows, '
+            f'(SELECT count(*) FROM "readings" WHERE {terms}) AS current_rows, '
+            f'(SELECT count(*) FROM all_keys LEFT ANTI JOIN cur '
+            f'ON all_keys.body_sha = cur.body_sha AND all_keys.parser = cur.parser) AS stale_records'
         )
     if name == 'filename_readings':
         if not {'filename', 'source_url', 'catalog_version'} <= present_columns:
@@ -1068,7 +1070,7 @@ def verify_target_schemas(heads, *, engine, work):
         raise ValueError(f'Target lake table schema mismatch before write: {details}')
 
 
-def produce_daily(spec,*,engine,raw_store,producer_records=None):
+def produce_daily(spec,*,engine,raw_store,producer_records=None,verified_heads=None):
     """D1 then budgeted D2 then D3, returning fresh pins only after completion.
 
     Native jobs own table scans, joins, sorting and appends. Each producer builds
@@ -1096,8 +1098,11 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
             work=work/'unreadable-inventory',qualified=provenance['unreadable']))
     provenance['unreadable']=unreadable_snapshot.rows()
     authority=dict(engine=engine,catalog_root=spec['catalog_root'])
-    heads=tables.resolve_tables(**authority,work=work/'initial-heads',tables=spec['tables'])
-    verify_target_schemas(heads,engine=engine,work=work/'target-schemas')
+    if verified_heads is not None:
+        heads=dict(verified_heads)
+    else:
+        heads=tables.resolve_tables(**authority,work=work/'initial-heads',tables=spec['tables'])
+        verify_target_schemas(heads,engine=engine,work=work/'target-schemas')
     versions=dict(captures=captures.current_version())
     report=dict(status='running',pins=None,receipt_keys=None,new_receipt_keys=[],provenance=provenance,
                 currentversions=versions,producerreports={})

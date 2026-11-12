@@ -125,8 +125,12 @@ def admissible(me, entries, *, available, headroom, now):
                   if entry['admitted'] is not None and entry['admitted'] >= waiter['queued']]
         older_ramping = sum(entry['expect_gb'] for entry in older if now - entry['admitted'] < RAMP_SECONDS)
         bypass_settled = sum(entry['expect_gb'] for entry in bypass if now - entry['admitted'] >= RAMP_SECONDS)
+        bypass_ceiling = sum(max(entry['expect_gb'], entry.get('rss_gb', entry['expect_gb'])) for entry in bypass)
         without_bypass = available - older_ramping + bypass_settled
-        draining_bypass = not older and bool(bypass) and now - waiter['queued'] >= RAMP_SECONDS
+        draining_bypass = (
+            not older and bool(bypass) and now - waiter['queued'] >= RAMP_SECONDS
+            and available + bypass_ceiling >= need
+        )
         if without_bypass >= need or draining_bypass:
             head = waiter['expect_gb']
             break
@@ -349,7 +353,7 @@ def main(argv=None):
             return REFUSED
     registry = Registry(args.state or default_state())
     me = dict(pid=os.getpid(), started=None, queued=time.time(), admitted=None,  # admit() reads the start time
-              expect_gb=args.expect_gb, command=command[:8])
+              expect_gb=args.expect_gb, rss_gb=args.rss_gb, command=command[:8])
 
     def youngest():
         with registry.locked() as entries:

@@ -183,13 +183,14 @@ def test_import_accepts_explorer_tables_and_chains_their_producers(tmp_path,monk
         assert record['origin']['record']['input']==name
 
 
-def _init_git_repo(repo, import_job):
+def _init_git_repo(repo, *jobs):
     import subprocess
     repo.mkdir()
     (repo / 'uv.lock').write_text('version = 1\n')
-    job_file = repo / import_job
-    job_file.parent.mkdir(parents=True, exist_ok=True)
-    job_file.write_text('# import job\n')
+    for job in jobs:
+        job_file = repo / job
+        job_file.parent.mkdir(parents=True, exist_ok=True)
+        job_file.write_text(f'# {job}\n')
     env = {
         **os.environ,
         'GIT_AUTHOR_NAME': 'Test',
@@ -198,7 +199,7 @@ def _init_git_repo(repo, import_job):
         'GIT_COMMITTER_EMAIL': 'test@example.com',
     }
     subprocess.run(['git', '-C', str(repo), 'init', '-q'], check=True, env=env)
-    subprocess.run(['git', '-C', str(repo), 'add', 'uv.lock', import_job], check=True, env=env)
+    subprocess.run(['git', '-C', str(repo), 'add', 'uv.lock', *jobs], check=True, env=env)
     subprocess.run(['git', '-C', str(repo), 'commit', '-q', '-m', 'init'], check=True, env=env)
     head = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
     return head, env
@@ -211,7 +212,7 @@ def test_import_refuses_dirty_tree_or_unreachable_origin_before_creating_table_a
     from viewer_publication.archive_import_job import IMPORT_JOB, execute, load_spec
 
     repo = tmp_path / 'repo'
-    head, env = _init_git_repo(repo, IMPORT_JOB)
+    head, env = _init_git_repo(repo, IMPORT_JOB, proof.DAILY)
     monkeypatch.setattr(proof, 'ROOT', repo)
 
     source = tmp_path / 'rows.parquet'
@@ -228,6 +229,27 @@ def test_import_refuses_dirty_tree_or_unreachable_origin_before_creating_table_a
     assert not (tmp_path / 'dirty-case/catalog').exists()
     dirty_file.unlink()
 
+    # Chained import or unregistered/missing origin job at commit refuses before creating work/tables.
+    for case_name, bad_job, pattern in [
+        ('chained-import', IMPORT_JOB, 'cannot name another import'),
+        ('missing-at-commit', proof.BACKFILL, 'not checked in'),
+    ]:
+        bad_dir = tmp_path / case_name
+        bad_dir.mkdir()
+        b_path = _spec(bad_dir, source)
+        b_val = json.loads(b_path.read_text())
+        bad_origin = bad_dir / 'origin.json'
+        bad_origin.write_text(json.dumps(dict(
+            version=1, input='meeting_records', job=bad_job, commit=head,
+            selector=dict(kind='parquet', **b_val['tables']['meeting_records']['source']),
+        )))
+        b_val['tables']['meeting_records']['producer'] = dict(path=str(bad_origin), **file_pin(bad_origin))
+        b_path.write_text(json.dumps(b_val))
+        with pytest.raises(ValueError, match=pattern):
+            execute(load_spec(b_path))
+        assert not (bad_dir / 'work').exists()
+        assert not (bad_dir / 'catalog').exists()
+
     # Unreachable origin commit on a clean checkout also refuses before creating work/tables.
     unreachable_dir = tmp_path / 'unreachable-case'
     unreachable_dir.mkdir()
@@ -242,7 +264,7 @@ def test_import_refuses_dirty_tree_or_unreachable_origin_before_creating_table_a
     (repo / 'side.txt').unlink(missing_ok=True)
     origin = unreachable_dir / 'origin.json'
     origin.write_text(json.dumps(dict(
-        version=1, input='meeting_records', job='daily', commit=side_commit,
+        version=1, input='meeting_records', job=proof.DAILY, commit=side_commit,
         selector=dict(kind='parquet', **u_val['tables']['meeting_records']['source']),
     )))
     u_val['tables']['meeting_records']['producer'] = dict(path=str(origin), **file_pin(origin))
@@ -259,7 +281,7 @@ def test_import_refuses_dirty_tree_or_unreachable_origin_before_creating_table_a
     m_val = json.loads(m_path.read_text())
     good_origin = mid_dir / 'origin.json'
     good_origin.write_text(json.dumps(dict(
-        version=1, input='meeting_records', job='daily', commit=head,
+        version=1, input='meeting_records', job=proof.DAILY, commit=head,
         selector=dict(kind='parquet', **m_val['tables']['meeting_records']['source']),
     )))
     m_val['tables']['meeting_records']['producer'] = dict(path=str(good_origin), **file_pin(good_origin))

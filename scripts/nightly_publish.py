@@ -649,9 +649,15 @@ def check_status(main, *, max_age_hours=DEFAULT_MAX_AGE_HOURS, notify=False, now
     running = _lock_is_held(nightly_dir / 'lock')
     try:
         latest = _latest_recorded_summary(nightly_dir)
+        if latest is not None and not isinstance(latest, dict):
+            raise ValueError('latest nightly summary must be a JSON object')
         last_failure_path = nightly_dir / 'last-failure.json'
         last_failure = json.loads(last_failure_path.read_text(encoding='utf-8')) if last_failure_path.is_file() else None
-    except (OSError, ValueError) as error:
+        if last_failure is not None and not isinstance(last_failure, dict):
+            raise ValueError('last-failure.json must be a JSON object')
+        stamp = (latest.get('finished') or latest.get('started')) if latest else None
+        age_hours = round((now - _parse_utc_stamp(stamp)).total_seconds() / 3600.0, 2) if stamp else None
+    except (OSError, ValueError, TypeError) as error:
         reason = f'corrupt nightly state: {type(error).__name__}: {error}'
         report = dict(status='failed', running=running, max_age_hours=max_age_hours, reason=reason)
         if notify:
@@ -667,8 +673,6 @@ def check_status(main, *, max_age_hours=DEFAULT_MAX_AGE_HOURS, notify=False, now
             report['notified'] = notify_failure(main, report, reason=report['reason'])
         return report, 1
 
-    stamp = latest.get('finished') or latest.get('started')
-    age_hours = round((now - _parse_utc_stamp(stamp)).total_seconds() / 3600.0, 2) if stamp else None
     if last_failure is not None or latest.get('exit', 1) != 0 or latest.get('status') not in ('ok', 'prepared'):
         failed = last_failure or latest
         reason = f"last nightly failed at step {failed.get('step', 'unknown')} (exit {failed.get('exit', 1)})"

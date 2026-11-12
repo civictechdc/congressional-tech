@@ -90,6 +90,21 @@ def test_check_status_detects_missing_failed_stale_running_and_healthy_runs(tmp_
     corrupt, code = nightly.check_status(main, max_age_hours=30.0, now=now)
     assert code == 1 and corrupt['status'] == 'failed' and 'corrupt nightly state' in corrupt['reason']
 
+    # Malformed timestamp or non-dict JSON also reports failed + notifies cleanly instead of raising.
+    notified = []
+    (nightly_dir / 'latest-summary.json').write_text(json.dumps(dict(
+        started='not-a-timestamp', finished='still-not-a-timestamp', status='ok', exit=0,
+    )))
+    bad_stamp, code = nightly.check_status(
+        main, max_age_hours=30.0, notify=True, now=now,
+    )
+    assert code == 1 and bad_stamp['status'] == 'failed' and 'corrupt nightly state' in bad_stamp['reason']
+
+    (nightly_dir / 'latest-summary.json').write_text(json.dumps(good))
+    (nightly_dir / 'last-failure.json').write_text('[]')
+    bad_shape, code = nightly.check_status(main, max_age_hours=30.0, now=now)
+    assert code == 1 and bad_shape['status'] == 'failed' and 'corrupt nightly state' in bad_shape['reason']
+
 
 def test_notify_failure_posts_webhook_runs_command_and_never_raises(tmp_path, monkeypatch):
     main = tmp_path / 'main'

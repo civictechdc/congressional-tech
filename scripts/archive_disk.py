@@ -334,13 +334,15 @@ def retire_model_build(build, *, execute=False):
         record = dict(
             version=1,
             release_id=release_id,
-            archive_release=_tree_digests(release_dir) if release_dir.is_dir() else prior.get('archive_release', {}),
-            evidence=_tree_digests(model_dir / 'evidence') if (model_dir / 'evidence').is_dir() else prior.get('evidence', {}),
-            artifacts={
+            archive_release=prior.get('archive_release') or (_tree_digests(release_dir) if release_dir.is_dir() else {}),
+            evidence=prior.get('evidence') or (
+                _tree_digests(model_dir / 'evidence') if (model_dir / 'evidence').is_dir() else {}
+            ),
+            artifacts=prior.get('artifacts') or {
                 name: _file_digest(model_dir / name)
                 for name in ('job.json', 'result.json')
                 if (model_dir / name).is_file()
-            } or prior.get('artifacts', {}),
+            },
         )
         if keep_steps:
             steps_dst = private_path(build / 'steps.jsonl', build)

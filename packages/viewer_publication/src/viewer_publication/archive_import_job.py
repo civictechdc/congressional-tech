@@ -101,7 +101,7 @@ def _writer(spec):
     """Gate 5 preflight/postflight: require a clean checkout and reachable origin commits."""
     import re
     from congress_api.retention.writer_identity import writer_identity
-    from viewer_publication.producer_proof import ROOT, _git
+    from viewer_publication.producer_proof import IMPORT, PRODUCERS, ROOT, _git
 
     writer = writer_identity(ROOT, IMPORT_JOB)
     if _git(ROOT, 'cat-file', '-t', writer['commit']).returncode == 0:
@@ -110,10 +110,17 @@ def _writer(spec):
         for name, item in spec['tables'].items():
             if 'producer' in item:
                 origin = json.loads(Path(item['producer']['path']).read_text(encoding='utf-8'))
+                origin_job = origin.get('job')
+                if origin_job == IMPORT:
+                    raise ValueError(f'Import {name} cannot name another import as its origin')
+                if origin_job not in PRODUCERS.get(name, ()):
+                    raise ValueError(f'Import {name} origin job {origin_job!r} is not a registered producer')
                 commit = origin.get('commit')
                 if (not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None
                         or _git(ROOT, 'merge-base', '--is-ancestor', commit, writer['commit']).returncode != 0):
                     raise ValueError(f'Import {name} origin commit {str(commit)[:12]} is not reachable from HEAD')
+                if _git(ROOT, 'cat-file', '-e', f'{commit}:{origin_job}').returncode != 0:
+                    raise ValueError(f'Import {name} origin job {origin_job!r} is not checked in at {commit[:12]}')
     return writer
 
 

@@ -220,8 +220,9 @@ def test_a_high_kill_limit_does_not_delay_a_small_job(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
-def entry(pid, queued, expect, admitted=None):
-    return dict(pid=pid, queued=queued, admitted=admitted, expect_gb=expect, command=[])
+def entry(pid, queued, expect, admitted=None, rss_gb=None):
+    return dict(pid=pid, queued=queued, admitted=admitted, expect_gb=expect,
+                rss_gb=expect if rss_gb is None else rss_gb, command=[])
 
 
 def test_admission_counts_measured_memory_plus_only_promises_not_yet_visible():
@@ -268,15 +269,24 @@ def test_bypassing_small_jobs_drain_so_a_large_waiter_is_eventually_admitted():
 
     # `small_1` starts and settles; then `older` exits so free rises to 24 GiB (28 GiB once `small_1` drains).
     # A new `small_2` is held back while `small_1` drains, preventing unbounded starvation of `head`.
-    small_1_settled = entry(3, now - 250, 4, admitted=now - 240)
+    small_1_settled = entry(3, now - 250, 4, admitted=now - 240, rss_gb=8)
     small_2 = entry(4, now - 5, 4)
     assert not watchdog.admissible(small_2, [head, small_1_settled, small_2], available=24, headroom=6, now=now)
     # Same even if `small_1` is still ramping (28 GiB measured free, 4 GiB ramping) or slightly over its estimate (21 GiB free):
-    small_1_ramping = entry(3, now - 50, 4, admitted=now - 40)
+    small_1_ramping = entry(3, now - 50, 4, admitted=now - 40, rss_gb=8)
     assert not watchdog.admissible(small_2, [head, small_1_ramping, small_2], available=28, headroom=6, now=now)
     assert not watchdog.admissible(small_2, [head, small_1_settled, small_2], available=21, headroom=6, now=now)
     # Once `small_1` finishes, `head` is immediately admitted.
     assert watchdog.admissible(head, [head, small_2], available=28, headroom=6, now=now)
+
+    # An unfittable head waiter (needs 12+6=18 GiB) must NOT reserve memory and block `small_2` when
+    # draining `small_1` (even at its 4 GiB RSS ceiling: 13+4=17 < 18) still cannot make `head` fit.
+    unfittable_head = entry(10, now - 600, 12, rss_gb=14)
+    bypass_settled = entry(11, now - 300, 1, admitted=now - 200, rss_gb=4)
+    bypass_ramping = entry(11, now - 50, 1, admitted=now - 20, rss_gb=4)
+    probe = entry(12, now - 5, 1, rss_gb=4)
+    assert watchdog.admissible(probe, [unfittable_head, bypass_settled, probe], available=13, headroom=6, now=now)
+    assert watchdog.admissible(probe, [unfittable_head, bypass_ramping, probe], available=13, headroom=6, now=now)
 
 
 def test_below_the_machine_floor_the_youngest_running_job_stops_first(tmp_path, private_state):

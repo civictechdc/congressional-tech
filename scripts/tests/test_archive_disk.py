@@ -375,6 +375,22 @@ def test_retire_model_build_records_digests_and_removes_heavy_folders_only_on_ex
     assert again['status'] == 'retired' and again['paths'] == [] and again['reclaimable_bytes'] == 0
     assert json.loads((arm / 'retired-build-digests.json').read_text()) == digests
 
+    # Interrupted retry after partial directory deletion preserves the previously recorded complete digests.
+    interrupted = _model_only_build(tmp_path / 'interrupted')
+    prior_digests = dict(
+        version=1,
+        release_id='ab' * 16,
+        archive_release=digests['archive_release'],
+        evidence=digests['evidence'],
+        artifacts=digests['artifacts'],
+    )
+    (interrupted / 'retired-build-digests.json').write_text(json.dumps(prior_digests) + '\n')
+    (interrupted / 'archive-release/list.parquet').unlink()
+    (interrupted / 'archive-model/result.json').unlink()
+    retried = disk.retire_model_build(interrupted, execute=True)
+    assert retried['status'] == 'retired'
+    assert json.loads((interrupted / 'retired-build-digests.json').read_text()) == prior_digests
+
 
 def test_retire_model_build_refuses_publish_candidates_and_symlinks(tmp_path):
     """retire_model_build must never touch a publish/daily candidate or follow symlinks (ct-arlk)."""

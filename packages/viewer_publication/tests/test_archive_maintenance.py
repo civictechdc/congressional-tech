@@ -738,6 +738,29 @@ def test_backfill_plan_reports_target_schemas_and_record_counts_and_execute_refu
             seed_parquet, engine=engine, work=tmp_path / 'seed-append', catalog_root=catalog,
             table=refs['appearance_records'], keys=['record_sha', 'source', 'parser_version'], definition='seed',
         )
+        from congress_api.lake import readings
+        from congress_api.retention.provenance import json_input, parquet_output, run_job
+        current_html = readings.current_version('html')
+        cast_dir = tmp_path / 'seed-readings-cast'
+        cast_dir.mkdir()
+        raw_input = json_input(cast_dir, 'raw', [
+            dict(body_hex='a' * 64, parser='html', parser_version='old-html', status='completed',
+                 fingerprint_hex='f' * 64, links=[], fields=[], named_meetings=[]),
+            dict(body_hex='a' * 64, parser='html', parser_version=current_html, status='completed',
+                 fingerprint_hex='f' * 64, links=[], fields=[], named_meetings=[]),
+            dict(body_hex='b' * 64, parser='html', parser_version='old-html', status='completed',
+                 fingerprint_hex='e' * 64, links=[], fields=[], named_meetings=[]),
+        ], **readings._reading_fields())
+        run_job(
+            cast_dir, engine,
+            inputs=[raw_input], steps=[],
+            outputs=[parquet_output(cast_dir, 'readings',
+                                    f'SELECT {readings._LAKE_READING_COLUMNS} FROM raw', readings.PK)],
+        )
+        tables.append_rows(
+            tmp_path / 'seed-readings-cast/readings.parquet', engine=engine, work=tmp_path / 'seed-readings-append',
+            catalog_root=catalog, table=refs['readings'], keys=readings.PK, definition='seed-readings',
+        )
 
     spec_path = tmp_path / 'backfill.json'
     spec_path.write_text(json.dumps(dict(
@@ -758,6 +781,9 @@ def test_backfill_plan_reports_target_schemas_and_record_counts_and_execute_refu
     assert 'committees' not in [c['name'] for c in planned['target_schemas']['appearance_records']['columns']]
     assert planned['record_counts']['appearance_records'] == dict(
         total_rows=3, current_rows=1, stale_records=2, would_touch=1,
+    )
+    assert planned['record_counts']['readings'] == dict(
+        total_rows=3, current_rows=1, stale_records=1, would_touch=1,
     )
     assert not (tmp_path / 'backfill-work').exists()
 

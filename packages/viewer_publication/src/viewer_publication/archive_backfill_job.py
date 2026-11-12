@@ -382,13 +382,14 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
     with runtime_factory(engine_config) as engine:
         ran=runtime_record(engine_config,choice,log=sys.stderr)
         engine.verify_runtime()
+        verified_heads=None
         if check_targets:
             with TemporaryDirectory(prefix='backfill-preflight-') as temp:
-                heads=lake_tables.resolve_tables(
+                verified_heads=lake_tables.resolve_tables(
                     engine=engine, work=Path(temp)/'heads',
                     catalog_root=spec['catalog_root'], tables=spec['tables'],
                 )
-                verify_target_schemas(heads, engine=engine, work=Path(temp)/'schemas')
+                verify_target_schemas(verified_heads, engine=engine, work=Path(temp)/'schemas')
         # Body GETs retry transient R2 server errors and throttling; writes keep one attempt.
         client=configure_read_retries(storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1}))
         raw_store=BodyStore(R2Adapter(client,spec['bucket']))
@@ -417,7 +418,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
             for name,pin in spec['producers'].items():
                 identity=_verify_metadata(pin);anchors[name]=Path(pin['path']).read_bytes();identity.require(pin['path'])
             records=ProducerRecords(anchors,client=client,bucket=spec['bucket'])
-        production=producer(daily_spec,engine=engine,raw_store=raw_store,producer_records=records)
+        extra=dict(verified_heads=verified_heads) if verified_heads is not None and producer is produce_daily else {}
+        production=producer(daily_spec,engine=engine,raw_store=raw_store,producer_records=records,**extra)
     work.mkdir(parents=True,exist_ok=True)
     report=dict(
         status='executed',
