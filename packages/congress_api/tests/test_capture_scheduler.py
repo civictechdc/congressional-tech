@@ -1122,6 +1122,30 @@ def test_satisfied_target_suppresses_its_eligible_candidates(tmp_path,target,can
     assert rows==[]
 
 
+DETAILS='https://www.govinfo.gov/app/details/CHRG-119hhrg12345'
+MODS='https://www.govinfo.gov/metadata/pkg/CHRG-119hhrg12345/mods.xml'
+
+
+def test_govinfo_details_pages_are_never_captured(tmp_path):
+    """ct-egoo (owner, 2026-11-11: stop fetching). A GovInfo Content Details page is a wrapper whose address
+    and title the model folds into its hearing (ct-m878); its package's file and MODS hold the hearing.
+    Capture never fetches one, package or granule page: no scope family admits it, and the family its
+    34,831 url_state rows were captured under (documents, by the 2026-10-05 download) names it as an
+    exclusion, so url_state marks them excluded rather than due. A due row and a page's link to one stay out
+    of the queue beside the package's PDF and MODS."""
+    from congress_api.acquisition.capture_scheduler import CapturePolicy
+    import re
+    policy=CapturePolicy(PROJECT/'model/registries/capture-scope.json',resolve=lambda _:['8.8.8.8'])
+    granule=f'{DETAILS}/CHRG-119hhrg12345-pt1'
+    assert [policy.family(url) for url in (DETAILS,granule,GOVINFO,MODS)]==[None,None,'documents','govinfo/mods']
+    documents=next(entry for entry in SCOPE_ENTRIES if entry['family']=='documents')
+    assert all(any(re.search(pattern,url) for pattern in documents['exclusions']) for url in (DETAILS,granule,'http://govinfo.gov/app/details/X'))
+    assert not any(re.search(pattern,url) for pattern in documents['exclusions'] for url in (GOVINFO,MODS))
+    rows,_,_=_plan(tmp_path,[dict(requested_url=DETAILS,attempts=1,last_status=200,last_outcome='stored',next_attempt_at=PAST)],
+        [granule,GOVINFO,MODS])
+    assert sorted(row['requested_url'] for row in rows)==[GOVINFO,MODS]
+
+
 def test_out_of_scope_http_state_moves_to_in_scope_https_seed(tmp_path):
     from congress_api.acquisition.capture_scheduler import cutoff_report
     from congress_api.retention.provenance import json_input

@@ -111,8 +111,9 @@ def test_ledger_history_is_required_exactly_when_the_base_has_no_ledger(tmp_path
         require_ledger_history(kept, [HISTORY])
 
 
-def run_ledger(tmp_path, *, links, details, sources, prints, prior, prior_sources, base_retired=()):
-    """retired-links.sql alone on the native engine, over hand-written relations."""
+def run_ledger(tmp_path, *, links, details, sources, prints, prior, prior_sources, base_retired=(), landing_pages=()):
+    """retired-links.sql alone on the native engine, over hand-written relations; landing_pages as
+    (page key, page URL), the key standing for the page body's first 8 bytes."""
     from congress_api.retention.provenance import parquet_output, run_job
     from viewer_publication.archive_model import ROOT
     from viewer_publication.release_gate import PRIOR_LINKS, PRIOR_SOURCES, RETIRED
@@ -126,6 +127,8 @@ def run_ledger(tmp_path, *, links, details, sources, prints, prior, prior_source
                                              for k, r, p in prior], schema=PRIOR_LINKS),
         'prior_sources': pa.Table.from_pylist([dict(release_rank=0, list_row=r, url=u, member_path=m) for r, u, m in prior_sources], schema=PRIOR_SOURCES),
         'base_retired': pa.Table.from_pylist(list(base_retired), schema=RETIRED),
+        'landing_pages': pa.table({'page_body': pa.array([k.hex() + '0' * 48 for k, _ in landing_pages], pa.string()),
+                                   'page_url': pa.array([u for _, u in landing_pages], pa.string())}),
     }
     inputs = []
     for name, table in tables.items():
@@ -155,3 +158,22 @@ def test_address_successors_need_the_same_text_and_one_document(tmp_path):
     assert out[K('c')] == (None, [C, D])     # two documents with the same text: never choose (M3)
     assert out[K('e')] == (None, [])         # (u4, m.pdf) is not (u4, NULL): member_path matters (M4)
     assert out[K('g')] == (P, [])            # the surviving primary key wins over the address rule (M16)
+
+
+def test_a_landing_pages_carried_notice_lists_the_documents_at_its_address(tmp_path):
+    """ct-egoo (owner, 2026-11-11: list the parts). Release 77673bfb8fcf retired the keys of two GovInfo
+    package pages that name no saved file (CHRG-115hhrg24725, CHRG-116hhrg49571) with notices listing
+    nothing. The base ledger carries a notice as it is and no prior row holds the page's address any more,
+    so a landing page's notice lists the documents now at the page's own address: here its two parts. A
+    landing page with no document at its address, and a notice that is no landing page's, keep theirs."""
+    page, empty, other, one, two, kept = K('p'), K('e'), K('n'), K('1'), K('2'), K('k')
+    package = 'https://www.govinfo.gov/app/details/CHRG-115hhrg24725'
+    notice = lambda key, versions=None: dict(link_key=key, successor_key=None, last_release_id=BASE,
+                                              last_filename='CHRG-115hhrg24725', address_versions=versions)
+    out = run_ledger(tmp_path,
+        links=[(one, 0), (two, 1), (kept, 2)], details=[(one, 0), (two, 1), (kept, 2)],
+        sources=[(0, package, None), (1, package, None), (0, 'u1', None), (1, 'u2', None), (2, 'u3', None)],
+        prints=[], prior=[(one, 0, one), (two, 1, two), (kept, 2, kept)], prior_sources=[],
+        base_retired=[notice(page), notice(empty), notice(other, [kept])],
+        landing_pages=[(page, package), (page, package), (empty, 'https://www.govinfo.gov/app/details/CHRG-116hhrg1')])
+    assert out == {page: (None, [one, two]), empty: (None, []), other: (None, [kept])}

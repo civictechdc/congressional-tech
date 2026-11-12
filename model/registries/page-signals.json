@@ -78,6 +78,12 @@
     "sample_id": "page-signals:govinfo_details_name"
   },
   {
+    "id": "gpo_printed_hearing_cover",
+    "kind": "print_cover",
+    "pattern": "(?s)(?:\\bHEARINGS? BEFORE THE\\b.*(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.)|(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.).*\\bHEARINGS? BEFORE THE\\b).*\\bU\\.S\\. GOVERNMENT (?:PRINTING|PUBLISHING) OFFICE\\b",
+    "sample_id": "page-signals:gpo_printed_hearing_cover"
+  },
+  {
     "id": "error_routes",
     "kind": "error_url",
     "pattern": "(?i)/(404|error|errors|notfound|not-found|page-not-found)(\\b|[/.?_-])|[?&]aspxerrorpath=",

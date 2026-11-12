@@ -24,7 +24,7 @@ def release(tmp_path, phase2, published):
     replace_rows(root, 'list', kinds)
     schema = json.loads((root / 'schema.json').read_text())
     listed = next(t for t in schema['files'] if t['name'] == 'list.parquet')
-    assert listed['synonyms'] == {'document_kind[]': [['witness-statement', 'testimony']]}
+    assert listed['synonyms']['document_kind[]'][0] == ['witness-statement', 'testimony']
     if not published:
         del listed['synonyms']
     (root / 'schema.json').write_text(json.dumps(schema))

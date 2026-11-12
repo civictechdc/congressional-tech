@@ -1,6 +1,6 @@
 -- Data model §8.2, Retired keys. Release-sized inputs only (links, details, source_rows,
--- body_fingerprints, prior_links, prior_sources, base_retired); captures and readings are
--- never read here.
+-- body_fingerprints, prior_links, prior_sources, base_retired, landing_pages); captures and
+-- readings are never read here.
 WITH latest AS (
   SELECT link_key,release_rank,release_id,list_row,primary_key,filename FROM (
     SELECT p.*,row_number() OVER (PARTITION BY p.link_key ORDER BY p.release_rank) AS rn FROM prior_links p) ranked
@@ -55,7 +55,20 @@ WITH latest AS (
   LEFT JOIN fresh f ON f.link_key=b.successor_key
   WHERE NOT EXISTS (SELECT 1 FROM links c WHERE c.link_key=b.link_key)
     AND NOT EXISTS (SELECT 1 FROM fresh x WHERE x.link_key=b.link_key)
+), landing_versions AS (
+  -- DM 7.3, ct-egoo: a landing page's key (its body's first 8 bytes) lists the documents now at the
+  -- page's own address, the hearing that took it or a package's parts. A carried notice has no prior
+  -- row to read that address from, so this is how a notice written empty learns of the parts.
+  SELECT link_key,array_sort(array_agg(successor_key)) AS versions FROM (
+    SELECT DISTINCT arrow_cast(decode(substr(l.page_body,1,16),'hex'),'FixedSizeBinary(8)') AS link_key,d.link_key AS successor_key
+    FROM landing_pages l JOIN source_rows sr ON sr.url=l.page_url AND sr.member_path IS NULL
+    JOIN details d ON d.list_row=sr.list_row) pairs
+  GROUP BY link_key
 )
-SELECT link_key,successor_key,last_release_id,last_filename,address_versions FROM fresh
-UNION ALL
-SELECT link_key,successor_key,last_release_id,last_filename,address_versions FROM carried
+SELECT r.link_key,r.successor_key,r.last_release_id,r.last_filename,
+  CASE WHEN r.successor_key IS NULL THEN coalesce(v.versions,r.address_versions) END AS address_versions
+FROM landing_versions v RIGHT JOIN (
+  SELECT link_key,successor_key,last_release_id,last_filename,address_versions FROM fresh
+  UNION ALL
+  SELECT link_key,successor_key,last_release_id,last_filename,address_versions FROM carried
+) r ON v.link_key=r.link_key

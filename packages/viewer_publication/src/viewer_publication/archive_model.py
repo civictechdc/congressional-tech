@@ -1274,14 +1274,14 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += [dict(name='filename_conflicts',sql=FILENAME_CONFLICTS_SQL,materialize=True)]
-    steps += _sql_steps(['document-members','archive-container-links','landing-page-files','landing-pages','document-bodies','document-identities','saved-name-standing','saved-files','saved-name-conflicts','document-alternates',
+    steps += _sql_steps(['document-members','archive-container-links','landing-page-files','landing-page-picks','landing-pages','document-bodies','document-identities','saved-name-standing','saved-files','saved-name-conflicts','document-alternates',
         'document-version-keys','document-versions','document-bill-decisions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
         'document-rendition-titles','recovered-copy-fills','document-filename-facts'],root=root)
     steps += package_link_steps(root=root)
     steps += appearance_steps(root=root)+witness_key_steps(root=root)+[
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
-    steps += _sql_steps(['document-hearing-date-corrections'],root=root)
+    steps += _sql_steps(['document-hearing-date-corrections','transcript-print-covers'],root=root)
     from viewer_publication.archive_model_profile import completeness_checks
     steps += application_steps(root=root)
     steps += _sql_steps(PAGE_METADATA_STEPS,root=root)
@@ -1289,14 +1289,18 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     page=','.join(f'coalesce(pm.{c},{PAGE_DEFAULTS[c]}) AS {c}' if c in ('publisher_labels','page_metadata') else f'pm.{c}' for c in PAGE_COLUMNS)
     # hidden is IS TRUE, not coalesce(..., false): same values, and the column stays required when an
     # engine types it from the optimized plan (test_required_flags.py).
-    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
-        coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
+    # A committee's 'transcript' whose own text is a GPO printed hearing's cover is that print (ct-isnv):
+    # kind and family published-hearing; a review override still wins for the kind.
+    printed=lambda column:f"CASE WHEN pc.doc_key IS NULL THEN n.{column} ELSE array_sort(array_distinct(array_replace_all(n.{column},'transcript','published-hearing'))) END"
+    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(title,document_kind,document_family,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source),
+        coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,{printed('document_kind')}) AS document_kind,
+        {printed('document_family')} AS document_family,
         r.hidden IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
         CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
         CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source,{page}
         FROM document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
-            (document_identities d JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)
-             ON n.doc_key=d.document_id)
+            (document_identities d JOIN (transcript_print_covers pc RIGHT JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)
+             ON n.doc_key=pc.doc_key) ON n.doc_key=d.document_id)
             ON d.component=r.component) ON d.component=x.component) ON pm.doc_key=n.doc_key""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
@@ -1485,8 +1489,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     meta_queries=[input_receipts_query(),probe_selectors_query(root=root),
         # The recorded disposition: a ZIP with no expanded contents stays a document, listed here.
         dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
-        # The recorded disposition (ct-m878): a landing page that names no saved file has no document;
-        # its link key retires with a plain notice. Two multi-part GovInfo packages in 619db5f9e08e.
+        # The recorded disposition (ct-m878, ct-egoo): a landing page that names no saved file and has no
+        # parts has no document; its notice lists nothing. 619db5f9e08e's two (multi-part packages) now list their parts.
         dict(name='unplaced_landing_pages',sql="SELECT DISTINCT page_url AS url FROM landing_pages WHERE component IS NULL ORDER BY 1"),
         SAVED_NAME_KINDS,SAVED_NAME_DECISIONS_UNUSED,SAVED_NAME_DECISIONS_UNMET,
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.

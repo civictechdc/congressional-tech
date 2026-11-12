@@ -42,6 +42,34 @@ def test_pinned_recovery_eligibility(tmp_path):
     assert all(rows[url]['last_status']==404 and rows[url]['attempts']==1 for url in urls)
 
 
+def test_govinfo_details_rows_are_excluded_by_the_scope_they_were_captured_under(tmp_path):
+    """ct-egoo (owner, 2026-11-11: stop fetching). url_state carries 34,831 GovInfo Content Details pages,
+    captured as family documents by the 2026-10-05 download and published as eligible and due weekly. The
+    real registry's documents exclusion marks them excluded, so the scheduler counts them done; the
+    package's PDF in that family stays eligible."""
+    import json
+    policy='recovery-identity-v1'
+    registry=json.loads((Path(__file__).resolve().parents[3]/'model/registries/capture-scope.json').read_text())
+    exclusions=[dict(family=entry['family'],pattern=pattern) for entry in registry['entries'] for pattern in entry['exclusions']]
+    details='https://www.govinfo.gov/app/details/CHRG-119hhrg12345'
+    urls=[details,details+'/CHRG-119hhrg12345-pt1','https://www.govinfo.gov/content/pkg/CHRG-119hhrg12345/pdf/CHRG-119hhrg12345.pdf']
+    def inp(name,rows,**fields):return json_input(tmp_path,name,rows,**fields)
+    text=lambda *names:{name:'Utf8' for name in names}
+    inputs=[inp('recovery_requirements',[],**text('original_url','target_requirement','acceptance_policy','refresh_policy')),
+        inp('recovery_decisions',[],**text('id','original_url','body_sha256','kind','target_requirement','acceptance_policy','acceptance_status',
+            'evidence_sha256','qualification_sha256','supersedes'),recovery_record_version='Int32'),
+        inp('retained',[],**text('original_url','body')),
+        inp('url_state_history',[dict(requested_url=url,attempts=1,last_status=200) for url in urls],requested_url='Utf8',attempts='Int32',last_status='Int32'),
+        inp('url_state_latest',[dict(requested_url=url,family='documents') for url in urls],**text('requested_url','family')),
+        inp('url_state_scope_exclusions',exclusions,**text('family','pattern'))]
+    step=next(s for s in url_state_steps(recovery_policy=dict(acceptance_policy=policy)) if s['name']=='url_state')
+    result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=[dict(name='captures',sql="SELECT original_url,decode(body,'hex') AS sha256,'retained_import' AS mode,true AS complete FROM retained"),step],outputs=[],
+        queries=[dict(name='rows',sql='SELECT requested_url,capture_disposition,capture_reason FROM url_state ORDER BY requested_url')])
+    rows={r['requested_url']:(r['capture_disposition'],r['capture_reason']) for r in result['rows']}
+    assert [rows[url] for url in urls]==[('excluded','scope_exclusion')]*2+[('eligible','no_satisfying_recovery')]
+
+
 def test_real_model_exports_versioned_eligibility(tmp_path):
     import json
     import pyarrow as pa
