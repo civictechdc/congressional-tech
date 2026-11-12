@@ -32,10 +32,12 @@ def _spec(tmp_path,source,**overrides):
     path=tmp_path/'import.json';path.write_text(json.dumps(value));return path
 
 
-def test_import_commits_rows_unchanged_and_verifies_them(tmp_path):
+def test_import_commits_rows_unchanged_and_verifies_them(tmp_path,monkeypatch):
+    import congress_api.retention.writer_identity as identity
     from viewer_publication.archive_import_job import execute,load_spec
     from congress_api.lake.maintenance import verify_generations
     from docspec_client.client import NativeDatasets
+    monkeypatch.setattr(identity,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
     source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)
     report=execute(load_spec(_spec(tmp_path,source)))
     entry=report['tables']['meeting_records']
@@ -117,10 +119,12 @@ def test_import_spec_requires_a_location_matching_its_catalog(tmp_path):
         load_spec(_spec(tmp_path,source,catalog_root=None))
 
 
-def test_import_adopts_an_empty_table_and_refuses_one_with_rows(tmp_path):
+def test_import_adopts_an_empty_table_and_refuses_one_with_rows(tmp_path,monkeypatch):
+    import congress_api.retention.writer_identity as identity
     from viewer_publication.archive_import_job import execute,load_spec
     from congress_api.lake.tables import create_table
     from docspec_client.client import NativeDatasets
+    monkeypatch.setattr(identity,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
     source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)
     spec=load_spec(_spec(tmp_path,source))
     item=spec['tables']['meeting_records']
@@ -177,3 +181,99 @@ def test_import_accepts_explorer_tables_and_chains_their_producers(tmp_path,monk
         record=json.loads(open(report['producers'][name]['path']).read())
         assert record['job']==IMPORT_JOB and record['selector']==entry['pin']
         assert record['origin']['record']['input']==name
+
+
+def _init_git_repo(repo, import_job):
+    import subprocess
+    repo.mkdir()
+    (repo / 'uv.lock').write_text('version = 1\n')
+    job_file = repo / import_job
+    job_file.parent.mkdir(parents=True, exist_ok=True)
+    job_file.write_text('# import job\n')
+    env = {
+        **os.environ,
+        'GIT_AUTHOR_NAME': 'Test',
+        'GIT_AUTHOR_EMAIL': 'test@example.com',
+        'GIT_COMMITTER_NAME': 'Test',
+        'GIT_COMMITTER_EMAIL': 'test@example.com',
+    }
+    subprocess.run(['git', '-C', str(repo), 'init', '-q'], check=True, env=env)
+    subprocess.run(['git', '-C', str(repo), 'add', 'uv.lock', import_job], check=True, env=env)
+    subprocess.run(['git', '-C', str(repo), 'commit', '-q', '-m', 'init'], check=True, env=env)
+    head = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
+    return head, env
+
+
+def test_import_refuses_dirty_tree_or_unreachable_origin_before_creating_table_and_rechecks_after_write(tmp_path, monkeypatch):
+    """ct-h267: writer_identity runs before target lookup/create and again after the write."""
+    import subprocess
+    import viewer_publication.producer_proof as proof
+    from viewer_publication.archive_import_job import IMPORT_JOB, execute, load_spec
+
+    repo = tmp_path / 'repo'
+    head, env = _init_git_repo(repo, IMPORT_JOB)
+    monkeypatch.setattr(proof, 'ROOT', repo)
+
+    source = tmp_path / 'rows.parquet'
+    pq.write_table(ROWS, source)
+    (tmp_path / 'dirty-case').mkdir(parents=True, exist_ok=True)
+    path = _spec(tmp_path / 'dirty-case', source)
+    dirty_file = repo / 'untracked.txt'
+    dirty_file.write_text('dirty\n')
+
+    # Dirty checkout fails fast before opening catalog or creating work/tables.
+    with pytest.raises(ValueError, match='clean application tree'):
+        execute(load_spec(path))
+    assert not (tmp_path / 'dirty-case/work').exists()
+    assert not (tmp_path / 'dirty-case/catalog').exists()
+    dirty_file.unlink()
+
+    # Unreachable origin commit on a clean checkout also refuses before creating work/tables.
+    unreachable_dir = tmp_path / 'unreachable-case'
+    unreachable_dir.mkdir()
+    u_path = _spec(unreachable_dir, source)
+    u_val = json.loads(u_path.read_text())
+    subprocess.run(['git', '-C', str(repo), 'checkout', '-q', '--orphan', 'side'], check=True, env=env)
+    (repo / 'side.txt').write_text('side\n')
+    subprocess.run(['git', '-C', str(repo), 'add', 'side.txt'], check=True, env=env)
+    subprocess.run(['git', '-C', str(repo), 'commit', '-q', '-m', 'side'], check=True, env=env)
+    side_commit = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
+    subprocess.run(['git', '-C', str(repo), 'checkout', '-q', head], check=True, env=env)
+    (repo / 'side.txt').unlink(missing_ok=True)
+    origin = unreachable_dir / 'origin.json'
+    origin.write_text(json.dumps(dict(
+        version=1, input='meeting_records', job='daily', commit=side_commit,
+        selector=dict(kind='parquet', **u_val['tables']['meeting_records']['source']),
+    )))
+    u_val['tables']['meeting_records']['producer'] = dict(path=str(origin), **file_pin(origin))
+    u_path.write_text(json.dumps(u_val))
+    with pytest.raises(ValueError, match='not reachable from HEAD'):
+        execute(load_spec(u_path))
+    assert not (unreachable_dir / 'work').exists()
+    assert not (unreachable_dir / 'catalog').exists()
+
+    # Tree dirtied mid-write is caught by the post-write writer_identity check and writes no producer record.
+    mid_dir = tmp_path / 'mid-dirty'
+    mid_dir.mkdir()
+    m_path = _spec(mid_dir, source)
+    m_val = json.loads(m_path.read_text())
+    good_origin = mid_dir / 'origin.json'
+    good_origin.write_text(json.dumps(dict(
+        version=1, input='meeting_records', job='daily', commit=head,
+        selector=dict(kind='parquet', **m_val['tables']['meeting_records']['source']),
+    )))
+    m_val['tables']['meeting_records']['producer'] = dict(path=str(good_origin), **file_pin(good_origin))
+    m_path.write_text(json.dumps(m_val))
+    import congress_api.lake.maintenance as maintenance
+    real_verify = maintenance.verify_generations
+
+    def dirty_during_verify(*args, **kwargs):
+        out = real_verify(*args, **kwargs)
+        (repo / 'appeared-during-write.txt').write_text('dirty\n')
+        return out
+
+    monkeypatch.setattr(maintenance, 'verify_generations', dirty_during_verify)
+    with pytest.raises(ValueError, match='clean application tree|writer identity changed'):
+        execute(load_spec(m_path))
+    assert not (mid_dir / 'work/producers').exists()
+

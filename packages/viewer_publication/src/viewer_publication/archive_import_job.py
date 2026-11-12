@@ -97,20 +97,35 @@ def _verified(name, item):
 IMPORT_JOB='packages/viewer_publication/src/viewer_publication/archive_import_job.py'
 
 
-def _producer_records(spec,report,work):
+def _writer(spec):
+    """Gate 5 preflight/postflight: require a clean checkout and reachable origin commits."""
+    import re
+    from congress_api.retention.writer_identity import writer_identity
+    from viewer_publication.producer_proof import ROOT, _git
+
+    writer = writer_identity(ROOT, IMPORT_JOB)
+    if _git(ROOT, 'cat-file', '-t', writer['commit']).returncode == 0:
+        if _git(ROOT, 'cat-file', '-e', f"{writer['commit']}:{IMPORT_JOB}").returncode != 0:
+            raise ValueError(f"Import job {IMPORT_JOB} is not checked in at {writer['commit'][:12]}")
+        for name, item in spec['tables'].items():
+            if 'producer' in item:
+                origin = json.loads(Path(item['producer']['path']).read_text(encoding='utf-8'))
+                commit = origin.get('commit')
+                if (not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None
+                        or _git(ROOT, 'merge-base', '--is-ancestor', commit, writer['commit']).returncode != 0):
+                    raise ValueError(f'Import {name} origin commit {str(commit)[:12]} is not reachable from HEAD')
+    return writer
+
+
+def _producer_records(spec,report,work,writer):
     """Gate 5: one record per imported snapshot, naming this job and the commit that ran it.
 
     The import copies rows it did not produce, so a record is written only when the spec
     pins the origin record of the job that produced them; it is embedded (custody-checked
     against its pin) as `origin`. Rows were verified equal to the source both ways (EXCEPT
-    ALL) before this step. With an unclean tree, or without an origin, nothing is written
-    and gate 5 refuses that table.
+    ALL) before this step. Without an origin, nothing is written and gate 5 refuses that table.
     """
     from congress_api.retention.provenance import file_pin
-    from congress_api.retention.writer_identity import writer_identity
-    from viewer_publication.producer_proof import ROOT
-    try:writer=writer_identity(ROOT,IMPORT_JOB)
-    except (ValueError,OSError):return dict(unavailable='the checkout was not clean, so no commit can be named')
     directory=work/'producers';directory.mkdir(exist_ok=True);out={}
     for name,entry in report['tables'].items():
         origin=spec['tables'][name].get('producer')
@@ -137,6 +152,7 @@ def execute(spec,*,runtime_factory=None):
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():raise ValueError('Import work directory must be fresh')
     schemas={name:_verified(name,item) for name,item in spec['tables'].items()}
+    writer=_writer(spec)
     engine_config=(spec.get('engine_config') or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
         or os.environ.get('DOCSPEC_JOB_CONFIG'))
     if not isinstance(engine_config,str) or not engine_config.strip():
@@ -145,13 +161,13 @@ def execute(spec,*,runtime_factory=None):
     from congress_api.lake.tables import TABLE_SPECS,WRITER_PROFILES,_job,append_rows,create_table,validate_catalog_authority
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
-    work.mkdir(parents=True)
     report=dict(status='running',catalog_root=spec['catalog_root'],location=spec['location'],
         definition=spec['definition'],provenance=spec['provenance'],tables={})
     def save():(work/'import-report.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
     with runtime_factory(engine_config) as engine:
         engine.verify_runtime()
         validate_catalog_authority(engine,spec['catalog_root'])
+        work.mkdir(parents=True)
         report['engine']=dict(source_revision=engine.source_revision,binary_sha256=engine.binary_sha256)
         # One read-only head per target. A table left empty by an interrupted run
         # (created, append failed) is adopted; a table holding any snapshot is refused.
@@ -188,7 +204,9 @@ def execute(spec,*,runtime_factory=None):
             verify_generations(dict(kind='parquet',**item['source']),pin,keys=keys,engine=engine,
                 work=table_work/'verify',exact=False)
             entry['verified']=True;save()
-    report['producers']=_producer_records(spec,report,work);report['status']='executed';save()
+    if _writer(spec)!=writer:
+        raise ValueError('Import writer identity changed during execution')
+    report['producers']=_producer_records(spec,report,work,writer);report['status']='executed';save()
     return report
 
 
