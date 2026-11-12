@@ -24,17 +24,18 @@ WITH rendition AS (
  UNION ALL SELECT component,2,link_title,'link_text' FROM base_normalized WHERE link_title IS NOT NULL
  UNION ALL SELECT component,3,text,source FROM rendition WHERE preference=1
  UNION ALL SELECT component,4,title,'recovered_copy' FROM recovered_copy_fills WHERE title IS NOT NULL
- UNION ALL SELECT b.component,5,b.mods_title,'mods_title'
-  FROM (SELECT pattern FROM title_rules WHERE kind='link_word') lw
-  RIGHT ANTI JOIN (SELECT component,nullif(trim(regexp_replace(mods_title,'^\s*[-–—]+\s+','')),'') AS mods_title FROM base_normalized WHERE mods_title IS NOT NULL) b
-   ON length(b.mods_title)<=64 AND regexp_like(regexp_replace(b.mods_title,'\s+',' ','g'),lw.pattern)
-  WHERE b.mods_title IS NOT NULL
-), candidates AS (
+ UNION ALL SELECT component,5,mods_title,'mods_title' FROM base_normalized WHERE mods_title IS NOT NULL
+), stripped_candidates AS (
  SELECT component,rank,
   CASE WHEN rank=0 THEN text ELSE nullif(trim(regexp_replace(text,'^\s*[-–—]+\s+','')),'') END AS text,
   source
  FROM raw_candidates
  WHERE CASE WHEN rank=0 THEN text ELSE nullif(trim(regexp_replace(text,'^\s*[-–—]+\s+','')),'') END IS NOT NULL
+), candidates AS (
+ SELECT c.*
+ FROM (SELECT pattern FROM title_rules WHERE kind='link_word') lw
+ RIGHT ANTI JOIN stripped_candidates c
+  ON c.rank>0 AND length(c.text)<=64 AND regexp_like(regexp_replace(c.text,'\s+',' ','g'),lw.pattern)
 ), ranked AS (
  SELECT c.*,g.pattern IS NOT NULL AS is_label,row_number() OVER(PARTITION BY c.component
   ORDER BY g.pattern IS NOT NULL,c.rank,c.text) AS pick

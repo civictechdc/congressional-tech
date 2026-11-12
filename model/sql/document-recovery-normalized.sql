@@ -36,17 +36,7 @@ SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
  ))) AS chambers,
  cast(coalesce(
   a.congress,ml.congress,
-  try_cast((regexp_match(coalesce(a.package_id,''),'(?i)^(?:CHRG|CRPT|CPRT|CDOC|BILLS)-([1-9][0-9]{0,2})'))[1] AS INT),
-  CASE
-   WHEN coalesce(ml.meeting_date,pmf.mods_date)>=DATE '1935-01-04'
-    AND date_part('year',coalesce(ml.meeting_date,pmf.mods_date))<=2028
-    AND NOT (
-     cast(date_part('year',coalesce(ml.meeting_date,pmf.mods_date)) AS INT)%2=1
-     AND substr(cast(coalesce(ml.meeting_date,pmf.mods_date) AS VARCHAR),6,5)='01-03'
-    )
-   THEN (cast(date_part('year',coalesce(ml.meeting_date,pmf.mods_date)) AS INT)
-    -CASE WHEN substr(cast(coalesce(ml.meeting_date,pmf.mods_date) AS VARCHAR),6,5)<'01-03' THEN 1 ELSE 0 END-1789)/2+1
-  END
+  try_cast((regexp_match(coalesce(a.package_id,''),'(?i)^(?:CHRG|CRPT|CPRT|CDOC|BILLS)-([1-9][0-9]{0,2})'))[1] AS INT)
  ) AS SMALLINT) AS congress,
  coalesce(b.format,'other') AS format,a.filename_date AS a_date,ml.meeting_date,pmf.mods_date,cast(NULL AS DATE) AS first_captured,
  'import_day' AS date_kind,'recovery' AS saved_kind,false AS hidden,
@@ -76,35 +66,7 @@ LEFT JOIN (SELECT encode(c.sha256,'hex') AS body_sha,max(c.media_type) AS media_
  FROM (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s JOIN captures c ON c.sha256=s.sha256 GROUP BY c.sha256) c ON r.body_sha=c.body_sha
 -- A document that showed its dead page keeps the page's title on the file (ct-u9y4; owner, 2026-11-11), not the
 -- hearing record's own title nor none: the title is read from the page the document showed, else the saved file.
-LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,
- CASE
-  WHEN nullif(trim(max(p.heading)),'') IS NOT NULL AND (
-   nullif(trim(max(p.title)),'') IS NULL
-   OR (
-    NOT regexp_like(trim(max(p.heading)),'(?i)^(?:(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+)?(?:(?:committee|subcommittee|select\s+committee|special\s+committee|joint\s+committee)\s+on\s+[^|–—-]+|hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?|roundtables?|search)$')
-    AND (
-     regexp_like(trim(max(p.title)),'(?i)^(?:hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?)\s*[|–—-]')
-     OR (length(trim(max(p.heading)))>length(trim(max(p.title))) AND regexp_like(trim(max(p.title)),'(?i)^(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+(?:(?:select|special|permanent\s+select|joint)\s+)?committee\s+on\s+[^|:]+$'))
-     OR (length(trim(max(p.heading)))>=12 AND regexp_like(trim(max(p.title)),'(?:\.\.\.|…)\s*(?:\||$)'))
-    )
-   )
-  ) THEN trim(max(p.heading))
-  ELSE nullif(trim(max(p.title)),'')
- END AS title,
- CASE
-  WHEN nullif(trim(max(p.heading)),'') IS NOT NULL AND (
-   nullif(trim(max(p.title)),'') IS NULL
-   OR (
-    NOT regexp_like(trim(max(p.heading)),'(?i)^(?:(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+)?(?:(?:committee|subcommittee|select\s+committee|special\s+committee|joint\s+committee)\s+on\s+[^|–—-]+|hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?|roundtables?|search)$')
-    AND (
-     regexp_like(trim(max(p.title)),'(?i)^(?:hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?)\s*[|–—-]')
-     OR (length(trim(max(p.heading)))>length(trim(max(p.title))) AND regexp_like(trim(max(p.title)),'(?i)^(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+(?:(?:select|special|permanent\s+select|joint)\s+)?committee\s+on\s+[^|:]+$'))
-     OR (length(trim(max(p.heading)))>=12 AND regexp_like(trim(max(p.title)),'(?:\.\.\.|…)\s*(?:\||$)'))
-    )
-   )
-  ) THEN 'page_heading'
-  WHEN nullif(trim(max(p.title)),'') IS NOT NULL THEN 'page_title'
- END AS source
+LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,max(p.reading_title) AS title,max(p.reading_source) AS source
  FROM (SELECT DISTINCT decode(coalesce(page_shown,body_sha),'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s JOIN source_annotation_pages p ON p.body_sha=s.sha256 WHERE p.status='completed' GROUP BY p.body_sha) t ON coalesce(r.page_shown,r.body_sha)=t.body_sha
 LEFT JOIN component_meeting_links ml ON d.component=ml.component
 LEFT JOIN document_witness_keys wk ON d.component=wk.component

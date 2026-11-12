@@ -469,11 +469,17 @@ def traced(run, monkeypatch):
     def workspace(name):
         return bool(name) and name.startswith(str(ROOT)) and '/src/' in name and '/.venv/' not in name
 
-    for module in list(sys.modules.values()):
-        if workspace(getattr(module, '__file__', None)):
-            for value in list(vars(module).values()):
-                if callable(getattr(value, 'cache_clear', None)):
-                    value.cache_clear()
+    def clear_workspace_caches():
+        for module in list(sys.modules.values()):
+            if workspace(getattr(module, '__file__', None)):
+                for value in list(vars(module).values()):
+                    if callable(getattr(value, 'cache_clear', None)):
+                        value.cache_clear()
+                if getattr(module, '__name__', None) == 'house_naming.naming':
+                    for attr in ('HOUSE_NAMING', 'COLLECTION_CODES', 'APPROPRIATION_SUBJECTS'):
+                        vars(module).pop(attr, None)
+
+    clear_workspace_caches()
     monkeypatch.setattr(body_text, '_STRATEGIES', {})
     ran = set()
 
@@ -487,6 +493,7 @@ def traced(run, monkeypatch):
         run()
     finally:
         sys.setprofile(None)
+        clear_workspace_caches()
     return ran
 
 

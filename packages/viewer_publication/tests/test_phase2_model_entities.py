@@ -837,7 +837,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['transcripts'][0]['formats'] == ['pdf', 'html']
     assert [v['video_key'] for v in m['videos']] == ['youtube:dQw4w9WgXcQ', 'senate:ag051023']
 
-    # Verify CHRG document linked to meeting 115538 and inherited meeting_date, without individual witness_keys
+    # Verify CHRG document linked to meeting 115538 and inherited meeting_date + canonical MODS witness_keys (cat2-x47u, cat2-8ai9)
     listed = pq.read_table(release_dir / 'list.parquet').to_pylist()
     chrg_doc = next(r for r in listed if r['filename'] == 'CHRG-118hhrg55555.pdf')
     assert [r['format'] for r in listed if r['filename'].startswith('CHRG-118hhrg55555.')] == ['html', 'pdf']
@@ -850,8 +850,8 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert print_doc['meeting_keys'] == ['115538']
     assert print_doc['measure_keys'] == ['115-hr-1']
     assert chrg_doc['document_date'] == date(2023, 5, 10)
-    assert chrg_doc['witness_keys'] == []
-    assert len(stmt_doc['witness_keys']) == 2
+    assert len(chrg_doc['witness_keys']) == 2
+    assert len(stmt_doc['witness_keys']) == 1
 
     # 2. Verify witnesses.parquet
     witnesses = pq.read_table(release_dir / 'witnesses.parquet').to_pylist()
@@ -859,14 +859,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     # Congress.gov list's Other Person, whom no higher source names, is shown.
     superseded = [w for w in witnesses if w['superseded_by']]
     assert sorted((w['source'], w['name']) for w in superseded) == [('mods', 'Dr. Jane Smith'), ('mods', 'Other Person')]
-    superseded_jane = next(w for w in superseded if w['name'] == 'Dr. Jane Smith')
     witnesses = [w for w in witnesses if not w['superseded_by']]
     assert len(witnesses) == 5
     meeting_witnesses = [w for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'house_xml']
     assert [w['name'] for w in meeting_witnesses] == ['Dr. Jane Smith', 'Dr. Jane Smith Second Panel']
-    assert [w['name'] for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'congress_gov'] == ['Other Person']
+    other_person = next(w for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'congress_gov')
+    assert other_person['name'] == 'Other Person'
     assert meeting_witnesses[0]['witness_key'] != meeting_witnesses[1]['witness_key']
-    assert set(stmt_doc['witness_keys']) == {meeting_witnesses[0]['witness_key'], superseded_jane['witness_key']}
+    assert stmt_doc['witness_keys'] == [meeting_witnesses[0]['witness_key']]
+    assert set(chrg_doc['witness_keys']) == {meeting_witnesses[0]['witness_key'], other_person['witness_key']}
     by_occasion = {w['occasion']: w for w in witnesses if w['occasion'] != 'meeting:115538'}
     assert 'package:CHRG-118shrg77777' in by_occasion
     assert by_occasion['package:CHRG-118shrg77777']['bioguide_id'] == 'R000001'
@@ -2632,7 +2633,7 @@ def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
 def test_hhrg_slug_witness_matching_precedence_title_enrichment_and_meeting_propagation(tmp_path):
     """ct-2o4d, ct-o7t4 item 2d, ct-j2yo F1/F2/F6:
     - House witness docs (HHRG-*-{Wstate,TTF,Bio}-*) without URL match resolve to canonical meeting witness via HHRG slug.
-    - URL-matched witnesses superseded by a higher-priority source propagate both witness_key and superseded_by.
+    - URL-matched witnesses superseded by a higher-priority source propagate only canonical superseded_by onto document witness_keys (cat2-8ai9).
     - Generic witness titles ('Witness Statement', 'Witness Biography', 'Truth in Testimony Form') are enriched with witness_name.
     - Witness-linked documents inherit meeting_keys, committee_keys, chambers, and congress from their linked meeting.
     """
@@ -2779,7 +2780,7 @@ def test_hhrg_slug_witness_matching_precedence_title_enrichment_and_meeting_prop
     assert brown_row['title'] == 'Witness Biography - Hon. Robert Brown'
 
     jones_row = list_rows['jones_testimony.pdf']
-    assert len(jones_row['witness_keys']) == 2
+    assert len(jones_row['witness_keys']) == 1
     assert jones_row['meeting_keys'] == ['335902']
     assert jones_row['committee_keys'] == ['ssbk00']
     assert jones_row['chambers'] == ['senate']

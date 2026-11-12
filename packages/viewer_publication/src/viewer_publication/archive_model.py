@@ -1369,16 +1369,20 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     # kind and family published-hearing; a review override still wins for the kind.
     slug_list=lambda column:f"CASE WHEN coalesce(array_length(n.{column}),0)>0 OR uf.doc_key IS NULL THEN n.{column} ELSE uf.{column} END"
     printed=lambda column:f"CASE WHEN pc.doc_key IS NULL THEN {slug_list(column)} ELSE array_sort(array_distinct(array_replace_all({slug_list(column)},'transcript','published-hearing'))) END"
+    final_date='CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END'
+    final_source='CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END'
     steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(filename,own_title,own_title_source,link_title,mods_title,component,document_kind,document_family,congress,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source,facts),
         CASE WHEN uf.doc_key IS NULL THEN n.filename ELSE uf.filename END AS filename,
         t.title,t.title_source,coalesce(r.kind_override,{printed('document_kind')}) AS document_kind,
         {printed('document_family')} AS document_family,
-        coalesce(n.congress,CASE WHEN h.document_date>=DATE '1935-01-04' AND date_part('year',h.document_date)<=2028
-         AND NOT (cast(date_part('year',h.document_date) AS INT)%2=1 AND substr(cast(h.document_date AS VARCHAR),6,5)='01-03')
-         THEN cast((cast(date_part('year',h.document_date) AS INT)-CASE WHEN substr(cast(h.document_date AS VARCHAR),6,5)<'01-03' THEN 1 ELSE 0 END-1789)/2+1 AS SMALLINT) END) AS congress,
-        (r.hidden OR (n.format='html' AND (regexp_like(coalesce(t.title,''),'(?i)^(?:error\\s*[|:-]|page not found\\b|404\\b|not found\\s*[|:-]|file not found\\b)') OR regexp_like(coalesce(pm.description,''),'(?i)^\\s*page not found\\b')))) IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
-        CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
-        CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source,
+        coalesce(n.congress,CASE WHEN coalesce({final_source},'')<>'filename'
+         AND ({final_date})>=DATE '1935-01-04' AND date_part('year',{final_date})<=2028
+         AND (coalesce(n.first_captured,n.in_archive_since) IS NULL OR ({final_date})<=coalesce(n.first_captured,n.in_archive_since)+INTERVAL '365 days')
+         AND NOT (cast(date_part('year',{final_date}) AS INT)%2=1 AND substr(cast({final_date} AS VARCHAR),6,5)='01-03')
+         THEN cast((cast(date_part('year',{final_date}) AS INT)-CASE WHEN substr(cast({final_date} AS VARCHAR),6,5)<'01-03' THEN 1 ELSE 0 END-1789)/2+1 AS SMALLINT) END) AS congress,
+        (r.hidden OR (n.format='html' AND (regexp_like(coalesce(t.title,''),'(?i)^(?:error\\s*[|:-]|page not found\\b|404(?:\\s*[|:-]|\\s+(?:error|page\\s+not\\s+found|not\\s+found)\\b|\\s*$)|not found\\s*[|:-]|file not found\\b)') OR regexp_like(coalesce(pm.description,''),'(?i)^\\s*page not found\\b')))) IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
+        {final_date} AS document_date,
+        {final_source} AS document_date_source,
         CASE WHEN coalesce(array_length(n.facts),0)>0 OR uf.doc_key IS NULL THEN n.facts ELSE uf.facts END AS facts,{page}
         FROM titles t RIGHT JOIN (document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
             (document_identities d JOIN (html_uuid_slug_fills uf RIGHT JOIN (transcript_print_covers pc RIGHT JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)

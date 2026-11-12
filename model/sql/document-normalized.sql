@@ -58,17 +58,7 @@ SELECT d.document_id AS doc_key,true AS body_expected,
  ))) AS chambers,
  cast(coalesce(
   fc.congress,x.congress,ml.congress,
-  try_cast((regexp_match(coalesce(CASE WHEN NOT coalesce(pk.bill_package_conflict,false) AND NOT coalesce(bd.package_withheld,false) THEN coalesce(pk.package_id,x.package_id) END,''),'(?i)^(?:CHRG|CRPT|CPRT|CDOC|BILLS)-([1-9][0-9]{0,2})'))[1] AS INT),
-  CASE
-   WHEN coalesce(a.content_date,ml.meeting_date,pmf.mods_date)>=DATE '1935-01-04'
-    AND date_part('year',coalesce(a.content_date,ml.meeting_date,pmf.mods_date))<=2028
-    AND NOT (
-     cast(date_part('year',coalesce(a.content_date,ml.meeting_date,pmf.mods_date)) AS INT)%2=1
-     AND substr(cast(coalesce(a.content_date,ml.meeting_date,pmf.mods_date) AS VARCHAR),6,5)='01-03'
-    )
-   THEN (cast(date_part('year',coalesce(a.content_date,ml.meeting_date,pmf.mods_date)) AS INT)
-    -CASE WHEN substr(cast(coalesce(a.content_date,ml.meeting_date,pmf.mods_date) AS VARCHAR),6,5)<'01-03' THEN 1 ELSE 0 END-1789)/2+1
-  END
+  try_cast((regexp_match(coalesce(CASE WHEN NOT coalesce(pk.bill_package_conflict,false) AND NOT coalesce(bd.package_withheld,false) THEN coalesce(pk.package_id,x.package_id) END,''),'(?i)^(?:CHRG|CRPT|CPRT|CDOC|BILLS)-([1-9][0-9]{0,2})'))[1] AS INT)
  ) AS SMALLINT) AS congress,s.format,
  fc.filename_date AS fc_date,a.content_date,ml.meeting_date,pmf.mods_date,x.filename_date AS x_date,
  cast(m.first_fetched AS DATE) AS first_captured,

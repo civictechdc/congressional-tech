@@ -26,54 +26,9 @@ SELECT s.source_id,
   (regexp_match(f.package_id,'^(CDOC-[1-9][0-9]{0,2}(?:hdoc|sdoc|tdoc)[0-9]+)$'))[1]) END) AS package_id,
  CASE WHEN f.filename_date_status='completed' AND f.filename_date_eligible THEN f.filename_date END AS filename_date,
  CASE WHEN p.status='completed' THEN cast(p.content_date AS DATE) END AS content_date,
- coalesce(
-  CASE
-   WHEN p.status='completed' AND nullif(trim(p.heading),'') IS NOT NULL
-    AND (
-     nullif(trim(p.title),'') IS NULL
-     OR (
-      NOT regexp_like(trim(p.heading),'(?i)^(?:(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+)?(?:(?:committee|subcommittee|select\s+committee|special\s+committee|joint\s+committee)\s+on\s+[^|–—-]+|hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?|roundtables?|search)$')
-      AND (
-       regexp_like(trim(p.title),'(?i)^(?:hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?)\s*[|–—-]')
-       OR (length(trim(p.heading))>length(trim(p.title)) AND regexp_like(trim(p.title),'(?i)^(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+(?:(?:select|special|permanent\s+select|joint)\s+)?committee\s+on\s+[^|:]+$'))
-       OR (length(trim(p.heading))>=12 AND regexp_like(trim(p.title),'(?:\.\.\.|…)\s*(?:\||$)'))
-      )
-     )
-    ) THEN p.heading
-   WHEN p.status='completed' AND nullif(trim(p.title),'') IS NOT NULL THEN p.title
-  END,
-  k.listing_title
- ) AS title,
- CASE
-  WHEN p.status='completed' AND nullif(trim(p.heading),'') IS NOT NULL
-   AND (
-    nullif(trim(p.title),'') IS NULL
-    OR (
-     NOT regexp_like(trim(p.heading),'(?i)^(?:(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+)?(?:(?:committee|subcommittee|select\s+committee|special\s+committee|joint\s+committee)\s+on\s+[^|–—-]+|hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?|roundtables?|search)$')
-     AND (
-      regexp_like(trim(p.title),'(?i)^(?:hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?)\s*[|–—-]')
-      OR (length(trim(p.heading))>length(trim(p.title)) AND regexp_like(trim(p.title),'(?i)^(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+(?:(?:select|special|permanent\s+select|joint)\s+)?committee\s+on\s+[^|:]+$'))
-      OR (length(trim(p.heading))>=12 AND regexp_like(trim(p.title),'(?:\.\.\.|…)\s*(?:\||$)'))
-     )
-    )
-   ) THEN p.heading
-  WHEN p.status='completed' AND nullif(trim(p.title),'') IS NOT NULL THEN p.title
- END AS reading_title,
- CASE
-  WHEN p.status='completed' AND nullif(trim(p.heading),'') IS NOT NULL
-   AND (
-    nullif(trim(p.title),'') IS NULL
-    OR (
-     NOT regexp_like(trim(p.heading),'(?i)^(?:(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+)?(?:(?:committee|subcommittee|select\s+committee|special\s+committee|joint\s+committee)\s+on\s+[^|–—-]+|hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?|roundtables?|search)$')
-     AND (
-      regexp_like(trim(p.title),'(?i)^(?:hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?)\s*[|–—-]')
-      OR (length(trim(p.heading))>length(trim(p.title)) AND regexp_like(trim(p.title),'(?i)^(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+(?:(?:select|special|permanent\s+select|joint)\s+)?committee\s+on\s+[^|:]+$'))
-      OR (length(trim(p.heading))>=12 AND regexp_like(trim(p.title),'(?:\.\.\.|…)\s*(?:\||$)'))
-     )
-    )
-   ) THEN 'page_heading'
-  WHEN p.status='completed' AND nullif(trim(p.title),'') IS NOT NULL THEN 'page_title'
- END AS reading_source,
+ coalesce(p.reading_title,k.listing_title) AS title,
+ p.reading_title,
+ p.reading_source,
  k.listing_title,
  coalesce(m.meeting_keys,{{EMPTY_STRINGS}}) AS meeting_keys,
  coalesce(CASE WHEN f.status='completed' THEN array_sort(array_distinct(f.measure_keys)) END,{{EMPTY_STRINGS}}) AS measure_keys,

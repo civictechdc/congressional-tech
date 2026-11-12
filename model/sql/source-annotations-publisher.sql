@@ -11,9 +11,14 @@ WITH kinds AS (
  FROM (SELECT DISTINCT source_id,document_kind FROM chosen_kinds) GROUP BY source_id
 ), titled AS (
  -- Link text says what a link does; a link word ("ZIP", "here", "Download PDF") is never a title.
+ -- Strip leading bullet/dash prefixes before testing link_word rules so '- hearing' or '- _16 (as modified' never shadow real titles.
  SELECT l.* FROM (SELECT pattern FROM title_rules WHERE kind='link_word') g
- RIGHT ANTI JOIN (SELECT * FROM publisher_links WHERE nullif(trim(text),'') IS NOT NULL) l
- ON regexp_like(regexp_replace(trim(l.text),'\s+',' ','g'),g.pattern)
+ RIGHT ANTI JOIN (
+  SELECT * EXCLUDE(text),nullif(trim(regexp_replace(text,'^\s*[-–—]+\s+','')),'') AS text
+  FROM publisher_links
+  WHERE nullif(trim(regexp_replace(text,'^\s*[-–—]+\s+','')),'') IS NOT NULL
+ ) l
+ ON regexp_like(regexp_replace(l.text,'\s+',' ','g'),g.pattern)
 ), labels AS (
  SELECT source_id,text,row_number() OVER(PARTITION BY source_id ORDER BY
  cast(first_good_at AS TIMESTAMP WITH TIME ZONE) NULLS LAST,context,page_body,link_index,split_position) AS preference

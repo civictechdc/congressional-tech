@@ -601,3 +601,130 @@ def test_cat2_8ai9_m3u8_captions_canonical_witness_keys_plausible_dates_soft404_
     assert m_shell['congress'] == 110
     assert m_shell['meeting_date'] == date(2007, 3, 15)
     assert m_shell['committees'] == [{'system_code': 'hsgo00', 'role': None}]
+
+
+def test_round2_review_regressions_dash_link_words_date_congress_404_and_page_reading_dedup(tmp_path):
+    """Round 2 delta review regressions:
+    1. Dash-prefixed link words ('- Click here', '- hearing', '- _16 (as modified') on publisher links
+       or after ColdFusion 'Hearing title' span stripping do not shadow real link titles or trip
+       model_invariants.generic_titles.
+    2. Stale/adjacent content_date on a document without a tagged Congress never poisons q.congress
+       before choosing document_date (neither inverting valid filename_date precedence nor publishing
+       contradictory (document_date=2025-02-10, congress=118)).
+    3. Clean Water Act / SOX Section 404 HTML titles ('404 Permitting: ...', '404(c) Veto Authority')
+       remain hidden=False while real 404 error titles ('404 | Error', '404 Not Found', '404') hide.
+    4. source_annotation_pages computes reading_title / reading_source once without duplicating the
+       4-regex heading rule across downstream SQL files.
+    """
+    raw = tmp_path / 'raw'
+    raw.mkdir()
+
+    # 1. Event index HTML linking a PDF first with '- hearing' and '- _16 (as modified' and then its real title,
+    #    plus ColdFusion HTML with '<h1><span>Hearing title</span> - hearing</h1>'.
+    target_pdf = _store_body(raw, b'%PDF-1.4\n% Target report PDF\n%%EOF\n')
+    index_html = _store_body(raw, (
+        '<html><head><title>Energy Oversight Index</title></head><body><main><h1>Energy Oversight Index</h1>'
+        '<p><a href="https://www.energy.senate.gov/imo/media/doc/grid-report.pdf">- hearing</a> '
+        '<a href="https://www.energy.senate.gov/imo/media/doc/grid-report.pdf">- _16 (as modified</a> '
+        '<a href="https://www.energy.senate.gov/imo/media/doc/grid-report.pdf">Grid Modernization Assessment</a></p>'
+        '<p>' + ('Committee oversight index text. ' * 45) + '</p></main></body></html>'
+    ).encode())
+    cf_dash_linkword_html = _store_body(raw, (
+        '<html><head><title>hearing | Hearings | United States Committee on Banking, Housing, and Urban Affairs</title></head>'
+        '<body><main><h1><span>Hearing title</span> - hearing</h1>'
+        '<p>' + ('Banking hearing body text. ' * 45) + '</p></main></body></html>'
+    ).encode())
+
+    # 2a. Valid filename_date 2024-06-12 (captured 2024-06-10) with stale content_date 2015-04-01 (no tagged Congress).
+    stale_content_html = _store_body(raw, (
+        '<html><head><title>June 2024 Hearing Notice</title>'
+        '<meta property="article:published_time" content="2015-04-01"/></head>'
+        '<body><main><h1>June 2024 Hearing Notice</h1><p>' + ('Notice body text. ' * 45) + '</p></main></body></html>'
+    ).encode())
+    # 2b. Valid filename_date 2025-02-10 (119th) with late-118th content_date 2024-12-15 (no tagged Congress).
+    cross_cong_html = _store_body(raw, (
+        '<html><head><title>February 2025 Hearing Notice</title>'
+        '<meta property="article:published_time" content="2024-12-15"/></head>'
+        '<body><main><h1>February 2025 Hearing Notice</h1><p>' + ('Notice body text. ' * 45) + '</p></main></body></html>'
+    ).encode())
+
+    # 3. Section 404 legitimate HTML vs true 404 HTML error pages.
+    cwa_404_html = _store_body(raw, (
+        '<html><head><title>404 Permitting: Clean Water Act Oversight</title></head>'
+        '<body><main><h1>404 Permitting: Clean Water Act Oversight</h1><p>' + ('Clean Water Act Section 404 permitting record. ' * 45) + '</p></main></body></html>'
+    ).encode())
+    cwa_404c_html = _store_body(raw, (
+        '<html><head><title>404(c) Veto Authority Review</title></head>'
+        '<body><main><h1>404(c) Veto Authority Review</h1><p>' + ('Section 404(c) oversight text. ' * 45) + '</p></main></body></html>'
+    ).encode())
+    err_404_html = _store_body(raw, (
+        '<html><head><title>404 | Senate Committee on Environment and Public Works</title></head>'
+        '<body><main><h1>404 | Senate Committee on Environment and Public Works</h1>'
+        '<p>' + ('Environment and Public Works Subcommittees Hearings Legislation Contact Press Releases. ' * 35) + '</p></main></body></html>'
+    ).encode())
+
+    receipt_rows = [
+        _fetch_row('https://www.energy.senate.gov/imo/media/doc/grid-report.pdf', '2024-06-10T12:00:00Z', target_pdf, media_type='application/pdf', sniffed_format='pdf'),
+        _fetch_row('https://www.energy.senate.gov/hearings/index-page', '2024-06-10T12:00:01Z', index_html, media_type='text/html', sniffed_format='html'),
+        _fetch_row('https://www.banking.senate.gov/hearings/cf-dash-linkword', '2024-06-10T12:00:02Z', cf_dash_linkword_html, media_type='text/html', sniffed_format='html'),
+        _fetch_row('https://www.energy.senate.gov/hearings/2024-06-12-hearing-notice.html', '2024-06-10T12:00:03Z', stale_content_html, media_type='text/html', sniffed_format='html'),
+        _fetch_row('https://www.energy.senate.gov/hearings/2025-02-10-hearing-notice.html', '2025-02-05T12:00:00Z', cross_cong_html, media_type='text/html', sniffed_format='html'),
+        _fetch_row('https://www.epw.senate.gov/hearings/cwa-404-permitting', '2024-06-10T12:00:04Z', cwa_404_html, media_type='text/html', sniffed_format='html'),
+        _fetch_row('https://www.epw.senate.gov/hearings/cwa-404c-veto', '2024-06-10T12:00:05Z', cwa_404c_html, media_type='text/html', sniffed_format='html'),
+        _fetch_row('https://www.epw.senate.gov/hearings/missing-404-page', '2024-06-10T12:00:06Z', err_404_html, media_type='text/html', sniffed_format='html'),
+    ]
+    receipt = raw / 'receipts/documents/2024-06-10/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    receipt.write_bytes(gzip.compress((''.join(json.dumps(r) + '\n' for r in receipt_rows)).encode(), mtime=0))
+    pin = tmp_path / 'receipt-pin.json'
+    pin.write_text(json.dumps(dict(path=str(receipt), **file_pin(receipt), producer='fixture creation')))
+
+    spec = rebuild_model_spec(tmp_path, raw=raw, receipts=[('receipts/documents/2024-06-10/slice.jsonl.gz', pin)], entities=True)
+    spicy = spicy_input(spicy_committees=[
+        dict(system_code='sseg00', parent_system_code=None, name='Committee on Energy and Natural Resources', chamber='Senate', committee_type='Standing', is_current=True, website_url='https://www.energy.senate.gov/', history=[]),
+        dict(system_code='ssbk00', parent_system_code=None, name='Committee on Banking, Housing, and Urban Affairs', chamber='Senate', committee_type='Standing', is_current=True, website_url='https://www.banking.senate.gov/', history=[]),
+        dict(system_code='ssev00', parent_system_code=None, name='Committee on Environment and Public Works', chamber='Senate', committee_type='Standing', is_current=True, website_url='https://www.epw.senate.gov/', history=[]),
+    ])
+    release = tmp_path / 'release'
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        build_release(
+            captures=spec['captures']['path'],
+            readings=spec['readings']['path'],
+            filename_readings=spec['filename_readings']['path'],
+            meeting_records=spec['meeting_records']['path'],
+            appearance_records=spec['appearance_records']['path'],
+            parser_versions=spec['parser_versions'],
+            catalog_version=spec['catalog_version'],
+            spicy_regs=spicy,
+            include_entities=True,
+            engine=engine,
+            output=release,
+            scratch=tmp_path / 'model',
+        )
+
+    listed = {row['filename']: row for row in pq.read_table(release / 'list.parquet').to_pylist()}
+    details = {row['filename']: row for row in pq.read_table(release / 'detail.parquet').to_pylist()}
+
+    # 1. Dash-prefixed '- hearing' and '- _16 (as modified' skipped so 'Grid Modernization Assessment' wins,
+    #    and ColdFusion '<h1><span>Hearing title</span> - hearing</h1>' rejected!
+    assert listed['grid-report.pdf']['title'] == 'Grid Modernization Assessment'
+    assert listed['cf-dash-linkword']['title'] not in ('hearing', '- hearing', 'Click here')
+
+    # 2. Valid filename_date beats stale content_date without Congress inversion or cross-Congress mismatch!
+    assert listed['2024-06-12-hearing-notice.html']['document_date'] == date(2024, 6, 12)
+    assert details['2024-06-12-hearing-notice.html']['document_date_source'] == 'filename'
+    assert listed['2024-06-12-hearing-notice.html']['congress'] is None
+
+    assert listed['2025-02-10-hearing-notice.html']['document_date'] == date(2025, 2, 10)
+    assert details['2025-02-10-hearing-notice.html']['document_date_source'] == 'filename'
+    assert listed['2025-02-10-hearing-notice.html']['congress'] is None
+
+    # 3. Section 404 titles stay visible; real 404 Not Found hides!
+    assert listed['cwa-404-permitting']['hidden'] is False
+    assert listed['cwa-404c-veto']['hidden'] is False
+    assert listed['missing-404-page']['hidden'] is True
+
+    # 4. Downstream SQL files project reading_title / reading_source from source_annotation_pages (no duplicated regex).
+    for rel in ('model/sql/source-annotations-final.sql', 'model/sql/document-recovery-normalized.sql', 'model/sql/recovered-copy-fills.sql'):
+        assert 'roundtables?|search' not in (ROOT / rel).read_text()
+

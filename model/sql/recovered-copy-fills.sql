@@ -9,21 +9,7 @@ WITH linked AS (
  JOIN source_files f ON f.source_id=r.source_id
  JOIN source_annotations a ON a.source_id=r.source_id
  -- The recovered body's own page title, read for these bodies only (candidate semi-join).
- LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,
-  CASE
-   WHEN nullif(trim(max(p.heading)),'') IS NOT NULL AND (
-    nullif(trim(max(p.title)),'') IS NULL
-    OR (
-     NOT regexp_like(trim(max(p.heading)),'(?i)^(?:(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+)?(?:(?:committee|subcommittee|select\s+committee|special\s+committee|joint\s+committee)\s+on\s+[^|–—-]+|hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?|roundtables?|search)$')
-     AND (
-      regexp_like(trim(max(p.title)),'(?i)^(?:hearings?|events?|news|press\s+releases?|home|committee\s+hearings?|calendar|business\s+meetings?|markups?)\s*[|–—-]')
-      OR (length(trim(max(p.heading)))>length(trim(max(p.title))) AND regexp_like(trim(max(p.title)),'(?i)^(?:(?:the\s+)?(?:united\s+states|u\.?s\.?)\s+)?(?:senate|house(?:\s+of\s+representatives)?)\s+(?:(?:select|special|permanent\s+select|joint)\s+)?committee\s+on\s+[^|:]+$'))
-      OR (length(trim(max(p.heading)))>=12 AND regexp_like(trim(max(p.title)),'(?:\.\.\.|…)\s*(?:\||$)'))
-     )
-    )
-   ) THEN trim(max(p.heading))
-   ELSE nullif(trim(max(p.title)),'')
-  END AS title
+ LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,max(p.reading_title) AS title
   FROM source_annotation_pages p JOIN (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM recovered_copy_links) s ON p.body_sha=s.sha256
   WHERE p.status='completed' GROUP BY p.body_sha) t ON t.body_sha=r.body_sha
 ), fields AS (
