@@ -273,7 +273,7 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
 
     m1_v1 = json.dumps(dict(committeeMeeting=dict(
         eventId='115538', congress=118, chamber='House', title='Oversight Hearing',
-        type='Hearing', meetingStatus='Scheduled', date='2023-05-10T10:00:00Z',
+        type='Hearing', meetingStatus='Canceled', date='2023-05-10T10:00:00Z',
         updateDate='2024-06-01T10:00:00Z',
         committees=[dict(systemCode='hsag00', name='Committee on Agriculture')],
         witnesses=[dict(name='Ms. Ann Lee', organization='GAO'),
@@ -285,7 +285,7 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
         committees=[dict(systemCode='hsag00', name='Committee on Agriculture')]))).encode()
     m1_v2 = json.dumps(dict(committeeMeeting=dict(
         eventId='115538', congress=118, chamber='House', title='Oversight Hearing, Rescheduled',
-        type='Hearing', meetingStatus='Postponed', date='2023-05-17T14:00:00Z',
+        type='Hearing', meetingStatus='Scheduled', date='2023-05-17T14:00:00Z',
         updateDate='2024-06-08T10:00:00Z',
         committees=[dict(systemCode='hsag00', name='Committee on Agriculture')],
         videos=[dict(name='Hearing Video', url='https://www.youtube.com/watch?v=dQw4w9WgXcQ')],
@@ -297,6 +297,7 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
         type='Hearing', meetingStatus='Scheduled', date='2023-05-20T10:00:00Z',
         updateDate='2024-06-08T11:00:00Z',
         committees=[dict(systemCode='hsag00', name='Committee on Agriculture')],
+        relatedItems=dict(bills=[dict(congress=118, type='HR', number='100')]),
         witnesses=[dict(name='Ms. Pat Roe', organization='USDA')]))).encode()
 
     doc_a = dict(url='https://docs.house.gov/meetings/AG/AG00/20230510/115538/testimony.pdf',
@@ -318,12 +319,27 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
         dict(url=f'{BASE}/115540?format=json', data=m3_new, format='json', media_type='application/json',
              family='congress/meetings', retrieved_at='2026-11-08T12:01:00Z'),
     ]
-    spicy = spicy_input(spicy_committees=[dict(
-        system_code='HSAG00', name='Committee on Agriculture', chamber='House',
-        committee_type='Standing', parent_system_code=None,
-        website_url='https://agriculture.house.gov/', is_current=True,
-        history=[dict(officialName='Committee on Agriculture',
-                      startDate='2021-01-03T05:00:00Z', endDate='2025-01-03T04:59:59Z')])])
+    spicy = spicy_input(
+        spicy_committees=[dict(
+            system_code='HSAG00', name='Committee on Agriculture', chamber='House',
+            committee_type='Standing', parent_system_code=None,
+            website_url='https://agriculture.house.gov/', is_current=True,
+            history=[dict(officialName='Committee on Agriculture',
+                          startDate='2021-01-03T05:00:00Z', endDate='2025-01-03T04:59:59Z')])],
+        spicy_congress_bills=[
+            dict(bill_id='118-hr-100', title='Farm Act', short_title='Farm Act', sponsor_bioguide_id=None,
+                 introduced_date='2023-01-10', latest_action_date='2023-01-10', latest_action_text='Introduced',
+                 stage='Introduced', policy_area='Agriculture', subjects=[], update_date='2023-01-10',
+                 update_date_including_text='2023-01-10', public_law_number=None, cosponsor_count=0,
+                 related_bills=[dict(bill_type='S', congress='118', latest_action_date='2023-01-12',
+                                     latest_action_text='Introduced', number='200',
+                                     relationship_details=[dict(identifiedBy='CRS', type='Companion bill')],
+                                     title='Senate Companion Farm Act')]),
+            dict(bill_id='118-s-200', title='Senate Companion Farm Act', short_title=None, sponsor_bioguide_id=None,
+                 introduced_date='2023-01-12', latest_action_date='2023-01-12', latest_action_text='Introduced',
+                 stage='Introduced', policy_area='Agriculture', subjects=[], update_date='2023-01-12',
+                 update_date_including_text='2023-01-12', public_law_number=None, cosponsor_count=0,
+                 related_bills=[])])
 
     def parse_pair(payload):
         d = sha256(payload).hexdigest()
@@ -360,6 +376,7 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
     cand_dates = [str(d) for d in pq.read_table(cand_dir / 'list.parquet', columns=['document_date'])['document_date'].to_pylist()]
     assert base_dates == ['2023-05-10', '2023-05-12']
     assert cand_dates == ['2023-05-12', '2023-05-17']
+    assert sorted(pq.read_table(cand_dir / 'bills.parquet', columns=['bill_id'])['bill_id'].to_pylist()) == ['118-hr-100', '118-s-200']
 
     def automatic(report):
         return automatic_causes(
