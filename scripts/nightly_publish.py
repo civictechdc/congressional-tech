@@ -119,10 +119,29 @@ class StepFailed(Exception):
         self.name, self.code = name, code
 
 
+# Owner Decision A1 (ct-64t4): keep 24 GiB / 2 threads on purpose in remote-runtime/limits.json.
+# W21 real-lake measurement proved DataFusion's FairSpillPool needs the 24 GiB pool (12 GiB query pool)
+# because 12 GiB / 4 threads starved GroupedHashAggregateStream[1] on step 90 "resolved_link_targets" at
+# 6.47 GiB RSS, while 24 GiB / 2 threads completed Release 2 cleanly at 9.77 GiB peak RSS — safely below
+# the 14 GiB RSS watchdog in .github/archive-jobs.json.
+REMOTE_RUNTIME_MEMORY_BYTES = 24 << 30
+REMOTE_RUNTIME_THREADS = 2
+
+
 def publish_env(main, worktree):
     remote_runtime = main / '.cache/archive-release/remote-runtime'
     credentials = json.loads((remote_runtime / 'credentials.json').read_text())
     remote = json.loads((remote_runtime / 'remote.json').read_text())
+    runtime_cfg = json.loads((remote_runtime / 'runtime.json').read_text())
+    limits_path = Path(runtime_cfg['limits'])
+    if not limits_path.is_absolute():
+        limits_path = (remote_runtime / limits_path).resolve()
+    limits = json.loads(limits_path.read_text())
+    if (limits.get('memory_bytes'), limits.get('compute_threads')) != (REMOTE_RUNTIME_MEMORY_BYTES, REMOTE_RUNTIME_THREADS):
+        raise SystemExit(
+            f'nightly refused: remote-runtime limits must stay {REMOTE_RUNTIME_MEMORY_BYTES} bytes / '
+            f'{REMOTE_RUNTIME_THREADS} threads (ct-64t4); got {limits.get("memory_bytes")} / {limits.get("compute_threads")}'
+        )
     account = re.fullmatch(r'https://([a-f0-9]{32})\.r2\.cloudflarestorage\.com',
                            remote['properties']['s3.endpoint']).group(1)
     env = dict(os.environ)

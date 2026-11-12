@@ -490,11 +490,11 @@ def _connect(spec,storage_factory,**options):
 
 def _engine_config(spec,*,need_engine):
     """The runtime config a maintenance step uses: the spec's, the remote runtime's, else the local job runtime's."""
-    config=(spec.get('engine_config') or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
-        or (os.environ.get('DOCSPEC_JOB_CONFIG') if need_engine else None))
+    from docspec_client.client import choose_runtime
+    config,choice=choose_runtime(spec.get('engine_config'),job_fallback=need_engine)
     if need_engine and (not isinstance(config,str) or not config.strip()):
         raise ValueError('Maintenance raw or lake operations require engine_config or DOCSPEC_RUNTIME_CONFIG')
-    return config
+    return config,choice
 
 
 def _retain_releases(spec,client,*,now,execute=False):
@@ -615,15 +615,18 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
     from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
     from congress_api.retention.r2 import configure_read_retries
     import congress_api.retention.raw_verifier as raw_verifier
-    from docspec_client.client import NativeDatasets
+    import sys
+    from docspec_client.client import NativeDatasets,runtime_record
     runtime_factory=runtime_factory or NativeDatasets.from_config
     current_time=_time(now or datetime.now(timezone.utc))
     need_engine=bool(spec.get('raw_verification') or spec.get('lake_maintenance'))
-    engine_config=_engine_config(spec,need_engine=need_engine)
+    engine_config,choice=_engine_config(spec,need_engine=need_engine)
+    ran=None
     raw_report=None
     lake_report=dict(decisions={},rebuilt={},purged=[])
     with (runtime_factory(engine_config) if engine_config else nullcontext(None)) as engine:
         if engine is not None:
+            ran=runtime_record(engine_config,choice,log=sys.stderr)
             engine.verify_runtime()
         client=_connect(spec,storage_factory,retries={'total_max_attempts':1})
         reader=ReadOnlyClient(client)
@@ -689,6 +692,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
         bucket=spec['bucket'],
         catalog_root=spec['catalog_root'],
         work=spec['work'],
+        engine_config=engine_config,
+        engine_runtime=ran,
         releases=releases,
         raw_verification=raw_report,
         lake_maintenance=lake_report,

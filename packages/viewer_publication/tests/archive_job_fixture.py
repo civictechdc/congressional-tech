@@ -106,15 +106,19 @@ def constructed_runtime(folder,*,limits=MAC_LIMITS,**settings):
     return runtime
 
 
-def runtime_ran(runtime,*,named=None):
+_SELF = object()
+
+
+def runtime_ran(runtime,*,named=_SELF):
     """What a run under `runtime` must record, read here from the files themselves: the file (a fallback when the
-    spec `named` another, missing, one; its reason is the test's to check), the binary and limits it names
-    resolved against its folder, each with the sha256 of its bytes, and the limits' values."""
+    spec `named` another, missing, one or omitted `engine_config`; its reason is the test's to check), the binary
+    and limits it names resolved against its folder, each with the sha256 of its bytes, and the limits' values."""
     from pathlib import Path
     runtime=Path(runtime).resolve();settings=json.loads(runtime.read_text())
     binary,limits=((runtime.parent/settings[name]).resolve() for name in ('binary','limits'))
     digest=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
-    chosen=dict(chosen='named',named=str(runtime),reason=None) if named is None else dict(chosen='fallback',named=str(named))
+    chosen=(dict(chosen='named',named=str(runtime),reason=None) if named is _SELF
+            else dict(chosen='fallback',named=None if named is None else str(named)))
     return dict(chosen,runtime=dict(path=str(runtime),sha256=digest(runtime)),binary=dict(path=str(binary),sha256=digest(binary)),
                 limits=dict(path=str(limits),sha256=digest(limits),values=json.loads(limits.read_text())))
 

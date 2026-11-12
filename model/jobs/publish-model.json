@@ -1,6 +1,5 @@
 {
   "version": 1,
-  "engine_config": "../../.runtime/docspec/runtime.json",
   "captures": {
     "kind": "native_table",
     "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures/metadata/00007-01a1b85f-b34d-7163-ade0-2e363f634c24.gz.metadata.json",

@@ -35,11 +35,11 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
 OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records')
-OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher'}
+OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions'}
-REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
+REQUIRED={'version',*TABLES,'parser_versions','catalog_version','output','scratch'}
 RELEASE_ID=re.compile('[a-f0-9]{12,64}')
 
 
@@ -130,7 +130,8 @@ def validate_spec(value,*,base):
     explorer=[value.get(name) is not None for name in EXPLORER_TABLES]+[bool(value.get('recording_decision_files'))]
     if any(explorer) and not (all(explorer) and all(value.get(name) is not None for name in ENTITY_TABLES)):
         raise ValueError('Explorer tables require video_records, committee_records and recording decisions together, with the entity tables')
-    for name in ['engine_config','output','scratch']:result[name]=_local(value[name],base)
+    for name in ['output','scratch']:result[name]=_local(value[name],base)
+    if 'engine_config' in value:result['engine_config']=_local(value['engine_config'],base)
     output,scratch=Path(result['output']),Path(result['scratch'])
     if output.is_relative_to(scratch) or scratch.is_relative_to(output):
         raise ValueError('Model output and scratch must be separate fresh directories')
@@ -422,7 +423,8 @@ def execute(spec,*,prior_links=None,base_retired=None,verified_files=None):
     if verified_files is None:verified_files=preflight(spec)
     from docspec_client.client import NativeDatasets,choose_runtime,runtime_record
     from viewer_publication.archive_model import build_release
-    engine_config,choice=choose_runtime(spec['engine_config'])
+    engine_config,choice=choose_runtime(spec.get('engine_config'))
+    if not engine_config:raise ValueError('Model execution requires engine_config or DOCSPEC_RUNTIME_CONFIG')
     with model_arguments(spec,verified_files=verified_files) as arguments:
         with NativeDatasets.from_config(engine_config) as engine:
             ran=runtime_record(engine_config,choice,log=sys.stderr)

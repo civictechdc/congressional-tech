@@ -478,7 +478,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     runtime_factory=runtime_factory or NativeDatasets.from_config
     storage_factory=storage_factory or connect_r2
     process_runner=process_runner or subprocess.run
-    engine_config,choice=choose_runtime(spec['_model']['engine_config'])
+    engine_config,choice=choose_runtime(spec['_model'].get('engine_config'))
+    if not engine_config:raise ValueError('Publication requires model engine_config or DOCSPEC_RUNTIME_CONFIG')
     settings,remote,endpoint,configuration_pins=publication_configuration(engine_config,bucket=spec['bucket'])
     require_end_to_end(end_to_end_runner)
     # Printed before any engine work, and sealed with the model's continuation in the candidate folder.

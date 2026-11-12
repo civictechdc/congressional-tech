@@ -197,12 +197,11 @@ def plan(spec, *, runtime_factory=None):
         return planned
     from tempfile import TemporaryDirectory
     from congress_api.lake.daily import inspect_targets, writer_field_paths
-    from docspec_client.client import NativeDatasets
+    from docspec_client.client import NativeDatasets, choose_runtime
 
     planned['writer_schemas'] = {name: sorted(writer_field_paths(name)) for name in spec['tables']}
-    engine_config = spec.get('engine_config') or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
-    if not engine_config and spec['catalog_root'] is not None and Path(spec['catalog_root']).exists():
-        engine_config = os.environ.get('DOCSPEC_JOB_CONFIG')
+    local_catalog = spec['catalog_root'] is not None and Path(spec['catalog_root']).exists()
+    engine_config, _ = choose_runtime(spec.get('engine_config'), job_fallback=local_catalog)
     if isinstance(engine_config, str) and engine_config.strip():
         factory = runtime_factory or NativeDatasets.from_config
         with factory(engine_config) as engine:
@@ -363,11 +362,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():
         raise ValueError('Backfill work directory must be fresh')
-    engine_config=(spec.get('engine_config')
-        or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
-        or os.environ.get('DOCSPEC_JOB_CONFIG'))
-    if not isinstance(engine_config,str) or not engine_config.strip():
-        raise ValueError('Backfill execution requires an explicit engine_config or DOCSPEC_RUNTIME_CONFIG')
+    import sys
     from tempfile import TemporaryDirectory
     from congress_api.lake import tables as lake_tables
     from congress_api.lake.daily import produce_daily, verify_target_schemas
@@ -375,13 +370,17 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
     from congress_api.retention.provenance_inventory import provenance_inventory
     from congress_api.retention.r2 import configure_read_retries
     from congress_shared.storage import connect_r2
-    from docspec_client.client import NativeDatasets
+    from docspec_client.client import NativeDatasets,choose_runtime,runtime_record
+    engine_config,choice=choose_runtime(spec.get('engine_config'),job_fallback=True)
+    if not isinstance(engine_config,str) or not engine_config.strip():
+        raise ValueError('Backfill execution requires an explicit engine_config or DOCSPEC_RUNTIME_CONFIG')
     runtime_factory=runtime_factory or NativeDatasets.from_config
     storage_factory=storage_factory or connect_r2
     check_targets=producer is None
     producer=producer or produce_daily
     decided_at=spec.get('decided_at') or datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     with runtime_factory(engine_config) as engine:
+        ran=runtime_record(engine_config,choice,log=sys.stderr)
         engine.verify_runtime()
         if check_targets:
             with TemporaryDirectory(prefix='backfill-preflight-') as temp:
@@ -426,6 +425,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
         bucket=spec['bucket'],
         catalog_root=spec['catalog_root'],
         work=spec['work'],
+        engine_config=engine_config,
+        engine_runtime=ran,
         production=production,
     )
     (work/'backfill-report.json').write_text(_dumps(report)+'\n',encoding='utf-8')

@@ -136,22 +136,37 @@ def _binary_digest(binary: Path) -> tuple[str, bytes]:
     return cached
 
 
-#: A job whose named runtime file is missing runs under the file this variable names (choose_runtime).
+#: A job whose named runtime file is absent or missing runs under the file this variable names (choose_runtime).
 RUNTIME_FALLBACK_ENV = 'DOCSPEC_RUNTIME_CONFIG'
+#: Backfill, import and maintenance fall back to the local job runtime only when neither a spec path nor RUNTIME_FALLBACK_ENV is set.
+JOB_FALLBACK_ENV = 'DOCSPEC_JOB_CONFIG'
 
 
-def choose_runtime(named: Path | str) -> tuple[Path | str, dict[str, Any]]:
+def choose_runtime(named: Path | str | None = None, *, job_fallback: bool = False) -> tuple[Path | str | None, dict[str, Any]]:
     """The runtime file a job runs under, and how it was chosen, for runtime_record.
 
-    `named` when a file is there; otherwise the file RUNTIME_FALLBACK_ENV names, when that is set and not empty.
-    This is the pipeline's fallback as it always was (the Mac nightly sets the variable to its remote runtime and
-    the model spec names a file the nightly lacks): kept unchanged until the owner decides it, and recorded (ct-64t4).
+    When `named` is given: `named`, unless `job_fallback` is false, the named file is absent on disk, and
+    RUNTIME_FALLBACK_ENV names one. When `named` is omitted: RUNTIME_FALLBACK_ENV when set and non-empty; else,
+    when `job_fallback` is true, JOB_FALLBACK_ENV when set and non-empty (ct-64t4, ct-rax4).
     """
     fallback = os.environ.get(RUNTIME_FALLBACK_ENV)
-    if not Path(named).exists() and fallback:
-        return fallback, dict(chosen='fallback', named=str(named),
-                              reason=f'no runtime file at the named path; {RUNTIME_FALLBACK_ENV} names this one')
-    return named, dict(chosen='named', named=str(named), reason=None)
+    has_named = named is not None and (not isinstance(named, str) or bool(named.strip()))
+    if has_named:
+        if not job_fallback and not Path(named).exists() and fallback:
+            return fallback, dict(chosen='fallback', named=str(named),
+                                  reason=f'no runtime file at the named path; {RUNTIME_FALLBACK_ENV} names this one')
+        return named, dict(chosen='named', named=str(named), reason=None)
+    if fallback and fallback.strip():
+        return fallback, dict(chosen='fallback', named=None,
+                              reason=f'no runtime file named; {RUNTIME_FALLBACK_ENV} names this one')
+    if job_fallback:
+        job = os.environ.get(JOB_FALLBACK_ENV)
+        if job and job.strip():
+            return job, dict(
+                chosen='fallback', named=None,
+                reason=f'no runtime file named and {RUNTIME_FALLBACK_ENV} is unset; {JOB_FALLBACK_ENV} names this one',
+            )
+    return None, dict(chosen=None, named=None, reason=None)
 
 
 def runtime_record(path: Path | str, choice: Mapping[str, Any], *, log: Any = None) -> dict[str, Any]:

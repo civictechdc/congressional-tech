@@ -238,6 +238,8 @@ def test_execute_fails_closed_before_deleting_releases_when_raw_verification_inp
         def verify_runtime(self):
             return {'verified': True}
 
+    from archive_job_fixture import constructed_runtime
+
     spec_payload = {
         'version': 1,
         'bucket': 'archive-fixture',
@@ -246,7 +248,7 @@ def test_execute_fails_closed_before_deleting_releases_when_raw_verification_inp
         'external_pins': [],
         'tables': {name: {'namespace': ['archive'], 'name': name} for name in ALL_TABLE_NAMES},
         'thresholds': {'file_count': 256, 'manifest_count': 64, 'scan_planning_seconds': 30.0},
-        'engine_config': str(tmp_path / 'runtime.json'),
+        'engine_config': str(constructed_runtime(tmp_path / 'stub-engine')),
         'raw_verification': {
             'captures': str(tmp_path / 'missing-captures.parquet'),
             'receipt_inventory': str(tmp_path / 'missing-receipt-inventory.json'),

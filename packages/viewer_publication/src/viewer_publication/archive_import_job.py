@@ -153,18 +153,19 @@ def execute(spec,*,runtime_factory=None):
     if work.exists() or work.is_symlink():raise ValueError('Import work directory must be fresh')
     schemas={name:_verified(name,item) for name,item in spec['tables'].items()}
     writer=_writer(spec)
-    engine_config=(spec.get('engine_config') or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
-        or os.environ.get('DOCSPEC_JOB_CONFIG'))
-    if not isinstance(engine_config,str) or not engine_config.strip():
-        raise ValueError('Import execution requires engine_config or DOCSPEC_RUNTIME_CONFIG')
+    import sys
     from congress_api.lake.maintenance import verify_generations
     from congress_api.lake.tables import TABLE_SPECS,WRITER_PROFILES,_job,append_rows,create_table,validate_catalog_authority
-    from docspec_client.client import NativeDatasets
+    from docspec_client.client import NativeDatasets,choose_runtime,runtime_record
+    engine_config,choice=choose_runtime(spec.get('engine_config'),job_fallback=True)
+    if not isinstance(engine_config,str) or not engine_config.strip():
+        raise ValueError('Import execution requires engine_config or DOCSPEC_RUNTIME_CONFIG')
     runtime_factory=runtime_factory or NativeDatasets.from_config
     report=dict(status='running',catalog_root=spec['catalog_root'],location=spec['location'],
-        definition=spec['definition'],provenance=spec['provenance'],tables={})
+        definition=spec['definition'],provenance=spec['provenance'],engine_config=engine_config,tables={})
     def save():(work/'import-report.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
     with runtime_factory(engine_config) as engine:
+        report['engine_runtime']=runtime_record(engine_config,choice,log=sys.stderr)
         engine.verify_runtime()
         validate_catalog_authority(engine,spec['catalog_root'])
         work.mkdir(parents=True)

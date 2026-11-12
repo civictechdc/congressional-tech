@@ -121,7 +121,7 @@ def job_roots(operation, spec_path, *, temp, nightly_work=None, env=None):
     if operation == 'publish':
         model_path = local(spec['model_spec']['path'])
         model = metadata(model_path)
-        explicit_config = local(model['engine_config'], model_path.parent)
+        explicit_config = local(model['engine_config'], model_path.parent) if model.get('engine_config') else None
         roots.update(model_output=local(model['output'], model_path.parent),
                      model_scratch=local(model['scratch'], model_path.parent))
         if spec.get('daily'):

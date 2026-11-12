@@ -443,6 +443,8 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     def never_storage(**_):
         events.append('storage')
         raise AssertionError('Storage must not be opened before engine verification')
+    from archive_job_fixture import constructed_runtime
+    stub_runtime=str(constructed_runtime(tmp_path/'stub-engine'))
     maint_spec=dict(
         version=1,
         bucket='archive-fixture',
@@ -451,7 +453,7 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         external_pins=[],
         tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES},
         thresholds=dict(file_count=256,manifest_count=64,scan_planning_seconds=30.0),
-        engine_config=str(tmp_path/'runtime.json'),
+        engine_config=stub_runtime,
         lake_maintenance=dict(observations={}),
     )
     with pytest.raises(ValueError,match='Runtime qualification failed'):
@@ -488,7 +490,7 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         tables={name:dict(namespace=['archive'],name=name) for name in (*ALL_TABLE_NAMES,'committee_records','playlist_records')},
         batch_size=100,
         max_batches=2,
-        engine_config=str(tmp_path/'runtime.json'),
+        engine_config=stub_runtime,
         producers=dict(appearance_records=dict(path=str(anchor),sha256=hashlib.sha256(anchor.read_bytes()).hexdigest(),
             size=anchor.stat().st_size)),
     )
@@ -585,11 +587,12 @@ def _maintenance_run(tmp_path,monkeypatch,*,execute,pin_old_during_verification=
         def __enter__(self):return self
         def __exit__(self,*_):pass
         def verify_runtime(self):return dict(verified=True)
+    from archive_job_fixture import constructed_runtime
     spec=dict(version=1,bucket='archive-fixture',catalog_root=None,work=str(tmp_path/'work'),external_pins=[],
         external_pins_source=str(pin_path),
         tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES},
         thresholds=dict(file_count=256,manifest_count=64,scan_planning_seconds=30.0),
-        engine_config=str(tmp_path/'runtime.json'),
+        engine_config=str(constructed_runtime(tmp_path/'stub-engine')),
         raw_verification=dict(captures=str(inputs/'captures.parquet'),
             receipt_inventory=str(inputs/'receipt-inventory.json'),
             verification_inventory=str(inputs/'verification-inventory.json'),apply_staged=True,body_workers=8),
