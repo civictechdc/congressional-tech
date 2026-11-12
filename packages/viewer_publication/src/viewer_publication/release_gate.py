@@ -358,8 +358,15 @@ def _epoch_us(moment):
     return ((moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)) - EPOCH) // timedelta(microseconds=1)
 
 
-def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work):
-    """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf); empty when it can.
+_HOUSE_XML_EVENT_PATTERNS = (
+    re.compile(r'(?i)^https?://docs[.]house[.]gov/meetings/[^/?#]+/[^/?#]+/[0-9]{8}/(?:hhrg|hmkp|hmtg)?([0-9]+)(?:/|$|[?#])'),
+    re.compile(r'(?i)[?&]eventid=([0-9]+)(?=$|[^0-9])'),
+)
+
+
+def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work, updated_events=(),
+                        candidate_receipt_keys=None):
+    """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf, ct-rhqw); empty when it can.
 
     The comparison shows only that the candidate is consistent with itself. Here every body the
     candidate cites for the first time (`release_comparison.new_citations`: cache files, witness
@@ -372,10 +379,12 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     byte-identical re-fetch names an old body in a new line) and fetched at the read's time. The
     comparison requires that time later than the live read's, so the capture line is too. So a
     made-up read, a read the live release already held and a read dated other than its line refuse.
-    One engine job, two joins of a few hundred keys to captures; the evidence file lists each
-    hash's receipts and each read's line. Cannot see: whether the body holds the published values,
-    or the raw receipt line (the capture mapping is trusted for hash and address; documents are
-    checked against raw).
+    When `updated_events` names Congress.gov meeting updates, the same job checks that no new
+    receipt delivered a new House meeting XML body for an updated meeting (a null-status,
+    unchanged-stamp House XML leaves no trace in `meetings.parquet`, yet leads title, date and
+    videos). One engine job; the evidence file lists each hash's receipts and each read's line.
+    Cannot see: whether the body holds the published values, or the raw receipt line (the capture
+    mapping is trusted for hash and address; documents are checked against raw).
     """
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
@@ -385,18 +394,50 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
         return ['automatic causes: citations moved, but the candidate cites no file or read the live release does not']
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
-    pq.write_table(pa.table({'sha': pa.array(cited, pa.string())}), work / 'cited-files.parquet')
+    cited_hex = [s for s in cited if re.fullmatch('[0-9a-f]{64}', s)]
+    pq.write_table(pa.table({'sha': pa.array(cited_hex, pa.string()),
+                             'sha_bin': pa.array([bytes.fromhex(s) for s in cited_hex], pa.binary(32))}),
+                   work / 'cited-files.parquet')
     pq.write_table(pa.table({f: pa.array([r[f] for r in reads], t) for f, t in
                              (('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()))}),
                    work / 'cited-reads.parquet')
-    found = run_job(work / 'citations', engine, inputs=[table_input('captures', _captures_source(captures)),
-        dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet')),
-        dict(name='cited_reads', kind='parquet', path=str(work / 'cited-reads.parquet'))], steps=[], outputs=[],
-        queries=[dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
-            JOIN captures c ON lower(encode(c.sha256,'hex'))=k.sha WHERE c.sha256 IS NOT NULL ORDER BY 1,2"""),
-                 dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
+    inputs = [table_input('captures', _captures_source(captures)),
+              dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet')),
+              dict(name='cited_reads', kind='parquet', path=str(work / 'cited-reads.parquet'))]
+    steps = []
+    queries = [dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
+            JOIN captures c ON c.sha256=k.sha_bin ORDER BY 1,2"""),
+               dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
             c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
-            AND c.capture_index=k.capture_index ORDER BY 1,2,3""")])
+            AND c.capture_index=k.capture_index ORDER BY 1,2,3""")]
+    if updated_events:
+        pq.write_table(pa.table({'receipt_key': pa.array(sorted(held), pa.string())}), work / 'held-receipts.parquet')
+        inputs.append(dict(name='held_receipts', kind='parquet', path=str(work / 'held-receipts.parquet')))
+        addr = "lower(coalesce(c.url,c.requested_url,c.context_url,''))"
+        has_sniffed = captures.get('kind') != 'parquet' or 'sniffed_format' in pq.read_schema(captures['path']).names
+        xml_fmt = f"({addr} LIKE '%.xml%' OR c.sniffed_format='xml')" if has_sniffed else f"{addr} LIKE '%.xml%'"
+        hx_pred = f"""c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
+              AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
+              AND coalesce(c.family,'')<>'house/witness-xml' AND {addr} NOT LIKE '%wlist%'
+              AND (c.family IN ('house/meeting-xml','house/Committees')
+                   OR ({addr} LIKE '%docs.house.gov%' AND {xml_fmt}))"""
+        if candidate_receipt_keys is not None:
+            pq.write_table(pa.table({'receipt_key': pa.array(sorted(set(candidate_receipt_keys) - held), pa.string())}),
+                           work / 'new-receipts.parquet')
+            inputs.append(dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')))
+            new_from = 'FROM new_receipts nr JOIN captures c ON c.receipt_key=nr.receipt_key WHERE'
+        else:
+            new_from = 'FROM held_receipts hr RIGHT JOIN captures c ON c.receipt_key=hr.receipt_key WHERE hr.receipt_key IS NULL AND'
+        steps += [
+            dict(name='new_hx', materialize=True,
+                 sql=f'SELECT DISTINCT c.sha256,c.receipt_key,{addr} AS addr {new_from} {hx_pred}'),
+            dict(name='new_hx_shas', materialize=True, sql='SELECT DISTINCT sha256 FROM new_hx'),
+            dict(name='live_hx', materialize=True,
+                 sql=f'SELECT DISTINCT s.sha256 FROM new_hx_shas s JOIN captures c ON c.sha256=s.sha256 '
+                     f'JOIN held_receipts hr ON hr.receipt_key=c.receipt_key WHERE {hx_pred}')]
+        queries.append(dict(name='house_xml', sql="""SELECT lower(encode(n.sha256,'hex')) AS sha,n.receipt_key,n.addr
+            FROM new_hx n LEFT JOIN live_hx l ON l.sha256=n.sha256 WHERE l.sha256 IS NULL ORDER BY 1,2,3"""))
+    found = run_job(work / 'citations', engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
     receipts = {}
     for row in found['files']:
         receipts.setdefault(row['sha'], []).append(row['receipt_key'])
@@ -422,6 +463,24 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
             reasons.append(f"automatic causes: read {where} requested {line['requested_url']}, not {read['source_url']}")
         elif read['retrieved_at'] is None or line['t'] != _epoch_us(read['retrieved_at']):
             reasons.append(f"automatic causes: read {where} is dated {read['retrieved_at']}, not its capture line's time")
+    if found.get('house_xml'):
+        updated_set = {int(e) for e in updated_events}
+        meetings_path = Path(candidate_dir) / 'meetings.parquet'
+        non_senate_update = True
+        if meetings_path.exists():
+            schema_names = set(pq.read_schema(meetings_path).names)
+            cols = [c for c in ('event_id', 'chamber', 'congress_gov_detail_observation') if c in schema_names]
+            mrows = [r for r in pq.read_table(meetings_path, columns=cols).to_pylist() if r.get('event_id') in updated_set]
+            non_senate_update = any(
+                (r.get('chamber') or '').lower() != 'senate' if 'chamber' in schema_names
+                else '/senate/' not in (((r.get('congress_gov_detail_observation') or {}).get('successful_read') or {}).get('source_url') or '').lower()
+                for r in mrows)
+        for row in found['house_xml']:
+            addr_val = row['addr'] or ''
+            ids_in_url = {int(m) for pat in _HOUSE_XML_EVENT_PATTERNS for m in pat.findall(addr_val)}
+            if (ids_in_url & updated_set) or (not ids_in_url and non_senate_update):
+                reasons.append(
+                    f"automatic causes: new House XML body {row['sha'][:16]} ({row['receipt_key']}) accompanies an updated meeting")
     (work / 'citation-trace.json').write_text(json.dumps(dict(live_receipts=len(held), files=receipts, reads=found['reads']),
                                                           indent=1, default=str) + '\n')
     return reasons
@@ -430,10 +489,12 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
 def _url_state_rules():
     """SQL giving one reason for a url_state row the new lines do not imply, NULL when they do.
 
-    Aliases: b (live row), c (candidate row), p (the address's new lines: n, and `good`, the time of
-    its newest line the model's own good-fetch steps call good), x (its newest new line, and the
-    interval the model's own band steps give it with the candidate's published meeting date).
-    Times compare as epoch microseconds. Every
+    Aliases: b (live row), c (candidate row), u (`url_pairs`, carrying `date_moved` for addresses
+    whose meeting date a Congress.gov update moved), p (the address's new lines: n, and `good`, the
+    time of its newest line the model's own good-fetch steps call good), x (its newest new line,
+    and the interval the model's own band steps give it with the candidate's published meeting
+    date), r (its newest live line and interval under the candidate's published meeting date, for
+    `date_moved` rows with no later new line). Times compare as epoch microseconds. Every
     condition is written to be true or false, never NULL, so a missing value cannot pass a rule.
     """
     n = 'coalesce(p.n,0)'
@@ -445,29 +506,34 @@ def _url_state_rules():
               'AND c.last_outcome IS NOT DISTINCT FROM x.o')
     band = ('x.interval_seconds IS NOT NULL AND epoch_us(c.next_attempt_at) IS NOT DISTINCT FROM '
             'x.t+x.interval_seconds*1000000')
+    recheck_band = ('r.interval_seconds IS NOT NULL AND r.t IS NOT DISTINCT FROM epoch_us(b.last_attempt) '
+                    'AND epoch_us(c.next_attempt_at) IS NOT DISTINCT FROM r.t+r.interval_seconds*1000000')
     # last_good_at as url-state.sql folds it: the later of the live value and the newest good line.
     good = ('epoch_us(c.last_good_at) IS NOT DISTINCT FROM CASE WHEN p.good IS NULL THEN epoch_us(b.last_good_at) '
             'ELSE greatest(p.good,coalesce(epoch_us(b.last_good_at),p.good)) END')
     has_pages = 'coalesce(len(c.linked_from),0)>0'
     wrong_band = 'next_attempt_at is not last_attempt plus the band of its published meeting date'
     # The band's date is anchored to the live release only where the live release had scheduled the
-    # address; a first schedule has no live value to keep.
+    # address (unless a Congress.gov meeting update moved that meeting's date); a first schedule has
+    # no live value to keep.
     date = ('recheck_meeting_date changed on an address the live release had scheduled',
-            'b.attempts>0 AND c.recheck_meeting_date IS DISTINCT FROM b.recheck_meeting_date')
+            'b.attempts>0 AND c.recheck_meeting_date IS DISTINCT FROM b.recheck_meeting_date AND NOT u.date_moved')
     pages = ('a page that linked a queued address is gone', 'NOT coalesce(list_has_all(c.linked_from,b.linked_from),false)')
     fetched = [
-        ('changed with no new line', f'{n}=0'),
+        ('changed with no new line', f'{n}=0 AND NOT u.date_moved'),
         ('attempts are not the live count plus the new lines', f'c.attempts IS DISTINCT FROM b.attempts+{n}'),
-        ('the newest new line has no time', 'x.t IS NULL'),
-        ('the newest new line ties the live last_attempt', 'b.last_attempt IS NOT NULL AND x.t=epoch_us(b.last_attempt)'),
-        ('last_attempt, last_status or last_outcome is not the newest new line', f'{later} AND NOT ({newest})'),
-        ('the latest attempt moved without a later new line', f"""NOT {later} AND (c.last_attempt IS DISTINCT FROM b.last_attempt
+        ('the newest new line has no time', f'{n}>0 AND x.t IS NULL'),
+        ('the newest new line ties the live last_attempt', f'{n}>0 AND b.last_attempt IS NOT NULL AND x.t=epoch_us(b.last_attempt)'),
+        ('last_attempt, last_status or last_outcome is not the newest new line', f'{n}>0 AND {later} AND NOT ({newest})'),
+        ('the latest attempt moved without a later new line', f"""{n}>0 AND NOT {later} AND (c.last_attempt IS DISTINCT FROM b.last_attempt
             OR c.last_status IS DISTINCT FROM b.last_status OR c.last_outcome IS DISTINCT FROM b.last_outcome
-            OR c.next_attempt_at IS DISTINCT FROM b.next_attempt_at)"""),
+            OR (NOT u.date_moved AND c.next_attempt_at IS DISTINCT FROM b.next_attempt_at))"""),
+        ('the latest attempt moved without a new line', f"""{n}=0 AND (c.last_attempt IS DISTINCT FROM b.last_attempt
+            OR c.last_status IS DISTINCT FROM b.last_status OR c.last_outcome IS DISTINCT FROM b.last_outcome)"""),
         ('last_good_at is not the later of the live value and the newest good new line', f'NOT ({good})'),
         date,
         ('an address with attempts names linking pages', has_pages),
-        (wrong_band, f'{later} AND NOT ({band})')]
+        (wrong_band, f'({n}>0 AND {later} AND NOT ({band})) OR (u.date_moved AND NOT ({n}>0 AND {later}) AND NOT ({recheck_band}))')]
     added = [
         ('attempts are not its new lines', f'c.attempts IS DISTINCT FROM {n}'),
         ('the newest new line has no time', 'x.t IS NULL'),
@@ -497,14 +563,23 @@ CAPTURE_COLUMNS = ('receipt_key', 'receipt_line', 'capture_index', 'mode', 'outc
 TRACE_COLUMNS = ('receipt_key', 'receipt_line', 'sha256')
 
 
-def capture_job(work, engine, captures, *, keys, new_receipts=(), candidate_state=None):
+def _recheck_step(step):
+    sql = step['sql']
+    for old in ('captures', 'url_state_lines', 'url_state_latest', 'url_state_ages', 'url_state_interval_candidates'):
+        sql = re.sub(rf'\b{old}\b', f'recheck_{old}', sql)
+    return dict(step, name=f"recheck_{step['name']}", sql=sql)
+
+
+def capture_job(work, engine, captures, *, keys, new_receipts=(), held_receipts=(), recheck_urls=(), candidate_state=None):
     """One engine job and one scan of the capture input, for the trace and the url_state proof.
 
     The scan keeps only CAPTURE_COLUMNS (TRACE_COLUMNS with no url_state part) of the rows in `new_receipts` or holding a body whose first
-    16 hex digits are in `keys`; both small sides are hash-built and the capture input is probed
+    16 hex digits are in `keys` (plus live captures of `recheck_urls` when a Congress.gov update
+    moved their meeting date); the small sides are hash-built and the capture input is probed
     once. Returns `trace`: the receipt lines of every traced body, in every receipt (a body the
     live release also read must show), and, given `candidate_state` (the candidate's url_state
-    file), `lines` and `newest` from the model's own steps over the new receipts' captures.
+    file), `lines` and `newest` from the model's own steps over the new receipts' captures (and
+    `rechecked` over live captures of `recheck_urls`).
     """
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
@@ -512,17 +587,34 @@ def capture_job(work, engine, captures, *, keys, new_receipts=(), candidate_stat
     from viewer_publication.archive_url_state import url_state_steps
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
-    pq.write_table(pa.table({'receipt_key': pa.array(sorted(new_receipts), pa.string())}), work / 'new-receipts.parquet')
-    pq.write_table(pa.table({'prefix': pa.array(sorted(keys), pa.string())}), work / 'traced-keys.parquet')
+    pq.write_table(pa.table({'new_key': pa.array(sorted(set(new_receipts)), pa.string())}), work / 'new-receipts.parquet')
+    pq.write_table(pa.table({'prefix': pa.array(sorted(set(keys)), pa.string())}), work / 'traced-keys.parquet')
     inputs = [table_input('lake_captures', _captures_source(captures)),
               dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')),
               dict(name='traced_keys', kind='parquet', path=str(work / 'traced-keys.parquet'))]
     columns = CAPTURE_COLUMNS if candidate_state is not None else TRACE_COLUMNS
-    steps = [dict(name='capture_rows', materialize=True, sql=f"""SELECT {','.join('c.' + c for c in columns)},
-        n.receipt_key IS NOT NULL AS new_line,k.prefix
-        FROM traced_keys k RIGHT JOIN (new_receipts n RIGHT JOIN lake_captures c ON c.receipt_key=n.receipt_key)
-          ON k.prefix=substr(lower(encode(c.sha256,'hex')),1,16)
-        WHERE n.receipt_key IS NOT NULL OR k.prefix IS NOT NULL""")]
+    live_recheck = bool(candidate_state is not None and recheck_urls)
+    if live_recheck:
+        pq.write_table(pa.table({'held_key': pa.array(sorted(set(held_receipts)), pa.string())}), work / 'held-receipts.parquet')
+        pq.write_table(pa.table({'recheck_url': pa.array(sorted(set(recheck_urls)), pa.string())}), work / 'recheck-urls.parquet')
+        inputs += [dict(name='held_receipts', kind='parquet', path=str(work / 'held-receipts.parquet')),
+                   dict(name='recheck_urls', kind='parquet', path=str(work / 'recheck-urls.parquet'))]
+        scan_sql = f"""SELECT {','.join('c.' + c for c in columns)},
+            n.new_key IS NOT NULL AS new_line,
+            (h.held_key IS NOT NULL AND r.recheck_url IS NOT NULL) AS live_recheck,k.prefix
+            FROM held_receipts h RIGHT JOIN (recheck_urls r RIGHT JOIN (traced_keys k RIGHT JOIN
+              (new_receipts n RIGHT JOIN lake_captures c ON c.receipt_key=n.new_key)
+              ON k.prefix=substr(lower(encode(c.sha256,'hex')),1,16))
+              ON c.requested_url=r.recheck_url) ON c.receipt_key=h.held_key
+            WHERE n.new_key IS NOT NULL OR k.prefix IS NOT NULL
+              OR (h.held_key IS NOT NULL AND r.recheck_url IS NOT NULL)"""
+    else:
+        scan_sql = f"""SELECT {','.join('c.' + c for c in columns)},
+            n.new_key IS NOT NULL AS new_line,k.prefix
+            FROM traced_keys k RIGHT JOIN (new_receipts n RIGHT JOIN lake_captures c ON c.receipt_key=n.new_key)
+              ON k.prefix=substr(lower(encode(c.sha256,'hex')),1,16)
+            WHERE n.new_key IS NOT NULL OR k.prefix IS NOT NULL"""
+    steps = [dict(name='capture_rows', materialize=True, sql=scan_sql)]
     queries = [dict(name='trace', sql="""SELECT DISTINCT prefix,receipt_key,receipt_line,lower(encode(sha256,'hex')) AS sha
         FROM capture_rows WHERE prefix IS NOT NULL ORDER BY 1,2,3""")]
     if candidate_state is not None:
@@ -544,10 +636,89 @@ def capture_job(work, engine, captures, *, keys, new_receipts=(), candidate_stat
             dict(name='newest', sql="""SELECT x.requested_url,arrow_cast(x.retrieved_at,'Int64') AS t,
                 cast(x.http_status AS INT) AS s,x.outcome AS o,i.interval_seconds
                 FROM url_state_latest x LEFT JOIN url_state_intervals i ON i.requested_url=x.requested_url""")]
+        if live_recheck:
+            steps += [dict(name='recheck_captures', materialize=True,
+                           sql=f"SELECT {','.join(CAPTURE_COLUMNS)} FROM capture_rows WHERE live_recheck"),
+                      *(_recheck_step(model[name]) for name in (
+                          'url_state_lines', 'url_state_latest', 'url_state_ages',
+                          'url_state_interval_candidates', 'url_state_intervals'))]
+            queries.append(dict(name='rechecked', sql="""SELECT x.requested_url,arrow_cast(x.retrieved_at,'Int64') AS t,
+                i.interval_seconds FROM recheck_url_state_latest x
+                LEFT JOIN recheck_url_state_intervals i ON i.requested_url=x.requested_url"""))
     return run_job(work / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
 
 
-def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, keys=()):
+def _side_url_meetings(d, side):
+    """`(url, event_id, meeting_date)` pairs for `moved_url_candidates` on `side` (`base` or `candidate`),
+    mirroring `url_state_meeting_dates` (`archive_model.py`, `source-annotations-addresses.sql`)."""
+    parts = [f"""SELECT u.url,m.event_id,m.meeting_date
+        FROM moved_url_candidates u JOIN {side}_meetings m ON m.event_id=coalesce(
+            try_cast(nullif(regexp_extract(u.url,'(?i)/committee-meeting/[0-9]+/[a-z]+/([0-9]+)',1),'') AS BIGINT),
+            try_cast(nullif(regexp_extract(u.url,'(?i)[?&]eventid=([0-9]+)',1),'') AS BIGINT),
+            try_cast(nullif(regexp_extract(u.url,'(?i)^https?://docs[.]house[.]gov/meetings/[^/]+/[^/]+/[0-9]{{8}}/(?:HHRG|HMKP|HMTG)?([0-9]+)(?:/|$)',1),'') AS BIGINT),
+            try_cast(nullif(regexp_extract(u.url,'(?i)^https?://(?:www[.])?congress[.]gov/[0-9]+/meeting/(?:house|senate|joint)/([0-9]+)(?:/|$)',1),'') AS BIGINT))
+        WHERE m.meeting_date IS NOT NULL"""]
+    doc_refs = d.arrow_types(side, 'meetings').get('document_references')
+    if doc_refs is not None and (pa.types.is_list(doc_refs) or pa.types.is_large_list(doc_refs)):
+        url_expr = ('ref.url' if pa.types.is_struct(doc_refs.value_type) and doc_refs.value_type.get_field_index('url') >= 0
+                    else 'ref')
+        parts.append(f"""SELECT u.url,m.event_id,m.meeting_date FROM moved_url_candidates u
+            JOIN (SELECT event_id,meeting_date,{url_expr} AS doc_url
+                  FROM (SELECT event_id,meeting_date,unnest(document_references) AS ref FROM {side}_meetings
+                        WHERE meeting_date IS NOT NULL AND document_references IS NOT NULL)) m
+              ON u.url=m.doc_url""")
+    if (d.has(side, 'sources') and d.has(side, 'list')
+            and {'list_row', 'url'} <= set(d.columns(side, 'sources'))
+            and 'meeting_keys' in d.columns(side, 'list')):
+        parts.append(f"""SELECT u.url,m.event_id,m.meeting_date FROM moved_url_candidates u
+            JOIN {side}_sources s ON u.url=s.url
+            JOIN (SELECT file_row_number AS list_row,try_cast(unnest(meeting_keys) AS BIGINT) AS event_id
+                  FROM {side}_list WHERE meeting_keys IS NOT NULL) l ON s.list_row=l.list_row
+            JOIN {side}_meetings m ON m.event_id=l.event_id
+            WHERE m.meeting_date IS NOT NULL""")
+    return f"SELECT DISTINCT url,event_id,meeting_date FROM ({' UNION ALL '.join(parts)})"
+
+
+def _mark_moved_meeting_dates(d, updated_events):
+    """Set `url_pairs.date_moved` where a Congress.gov meeting update moved the effective
+    `recheck_meeting_date` from `b.recheck_meeting_date` to `c.recheck_meeting_date` (ct-rhqw).
+    Returns the `url` set of `date_moved` rows so `capture_job` can verify live bands."""
+    if not updated_events or not (d.has('base', 'meetings') and d.has('candidate', 'meetings')):
+        return set()
+    if not {'event_id', 'meeting_date'} <= set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings')):
+        return set()
+    d.table('moved_url_candidates',
+            'SELECT url FROM url_pairs WHERE b.attempts>0 AND b.recheck_meeting_date IS DISTINCT FROM c.recheck_meeting_date')
+    if not d.one('SELECT count(*) FROM moved_url_candidates'):
+        return set()
+    d.table('base_url_meetings', _side_url_meetings(d, 'base'))
+    d.table('cand_url_meetings', _side_url_meetings(d, 'candidate'))
+    ev_list = ','.join(str(int(e)) for e in updated_events)
+    fallback = "try_strptime(nullif(regexp_extract(u.url,'(?i)^https?://docs[.]house[.]gov/meetings/[^/]+/[^/]+/([0-9]{8})/',1),''),'%Y%m%d')::DATE"
+    d.table('moved_url_verified', f"""WITH delta AS (
+          SELECT * FROM base_url_meetings EXCEPT SELECT * FROM cand_url_meetings
+          UNION ALL
+          SELECT * FROM cand_url_meetings EXCEPT SELECT * FROM base_url_meetings),
+        eff AS (
+          SELECT u.url,
+            coalesce((SELECT min(meeting_date) FROM base_url_meetings b WHERE b.url=u.url),{fallback}) AS old_eff,
+            coalesce((SELECT min(meeting_date) FROM cand_url_meetings c WHERE c.url=u.url),{fallback}) AS new_eff
+          FROM moved_url_candidates u)
+        SELECT p.url FROM url_pairs p JOIN eff e ON e.url=p.url
+        WHERE p.b.attempts>0
+          AND EXISTS (SELECT 1 FROM delta d WHERE d.url=p.url)
+          AND NOT EXISTS (SELECT 1 FROM delta d WHERE d.url=p.url AND d.event_id NOT IN ({ev_list}))
+          AND e.old_eff IS DISTINCT FROM e.new_eff
+          AND p.b.recheck_meeting_date IS NOT DISTINCT FROM e.old_eff
+          AND p.c.recheck_meeting_date IS NOT DISTINCT FROM e.new_eff""")
+    verified = {u for (u,) in d.rows('SELECT url FROM moved_url_verified')}
+    if verified:
+        d.con.execute("""CREATE OR REPLACE TEMP TABLE url_pairs AS
+            SELECT u.* REPLACE ((u.url IN (SELECT url FROM moved_url_verified)) AS date_moved) FROM url_pairs u""")
+    return verified
+
+
+def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, keys=(), held_receipts=(), updated_events=()):
     """Check a capture night's url_state rows against the receipts new to the release (ct-9j3z).
 
     Returns (reasons, summary, page_keys, lines, trace). reasons is empty when every changed or
@@ -563,14 +734,19 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     the candidate's published recheck_meeting_date. So the gate keeps no second copy of the fold or
     of the band rule; what makes this a check is its inputs: lines, times, statuses and families
     come from the capture table, which the candidate does not control, every line is confirmed in
-    raw by the caller, and a meeting date the live release published must be kept.
+    raw by the caller, and a meeting date the live release published must be kept unless a
+    Congress.gov meeting update in `updated_events` moved that meeting's date (`_mark_moved_meeting_dates`),
+    in which case `capture_job` also verifies the recomputed band against `held_receipts` (ct-rhqw).
     Per address (`_url_state_rules`):
-      fetched, before or now: at least one new line; attempts = live + new lines; when the newest
-        new line is later than the live last_attempt (a tie refuses) it sets last_attempt,
-        last_status and last_outcome, and next_attempt_at = last_attempt + its band; otherwise none
-        of those moves; last_good_at is the later of the live value and the newest new line the
+      fetched, before or now: at least one new line (unless its meeting date moved under `updated_events`);
+        attempts = live + new lines; when the newest new line is later than the live last_attempt
+        (a tie refuses) it sets last_attempt, last_status and last_outcome, and next_attempt_at =
+        last_attempt + its band; otherwise last_attempt, last_status and last_outcome do not move
+        (and next_attempt_at moves only to last_attempt + its band under the updated meeting date);
+        last_good_at is the later of the live value and the newest new line the
         model's own good-fetch steps (good-fetches.sql, url_state_good_lines) call good;
-        recheck_meeting_date equals the live value when the live release had scheduled the address;
+        recheck_meeting_date equals the live value when the live release had scheduled the address
+        (or the updated meeting date when a Congress.gov update moved it);
         linked_from is empty; every other column is unchanged.
       added with attempts: the same with no live values, so its meeting date is taken as published;
         at most AUTOMATIC_FIRST_SCHEDULE_CAP such first schedules carrying a date in one night.
@@ -600,24 +776,30 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
         return missing, {}, set(), [], None
     common = sorted(columns['base'] & columns['candidate'] - {'requested_url'})
     # The one join of the two files: changed and added rows, the live row `b` and the candidate's `c`.
-    d.table('url_pairs', f"""SELECT c.requested_url AS url,b,c FROM candidate_url_state c
+    d.table('url_pairs', f"""SELECT c.requested_url AS url,b,c,false AS date_moved FROM candidate_url_state c
         LEFT JOIN base_url_state b ON b.requested_url=c.requested_url
         WHERE b.requested_url IS NULL OR {' OR '.join(f'b.{column} IS DISTINCT FROM c.{column}' for column in common)}""")
+    recheck_urls = _mark_moved_meeting_dates(d, updated_events)
     pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(c.linked_from) AS k FROM url_pairs WHERE c.attempts=0)
         ANTI JOIN (SELECT url,unnest(b.linked_from) AS k FROM url_pairs WHERE b.requested_url IS NOT NULL) USING(url,k)""")}
     dated = d.one('SELECT count(*) FROM url_pairs WHERE c.attempts>0 AND coalesce(b.attempts,0)=0 AND c.recheck_meeting_date IS NOT NULL')
     result = capture_job(work, engine, captures, keys=set(keys) | pages, new_receipts=new_receipts,
+                         held_receipts=held_receipts, recheck_urls=recheck_urls,
                          candidate_state=Path(candidate_dir) / 'url_state.parquet')
     d.con.register('url_new_lines', pa.Table.from_pylist(result['lines'], schema=pa.schema([
         ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('requested_url', pa.string()), ('t', pa.int64()), ('good', pa.bool_())])))
     d.con.register('url_newest', pa.Table.from_pylist(result['newest'], schema=pa.schema([
         ('requested_url', pa.string()), ('t', pa.int64()), ('s', pa.int32()), ('o', pa.string()), ('interval_seconds', pa.int64())])))
+    d.con.register('url_rechecked', pa.Table.from_pylist(result.get('rechecked', []), schema=pa.schema([
+        ('requested_url', pa.string()), ('t', pa.int64()), ('interval_seconds', pa.int64())])))
     d.table('url_rows', f"""WITH p AS (SELECT requested_url,count(*) AS n,
           max(t) FILTER (WHERE good) AS good FROM url_new_lines GROUP BY 1)
         SELECT u.url,b.requested_url IS NOT NULL AS live,c.attempts>0 AS attempted,
           {''.join(f'b.{column} IS DISTINCT FROM c.{column} AS "moved {column}",' for column in common if column in URL_STATE_COLUMNS)}
           {_url_state_rules()} AS reason
-        FROM url_pairs u LEFT JOIN p ON p.requested_url=u.url LEFT JOIN url_newest x ON x.requested_url=u.url""")
+        FROM url_pairs u LEFT JOIN p ON p.requested_url=u.url
+        LEFT JOIN url_newest x ON x.requested_url=u.url
+        LEFT JOIN url_rechecked r ON r.requested_url=u.url""")
     reasons = [f'automatic causes: url_state: {count} rows: {reason} (first {urls})' for reason, count, urls in d.rows(
         'SELECT reason,count(*),list(url ORDER BY url)[1:3] FROM url_rows WHERE reason IS NOT NULL GROUP BY 1 ORDER BY 1')]
     reasons += over_cap(dated, 'first schedules with a meeting date', AUTOMATIC_FIRST_SCHEDULE_CAP)
@@ -632,6 +814,210 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     summary['first schedules with a meeting date'] = [dated, AUTOMATIC_FIRST_SCHEDULE_CAP]
     lines = [(r['receipt_key'], r['receipt_line'], r['requested_url']) for r in result['lines']]
     return reasons, summary, pages, lines, result['trace']
+
+
+MEETING_UPDATES = 'meeting-updates'  # the morning report's file stem, beside the gate report (ct-rhqw)
+# Meeting columns every read moves; the report names them only in its count of meetings.
+QUIET = ('congress_gov_detail_observation', 'congress_gov_updated', 'publisher_status_observations')
+SHOWN = ('event_id', 'title', 'meeting_date', 'publisher_status', 'document_references', 'videos', 'sittings')
+
+
+def _sitting(value):
+    """One sitting as the report shows it: its start and the room or place."""
+    if not isinstance(value, dict):
+        return str(value)
+    start = value.get('start')
+    if hasattr(start, 'astimezone') and getattr(start, 'tzinfo', None) is not None:
+        start = start.astimezone(timezone.utc)
+    when = '' if start is None else start.strftime('%Y-%m-%d %H:%MZ') if hasattr(start, 'strftime') else str(start)
+    where = str(value['place']) if value.get('place') else ' '.join(
+        str(value[k]) for k in ('room', 'building', 'address') if value.get(k))
+    return f'{when} {where}'.strip() or '(unnamed)'
+
+
+def _link(value):
+    """A document or video link as the report shows it: its name, or its address."""
+    if isinstance(value, dict):
+        return value.get('name') or value.get('description') or value.get('url') or '(unnamed)'
+    return str(value)
+
+
+def _multiset_moved(before, after):
+    """The items of `before` not matched one for one in `after` (whole records, so a renamed link or a
+    repeated entry shows)."""
+    rest, out = [json.dumps(a, sort_keys=True, default=str) for a in after], []
+    for item in before:
+        key = json.dumps(item, sort_keys=True, default=str)
+        if key in rest:
+            rest.remove(key)
+        else:
+            out.append(item)
+    return out
+
+
+def meeting_updates(report, base_dir, candidate_dir):
+    """The morning report's entries (ct-rhqw): for each Congress.gov meeting the comparison set apart as
+    updated (`release_comparison.updated_meetings`), what changed between the live release and the
+    candidate: title, date and status as they were and are; Congress.gov witnesses added and removed
+    (by name and organization) and the live witness keys the candidate map does not resolve to one
+    witness; document links, videos and sittings added and removed, compared as whole records; and
+    any other column that moved. Reads the two releases' meetings, witnesses and map for those
+    meetings only."""
+    import duckdb
+    ids = report['files'].get('meetings.parquet', {}).get('congress_gov_updates') or []
+    if not ids:
+        return []
+    con = duckdb.connect()
+    con.execute('SET threads=1')
+    events, occasions = ','.join(str(int(i)) for i in ids), ','.join(f"'meeting:{int(i)}'" for i in ids)
+    rows = lambda path, where: con.execute(f"SELECT * FROM read_parquet('{path}') WHERE {where}").to_arrow_table().to_pylist()
+    def side(directory):
+        directory = Path(directory)
+        meetings = {r['event_id']: r for r in rows(directory / 'meetings.parquet', f'event_id IN ({events})')}
+        people = {}
+        if (directory / 'witnesses.parquet').exists():
+            for w in rows(directory / 'witnesses.parquet', f"source='congress_gov' AND occasion IN ({occasions})"):
+                name = (w.get('name') or '(unnamed)') + (f" ({w['organization']})" if w.get('organization') else '')
+                people.setdefault(int(w['occasion'].split(':')[1]), []).append((w.get('display_order') or 0, w['witness_key'], name))
+        return meetings, {event: sorted(found) for event, found in people.items()}
+    (old, old_people), (new, new_people) = side(base_dir), side(candidate_dir)
+    base_dir, candidate_dir = Path(base_dir), Path(candidate_dir)
+    quote = lambda keys: ','.join("'" + str(k).replace("'", "''") + "'" for k in keys)
+    lost = {}
+    old_keys = {key: (event, name) for event, found in old_people.items() for _, key, name in found}
+    hist_keys = {}
+    if (base_dir / 'witness_key_map.parquet').exists():
+        map_cols = set(pq.read_schema(base_dir / 'witness_key_map.parquet').names)
+        if {'old_key', 'status', 'occasion', 'source'} <= map_cols:
+            for r in rows(base_dir / 'witness_key_map.parquet', f"source='congress_gov' AND occasion IN ({occasions})"):
+                if r['old_key'] not in old_keys:
+                    hist_keys[r['old_key']] = (int(r['occasion'].split(':')[1]), 'historical', r['status'] == 'unambiguous')
+    tracked = [(k, ev, name, True) for k, (ev, name) in old_keys.items()] + [
+        (k, ev, label, ok) for k, (ev, label, ok) in hist_keys.items()]
+    if tracked:
+        current_by_event = {event: {key for _, key, _ in found} for event, found in new_people.items()}
+        cand_map = ({r['old_key']: r for r in rows(candidate_dir / 'witness_key_map.parquet', f"old_key IN ({quote([k for k, *_ in tracked])})")}
+                    if (candidate_dir / 'witness_key_map.parquet').exists() else {})
+        targets = {m['witness_key'] for m in cand_map.values() if m.get('witness_key')} | {k for k, *_ in tracked}
+        published = ({r['witness_key'] for r in rows(candidate_dir / 'witnesses.parquet', f'witness_key IN ({quote(targets)})')}
+                     if targets and (candidate_dir / 'witnesses.parquet').exists() else set())
+        collisions = set()
+        check_targets = ({m['witness_key'] for m in cand_map.values() if m.get('status') == 'unambiguous' and m.get('witness_key') in published}
+                         | {k for keys in current_by_event.values() for k in keys})
+        if check_targets and (candidate_dir / 'witness_key_map.parquet').exists() and (candidate_dir / 'witnesses.parquet').exists():
+            from viewer_publication.release_comparison import witness_collision_sql
+            con.execute(f"""CREATE TEMP VIEW rc_targets AS SELECT m.old_key,m.witness_key
+              FROM read_parquet('{candidate_dir / 'witness_key_map.parquet'}') m
+              JOIN read_parquet('{candidate_dir / 'witnesses.parquet'}') w USING(witness_key)
+              WHERE m.status='unambiguous' AND m.witness_key IN ({quote(check_targets)})""")
+            bw_rel = f"read_parquet('{base_dir / 'witnesses.parquet'}')" if (base_dir / 'witnesses.parquet').exists() else None
+            bm_path = base_dir / 'witness_key_map.parquet'
+            bm_ok = bm_path.exists() and {'old_key', 'witness_key', 'status'} <= set(pq.read_schema(bm_path).names)
+            bm_rel = f"read_parquet('{bm_path}')" if bm_ok else None
+            collisions = {r[0] for r in con.execute(witness_collision_sql(
+                rc_rel='rc_targets', base_witnesses_rel=bw_rel, base_map_rel=bm_rel, has_base_map_cols=bm_ok)).fetchall()}
+        for key, event, label, was_unambiguous in tracked:
+            on_event = current_by_event.get(event, set())
+            if key in on_event:
+                if key in collisions:
+                    lost.setdefault(event, []).append(f'{key} ({label}): collides on {key}')
+                continue
+            if not was_unambiguous:
+                if key not in cand_map and key not in published:
+                    lost.setdefault(event, []).append(f'{key} ({label}): no map row')
+                continue
+            m = cand_map.get(key)
+            if m is None:
+                reason = f'not on meeting:{event}' if key in published else 'no map row'
+                lost.setdefault(event, []).append(f'{key} ({label}): {reason}')
+            elif m['status'] != 'unambiguous':
+                lost.setdefault(event, []).append(f"{key} ({label}): {m['status']}")
+            else:
+                wk = m.get('witness_key')
+                if not wk or wk not in published:
+                    lost.setdefault(event, []).append(f'{key} ({label}): successor {wk} not published')
+                elif wk not in on_event or (m.get('occasion') is not None and m.get('occasion') != f'meeting:{event}') or (
+                        m.get('source') is not None and m.get('source') != 'congress_gov'):
+                    lost.setdefault(event, []).append(f'{key} ({label}): successor {wk} not on meeting:{event}')
+                elif wk in collisions:
+                    lost.setdefault(event, []).append(f'{key} ({label}): collides on {wk}')
+    result = []
+    for event in ids:
+        now, was = new[event], old.get(event)
+        entry = dict(event_id=event, title=now.get('title'), meeting_date=str(now['meeting_date']) if now.get('meeting_date') else None,
+                     first_stated=was is None)
+        for key in ('title', 'meeting_date', 'publisher_status'):
+            if was is not None and was.get(key) != now.get(key):
+                entry[key + '_was'] = None if was.get(key) is None else str(was.get(key))
+                entry[key + '_now'] = None if now.get(key) is None else str(now.get(key))
+        for key, label, show in (('document_references', 'documents', _link), ('videos', 'videos', _link), ('sittings', 'sittings', _sitting)):
+            before, after = (was or {}).get(key) or [], now.get(key) or []
+            entry[label + '_added'] = [show(v) for v in _multiset_moved(after, before)]
+            entry[label + '_removed'] = [show(v) for v in _multiset_moved(before, after)]
+        people_before = [name for _, _, name in old_people.get(event, [])]
+        people_after = [name for _, _, name in new_people.get(event, [])]
+        entry['witnesses_added'] = _multiset_moved(people_after, people_before)
+        entry['witnesses_removed'] = _multiset_moved(people_before, people_after)
+        entry['keys_lost'] = sorted(lost.get(event, []))
+        entry['also_changed'] = sorted(k for k in now if k not in (*SHOWN, *QUIET) and was is not None and was.get(k) != now.get(k))
+        result.append(entry)
+    return result
+
+
+def _plural(n, word):
+    return f'{n} {word}' + ('' if n == 1 else 'es' if word.endswith('s') else 's')
+
+
+def write_meeting_updates(report, base_dir, candidate_dir, folder, refused=()):
+    """Write the morning report as `meeting-updates.txt` (plain, one block per meeting) and
+    `meeting-updates.json` (the entries, whether the release check cleared, and one summary `line` for
+    the nightly summary) into `folder`, when the comparison names any Congress.gov meeting update. A
+    night the gates `refused` says so first, with its reasons: its updates waited, none published.
+    Later publication steps can still stop a cleared night; the nightly summary's status says so.
+    Returns the line, or None."""
+    entries = meeting_updates(report, base_dir, candidate_dir)
+    if not entries:
+        return None
+    count = _plural(len(entries), 'Congress.gov meeting update')
+    pair = f"{report['base_release'][:12]} to {report['candidate_release'][:12]}"
+    if refused:
+        text = [f'STOPPED at the release check, nothing published ({pair}): {count} waited, for these reasons (ct-rhqw):',
+                *(f'  {reason}' for reason in list(refused)[:10]), *([f'  and {len(refused) - 10} more'] if len(refused) > 10 else []), '']
+    else:
+        text = [f'Cleared the release check: {count} ({pair}, ct-rhqw).', '']
+    parts = []
+    for e in entries:
+        head = f"{e['event_id']} {e['title'] or '(no title)'} ({e['meeting_date'] or 'no date'})"
+        text.append(head + (' - first stated' if e['first_stated'] else ''))
+        changed = ['new'] if e['first_stated'] else []
+        for key, label in (('title', 'title'), ('meeting_date', 'date'), ('publisher_status', 'status')):
+            if key + '_was' in e:
+                text.append(f"  {label}: {e[key + '_was']} -> {e[key + '_now']}")
+                changed.append(label)
+        for key, noun in (('witnesses', 'witness'), ('documents', 'document'), ('videos', 'video'), ('sittings', 'sitting')):
+            for direction, sign in (('added', '+'), ('removed', '-')):
+                found = e[f'{key}_{direction}']
+                if found:
+                    text.append(f'  {key} {direction}: ' + '; '.join(found))
+                    changed.append(sign + _plural(len(found), noun))
+        if e['keys_lost']:
+            text.append('  witness keys lost (no single successor): ' + '; '.join(e['keys_lost']))
+            changed.append(_plural(len(e['keys_lost']), 'lost key'))
+        if e['also_changed']:
+            text.append('  also changed: ' + ', '.join(e['also_changed']))
+            changed += e['also_changed']
+        if text[-1] == head and not e['first_stated']:
+            text.append('  read again with new bytes; no title, date, status, witness, document, video or sitting change')
+        parts.append(f"{e['event_id']} ({', '.join(changed) or 'read again'})")
+        text.append('')
+    shown = parts[:12] + ([f'and {len(parts) - 12} more'] if len(parts) > 12 else [])
+    line = (f"STOPPED at the release check, nothing published; {count} waited: " if refused
+            else f"Cleared the release check with {count}: ") + '; '.join(shown)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f'{MEETING_UPDATES}.txt').write_text('\n'.join(text))
+    (folder / f'{MEETING_UPDATES}.json').write_text(json.dumps(dict(line=line, cleared=not refused, reasons=list(refused),
+                                                                   meetings=entries), indent=1, default=str) + '\n')
+    return line
 
 
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work,
@@ -683,8 +1069,11 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if not held:
         # With nothing to be absent from, every receipt would count as new.
         return [], ['automatic causes: the live release has no receipt set to compare with']
+    updated_events = report['files'].get('meetings.parquet', {}).get('congress_gov_updates') or []
     if len(every) > len(differences):
-        reasons = cited_files_are_new(base_dir, candidate_dir, engine=engine, captures=captures, held=held, work=Path(work) / 'cited')
+        reasons = cited_files_are_new(base_dir, candidate_dir, engine=engine, captures=captures, held=held,
+                                      work=Path(work) / 'cited', updated_events=updated_events,
+                                      candidate_receipt_keys=candidate_receipt_keys)
         if reasons or not differences:
             return [], reasons
     d = Diff(Path(base_dir), Path(candidate_dir))
@@ -716,8 +1105,9 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if url_state and candidate_receipt_keys is None:
         reasons.append("automatic causes: url_state needs the candidate's receipt set")
     elif url_state:
-        reasons, summary, pages, url_lines, lines = url_state_proof(d, candidate_dir, engine=engine, captures=captures,
-            new_receipts=set(candidate_receipt_keys) - held, work=work / 'url-state', keys=keys)
+        reasons, summary, pages, url_lines, lines = url_state_proof(
+            d, candidate_dir, engine=engine, captures=captures, new_receipts=set(candidate_receipt_keys) - held,
+            held_receipts=held, updated_events=updated_events, work=work / 'url-state', keys=keys)
     if lines is None:
         lines = capture_job(work / 'trace', engine, captures, keys=set(keys))['trace'] if keys else []
     work.mkdir(parents=True, exist_ok=True)
@@ -878,6 +1268,8 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
         # A verified comparison group can still be outside the unattended policy.
         report['reasons'] = report.get('automatic_reasons', [])
     report_path.write_text(json.dumps(report, indent=1, default=str) + '\n')
+    # ct-rhqw: the morning report, written once the night's outcome is known.
+    write_meeting_updates(report, base_dir, candidate_dir, report_path.parent, refused=report['reasons'])
     if report['reasons']:
         raise ValueError('Release gates refused (report ' + str(report_path) + '):\n' + '\n'.join(report['reasons']))
     return report

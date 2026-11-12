@@ -222,6 +222,15 @@ def record_daily(summary, candidate):
         summary['daily_carried'] = value['carried']
 
 
+def record_meeting_updates(summary, candidate):
+    """The morning report's line (ct-rhqw): the Congress.gov meeting updates the release check cleared
+    or stopped, from `meeting-updates.json` beside the gate report. The plain report
+    (`meeting-updates.txt`) is kept with the run's evidence."""
+    for path in sorted(candidate.glob('archive-publish/candidate-*/meeting-updates.json'),
+                       key=lambda p: (p.stat().st_mtime_ns, p.name)):
+        summary['meeting_updates'] = json.loads(path.read_text()).get('line')
+
+
 def recoverable(candidate):
     publish = candidate / 'archive-publish'
     return (publish / 'completed-model.json').exists() or (
@@ -277,7 +286,8 @@ def archive_candidate(candidate, evidence, *, failed=False):
                     'archive-publish/probe-*/contract.json', 'archive-publish/probe-*/canary.json',
                     'producer-proof/*/*/job.json', 'producer-proof/*/*/result.json',
                     'archive-publish/candidate-*/release-gate.json',
-                    'archive-publish/candidate-*/automatic/automatic-trace.json'):
+                    'archive-publish/candidate-*/automatic/automatic-trace.json',
+                    'archive-publish/candidate-*/meeting-updates.*'):
         for path in retired.glob(pattern):
             target = evidence / path.relative_to(retired)
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -463,6 +473,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
                     if daily_status(candidate) == 'backfill_required':
                         raise StepFailed('publish after backfill', 2)
                 record_daily(summary, candidate)
+                record_meeting_updates(summary, candidate)
                 archive_candidate(candidate, evidence / 'candidate')
             summary.update(status='prepared' if prepare_only else 'ok', exit=0)
         except StepFailed as failure:
@@ -475,6 +486,7 @@ def run(worktree, prepare_only, *, lock_fd=None):
                 summary['retained_candidate'] = str(candidate)
                 try:
                     record_daily(summary, candidate)
+                    record_meeting_updates(summary, candidate)
                 except (OSError, ValueError) as error:
                     summary['daily_summary_error'] = str(error)
             summary['finished'] = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')

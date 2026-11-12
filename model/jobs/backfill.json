@@ -11,7 +11,7 @@
       ]
     },
     "readings": {
-      "name": "readings",
+      "name": "readings_compact_20261112",
       "namespace": [
         "archive_r1b"
       ]
@@ -76,9 +76,9 @@
       "size": 3346
     },
     "readings": {
-      "path": "producers/readings.json",
-      "sha256": "c9e66be04bf72eb172dece783c8d026c177807fb7cfb8a3f6b3591fa908083ee",
-      "size": 2084
+      "path": "producers/readings-compact-20261112.json",
+      "sha256": "df87da0a69d8fee56bd626a664f62fba61f519fdbfeda2778ec7f055fcd38dbc",
+      "size": 2452
     },
     "video_records": {
       "path": "producers/video_records.json",

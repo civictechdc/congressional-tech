@@ -2,13 +2,13 @@
   "version": 1,
   "model_spec": {
     "path": "publish-model.json",
-    "sha256": "3e12bedf10633d05cc3186964af776165c43aea54450cf3e337e2c6c82ad59a9",
-    "size": 5558
+    "sha256": "45eca980a1bdb833ff0f8dabb32e623b55e71cf3012178e57a90c36d8e9df74a",
+    "size": 5575
   },
   "daily": {
     "path": "publish-daily.json",
-    "sha256": "df3be51550600a6e9a3f0d97dd1dcc50930f7e649bf83343a79812c3f41ff06c",
-    "size": 2819
+    "sha256": "ea585f250d7c026eb2f73130ef061447f2c193dc6ef3e2de3f92107c082f5580",
+    "size": 2836
   },
   "bucket": "congressional-tech-raw",
   "work": "../../output/archive-publish",
@@ -52,9 +52,9 @@
       "size": 3346
     },
     "readings": {
-      "path": "producers/readings.json",
-      "sha256": "c9e66be04bf72eb172dece783c8d026c177807fb7cfb8a3f6b3591fa908083ee",
-      "size": 2084
+      "path": "producers/readings-compact-20261112.json",
+      "sha256": "df87da0a69d8fee56bd626a664f62fba61f519fdbfeda2778ec7f055fcd38dbc",
+      "size": 2452
     },
     "video_records": {
       "path": "producers/video_records.json",

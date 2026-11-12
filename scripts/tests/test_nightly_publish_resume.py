@@ -133,3 +133,35 @@ def test_a_log_that_cannot_be_kept_never_stops_the_retirement(tmp_path, monkeypa
         '[nightly] engine logs: 1 kept, 2 not kept; 12 bytes not kept',
         'not kept: locked/engine.log: PermissionError: Permission denied',
         'not kept: gone/engine.log: FileNotFoundError: No such file or directory']
+
+
+def test_the_morning_report_is_kept_and_its_line_goes_in_the_summary(tmp_path):
+    """ct-rhqw: the gate writes the Congress.gov meeting update report beside its gate report; the
+    run keeps both files with its evidence and puts the report's line in summary.json."""
+    report = {'archive-publish/candidate-x/meeting-updates.json':
+              json.dumps(dict(line='1 Congress.gov meeting updated: 118340 (title)', meetings=[])).encode(),
+              'archive-publish/candidate-x/meeting-updates.txt': b'118340 Hearing (2026-11-12)\n  title: A -> B\n'}
+    published, run = candidate(tmp_path / 'published', report)
+    summary = {}
+    nightly.record_meeting_updates(summary, published)
+    assert summary == {'meeting_updates': '1 Congress.gov meeting updated: 118340 (title)'}
+    nightly.archive_candidate(published, run / 'candidate')
+    assert files(run) == {'candidate/commit': b'abc\n', **{f'candidate/{name}': body for name, body in report.items()}}
+    quiet = {}
+    nightly.record_meeting_updates(quiet, candidate(tmp_path / 'quiet', {'archive-daily/daily-summary.json': b'{}'})[0])
+    assert quiet == {}
+
+
+def test_resumed_candidate_records_the_newest_morning_report_not_the_largest_uuid(tmp_path):
+    import os
+    resumed, _ = candidate(tmp_path / 'resumed', {
+        'archive-publish/candidate-fff000/meeting-updates.json': json.dumps(dict(line='STOPPED old attempt', meetings=[])).encode(),
+        'archive-publish/candidate-111000/meeting-updates.json': json.dumps(dict(line='Cleared the release check', meetings=[])).encode()})
+    old = resumed / 'archive-publish/candidate-fff000/meeting-updates.json'
+    new = resumed / 'archive-publish/candidate-111000/meeting-updates.json'
+    os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+    os.utime(new, ns=(2_000_000_000, 2_000_000_000))
+    summary = {}
+    nightly.record_meeting_updates(summary, resumed)
+    assert summary == {'meeting_updates': 'Cleared the release check'}
+
