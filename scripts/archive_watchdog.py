@@ -13,8 +13,9 @@ bound and ran 5-10x real use, so a budget of declared limits (the 2026-11-02 ses
 guard) queued 15 jobs and held one 27 minutes beside 25 GiB free. A job starts once
 free memory covers its --expect-gb (a measured peak from an earlier report) plus
 --start-available-gb, beside what is promised but not yet visible: the expected peak of
-jobs that started under two minutes ago, and of the oldest waiter ahead of it, which
-smaller jobs may backfill beside. Jobs share that state under --state (default
+jobs that started under two minutes ago, and of the earliest waiter ahead of it that
+can fit (or would fit once bypassing jobs drain), which smaller jobs may backfill beside
+without starving behind an unfittable head. Jobs share that state under --state (default
 <main checkout>/.cache/watchdog). Below --min-available-gb only the youngest running
 job stops, so one squeeze does not kill every job. Hosted runners, which run one job,
 pass neither. Standard library only, so it can run before any environment is set up.
@@ -104,13 +105,33 @@ def available_gb():
 
 
 def admissible(me, entries, *, available, headroom, now):
-    """Whether `me` fits in measured free memory beside what is promised but not yet visible."""
+    """Whether `me` fits in measured free memory beside what is promised but not yet visible.
+
+    An earlier waiter reserves its expected peak once free memory (or draining jobs that
+    bypassed it) covers its need, or once earlier running jobs have finished and it has
+    waited RAMP_SECONDS for bypassers to drain; an unfittable waiter never blocks fitting
+    jobs indefinitely (ct-j2qx).
+    """
     others = [entry for entry in entries if entry['pid'] != me['pid']]
     ramping = sum(entry['expect_gb'] for entry in others
                   if entry['admitted'] is not None and now - entry['admitted'] < RAMP_SECONDS)
-    ahead = [entry for entry in others
-             if entry['admitted'] is None and (entry['queued'], entry['pid']) < (me['queued'], me['pid'])]
-    head = min(ahead, key=lambda entry: (entry['queued'], entry['pid']))['expect_gb'] if ahead else 0.0
+    ahead = sorted((entry for entry in others
+                    if entry['admitted'] is None and (entry['queued'], entry['pid']) < (me['queued'], me['pid'])),
+                   key=lambda entry: (entry['queued'], entry['pid']))
+    head = 0.0
+    for waiter in ahead:
+        need = waiter['expect_gb'] + headroom
+        older = [entry for entry in others
+                 if entry['admitted'] is not None and entry['admitted'] < waiter['queued']]
+        bypass = [entry for entry in others
+                  if entry['admitted'] is not None and entry['admitted'] >= waiter['queued']]
+        older_ramping = sum(entry['expect_gb'] for entry in older if now - entry['admitted'] < RAMP_SECONDS)
+        bypass_settled = sum(entry['expect_gb'] for entry in bypass if now - entry['admitted'] >= RAMP_SECONDS)
+        without_bypass = available - older_ramping + bypass_settled
+        draining_bypass = not older and bool(bypass) and now - waiter['queued'] >= RAMP_SECONDS
+        if without_bypass >= need or draining_bypass:
+            head = waiter['expect_gb']
+            break
     return available - ramping - head >= me['expect_gb'] + headroom
 
 

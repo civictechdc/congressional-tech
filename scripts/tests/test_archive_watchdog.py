@@ -236,13 +236,47 @@ def test_admission_counts_measured_memory_plus_only_promises_not_yet_visible():
     assert watchdog.admissible(me, [me, ramping], available=13, headroom=6, now=now)
 
 
-def test_the_oldest_waiter_is_reserved_and_smaller_jobs_backfill_beside_it():
+def test_the_oldest_waiter_is_reserved_when_fittable_and_does_not_starve_small_jobs_when_unfittable():
     now = 10_000.0
-    head, small = entry(1, now - 600, 20), entry(2, now - 10, 2)
-    assert not watchdog.admissible(head, [head, small], available=25, headroom=6, now=now)
-    assert not watchdog.admissible(small, [head, small], available=25, headroom=6, now=now)  # Would take the head's room.
-    assert watchdog.admissible(small, [head, small], available=29, headroom=6, now=now)
-    assert watchdog.admissible(head, [head, small], available=26, headroom=6, now=now)
+    head, small, too_big = entry(1, now - 600, 12), entry(2, now - 10, 1), entry(3, now - 5, 9)
+    # ct-j2qx: at 14 GiB free with nothing running to drain, a 12+6 GiB head cannot fit,
+    # so a fitting 1+6 GiB probe passes instead of starving while a 9+6 GiB job still cannot overcommit.
+    assert not watchdog.admissible(head, [head, small], available=14, headroom=6, now=now)
+    assert watchdog.admissible(small, [head, small], available=14, headroom=6, now=now)
+    assert not watchdog.admissible(too_big, [head, too_big], available=14, headroom=6, now=now)
+
+    # Once free memory covers the head (20+6=26), the head reserves its 20 GiB; small backfills only at 28+.
+    big_head, backfill = entry(1, now - 600, 20), entry(2, now - 10, 2)
+    assert watchdog.admissible(big_head, [big_head, backfill], available=26, headroom=6, now=now)
+    assert not watchdog.admissible(backfill, [big_head, backfill], available=26, headroom=6, now=now)
+    assert watchdog.admissible(backfill, [big_head, backfill], available=28, headroom=6, now=now)
+
+    # An unfittable first waiter is skipped, so the second waiter (fittable) runs and reserves against a third.
+    huge, second, third = entry(1, now - 900, 40), entry(2, now - 600, 18), entry(3, now - 10, 4)
+    assert watchdog.admissible(second, [huge, second, third], available=26, headroom=6, now=now)
+    assert not watchdog.admissible(third, [huge, second, third], available=26, headroom=6, now=now)
+
+
+def test_bypassing_small_jobs_drain_so_a_large_waiter_is_eventually_admitted():
+    now = 10_000.0
+    older = entry(1, now - 900, 8, admitted=now - 800)
+    head = entry(2, now - 300, 20)
+    small_1 = entry(3, now - 250, 4)
+    # While `older` is still running at 20 GiB free, `head` (needs 26) cannot fit even without bypass, so small_1 passes.
+    assert not watchdog.admissible(head, [older, head, small_1], available=20, headroom=6, now=now)
+    assert watchdog.admissible(small_1, [older, head, small_1], available=20, headroom=6, now=now)
+
+    # `small_1` starts and settles; then `older` exits so free rises to 24 GiB (28 GiB once `small_1` drains).
+    # A new `small_2` is held back while `small_1` drains, preventing unbounded starvation of `head`.
+    small_1_settled = entry(3, now - 250, 4, admitted=now - 240)
+    small_2 = entry(4, now - 5, 4)
+    assert not watchdog.admissible(small_2, [head, small_1_settled, small_2], available=24, headroom=6, now=now)
+    # Same even if `small_1` is still ramping (28 GiB measured free, 4 GiB ramping) or slightly over its estimate (21 GiB free):
+    small_1_ramping = entry(3, now - 50, 4, admitted=now - 40)
+    assert not watchdog.admissible(small_2, [head, small_1_ramping, small_2], available=28, headroom=6, now=now)
+    assert not watchdog.admissible(small_2, [head, small_1_settled, small_2], available=21, headroom=6, now=now)
+    # Once `small_1` finishes, `head` is immediately admitted.
+    assert watchdog.admissible(head, [head, small_2], available=28, headroom=6, now=now)
 
 
 def test_below_the_machine_floor_the_youngest_running_job_stops_first(tmp_path, private_state):
