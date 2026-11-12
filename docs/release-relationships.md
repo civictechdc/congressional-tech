@@ -178,6 +178,28 @@ Outgoing: `retired_link_successor`.
 
 Incoming: none.
 
+## `corrections` — Permanent recovery rejections that corrected dead-link answers
+
+One rejected recovery copy for an original dead address.
+
+Identity: `original_url, rejected_body` (primary_key; published identifier).
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `original_url` | `string` | no | Original dead address whose wrong recovered copy was rejected |
+| `rejected_body` | `fixed[32]` | no | SHA-256 of the rejected recovery copy for original_url |
+| `decision_id` | `string` | no | Permanent provenance recovery rejection record identifier |
+| `decided_at` | `timestamp` | no | UTC timestamp when the rejection was recorded |
+| `recovered_url` | `string` | yes | Address where the rejected copy was found, when recorded |
+| `identity_note` | `string` | yes | Authored explanation of why the copy was rejected, when recorded |
+
+Nullability: original_url, rejected_body, decision_id and decided_at are required on every active rejection decision; recovered_url and identity_note are optional provenance fields. A required column is refused at write time.
+
+
+Outgoing: none.
+
+Incoming: none.
+
 ## `urls` — Normalized source address lookup
 
 One lookup key and document row pair; an address can identify several editions.

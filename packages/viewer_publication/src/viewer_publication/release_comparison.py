@@ -2019,6 +2019,94 @@ def changed_addresses(d: Diff, table):
     return None
 
 
+def proven_corrections(d: Diff):
+    """Prove changed link, lookup and address answers from `candidate/corrections.parquet` (ct-faan).
+
+    Each finding's key is tied to `original_url` by recomputing DM §8.2's link and lookup hashes
+    here rather than trusting precomputed model keys. A finding passes only when:
+      (a) a single `original_url` in `corrections.parquet` produces `key` and rejects `live_body`, and
+      (b) every candidate row `key` reaches shows one non-rejected body held in `candidate/recoveries.parquet`
+          for that row, matching any body prefix stated in `identity_note`.
+    """
+    required_corr = {'original_url', 'rejected_body', 'decision_id', 'decided_at', 'identity_note'}
+    if not (d.has('candidate', 'corrections') and required_corr <= set(d.columns('candidate', 'corrections'))
+            and d.has('candidate', 'recoveries') and {'list_row', 'body'} <= set(d.columns('candidate', 'recoveries'))):
+        return []
+    from viewer_publication.lookup_aliases import address_keys
+    has_rec_url = 'recovered_url' in d.columns('candidate', 'corrections')
+    rec_url_expr = 'recovered_url' if has_rec_url else 'cast(NULL AS VARCHAR)'
+    corr_rows = d.rows(f"""SELECT original_url, lower(hex(rejected_body)), decision_id, cast(decided_at AS VARCHAR),
+        {rec_url_expr}, identity_note FROM candidate_corrections
+        WHERE original_url IS NOT NULL AND rejected_body IS NOT NULL ORDER BY 1, 2""")
+    if not corr_rows:
+        return []
+    by_url_body = {}
+    rejected_by_url: dict[str, set[str]] = {}
+    urls_by_kind_key: dict[str, dict[str, set[str]]] = {'link_key': {}, 'lookup_key': {}, 'address': {}}
+    for orig_url, rej_hex, dec_id, dec_at, rec_url, note in corr_rows:
+        by_url_body[(orig_url, rej_hex)] = dict(
+            decision_id=dec_id, decided_at=dec_at, recovered_url=rec_url, identity_note=note,
+        )
+        rejected_by_url.setdefault(orig_url, set()).add(rej_hex)
+        for kind, keys in address_keys(orig_url).items():
+            bucket = urls_by_kind_key[kind]
+            for k in keys:
+                bucket.setdefault(k, set()).add(orig_url)
+
+    def _check(kind: str, key: str, live_body: str, cand_bodies: list[str | None], all_recovered: bool):
+        urls = urls_by_kind_key[kind].get(key)
+        if not urls or len(urls) != 1:
+            return None
+        [orig_url] = urls
+        rec = by_url_body.get((orig_url, live_body))
+        if rec is None or not all_recovered or len(cand_bodies) != 1 or cand_bodies[0] is None:
+            return None
+        cand_body = cand_bodies[0]
+        if cand_body in rejected_by_url.get(orig_url, ()):
+            return None
+        note = rec['identity_note'] or ''
+        m = re.search(r"this address's document is body ([0-9a-f]+)", note)
+        if m and not cand_body.startswith(m.group(1)):
+            return None
+        return dict(
+            kind=kind, key=key, address=orig_url, live_body=live_body, candidate_body=cand_body,
+            decision_id=rec['decision_id'], decided_at=rec['decided_at'], recovered_url=rec['recovered_url'],
+        )
+
+    by_key: dict[tuple[str, str], list[dict | None]] = {}
+    for key, _pr, live_body, cand_body, held in d.rows("""
+        SELECT c.k, c.pr, c.live_body, lower(hex(ld.saved_body)),
+               ld.saved_body IS NOT NULL AND EXISTS (
+                   SELECT 1 FROM candidate_recoveries r WHERE r.list_row=c.lr AND r.body=ld.saved_body)
+        FROM rule_changed c JOIN candidate_detail ld ON ld.file_row_number=c.lr ORDER BY 1, 2"""):
+        by_key.setdefault(('link_key', key), []).append(_check('link_key', key, live_body, [cand_body], bool(held)))
+
+    for table, kind in (('urls', 'lookup_key'), ('sources', 'address')):
+        if not d.rows(f"SELECT 1 FROM duckdb_tables() WHERE table_name='rule_changed_{table}'"):
+            continue
+        shown = ('lower(hex(c.lookup_key))' if table == 'urls' else
+                 "c.url||CASE WHEN c.member_path IS NULL THEN '' ELSE ' member '||c.member_path END")
+        on = ' AND '.join(f'l.{f} IS NOT DISTINCT FROM c.{f}' for f in ADDRESSED[table])
+        for key, _pr, live_body, cand_bodies, all_held in d.rows(f"""
+            SELECT {shown}, c.pr, c.live_body,
+                   list_sort(array_agg(DISTINCT lower(hex(ld.saved_body)))),
+                   bool_and(ld.saved_body IS NOT NULL AND EXISTS (
+                       SELECT 1 FROM candidate_recoveries r WHERE r.list_row=l.list_row AND r.body=ld.saved_body))
+            FROM rule_changed_{table} c JOIN candidate_{table} l ON {on}
+            LEFT JOIN candidate_detail ld ON ld.file_row_number=l.list_row
+            GROUP BY 1, 2, 3 ORDER BY 1, 2"""):
+            by_key.setdefault((kind, key), []).append(_check(kind, key, live_body, list(cand_bodies or []), bool(all_held)))
+
+    proven = {}
+    for (kind, key), hits in by_key.items():
+        if hits and all(h is not None for h in hits):
+            for h in hits:
+                assert h is not None
+                proven.setdefault((kind, key, h['live_body']), h)
+
+    return [proven[k] for k in sorted(proven)]
+
+
 def link_rule(d: Diff, sample=100):
     """Gate 2's publish check: no key published by the base or its ledger may vanish, and no
     live link key, lookup key or address may answer another file unless a reviewed correction names it.
@@ -2100,6 +2188,9 @@ def link_rule(d: Diff, sample=100):
               WHERE {shown} IN (SELECT DISTINCT {shown} FROM rule_changed_{table} c ORDER BY 1 LIMIT {int(sample)})
               GROUP BY 1,2,4 ORDER BY 1,2""")]
             out[f'{label}_changed_keys'] = sorted({a['key'] for a in out[f'{label}_changed_answers']})
+        proven = proven_corrections(d)
+        if proven:
+            out['proven_corrections'] = proven
     out['ok'] = not any(out[name] for name in (
         'missing', 'dangling', 'published_and_retired', 'changed', 'lookup_changed', 'address_changed', 'unchecked'))
     return out

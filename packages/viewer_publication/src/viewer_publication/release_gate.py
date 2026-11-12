@@ -1273,22 +1273,29 @@ def named_corrections(rule, corrections):
     records.
     """
     named = {(c['kind'], c['key'], c['live_body']): _wanted_bodies(c) for c in corrections}
+    proven_entries = rule.get('proven_corrections', [])
+    proven_map = {(p['kind'], p['key'], p['live_body']): p['candidate_body'] for p in proven_entries}
+    proven_keys_by_kind = {kind: sorted({p['key'] for p in proven_entries if p['kind'] == kind}) for kind in CORRECTED}
     used, waived, refused = set(), {}, {}
     for kind, (prefix, what) in CORRECTED.items():
         answers, unnamed = rule[f'{prefix}changed_answers'], set()
+        proven_set = set(proven_keys_by_kind[kind])
         for answer in answers:
             name = (kind, answer['key'], answer['live_body'])
             shown = [answer['candidate_body']] if kind == 'link_key' else answer['candidate_bodies']
-            if name in named and shown == named[name]:
+            in_named = name in named and shown == named[name]
+            in_proven = name in proven_map and shown == [proven_map[name]]
+            if in_named:
                 used.add(name)
-            else:
+            if not (in_named or in_proven):
                 unnamed.add(answer['key'])
         listed = sorted({answer['key'] for answer in answers})
-        waived[kind] = [key for key in listed if key not in unnamed]
-        beyond = max(rule[f'{prefix}changed'] - len(listed), 0)
+        waived[kind] = [key for key in listed if key not in unnamed and key not in proven_set]
+        beyond_proven = len(proven_set - set(listed))
+        beyond = max(rule[f'{prefix}changed'] - len(listed) - beyond_proven, 0)
         refused[kind] = []
         if unnamed or beyond:
-            # ct-4qld, ct-wscb: every key is named, up to the report's sample; the report has its files.
+            # ct-4qld, ct-wscb: every key is named or proven, up to the report's sample; the report has its files.
             keys = f' ({", ".join(sorted(unnamed))})' if unnamed else ''
             refused[kind].append(f'link rule: {len(unnamed) + beyond} live {what} answer another file{keys}')
         if beyond:
@@ -1297,7 +1304,7 @@ def named_corrections(rule, corrections):
     # Whole bodies: a correction one character off must be told apart from the report's.
     stale = [f'cause record: correction {kind} {key} from {live} to {", ".join(named[kind, key, live])} matches no finding of the link rule'
              for kind, key, live in sorted(set(named) - used)]
-    return waived, refused, stale
+    return waived, proven_keys_by_kind, refused, stale
 
 
 def verdict(report, causes):
@@ -1307,14 +1314,14 @@ def verdict(report, causes):
     A vanished key (missing), a successor that is not a published key (dangling), a key both
     published and retired (`published_and_retired`) and a check that could not run (unchecked)
     refuse whatever the record says: no record field touches them. A link key, lookup key or
-    address that answers another file refuses unless the record, bound to this base and candidate,
-    names it as a correction (`named_corrections`, ct-4nax).
+    address that answers another file refuses unless proven by the candidate's published
+    `corrections.parquet` (ct-faan) or named in the bound cause record (`named_corrections`, ct-4nax).
     """
     reasons = []
     rule = report['link_rule']
     bound = causes is not None and (causes['base_release_id'], causes['candidate_release_id']) == (
         report['base_release'], report['candidate_release'])
-    waived, refused, stale = named_corrections(rule, causes.get('corrections', []) if bound else [])
+    waived, _proven, refused, stale = named_corrections(rule, causes.get('corrections', []) if bound else [])
     named_summary = {kind: dict(waived=len(keys), keys=keys) for kind, keys in waived.items()}
     if rule['missing']:
         reasons.append(f'link rule: {rule["missing"]} base link keys vanish (first {rule["missing_keys"][:5]})')
@@ -1367,6 +1374,8 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
             causes['groups'] = [*causes['groups'], *(e for e in entries if e['id'] not in named)]
             report['automatic_causes'] = entries
     report['reasons'], report['named_corrections'] = verdict(report, causes)
+    _, proven, _, _ = named_corrections(report['link_rule'], [])
+    report['proven_corrections'] = {kind: dict(proven=len(keys), keys=keys) for kind, keys in proven.items()}
     if causes is None and not report['reasons']:
         # A verified comparison group can still be outside the unattended policy, and a re-fetch
         # group with neither automatic capture verification nor a cause record must not pass (ct-xyo9).
@@ -1405,6 +1414,19 @@ def render_notes(causes, base_dir, candidate_dir):
     lines += ['## Links', '', f'{redirected} link keys from earlier releases now redirect to their current document. '
               f'{removed} show a removal notice. 0 vanish.', '']
     corrections = causes.get('corrections', [])
+    named_keys = {(c['kind'], c['key'], c['live_body']) for c in corrections}
+    proven_list = []
+    if (Path(candidate_dir) / 'corrections.parquet').exists():
+        from viewer_publication.release_comparison import compare
+        proven_list = [p for p in compare(base_dir, candidate_dir)['link_rule'].get('proven_corrections', [])
+                       if (p['kind'], p['key'], p['live_body']) not in named_keys]
+    if proven_list:
+        lines += [f'{len(proven_list)} keys and addresses now answer another file on purpose, proven from published '
+                  '`corrections.parquet` rejection records (ct-faan):', '',
+                  '| Kind | Key | Live file | Now | Decision | Decided at |', '| --- | --- | --- | --- | --- | --- |']
+        lines += [f'| {p["kind"]} | `{p["key"]}` | `{p["live_body"][:12]}` | `{p["candidate_body"][:12]}` | `{p["decision_id"]}` | '
+                  f'{p["decided_at"]} |' for p in proven_list]
+        lines.append('')
     if corrections:
         lines += [f'{len(corrections)} corrections (keys and addresses that now answer another file on purpose), '
                   'each named in the reviewed cause record with both files (ct-4nax):', '',
@@ -1454,7 +1476,11 @@ def main(argv=None):
             report = require_release_gates(args.base, args.candidate, causes, report_path=args.output,
                                            evidence_base=args.evidence_base, evidence_candidate=args.evidence_candidate)
             waived = ', '.join(f'{n["waived"]} {kind}' for kind, n in report.get('named_corrections', {}).items() if n['waived'])
-            print('release gates passed' + (f'; named corrections let through {waived}' if waived else ''))
+            proven = ', '.join(f'{n["proven"]} {kind}' for kind, n in report.get('proven_corrections', {}).items() if n['proven'])
+            notes_parts = ([f'proven corrections let through {proven}'] if proven else []) + (
+                [f'named corrections let through {waived}'] if waived else []
+            )
+            print('release gates passed' + ('; ' + '; '.join(notes_parts) if notes_parts else ''))
             return 0
         from congress_api.retention.provenance import file_pin
         causes = load_causes(dict(path=str(args.causes), **file_pin(args.causes)))

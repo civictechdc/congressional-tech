@@ -1555,7 +1555,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         auxiliary.append(('historical_recording_matches',f'SELECT {columns} FROM historical_recording_matcher_input',keys,[]))
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[]),
-        ('retired_links',(Path(root)/'model/sql/retired-links.sql').read_text(),['link_key'],[])]
+        ('retired_links',(Path(root)/'model/sql/retired-links.sql').read_text(),['link_key'],[]),
+        ('corrections',(Path(root)/'model/sql/corrections.sql').read_text(),['original_url','rejected_body'],[])]
     extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
         dict(name='source_members.parquet',path=str(evidence/'source_members.parquet'),sql="""SELECT DISTINCT o.doc_key AS document_id,o.list_row,
         m.source_id,CASE WHEN m.body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(m.body_sha,1,2)||'/'||m.body_sha||'.gz' END AS body_key,

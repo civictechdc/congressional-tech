@@ -560,6 +560,60 @@
       "nullability": "Nullability transcribes data model \u00a78.1 (retired_links.parquet row)."
     },
     {
+      "name": "corrections.parquet",
+      "columns": [
+        {
+          "name": "original_url",
+          "type": "string",
+          "meaning": "Original dead address whose wrong recovered copy was rejected",
+          "nullable": false
+        },
+        {
+          "name": "rejected_body",
+          "type": "fixed[32]",
+          "meaning": "SHA-256 of the rejected recovery copy for original_url",
+          "nullable": false
+        },
+        {
+          "name": "decision_id",
+          "type": "string",
+          "meaning": "Permanent provenance recovery rejection record identifier",
+          "nullable": false
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamp",
+          "meaning": "UTC timestamp when the rejection was recorded",
+          "nullable": false
+        },
+        {
+          "name": "recovered_url",
+          "type": "string",
+          "meaning": "Address where the rejected copy was found, when recorded",
+          "nullable": true
+        },
+        {
+          "name": "identity_note",
+          "type": "string",
+          "meaning": "Authored explanation of why the copy was rejected, when recorded",
+          "nullable": true
+        }
+      ],
+      "gaps": [],
+      "purpose": "Permanent recovery rejections that corrected dead-link answers",
+      "row_meaning": "One rejected recovery copy for an original dead address",
+      "identity": {
+        "fields": [
+          "original_url",
+          "rejected_body"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "nullability": "original_url, rejected_body, decision_id and decided_at are required on every active rejection decision; recovered_url and identity_note are optional provenance fields."
+    },
+    {
       "name": "urls.parquet",
       "columns": [
         {

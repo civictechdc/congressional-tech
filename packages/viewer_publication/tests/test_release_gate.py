@@ -581,6 +581,149 @@ def test_load_causes_refuses_malformed_multi_body_lookup_correction(tmp_path, ba
         record_for('a' * 64, 'b' * 64, tmp_path, corrections=[entry])
 
 
+CORRECTIONS_SCHEMA = pa.schema([
+    ('original_url', pa.string(), False),
+    ('rejected_body', pa.binary(32), False),
+    ('decision_id', pa.string(), False),
+    ('decided_at', pa.timestamp('us', tz='UTC'), False),
+    ('recovered_url', pa.string(), True),
+    ('identity_note', pa.string(), True),
+])
+RECOVERIES_SCHEMA = pa.schema([
+    ('list_row', pa.int32(), False),
+    ('ordinal', pa.int32(), False),
+    ('kind', pa.string(), False),
+    ('body', pa.binary(32), False),
+    ('suffix', pa.string(), False),
+    ('bytes', pa.int64(), False),
+    ('imported_at', pa.date32(), True),
+    ('recovered_url', pa.string(), False),
+    ('identity_note', pa.string(), True),
+])
+
+
+def _proven_pair(tmp_path, *, plant=None):
+    url = 'https://www.example.test/hearings/March%2030/porter.pdf'
+    url_link_key = sha256(('url:' + url).encode()).digest()[:8]
+    lookup_form = 'example.test/hearings/March%2030/porter.pdf'
+    lookup_k1 = sha256(('lookup:' + lookup_form).encode()).digest()[:8]
+    lookup_k2 = sha256(('lookup-alias:serialization-v1:' + lookup_form).encode()).digest()[:8]
+    unknown_link_key = K('U')
+
+    wrong_body = bytes.fromhex(body('W'))
+    right_body = bytes.fromhex(body('R'))
+    other_body = bytes.fromhex(body('X'))
+
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    base_links = [url_link_key, K('K')] + ([unknown_link_key] if plant == 'unknown_key' else [])
+    base_rows = [0, 1] + ([0] if plant == 'unknown_key' else [])
+    cand_links = [url_link_key, K('K')] + ([unknown_link_key] if plant == 'unknown_key' else [])
+    cand_rows = [1, 1]
+
+    release_dir(
+        base, ['W', 'K'], saved='WK',
+        links=pa.table({'link_key': pa.array(base_links, pa.binary(8)),
+                        'list_row': pa.array(base_rows, pa.int32())}),
+        urls=pa.table({'lookup_key': pa.array([lookup_k1, lookup_k2], pa.binary(8)),
+                       'list_row': pa.array([0, 0], pa.int32())}),
+        sources=pa.table({'list_row': pa.array([0, 1], pa.int32()),
+                          'url': pa.array([url, 'https://www.example.test/keep.pdf'], pa.string()),
+                          'member_path': pa.array([None, None], pa.string())}),
+    )
+
+    cand_saved = right_body
+    note_prefix = body('R')[:16] if plant != 'note_body_prefix_mismatch' else '0' * 16
+    rejected_rows = [dict(
+        original_url=url,
+        rejected_body=other_body if plant == 'wrong_live_body' else wrong_body,
+        decision_id='dec-1',
+        decided_at=datetime(2026, 11, 10, 13, 5, tzinfo=timezone.utc),
+        recovered_url='http://mirror.example.test/wrong.pdf',
+        identity_note=f"The copy holds a different document; this address's document is body {note_prefix}.",
+    )]
+    if plant == 'candidate_shows_another_rejected_copy':
+        rejected_rows.append(dict(
+            original_url=url,
+            rejected_body=right_body,
+            decision_id='dec-2',
+            decided_at=datetime(2026, 11, 10, 13, 6, tzinfo=timezone.utc),
+            recovered_url='http://mirror.example.test/also-wrong.pdf',
+            identity_note=None,
+        ))
+    rec_rows = [] if plant == 'wrong_candidate_fused_not_recovery' else [dict(
+        list_row=1, ordinal=0, kind='wayback', body=cand_saved, suffix='', bytes=128,
+        imported_at=None, recovered_url='http://web.archive.org/porter.pdf', identity_note=None,
+    )]
+
+    release_dir(
+        candidate, ['keep', 'porter'],
+        detail=pa.table({'link_key': pa.array([K('K'), url_link_key], pa.binary(8)),
+                         'saved_body': pa.array([bytes.fromhex(body('K')), cand_saved], pa.binary(32))}),
+        links=pa.table({'link_key': pa.array([K('K'), url_link_key] + ([unknown_link_key] if plant == 'unknown_key' else []), pa.binary(8)),
+                        'list_row': pa.array([0, 1] + ([1] if plant == 'unknown_key' else []), pa.int32())}),
+        urls=pa.table({'lookup_key': pa.array([lookup_k1, lookup_k2], pa.binary(8)),
+                       'list_row': pa.array([1, 1], pa.int32())}),
+        sources=pa.table({'list_row': pa.array([0, 1], pa.int32()),
+                          'url': pa.array(['https://www.example.test/keep.pdf', url], pa.string()),
+                          'member_path': pa.array([None, None], pa.string())}),
+        recoveries=pa.Table.from_pylist(rec_rows, schema=RECOVERIES_SCHEMA),
+        corrections=pa.Table.from_pylist(rejected_rows, schema=CORRECTIONS_SCHEMA),
+    )
+    return (base, candidate), url, url_link_key.hex(), sorted([lookup_k1.hex(), lookup_k2.hex()])
+
+
+PROVEN_GROUPS = [
+    ('corrections.parquet', 'file added', 'file absent from the base release', 1),
+    ('detail.parquet', 'changed link_key', 'value differs on matched key', 1),
+    ('detail.parquet', 'changed saved_body', 'value differs on matched key', 1),
+    MOVED_LINKS,
+    ('list.parquet', 'changed filename', 'value differs on matched key', 2),
+    ('recoveries.parquet', 'file added', 'file absent from the base release', 1),
+    ('sources.parquet', 'changed bytes, no key or value difference found', 'unexplained', 0),
+    ('urls.parquet', 'changed bytes, no key or value difference found', 'unexplained', 0),
+]
+
+
+def test_published_corrections_table_proves_changed_answers_without_hand_list(tmp_path):
+    pair, url, link_hex, lookup_hexes = _proven_pair(tmp_path)
+    # No hand `corrections` list in the cause record: candidate/corrections.parquet proves every changed answer!
+    causes = record_for(*ids(pair), tmp_path, groups=PROVEN_GROUPS)
+    report = require_release_gates(*pair, causes, report_path=tmp_path / 'r.json')
+    assert report['reasons'] == []
+    assert report['proven_corrections'] == dict(
+        link_key=dict(proven=1, keys=[link_hex]),
+        lookup_key=dict(proven=2, keys=lookup_hexes),
+        address=dict(proven=1, keys=[url]),
+    )
+    notes = render_notes(causes, *pair)
+    assert f'`{link_hex}`' in notes and 'dec-1' in notes
+
+
+@pytest.mark.parametrize('plant', [
+    'wrong_live_body',
+    'wrong_candidate_fused_not_recovery',
+    'candidate_shows_another_rejected_copy',
+    'note_body_prefix_mismatch',
+    'unknown_key',
+])
+def test_published_corrections_proof_refuses_planted_defects(tmp_path, plant):
+    pair, _, _, _ = _proven_pair(tmp_path, plant=plant)
+    extra_corr = 2 if plant == 'candidate_shows_another_rejected_copy' else 1
+    groups = [
+        (f, g, c, extra_corr if f == 'corrections.parquet' else n)
+        for f, g, c, n in PROVEN_GROUPS
+        if not (plant == 'wrong_candidate_fused_not_recovery' and f == 'recoveries.parquet')
+    ]
+    if plant == 'unknown_key':
+        groups = [
+            (f, g, c, -1 if f in ('detail.parquet', 'list.parquet') and g == 'merged rows' else n)
+            for f, g, c, n in groups
+        ]
+    causes = record_for(*ids(pair), tmp_path, groups=groups)
+    with pytest.raises(ValueError, match=r'link rule: .* answer another file'):
+        require_release_gates(*pair, causes, report_path=tmp_path / 'r.json')
+
+
 def test_load_causes_refuses_two_corrections_of_one_finding(tmp_path):
     first = FUSED_CORRECTIONS[0]
     with pytest.raises(ValueError, match='Duplicate correction'):

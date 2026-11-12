@@ -50,8 +50,17 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
         dict(id='old',canonical_url='https://fixture.test/obsolete.pdf',variant_url='https://fixture.test/mirror.pdf',basis='fixture',decided_at='2026-10-20T12:00:00Z',supersedes=None),
         dict(id='current',canonical_url='https://fixture.test/report.pdf',variant_url='https://fixture.test/mirror.pdf',basis='fixture',decided_at='2026-10-21T12:00:00Z',supersedes='old')]))
     variant_files=[dict(key='provenance/url_variants/fixture.jsonl',path=str(variants))]
+    rejections=tmp_path/'rejections.jsonl'
+    rejected_sha='e'*64
+    rejections.write_text(json.dumps(dict(
+        id='rej-1',body_sha256=rejected_sha,original_url='https://fixture.test/dead-link.pdf',
+        recovered_filename=None,recovered_url='http://mirror.fixture.test/wrong.pdf',kind='rejected',
+        identity_note="The copy holds a different document; this address's document is body "+('f'*16)+'.',
+        decided_at='2026-11-10T13:05:00Z',supersedes=None,recovery_record_version=1))+'\n')
+    recovery_files=[dict(key='provenance/recoveries/rejections.jsonl',path=str(rejections))]
     manifest=build_release(captures=captures,readings=pages['readings'],filename_readings=names['readings'],
-        parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},catalog_version=names['catalog_version'],variant_files=variant_files,
+        parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},catalog_version=names['catalog_version'],
+        variant_files=variant_files,recovery_files=recovery_files,
         engine=engine,output=tmp_path/'release',scratch=tmp_path/'model')
     listed=pq.read_table(tmp_path/'release/list.parquet').to_pylist()
     detail=pq.read_table(tmp_path/'release/detail.parquet').to_pylist()
@@ -62,6 +71,12 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     assert detail[0]['alternates'][0]['format']=='html'
     assert detail[0]['alternates'][0]['size']==len(html)
     assert pq.read_table(tmp_path/'release/url_variants.parquet').to_pylist()==[dict(canonical_url='https://fixture.test/report.pdf',variant_url='https://fixture.test/mirror.pdf')]
+    corrections_rows=pq.read_table(tmp_path/'release/corrections.parquet').to_pylist()
+    assert len(corrections_rows)==1
+    assert corrections_rows[0]['original_url']=='https://fixture.test/dead-link.pdf'
+    assert corrections_rows[0]['rejected_body']==bytes.fromhex(rejected_sha)
+    assert corrections_rows[0]['decision_id']=='rej-1'
+    assert corrections_rows[0]['recovered_url']=='http://mirror.fixture.test/wrong.pdf'
     # These reused parser inputs have finished all consumers before body joins.
     model_steps={step['name']:step for step in json.loads((tmp_path/'model/job.json').read_text())['steps']}
     assert 'sniff_observations' in model_steps['sniff_facts'].get('release_after',[])
@@ -69,7 +84,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     members=pq.read_table(tmp_path/'model/evidence/source_members.parquet').to_pylist()
     assert len({m['source_id'] for m in members})==3
     assert {m['effective_filename'] for m in members}=={'report.html','report.pdf','download report.pdf'}
-    assert {f['name'] for f in manifest['files']}=={'list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet','recoveries.parquet','meetings.parquet','url_state.parquet','url_variants.parquet','retired_links.parquet','schema.json','capture_scope.json','capture_profile.json'}
+    assert {f['name'] for f in manifest['files']}=={'list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet','recoveries.parquet','meetings.parquet','url_state.parquet','url_variants.parquet','retired_links.parquet','corrections.parquet','schema.json','capture_scope.json','capture_profile.json'}
     assert (tmp_path/'model/evidence/document_rows.parquet').is_file()
     assert {'body_sha256','decided_at','decision_id'} <= set(pq.read_schema(tmp_path/'model/evidence/current_recoveries.parquet').names)
     lookups=pq.read_table(tmp_path/'release/urls.parquet').to_pylist()
@@ -78,7 +93,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     # Identical pinned inputs must produce byte-identical content at a fresh path.
     arguments=dict(captures=captures,readings=pages['readings'],filename_readings=names['readings'],
         parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},
-        catalog_version=names['catalog_version'],engine=engine,variant_files=variant_files)
+        catalog_version=names['catalog_version'],engine=engine,variant_files=variant_files,recovery_files=recovery_files)
     repeated=build_release(**arguments,output=tmp_path/'repeat-release',scratch=tmp_path/'repeat-model')
     assert repeated==manifest
     for item in manifest['files']:
