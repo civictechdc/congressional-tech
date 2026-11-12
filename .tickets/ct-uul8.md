@@ -47,3 +47,9 @@ Resolved all 11 printed hearings row by row:
 
 4. **Four out-of-Washington Senate field hearings absent from `meetings.parquet` (recorded):**
    - `CHRG-117shrg45206` (row `100022`, `2021-07-19`, Senate Rules in Atlanta, GA), `CHRG-117shrg46334` (row `100109`, `2021-09-08`, Senate Aging in Charleston, SC), `CHRG-117shrg47456` (row `100249`, `2022-04-12`, Senate Aging in Phoenix, AZ), and `CHRG-117shrg47982` (row `100312`, `2022-07-01`, Senate Aging in Fayetteville, GA): Congress.gov's Senate `committee-meeting` feed derives from the Congressional Record Daily Digest, which omits recess/field hearings outside Washington, so none of the four has a canonical meeting row to attach to.
+
+### Final Wave 4 Verification & Merge Closeout (2026-11-12)
+- **Code Commit:** `4a19b8cb` (`claude/ct-wave-4-model`, fast-forwarded onto `origin/main`)
+- **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
+- **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
+- **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.

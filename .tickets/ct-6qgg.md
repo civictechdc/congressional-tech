@@ -30,3 +30,9 @@ Closed: updated `youtube-embed-or-live` in `model/registries/recording-sources.j
 
 Looser-pattern scan over all 14,540 distinct retained YouTube URLs (after `url_resolve` protocol-relative expansion) leaves exactly 1 non-matching `/embed/` URL:
 - `https://www.youtube.com/embed/1bxY6pFimYg021424?rel=0&wmode=opaque`: author concatenated a 6-digit MMDDYY hearing date (`021424`) directly onto the 11-character video ID `1bxY6pFimYg` (`@HouseBudgetGOP`) with no delimiter, producing a broken 17-character path segment that YouTube itself rejects and that cannot be safely matched without guessing arbitrary trailing digits on valid path segments.
+
+### Final Wave 4 Verification & Merge Closeout (2026-11-12)
+- **Code Commit:** `4a19b8cb` (`claude/ct-wave-4-model`, fast-forwarded onto `origin/main`)
+- **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
+- **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
+- **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.

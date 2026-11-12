@@ -25,3 +25,9 @@ Implemented and verified:
 - Added `model/sql/corrections.sql` exporting permanent rejection records (`remaining_recovery_decisions WHERE kind='rejected'`) as `corrections.parquet` (`original_url`, `rejected_body`, `decision_id`, `decided_at`, `recovered_url`, `identity_note`), declared in `model/registries/release-schema.json` and `docs/release-relationships.md`.
 - Wired `release_comparison.proven_corrections` and `release_gate` to prove changed `link_key`, `lookup_key` (including serialization alias), and `address` answers directly from `candidate/corrections.parquet` + `candidate/recoveries.parquet` without requiring a hand `corrections` list in the cause record (while retaining `named_corrections` compatibility).
 - Verified with end-to-end `build_release` export tests (`test_phase1_release.py`) and 5 planted defect refusals (`test_published_corrections_proof_refuses_planted_defects` in `test_release_gate.py`).
+
+### Final Wave 4 Verification & Merge Closeout (2026-11-12)
+- **Code Commit:** `4a19b8cb` (`claude/ct-wave-4-model`, fast-forwarded onto `origin/main`)
+- **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
+- **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
+- **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.

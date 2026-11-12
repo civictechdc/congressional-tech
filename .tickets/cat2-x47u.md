@@ -25,3 +25,8 @@ All 4 SQL/registry gaps fixed with unit & model regressions: CHRG-* rows inherit
 - Preferred clean `<h1>` (`page_heading`, stripping Senate ColdFusion SR-only `'Hearing status...: Hearing title...'`) over generic (`hearing | Hearings | ...`, bare committee banner) or `... |`-truncated `<title>` in `source-annotations-final.sql`, `document-recovery-normalized.sql`, and `recovered-copy-fills.sql`; added `hearings?` and split `^_[0-9]+` anchors to `model/registries/title-rules.json`.
 - Classified `BILLS-*-RCP*` as `document_kind = ['committee-print']`, `document_family = ['print']` (`source-annotations-final.sql`) and extracted `'Rules Committee Print ...'` titles from `<amendment-doc>` XML `text_head` (`source-annotations-pages.sql`).
 
+### Final Wave 4 Verification & Merge Closeout (2026-11-12)
+- **Code Commit:** `4a19b8cb` (`claude/ct-wave-4-model`, fast-forwarded onto `origin/main`)
+- **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
+- **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
+- **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.

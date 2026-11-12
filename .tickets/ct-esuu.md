@@ -31,3 +31,9 @@ Fixed in `model/sql/html-uuid-slug-fills.sql` and `packages/viewer_publication/s
 - HTML documents whose primary `base_normalized` filename is a bare UUID first take any non-UUID sibling HTML copy's `filename`, `document_kind`, `document_family`, and `facts` from `saved_files` + `source_annotations` on the same component (restoring `hearings-2021-11-business-meeting-pending-nominations-60bdf4d2-9524-4699-9553-caf33a0da8be` and `hearings-2021-5-nomination-business-meeting-5c20db43-6834-46b2-b92f-40c4c719a379` with `['business-meeting']` kind/family/facts on both `energy.senate.gov` rows when recaptured via `/<slug>/<uuid>`).
 - When no sibling non-UUID HTML copy exists, `html-uuid-slug-fills.sql` recovers the descriptive trailing-slash segment or `<slug>-<uuid>` stem from the document's URLs (`source_url` / `document_addresses`), excluding generic container path segments (`hearings`, `documents`, `files`, `services`, etc.), and derives matching event `document_kind`, `document_family`, and `facts`.
 - Verified end-to-end with `test_senate_html_urls_ending_in_bare_uuid_retain_slug_filename_kind_and_family` in `packages/viewer_publication/tests/test_phase1_document_metadata.py`, `test_producer_identities.py`, `test_archive_schema.py`, `test_phase1_model_lifetimes.py`, and `test_phase1_model_repeat_cost.py`.
+
+### Final Wave 4 Verification & Merge Closeout (2026-11-12)
+- **Code Commit:** `4a19b8cb` (`claude/ct-wave-4-model`, fast-forwarded onto `origin/main`)
+- **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
+- **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
+- **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.

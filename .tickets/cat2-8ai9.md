@@ -27,4 +27,8 @@ m3u8 playlists without retained caption_resources report advertised_not_archived
 - `P2-10a`: Backfilled unambiguous `chamber`, `congress`, `committees`, and `meeting_date` on shell meetings (`m.event_id IS NULL`) from non-hidden linked `ordered` documents in `model/sql/entity-meetings.sql` while keeping `chamber_basis='meeting_detail_missing'`.
 - Verified end-to-end in `packages/viewer_publication/tests/test_horizontal_audit_wave4.py` plus full `viewer_publication` regression suite.
 
-
+### Final Wave 4 Verification & Merge Closeout (2026-11-12)
+- **Code Commit:** `4a19b8cb` (`claude/ct-wave-4-model`, fast-forwarded onto `origin/main`)
+- **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
+- **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
+- **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.

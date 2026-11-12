@@ -27,3 +27,9 @@ validated 2026-11-11, left open: not fixed. DuckDB on 77673bfb8fcf videos.parque
 **2026-11-12T04:34:00Z**
 
 Closed: `model/sql/entity-videos.sql` now normalizes `title` and `source_description` via `nullif(regexp_replace(..., '^\s+|\s+$', '', 'g'), '')` over all retained `video_records` rows (handling ASCII and Unicode whitespace without moving pinned `video_records` producer versions or requiring an R2 lake backfill; clears all 1,095 whitespace-only descriptions and 1,177 Unicode-whitespace-padded rows measured on `46ebbdf8dcaf` `videos.parquet`). Added `untrimmed_video_texts` to `explorer_invariants` in `archive_model.py` so any empty or whitespace-padded `videos_export` text fails the model build.
+
+### Final Wave 4 Verification & Merge Closeout (2026-11-12)
+- **Code Commit:** `4a19b8cb` (`claude/ct-wave-4-model`, fast-forwarded onto `origin/main`)
+- **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
+- **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
+- **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.

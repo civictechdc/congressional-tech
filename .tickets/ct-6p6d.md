@@ -43,3 +43,9 @@ Closed with all four items resolved or explicitly disposed:
 - **Item 2 (Done):** `archive_model_profile._definition_hashes` replaces raw `uv.lock` byte hashing with `_locked_model_digest`, hashing only locked packages imported by model Python definitions (`pyarrow`, `duckdb` and their lock closure) plus `model_sql.py` and `bill_codes.py`. Unrelated dependency bumps (`pytest`, `aiohttp`, `boto3`, `pillow`, `trafilatura`, etc.) leave `profile_sha256` unchanged.
 - **Item 3 (Decided):** Thread measurement recorded above (`2` vs `4` vs `8` threads); lake I/O rather than compute threads is the bottleneck, so engine threads remain at `2`.
 - **Item 4 (Declined for maintenance scope):** A general incremental model engine is a standalone multi-phase architecture project rather than a point fix; with `ct-07wr` (lake read-once cache) plus items 1 and 2 cutting repeated daily scans and spurious lockfile rebuilds, incremental model evaluation is declined unless nightly publication grows past its operational window.
+
+### Final Wave 4 Verification & Merge Closeout (2026-11-12)
+- **Code Commit:** `4a19b8cb` (`claude/ct-wave-4-model`, fast-forwarded onto `origin/main`)
+- **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
+- **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
+- **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.
