@@ -1323,7 +1323,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     """Continue one prepared plan through grouping and the shared native exporter."""
     from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS,MEETING_DICTIONARY
     from viewer_publication.archive_annotations import annotation_steps
-    from viewer_publication.archive_provenance import RECOVERY_FILE_AGREEMENT,attachment_steps,body_review_steps,recovered_copy_steps
+    from viewer_publication.archive_provenance import RECOVERY_FILE_AGREEMENT,attachment_steps,body_review_steps,recovered_copy_steps,saved_recoveries_step
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
     inputs,captures_step=retained_captures(prepared['inputs']);capture_profile=prepared['capture_profile']
     parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
@@ -1348,7 +1348,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += [dict(name='filename_conflicts',sql=FILENAME_CONFLICTS_SQL,materialize=True)]
     steps += _sql_steps(['document-members','archive-container-links','landing-page-files','landing-page-picks','landing-pages','document-bodies','document-identities','saved-name-standing','saved-files','saved-name-conflicts','document-alternates',
-        'document-version-keys','document-versions','document-bill-decisions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
+        'document-version-keys','document-versions','document-bill-decisions','document-metadata','document-addresses'],root=root)+[saved_recoveries_step(root=root)]+_sql_steps(['document-removals','document-packages',
         'recovered-copy-fills','document-filename-facts'],root=root)
     steps += package_link_steps(root=root)
     steps += appearance_steps(root=root)+witness_key_steps(root=root)+[

@@ -38,9 +38,37 @@ def provenance_inputs(work,*,recovery_files=(),review_files=()):
     return inputs,steps
 
 
+# Single owner of DM 7.5 recovery display order and container-ZIP exclusion, shared by
+# model/sql/provenance-recovered-copy-links.sql and model/sql/saved-recoveries.sql (ct-jcnd).
+NON_ARCHIVE_RECOVERY_FILTER_SQL=(
+    "r.body_sha NOT IN (SELECT lower(encode(sha256,'hex')) FROM archive_bodies)\n"
+    "  AND NOT EXISTS (SELECT 1 FROM good_archive_containers z"
+    " WHERE z.receipt_key=r.receipt_key AND z.receipt_line=r.receipt_line)"
+)
+RECOVERY_ORDER_SQL=(
+    "CASE r.kind WHEN 'recovered_document' THEN 0 WHEN 'full_recording_recovered' THEN 0\n"
+    "  WHEN 'requested_content_in_official_hearing' THEN 2 ELSE 1 END,\n"
+    "  cast(r.imported_at AS TIMESTAMP WITH TIME ZONE) DESC NULLS LAST,"
+    "r.body_sha,r.receipt_key,r.receipt_line,r.capture_index"
+)
+
+
+def _render_recovery_sql(sql):
+    return (sql
+        .replace('{{NON_ARCHIVE_RECOVERY_FILTER}}',NON_ARCHIVE_RECOVERY_FILTER_SQL)
+        .replace('{{RECOVERY_ORDER}}',RECOVERY_ORDER_SQL))
+
+
 def _steps(names,root):
-    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/('provenance-'+name+'.sql')).read_text(),materialize=True)
+    return [dict(name=name.replace('-','_'),sql=_render_recovery_sql((Path(root)/'model/sql'/('provenance-'+name+'.sql')).read_text()),materialize=True)
             for name in names]
+
+
+def saved_recoveries_step(*,root=ROOT):
+    """Rank attached non-container recoveries in DM 7.5 display order (ct-jcnd)."""
+    return dict(name='saved_recoveries',
+        sql=_render_recovery_sql((Path(root)/'model/sql/saved-recoveries.sql').read_text()),
+        materialize=True)
 
 
 def current_steps(*,root=ROOT):

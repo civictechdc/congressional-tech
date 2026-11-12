@@ -21,10 +21,11 @@ def test_native_recovery_export_preserves_saved_recovery_preference(tmp_path):
     inputs=[json_input(tmp_path,'final_recovery_attachments',rows,**fields),
         json_input(tmp_path,'document_identities',[dict(component='component',document_id='d'*64)],component='Utf8',document_id='Utf8'),
         json_input(tmp_path,'body_evidence',[dict(body_sha=c*64,suffix='.gz') for c in ['a','b','c']],body_sha='Utf8',suffix='Utf8')]
+    from viewer_publication.archive_provenance import saved_recoveries_step
     reports=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,steps=[
         dict(name='archive_bodies',sql="SELECT arrow_cast(decode('00','hex'),'Binary') AS sha256 WHERE false"),
         dict(name='good_archive_containers',sql="SELECT 'x' AS receipt_key,1 AS receipt_line WHERE false"),
-        dict(name='saved_recoveries',sql=(ROOT/'model/sql/saved-recoveries.sql').read_text(),materialize=True),
+        saved_recoveries_step(),
         dict(name='recovery_input',sql=(ROOT/'model/sql/document-recovery-input.sql').read_text(),materialize=True)],outputs=[],queries=[
             dict(name='ordered',sql='SELECT kind,recovered_url,encode(body,\'hex\') AS body FROM recovery_input ORDER BY recovery_key')])
     assert [r['body'] for r in reports['ordered']]==['c'*64,'b'*64,'a'*64]

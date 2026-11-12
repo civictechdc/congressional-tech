@@ -9654,6 +9654,54 @@
       "source": "Authored boundary: a placeholder followed by the bill's name keeps the name"
     },
     {
+      "id": "title-rules:link_word_bill_placeholder_comma",
+      "registry": "title-rules",
+      "entry": "link_word_bill_placeholder",
+      "value": "H.R.___,",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, live row 58914: bill placeholder without space and with trailing comma (ct-jcnd)"
+    },
+    {
+      "id": "title-rules:link_word_bill_placeholder_hres",
+      "registry": "title-rules",
+      "entry": "link_word_bill_placeholder",
+      "value": "H.Res.___",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf, live row 58928: House resolution placeholder (ct-jcnd)"
+    },
+    {
+      "id": "title-rules:link_word_download_general",
+      "registry": "title-rules",
+      "entry": "link_word_download",
+      "value": "Download General",
+      "expected": true,
+      "source": "Published release 77673bfb8fcf: 2,270 link-text titles starting with 'Download ' such as 'Download General' (542) and 'Download Bio' (96) (ct-jcnd)"
+    },
+    {
+      "id": "title-rules:link_word_download_plural",
+      "registry": "title-rules",
+      "entry": "link_word_download",
+      "value": "Downloads and Hearing Records",
+      "expected": false,
+      "source": "Authored boundary: 'Downloads' in a heading or title is not a download command"
+    },
+    {
+      "id": "title-rules:link_word_filename",
+      "registry": "title-rules",
+      "entry": "link_word_filename",
+      "value": "BILLS-116hr5430rfs.pdf",
+      "expected": true,
+      "source": "Published release ede659a056c0: 513 documents titled by a bare filename from link text, including 'BILLS-116hr5430rfs.pdf' replacing 'H.R. 5430' (ct-jcnd, review finding 9)"
+    },
+    {
+      "id": "title-rules:link_word_filename_spaced",
+      "registry": "title-rules",
+      "entry": "link_word_filename",
+      "value": "S. ___, Traumatic Brain Injury Program Reauthorization Act of 2018.pdf",
+      "expected": false,
+      "source": "Authored boundary: a multi-word title ending in a file extension keeps the name"
+    },
+    {
       "id": "page-signals:description_templates",
       "registry": "page-signals",
       "entry": "description_templates",

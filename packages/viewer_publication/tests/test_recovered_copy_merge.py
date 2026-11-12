@@ -246,10 +246,11 @@ def test_a_link_is_an_address_only_of_the_file_its_own_row_shows(tmp_path):
 
 
 def test_a_link_moves_through_its_shown_copy_or_one_with_the_same_text(tmp_path):
-    """The recovered-copy links step alone (ct-u9y4). Per dead link: the copies in the recovery order,
-    which of them is a published body, and their text fingerprints. Only bodies named here move a link."""
+    """The recovered-copy links step alone (ct-u9y4, ct-jcnd item 3). Per dead link: the copies in the
+    shared recovery order, excluding container ZIPs (archive_bodies and good_archive_containers) just as
+    saved_recoveries_step() does, which of them is a published body, and their text fingerprints."""
     from congress_api.retention.provenance import json_input
-    from viewer_publication.archive_provenance import recovered_copy_steps
+    from viewer_publication.archive_provenance import recovered_copy_steps, saved_recoveries_step
     body = lambda name: hashlib.sha256(name.encode()).hexdigest()
     cases = {  # link: its recoveries as (body, kind, imported_at, published, fingerprint), then the bodies that move it
         'one-copy': ([('a', 'recovered_document', LATER, True, None)], ['a']),
@@ -261,27 +262,46 @@ def test_a_link_moves_through_its_shown_copy_or_one_with_the_same_text(tmp_path)
         'other-text': ([('t1', 'recovered_document', LATER, False, 'f2'), ('t2', 'recovered_document', EARLIER, True, 'f3')], []),
         # A newer excerpt is not a copy and does not outrank the one recovered copy.
         'excerpt-beside-copy': ([('e1', 'requested_content_in_official_hearing', LATER, False, None), ('e2', 'recovered_document', EARLIER, True, None)], ['e2']),
+        # ct-jcnd item 3: a newer container ZIP (in archive_bodies or good_archive_containers) is a source
+        # container, not a shown recovery, so the link still moves through its older non-ZIP published copy.
+        'zip-body-beside-copy': ([('z1', 'recovered_document', LATER, False, None), ('z2', 'recovered_document', EARLIER, True, None)], ['z2']),
+        'zip-container-beside-copy': ([('zc1', 'recovered_document', LATER, False, None), ('zc2', 'recovered_document', EARLIER, True, None)], ['zc2']),
         'recording': ([('r1', 'full_recording_recovered', LATER, True, None)], ['r1']),
     }
     recoveries = [dict(id=f'{link}-{i}', kind=kind, original_url=DEM + link, body_sha=body(name), bytes=10, imported_at=at,
         receipt_key='receipts/documents/2026-10-15/slice.jsonl.gz', receipt_line=n, capture_index=0)
         for n, (link, i, (name, kind, at, _published, _print)) in enumerate((link, i, row) for link, (rows, _) in cases.items() for i, row in enumerate(rows))]
+    zc1_line = next(r['receipt_line'] for r in recoveries if r['body_sha'] == body('zc1'))
+    attachments = [dict(r, component=r['original_url'][len(DEM):], recovered_url=DOCS + r['id'], identity_note=None, role=None) for r in recoveries]
     files = [dict(source_id='link:' + link, body_sha=None, source_url=DEM + link, filename=link, is_real_file=False) for link in cases] + \
         [dict(source_id='file:' + name, body_sha=body(name), source_url=DOCS + name, filename=name, is_real_file=True)
          for rows, _ in cases.values() for name, _kind, _at, published, _print in rows if published]
     inputs = [
         json_input(tmp_path, 'model_recovery_rows', recoveries, id='Utf8', kind='Utf8', original_url='Utf8', body_sha='Utf8', bytes='Int64',
             imported_at='Utf8', receipt_key='Utf8', receipt_line='Int32', capture_index='Int32'),
+        json_input(tmp_path, 'final_recovery_attachments', attachments, component='Utf8', id='Utf8', kind='Utf8', original_url='Utf8',
+            body_sha='Utf8', bytes='Int64', imported_at='Utf8', receipt_key='Utf8', receipt_line='Int32', capture_index='Int32',
+            recovered_url='Utf8', identity_note='Utf8', role='Utf8'),
         json_input(tmp_path, 'effective_filenames', [dict(input_id='recovery:' + r['id'], filename=r['original_url'][len(DEM):]) for r in recoveries],
             input_id='Utf8', filename='Utf8'),
         json_input(tmp_path, 'source_files', files, source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8', is_real_file='Boolean'),
         json_input(tmp_path, 'body_evidence', [dict(body_sha=r['body_sha'], original_size=10) for r in recoveries], body_sha='Utf8', original_size='Int64'),
         json_input(tmp_path, 'body_fingerprints', [dict(body_sha=body(name), fingerprint=mark) for rows, _ in cases.values()
             for name, _kind, _at, _published, mark in rows if mark], body_sha='Utf8', fingerprint='Utf8')]
-    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=recovered_copy_steps(), outputs=[],
-        queries=[dict(name='moved', sql='SELECT source_id,body_sha FROM recovered_copy_links ORDER BY 1,2')])
+    steps = [
+        dict(name='archive_bodies', sql=f"SELECT arrow_cast(decode('{body('z1')}','hex'),'Binary') AS sha256"),
+        dict(name='good_archive_containers', sql=f"SELECT 'receipts/documents/2026-10-15/slice.jsonl.gz' AS receipt_key,{zc1_line} AS receipt_line"),
+        *recovered_copy_steps(),
+        saved_recoveries_step(),
+    ]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
+        queries=[dict(name='moved', sql='SELECT source_id,body_sha FROM recovered_copy_links ORDER BY 1,2'),
+                 dict(name='shown', sql='SELECT component,body_sha FROM saved_recoveries WHERE saved_rank=1 ORDER BY 1')])
     assert [(r['source_id'], r['body_sha']) for r in result['moved']] == \
         sorted(('link:' + link, body(name)) for link, (_rows, moves) in cases.items() for name in moves)
+    shown = {r['component']: r['body_sha'] for r in result['shown']}
+    assert shown['zip-body-beside-copy'] == body('z2')
+    assert shown['zip-container-beside-copy'] == body('zc2')
 
 
 @pytest.mark.parametrize('adjudicated', [False, True])

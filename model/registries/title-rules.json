@@ -20,7 +20,7 @@
   {
     "id": "link_word_download",
     "kind": "link_word",
-    "pattern": "(?i)^(download|view|open)\\s+(witness\\s+)?(testimony|statement|document|pdf|file|results)\\b",
+    "pattern": "(?i)^(?:download\\s+\\S|(?:view|open)\\s+(?:witness\\s+)?(?:testimony|statement|document|pdf|file|results)\\b)",
     "sample_id": "title-rules:link_word_download"
   },
   {
@@ -44,8 +44,14 @@
   {
     "id": "link_word_bill_placeholder",
     "kind": "link_word",
-    "pattern": "(?i)^(?:H\\.?\\s?R\\.?|S\\.)\\s*_+[.!:]*$",
+    "pattern": "(?i)^(?:(?:H\\.?\\s?R\\.?|S\\.|H\\.?\\s?Res\\.?|S\\.?\\s?Res\\.?|H\\.?\\s?J\\.?\\s?Res\\.?|S\\.?\\s?J\\.?\\s?Res\\.?|H\\.?\\s?Con\\.?\\s?Res\\.?|S\\.?\\s?Con\\.?\\s?Res\\.?)\\s*|S\\s+)_+(?:\\.[A-Za-z0-9]{2,5})?[,;.!:]*$",
     "sample_id": "title-rules:link_word_bill_placeholder"
+  },
+  {
+    "id": "link_word_filename",
+    "kind": "link_word",
+    "pattern": "(?i)^\\S+\\.(?:pdf|docx?|xlsx?|pptx?|zip|xml|txt|csv|rtf)$",
+    "sample_id": "title-rules:link_word_filename"
   },
   {
     "id": "label_alone",
