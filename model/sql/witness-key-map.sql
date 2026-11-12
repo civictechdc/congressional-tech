@@ -1,70 +1,152 @@
--- The current witness for each key in witness_key_priors (ct-kb4w), from the strongest evidence found;
--- a name alone never maps (ct-30fp).
---  occurrence: the same body and locator, published under another occasion or context key.
---  content: at the same occasion, source and print, a row equal in name and every other stated attribute,
---   with a non-name attribute stated or the same locator. Repeats of one person pair in list order.
---  locator: at the same locator of the same occasion, source and print, an edited name of the same
---   person (family and given name as witness_precedence judges them) with every other attribute equal
---   and position, organization or Bioguide ID stated.
--- One paired candidate maps. Several candidates without a unique pair are ambiguous.
--- A lone content candidate with a different repeat rank leaves the earlier occurrence unresolved.
-WITH pairs AS (
- SELECT k.old_key,c.witness_key,1 AS tier,true AS paired
- FROM witness_key_priors k
- JOIN witness_key_current c ON c.source=k.source AND c.record_sha_hex=k.record_sha_hex AND c.source_locator=k.source_locator
- UNION ALL
- SELECT k.old_key,c.witness_key,2 AS tier,k.repeat_rank=c.repeat_rank AS paired
- FROM witness_key_priors k
- JOIN witness_key_current c ON c.occasion=k.occasion AND c.source=k.source AND c.package_key=k.package_key AND c.signature=k.signature
- WHERE k.name_key IS NOT NULL
-  AND (coalesce(k.position,k.organization,k.on_behalf_of,k.bioguide_id) IS NOT NULL OR c.source_locator=k.source_locator)
- UNION ALL
- SELECT k.old_key,c.witness_key,3 AS tier,true AS paired
- FROM witness_key_priors k
- JOIN witness_key_current c ON c.occasion=k.occasion AND c.source=k.source AND c.package_key=k.package_key AND c.source_locator=k.source_locator
- WHERE (k.name_key IS DISTINCT FROM c.name_key)
-  AND coalesce(k.position,k.organization,k.bioguide_id) IS NOT NULL
-  AND (k.position IS NOT DISTINCT FROM c.position) AND (k.organization IS NOT DISTINCT FROM c.organization)
-  AND (k.on_behalf_of IS NOT DISTINCT FROM c.on_behalf_of) AND (k.location IS NOT DISTINCT FROM c.location)
-  AND (k.panel IS NOT DISTINCT FROM c.panel) AND (k.witness_type IS NOT DISTINCT FROM c.witness_type)
-  AND (k.bioguide_id IS NOT DISTINCT FROM c.bioguide_id)
-  AND (k.family=c.family OR (length(k.family)>=5 AND levenshtein(k.family,c.family)<=1))
-  AND (k.given IS NULL OR c.given IS NULL OR k.given_canon=c.given_canon
-   OR (length(k.given)>=3 AND length(c.given)>=3 AND substr(k.given,1,3)=substr(c.given,1,3))
-   OR (length(k.given)=1 AND k.given=substr(c.given,1,1)) OR (length(c.given)=1 AND c.given=substr(k.given,1,1)))
-), per_candidate AS (
- SELECT old_key,witness_key,min(tier) AS tier,bool_or(paired) AS paired
- FROM pairs
- GROUP BY old_key,witness_key
-), best AS (
- SELECT *,min(tier) OVER (PARTITION BY old_key) AS best_tier FROM per_candidate
-), decided AS (
- -- per_candidate holds one row per (old_key, witness_key), so plain counts need no count(DISTINCT).
- SELECT old_key,min(tier) AS tier,count(witness_key) AS candidates,count(witness_key) FILTER (WHERE paired) AS paired_candidates,
-  min(witness_key) FILTER (WHERE paired) AS paired_key,
-  array_agg(witness_key ORDER BY witness_key) AS candidate_keys
- FROM best
- WHERE tier=best_tier
+-- Redirect retired live witness keys and carry base_witness_key_map forward one hop (ct-46f3).
+-- Reads materialized witness_key_map_fresh, base_witness_key_map, and historical_witness_keys.
+WITH published_keys AS (
+ SELECT DISTINCT witness_key FROM appearance_records_resolved
+), bm_filtered AS (
+ SELECT bm.*
+ FROM witness_key_map_fresh nm
+ RIGHT ANTI JOIN (
+  published_keys pk
+  RIGHT ANTI JOIN base_witness_key_map bm ON pk.witness_key=bm.old_key
+ ) ON nm.old_key=bm.old_key
+ WHERE bm.old_key IS NOT NULL
+), bm_unamb_direct AS (
+ SELECT
+  bm.old_key,
+  bm.witness_key,
+  'unambiguous' AS status,
+  bm.basis,
+  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS candidate_keys,
+  bm.occasion,
+  bm.source
+ FROM bm_filtered bm
+ JOIN published_keys pk ON pk.witness_key=bm.witness_key
+ WHERE bm.status='unambiguous'
+), bm_unamb_hopped AS (
+ SELECT
+  bm.old_key,
+  CASE WHEN nm.status='unambiguous' THEN nm.witness_key END AS witness_key,
+  nm.status,
+  CASE WHEN nm.status<>'unresolved' THEN bm.basis END AS basis,
+  CASE
+   WHEN nm.status='ambiguous' THEN nm.candidate_keys
+   ELSE arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')
+  END AS candidate_keys,
+  bm.occasion,
+  bm.source
+ FROM (
+  published_keys pk
+  RIGHT ANTI JOIN (SELECT * FROM bm_filtered WHERE status='unambiguous') bm ON pk.witness_key=bm.witness_key
+ )
+ JOIN witness_key_map_fresh nm ON nm.old_key=bm.witness_key
+), bm_amb_unnested AS (
+ SELECT old_key,unnest(candidate_keys) AS ck
+ FROM bm_filtered
+ WHERE status='ambiguous' AND candidate_keys IS NOT NULL
+), nm_amb_unnested AS (
+ SELECT old_key,unnest(candidate_keys) AS live_ck
+ FROM witness_key_map_fresh
+ WHERE status='ambiguous' AND candidate_keys IS NOT NULL
+), bm_amb_live AS (
+ SELECT DISTINCT old_key,live_ck FROM (
+  SELECT u.old_key,u.ck AS live_ck
+  FROM bm_amb_unnested u JOIN published_keys pk ON pk.witness_key=u.ck
+  UNION ALL
+  SELECT u.old_key,nm.witness_key AS live_ck
+  FROM bm_amb_unnested u JOIN witness_key_map_fresh nm ON nm.old_key=u.ck
+  WHERE nm.status='unambiguous' AND nm.witness_key IS NOT NULL
+  UNION ALL
+  SELECT u.old_key,nm.live_ck
+  FROM bm_amb_unnested u JOIN nm_amb_unnested nm ON nm.old_key=u.ck
+ ) WHERE live_ck IS NOT NULL
+), bm_amb_agg AS (
+ SELECT old_key,count(live_ck) AS live_cnt,array_agg(live_ck ORDER BY live_ck) AS live_candidates
+ FROM bm_amb_live
  GROUP BY old_key
-), olds AS (
- -- A key can come from several contexts of one body; its rows agree on all but the filing occasion.
- SELECT old_key,min(occasion) AS occasion,min(source) AS source
- FROM witness_key_priors
- GROUP BY old_key
+), bm_amb_resolved AS (
+ SELECT
+  bm.old_key,
+  cast(NULL AS VARCHAR) AS witness_key,
+  CASE WHEN coalesce(a.live_cnt,0)>1 THEN 'ambiguous' ELSE 'unresolved' END AS status,
+  CASE WHEN coalesce(a.live_cnt,0)>1 THEN bm.basis END AS basis,
+  CASE
+   WHEN coalesce(a.live_cnt,0)>1 THEN a.live_candidates
+   ELSE arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')
+  END AS candidate_keys,
+  bm.occasion,
+  bm.source
+ FROM bm_amb_agg a
+ RIGHT JOIN (SELECT * FROM bm_filtered WHERE status='ambiguous') bm ON a.old_key=bm.old_key
+), bm_unresolved AS (
+ SELECT
+  old_key,
+  cast(NULL AS VARCHAR) AS witness_key,
+  'unresolved' AS status,
+  cast(NULL AS VARCHAR) AS basis,
+  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS candidate_keys,
+  occasion,
+  source
+ FROM bm_filtered
+ WHERE status='unresolved'
+), carried_map_rows AS (
+ SELECT * FROM bm_unamb_direct
+ UNION ALL
+ SELECT * FROM bm_unamb_hopped
+ UNION ALL
+ SELECT * FROM bm_amb_resolved
+ UNION ALL
+ SELECT * FROM bm_unresolved
+), active_map_keys AS (
+ SELECT old_key FROM witness_key_map_fresh
+ UNION ALL
+ SELECT old_key FROM carried_map_rows
+), hk_filtered AS (
+ SELECT hk.*
+ FROM active_map_keys am
+ RIGHT ANTI JOIN (
+  published_keys pk
+  RIGHT ANTI JOIN historical_witness_keys hk ON pk.witness_key=hk.old_key
+ ) ON am.old_key=hk.old_key
+), hk_unamb_candidates AS (
+ SELECT
+  hk.old_key,
+  hk.occasion,
+  hk.source,
+  hk.basis,
+  min(c.witness_key) AS witness_key,
+  count(c.witness_key) AS cnt
+ FROM hk_filtered hk
+ JOIN appearance_records_resolved c
+  ON c.source=hk.source AND c.record_sha_hex=hk.record_sha AND c.source_locator=hk.source_locator
+ WHERE hk.status='unambiguous'
+ GROUP BY hk.old_key,hk.occasion,hk.source,hk.basis
+), hk_rows AS (
+ SELECT
+  old_key,
+  witness_key,
+  'unambiguous' AS status,
+  basis,
+  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS candidate_keys,
+  occasion,
+  source
+ FROM hk_unamb_candidates
+ WHERE cnt=1
+ UNION ALL
+ SELECT
+  hk.old_key,
+  cast(NULL AS VARCHAR) AS witness_key,
+  'unresolved' AS status,
+  cast(NULL AS VARCHAR) AS basis,
+  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS candidate_keys,
+  hk.occasion,
+  hk.source
+ FROM hk_filtered hk
+ JOIN (SELECT DISTINCT record_sha_hex,source FROM selected_appearance_records) sr
+  ON sr.record_sha_hex=hk.record_sha AND sr.source=hk.source
+ WHERE hk.status='unresolved'
 )
-SELECT
- o.old_key,
- o.occasion,
- o.source,
- CASE WHEN d.paired_candidates=1 THEN d.paired_key END AS witness_key,
- CASE
-  WHEN d.paired_candidates=1 THEN 'unambiguous'
-  WHEN d.candidates>1 THEN 'ambiguous'
-  ELSE 'unresolved'
- END AS status,
- CASE WHEN d.paired_candidates=1 OR d.candidates>1 THEN
-  CASE d.tier WHEN 1 THEN 'occurrence' WHEN 2 THEN 'content' WHEN 3 THEN 'locator' END END AS basis,
- CASE WHEN d.candidates>1 AND d.paired_candidates<>1 THEN d.candidate_keys
-  ELSE arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') END AS candidate_keys
-FROM olds o
-LEFT JOIN decided d ON d.old_key=o.old_key
+SELECT * FROM witness_key_map_fresh
+UNION ALL
+SELECT * FROM carried_map_rows
+UNION ALL
+SELECT * FROM hk_rows

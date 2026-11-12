@@ -60,18 +60,18 @@ WITH prints_raw AS (
  FROM all_meeting_people GROUP BY event_id
 ), shared_by_kind AS (
  -- Slim pairs only: people rows carry no titles, so the join stays small.
- SELECT c.package_id AS sbk_package_id,c.event_id AS sbk_event_id,
-  count(DISTINCT CASE WHEN b.kind='official' THEN concat(a.family,'|',coalesce(a.given,'')) END) AS shared_official_n,
-  count(DISTINCT CASE WHEN b.kind='senate' THEN concat(a.family,'|',coalesce(a.given,'')) END) AS shared_senate_n
- FROM candidates c
- JOIN print_people a ON a.package_id=c.package_id
- JOIN all_meeting_people b ON b.event_id=c.event_id
- -- The same person as in witness-precedence.sql: family name, then agreeing given names.
- WHERE (a.family=b.family OR (length(a.family)>=5 AND levenshtein(a.family,b.family)<=1))
-  AND (a.given IS NULL OR b.given IS NULL OR a.given_canon=b.given_canon
-   OR (length(a.given)>=3 AND length(b.given)>=3 AND substr(a.given,1,3)=substr(b.given,1,3))
-   OR (length(a.given)=1 AND a.given=substr(b.given,1,1)) OR (length(b.given)=1 AND b.given=substr(a.given,1,1)))
- GROUP BY c.package_id,c.event_id
+ SELECT f.package_id AS sbk_package_id,f.event_id AS sbk_event_id,
+  count(DISTINCT CASE WHEN f.kind='official' THEN concat(f.a_family,'|',coalesce(f.a_given,'')) END) AS shared_official_n,
+  count(DISTINCT CASE WHEN f.kind='senate' THEN concat(f.a_family,'|',coalesce(f.a_given,'')) END) AS shared_senate_n
+ FROM person_given_matches gm RIGHT JOIN (
+  SELECT c.package_id,c.event_id,b.kind,a.family AS a_family,a.given AS a_given,b.given AS b_given
+  FROM candidates c
+  JOIN print_people a ON a.package_id=c.package_id
+  JOIN all_meeting_people b ON b.event_id=c.event_id
+  JOIN person_same_family sf ON sf.left_family=a.family AND sf.right_family=b.family
+ ) f ON gm.left_given=f.a_given AND gm.right_given=f.b_given
+ WHERE f.a_given IS NULL OR f.b_given IS NULL OR gm.left_given IS NOT NULL
+ GROUP BY f.package_id,f.event_id
 ), decided AS (
  SELECT c.package_id,c.event_id,c.day,c.not_held,c.named_meetings,
   -- Half the shorter list, and at least two people when both lists have two: one shared family name is chance.

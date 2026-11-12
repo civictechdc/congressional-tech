@@ -124,7 +124,7 @@ def meetings(tmp_path_factory):
     work = tmp_path_factory.mktemp('meeting-semantics')
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     steps = [
-        dict(name='meetings_resolved', sql="SELECT *,CASE WHEN false THEN make_array(named_struct('url',cast(NULL AS VARCHAR))) END AS document_references FROM ("+' UNION ALL '.join(MEETINGS)+")", materialize=True),
+        dict(name='meetings_resolved', sql="SELECT *,CASE WHEN false THEN make_array(named_struct('url',cast(NULL AS VARCHAR))) END AS document_references,array_slice(make_array(named_struct('subject_key',cast(NULL AS VARCHAR),'last_listed_on',cast(NULL AS DATE),'unlisted_since',cast(NULL AS DATE),'unlisted_by_record_sha',cast(NULL AS VARCHAR))),1,0) AS unlisted_subjects FROM ("+' UNION ALL '.join(MEETINGS)+")", materialize=True),
         dict(name='ordered', sql=ORDERED, materialize=True),
         dict(name='recordings_export', sql=RECORDINGS, materialize=True),
         dict(name='retained_caption_tracks', sql=f"SELECT 'senate:x' AS video_key,{SHA} AS track_body", materialize=True),
@@ -139,7 +139,7 @@ def meetings(tmp_path_factory):
         dict(name='meeting_document_urls', sql="SELECT cast(11 AS BIGINT) AS event_id,'https://www.congress.gov/118/meeting/house/116450/documents/HHRG-118-VR09-Transcript-20231108.pdf' AS url UNION ALL SELECT 21,'https://www.congress.gov/118/meeting/house/9/documents/HHRG-118-XX00-Transcript-20231109.pdf' "
              # 23's record lists its transcript; the other dated file is held and linked but not listed by the record.
              "UNION ALL SELECT 23,'http://docs.house.gov/meetings/VR/VR09/20231108/23/HHRG-118-VR09-Transcript-20231108.pdf'", materialize=True),
-        dict(name='appearance_records_resolved', sql="SELECT cast(15 AS BIGINT) AS event_id,'Jane Witness' AS name,'congress_gov' AS source UNION ALL SELECT 17,'PPACA Witness','mods'", materialize=True),
+        dict(name='appearance_records_resolved', sql="SELECT cast(15 AS BIGINT) AS event_id,'Jane Witness' AS name,'congress_gov' AS source,'listed' AS listing_status UNION ALL SELECT 17,'PPACA Witness','mods','listed'", materialize=True),
         dict(name='package_meeting_links', sql="SELECT 'CHRG-own' AS package_id,cast(19 AS BIGINT) AS event_id", materialize=True),
         dict(name='package_mods_facts', sql="SELECT 'CHRG-own' AS package_id", materialize=True),
         dict(name='spicy_nominations', sql="SELECT cast(NULL AS INT) AS congress,cast(NULL AS VARCHAR) AS number,cast(NULL AS VARCHAR) AS part_number,cast(NULL AS VARCHAR) AS hearings_json WHERE false", materialize=True),
@@ -260,13 +260,29 @@ def facts(named=(), held=(DAY,), title=TITLE):
     return dict(named_meetings=list(named), held_dates=list(held), title=title)
 
 
-def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False, print_links=False, capture_contexts=(), capture_rows=(), details=False, observation_exclusions=None):
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False, print_links=False, capture_contexts=(), capture_rows=(), details=False, observation_exclusions=None, prior_witnesses=(), base_map=(), historical_keys=()):
     """Witness rows per name, from the maintained package-link and appearance SQL; with keys, the
     published rows and witness_key_map."""
     import json
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from viewer_publication.release_gate import BASE_WITNESS_KEY_MAP, PRIOR_WITNESSES
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     ms_rows = [r for r in json.loads((ROOT / 'model/registries/meeting-sources.json').read_text()) if r['kind'] == 'appearance']
+    pw_path = tmp_path / 'prior-witnesses.parquet'
+    pw_rows = [{
+        **{f.name: None for f in PRIOR_WITNESSES},
+        **{k: v for k, v in r.items() if k in PRIOR_WITNESSES.names},
+        'record_sha': bytes.fromhex(r['record_sha_hex']) if r.get('record_sha') is None and r.get('record_sha_hex') else r.get('record_sha'),
+        'listing_status': r.get('listing_status', 'listed'),
+    } for r in prior_witnesses]
+    pq.write_table(pa.Table.from_pylist(pw_rows, schema=PRIOR_WITNESSES), pw_path)
+    bm_path = tmp_path / 'base-witness-key-map.parquet'
+    pq.write_table(pa.Table.from_pylist(list(base_map), schema=BASE_WITNESS_KEY_MAP), bm_path)
     inputs = [
+        dict(name='prior_witnesses', kind='parquet', path=str(pw_path)),
+        dict(name='base_witness_key_map', kind='parquet', path=str(bm_path)),
+        json_input(tmp_path, 'historical_witness_keys', list(historical_keys), **REGISTRIES['historical_witness_keys']),
         json_input(tmp_path, 'appearance_observation_exclusions',
                    json.loads((ROOT / 'model/registries/appearance-observation-exclusions.json').read_text()) if observation_exclusions is None else observation_exclusions,
                    **REGISTRIES['appearance_observation_exclusions']),
@@ -299,9 +315,13 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
     steps = [dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
              dict(name='page_facts', sql="SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,status,title,heading,text_head,cast(content_date AS DATE) AS content_date FROM page_inputs", materialize=True),
              dict(name='spicy_committees', sql="SELECT 'ssbk00' AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,'https://www.banking.senate.gov/' AS website_url", materialize=True),
+             dict(name='spicy_members', sql="SELECT cast(NULL AS VARCHAR) AS bioguide_id,cast(NULL AS VARCHAR) AS name_first,cast(NULL AS VARCHAR) AS name_nickname,cast(NULL AS VARCHAR) AS name_middle,cast(NULL AS VARCHAR) AS name_official_full WHERE false", materialize=True),
              dict(name='meetings_resolved', sql="""SELECT event_id,chamber,cast(meeting_date AS DATE) AS meeting_date,title,not_held,committee_key,
                  make_array(named_struct('system_code',committee_key,'role','primary')) AS committees FROM meetings_input""", materialize=True),
+             dict(name='person_nicknames', sql=sql('person-nicknames'), materialize=True),
              dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
+             dict(name='person_same_family', sql=sql('person-same-family'), materialize=True),
+             dict(name='person_given_matches', sql=sql('person-given-matches'), materialize=True),
              dict(name='captures', sql=CAPTURES + ''.join(
                  f" UNION ALL SELECT 'fetch' AS mode,cast(NULL AS BOOLEAN) AS complete,'failed' AS outcome,cast(NULL AS INT) AS http_status,"
                  f"arrow_cast(decode('{sha}','hex'),'FixedSizeBinary(32)') AS sha256,'house/witness-xml' AS family,cast(NULL AS VARCHAR) AS url,"
@@ -325,13 +345,18 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
              *senate_step,
              dict(name='appearance_capture_contexts', sql=sql('appearance-capture-contexts'), materialize=True),
              dict(name='appearance_observations', sql=sql('appearance-observations'), materialize=True),
+             dict(name='appearance_ranked_sources', sql=sql('appearance-ranked-sources'), materialize=True),
+             dict(name='congress_gov_witness_history', sql=sql('congress-gov-witness-history'), materialize=True),
+             dict(name='congress_gov_witness_items', sql=sql('congress-gov-witness-items'), materialize=True),
+             dict(name='congress_gov_retained_witnesses', sql=sql('congress-gov-retained-witnesses'), materialize=True),
+             dict(name='appearance_occurrences', sql=sql('appearance-occurrences'), materialize=True),
              dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True),
              dict(name='witness_precedence', sql=sql('witness-precedence'), materialize=True)]
     if keys:
-        steps += [dict(name=name.replace('-', '_'), sql=sql(name), materialize=True)
-                  for name in ('witness-key-current', 'witness-key-priors', 'witness-key-map')]
+        steps.append(dict(name='witness_key_map_fresh', sql=sql('witness-key-map-fresh'), materialize=True))
+        steps.append(dict(name='witness_key_map', sql=sql('witness-key-map'), materialize=True))
         return run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
-            dict(name='witnesses', sql='SELECT witness_key,name,occasion,source_locator,record_sha_hex FROM appearance_records_resolved ORDER BY witness_key'),
+            dict(name='witnesses', sql='SELECT witness_key,name,occasion,source,package_id,position,organization,on_behalf_of,location,panel,panel_order,display_order,bioguide_id,source_locator,record_sha_hex,listing_status FROM appearance_records_resolved ORDER BY witness_key'),
             dict(name='map', sql='SELECT * FROM witness_key_map ORDER BY old_key')])
     queries = [dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,r.source_locator,s.name AS superseded_by FROM appearance_records_resolved r
             LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
@@ -551,83 +576,93 @@ REFETCHED_AFTER = listed([
 
 @pytest.fixture(scope='module')
 def refetched(tmp_path_factory):
-    """The keys a release published from the earlier body, and the map once a re-fetched body replaces it."""
+    """Carried keys, retained no_longer_listed rows, and witness_key_map rows across a Congress.gov re-fetch."""
     # With no update date or capture time, the lower record SHA is the current body.
     newer, older = sorted(['body-1', 'body-2'], key=lambda tag: hashlib.sha256(tag.encode()).hexdigest())
     before = record(older, 'congress_gov', REFETCHED_BEFORE, event_id=9001)
     base = resolve(tmp_path_factory.mktemp('base'), [before], [], {}, keys=True)['witnesses']
     found = resolve(tmp_path_factory.mktemp('candidate'), [before, record(newer, 'congress_gov', REFETCHED_AFTER, event_id=9001)],
-                    [], {}, keys=True)
-    current = {w['witness_key']: (w['name'], w['source_locator']) for w in found['witnesses']}
+                    [], {}, keys=True, prior_witnesses=base)
+    current = {w['witness_key']: (w['name'], w['source_locator'], w['listing_status']) for w in found['witnesses']}
     mapped = {row['old_key']: row for row in found['map']}
     by_old = {}
     for w in base:
         row = mapped.get(w['witness_key'])
-        by_old[(w['name'], w['source_locator'])] = row and dict(
-            row, successor=current.get(row['witness_key']), candidates=sorted(current[k] for k in row['candidate_keys']))
+        by_old[(w['name'], w['source_locator'])] = dict(
+            old_key=w['witness_key'],
+            carried=current.get(w['witness_key']),
+            map_row=row and dict(
+                row,
+                successor=current.get(row['witness_key']),
+                candidates=sorted((current[k][0], current[k][1]) for k in row['candidate_keys']),
+            ),
+        )
     return by_old, current, found['map']
 
 
-def test_a_refetched_body_publishes_none_of_the_earlier_keys(refetched):
+def test_a_refetched_body_carries_or_maps_every_earlier_key(refetched):
     by_old, current, rows = refetched
     assert not set(current) & {row['old_key'] for row in rows}
-    assert all(row is not None for row in by_old.values()), 'every key the earlier body published has a map row'
+    assert all((v['carried'] is not None) ^ (v['map_row'] is not None) for v in by_old.values())
 
 
-@pytest.mark.parametrize('old,successor,basis', [
-    (('Jane Doe', 'congress_gov:witness[1]'), ('Jane Doe', 'congress_gov:witness[2]'), 'content'),
-    (('John Roe', 'congress_gov:witness[2]'), ('John Roe', 'congress_gov:witness[1]'), 'content'),
-    (('Lynn Goldman', 'congress_gov:witness[7]'), ('Lynn Goldman', 'congress_gov:witness[6]'), 'content'),
-    (('Lynn Goldman', 'congress_gov:witness[8]'), ('Lynn Goldman', 'congress_gov:witness[7]'), 'content'),
-    # An edited honorific at the same place, with the same position: one person.
-    (('Mr. Jennifer Manner', 'congress_gov:witness[3]'), ('Ms. Jennifer Manner', 'congress_gov:witness[3]'), 'locator'),
+@pytest.mark.parametrize('old,expected', [
+    (('Jane Doe', 'congress_gov:witness[1]'), ('Jane Doe', 'congress_gov:witness[2]', 'listed')),
+    (('John Roe', 'congress_gov:witness[2]'), ('John Roe', 'congress_gov:witness[1]', 'listed')),
+    (('Pat Smith', 'congress_gov:witness[6]'), ('Pat Smith', 'congress_gov:witness[8]', 'listed')),
+    (('Lynn Goldman', 'congress_gov:witness[7]'), ('Lynn Goldman', 'congress_gov:witness[6]', 'listed')),
+    (('Lynn Goldman', 'congress_gov:witness[8]'), ('Lynn Goldman', 'congress_gov:witness[7]', 'listed')),
+    (('Lynn Goldman', 'congress_gov:witness[9]'), ('Lynn Goldman', 'congress_gov:witness[9]', 'no_longer_listed')),
+    (('Carl Other', 'congress_gov:witness[10]'), ('Carl Other', 'congress_gov:witness[10]', 'no_longer_listed')),
+    (('Sam Lee', 'congress_gov:witness[4]'), ('Sam Lee', 'congress_gov:witness[4]', 'no_longer_listed')),
+    (('John Smith', 'congress_gov:witness[5]'), ('John Smith', 'congress_gov:witness[5]', 'no_longer_listed')),
 ])
-def test_an_unambiguous_successor_maps(refetched, old, successor, basis):
-    row = refetched[0][old]
-    assert (row['status'], row['successor'], row['basis'], row['candidate_keys']) == ('unambiguous', successor, basis, [])
+def test_carried_and_retained_congress_gov_witnesses_keep_their_keys(refetched, old, expected):
+    entry = refetched[0][old]
+    assert entry['carried'] == expected and entry['map_row'] is None
 
 
-def test_a_repeat_with_no_partner_is_ambiguous_and_lists_its_candidates(refetched):
-    row = refetched[0][('Lynn Goldman', 'congress_gov:witness[9]')]
-    assert (row['status'], row['witness_key'], row['basis']) == ('ambiguous', None, 'content')
-    assert row['candidates'] == [('Lynn Goldman', 'congress_gov:witness[6]'), ('Lynn Goldman', 'congress_gov:witness[7]')]
+def test_an_edited_honorific_at_the_same_place_maps_via_locator(refetched):
+    row = refetched[0][('Mr. Jennifer Manner', 'congress_gov:witness[3]')]['map_row']
+    assert (row['status'], row['successor'], row['basis'], row['candidate_keys']) == (
+        'unambiguous', ('Ms. Jennifer Manner', 'congress_gov:witness[3]', 'listed'), 'locator', [])
 
 
-def test_a_repeat_with_no_partner_does_not_map_to_the_only_survivor(tmp_path):
+@pytest.mark.parametrize('before_count,after_count', [(3, 2), (2, 1)])
+def test_a_repeat_whose_count_changed_on_unretained_source_is_ambiguous(tmp_path, before_count, after_count):
     newer, older = sorted(['body-1', 'body-2'], key=lambda tag: hashlib.sha256(tag.encode()).hexdigest())
     entries = [('Lynn Goldman', dict(position='Dean'))]
-    before = record(older, 'congress_gov', listed(entries * 2), event_id=9001)
-    after = record(newer, 'congress_gov', listed(entries), event_id=9001)
-    found = resolve(tmp_path, [before, after], [], {}, keys=True)
-    assert len(found['witnesses']) == 1
-    survivor = found['witnesses'][0]['witness_key']
-    assert sorted((row['status'], row['witness_key'], row['basis'], row['candidate_keys'])
-                  for row in found['map']) == [('unambiguous', survivor, 'content', []),
-                                                ('unresolved', None, None, [])]
+    before = record(older, 'house_xml', [
+        {**witness(name), 'source_locator': f'house_xml:witness[{i}]', **attrs}
+        for i, (name, attrs) in enumerate(entries * before_count, 1)
+    ], event_id=9001)
+    after = record(newer, 'house_xml', [
+        {**witness(name), 'source_locator': f'house_xml:witness[{i}]', **attrs}
+        for i, (name, attrs) in enumerate(entries * after_count, 1)
+    ], event_id=9001)
+    (tmp_path / 'base').mkdir(), (tmp_path / 'cand').mkdir()
+    base = resolve(tmp_path / 'base', [before], [], {}, keys=True)['witnesses']
+    found = resolve(tmp_path / 'cand', [before, after], [], {}, keys=True, prior_witnesses=base)
+    assert len(found['witnesses']) == after_count
+    survivors = sorted(w['witness_key'] for w in found['witnesses'])
+    assert len(found['map']) == before_count
+    expected = ('ambiguous', None, 'content', survivors) if after_count > 1 else ('unresolved', None, None, [])
+    for row in found['map']:
+        assert (row['status'], row['witness_key'], row['basis'], sorted(row['candidate_keys'])) == expected
 
 
-@pytest.mark.parametrize('old', [
-    ('Carl Other', 'congress_gov:witness[10]'),  # no longer listed
-    ('Sam Lee', 'congress_gov:witness[4]'),  # the same name with another position: another person
-    ('John Smith', 'congress_gov:witness[5]'),  # Joan Smith now holds the place and the position
-    ('Pat Smith', 'congress_gov:witness[6]'),  # a name alone, at another place
-])
-def test_a_name_alone_or_a_vanished_witness_is_unresolved(refetched, old):
-    row = refetched[0][old]
-    assert (row['status'], row['witness_key'], row['basis'], row['candidate_keys']) == ('unresolved', None, None, [])
-
-
-def test_a_print_key_from_before_its_meeting_link_maps_to_the_linked_row(tmp_path):
+def test_a_print_key_from_before_its_meeting_link_carries_directly_to_the_linked_row(tmp_path):
     printed = record('a', 'mods', [witness('A')], package_id='CHRG-a')
     (tmp_path / 'base').mkdir(), (tmp_path / 'candidate').mkdir()
     base = resolve(tmp_path / 'base', [printed], [], {}, keys=True)['witnesses']
-    found = resolve(tmp_path / 'candidate', [printed], [('CHRG-a', 9001)], {'CHRG-a': facts()}, keys=True)
+    found = resolve(tmp_path / 'candidate', [printed], [('CHRG-a', 9001)], {'CHRG-a': facts()},
+                    keys=True, prior_witnesses=base)
     assert [w['occasion'] for w in base] == ['package:CHRG-a'] and [w['occasion'] for w in found['witnesses']] == ['meeting:9001']
-    assert [(r['old_key'], r['witness_key'], r['status'], r['basis']) for r in found['map']] == [
-        (base[0]['witness_key'], found['witnesses'][0]['witness_key'], 'unambiguous', 'occurrence')]
+    assert found['witnesses'][0]['witness_key'] == base[0]['witness_key']
+    assert found['map'] == []
 
 
-def test_demoted_print_meeting_keys_keep_bound_and_free_context_successors(tmp_path):
+def test_demoted_print_meeting_keys_carry_forward_across_bound_and_free_contexts(tmp_path):
     package = 'CHRG-117hhrg00001'
     printed = record('demoted-print', 'mods', [witness('Jane Doe')], package_id=package,
                      context_url=f'https://www.govinfo.gov/content/pkg/{package}/mods.xml')
@@ -635,40 +670,37 @@ def test_demoted_print_meeting_keys_keep_bound_and_free_context_successors(tmp_p
     digest = "arrow_cast(decode('" + printed['record_sha_hex'] + "','hex'),'FixedSizeBinary(32)')"
     results = {}
     for name, held, contexts in [('bound', (DAY,), [(digest, bound, 'mods.xml')]),
-                                 ('free', (DAY,), []),
-                                 ('demoted', (DAY, '2021-06-10'), [(digest, bound, 'mods.xml')])]:
+                                 ('free', (DAY,), [])]:
         directory = tmp_path / name
         directory.mkdir()
         results[name] = resolve(directory, [printed], [(package, 9001)],
                                 {package: facts(held=held)}, capture_contexts=contexts, keys=True)
-    found = results['demoted']
-    assert [w['occasion'] for w in found['witnesses']] == [f'package:{package}']
-    successor = found['witnesses'][0]['witness_key']
-    mapped = {r['old_key']: r for r in found['map']}
-    old_keys = [results[context]['witnesses'][0]['witness_key'] for context in ('bound', 'free')]
-    assert len(set(old_keys)) == 2
-    for old_key in old_keys:
-        row = mapped[old_key]
-        assert (row['witness_key'], row['status'], row['basis'], row['candidate_keys']) == (
-            successor, 'unambiguous', 'occurrence', [])
+    # Under witness-appearance-v3, context_key is not hashed and Tier 1 carries the prior key across demotion:
+    assert results['bound']['witnesses'][0]['witness_key'] == results['free']['witnesses'][0]['witness_key']
+    for context in ('bound', 'free'):
+        demoted_dir = tmp_path / f'demoted-{context}'
+        demoted_dir.mkdir()
+        found = resolve(demoted_dir, [printed], [(package, 9001)],
+                        {package: facts(held=(DAY, '2021-06-10'))},
+                        capture_contexts=[(digest, bound, 'mods.xml')],
+                        keys=True, prior_witnesses=results[context]['witnesses'])
+        assert [w['occasion'] for w in found['witnesses']] == [f'package:{package}']
+        assert found['witnesses'][0]['witness_key'] == results[context]['witnesses'][0]['witness_key']
+        assert found['map'] == []
 
 
-def test_demoted_repeated_print_occurrences_keep_unique_successors(tmp_path):
+def test_demoted_repeated_print_occurrences_carry_unique_keys_directly(tmp_path):
     package = 'CHRG-repeat'
     printed = record('demoted-repeats', 'mods', listed([('Lynn Goldman', dict(position='Dean'))] * 2), package_id=package)
-    results = {}
-    for name, held in [('base', (DAY,)), ('demoted', (DAY, '2021-06-10'))]:
-        directory = tmp_path / name
-        directory.mkdir()
-        results[name] = resolve(directory, [printed], [(package, 9001)], {package: facts(held=held)}, keys=True)
-    before, after = results['base'], results['demoted']
+    (tmp_path / 'base').mkdir(), (tmp_path / 'demoted').mkdir()
+    before = resolve(tmp_path / 'base', [printed], [(package, 9001)], {package: facts(held=(DAY,))}, keys=True)
+    after = resolve(tmp_path / 'demoted', [printed], [(package, 9001)], {package: facts(held=(DAY, '2021-06-10'))},
+                    keys=True, prior_witnesses=before['witnesses'])
     assert len(after['witnesses']) == 2
     current = {w['source_locator']: w['witness_key'] for w in after['witnesses']}
-    mapped = {r['old_key']: r for r in after['map']}
     for old in before['witnesses']:
-        row = mapped[old['witness_key']]
-        assert (row['witness_key'], row['status'], row['basis']) == (
-            current[old['source_locator']], 'unambiguous', 'occurrence')
+        assert current[old['source_locator']] == old['witness_key']
+    assert after['map'] == []
 
 
 def test_demoted_print_with_ambiguous_refetched_repeat_does_not_guess(tmp_path):
@@ -681,7 +713,7 @@ def test_demoted_print_with_ambiguous_refetched_repeat_does_not_guess(tmp_path):
     (tmp_path / 'candidate').mkdir()
     base = resolve(tmp_path / 'base', [before], [(package, 9001)], {package: facts()}, keys=True)
     found = resolve(tmp_path / 'candidate', [before, after], [(package, 9001)],
-                    {package: facts(held=(DAY, '2021-06-10'))}, keys=True)
+                    {package: facts(held=(DAY, '2021-06-10'))}, keys=True, prior_witnesses=base['witnesses'])
     old = next(w for w in base['witnesses'] if w['source_locator'] == 'congress_gov:witness[3]')
     row = next(r for r in found['map'] if r['old_key'] == old['witness_key'])
     assert (row['status'], row['witness_key'], row['basis']) == ('ambiguous', None, 'content')
@@ -772,10 +804,14 @@ def test_a_package_mods_names_its_meeting_as_a_transcript_link(tmp_path):
              dict(name='source_annotations', sql=empty, materialize=True),
              dict(name='document_packages', sql="SELECT cast(NULL AS VARCHAR) AS component,cast(NULL AS VARCHAR) AS package_id WHERE false", materialize=True),
              dict(name='document_metadata', sql="SELECT cast(NULL AS VARCHAR) AS component,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
-             dict(name='selected_appearance_records', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS status WHERE false", materialize=True),
+             dict(name='selected_appearance_records', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS status,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'name_key',cast(NULL AS VARCHAR))),1,0) AS appearances WHERE false", materialize=True),
+             dict(name='spicy_members', sql="SELECT cast(NULL AS VARCHAR) AS bioguide_id,cast(NULL AS VARCHAR) AS name_first,cast(NULL AS VARCHAR) AS name_nickname,cast(NULL AS VARCHAR) AS name_middle,cast(NULL AS VARCHAR) AS name_official_full WHERE false", materialize=True),
              dict(name='captures', sql=CAPTURES, materialize=True),
+             dict(name='person_nicknames', sql=sql('person-nicknames'), materialize=True),
              dict(name='appearance_people', sql="SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source,"
                   "false AS statement,cast(NULL AS VARCHAR) AS family,cast(NULL AS VARCHAR) AS given,cast(NULL AS VARCHAR) AS given_canon WHERE false", materialize=True),
+             dict(name='person_same_family', sql=sql('person-same-family'), materialize=True),
+             dict(name='person_given_matches', sql=sql('person-given-matches'), materialize=True),
              dict(name='senate_page_prelim_links', sql="SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS banking_hearing_url WHERE false", materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True),
@@ -1272,7 +1308,11 @@ def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(t
              "make_array(named_struct('system_code',committee_key,'role','host')) AS committees FROM meetings_input", materialize=True),
         dict(name='page_facts', sql="SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,status,title,heading,text_head,content_date FROM page_inputs", materialize=True),
         dict(name='spicy_committees', sql="SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,cast(NULL AS VARCHAR) AS website_url WHERE false", materialize=True),
+        dict(name='spicy_members', sql="SELECT cast(NULL AS VARCHAR) AS bioguide_id,cast(NULL AS VARCHAR) AS name_first,cast(NULL AS VARCHAR) AS name_nickname,cast(NULL AS VARCHAR) AS name_middle,cast(NULL AS VARCHAR) AS name_official_full WHERE false", materialize=True),
+        dict(name='person_nicknames', sql=sql('person-nicknames'), materialize=True),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
+        dict(name='person_same_family', sql=sql('person-same-family'), materialize=True),
+        dict(name='person_given_matches', sql=sql('person-given-matches'), materialize=True),
         dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
         dict(name='package_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,false AS witness_eligible WHERE false', materialize=True),
     ]

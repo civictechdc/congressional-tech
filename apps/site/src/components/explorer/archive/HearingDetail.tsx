@@ -42,6 +42,13 @@ function RecordingObservations({observations}:{observations:any[]}){
   </ul>;
 }
 
+function unlistedText(item:any):string|null{
+  if(item?.listing_status!=='no_longer_listed')return null;
+  return item.unlisted_since
+    ?`No longer listed by Congress.gov since ${day(item.unlisted_since)}`
+    :'No longer listed by Congress.gov';
+}
+
 export function HearingDetail({
   meeting,
   committeesCatalog,
@@ -52,6 +59,7 @@ export function HearingDetail({
   onSubject,
   onWitness,
   onMember,
+  onPerson,
   onFilterDocuments,
   onInspect,
   onClose,
@@ -66,6 +74,7 @@ export function HearingDetail({
   onSubject?:(key:string)=>void;
   onWitness?:(key:string)=>void;
   onMember?:(bioguideId:string)=>void;
+  onPerson?:(personKey:string)=>void;
   onFilterDocuments?:()=>void;
   onInspect?:()=>void;
   onClose?:()=>void;
@@ -81,9 +90,25 @@ export function HearingDetail({
         system_code:code,
         name:committeeLabel(code,committeesCatalog,dateOrCongress),
       }));
-  const subjects:any[]=Array.isArray(meeting.subjects)&&meeting.subjects.length
+  const unlistedSubjects:any[]=Array.isArray(meeting.unlisted_subjects)?meeting.unlisted_subjects:[];
+  const unlistedBySubjectKey=new Map<string,any>(
+    unlistedSubjects.filter(u=>u?.subject_key).map(u=>[String(u.subject_key).toLowerCase(),u]),
+  );
+  const rawSubjects:any[]=Array.isArray(meeting.subjects)&&meeting.subjects.length
     ?meeting.subjects
     :(meeting.subject_keys??[]).map((sk:string)=>({subject_key:sk}));
+  const seenSubjectKeys=new Set<string>();
+  const subjects:any[]=[
+    ...rawSubjects.map((sub:any)=>{
+      const key=String(sub.subject_key??sub.bill_id??sub.nomination_id??'');
+      if(key)seenSubjectKeys.add(key.toLowerCase());
+      const u=key?unlistedBySubjectKey.get(key.toLowerCase()):undefined;
+      return u?{...sub,listing_status:'no_longer_listed',last_listed_on:sub.last_listed_on??u.last_listed_on,unlisted_since:sub.unlisted_since??u.unlisted_since}:sub;
+    }),
+    ...unlistedSubjects
+      .filter(u=>u?.subject_key&&!seenSubjectKeys.has(String(u.subject_key).toLowerCase()))
+      .map(u=>({...u,listing_status:'no_longer_listed'})),
+  ];
   const recordings:any[]=Array.isArray(meeting.videos)&&meeting.videos.length
     ?meeting.videos
     :Array.isArray(meeting.recordings)?meeting.recordings:[];
@@ -176,12 +201,14 @@ export function HearingDetail({
           const key=String(sub.subject_key??sub.bill_id??sub.nomination_id??'');
           const label=formatSubject(key,sub);
           const title=sub.short_title||sub.title||sub.description||'';
+          const subUnlisted=unlistedText(sub);
           return <span key={key} className="archive-subject-item">
             {onSubject
               ?<button type="button" className="archive-measure-pill" onClick={()=>onSubject(key)}>
                   {label}{title?` — ${title}`:''}
                 </button>
               :<span className="archive-measure-pill">{label}{title?` — ${title}`:''}</span>}
+            {subUnlisted&&<span className="archive-source-meta"> ({subUnlisted})</span>}
           </span>;
         })}
       </div>
@@ -270,17 +297,23 @@ export function HearingDetail({
           const roleParts=[w.position,label===w.organization?null:w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];
           const named=witnessMember(w);
+          const wUnlisted=unlistedText(w);
           return <li key={`${wKey}-${i}`} className="archive-witness-item">
             <div className="archive-witness-header">
               {w.panel!=null&&<span className="archive-witness-panel">Panel {String(w.panel)}: </span>}
               {wKey&&onWitness
                 ?<button type="button" className="explorer-text-button archive-entity-link" onClick={()=>onWitness(String(wKey))}><strong>{label}</strong></button>
                 :<strong>{label}</strong>}
+              {w.person_key&&onPerson&&<>
+                <span aria-hidden="true"> · </span>
+                <button type="button" className="archive-measure-pill" onClick={()=>onPerson(String(w.person_key))}>All appearances</button>
+              </>}
               {named&&onMember&&<>
                 <span aria-hidden="true"> · </span>
                 <button type="button" className="archive-measure-pill" onClick={()=>onMember(named.bioguide_id)}>
                   {named.name_matched?`Member (${named.bioguide_id}, name-matched)`:`Member (${named.bioguide_id})`}</button>
               </>}
+              {wUnlisted&&<span className="archive-source-meta"> · {wUnlisted}</span>}
             </div>
             {recordLabel&&w.name&&<p className="archive-source-meta">{recordLabel}</p>}
             {roleParts.length>0&&<p className="archive-source-meta">{roleParts.join(' — ')}</p>}
@@ -302,14 +335,18 @@ export function HearingDetail({
     {!compact&&publisherDocuments.length>0&&<div className="archive-entity-section">
       <h3>Documents listed by Congress.gov</h3>
       <ul className="archive-entity-list">
-        {publisherDocuments.map((ref:any)=><li key={`${ref.collection}-${ref.ordinal}`}>
-          <PublicLink url={ref.url}>{ref.name||ref.description||ref.url}</PublicLink>
-          <span className="archive-source-meta"> · {ref.collection==='witnessDocuments'?'Witness document':'Meeting document'}
-            {ref.role&&` · ${ref.role}`}
-            {ref.format&&` · Publisher format ${ref.format}`}
-          </span>
-          {ref.description&&ref.name&&<p className="archive-source-meta">{ref.description}</p>}
-        </li>)}
+        {publisherDocuments.map((ref:any,i:number)=>{
+          const refUnlisted=unlistedText(ref);
+          return <li key={`${ref.collection}-${ref.listing_status??'listed'}-${ref.ordinal}-${ref.url??i}`}>
+            <PublicLink url={ref.url}>{ref.name||ref.description||ref.url}</PublicLink>
+            <span className="archive-source-meta"> · {ref.collection==='witnessDocuments'?'Witness document':'Meeting document'}
+              {ref.role&&` · ${ref.role}`}
+              {ref.format&&` · Publisher format ${ref.format}`}
+              {refUnlisted&&` · ${refUnlisted}`}
+            </span>
+            {ref.description&&ref.name&&<p className="archive-source-meta">{ref.description}</p>}
+          </li>;
+        })}
       </ul>
     </div>}
 

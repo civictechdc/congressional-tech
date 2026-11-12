@@ -337,15 +337,19 @@ def test_meeting_results_say_whether_captions_are_archived_or_only_advertised(tm
 
 def test_old_release_playlist_fallback_and_missing_table_states(tmp_path,phase2):
     with local_archive_server({}) as (origin,_):
-        selected,_,_=hearing_release(tmp_path,phase2,origin)
+        selected,_,shas=hearing_release(tmp_path,phase2,origin)
         selected['tables'].pop('caption_resources')
         selected['tables'].pop('meeting_coverage')
         with_reader=Reader(selected)
         try:
             bundle=with_reader.get_hearing_bundle(dict(event_id=334136,include=['coverage']))
             assert bundle['sections']['coverage']['state']=='unavailable'
-            source=with_reader.transcript_inventory(dict(event_id=338785))['rows'][0]
-            page=with_reader.caption_resource_page(dict(query=dict(**source['reference']),source=dict(source,release_id=selected['release_id'])))
+            # Without caption_resources, bare m3u8 playlists are not advertised as readable caption transcripts (P0-2).
+            assert with_reader.transcript_inventory(dict(event_id=338785,kind='captions'))['rows']==[]
+            source=with_reader.caption_source_target(dict(
+                release_id=selected['release_id'],video_key='senate:complete',
+                source_id=caption_source_id('senate:complete',shas[3].hex(),'en','live')))
+            page=with_reader.caption_resource_page(dict(query=dict(**source['reference']),source=source))
             assert not page['available'] and 'not published' in page['reason']
         finally:
             with_reader.close()

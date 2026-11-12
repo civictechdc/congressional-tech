@@ -32,10 +32,23 @@ def _empty_struct(**fields):
     return f'array_slice(make_array(named_struct({args})),1,0)'
 
 
-NULL_MEETING_DOCUMENT_REFERENCES = 'CASE WHEN false THEN ' + _empty_struct(
+NULL_LAKE_MEETING_DOCUMENT_REFERENCES = 'CASE WHEN false THEN ' + _empty_struct(
     collection='cast(NULL AS VARCHAR)', ordinal='cast(NULL AS INT)', url='cast(NULL AS VARCHAR)',
     role='cast(NULL AS VARCHAR)', format='cast(NULL AS VARCHAR)', description='cast(NULL AS VARCHAR)',
     name='cast(NULL AS VARCHAR)') + ' END'
+
+
+NULL_MEETING_DOCUMENT_REFERENCES = 'CASE WHEN false THEN ' + _empty_struct(
+    collection='cast(NULL AS VARCHAR)', ordinal='cast(NULL AS INT)', url='cast(NULL AS VARCHAR)',
+    role='cast(NULL AS VARCHAR)', format='cast(NULL AS VARCHAR)', description='cast(NULL AS VARCHAR)',
+    name='cast(NULL AS VARCHAR)', listing_status='cast(NULL AS VARCHAR)',
+    last_listed_on='cast(NULL AS DATE)', unlisted_since='cast(NULL AS DATE)',
+    unlisted_by_record_sha='cast(NULL AS VARCHAR)') + ' END'
+
+
+EMPTY_UNLISTED_SUBJECTS = _empty_struct(
+    subject_key='cast(NULL AS VARCHAR)', last_listed_on='cast(NULL AS DATE)',
+    unlisted_since='cast(NULL AS DATE)', unlisted_by_record_sha='cast(NULL AS VARCHAR)')
 
 
 EMPTY_ALTERNATES = _empty_struct(format='cast(NULL AS VARCHAR)', body="arrow_cast(NULL,'FixedSizeBinary(32)')",
@@ -270,7 +283,8 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     from viewer_publication.archive_schema import publication_checks
     diagnostics = [*diagnostics, *publication_checks(schema, aux_names, published=[item['name'] for item in outputs],
         keyed_documents=origin['kind'] != 'converted_catalog',
-        ordered_keys={item['name'].removesuffix('.parquet'):[key['field'] for key in item['settings']['order_by']] for item in outputs})]
+        ordered_keys={item['name'].removesuffix('.parquet'):[key['field'] for key in item['settings']['order_by']] for item in outputs},
+        input_names={item['name'] for item in inputs})]
     outputs.extend(extra_outputs)
     facets = [f"SELECT '{name}' AS facet,cast({name} AS VARCHAR) AS value,count(*) AS count FROM ordered WHERE NOT hidden GROUP BY {name}" for name in ['format', 'congress', 'saved_kind']]
     facets += [f"SELECT '{name}' AS facet,value,count(*) AS count FROM (SELECT unnest({name}) AS value FROM ordered WHERE NOT hidden) GROUP BY value" for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys']]
@@ -331,6 +345,8 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         coverage_parts.append("SELECT 'committees.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(n['start']) AS date_start,max(n['end']) AS date_end FROM (SELECT unnest(names) AS n FROM committees_export WHERE names IS NOT NULL)")
     if 'members' in aux_names:
         coverage_parts.append("SELECT 'members.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(t['start']) AS date_start,max(t['end']) AS date_end FROM (SELECT unnest(terms) AS t FROM members_export WHERE terms IS NOT NULL)")
+    if 'people' in aux_names:
+        coverage_parts.append("SELECT 'people.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(first_seen_date) AS date_start,max(last_seen_date) AS date_end FROM people_export")
     if 'rosters' in aux_names:
         coverage_parts.append("SELECT 'rosters.parquet' AS file,min(congress) AS congress_start,max(congress) AS congress_end,cast(NULL AS DATE) AS date_start,cast(NULL AS DATE) AS date_end FROM rosters_export")
     if 'bills' in aux_names:
@@ -427,6 +443,7 @@ def _auxiliary():
                 cast(NULL AS VARCHAR) AS house_xml_updated,cast(NULL AS VARCHAR) AS congress_gov_meeting_type,
                 cast(NULL AS VARCHAR) AS access,cast(NULL AS VARCHAR) AS access_basis,cast(NULL AS BOOLEAN) AS not_held,cast(NULL AS BIGINT) AS rescheduled_to,cast(NULL AS VARCHAR) AS rescheduled_basis,
                 {NULL_MEETING_DOCUMENT_REFERENCES} AS document_references,
+                {EMPTY_UNLISTED_SUBJECTS} AS unlisted_subjects,
                 {UNKNOWN_OBSERVATION} AS congress_gov_detail_observation FROM meta GROUP BY event_id""", ['event_id'],
             MEETING_DICTIONARY),
         ('committees', f"""SELECT system_code,name,chamber,cast(NULL AS VARCHAR) AS committee_type,

@@ -12,8 +12,10 @@ from .release import encoded, quote, literal, kind_words
 from .hearing_reader import HearingReader
 
 # Published display columns that text search reads, wherever a table has them.
-TEXT_FIELDS = ('name', 'rank', 'credentials', 'on_behalf_of', 'title', 'short_title', 'public_law_number', 'description', 'organization', 'position', 'video_key',
-               'source_description', 'committee_label', 'handle', 'note', 'identity_note', 'action_text', 'question', 'member_name')
+TEXT_FIELDS = ('name', 'rank', 'credentials', 'on_behalf_of', 'title', 'short_title', 'public_law_number', 'description',
+               'organization', 'position', 'video_key', 'source_description', 'committee_label', 'handle',
+               'note', 'identity_note', 'action_text', 'question', 'member_name')
+LIST_TEXT_FIELDS = ('ranks', 'name_variants', 'organizations', 'positions')
 
 DOCUMENT_SUMMARY_COLUMNS = (
     'l.list_row,l.filename,l.title,l.congress,l.format,l.document_date,d.document_date_source,'
@@ -129,16 +131,136 @@ class Reader(HearingReader, LegislativeReader):
         if table not in self.schemas:
             raise ExplorerError(f'Table {table!r} is not published in this release; use get_dataset_info')
 
+    def _annotate_listing_notes(self, rows):
+        for row in rows:
+            if row.get('listing_status') == 'no_longer_listed' and row.get('unlisted_since'):
+                row['listing_note'] = f"No longer listed by Congress.gov since {row['unlisted_since']}"
+            for ref in row.get('document_references') or []:
+                if isinstance(ref, dict) and ref.get('listing_status') == 'no_longer_listed' and ref.get('unlisted_since'):
+                    ref['listing_note'] = f"No longer listed by Congress.gov since {ref['unlisted_since']}"
+
+    def _follow_superseded_witness(self, key: str) -> str:
+        if 'witnesses' not in self.schemas or 'superseded_by' not in self.schemas['witnesses']:
+            return key
+        current = key
+        seen = {current}
+        for _ in range(4):
+            row = self.db.execute('SELECT superseded_by FROM witnesses WHERE witness_key=? LIMIT 1', [current]).fetchall()
+            nxt = row[0][0] if row else None
+            if not nxt or nxt in seen:
+                break
+            seen.add(nxt)
+            current = nxt
+        return current
+
+    def _resolve_witness_key(self, key: str) -> tuple[str, str | None]:
+        if 'witnesses' in self.schemas:
+            found = self.db.execute('SELECT witness_key FROM witnesses WHERE witness_key=? LIMIT 1', [key]).fetchall()
+            if found:
+                canonical = self._follow_superseded_witness(found[0][0])
+                return canonical, (key if canonical != key else None)
+        if 'witness_key_map' in self.schemas:
+            mapped = self.db.execute(
+                'SELECT status, witness_key, candidate_keys FROM witness_key_map WHERE old_key=? LIMIT 1', [key]
+            ).fetchall()
+            if mapped:
+                status, target, candidates = mapped[0]
+                if status == 'unambiguous' and target:
+                    return self._follow_superseded_witness(target), key
+                if status == 'ambiguous':
+                    cands = ', '.join(sorted(candidates or []))
+                    raise ExplorerError(f'Witness key {key!r} is ambiguous in this release; candidate witness_keys: {cands}')
+                raise ExplorerError(f'Witness key {key!r} is no longer published and is unresolved in witness_key_map')
+        return key, None
+
+    def _canonicalize_witness_keys(self, rows):
+        if not rows or 'witnesses' not in self.schemas or 'superseded_by' not in self.schemas['witnesses']:
+            return
+        all_keys = sorted({wk for row in rows for wk in (row.get('witness_keys') or []) if wk})
+        if not all_keys:
+            return
+        next_hop = {}
+        frontier = all_keys
+        for _ in range(4):
+            if not frontier:
+                break
+            pairs = self.db.execute(
+                'SELECT witness_key, superseded_by FROM witnesses WHERE list_contains(?, witness_key) AND superseded_by IS NOT NULL',
+                [frontier],
+            ).fetchall()
+            if not pairs:
+                break
+            new_frontier = []
+            for wk, sup in pairs:
+                if wk not in next_hop and sup and sup != wk:
+                    next_hop[wk] = sup
+                    if sup not in next_hop:
+                        new_frontier.append(sup)
+            frontier = sorted(set(new_frontier))
+
+        def resolve_key(wk):
+            cur = wk
+            seen = {cur}
+            for _ in range(4):
+                nxt = next_hop.get(cur)
+                if not nxt or nxt in seen:
+                    break
+                seen.add(nxt)
+                cur = nxt
+            return cur
+
+        for row in rows:
+            if row.get('witness_keys'):
+                row['witness_keys'] = list(dict.fromkeys(resolve_key(wk) for wk in row['witness_keys']))
+
+    def _resolve_person_key(self, key: str) -> tuple[str, str | None]:
+        if 'people' in self.schemas:
+            found = self.db.execute('SELECT person_key FROM people WHERE person_key=? LIMIT 1', [key]).fetchall()
+            if found:
+                return found[0][0], None
+        if 'person_aliases' in self.schemas:
+            mapped = self.db.execute(
+                'SELECT status, person_key, candidate_keys FROM person_aliases WHERE old_person_key=? LIMIT 1', [key]
+            ).fetchall()
+            if mapped:
+                status, target, candidates = mapped[0]
+                if status == 'unambiguous' and target:
+                    return target, key
+                if status == 'ambiguous':
+                    cands = ', '.join(sorted(candidates or []))
+                    raise ExplorerError(f'Person key {key!r} is ambiguous in this release; candidate person_keys: {cands}')
+                raise ExplorerError(f'Person key {key!r} is no longer published and is unresolved in person_aliases')
+        return key, None
+
     def search_text(self, value):
         from .models import TextSearch
         from .text_index import TextIndex
-        return TextIndex(self.selection).search(TextSearch.model_validate(value))
+        query = TextSearch.model_validate(value)
+        redirected = None
+        if query.witness_key is not None:
+            resolved_wk, redirected = self._resolve_witness_key(query.witness_key)
+            if redirected:
+                query = query.model_copy(update={'witness_key': resolved_wk})
+        result = TextIndex(self.selection).search(query)
+        if redirected:
+            result['redirected_witness_key'] = {'from': redirected, 'to': query.witness_key}
+        return result
 
     def resolve_index_citation(self, value):
         if not self.selection['manifest'].get('text_index'):
             return dict(state='unavailable',reason='This release has no retained full-text index')
         from .text_index import TextIndex
-        return TextIndex(self.selection).resolve(value)
+        citation = (value or {}).get('citation') or {}
+        wk = citation.get('witness_key')
+        redirected = None
+        if isinstance(wk, str) and wk:
+            resolved_wk, redirected = self._resolve_witness_key(wk)
+            if redirected:
+                value = dict(value, citation=dict(citation, witness_key=resolved_wk))
+        result = TextIndex(self.selection).resolve(value)
+        if redirected:
+            result['redirected_witness_key'] = {'from': redirected, 'to': value['citation']['witness_key']}
+        return result
 
     def entity_summary_fields(self, table):
         # Scalar fields keep summaries useful for new tables and older schemas,
@@ -337,6 +459,7 @@ class Reader(HearingReader, LegislativeReader):
         return f"{base.rstrip('/')}/bodies/sha256/{body[:2].lower()}/{body.lower()}{suffix}"
 
     def document_rows(self, result):
+        self._canonicalize_witness_keys(result['rows'])
         for row in result['rows']:
             row['reference'] = dict(release_id=self.release_id, link_key=row.pop('link_key').lower())
             body, suffix = row.pop('saved_body'), row.pop('saved_suffix')
@@ -357,9 +480,14 @@ class Reader(HearingReader, LegislativeReader):
         if query.document_kind is not None:
             conditions.append('list_has_any(l.document_kind,?)')
             args.append(kind_words(self.selection['controls']['schema'], query.document_kind) or [query.document_kind])
+        redirected_wk = None
         for parameter, column in [('committee_key', 'committee_keys'),
             ('meeting_key', 'meeting_keys'), ('measure_key', 'measure_keys'), ('witness_key', 'witness_keys'), ('bioguide_id', 'bioguide_ids')]:
             if (value := getattr(query, parameter)) is not None:
+                if parameter == 'witness_key':
+                    value, redirected_from_wk = self._resolve_witness_key(value)
+                    if redirected_from_wk:
+                        redirected_wk = {'from': redirected_from_wk, 'to': value}
                 conditions.append(f'list_contains(l.{column},?)'); args.append(value)
         order = 'l.list_row'
         qualification = 'not applied to archive order'
@@ -382,6 +510,8 @@ class Reader(HearingReader, LegislativeReader):
             'FROM "list" l JOIN detail d USING(list_row) WHERE ' + (' AND '.join(conditions) or 'true'), args, order=order))
         if query.sort != 'archive':
             result['date_qualification'] = qualification
+        if redirected_wk:
+            result['redirected_witness_key'] = redirected_wk
         return result
 
     def _resolve_document(self, query):
@@ -399,7 +529,18 @@ class Reader(HearingReader, LegislativeReader):
             if len(retired) == 1:
                 successor, last_release, last_filename, others = retired[0]
                 if successor is None:
-                    listed = f'; other versions at the same address: {", ".join(others)}' if others else ''
+                    if others:
+                        labels = {}
+                        if 'links' in self.schemas and 'list' in self.schemas:
+                            labels = dict(self.db.execute(
+                                "SELECT lower(hex(k.link_key)), coalesce(nullif(trim(l.filename),''), nullif(trim(l.title),'')) "
+                                'FROM links k JOIN "list" l USING(list_row) WHERE list_contains(?, lower(hex(k.link_key)))',
+                                [list(others)],
+                            ).fetchall())
+                        formatted = [f'{v} ({labels[v]})' if labels.get(v) else v for v in others]
+                        listed = f'; other versions at the same address: {", ".join(formatted)}'
+                    else:
+                        listed = ''
                     raise ExplorerError(f'Document {query.link_key.lower()} is no longer in the archive; it was last published as '
                                         f'"{last_filename}" in release {last_release[:12]}{listed}')
                 match = self.db.execute('SELECT list_row FROM links WHERE link_key=unhex(?)', [successor]).fetchall()
@@ -435,7 +576,16 @@ class Reader(HearingReader, LegislativeReader):
             [position],
             limit=1,
         )['rows'][0]
+        self._canonicalize_witness_keys([row])
         body, suffix = row['saved_body'], row['saved_suffix']
+        prior_witness_keys = []
+        if 'witness_key_map' in self.schemas and row['witness_keys']:
+            prior_witness_keys = [
+                r[0] for r in self.db.execute(
+                    "SELECT old_key FROM witness_key_map WHERE status='unambiguous' AND list_contains(?, witness_key) ORDER BY old_key",
+                    [row['witness_keys']],
+                ).fetchall()
+            ]
         return dict(
             release_id=self.release_id,
             reference=dict(release_id=self.release_id, link_key=row['link_key']),
@@ -448,6 +598,7 @@ class Reader(HearingReader, LegislativeReader):
             saved_media_type=row['saved_media_type'],
             saved_bytes=row['saved_bytes'],
             witness_keys=row['witness_keys'],
+            prior_witness_keys=prior_witness_keys,
             saved_body=body.lower() if body else None,
             saved_suffix=suffix,
             saved_url=self.file_url(body, suffix),
@@ -520,6 +671,7 @@ class Reader(HearingReader, LegislativeReader):
             FROM documents WHERE list_row=?''', [query.offset + 1, limit, position], limit=1)['rows'][0]
         if row['text'] is None:
             raise ExplorerError('Selected text is unavailable for this document. Use section=text for the saved body.')
+        self._canonicalize_witness_keys([row])
         next_offset = query.offset + len(row['text'])
         from .citations import text_citation
         citation=text_citation(dict(row,release_id=self.release_id),dict(kind='selected_text',offset=query.offset,length=len(row['text']),
@@ -535,15 +687,19 @@ class Reader(HearingReader, LegislativeReader):
         conditions, args = [], []
         if query.text:
             fields = [name for name in TEXT_FIELDS if name in columns]
-            exprs = [f'contains(lower(coalesce({quote(name)},\'\')),lower(?))' for name in fields]
+            if query.table == 'people' and 'bioguide_id' in columns:
+                fields.append('bioguide_id')
+            list_fields = [name for name in LIST_TEXT_FIELDS if name in columns and '[]' in columns[name]]
+            clauses = [f'contains(lower(coalesce({quote(name)},\'\')),lower(?))' for name in fields]
             if {'rank', 'name'} <= columns.keys():
                 base = 'concat_ws(\' \',"rank","name")'
-                exprs.append(f'contains(lower({base}),lower(?))')
+                clauses.append(f'contains(lower({base}),lower(?))')
                 if 'credentials' in columns:
-                    exprs.append(f'contains(lower(concat_ws(\' \',{base},"credentials")),lower(?))')
-                    exprs.append(f'contains(lower(concat_ws(\', \',{base},"credentials")),lower(?))')
-            conditions.append('(' + ' OR '.join(exprs) + ')' if exprs else 'false')
-            args += [query.text] * len(exprs)
+                    clauses.append(f'contains(lower(concat_ws(\' \',{base},"credentials")),lower(?))')
+                    clauses.append(f'contains(lower(concat_ws(\', \',{base},"credentials")),lower(?))')
+            clauses += [f'EXISTS (SELECT 1 FROM unnest({quote(name)}) u(v) WHERE contains(lower(coalesce(u.v,\'\')),lower(?)))' for name in list_fields]
+            conditions.append('(' + ' OR '.join(clauses) + ')' if clauses else 'false')
+            args += [query.text] * len(clauses)
         scalars = ', '.join(k for k, t in columns.items() if '[]' not in t and not t.startswith(('STRUCT', 'MAP', 'BLOB')))
         for name, value in query.filters.items():
             if name not in columns:
@@ -564,17 +720,26 @@ class Reader(HearingReader, LegislativeReader):
         return self.entity_keys[table]
 
     def entity_columns(self, table, fields=None):
-        if table == 'recordings' and fields is None:
-            return '* REPLACE(list_transform(tracks,lambda t:struct_pack(body:=hex(t.body),suffix:=t.suffix,format:=t.format,language:=t.language,production:=t.production)) AS tracks)'
-        if table == 'meetings' and fields is None:
-            return '*,'+self.meeting_captions('meetings')
+        blob_cols = {name for name, kind in self.schemas.get(table, {}).items() if kind == 'BLOB'}
+        tracks_expr = 'list_transform(tracks,lambda t:struct_pack(body:=hex(t.body),suffix:=t.suffix,format:=t.format,language:=t.language,production:=t.production)) AS tracks'
         if fields is not None:
             return ','.join(
-                'list_transform(tracks,lambda t:struct_pack(body:=hex(t.body),suffix:=t.suffix,format:=t.format,language:=t.language,production:=t.production)) AS tracks'
-                if table == 'recordings' and name == 'tracks' else quote(name) for name in fields)
-        return '*'
+                tracks_expr if table == 'recordings' and name == 'tracks'
+                else f'lower(hex({quote(name)})) AS {quote(name)}' if name in blob_cols
+                else quote(name)
+                for name in fields
+            )
+        replaces = [f'lower(hex({quote(name)})) AS {quote(name)}' for name in self.schemas.get(table, {}) if name in blob_cols]
+        if table == 'recordings':
+            replaces.append(tracks_expr)
+        base = f'* REPLACE({",".join(replaces)})' if replaces else '*'
+        if table == 'meetings':
+            return base + ',' + self.meeting_captions('meetings')
+        return base
 
     def entity_rows(self, result, table=None, *, selected_fields=None):
+        if selected_fields is None and table in ('meetings', 'witnesses'):
+            self._annotate_listing_notes(result['rows'])
         for row in result['rows']:
             if table == 'meetings' and selected_fields is None:
                 row.setdefault('publisher_status', row.get('status'))
@@ -594,6 +759,11 @@ class Reader(HearingReader, LegislativeReader):
             raise ExplorerError('Entity table has no single identifier; use search_entities or query_sql')
         key = fields[0]
         query.id = exact_scalar(query.id, self.schemas[query.table][key], f'{query.table}.{key}')
+        redirected_from = None
+        if query.table == 'witnesses':
+            query.id, redirected_from = self._resolve_witness_key(query.id)
+        elif query.table == 'people':
+            query.id, redirected_from = self._resolve_person_key(query.id)
         stored = self.db.execute(f'SELECT {quote(key)} FROM {quote(query.table)} WHERE {quote(key)}=? LIMIT 1', [query.id]).fetchall()
         if not stored:
             raise ExplorerError('Entity is absent from this release')
@@ -604,14 +774,27 @@ class Reader(HearingReader, LegislativeReader):
             field = self.document_links.get(query.table)
             if field:
                 sql = f'list_contains(l.{field},?)'
+            elif query.table == 'people':
+                witness_fallback = (
+                    ' OR EXISTS (SELECT 1 FROM witnesses w WHERE w.person_key=q.pk AND list_contains(l.witness_keys,w.witness_key))'
+                    if 'witnesses' in self.schemas and 'person_key' in self.schemas['witnesses'] else ''
+                )
+                sql = (
+                    'EXISTS (SELECT 1 FROM (SELECT ? AS pk) q WHERE '
+                    'EXISTS (SELECT 1 FROM people p WHERE p.person_key=q.pk AND list_has_any(l.witness_keys,p.witness_keys))'
+                    f'{witness_fallback})'
+                )
             elif query.table == 'recordings':
                 sql = 'EXISTS (SELECT 1 FROM recordings r,unnest(r.event_ids) e(event_id) WHERE r.video_key=? AND list_contains(l.meeting_keys,cast(e.event_id AS VARCHAR)))'
             else:
                 raise ExplorerError('This entity has no published document relationship')
-            return self.document_rows(self.page(query,
+            docs_res = self.document_rows(self.page(query,
                 f'SELECT {self.document_summary} '
                 'FROM "list" l JOIN detail d USING(list_row) WHERE NOT coalesce(l.hidden,false) AND ' + sql,
                 [str(query.id)], order='l.list_row'))
+            if redirected_from:
+                docs_res['redirected_from'] = redirected_from
+            return docs_res
         if query.cursor:
             raise ExplorerError('Record does not take a cursor; query_sql can slice large nested fields')
         selected = query.fields
@@ -625,6 +808,8 @@ class Reader(HearingReader, LegislativeReader):
             selected = list(dict.fromkeys([key, *selected]))
         result = self.rows(f'SELECT {self.entity_columns(query.table, selected)} FROM {quote(query.table)} WHERE {quote(key)}=?', [query.id], limit=1)
         result.pop('columns'); result['release_id'] = self.release_id
+        if redirected_from:
+            result['redirected_from'] = redirected_from
         if selected is not None:
             result['omitted_fields'] = [name for name in self.schemas[query.table] if name not in selected]
             result['detail_access'] = 'Use mode=detail, fields=[...], or query_sql to slice large nested lists.'

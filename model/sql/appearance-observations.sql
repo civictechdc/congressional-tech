@@ -4,6 +4,7 @@
 -- join) was planned once per reference: six copies.
 WITH capture_contexts AS (
  SELECT record_sha_hex,source,source_url,member_path,
+  min(arrow_cast(try_cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS first_retrieved_at,
   max(arrow_cast(try_cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at
  FROM appearance_capture_contexts
  WHERE exclusion_reason IS NULL AND mode='fetch' AND complete AND outcome IN ('stored','unchanged')
@@ -60,6 +61,7 @@ WITH capture_contexts AS (
   coalesce(be.eligible,true) AS observation_eligible,
   CASE WHEN NOT coalesce(be.eligible,true) THEN be.exclusion_reason END AS observation_exclusion_reason,
   u.updated,
+  cc.first_retrieved_at,
   cc.retrieved_at,
   coalesce(cc.source_url,r.context_url) AS source_url,
   cc.member_path,

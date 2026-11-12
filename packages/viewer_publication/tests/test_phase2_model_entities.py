@@ -602,6 +602,17 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             ),
             dict(
                 bill_id='118-hr-9999',
+                title='Dropped Congress.gov Bill retained as unlisted subject',
+                short_title='Retained Act',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2023-01-10',
+                latest_action_date='2023-01-10',
+                latest_action_text='Introduced',
+                stage='introduced',
+                policy_area='Other',
+            ),
+            dict(
+                bill_id='118-hr-8888',
                 title='Unreferenced Bill that must be excluded',
                 short_title='Excluded Act',
                 sponsor_bioguide_id='A000001',
@@ -737,7 +748,8 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     expected_parquet = {
         'list.parquet', 'detail.parquet', 'links.parquet', 'urls.parquet',
         'sources.parquet', 'recoveries.parquet', 'meetings.parquet',
-        'witnesses.parquet', 'recordings.parquet', 'committees.parquet',
+        'witnesses.parquet', 'witness_key_map.parquet', 'people.parquet', 'person_aliases.parquet',
+        'recordings.parquet', 'committees.parquet',
         'members.parquet', 'rosters.parquet', 'bills.parquet',
         'nominations.parquet', 'url_state.parquet', 'url_variants.parquet',
     }
@@ -823,8 +835,11 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['status'] == 'Scheduled'
     assert m['sittings'][0]['place'] == '1300, LHOB, Washington, DC'
     assert m['committees'] == [{'system_code': 'hsag00', 'role': 'primary'}]
-    assert m['document_references'] == meeting_records[1]['meetings'][0]['document_references']
-    assert m['subject_keys'] == ['115-hr-1', '118-hr-1234', '118-pn-123']
+    assert m['document_references'] == [
+        {**ref, 'listing_status': 'listed', 'last_listed_on': None, 'unlisted_since': None, 'unlisted_by_record_sha': None}
+        for ref in meeting_records[1]['meetings'][0]['document_references']
+    ]
+    assert m['subject_keys'] == ['115-hr-1', '118-hr-1234', '118-hr-9999', '118-pn-123']
     # The print first, then the recording's two complete caption tracks (ct-1i4q).
     assert [(t['source'], t['package_id'], t['video_key'], t['production']) for t in m['transcripts']] == [
         ('printed_hearing', 'CHRG-118hhrg55555', None, None),
@@ -938,9 +953,10 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                          'printed_entry', 'entry_label')),
     )]
 
-    # 6. Verify bills.parquet (referenced + related_bills vehicles, chained amendments, deduplicated votes, ordered activities)
+    # 6. Verify bills.parquet (referenced + unlisted_subjects retained + related_bills vehicles, unreferenced 118-hr-8888 excluded)
+    assert [u['subject_key'] for u in m['unlisted_subjects']] == ['118-hr-9999']
     bills = pq.read_table(release_dir / 'bills.parquet').to_pylist()
-    assert [b['bill_id'] for b in bills] == ['118-hr-1234', '118-hr-815']
+    assert [b['bill_id'] for b in bills] == ['118-hr-1234', '118-hr-815', '118-hr-9999']
     bill = bills[0]
     assert bill['public_law_number'] == '118-50'
     assert bill['cosponsor_count'] == 42

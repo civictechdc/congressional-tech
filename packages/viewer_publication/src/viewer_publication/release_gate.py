@@ -46,6 +46,35 @@ PRIOR_SOURCES = pa.schema([('release_rank', pa.int16()), ('list_row', pa.int32()
 RETIRED = pa.schema([('link_key', pa.binary(8)), ('successor_key', pa.binary(8)),
                      ('last_release_id', pa.string()), ('last_filename', pa.string()),
                      ('address_versions', pa.list_(pa.binary(8)))])
+PRIOR_WITNESSES = pa.schema([
+    ('witness_key', pa.string()), ('occasion', pa.string()), ('event_id', pa.int64()), ('package_id', pa.string()),
+    ('bioguide_id', pa.string()), ('matched_bioguide_id', pa.string()), ('name', pa.string()),
+    ('rank', pa.string()), ('credentials', pa.string()),
+    ('position', pa.string()), ('organization', pa.string()), ('on_behalf_of', pa.string()),
+    ('location', pa.string()), ('panel', pa.string()), ('panel_order', pa.int16()), ('display_order', pa.int16()),
+    ('witness_type', pa.string()), ('testified', pa.bool_()), ('source', pa.string()), ('source_locator', pa.string()),
+    ('record_sha', pa.binary(32)), ('superseded_by', pa.string()), ('person_key', pa.string()),
+    ('listing_status', pa.string()), ('last_listed_on', pa.date32()), ('unlisted_since', pa.date32()),
+    ('unlisted_by_record_sha', pa.string()),
+])
+BASE_WITNESS_KEY_MAP = pa.schema([
+    ('old_key', pa.string()), ('witness_key', pa.string()), ('status', pa.string()), ('basis', pa.string()),
+    ('candidate_keys', pa.list_(pa.string())), ('occasion', pa.string()), ('source', pa.string()),
+])
+PRIOR_PEOPLE = pa.schema([
+    ('person_key', pa.string()), ('bioguide_id', pa.string()), ('name', pa.string()),
+    ('rank', pa.string()), ('ranks', pa.list_(pa.string())), ('credentials', pa.string()),
+    ('name_variants', pa.list_(pa.string())), ('organization', pa.string()),
+    ('organizations', pa.list_(pa.string())), ('positions', pa.list_(pa.string())),
+    ('grouping_basis', pa.string()), ('appearance_count', pa.int32()),
+    ('hearing_count', pa.int32()), ('first_seen_date', pa.date32()), ('last_seen_date', pa.date32()),
+    ('witness_keys', pa.list_(pa.string())), ('release_id', pa.string()),
+])
+BASE_PERSON_ALIASES = pa.schema([
+    ('old_person_key', pa.string()), ('person_key', pa.string()), ('status', pa.string()),
+    ('kind', pa.string()), ('decision_id', pa.string()), ('last_release_id', pa.string()),
+    ('candidate_keys', pa.list_(pa.string())),
+])
 
 
 def _sha(value, what):
@@ -108,9 +137,30 @@ def client_reader(client, bucket, release_id):
     return lambda name: client.get_object(Bucket=bucket, Key=f'{PREFIX}{release_id}/{name}')['Body']
 
 
+def _write_prior_table(source_path, out_path, schema, defaults=None):
+    defaults = defaults or {}
+    if not Path(source_path).exists():
+        pq.write_table(schema.empty_table(), out_path)
+        return
+    held = pq.read_table(source_path)
+    cols = []
+    for field in schema:
+        if field.name in held.column_names:
+            col = held[field.name]
+            if pa.types.is_dictionary(col.type):
+                col = col.dictionary_decode()
+            cols.append(col.cast(field.type))
+        elif field.name in defaults:
+            cols.append(pa.array([defaults[field.name]] * len(held), type=field.type))
+        else:
+            cols.append(pa.nulls(len(held), field.type))
+    pq.write_table(pa.table(cols, schema=schema), out_path)
+
+
 def prior_links(base_dir, history_dirs, out_dir):
     """Write prior_links.parquet (one row per key per release), prior_sources.parquet (each
-    prior row's addresses, for the address successor rule) and base_retired.parquet.
+    prior row's addresses, for the address successor rule), base_retired.parquet, and the
+    live witness/person tables for carried entity keys (ct-46f3, ct-ha10).
 
     O(total link rows) in pyarrow, about 1.7M rows for 448651e7 plus three earlier releases.
     A release whose detail lacks `link_key` (pre-keyed detail) gives a null primary key, so
@@ -137,7 +187,8 @@ def prior_links(base_dir, history_dirs, out_dir):
     pq.write_table(pa.concat_tables(parts) if parts else PRIOR_LINKS.empty_table(), prior)
     pq.write_table(pa.concat_tables(addresses) if addresses else PRIOR_SOURCES.empty_table(), out_dir / 'prior_sources.parquet')
     retired = out_dir / 'base_retired.parquet'
-    source = Path(base_dir) / 'retired_links.parquet'
+    base_dir = Path(base_dir)
+    source = base_dir / 'retired_links.parquet'
     if source.exists():
         held = pq.read_table(source)
         if 'address_versions' not in held.column_names:  # ledgers written before the column
@@ -145,18 +196,42 @@ def prior_links(base_dir, history_dirs, out_dir):
         pq.write_table(held.select(RETIRED.names).cast(RETIRED), retired)
     else:
         pq.write_table(RETIRED.empty_table(), retired)
+    base_release_id = json.loads((base_dir / 'manifest.json').read_text())['release_id']
+    _write_prior_table(base_dir / 'witnesses.parquet', out_dir / 'prior_witnesses.parquet',
+                       PRIOR_WITNESSES, defaults={'listing_status': 'listed'})
+    _write_prior_table(base_dir / 'witness_key_map.parquet', out_dir / 'base_witness_key_map.parquet', BASE_WITNESS_KEY_MAP)
+    _write_prior_table(base_dir / 'people.parquet', out_dir / 'prior_people.parquet',
+                       PRIOR_PEOPLE, defaults={'release_id': base_release_id, 'ranks': []})
+    _write_prior_table(base_dir / 'person_aliases.parquet', out_dir / 'base_person_aliases.parquet', BASE_PERSON_ALIASES)
     return prior, retired
 
 
-def ledger_inputs(directory, *, prior_links=None, base_retired=None):
-    """Model inputs for retired-links.sql; absent inputs mean an empty ledger, never a guess."""
+def ledger_inputs(directory, *, prior_links=None, base_retired=None, prior_witnesses=None,
+                  base_witness_key_map=None, prior_people=None, base_person_aliases=None,
+                  base_release_id=None):
+    """Model inputs for retired-links.sql and carried entity keys; absent inputs mean an empty ledger, never a guess."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=False)
     inputs = []
-    # prior_sources sits beside prior_links, written by the same prior_links() call.
+    def _sibling(name, explicit):
+        if explicit is not None:
+            return explicit
+        if prior_links is None:
+            return None
+        candidate = Path(prior_links).with_name(f'{name}.parquet')
+        return candidate if candidate.exists() else None
+    # Sibling files sit beside prior_links when written by prior_links().
     prior_sources = None if prior_links is None else Path(prior_links).with_name('prior_sources.parquet')
-    for name, path, schema in (('prior_links', prior_links, PRIOR_LINKS), ('prior_sources', prior_sources, PRIOR_SOURCES),
-                               ('base_retired', base_retired, RETIRED)):
+    entries = (
+        ('prior_links', prior_links, PRIOR_LINKS),
+        ('prior_sources', prior_sources, PRIOR_SOURCES),
+        ('base_retired', base_retired, RETIRED),
+        ('prior_witnesses', _sibling('prior_witnesses', prior_witnesses), PRIOR_WITNESSES),
+        ('base_witness_key_map', _sibling('base_witness_key_map', base_witness_key_map), BASE_WITNESS_KEY_MAP),
+        ('prior_people', _sibling('prior_people', prior_people), PRIOR_PEOPLE),
+        ('base_person_aliases', _sibling('base_person_aliases', base_person_aliases), BASE_PERSON_ALIASES),
+    )
+    for name, path, schema in entries:
         if path is None:
             path = directory / f'{name}.parquet'
             pq.write_table(schema.empty_table(), path)
@@ -193,7 +268,9 @@ def fetch_base(read_release, release_id, work, link_history=(), *, previous_rele
     base = work / 'base-release'
     # Only what the ledger reads; publish_candidate completes the copy for gate 1 only when
     # a new release is actually published, so an input-unchanged skip reads no more.
-    fetch_release(read_release(release_id), release_id, base, (*LEDGER_FILES, 'retired_links.parquet'))
+    fetch_release(read_release(release_id), release_id, base,
+                  (*LEDGER_FILES, 'retired_links.parquet', 'witnesses.parquet',
+                   'witness_key_map.parquet', 'people.parquet', 'person_aliases.parquet'))
     require_ledger_history(base, link_history)
     if link_history and previous_release_id is not None and link_history[0] != previous_release_id:
         raise ValueError(f'link_history must start with the live pointer\'s previous release {previous_release_id[:12]}')
@@ -878,7 +955,7 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
 
 MEETING_UPDATES = 'meeting-updates'  # the morning report's file stem, beside the gate report (ct-rhqw)
 # Meeting columns every read moves; the report names them only in its count of meetings.
-QUIET = ('congress_gov_detail_observation', 'congress_gov_updated', 'publisher_status_observations')
+QUIET = ('congress_gov_detail_observation', 'congress_gov_updated', 'publisher_status_observations', 'unlisted_subjects')
 SHOWN = ('event_id', 'title', 'meeting_date', 'publisher_status', 'document_references', 'videos', 'sittings')
 
 
@@ -934,17 +1011,20 @@ def meeting_updates(report, base_dir, candidate_dir):
     def side(directory):
         directory = Path(directory)
         meetings = {r['event_id']: r for r in rows(directory / 'meetings.parquet', f'event_id IN ({events})')}
-        people = {}
+        people, all_keys = {}, {}
         if (directory / 'witnesses.parquet').exists():
             for w in rows(directory / 'witnesses.parquet', f"source='congress_gov' AND occasion IN ({occasions})"):
+                ev = int(w['occasion'].split(':')[1])
                 name = (w.get('name') or '(unnamed)') + (f" ({w['organization']})" if w.get('organization') else '')
-                people.setdefault(int(w['occasion'].split(':')[1]), []).append((w.get('display_order') or 0, w['witness_key'], name))
-        return meetings, {event: sorted(found) for event, found in people.items()}
-    (old, old_people), (new, new_people) = side(base_dir), side(candidate_dir)
+                all_keys.setdefault(ev, []).append((w['witness_key'], name))
+                if w.get('listing_status', 'listed') != 'no_longer_listed':
+                    people.setdefault(ev, []).append((w.get('display_order') or 0, w['witness_key'], name))
+        return meetings, {event: sorted(found) for event, found in people.items()}, all_keys
+    (old, old_people, old_all), (new, new_people, new_all) = side(base_dir), side(candidate_dir)
     base_dir, candidate_dir = Path(base_dir), Path(candidate_dir)
     quote = lambda keys: ','.join("'" + str(k).replace("'", "''") + "'" for k in keys)
     lost = {}
-    old_keys = {key: (event, name) for event, found in old_people.items() for _, key, name in found}
+    old_keys = {key: (event, name) for event, found in old_all.items() for key, name in found}
     hist_keys = {}
     if (base_dir / 'witness_key_map.parquet').exists():
         map_cols = set(pq.read_schema(base_dir / 'witness_key_map.parquet').names)
@@ -955,7 +1035,7 @@ def meeting_updates(report, base_dir, candidate_dir):
     tracked = [(k, ev, name, True) for k, (ev, name) in old_keys.items()] + [
         (k, ev, label, ok) for k, (ev, label, ok) in hist_keys.items()]
     if tracked:
-        current_by_event = {event: {key for _, key, _ in found} for event, found in new_people.items()}
+        current_by_event = {event: {key for key, _ in found} for event, found in new_all.items()}
         cand_map = ({r['old_key']: r for r in rows(candidate_dir / 'witness_key_map.parquet', f"old_key IN ({quote([k for k, *_ in tracked])})")}
                     if (candidate_dir / 'witness_key_map.parquet').exists() else {})
         targets = {m['witness_key'] for m in cand_map.values() if m.get('witness_key')} | {k for k, *_ in tracked}
@@ -1012,6 +1092,11 @@ def meeting_updates(report, base_dir, candidate_dir):
                 entry[key + '_now'] = None if now.get(key) is None else str(now.get(key))
         for key, label, show in (('document_references', 'documents', _link), ('videos', 'videos', _link), ('sittings', 'sittings', _sitting)):
             before, after = (was or {}).get(key) or [], now.get(key) or []
+            if key == 'document_references':
+                strip = lambda items: [{k: v for k, v in r.items() if k not in ('listing_status', 'last_listed_on', 'unlisted_since', 'unlisted_by_record_sha')}
+                                       if isinstance(r, dict) else r
+                                       for r in items if not isinstance(r, dict) or r.get('listing_status', 'listed') != 'no_longer_listed']
+                before, after = strip(before), strip(after)
             entry[label + '_added'] = [show(v) for v in _multiset_moved(after, before)]
             entry[label + '_removed'] = [show(v) for v in _multiset_moved(before, after)]
         people_before = [name for _, _, name in old_people.get(event, [])]

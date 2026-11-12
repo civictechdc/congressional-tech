@@ -3,8 +3,15 @@ import {
   presentDocument,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
-import {day} from './ArchiveRows.tsx';
+import {PublicLink, day} from './ArchiveRows.tsx';
 import {witnessLabel, witnessMember, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
+
+function unlistedText(item:any):string|null{
+  if(item?.listing_status!=='no_longer_listed')return null;
+  return item.unlisted_since
+    ?`No longer listed by Congress.gov since ${day(item.unlisted_since)}`
+    :'No longer listed by Congress.gov';
+}
 
 export function WitnessDetail({
   witness,
@@ -14,6 +21,7 @@ export function WitnessDetail({
   onHearing,
   onCommittee,
   onMember,
+  onPerson,
   onFilterDocuments,
   onInspect,
   onClose,
@@ -26,6 +34,7 @@ export function WitnessDetail({
   onHearing?:(key:string)=>void;
   onCommittee?:(key:string)=>void;
   onMember?:(bioguideId:string)=>void;
+  onPerson?:(personKey:string)=>void;
   onFilterDocuments?:()=>void;
   onInspect?:()=>void;
   onClose?:()=>void;
@@ -39,18 +48,22 @@ export function WitnessDetail({
   const shownAppearances=compact?appearances.slice(0,5):appearances;
   const recordLabel=witnessRecordEntryLabel(witness.witness_type);
   const named=witnessMember(witness);
+  const witnessUnlisted=unlistedText(witness);
 
   return <section className="archive-entity-card" aria-label={recordLabel||'Witness details'} data-archive-entity="witness">
     <header className="archive-entity-header">
       <div className="archive-entity-header-top">
         <p className="archive-detail-context">{recordLabel||'Congressional Witness'}</p>
         <div className="archive-pill-list">
+          {witness.person_key&&onPerson&&<button type="button" className="archive-measure-pill" onClick={()=>onPerson(String(witness.person_key))}>Person page →</button>}
           {onInspect&&<button type="button" className="archive-measure-pill" onClick={onInspect}>Open full profile →</button>}
           {onFilterDocuments&&<button type="button" className="archive-measure-pill" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
           {onClose&&<button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel||'Clear witness filter'}</button>}
         </div>
       </div>
       <h2>{witnessLabel(witness)}</h2>
+      {witnessUnlisted&&<p className="archive-source-meta">{witnessUnlisted}</p>}
+      {witness.credentials&&<p className="archive-entity-meta"><strong>Credentials:</strong> {witness.credentials}</p>}
       {organizations.length>0&&<p className="archive-entity-meta"><strong>Organizations:</strong> {organizations.join(' · ')}</p>}
       {positions.length>0&&<p className="archive-entity-meta"><strong>Positions:</strong> {positions.join(' · ')}</p>}
       {named&&<p className="archive-entity-meta">
@@ -67,15 +80,20 @@ export function WitnessDetail({
       <h3>{recordLabel?'Related Hearings':'Hearing Appearances'} ({appearances.length})</h3>
       <ul className="archive-entity-list">
         {shownAppearances.map((app:any,i:number)=>{
-          const ev=String(app.event_id??app.meeting_key??'');
-          const title=app.meeting_title||app.title||`Hearing ${ev}`;
+          const ev=String(app.event_id??app.meeting_key??'').trim();
+          const cleanTitle=String(app.meeting_title||app.title||'').trim().replace(/^[-–—]+\s+/,'').trim();
+          const title=cleanTitle||(app.package_id?`Hearing Print ${app.package_id}`:(ev?`Hearing ${ev}`:(app.occasion||'Recorded Hearing Appearance')));
           const role=[app.position,app.organization,app.on_behalf_of?`on behalf of ${app.on_behalf_of}`:null].filter(Boolean).join(' — ');
-          return <li key={ev||i}>
+          const appUnlisted=unlistedText(app);
+          return <li key={ev||app.package_id||i}>
             {ev&&onHearing
               ?<button type="button" className="explorer-text-button" onClick={()=>onHearing(ev)}><strong>{title}</strong></button>
-              :<strong>{title}</strong>}
+              :app.package_id
+                ?<PublicLink url={`https://www.govinfo.gov/app/details/${encodeURIComponent(String(app.package_id))}`}><strong>{title}</strong></PublicLink>
+                :<strong>{title}</strong>}
             {app.meeting_date&&<span className="archive-source-meta"> · {day(app.meeting_date)}</span>}
             {app.panel!=null&&<span className="archive-source-meta"> · Panel {String(app.panel)}</span>}
+            {appUnlisted&&<span className="archive-source-meta"> · {appUnlisted}</span>}
             {role&&<p className="archive-source-meta">{role}</p>}
             {Array.isArray(app.committee_keys)&&app.committee_keys.length>0&&<div className="archive-pill-list">
               {app.committee_keys.map((ck:string)=>onCommittee

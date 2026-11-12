@@ -240,12 +240,16 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     }
     return true;
   };
-  const maxPlausibleDateEpoch=1798761599000; // 2026-12-31T23:59:59Z
-  const dateRank=(packed: Float64Array,i: number)=>{
-    const v=packed[i];
-    if(Number.isNaN(v))return -Infinity;
-    return v<=maxPlausibleDateEpoch?v:-1e15+v*1e-6;
-  };
+  let maxCapturedEpoch=0;
+  const capPacked=columns.get('first_captured')?.packed as Float64Array|undefined;
+  if(capPacked){
+    for(let i=0;i<capPacked.length;i++){
+      const v=capPacked[i];
+      if(v>maxCapturedEpoch)maxCapturedEpoch=v;
+    }
+  }
+  const maxPlausibleDateEpoch=computeMaxPlausibleDateEpoch(Date.now(),maxCapturedEpoch);
+  const dateRank=(packed: Float64Array,i: number)=>rankDocumentDateEpoch(packed[i],maxPlausibleDateEpoch);
   const entry=async(index: number,signal?: AbortSignal)=>{
     signal?.throwIfAborted();
     if(!Number.isSafeInteger(index)||index<0||index>=count)throw new Error('Archive document not found.');
@@ -278,8 +282,13 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     if(!rows.length)return null;
     const [item]=rows;
     // Other editions at the old addresses are listed with a notice, never swapped in silently.
-    const versions=Array.isArray(item.address_versions)?item.address_versions.map(hex):[];
-    return {key,successor:hex(item.successor_key),lastRelease:String(item.last_release_id),lastFilename:item.last_filename??null,versions};
+    const versions:string[]=Array.isArray(item.address_versions)?item.address_versions.map(hex).filter((v:string|null):v is string=>Boolean(v)):[];
+    const resolvedEntries=await Promise.all(versions.map(async(vKey:string)=>{
+      const idx=vKey?await resolve(vKey).catch(()=>null):null;
+      return {key:vKey,doc:idx!==null?row(idx):null};
+    }));
+    const versionItems=formatRetiredVersions(resolvedEntries);
+    return {key,successor:hex(item.successor_key),lastRelease:String(item.last_release_id),lastFilename:item.last_filename??null,versions,versionItems};
   };
   // A witness key an earlier body or capture context produced (witness_key_map.parquet):
   // one successor, several candidates with none chosen, or none. A name never maps.
@@ -290,6 +299,30 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     if(!rows.length)return null;
     const [item]=rows;
     return {key,status:String(item.status),successor:item.witness_key??null,basis:item.basis??null,
+      candidates:Array.isArray(item.candidate_keys)?item.candidate_keys.map(String):[]};
+  };
+  const normalizePersonKey=(key: string)=>{
+    const clean=String(key??'').trim();
+    if(/^[a-z][0-9]{6}$/i.test(clean))return clean.toUpperCase();
+    if(/^[0-9a-f]{16}$/i.test(clean))return clean.toLowerCase();
+    return clean;
+  };
+  const personRecord=async(key: string)=>{
+    const norm=normalizePersonKey(key);
+    if(!norm||!files.has('people.parquet'))return null;
+    const rows=await read('people.parquet',undefined,undefined,{person_key:{$eq:norm}});
+    if(rows.length>1)throw new Error('Person key is not unique.');
+    return rows[0]??null;
+  };
+  const personAlias=async(key: string)=>{
+    const norm=normalizePersonKey(key);
+    if(!norm||!files.has('person_aliases.parquet'))return null;
+    const rows=await read('person_aliases.parquet',undefined,undefined,{old_person_key:{$eq:norm}});
+    if(rows.length>1)throw new Error('Person alias entry is not unique.');
+    if(!rows.length)return null;
+    const [item]=rows;
+    return {key:norm,status:String(item.status),successor:item.person_key??null,kind:item.kind??null,
+      decision_id:item.decision_id??null,last_release_id:item.last_release_id??null,
       candidates:Array.isArray(item.candidate_keys)?item.candidate_keys.map(String):[]};
   };
   // One answer per public key: a live row, a redirect to the successor's row, a removal
@@ -314,7 +347,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   const meetingCoverage=(eventId: string)=>/^\d+$/.test(eventId)
     ?read('meeting_coverage.parquet',undefined,undefined,{event_id:{$eq:BigInt(eventId)}})
     :Promise.resolve([]);
-  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,meetingCoverage,
+  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,personRecord,personAlias,meetingCoverage,
     entityHasColumn:async(name,column)=>(await table(name+'.parquet',true)).names.includes(column)});
 
   const schema=async()=>JSON.parse(new TextDecoder().decode(await verified('schema.json')));
@@ -439,6 +472,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     versions,
     meetings:()=>entity('meetings'),
     witnesses:()=>entity('witnesses'),
+    people:()=>entity('people'),
     recordings:()=>entity('recordings'),
     committees:()=>entity('committees'),
     members:()=>entity('members'),
@@ -449,6 +483,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     getMeeting:entityStore.getMeeting,
     getCommittee:entityStore.getCommittee,
     getWitness:entityStore.getWitness,
+    getPerson:entityStore.getPerson,
     getMember:entityStore.getMember,
     getBill:entityStore.getBill,
     getNomination:entityStore.getNomination,
@@ -457,6 +492,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     openDocument:entityStore.openDocument,
     retired,
     witnessKeyMap,
+    personAlias,
     locate,
     schema,
     kindSynonyms,
@@ -483,6 +519,38 @@ export function savedCopy(detail: any,rawBase: string){
   return {url:new URL(`bodies/sha256/${body.slice(0,2)}/${body}${detail.saved_suffix}`,rawBase).href,
     compressedDownload:detail.saved_suffix==='.gz'&&detail.saved_bytes>readerLimits.max_unpacked_bytes,mediaType:detail.saved_media_type};
 }
+export function computeMaxPlausibleDateEpoch(nowEpoch: number=Date.now(),maxCapturedEpoch: number=0): number{
+  const anchor=Math.max(Number.isFinite(nowEpoch)?nowEpoch:0,Number.isFinite(maxCapturedEpoch)?maxCapturedEpoch:0);
+  return anchor+180*86_400_000;
+}
+
+export function rankDocumentDateEpoch(v: number,maxPlausibleDateEpoch: number): number{
+  if(Number.isNaN(v))return -Infinity;
+  return v<=maxPlausibleDateEpoch?v:-1e15+v*1e-6;
+}
+
+export function formatRetiredVersions(entries: Array<{key:string;doc?:any}>): Array<{key:string;label:string}>{
+  const normalized=entries.map(entry=>{
+    const doc=entry.doc;
+    const rawFile=String(doc?.filename??'').trim().replace(/^[0-9a-f]{64}\./i,'');
+    const rawTitle=String(doc?.title??'').trim().replace(/^[-–—]+\s+/,'');
+    const captured=doc?.first_captured?date(doc.first_captured):null;
+    const fmt=String(doc?.format??'').trim().toUpperCase();
+    const base=rawFile||rawTitle||'';
+    return {key:entry.key,base,captured,fmt};
+  });
+  const counts=new Map<string,number>();
+  for(const item of normalized)if(item.base)counts.set(item.base,(counts.get(item.base)??0)+1);
+  return normalized.map(item=>{
+    if(!item.base)return {key:item.key,label:item.key};
+    if((counts.get(item.base)??0)>1){
+      const qual=[item.captured?`captured ${item.captured}`:null,item.fmt||null,item.key.slice(0,8)].filter(Boolean).join(', ');
+      return {key:item.key,label:`${item.base} (${qual})`};
+    }
+    return {key:item.key,label:item.base};
+  });
+}
+
 const dateSourceLabels:Record<string,string>={
   meeting:'hearing date',
   listed_on:'listing page',
@@ -490,10 +558,29 @@ const dateSourceLabels:Record<string,string>={
   content:'document text',
   publisher:'publisher',
 };
+
+function isSuspectDocumentDate(document: any,detail: any,day: string|null,captured: string|null,rawSource: string): boolean{
+  const explicitStatus=detail?.document_date_status??document?.document_date_status;
+  if(explicitStatus==='suspect')return true;
+  if(explicitStatus==='accepted')return false;
+  if(rawSource&&rawSource!=='filename')return false;
+  if(!day||!/^\d{4}-\d{2}-\d{2}$/.test(day))return false;
+  const dayMs=Date.parse(`${day}T00:00:00Z`);
+  if(!Number.isFinite(dayMs))return false;
+  const capMs=captured&&/^\d{4}-\d{2}-\d{2}$/.test(captured)?Date.parse(`${captured}T00:00:00Z`):0;
+  if(dayMs>computeMaxPlausibleDateEpoch(Date.now(),capMs))return true;
+  const yr=Number(day.slice(0,4));
+  const cong=document?.congress!=null&&Number.isFinite(Number(document.congress))?Number(document.congress):null;
+  if(yr<1789)return true;
+  if(yr<1950&&(cong===null||cong>=95))return true;
+  return false;
+}
+
 export function dateLabels(document: any,detail: any){
   const captured=date(document.first_captured),imported=date(detail.in_archive_since),day=date(document.document_date);
   const rawSource=detail.document_date_source?String(detail.document_date_source).trim():'';
-  const source=detail.document_date_status==='suspect'?' (read from the filename; likely misread)':
+  const suspect=isSuspectDocumentDate(document,detail,day,captured,rawSource);
+  const source=suspect?' (read from the filename; likely misread)':
     rawSource&&rawSource!=='filename'?` (${dateSourceLabels[rawSource]??rawSource})`:'';
   return {capture:document.date_kind==='captured'&&captured?`Captured ${captured}`:
     document.date_kind==='import_day'&&imported?`In our archive since ${imported} (original capture date not recorded)`:'Capture date not recorded',

@@ -103,7 +103,7 @@ def sample(tmp_path_factory, request):
             "arrow_cast(decode('c0ffee123456789a','hex'),'FixedSizeBinary(8)')"
         ),
         'formats': "SELECT 'preference' AS kind,'pdf' AS value,cast(1 AS INT) AS rank",
-        'appearance_records_resolved': "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS source WHERE false",
+        'appearance_records_resolved': "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS source,cast('listed' AS VARCHAR) AS listing_status WHERE false",
         'package_meeting_links': "SELECT 'CHRG-micro' AS package_id,cast(505 AS BIGINT) AS event_id",
         'package_mods_facts': "SELECT 'CHRG-micro' AS package_id",
     }
@@ -193,7 +193,7 @@ def test_committee_transcript_outcome_reference_stays_stable_when_list_row_shift
                 "arrow_cast(decode('c0ffee123456789a','hex'),'FixedSizeBinary(8)') AS link_key"
             ),
             'formats': "SELECT 'preference' AS kind,'pdf' AS value,cast(1 AS INT) AS rank",
-            'appearance_records_resolved': "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS source WHERE false",
+            'appearance_records_resolved': "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS source,cast('listed' AS VARCHAR) AS listing_status WHERE false",
             'package_meeting_links': "SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false",
             'package_mods_facts': "SELECT cast(NULL AS VARCHAR) AS package_id WHERE false",
         }

@@ -144,7 +144,7 @@ One row per House `committee-meeting` XML body and parser version: the amendment
 
 ## 2. Hearings, Witnesses and Reference Entities
 
-Hearings, witnesses, members, committees, bills and nominations are the entities a reader explores beside documents: a hearing's transcript, recording and witnesses and what each submitted, a member's committees and hearings, a bill's committees, cost and votes, a nomination's hearings and votes. Every relationship is one a publisher states; none is matched by name.
+Hearings, witnesses, people, members, committees, bills and nominations are the entities a reader explores beside documents: a hearing's transcript, recording and witnesses and what each submitted, a witness's appearances across hearings (`people.parquet`, `ct-ha10`), a member's committees and hearings, a bill's committees, cost and votes, a nomination's hearings and votes. Document, hearing, committee, bill and nomination relationships come from publisher statements; cross-hearing person grouping lives in its own `people` / `person_aliases` layer (`grouping_basis`: `bioguide`, `name_organization`, `singleton`, or `reviewed`) separate from `witness_key`.
 
 ```
 transcripts    := per meeting, every transcript the archive holds, each labelled by source
@@ -175,13 +175,38 @@ occasion       := 'meeting:{event_id}' for a House witness list or Congress.gov 
                   that lists witnesses and states or links to a meeting,
                   'meeting:{event_id}', else 'page:' and the hex of the first 8 bytes
                   of sha256(url_key(page_url))
-witness_key    := the lowercase hex of the first 8 bytes of the SHA-256 of compact JSON
-                  ["witness-occurrence-v2", occasion, source, record_sha_hex,
-                   source_locator, context_key]; an observation key, not a person key
+witness_key    := carried forward from the base release when the appearance matches one
+                  prior witness on the same (source, record_sha, source_locator) across
+                  occasion moves (Tier 1), else on the same (occasion, source, print) by
+                  unique normalized text or same-person/document continuity (Tier 2,
+                  ct-46f3); a genuinely new appearance mints the lowercase hex of the first
+                  8 bytes of the SHA-256 of compact JSON ["witness-appearance-v3", occasion,
+                  source, print, name_t, organization_t, position_t, rank]; an appearance
+                  key, separate from person_key; depends on base_release like retired_links
+                  (DATA-MODEL §8.3, qualifying ct-30fp's clean-rebuild key rule so re-fetches,
+                  parser fixes and meeting moves preserve published keys)
+witness_key_map := retired witness_keys from the base release or its map (1-hop carry, plus
+                  model/registries/historical-witness-keys.json), with status unambiguous,
+                  ambiguous (candidate_keys) or unresolved; export refuses lost_witness_keys
 witnesses      := filter pinned source/parser versions; select each source's current
-                  subject/context observation in §1.2 order before unnesting; apply
-                  House, Congress.gov, then MODS precedence to explicit collection
-                  states (a page is its own occasion); retain every selected occurrence
+                  subject/context observation in §1.2 order before unnesting; retain
+                  Congress.gov witnesses dropped by a later read of the same event with
+                  listing_status = 'no_longer_listed' and last_listed_on / unlisted_since /
+                  unlisted_by_record_sha (ct-960v); apply House, Congress.gov, Senate page,
+                  then MODS precedence; retain every selected occurrence
+people         := per canonical testifying or Member witness appearance (record entries and
+                  unmatched member_appearance rows excluded; superseded rows inherit their
+                  target's person_key), Tier 1 groups sitting/known Members by Bioguide ID
+                  (matched_bioguide_id, else valid publisher bioguide_id; grouping_basis =
+                  'bioguide'), Tier 2 groups non-Members with both a usable normalized name
+                  and non-empty full normalized organization into lowercase hex sha256(
+                  ["person-v1", name_key, org_key, middle_guard, suffix_guard])[:16] when
+                  stated middle initials and generational suffixes do not conflict
+                  (grouping_basis = 'name_organization'), singletons mint sha256(
+                  ["person-singleton-v1", witness_key])[:16] (grouping_basis = 'singleton'),
+                  and model/registries/person-decisions.json applies reviewed merge/split/hide
+                  decisions (grouping_basis = 'reviewed'); person_aliases carries retired
+                  person_keys 1 hop and export refuses lost_person_keys (ct-ha10)
 witness_keys   := per document, the witness_key of every appearance one of whose
                   document_urls matches one of its document members (DATA-MODEL §7.2
                   matching); a printed hearing's witnesses are the transcript's, through
@@ -220,10 +245,10 @@ nominations    := per nomination_id a meeting's subject_keys names, the pinned r
                   whose documents name it, by (vote_day, vote_id)
 ```
 
-- No person is matched across source occurrences by name. A later person-identity table may relate supported observations; its identity is separate from `witness_key`.
-- Equal names with different panels, roles, organizations or documents remain distinct observations. Presentation may group demonstrably equivalent observations only while retaining all contributing keys, locators and evidence; uniqueness obtained by discarding unequal observations is not preservation.
+- `witness_key` names a hearing appearance observation; cross-hearing person identity is published separately in `people.parquet` and `person_aliases.parquet` (`person_key` on `witnesses.parquet`, `ct-ha10`). Name-only matches without organization remain singletons so common names at blank organizations never merge.
+- Equal names with different panels, roles, organizations or documents remain distinct appearance observations (`witness_key`). `people.parquet` aggregates canonical appearances (`superseded_by IS NULL`) while retaining every contributing `witness_key`, name spelling, organization and position.
 - A name or role a later reading supplies, such as a structured transcript from captions, subtitles or `pdf_text`, is an attribute of the appearance and never part of `witness_key`, so links survive it.
-- The v2 key is stable for the same retained input, locator and context; a changed source record is a new observation. This replaces the old name-derived identity rule. Keep old releases readable with their original keys and version the new release schema/relationship definitions. Any old-to-new mapping must preserve one-to-many and unresolved cases; never redirect an ambiguous old key to an arbitrary occurrence.
+- Carried `witness_key`s survive Congress.gov re-fetches and source updates when an appearance continues unambiguously (`ct-46f3`); only genuinely new appearances mint `witness-appearance-v3`, and retired witness keys remain resolvable in `witness_key_map.parquet` (unambiguous redirect, ambiguous `candidate_keys`, or explicit unresolved status). Congress.gov witnesses, `document_references`, and `subject_keys` (`unlisted_subjects`) dropped by a later read of the same meeting stay published with `listing_status = 'no_longer_listed'` (`ct-960v`).
 - The model reports appearances whose `name_key` differs only by a title or initial within one occasion, as input for that table, and Senate page cards with no links.
 - Release 448651e7 changed every `witness_key`. Owner decision, 2026-11-02: no old-to-new mapping is published; the release notes say witness IDs changed and that old `?witness=` links no longer resolve (ct-ktfe).
 - Live 448651e7 publishes a single VTT segment as the caption track of 773 Senate recordings (1,538 track rows; 667 recordings point at one 57-byte segment), against the segment rule above (ct-9s7b).
@@ -247,7 +272,10 @@ file's column meanings are in the release's `schema.json`, from the release-sche
 
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
-| `witnesses.parquet` | `witness_key` string (v2 source-occurrence identity), `occasion` dict, `source` dict, `record_sha` fsb(32), `source_locator`, `context_key` strings, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `rank`, `credentials`, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable, `superseded_by` string nullable (the `witness_key` of the same person stated on the same meeting by a higher-ranked source, [[DATA-MODEL]] §7.11; null on the row to show) | `(occasion, panel_order, display_order, witness_key)` | Whole | Re-measure after occurrence preservation; historical few-MB estimate is not an acceptance bound |
+| `witnesses.parquet` | `witness_key` string (carried appearance key or `witness-appearance-v3`), `occasion` dict, `source` dict, `record_sha` fsb(32), `source_locator`, `context_key` strings, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `rank`, `credentials`, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable, `matched_bioguide_id` dict nullable, `match_basis` dict nullable, `superseded_by` string nullable (the `witness_key` of the same person stated on the same meeting by a higher-ranked source, [[DATA-MODEL]] §7.11; null on the row to show), `listing_status` dict (`listed` or `no_longer_listed`), `last_listed_on`, `unlisted_since` date32 nullable, `unlisted_by_record_sha` fsb(32) nullable (`ct-960v`), `person_key` string nullable (`ct-ha10`) | `(occasion, panel_order, display_order, witness_key)` | Whole | Re-measure after occurrence preservation; historical few-MB estimate is not an acceptance bound |
+| `witness_key_map.parquet` | `old_key` string, `witness_key` string nullable, `status` dict (`unambiguous`, `ambiguous`, `unresolved`), `basis` dict nullable, `candidate_keys` List<string> (`ct-46f3`) | `old_key` | Lookup | Proportional to retired witness keys |
+| `people.parquet` | `person_key` string, `bioguide_id` dict nullable, `name` string, `name_variants` List<string>, `organization` string nullable, `organizations`, `positions`, `ranks` List<string>, `grouping_basis` dict (`bioguide`, `name_organization`, `singleton`, `reviewed`), `appearance_count`, `hearing_count` int32, `first_seen_date`, `last_seen_date` date32 nullable, `witness_keys` List<string> (`ct-ha10`) | `person_key` | Lookup | *est.* 4–6 MB |
+| `person_aliases.parquet` | `old_person_key` string, `person_key` string nullable, `status` dict (`unambiguous`, `ambiguous`, `unresolved`), `kind` dict nullable (`merged`, `regrouped`, `split`, `hidden`), `decision_id` string nullable, `last_release_id` string, `candidate_keys` List<string> (`ct-ha10`) | `old_person_key` | Lookup | Proportional to retired person keys |
 | `recordings.parquet` | `video_key` string, `event_ids` List<int64>, `tracks` List<Struct<body fsb(32), suffix dict, format dict, language dict nullable, production dict nullable>> | `video_key` | Whole | *est.*, measured with S2 |
 | `caption_resources.parquet` | `video_key` string, `track_body` fsb(32), `ordinal` int64, `source_url` string, `declared_uri` string nullable, `body` fsb(32) nullable, `suffix`, `format` dict nullable, `parser_version` string nullable, `status` dict | `(video_key, track_body, ordinal)` | Whole | Selected roots and declared children only; missing children remain rows |
 | `committees.parquet` | `system_code` string, `name` string, `chamber` dict, `committee_type` dict nullable, `parent_system_code` dict nullable, `names` List<Struct<name string, start date32, end date32>>, `website` string nullable, `is_current` bool nullable | `system_code` | Whole | Under 1 MB |
@@ -534,7 +562,7 @@ that execute each case are named in `model/fixtures/manifest.md`.
 | Finding | Required correction and acceptance case | Owner |
 |---|---|---|
 | GB1, P1: final fetch facts promote a prior incomplete/error body | DATA-MODEL §6.1/§7.3/§7.7: preserve narrow attempt-specific eligibility and separate final scheduling state. Exercise prior 206/incomplete or 403 followed by final success, valid prior followed by final failure, and unknown prior facts. | `ct-sh4j` |
-| GB2, P1: body-only appearance reuse omits context | §1.3: parse context-free facts keyed by body/source/version, bind every eligible context in SQL, and retain literal links/locators. An A-then-B capture of identical bytes must match a clean rebuild and preserve both contexts. | `ct-30fp`; coordinate source versions with `ct-h1nd` |
+| GB2, P1: body-only appearance reuse omits context | §1.3: parse context-free facts keyed by body/source/version, bind every eligible context in SQL, and retain literal links/locators. An A-then-B capture of identical bytes must match a clean rebuild at the same base release and preserve both contexts (`ct-46f3` / `ct-ha10` carry published `witness_key`s and `person_key`s from `base_release` per DATA-MODEL §8.3 so re-fetches and parser repairs do not break links). | `ct-30fp`; coordinate source versions with `ct-h1nd`; `ct-46f3`, `ct-ha10` |
 | GB3, P1: version selection and expected-candidate completeness are lost before publication | Carry all selected versions from daily production through admission; filter before interpretation and anti-join expected candidates against selected-version results/dispositions. Cover mixed versions, a missing reading, empty expected/nonempty expected sets, and the early-skip path. | `ct-yymr` handoff; `ct-kw9b` admission; `ct-vpo2` schemas/invariants |
 | GB4, P2: empty current lists revive old witnesses | §1.2–1.3: subject/context identity and collection state survive outside lists; select current observations before unnesting. Verify nonempty → empty, absent declaration, unrecognized layout and extraction failure with explicit fallback outcomes. | `ct-30fp` |
 | GB5, P2: name-only dedup removes unequal observations | §1.3/§2: preserve source occurrences and evidence; version public key changes. Verify repeated names across panels/organizations/documents, unchanged-input replay, and ambiguous old-key mappings. | `ct-30fp` |

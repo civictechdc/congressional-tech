@@ -69,8 +69,9 @@ WITH observations AS (
 ), stated_documents AS (
  SELECT DISTINCT event_id FROM meeting_document_urls
 ), witness_counts AS (
- -- Superseded rows point to the selected person; record material and sitting Members (ct-kw85) contribute no witness count.
+ -- Superseded rows point to the selected person; record material, sitting Members (ct-kw85), and unlisted retained rows (ct-960v) contribute no witness count.
  SELECT event_id,count(*) AS n FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
+  AND listing_status='listed'
   AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material','member_appearance') GROUP BY event_id
 ), witness_states AS (
  SELECT event_id,max(CASE WHEN collection_state='unresolved' THEN 2 WHEN collection_state='empty' THEN 1 ELSE 0 END) AS rank
@@ -79,7 +80,7 @@ WITH observations AS (
     ELSE coalesce(nullif(trim(collection_state),''),CASE WHEN coalesce(array_length(appearances),0)>0 THEN 'present' ELSE 'empty' END) END AS collection_state
   FROM selected_appearance_records r
   UNION ALL
-  SELECT DISTINCT event_id,'present' AS collection_state FROM witnesses_export WHERE event_id IS NOT NULL
+  SELECT DISTINCT event_id,'present' AS collection_state FROM witnesses_export WHERE event_id IS NOT NULL AND listing_status='listed'
  ) WHERE event_id IS NOT NULL GROUP BY event_id
 ), document_rows AS (
  SELECT e.event_id,'documents' AS aspect,
@@ -102,6 +103,7 @@ WITH observations AS (
  -- A linked package holds witnesses that no raw record ties to this meeting alone (ct-dx22).
  SELECT DISTINCT l.event_id FROM linked_packages l
  JOIN witnesses_export w ON w.package_id=l.package_id AND w.event_id IS NULL AND w.name IS NOT NULL
+  AND w.listing_status='listed'
   AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material','member_appearance')
 ), member_only AS (
  -- The people a meeting lists are sitting Members (ct-kw85), perhaps with record entries: shown Member rows on its own
@@ -110,10 +112,10 @@ WITH observations AS (
  -- left its nominee out: unknown, not empty.
  SELECT DISTINCT m.event_id FROM unattached_package_witnesses u RIGHT ANTI JOIN (
   SELECT event_id FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
-   AND witness_type='member_appearance'
+   AND listing_status='listed' AND witness_type='member_appearance'
   UNION ALL
   SELECT l.event_id FROM linked_packages l JOIN witnesses_export w ON w.package_id=l.package_id AND w.event_id IS NULL
-   AND w.name IS NOT NULL AND w.superseded_by IS NULL AND w.witness_type='member_appearance'
+   AND w.name IS NOT NULL AND w.superseded_by IS NULL AND w.listing_status='listed' AND w.witness_type='member_appearance'
  ) m ON m.event_id=u.event_id
 ), witness_rows AS (
  SELECT e.event_id,'witnesses' AS aspect,

@@ -384,7 +384,8 @@ def bind_candidate(candidate,build,runtime):
 def check_ledger(*,ready=None,base=None):
     """Refuse a ledger the build cannot read, before a candidate is bound or anything is written."""
     if ready is not None:
-        for name in ('prior_links','prior_sources','base_retired'):
+        for name in ('prior_links','prior_sources','base_retired','prior_witnesses',
+                     'base_witness_key_map','prior_people','base_person_aliases'):
             if not (Path(ready)/(name+'.parquet')).is_file():
                 raise ValueError(f'Ledger folder lacks {name}.parquet: {Path(ready).resolve()}')
     if base is not None:
@@ -435,7 +436,14 @@ def execute(spec,*,prior_links=None,base_retired=None,verified_files=None):
     if spec.get('text_index'):
         from viewer_publication.archive_text_index import finish_text_index
         manifest=finish_text_index(spec,spec['output'])
-    ledger=None if prior_links is None else dict(prior_links=str(prior_links),base_retired=str(base_retired))
+    if prior_links is None:
+        ledger=None
+    else:
+        ledger=dict(prior_links=str(prior_links),base_retired=str(base_retired))
+        for name in ('prior_witnesses','base_witness_key_map','prior_people','base_person_aliases'):
+            sibling=Path(prior_links).with_name(f'{name}.parquet')
+            if sibling.is_file():
+                ledger[name]=str(sibling)
     return dict(status='built',executed=True,release_id=manifest['release_id'],engine_config=engine_config,engine_runtime=ran,ledger=ledger,
         output=spec['output'],scratch=spec['scratch'],rows={entry['name']:entry['rows'] for entry in manifest['files']})
 

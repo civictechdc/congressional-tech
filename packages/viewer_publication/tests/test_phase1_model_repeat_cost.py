@@ -145,12 +145,9 @@ OUTER_BUILD_TRACKED = {
     'blank_filename_reasons': 1,               # query; 323K rows by ordered, 2 cols
     'meeting_detail_evidence': 2,              # 217K rows by congress_gov_routes, 16 cols
     'meeting_detail_observations': 3,          # 217K rows by meeting_detail_evidence, 15 cols
-    'witness_key_current': 1,                  # 173K rows by appearance_records_resolved, 15 cols
     'document_witness_url_matches': 1,         # 173K rows by appearance_records_resolved, 4 cols
     'document_witness_meeting_witnesses': 1,   # 173K rows by appearance_records_resolved, 5 cols
     'coverage': 3,                             # query; 173K rows by witnesses_export, 7 cols
-    'witness_key_map': 1,                      # 156K rows by witness_key_priors, 3 cols
-    'relationship_invariants': 1,              # query; 156K rows by witness_key_map_export
 }
 
 SEMI_ANTI_MARK_JOIN_KINDS = ('LeftSemi Join', 'LeftAnti Join', 'LeftMark Join')

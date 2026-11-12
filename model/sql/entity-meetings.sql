@@ -17,6 +17,7 @@ WITH keys AS (
  UNION
  SELECT event_id FROM appearance_records_resolved
  WHERE event_id IS NOT NULL AND name IS NOT NULL AND source IN ('house_xml','congress_gov')
+  AND listing_status='listed'
 ), reschedule_rows AS (
  -- Postponed/Canceled (not_held) says no sitting on this date. Rescheduled is ambiguous: re-dated in place
  -- (106383, own video) or re-entered (101422, raw MODS shows the twin's print), so the record's own
@@ -321,6 +322,9 @@ SELECT k.event_id,
  r.rescheduled_to,
  r.rescheduled_basis,
  m.document_references,
+ coalesce(m.unlisted_subjects,array_slice(make_array(named_struct(
+  'subject_key',cast(NULL AS VARCHAR),'last_listed_on',cast(NULL AS DATE),
+  'unlisted_since',cast(NULL AS DATE),'unlisted_by_record_sha',cast(NULL AS VARCHAR))),1,0)) AS unlisted_subjects,
  named_struct('state',coalesce(o.state,'unknown'),'coverage',coalesce(o.coverage,'unknown'),
   'successful_read',o.successful_read,'latest_attempt',o.latest_attempt,'listing',o.listing,
   'has_undated_attempt',coalesce(o.has_undated_attempt,false)) AS congress_gov_detail_observation

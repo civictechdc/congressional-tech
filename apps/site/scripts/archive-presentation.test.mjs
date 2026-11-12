@@ -16,6 +16,7 @@ const {
   HearingDetail,
   CommitteeDetail,
   WitnessDetail,
+  PersonDetail,
   MemberDetail,
   SubjectDetail,
 }=await compile('ArchiveDetail.tsx');
@@ -580,4 +581,228 @@ test('WitnessDetail renders parenthetical retirement credentials, on_behalf_of, 
   }));
   assert(matchedMemberHtml.includes('View Member Profile (B001257, name-matched)'));
   assert(!matchedMemberHtml.includes('B00O257'));
+});
+
+test('ct-960v and ct-ha10: retained Congress.gov no_longer_listed badges, person links, and PersonDetail render cleanly',async()=>{
+  const {readArchiveNavigation}=await compile('ArchiveExplorer.tsx');
+  const nav=readArchiveNavigation('?person=aa11bb22cc33dd44');
+  assert.equal(nav.person,'aa11bb22cc33dd44');
+
+  const hearingHtml=renderToStaticMarkup(React.createElement(HearingDetail,{
+    meeting:{
+      event_id:118800,
+      title:'Grid Reliability Hearing',
+      meeting_date:'2024-05-01',
+      subjects:[
+        {subject_key:'118-hr-100',short_title:'Clean Grid Act'},
+        {subject_key:'118-pn-50',citation:'PN50',title:'Jane Nominee',listing_status:'no_longer_listed',unlisted_since:'2026-10-25'},
+      ],
+      unlisted_subjects:[
+        {subject_key:'118-pn-50',last_listed_on:'2026-10-20',unlisted_since:'2026-10-25'},
+      ],
+      document_references:[
+        {collection:'meeting_documents',ordinal:1,name:'Dropped Report',role:'Support Document',format:'PDF',url:'https://www.banking.senate.gov/dropped.pdf',listing_status:'no_longer_listed',unlisted_since:'2026-10-25'},
+      ],
+      witnesses:[
+        {witness_key:'w_carter',person_key:'aa11bb22cc33dd44',name:'Robert Carter',organization:'Wind Association',position:'Counsel',listing_status:'no_longer_listed',unlisted_since:'2026-10-25'},
+      ],
+    },
+    onWitness:()=>{},
+    onPerson:()=>{},
+    onSubject:()=>{},
+  }));
+  assert(hearingHtml.includes('No longer listed by Congress.gov since 2026-10-25'));
+  assert(hearingHtml.includes('All appearances'));
+
+  const witnessHtml=renderToStaticMarkup(React.createElement(WitnessDetail,{
+    witness:{
+      witness_key:'w_carter',
+      person_key:'aa11bb22cc33dd44',
+      name:'Robert Carter',
+      organizations:['Wind Association'],
+      positions:['Counsel'],
+      listing_status:'no_longer_listed',
+      unlisted_since:'2026-10-25',
+      appearances:[{witness_key:'w_carter',event_id:118800,title:'Grid Reliability Hearing',meeting_date:'2024-05-01',listing_status:'no_longer_listed',unlisted_since:'2026-10-25'}],
+      documents:[],
+    },
+    onHearing:()=>{},
+    onPerson:()=>{},
+  }));
+  assert(witnessHtml.includes('No longer listed by Congress.gov since 2026-10-25'));
+  assert(witnessHtml.includes('Person page'));
+
+  assert(PersonDetail,'PersonDetail exported from ArchiveDetail.tsx');
+  const personHtml=renderToStaticMarkup(React.createElement(PersonDetail,{
+    person:{
+      person_key:'aa11bb22cc33dd44',
+      name:'Dr. José O’Reilly-Smith',
+      name_variants:['Dr. José O’Reilly-Smith','OReilly Smith, Jose'],
+      organization:'The Brookings Institution',
+      organizations:['The Brookings Institution','brookings institution.'],
+      positions:['Senior Fellow','Director'],
+      grouping_basis:'name_organization',
+      appearance_count:3,
+      hearing_count:3,
+      first_seen_date:'2003-09-23',
+      last_seen_date:'2009-12-09',
+      redirectedFrom:'0011223344556677',
+      appearances:[
+        {witness_key:'w1',event_id:901,title:'Hearing 901',meeting_date:'2024-05-01',name:'Dr. José O’Reilly-Smith',organization:'The Brookings Institution',position:'Senior Fellow',listing_status:'listed'},
+        {witness_key:'w2',event_id:902,title:'Hearing 902',meeting_date:'2024-06-15',name:'OReilly Smith, Jose',organization:'brookings institution.',position:'Director',listing_status:'no_longer_listed',unlisted_since:'2026-10-25'},
+        {witness_key:'w3',event_id:null,package_id:'CHRG-111shrg57186',name:'Dr. José O’Reilly-Smith',organization:'The Brookings Institution',position:'Senior Fellow',listing_status:'listed'},
+      ],
+      documents:[row],
+    },
+    onSelect:()=>{},
+    onHearing:()=>{},
+    onWitness:()=>{},
+    onMember:()=>{},
+    onPerson:()=>{},
+  }));
+  for(const text of [
+    'Dr. José O’Reilly-Smith',
+    'OReilly Smith, Jose',
+    'The Brookings Institution',
+    'Senior Fellow',
+    'Appearances recorded:',
+    '2003-09-23 to 2009-12-09',
+    'https://www.govinfo.gov/app/details/CHRG-111shrg57186',
+    'normalized name and organization',
+    '0011223344556677',
+    'No longer listed by Congress.gov since 2026-10-25',
+    'Publisher report',
+    'public',
+    '/issues',
+  ])assert(personHtml.includes(text),`Missing in PersonDetail: ${text}`);
+});
+
+test('cat2-pkk1 and P0-3b UI: military rank/credentials, MODS witness stubs, partitioned nominations & compact activities, suspect row dates, bare UUID cards, and retired version filenames',async()=>{
+  const {RemovedDocumentNotice}=await compile('ArchiveExplorer.tsx');
+
+  // P0-3b UI: PersonDetail & WitnessDetail render military rank, recorded ranks, and credentials.
+  const genPersonHtml=renderToStaticMarkup(React.createElement(PersonDetail,{
+    person:{
+      person_key:'pk_nakasone',
+      name:'Paul M. Nakasone',
+      rank:'General',
+      ranks:['General','Lieutenant General'],
+      credentials:'USA',
+      organizations:['Department of Defense'],
+      positions:['Commander, U.S. Cyber Command'],
+      grouping_basis:'name_organization',
+      appearances:[
+        {witness_key:'w1',event_id:501,title:'Cyber Posture Hearing',meeting_date:'2024-03-05',name:'Paul M. Nakasone',rank:'General',position:'Commander',organization:'DoD'},
+      ],
+      documents:[],
+    },
+  }));
+  assert(genPersonHtml.includes('<h2>General Paul M. Nakasone</h2>'),genPersonHtml);
+  assert(genPersonHtml.includes('Lieutenant General'),genPersonHtml);
+  assert(genPersonHtml.includes('USA'),genPersonHtml);
+
+  // P0-1 UI & P0-3b UI: WitnessDetail renders credentials and never emits trailing "Hearing " stub when event_id is null.
+  const modsWitnessHtml=renderToStaticMarkup(React.createElement(WitnessDetail,{
+    witness:{
+      witness_key:'a62c806895c31d8e',
+      name:'Michael L. Kussman',
+      credentials:'M.D., M.S. MACP',
+      organizations:['U.S. Department of Veterans Affairs'],
+      positions:['Under Secretary for Health'],
+      appearances:[
+        {event_id:null,package_id:'CHRG-110shrg40547',meeting_title:'- HEARING ON PENDING LEGISLATIVE',meeting_date:'2007-11-06',committee_keys:['ssva00']},
+        {event_id:null,package_id:null,meeting_title:null},
+      ],
+      documents:[],
+    },
+  }));
+  assert(modsWitnessHtml.includes('M.D., M.S. MACP'),modsWitnessHtml);
+  assert(modsWitnessHtml.includes('HEARING ON PENDING LEGISLATIVE'),modsWitnessHtml);
+  assert(!modsWitnessHtml.includes('>Hearing <'),modsWitnessHtml);
+
+  // P1-7 UI: Partitioned nomination links to /1022/10 and renders committee_activities in both compact and full modes.
+  const nomSubject={
+    nomination_id:'119-pn-1022-10',
+    kind:'nomination',
+    congress:119,
+    description:'Mark Cruz, of Oregon, to be Director of the Indian Health Service',
+    committees:[],
+    committee_activities:[
+      {system_code:'slia00',activities:[
+        {name:'Referred To',date:'2025-06-02'},
+        {name:'Reported By',date:'2025-07-22T14:47:05Z'},
+      ]},
+    ],
+    floor_votes:[{vote_id:'119-s-1-200',date:'2025-09-10',result:'Confirmed'}],
+  };
+  const fullNomHtml=renderToStaticMarkup(React.createElement(SubjectDetail,{subject:nomSubject,onCommittee:()=>{}}));
+  assert(fullNomHtml.includes('href="https://www.congress.gov/nomination/119th-congress/1022/10"'),fullNomHtml);
+  assert(fullNomHtml.includes('Senate Indian Affairs'),fullNomHtml);
+  assert(fullNomHtml.includes('Reported By'),fullNomHtml);
+  assert(fullNomHtml.includes('2025-07-22T14:47:05Z'),fullNomHtml);
+  const compactNomHtml=renderToStaticMarkup(React.createElement(SubjectDetail,{subject:nomSubject,compact:true,onCommittee:()=>{}}));
+  assert(compactNomHtml.includes('Reported By'),compactNomHtml);
+  assert(compactNomHtml.includes('Senate Indian Affairs'),compactNomHtml);
+
+  // P1-6 UI & P2-9 UI: ArchiveRows badges suspect dates and replaces bare UUID primary titles with contextual labels.
+  const suspectAndUuidRowsHtml=renderToStaticMarkup(React.createElement(ArchiveRows,{
+    rows:[
+      {...row,list_row:295289,title:'Bisignano Nomination',date_kind:'captured',first_captured:'2025-03-25',document_date:'2031-01-19',congress:119},
+      {...row,list_row:7870,title:'Nathan Law Testimony',date_kind:'captured',first_captured:'2019-09-27',document_date:'1901-09-26',congress:116},
+      {...row,list_row:31505,title:null,filename:'B9D24D45-9CB8-4A1C-AF4B-0429CF06BB2C',format:'pdf',congress:116,committee_keys:['ssva00'],document_date:'2020-03-03'},
+    ],
+    onSelect:()=>{},
+  }));
+  assert(suspectAndUuidRowsHtml.includes('2031-01-19 (read from the filename; likely misread)'),suspectAndUuidRowsHtml);
+  assert(suspectAndUuidRowsHtml.includes('1901-09-26 (read from the filename; likely misread)'),suspectAndUuidRowsHtml);
+  assert(!suspectAndUuidRowsHtml.includes('<strong>B9D24D45-9CB8-4A1C-AF4B-0429CF06BB2C</strong>'),suspectAndUuidRowsHtml);
+  assert(suspectAndUuidRowsHtml.includes('archive-document-subtitle">B9D24D45-9CB8-4A1C-AF4B-0429CF06BB2C</span>'),suspectAndUuidRowsHtml);
+
+  // F5 UI: RemovedDocumentNotice renders human-readable part filenames rather than raw 16-hex keys.
+  const removedHtml=renderToStaticMarkup(React.createElement(RemovedDocumentNotice,{
+    removed:{
+      key:'cb0383af1fd10c1e',
+      lastRelease:'ede659a056c04ce0c4f51c70b6848b4eaf1db1a2a2fa8aee04076973e2a1a450',
+      lastFilename:'CHRG-115hhrg24725.pdf',
+      versions:['58cc6f3f89fac200','a7b7aa76c6268c40'],
+      versionItems:[
+        {key:'58cc6f3f89fac200',label:'CHRG-115hhrg24725-pt1.pdf'},
+        {key:'a7b7aa76c6268c40',label:'CHRG-115hhrg24725-pt2.pdf'},
+      ],
+    },
+  }));
+  assert(removedHtml.includes('href="?key=58cc6f3f89fac200">CHRG-115hhrg24725-pt1.pdf</a>'),removedHtml);
+  assert(removedHtml.includes('href="?key=a7b7aa76c6268c40">CHRG-115hhrg24725-pt2.pdf</a>'),removedHtml);
+
+  // NIT 1: HearingDetail publisherDocuments gives distinct keys to listed vs retained no_longer_listed ordinal-1 refs.
+  const consoleErrors=[];
+  const origConsoleError=console.error;
+  console.error=(...args)=>{consoleErrors.push(args.join(' '));};
+  let dupOrdHearingHtml='';
+  try{
+    dupOrdHearingHtml=renderToStaticMarkup(React.createElement(HearingDetail,{
+      meeting:{
+        event_id:999,
+        congress:118,
+        chamber:'house',
+        title:'Retained Ordinal Collision Test',
+        committees:[],
+        sittings:[],
+        coverage:[],
+        witnesses:[],
+        subjects:[],
+        transcripts:[],
+        videos:[],
+        documents:[],
+        document_references:[
+          {collection:'meetingDocuments',ordinal:1,url:'https://docs.house.gov/current-1.pdf',name:'Current Ordinal 1',listing_status:'listed'},
+          {collection:'meetingDocuments',ordinal:1,url:'https://docs.house.gov/dropped-1.pdf',name:'Dropped Ordinal 1',listing_status:'no_longer_listed',last_listed_on:'2026-10-20',unlisted_since:'2026-10-25'},
+        ],
+      },
+    }));
+  }finally{
+    console.error=origConsoleError;
+  }
+  assert(dupOrdHearingHtml.includes('Current Ordinal 1')&&dupOrdHearingHtml.includes('Dropped Ordinal 1'),dupOrdHearingHtml);
+  assert(!consoleErrors.some(msg=>msg.includes('Encountered two children with the same key')),consoleErrors.join('\n'));
 });

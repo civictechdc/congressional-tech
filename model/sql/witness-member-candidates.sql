@@ -8,21 +8,24 @@
 -- counts every Member sharing the family name and initial, so the rest are kept too. Only Members in office on the
 -- date are candidates, so a former namesake never blocks a sitting one.
 WITH compared AS (
- SELECT w.id AS witness_key,m.id AS bioguide_id,w.given,
-  w.given=m.given OR w.canon=m.canon AS strict,
-  w.given=m.given OR w.canon=m.canon OR (length(w.given)>=3 AND length(m.given)>=3 AND substr(w.given,1,3)=substr(m.given,1,3))
-   OR coalesce(regexp_like(w.given,m.abbreviation),false) AS agrees,
-  length(w.given)=1 OR length(m.given)=1 AS initial
- FROM (SELECT id,family,given,canon,abbreviation FROM witness_member_names WHERE side='member') m
-  JOIN (SELECT id,family,given,canon FROM witness_member_names WHERE side='witness') w
-  ON m.family=w.family AND substr(m.given,1,1)=substr(w.given,1,1)
+ SELECT p.id AS witness_key,p.member_id AS bioguide_id,p.given,
+  coalesce(gm.strict,false) AS strict,
+  coalesce(gm.full_match,false) OR coalesce(regexp_like(p.given,p.abbreviation),false) AS agrees,
+  coalesce(gm.initial_match,false) AS initial
+ FROM person_given_matches gm RIGHT JOIN (
+  SELECT w.id,m.id AS member_id,w.given,m.given AS member_given,m.abbreviation
+  FROM (SELECT id,family,given,abbreviation FROM witness_member_names WHERE side='member') m
+   JOIN (SELECT id,family,given FROM witness_member_names WHERE side='witness') w
+   ON m.family=w.family AND substr(m.given,1,1)=substr(w.given,1,1)
+ ) p ON gm.left_given=p.given AND gm.right_given=p.member_given
  UNION ALL
  -- A common name whose short form starts with another letter (Bob and Robert).
- SELECT w.id AS witness_key,m.id AS bioguide_id,w.given,true AS strict,true AS agrees,false AS initial
- FROM (SELECT id,family,given,canon FROM witness_member_names WHERE side='member') m
-  JOIN (SELECT id,family,given,canon FROM witness_member_names WHERE side='witness') w
-  ON m.family=w.family AND substr(m.canon,1,1)=substr(w.canon,1,1)
- WHERE substr(m.given,1,1)<>substr(w.given,1,1) AND w.canon=m.canon
+ SELECT w.id AS witness_key,m.id AS bioguide_id,w.given,gm.strict,gm.full_match AS agrees,false AS initial
+ FROM (SELECT id,family,given FROM witness_member_names WHERE side='member') m
+  JOIN (SELECT id,family,given FROM witness_member_names WHERE side='witness') w
+  ON m.family=w.family
+  JOIN person_given_matches gm ON gm.left_given=w.given AND gm.right_given=m.given
+ WHERE substr(m.given,1,1)<>substr(w.given,1,1)
 ), pairs AS (
  SELECT witness_key,bioguide_id,bool_or(strict) AS strict,bool_or(agrees) AS agrees,
   bool_or(agrees AND length(given)>1) AS full_name,bool_or(initial AND NOT agrees) AS initial

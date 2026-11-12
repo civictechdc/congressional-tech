@@ -69,6 +69,10 @@ def test_witnesses_sql_and_appearance_fields_expose_rank_and_credentials(tmp_pat
     )
     assert appearance_records_have_rank_credentials(legacy_path) is False
     fallback_steps = appearance_steps(has_rank_credentials=False)
+    for step_name in ("congress_gov_witness_items", "appearance_occurrences"):
+        step = next(s for s in fallback_steps if s["name"] == step_name)
+        assert "cast(NULL AS VARCHAR) AS rank" in step["sql"]
+        assert "cast(NULL AS VARCHAR) AS credentials" in step["sql"]
     resolved_step = next(s for s in fallback_steps if s["name"] == "appearance_records_resolved")
-    assert "cast(NULL AS VARCHAR) AS rank" in resolved_step["sql"]
-    assert "cast(NULL AS VARCHAR) AS credentials" in resolved_step["sql"]
+    assert "w.rank," in resolved_step["sql"]
+    assert "w.credentials," in resolved_step["sql"]

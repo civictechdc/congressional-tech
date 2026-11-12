@@ -79,6 +79,7 @@ self.onmessage=async({data})=>{
       }
       case '/committee':result=await reader.getCommittee(args.committeeKey??args.committee_key??args.key,args,controller.signal);break;
       case '/witness':result=await reader.getWitness(args.witnessKey??args.witness_key??args.key,controller.signal);break;
+      case '/person':result=await reader.getPerson(args.personKey??args.person_key??args.key,controller.signal);break;
       case '/member':result=await reader.getMember(args.bioguideId??args.bioguide_id??args.key,controller.signal);break;
       case '/subject':result=await reader.getSubject(args.subjectKey??args.subject_key??args.key,controller.signal);break;
       case '/bill':result=await reader.getBill(args.subjectKey??args.subject_key??args.bill_id??args.key,controller.signal);break;

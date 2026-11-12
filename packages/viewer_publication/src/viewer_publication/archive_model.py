@@ -6,7 +6,7 @@ from pathlib import Path
 
 from congress_api.lake.receipt_metadata import document_status_sql,empty_body_sql
 from congress_api.retention.provenance import json_input,list_of,struct
-from viewer_publication.archive_format import NULL_MEETING_DOCUMENT_REFERENCES, SPICY_PRODUCER_FAMILIES
+from viewer_publication.archive_format import NULL_LAKE_MEETING_DOCUMENT_REFERENCES, NULL_MEETING_DOCUMENT_REFERENCES, SPICY_PRODUCER_FAMILIES
 
 ROOT=Path(__file__).parents[4]
 REGISTRIES={
@@ -36,6 +36,8 @@ REGISTRIES={
     'recovered_file_roles':dict(original_url='Utf8',body_sha='Utf8',role='Utf8',evidence='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
     'congressional_commissions':dict(id='Utf8',name='Utf8',pattern='Utf8',created_by='Utf8',members_serve='Utf8',citation_status='Utf8'),
+    'historical_witness_keys':dict(old_key='Utf8',status='Utf8',basis='Utf8',occasion='Utf8',source='Utf8',record_sha='Utf8',source_locator='Utf8',target_occasion='Utf8',evidence='Utf8'),
+    'person_decisions':dict(decision_id='Utf8',policy_version='Utf8',action='Utf8',kind='Utf8',witness_key='Utf8',target_key='Utf8',candidate_digest='Utf8',evidence='Utf8'),
 }
 
 MEETING_RECORD_FIELDS=dict(
@@ -553,8 +555,37 @@ def _validate_title_overrides(rows):
         keys.add(key)
 
 
+def _validate_historical_witness_keys(rows):
+    seen=set()
+    for row in rows:
+        key=row.get('old_key');status=row.get('status')
+        unamb=status=='unambiguous'
+        if (not isinstance(key,str) or re.fullmatch('[0-9a-f]{16}',key) is None or key in seen
+                or status not in ('unambiguous','unresolved')
+                or (row.get('basis')=='occurrence' if unamb else row.get('basis') is None) is False
+                or not row.get('occasion') or not row.get('source') or not row.get('evidence')
+                or re.fullmatch('[0-9a-f]{64}',str(row.get('record_sha'))) is None
+                or not row.get('source_locator')
+                or (bool(row.get('target_occasion')) != unamb)):
+            raise ValueError('Invalid or duplicate reviewed historical witness key: '+str(key))
+        seen.add(key)
+
+
+def _validate_person_decisions(rows):
+    seen=set()
+    for row in rows:
+        did=row.get('decision_id');action=row.get('action');kind=row.get('kind')
+        if (not isinstance(did,str) or not did.strip() or did in seen
+                or action not in ('accepted','rejected','revoked')
+                or (action!='revoked' and kind not in ('merge','split','hide'))
+                or not row.get('policy_version') or not row.get('evidence')):
+            raise ValueError('Invalid or duplicate reviewed person decision: '+str(did))
+        seen.add(did)
+
+
 REVIEWED_REGISTRIES={'bill_package_evidence':_validate_bill_evidence,'saved_name_decisions':_validate_saved_name_decisions,
-    'recovered_file_roles':_validate_recovered_file_roles,'title_overrides':_validate_title_overrides}
+    'recovered_file_roles':_validate_recovered_file_roles,'title_overrides':_validate_title_overrides,
+    'historical_witness_keys':_validate_historical_witness_keys,'person_decisions':_validate_person_decisions}
 
 
 def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False,recovered_copies=False):
@@ -979,10 +1010,11 @@ def selected_record_step(table,record_input,*,root=ROOT):
 
 def meeting_steps(*,root=ROOT,has_document_references=True):
     """Select once, merge once, then resolve: CTEs are inlined per reader, so these must be steps."""
-    steps=_sql_steps(['meeting-records-observed','meeting-records-ranked','meeting-records-current','meeting-records-merged'],root=root)
+    steps=_sql_steps(['meeting-records-observed','meeting-records-ranked','meeting-records-current',
+        'congress-gov-meeting-history','congress-gov-retained-items','meeting-records-merged'],root=root)
     if not has_document_references:
         steps[0]['sql']=steps[0]['sql'].replace("m['document_references'] AS document_references",
-            NULL_MEETING_DOCUMENT_REFERENCES + " AS document_references")
+            NULL_LAKE_MEETING_DOCUMENT_REFERENCES + " AS document_references")
     return steps+[dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
 
 
@@ -998,11 +1030,35 @@ def meeting_records_have_document_references(path):
     return schema.field('meetings').type.value_type.get_field_index('document_references') >= 0
 
 
-def appearance_records_have_rank_credentials(path):
-    import pyarrow.parquet as pq
-    schema=pq.read_schema(path)
-    elem=schema.field('appearances').type.value_type
-    return elem.get_field_index('rank') >= 0 and elem.get_field_index('credentials') >= 0
+def appearance_records_have_rank_credentials(value,*,root=ROOT):
+    if value is None or isinstance(value,(list,tuple)):
+        return True
+    if isinstance(value,dict) and any(
+            old in str(value.get('metadata_location') or '')
+            for old in ('appearance_records_mvp_20261105','appearance_records_committees_20261111')):
+        return False
+    parquet_path=value.get('path') if isinstance(value,dict) and value.get('kind')=='parquet' else (value if isinstance(value,(str,Path)) else None)
+    if parquet_path is not None and Path(parquet_path).is_file():
+        import pyarrow.parquet as pq
+        schema=pq.read_schema(parquet_path)
+        if 'appearances' not in schema.names:
+            return False
+        elem=schema.field('appearances').type.value_type
+        return elem.get_field_index('rank') >= 0 and elem.get_field_index('credentials') >= 0
+    if isinstance(value,dict) and value.get('kind')=='native_table':
+        meta_loc=value.get('metadata_location') or ''
+        meta_path=Path(meta_loc) if meta_loc and not meta_loc.startswith(('s3://','http://','https://')) else None
+        if meta_path is not None and meta_path.is_file():
+            meta=json.loads(meta_path.read_text())
+            sid=value.get('schema_id',meta.get('current-schema-id'))
+            schemas=meta.get('schemas') or []
+            chosen=next((s for s in schemas if s.get('schema-id')==sid),schemas[-1] if schemas else meta)
+        else:
+            chosen=json.loads((Path(root)/'model/lake/appearance-records.schema.json').read_text())
+        app_field=next((f for f in chosen.get('fields',()) if f.get('name')=='appearances'),None)
+        elem_fields={f.get('name') for f in ((app_field or {}).get('type') or {}).get('element',{}).get('fields',())}
+        return {'rank','credentials'}<=elem_fields
+    return True
 
 
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
@@ -1025,9 +1081,11 @@ WITNESSES_SQL=('SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_l
     'r.name,r.rank,r.credentials,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,'
     "CASE WHEN m.outcome='member' AND t.statement_only THEN 'member_statement' WHEN m.outcome='member' THEN 'member_appearance' "
     "WHEN m.outcome='statement' THEN 'member_statement' WHEN t.promote THEN NULL ELSE r.witness_type END AS witness_type,"
-    'r.testified,r.bioguide_id,p.superseded_by,m.matched_bioguide_id,m.match_basis '
-    'FROM witness_transcript_facts t RIGHT JOIN (witness_members m RIGHT JOIN (witness_precedence p RIGHT JOIN appearance_records_resolved r '
-    'ON p.witness_key=r.witness_key) ON m.witness_key=r.witness_key) ON t.witness_key=r.witness_key')
+    'r.testified,r.bioguide_id,p.superseded_by,m.matched_bioguide_id,m.match_basis,wp.person_key,'
+    'r.listing_status,r.last_listed_on,r.unlisted_since,r.unlisted_by_record_sha '
+    'FROM witness_people wp RIGHT JOIN (witness_transcript_facts t RIGHT JOIN (witness_members m RIGHT JOIN '
+    '(witness_precedence p RIGHT JOIN appearance_records_resolved r ON p.witness_key=r.witness_key) '
+    'ON m.witness_key=r.witness_key) ON t.witness_key=r.witness_key) ON wp.witness_key=r.witness_key')
 
 
 def appearance_steps(*,root=ROOT,has_rank_credentials=True):
@@ -1080,24 +1138,31 @@ def appearance_steps(*,root=ROOT,has_rank_credentials=True):
     ) SELECT encode(sha256(json_array(url)),'hex') AS input_id,url FROM distinct_urls"""
     app_normalize=(Path(root)/'model/sql/url-normalized.sql').read_text().replace('url_inputs','appearance_url_inputs')
     app_keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','appearance_url_inputs').replace('url_normalized','appearance_url_normalized')
-    resolved_sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text()
-    if not has_rank_credentials:
-        resolved_sql=(resolved_sql
-            .replace("nullif(trim(a['rank']),'') AS rank","cast(NULL AS VARCHAR) AS rank")
-            .replace("nullif(trim(a['credentials']),'') AS credentials","cast(NULL AS VARCHAR) AS credentials"))
     return [dict(name='appearance_url_inputs',sql=app_url_inputs_sql,materialize=True),
         dict(name='appearance_url_normalized',sql=app_normalize,materialize=True),
         dict(name='appearance_url_keys',sql=app_keys,materialize=True),
         dict(name='senate_page_meeting_links',sql=(Path(root)/'model/sql/senate-page-meeting-links.sql').read_text(),materialize=True),
         dict(name='appearance_capture_contexts',sql=(Path(root)/'model/sql/appearance-capture-contexts.sql').read_text(),materialize=True),
         dict(name='appearance_observations',sql=(Path(root)/'model/sql/appearance-observations.sql').read_text(),materialize=True),
-        dict(name='appearance_records_resolved',sql=resolved_sql,materialize=True)]+_sql_steps(
-        ['witness-precedence'],root=root)+transcript_steps(root=root)+_sql_steps(['witness-key-current','witness-key-priors','witness-key-map',
+        dict(name='appearance_ranked_sources',sql=(Path(root)/'model/sql/appearance-ranked-sources.sql').read_text(),materialize=True),
+        dict(name='congress_gov_witness_history',sql=(Path(root)/'model/sql/congress-gov-witness-history.sql').read_text(),materialize=True),
+        dict(name='congress_gov_witness_items',sql=(Path(root)/'model/sql/congress-gov-witness-items.sql').read_text() if has_rank_credentials else
+            (Path(root)/'model/sql/congress-gov-witness-items.sql').read_text()
+            .replace("nullif(trim(a['rank']),'') AS rank,","cast(NULL AS VARCHAR) AS rank,")
+            .replace("nullif(trim(a['credentials']),'') AS credentials,","cast(NULL AS VARCHAR) AS credentials,"),materialize=True),
+        dict(name='congress_gov_retained_witnesses',sql=(Path(root)/'model/sql/congress-gov-retained-witnesses.sql').read_text(),materialize=True),
+        dict(name='appearance_occurrences',sql=(Path(root)/'model/sql/appearance-occurrences.sql').read_text() if has_rank_credentials else
+            (Path(root)/'model/sql/appearance-occurrences.sql').read_text()
+            .replace("nullif(trim(a['rank']),'') AS rank,","cast(NULL AS VARCHAR) AS rank,")
+            .replace("nullif(trim(a['credentials']),'') AS credentials,","cast(NULL AS VARCHAR) AS credentials,"),materialize=True),
+        dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(
+        ['witness-precedence'],root=root)+transcript_steps(root=root)+_sql_steps(['witness-key-map-fresh','witness-key-map',
          'member-terms','witness-member-facts','witness-member-names','witness-member-candidates','witness-member-rows',
          'witness-member-mentions','witness-member-seats','witness-member-tiers','witness-member-decisions'],root=root)+[
         # The pinned rosters as a step: the rosters export and the committee check read the one result.
         dict(name='roster_seats',sql=(Path(root)/'model/sql/entity-rosters.sql').read_text(),materialize=True)]+_sql_steps(
-        ['witness-member-committees','witness-members'],root=root)
+        ['witness-member-committees','witness-members',
+         'witness-person-facts','witness-people','entity-people','person-aliases-fresh','person-aliases'],root=root)
 
 
 def senate_page_prelim_links_sql(*,root=ROOT):
@@ -1111,7 +1176,8 @@ def senate_page_prelim_links_sql(*,root=ROOT):
 
 def package_link_steps(*,root=ROOT):
     """Packages to meetings: the jacket and MODS links, then the ones a raw record justifies (ct-dx22, ct-uul8)."""
-    return _sql_steps(['appearance-people','package-mods-facts','senate-page-candidates'],root=root)+[
+    return _sql_steps(['person-nicknames','appearance-people','person-same-family','person-given-matches',
+        'package-mods-facts','senate-page-candidates'],root=root)+[
         dict(name='senate_page_prelim_links',sql=senate_page_prelim_links_sql(root=root),materialize=True)]+_sql_steps(
         ['print-meeting-agreement','meeting-mods-links','meeting-transcript-links','package-meeting-links'],root=root)
 
@@ -1157,7 +1223,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          transcript_headings=None,
-                         historical_recording_matcher=None,prior_links=None,base_retired=None,root=ROOT,registry=None):
+                         historical_recording_matcher=None,prior_links=None,base_retired=None,base_release_id=None,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
     `registry` names a compatible-versions file other than the checked-in one (tests only).
@@ -1205,7 +1271,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     entries=compatible_versions.load_registry(current=pins,path=registry or Path(root)/'model/registries/compatible-versions.json')
     inputs.append(compatible_versions.accepted_versions_input(scratch,entries,pins=pins))
     from viewer_publication.release_gate import ledger_inputs
-    inputs += ledger_inputs(scratch/'ledger',prior_links=prior_links,base_retired=base_retired)
+    inputs += ledger_inputs(scratch/'ledger',prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id)
     # Provenance is immutable input data; JSON columns with heterogeneous values
     # are projected once by the native reader before policy joins.
     from viewer_publication.archive_provenance import provenance_inputs
@@ -1235,7 +1301,10 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         no_committees=("arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committees,"
                        "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committee_members,")
         if table_name=='appearance_records':
-            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,committees,committee_members,'
+            has_committees=not (isinstance(value,dict) and value.get('kind')=='native_table'
+                                and '/appearance_records_mvp_20261105/' in (value.get('metadata_location') or ''))
+            extra_select=('event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,'
+                          'held_dates,title,created,'+('committees,committee_members,' if has_committees else no_committees))
         if parquet_path is not None and Path(parquet_path).is_file():
             import pyarrow as pa
             import pyarrow.parquet as pq
@@ -1263,11 +1332,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     meeting_records_path=meeting_records.get('path') if isinstance(meeting_records,dict) else meeting_records
     has_document_references=(not isinstance(meeting_records_path,(str,Path)) or
         not Path(meeting_records_path).is_file() or meeting_records_have_document_references(meeting_records_path))
-    appearance_records_path=appearance_records.get('path') if isinstance(appearance_records,dict) else appearance_records
-    has_rank_credentials=(not (isinstance(appearance_records,dict) and any(
-        old in str(appearance_records.get('metadata_location') or '')
-        for old in ('appearance_records_mvp_20261105', 'appearance_records_committees_20261111')))
-        and (not isinstance(appearance_records_path,(str,Path)) or not Path(appearance_records_path).is_file() or appearance_records_have_rank_credentials(appearance_records_path)))
+    has_rank_credentials=appearance_records_have_rank_credentials(appearance_records,root=root)
     if meeting_records is None or isinstance(meeting_records,(list,tuple)):
         inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or (),parser_versions.get('meeting_records')),**MEETING_RECORD_FIELDS))
     else:
@@ -1337,7 +1402,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   transcript_headings=None,
-                  historical_recording_matcher=None,prior_links=None,base_retired=None,root=ROOT,registry=None):
+                  historical_recording_matcher=None,prior_links=None,base_retired=None,base_release_id=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
@@ -1346,7 +1411,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,transcript_headings=transcript_headings,
-        historical_recording_matcher=historical_recording_matcher,prior_links=prior_links,base_retired=base_retired,root=root,registry=registry)
+        historical_recording_matcher=historical_recording_matcher,prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -1619,8 +1684,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         auxiliary += [
             ('recordings',recordings_export_sql(root=root,explorer_inputs=bool(prepared.get('explorer_inputs'))),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production','recording_scope']),
             ('meetings',(Path(root)/'model/sql/entity-meetings.sql').read_text(),['event_id'],MEETING_DICTIONARY),
-            ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id','match_basis']),
+            ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id','match_basis','listing_status']),
             ('witness_key_map','SELECT old_key,witness_key,status,basis,candidate_keys,occasion,source FROM witness_key_map',['old_key'],['occasion','source','status','basis']),
+            ('people','SELECT * FROM entity_people',['person_key'],['grouping_basis']),
+            ('person_aliases','SELECT old_person_key,person_key,status,kind,decision_id,last_release_id,candidate_keys FROM person_aliases',['old_person_key'],['status','kind']),
             ('caption_resources','SELECT * FROM caption_resources',['video_key','track_body','ordinal'],['suffix','format','status']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),

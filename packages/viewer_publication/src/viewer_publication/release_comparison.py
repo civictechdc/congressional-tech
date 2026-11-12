@@ -64,10 +64,12 @@ class Diff:
         self.link_causes = False
         self.recording_video_links = False
         self.witness_rekey = None  # set by rekeyed()
+        self.person_rekey = None  # set by person_rekeyed()
         self.meeting_update = None  # set by updated_meetings()
         self.subject_update = None  # set by updated_subjects()
         self.doc_subjects = None  # set by document_subjects()
         self.witness_update = None  # set by updated_witnesses()
+        self.person_update = None  # set by updated_people()
         self.meeting_refetch = None  # set by refetched_meetings()
         self.refetched = None  # set by refetched_files()
         self.dirty_rm = None  # set by _dirty_rm_events()
@@ -334,7 +336,7 @@ NEW_SUBJECT = 'a new subject of a Congress.gov meeting update (ct-rhqw)'
 # later, is never exempt. House XML leads several of these (title, date, type, committees, videos,
 # meeting-records-merged.sql), so an update also requires the meeting's House sightings unchanged.
 UPDATE_COLUMNS = ('chamber', 'chamber_basis', 'title', 'meeting_date', 'meeting_type', 'session', 'status', 'sittings',
-                  'committees', 'subject_keys', 'videos', 'congress', 'congress_gov_updated', 'congress_gov_meeting_type',
+                  'committees', 'subject_keys', 'unlisted_subjects', 'videos', 'congress', 'congress_gov_updated', 'congress_gov_meeting_type',
                   'access', 'access_basis', 'not_held', 'document_references', 'publisher_status',
                   'publisher_status_observations', 'congress_gov_detail_observation')
 # The outcome moves with an update only when the candidate bases it on the new read (a Congress.gov
@@ -526,12 +528,16 @@ def updated_witnesses(d: Diff):
     if d.witness_update is None:
         d.witness_update = False
         columns = {'source', 'occasion', 'record_sha', 'witness_key'}
+        cand_cols = set(d.columns('candidate', 'witnesses')) if d.has('candidate', 'witnesses') else set()
         if (updated_meetings(d) and d.has('base', 'witnesses') and d.has('candidate', 'witnesses')
-                and columns <= set(d.columns('base', 'witnesses')) & set(d.columns('candidate', 'witnesses'))):
+                and columns <= set(d.columns('base', 'witnesses')) & cand_cols):
             d.table('witness_update_base', """SELECT w.witness_key,w.occasion FROM meeting_update u JOIN base_witnesses w
               ON w.occasion='meeting:'||u.event_id WHERE w.source='congress_gov' AND NOT u.added""")
-            d.table('witness_update_candidate', """SELECT w.witness_key,w.occasion FROM meeting_update u JOIN candidate_witnesses w
-              ON w.occasion='meeting:'||u.event_id WHERE w.source='congress_gov' AND lower(hex(w.record_sha))=u.body""")
+            retained = (" OR (w.listing_status='no_longer_listed' AND lower(w.unlisted_by_record_sha)=u.body "
+                        "AND EXISTS (SELECT 1 FROM base_witnesses bw WHERE bw.witness_key=w.witness_key AND bw.record_sha=w.record_sha))"
+                        if {'listing_status', 'unlisted_by_record_sha'} <= cand_cols else '')
+            d.table('witness_update_candidate', f"""SELECT w.witness_key,w.occasion FROM meeting_update u JOIN candidate_witnesses w
+              ON w.occasion='meeting:'||u.event_id WHERE w.source='congress_gov' AND (lower(hex(w.record_sha))=u.body{retained})""")
             d.witness_update = True
     return d.witness_update
 
@@ -1420,26 +1426,26 @@ def recordings(d: Diff):
     return groups, {}
 
 
-OCCURRENCE = {'witness_key', 'record_sha', 'source_locator', 'context_key'}  # what witness_key hashes, besides occasion and source
+REKEY_OCCURRENCE = ('record_sha', 'source_locator', 'context_key')  # skipped on a re-key (reported by key groups); compared on a carried key
 
 
 def witnesses(d: Diff):
-    """Witness keys by identity, and through the candidate's witness_key_map (ct-kb4w).
+    """Witness keys by identity, and through the candidate's witness_key_map (ct-kb4w, ct-46f3).
 
     Verified: a removed key whose unambiguous map row names a published witness (a re-key), and an
     added key that is such a successor. A removed key the map states ambiguous or unresolved, or
     does not list, a map that collapses distinct base occurrences, and any other added key stay
-    unverified. Rows pair by key or through the map;
-    value groups skip the occurrence the key hashes, which a direct match makes equal and a re-key
-    changes by definition, and compare superseded_by through the map. Cannot see whether the map
+    unverified. Rows pair by key or through the map; value groups skip `record_sha`,
+    `source_locator` and `context_key` on a re-key (where `removed keys` + `added keys` already
+    report the move), compare them on a carried key so a silent record/locator swap cannot hide
+    behind a byte diff, and compare `superseded_by` through the map. Cannot see whether the map
     chose the right successor: the model's matching rules and their fixtures own that.
     A Congress.gov meeting update (`updated_witnesses`, ct-rhqw) sets apart as groups flagged
     `refetch_only`: its live Congress.gov witnesses removed with a published successor, its new ones
     (successors or not), and every value that changed on a pair of them on the same meeting. A
     removed key the map does not resolve to one witness (no row, ambiguous, unresolved, or a successor
-    not published) is a lost key and still stops (owner, 2026-11-11: until a dropped witness is kept
-    as "no longer listed"), as does a map that collapses two witnesses and any row of another source
-    or another meeting.
+    not published) is a lost key and still stops, as does a map that collapses two witnesses and any
+    row of another source or another meeting.
     """
     if not rekeyed(d):
         return generic('witnesses')(d)
@@ -1473,28 +1479,45 @@ def witnesses(d: Diff):
         else:
             out.append(group('added keys', 'successor of a re-keyed witness', n, 'verified') if successor
                        else group('added keys', 'no evidence given', n))
-    d.view('base_witnesses_paired', """SELECT p.* REPLACE (coalesce(x.witness_key,p.witness_key) AS witness_key,
-          coalesce(s.witness_key,p.superseded_by) AS superseded_by)
-        FROM base_witnesses p LEFT JOIN witness_rekey x ON x.old_key=p.witness_key LEFT JOIN witness_rekey s ON s.old_key=p.superseded_by""")
+    b_types, c_types = d.arrow_types('base', 'witnesses'), d.arrow_types('candidate', 'witnesses')
+    has_prekey = person_rekeyed(d) and 'person_key' in b_types and b_types.get('person_key') == c_types.get('person_key')
+    replaces = ['coalesce(x.witness_key,p.witness_key) AS witness_key',
+                'coalesce(s.witness_key,p.superseded_by) AS superseded_by']
+    if has_prekey:
+        replaces.append('coalesce(pr.person_key,p.person_key) AS person_key')
+    for col in REKEY_OCCURRENCE:
+        if col in b_types and b_types.get(col) == c_types.get(col):
+            replaces.append(f'CASE WHEN x.old_key IS NOT NULL THEN cw."{col}" ELSE p."{col}" END AS "{col}"')
+    pr_join = ' LEFT JOIN person_rekey pr ON pr.old_person_key=p.person_key' if has_prekey else ''
+    d.view('base_witnesses_paired', f"""SELECT p.* REPLACE ({','.join(replaces)})
+        FROM base_witnesses p LEFT JOIN witness_rekey x ON x.old_key=p.witness_key
+        LEFT JOIN candidate_witnesses cw ON cw.witness_key=x.witness_key
+        LEFT JOIN witness_rekey s ON s.old_key=p.superseded_by{pr_join}""")
     d.view('candidate_witnesses_paired', 'SELECT * FROM candidate_witnesses')
     join = 'base_witnesses_paired p JOIN candidate_witnesses_paired l USING(witness_key)'
-    out += d.changed('witnesses_paired', join, exclude=OCCURRENCE)
+    out += d.changed('witnesses_paired', join, exclude={'witness_key'})
     if update:
         where = ("witness_key IN (SELECT witness_key FROM witness_update_candidate) AND p.source='congress_gov' AND p.occasion=l.occasion "
                  "AND p.occasion IN (SELECT 'meeting:'||event_id FROM meeting_update WHERE NOT added)")
         out = refetch_split(out, changed_counts(d, join, out, where), MEETING_UPDATE)
-        sup_groups = [g for g in out if g['group'] == 'changed superseded_by']
-        same_other = _equal_except(d, 'witnesses', {'witness_key', 'superseded_by'}) if sup_groups else None
+        sup_groups = [g for g in out if g['group'] in ('changed superseded_by', 'changed person_key')]
+        skip_sup = {'witness_key', 'superseded_by', *({'person_key'} if 'person_key' in b_types else set())}
+        same_other = _equal_except(d, 'witnesses', skip_sup) if sup_groups else None
         if sup_groups and same_other:
-            sup_n = d.one(f"""SELECT count(*) FROM base_witnesses_paired bp JOIN candidate_witnesses_paired lp USING(witness_key)
-              WHERE bp.superseded_by IS DISTINCT FROM lp.superseded_by
-                AND bp.source IN ('senate_page','mods') AND bp.source=lp.source AND bp.occasion=lp.occasion
+            sup_pred = f"""bp.source IN ('senate_page','mods') AND bp.source=lp.source AND bp.occasion=lp.occasion
                 AND lp.occasion IN (SELECT 'meeting:'||event_id FROM meeting_update)
                 AND EXISTS (SELECT 1 FROM base_witnesses p JOIN candidate_witnesses l USING(witness_key)
                   WHERE p.witness_key=bp.witness_key AND {same_other}
                     AND (l.superseded_by IN (SELECT witness_key FROM witness_update_candidate wc WHERE wc.occasion=l.occasion)
-                         OR p.superseded_by IN (SELECT witness_key FROM witness_update_base wb WHERE wb.occasion=p.occasion)))""")
-            out = refetch_split(out, {'superseded_by': sup_n}, MEETING_UPDATE)
+                         OR p.superseded_by IN (SELECT witness_key FROM witness_update_base wb WHERE wb.occasion=p.occasion)))"""
+            sup_counts = {}
+            if any(g['group'] == 'changed superseded_by' for g in sup_groups):
+                sup_counts['superseded_by'] = d.one(f"""SELECT count(*) FROM base_witnesses_paired bp JOIN candidate_witnesses_paired lp USING(witness_key)
+                  WHERE bp.superseded_by IS DISTINCT FROM lp.superseded_by AND {sup_pred}""")
+            if 'person_key' in b_types and any(g['group'] == 'changed person_key' for g in sup_groups):
+                sup_counts['person_key'] = d.one(f"""SELECT count(*) FROM base_witnesses_paired bp JOIN candidate_witnesses_paired lp USING(witness_key)
+                  WHERE bp.person_key IS DISTINCT FROM lp.person_key AND bp.superseded_by IS DISTINCT FROM lp.superseded_by AND {sup_pred}""")
+            out = refetch_split(out, sup_counts, MEETING_UPDATE)
     return out, {}
 
 
@@ -1545,6 +1568,194 @@ def witness_key_map(d: Diff):
     out += d.changed('witness_key_map', join, compare, exclude={'old_key'})
     if update:
         both = f"coalesce({on_meeting.format(x='p.')} AND {on_meeting.format(x='l.')} AND p.occasion=l.occasion AND {resolves.format(x='l.')},false)"
+        out = refetch_split(out, changed_counts(d, join, out, both, compare), MEETING_UPDATE)
+    return out, {}
+
+
+def person_rekeyed(d: Diff):
+    """The candidate's unambiguous person_aliases rows (ct-ha10) naming a published person as table
+    `person_rekey`; False when the candidate publishes no person_aliases or people."""
+    if d.person_rekey is None:
+        d.person_rekey = (d.has('candidate', 'person_aliases') and d.has('candidate', 'people')
+                          and {'old_person_key', 'person_key', 'status'} <= set(d.columns('candidate', 'person_aliases'))
+                          and 'person_key' in set(d.columns('candidate', 'people')))
+        if d.person_rekey:
+            d.table('person_rekey', """SELECT a.old_person_key,a.person_key
+              FROM (SELECT * FROM candidate_person_aliases QUALIFY count(*) OVER (PARTITION BY old_person_key)=1) a
+              JOIN candidate_people p USING(person_key)
+              ANTI JOIN candidate_people self_p ON self_p.person_key=a.old_person_key
+              WHERE a.status='unambiguous'""")
+    return d.person_rekey
+
+
+def person_rekeyed_lists(d: Diff, relation, row, column):
+    name = f'{relation}_prekeyed_{column}'
+    d.table(name, f"""SELECT u.{row},list_sort(list_distinct(list(coalesce(x.person_key,u.k)))) AS {column}
+      FROM (SELECT {row},unnest({column}) AS k FROM {relation}) u LEFT JOIN person_rekey x ON x.old_person_key=u.k
+      GROUP BY u.{row}""")
+    return name
+
+
+def updated_people(d: Diff):
+    """Tables `person_update_removed(person_key)`, `person_update_added(person_key)` and
+    `person_update_matched(person_key)` for `people` and `person_aliases` rows moved solely by
+    Congress.gov meeting updates (`updated_meetings`, `updated_witnesses`, ct-ha10)."""
+    if d.person_update is None:
+        d.person_update = False
+        if (updated_witnesses(d) and d.has('base', 'people') and d.has('candidate', 'people')
+                and 'person_key' in set(d.columns('base', 'witnesses')) & set(d.columns('candidate', 'witnesses'))
+                and {'person_key', 'grouping_basis'} <= set(d.columns('base', 'people')) & set(d.columns('candidate', 'people'))):
+            rekeyed(d)
+            person_rekeyed(d)
+            same_w = _equal_except(d, 'witnesses', {'witness_key', 'superseded_by', 'person_key'})
+            if not same_w:
+                return False
+            sup_moved = f"""SELECT p.witness_key FROM base_witnesses p JOIN candidate_witnesses l USING(witness_key)
+              WHERE p.source IN ('senate_page','mods') AND p.source=l.source AND p.occasion=l.occasion
+                AND l.occasion IN (SELECT 'meeting:'||event_id FROM meeting_update) AND {same_w}
+                AND (l.superseded_by IN (SELECT witness_key FROM witness_update_candidate wc WHERE wc.occasion=l.occasion)
+                     OR p.superseded_by IN (SELECT witness_key FROM witness_update_base wb WHERE wb.occasion=p.occasion))"""
+            d.table('person_w_upd_base', f'SELECT witness_key FROM witness_update_base UNION {sup_moved}')
+            d.table('person_w_upd_cand', f'SELECT witness_key FROM witness_update_candidate UNION {sup_moved}')
+            if d.witness_rekey:
+                d.table('person_unchanged_w_pairs', f"""SELECT p.witness_key AS bw_key,l.witness_key AS cw_key,
+                    p.person_key AS b_pk,l.person_key AS c_pk
+                  FROM base_witnesses p LEFT JOIN witness_rekey wr ON wr.old_key=p.witness_key
+                  LEFT JOIN witness_rekey ws ON ws.old_key=p.superseded_by
+                  JOIN candidate_witnesses l ON l.witness_key=coalesce(wr.witness_key,p.witness_key)
+                  WHERE {same_w} AND coalesce(ws.witness_key,p.superseded_by) IS NOT DISTINCT FROM l.superseded_by""")
+            else:
+                d.table('person_unchanged_w_pairs', f"""SELECT p.witness_key AS bw_key,l.witness_key AS cw_key,
+                    p.person_key AS b_pk,l.person_key AS c_pk
+                  FROM base_witnesses p JOIN candidate_witnesses l USING(witness_key)
+                  WHERE {same_w} AND p.superseded_by IS NOT DISTINCT FROM l.superseded_by""")
+            if d.person_rekey:
+                d.table('person_update_removed', """SELECT b.person_key
+                  FROM (SELECT * FROM base_people ANTI JOIN candidate_people USING(person_key)) b
+                  JOIN person_rekey x ON x.old_person_key=b.person_key
+                  JOIN candidate_people cp ON cp.person_key=x.person_key
+                  WHERE coalesce(b.grouping_basis,'')<>'reviewed' AND coalesce(cp.grouping_basis,'')<>'reviewed'
+                    AND (EXISTS (SELECT 1 FROM base_witnesses bw WHERE bw.person_key=b.person_key AND bw.witness_key IN (SELECT witness_key FROM person_w_upd_base))
+                         OR EXISTS (SELECT 1 FROM candidate_witnesses cw WHERE cw.person_key=x.person_key AND cw.witness_key IN (SELECT witness_key FROM person_w_upd_cand)))
+                    AND NOT EXISTS (SELECT 1 FROM base_witnesses bw WHERE bw.person_key=b.person_key
+                      AND bw.witness_key NOT IN (SELECT witness_key FROM person_w_upd_base)
+                      AND NOT EXISTS (SELECT 1 FROM person_unchanged_w_pairs u WHERE u.bw_key=bw.witness_key AND u.c_pk=x.person_key))""")
+                succ_from_removed = 'c.person_key IN (SELECT x.person_key FROM person_update_removed r JOIN person_rekey x ON x.old_person_key=r.person_key)'
+            else:
+                d.table('person_update_removed', 'SELECT CAST(NULL AS VARCHAR) AS person_key WHERE false')
+                succ_from_removed = 'false'
+            d.table('person_update_added', f"""SELECT c.person_key
+              FROM (SELECT * FROM candidate_people ANTI JOIN base_people USING(person_key)) c
+              WHERE coalesce(c.grouping_basis,'')<>'reviewed'
+                AND (({succ_from_removed}
+                      AND NOT EXISTS (SELECT 1 FROM candidate_witnesses cw WHERE cw.person_key=c.person_key
+                        AND cw.witness_key NOT IN (SELECT witness_key FROM person_w_upd_cand)
+                        AND NOT EXISTS (SELECT 1 FROM person_unchanged_w_pairs u
+                          WHERE u.cw_key=cw.witness_key AND u.b_pk IN (SELECT person_key FROM person_update_removed))))
+                  OR (EXISTS (SELECT 1 FROM candidate_witnesses cw WHERE cw.person_key=c.person_key)
+                      AND NOT EXISTS (SELECT 1 FROM candidate_witnesses cw WHERE cw.person_key=c.person_key
+                        AND cw.witness_key NOT IN (SELECT witness_key FROM person_w_upd_cand))))""")
+            d.table('person_update_matched', """SELECT p.person_key
+              FROM base_people p JOIN candidate_people l USING(person_key)
+              WHERE coalesce(p.grouping_basis,'')<>'reviewed' AND coalesce(l.grouping_basis,'')<>'reviewed'
+                AND (EXISTS (SELECT 1 FROM base_witnesses bw WHERE bw.person_key=p.person_key
+                       AND (bw.witness_key IN (SELECT witness_key FROM person_w_upd_base)
+                            OR bw.occasion IN (SELECT 'meeting:'||event_id FROM meeting_update)))
+                     OR EXISTS (SELECT 1 FROM candidate_witnesses cw WHERE cw.person_key=l.person_key
+                       AND (cw.witness_key IN (SELECT witness_key FROM person_w_upd_cand)
+                            OR cw.occasion IN (SELECT 'meeting:'||event_id FROM meeting_update))))
+                AND NOT EXISTS (SELECT 1 FROM base_witnesses bw WHERE bw.person_key=p.person_key
+                  AND bw.witness_key NOT IN (SELECT witness_key FROM person_w_upd_base)
+                  AND NOT EXISTS (SELECT 1 FROM person_unchanged_w_pairs u WHERE u.bw_key=bw.witness_key AND u.c_pk=l.person_key))
+                AND NOT EXISTS (SELECT 1 FROM candidate_witnesses cw WHERE cw.person_key=l.person_key
+                  AND cw.witness_key NOT IN (SELECT witness_key FROM person_w_upd_cand)
+                  AND NOT EXISTS (SELECT 1 FROM person_unchanged_w_pairs u
+                    WHERE u.cw_key=cw.witness_key AND (u.b_pk=p.person_key OR u.b_pk IN (SELECT person_key FROM person_update_removed))))""")
+            d.person_update = True
+    return d.person_update
+
+
+def people(d: Diff):
+    """People keys by identity, and through the candidate's person_aliases (ct-ha10)."""
+    if not person_rekeyed(d):
+        return generic('people')(d)
+    out = []
+    update = updated_people(d)
+    flagged = lambda name, cause, n: dict(group(name, f'{cause}; {MEETING_UPDATE}', n, 'verified'), refetch_only=True)
+    on_rem_upd = 'b.person_key IN (SELECT person_key FROM person_update_removed)' if update else 'false'
+    for status, mapped, updated, n in d.rows(f"""SELECT coalesce(m.status,''),x.old_person_key IS NOT NULL,{on_rem_upd},count(*)
+          FROM (SELECT person_key FROM base_people ANTI JOIN candidate_people USING(person_key)) b
+          LEFT JOIN candidate_person_aliases m ON m.old_person_key=b.person_key
+          LEFT JOIN person_rekey x ON x.old_person_key=b.person_key
+          GROUP BY ALL ORDER BY ALL"""):
+        if mapped:
+            cause = 're-keyed: person_aliases names the published successor'
+            out.append(flagged('removed keys', cause, -n) if updated else group('removed keys', cause, -n, 'verified'))
+        elif status in ('ambiguous', 'unresolved'):
+            out.append(group('removed keys', f'person_aliases states the key {status}', -n))
+        elif status:
+            out.append(group('removed keys', 'unexplained', -n))
+        else:
+            out.append(group('removed keys', 'no evidence given', -n))
+    on_add_upd = 'person_key IN (SELECT person_key FROM person_update_added)' if update else 'false'
+    for successor, updated, n in d.rows(f"""SELECT person_key IN (SELECT x.person_key FROM person_rekey x JOIN base_people p ON p.person_key=x.old_person_key),
+          {on_add_upd},count(*) FROM candidate_people ANTI JOIN base_people USING(person_key) GROUP BY 1,2 ORDER BY 1,2"""):
+        if updated:
+            out.append(flagged('added keys', 'successor of a re-keyed person' if successor else 'new on its meeting', n))
+        else:
+            out.append(group('added keys', 'successor of a re-keyed person', n, 'verified') if successor
+                       else group('added keys', 'no evidence given', n))
+    join = 'base_people p JOIN candidate_people l USING(person_key)'
+    compare = {}
+    if rekeyed(d) and 'witness_keys' in set(d.columns('base', 'people')) & set(d.columns('candidate', 'people')):
+        mapped_wk = rekeyed_lists(d, 'base_people', 'person_key', 'witness_keys')
+        join += f' LEFT JOIN {mapped_wk} pw ON pw.person_key=p.person_key LEFT JOIN {mapped_wk} lw ON false'
+        compare['witness_keys'] = 'coalesce(Xw.{c},X.{c})'
+    out += d.changed('people', join, compare, exclude={'person_key'})
+    if update:
+        where = 'p.person_key IN (SELECT person_key FROM person_update_matched)'
+        out = refetch_split(out, changed_counts(d, join, out, where, compare), MEETING_UPDATE)
+    return out, {}
+
+
+def person_aliases(d: Diff):
+    """Old person keys added to or dropped from person_aliases; successors compare through person_rekey (ct-ha10)."""
+    if not d.has('base', 'person_aliases'):
+        return generic('person_aliases')(d)
+    person_rekeyed(d)
+    update = (updated_people(d) and bool(d.person_rekey)
+              and {'old_person_key', 'person_key', 'status'} <= set(d.columns('base', 'person_aliases')) & set(d.columns('candidate', 'person_aliases')))
+    added_upd = ('m.old_person_key IN (SELECT person_key FROM person_update_removed)' if update else 'false')
+    out = []
+    for published, updated, n in d.rows(f"""SELECT m.old_person_key IN (SELECT person_key FROM base_people),{added_upd},count(*)
+          FROM candidate_person_aliases m ANTI JOIN base_person_aliases USING(old_person_key) GROUP BY 1,2 ORDER BY 1,2"""):
+        cause = 'key retired from people in this release' if published else 'a key no base person carries'
+        out.append(dict(group('added keys', f'{cause}; {MEETING_UPDATE}', n, 'verified'), refetch_only=True) if updated
+                   else group('added keys', cause, n, 'verified'))
+    rem_upd = ('old_person_key IN (SELECT person_key FROM person_update_added)' if update else 'false')
+    for again, updated, n in d.rows(f"""SELECT old_person_key IN (SELECT person_key FROM candidate_people),{rem_upd},count(*)
+          FROM base_person_aliases ANTI JOIN candidate_person_aliases USING(old_person_key) GROUP BY 1,2 ORDER BY 1,2"""):
+        if again:
+            cause = 'published again in people'
+            out.append(dict(group('removed keys', f'{cause}; {MEETING_UPDATE}', -n, 'verified'), refetch_only=True) if updated
+                       else group('removed keys', cause, -n, 'verified'))
+        else:
+            out.append(group('removed keys', 'no longer resolves', -n))
+    join = 'base_person_aliases p JOIN candidate_person_aliases l USING(old_person_key)'
+    compare = {}
+    if d.person_rekey:
+        if 'candidate_keys' in set(d.columns('base', 'person_aliases')) & set(d.columns('candidate', 'person_aliases')):
+            for side, alias in (('base', 'pc'), ('candidate', 'lc')):
+                mapped_keys = person_rekeyed_lists(d, f'{side}_person_aliases', 'old_person_key', 'candidate_keys')
+                join += f' LEFT JOIN {mapped_keys} {alias} ON {alias}.old_person_key=p.old_person_key'
+            compare['candidate_keys'] = 'coalesce(Xc.{c},X.{c})'
+        join += ' LEFT JOIN person_rekey ps ON ps.old_person_key=p.person_key LEFT JOIN person_rekey ls ON false'
+        compare['person_key'] = 'coalesce(Xs.{c},X.{c})'
+    out += d.changed('person_aliases', join, compare, exclude={'old_person_key'})
+    if update:
+        both = ("p.status='unambiguous' AND l.status='unambiguous' "
+                "AND p.person_key IN (SELECT person_key FROM person_update_removed) "
+                "AND l.person_key IN (SELECT person_key FROM person_update_added UNION SELECT person_key FROM person_update_matched)")
         out = refetch_split(out, changed_counts(d, join, out, both, compare), MEETING_UPDATE)
     return out, {}
 
@@ -1653,9 +1864,13 @@ def _table_record_shas(directory, tables):
     found = set()
     for table in tables:
         path = Path(directory) / f'{table}.parquet'
-        if path.exists() and 'record_sha' in pq.read_schema(path).names:
-            found.update(v.hex() if isinstance(v, bytes) else v.lower()
-                         for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
+        if path.exists():
+            names = set(pq.read_schema(path).names)
+            if 'record_sha' in names:
+                found.update(v.hex() if isinstance(v, bytes) else v.lower()
+                             for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
+            if table == 'witnesses' and 'unlisted_by_record_sha' in names:
+                found.update(v.lower() for v in pq.read_table(path, columns=['unlisted_by_record_sha'])['unlisted_by_record_sha'].to_pylist() if v)
     return found
 
 
@@ -1811,6 +2026,7 @@ def recording_matches(d: Diff):
 HANDLERS = {'list': document_file('list'), 'detail': document_file('detail'), 'links': links, 'urls': urls, 'sources': sources, 'meetings': meetings,
             'recoveries': recoveries,
             'recordings': recordings, 'bills': bills, 'url_state': url_state, 'witnesses': witnesses, 'witness_key_map': witness_key_map,
+            'people': people, 'person_aliases': person_aliases,
             'meeting_coverage': meeting_coverage, 'nominations': nominations,
             **{table: cache_churn(table) for table in CITATIONS}, 'recording_matches': recording_matches}
 

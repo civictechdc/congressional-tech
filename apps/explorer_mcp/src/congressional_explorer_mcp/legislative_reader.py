@@ -32,6 +32,14 @@ class LegislativeReader:
         return terms
 
     @staticmethod
+    def _congress_ordinal_sql(expr):
+        n = f'try_cast({expr} AS INTEGER)'
+        return (
+            f"({expr}||CASE WHEN ({n}%100) IN (11,12,13) THEN 'th' "
+            f"WHEN ({n}%10)=1 THEN 'st' WHEN ({n}%10)=2 THEN 'nd' WHEN ({n}%10)=3 THEN 'rd' ELSE 'th' END)"
+        )
+
+    @staticmethod
     def local_action_time(column):
         """Parse only a supplied local clock value; preserve literal precision and unknown zones."""
         return (f"CASE WHEN regexp_full_match({column},'[0-9]{{2}}:[0-9]{{2}}:[0-9]{{2}}([.][0-9]{{1,6}})?') "
@@ -233,7 +241,8 @@ class LegislativeReader:
                 raise ExplorerError('legislation_by_subject requires a published subject label')
             if query.chamber:
                 terms.append("CASE split_part(t.bill_id,'-',2) WHEN 'hr' THEN 'house' WHEN 'hres' THEN 'house' WHEN 'hjres' THEN 'house' WHEN 'hconres' THEN 'house' WHEN 's' THEN 'senate' WHEN 'sres' THEN 'senate' WHEN 'sjres' THEN 'senate' WHEN 'sconres' THEN 'senate' END=?"); args.append(query.chamber)
-            source_url = "'https://www.congress.gov/bill/'||split_part(t.bill_id,'-',1)||'th-congress/'||CASE split_part(t.bill_id,'-',2) WHEN 'hr' THEN 'house-bill' WHEN 's' THEN 'senate-bill' WHEN 'hres' THEN 'house-resolution' WHEN 'sres' THEN 'senate-resolution' WHEN 'hjres' THEN 'house-joint-resolution' WHEN 'sjres' THEN 'senate-joint-resolution' WHEN 'hconres' THEN 'house-concurrent-resolution' WHEN 'sconres' THEN 'senate-concurrent-resolution' END||'/'||split_part(t.bill_id,'-',3)"
+            bill_cong = self._congress_ordinal_sql("split_part(t.bill_id,'-',1)")
+            source_url = f"'https://www.congress.gov/bill/'||{bill_cong}||'-congress/'||CASE split_part(t.bill_id,'-',2) WHEN 'hr' THEN 'house-bill' WHEN 's' THEN 'senate-bill' WHEN 'hres' THEN 'house-resolution' WHEN 'sres' THEN 'senate-resolution' WHEN 'hjres' THEN 'house-joint-resolution' WHEN 'sjres' THEN 'senate-joint-resolution' WHEN 'hconres' THEN 'house-concurrent-resolution' WHEN 'sconres' THEN 'senate-concurrent-resolution' END||'/'||split_part(t.bill_id,'-',3)"
         elif query.name == 'pending_nominations':
             key, field = 'nomination_id', 'received'
             terms += self.dated_filters(query, 't.received', args)
@@ -242,7 +251,9 @@ class LegislativeReader:
             terms.append("t.latest_action_text IS NOT NULL AND NOT regexp_matches(lower(t.latest_action_text),'^confirmed|withdrawal of nomination|withdrawn|^returned to the president|^rejected by the senate')")
             if query.chamber and query.chamber != 'senate': terms.append('false')
             if subject: raise ExplorerError('Nominations have no published bill-subject association')
-            source_url = "'https://www.congress.gov/nomination/'||split_part(t.nomination_id,'-',1)||'th-congress/'||split_part(t.nomination_id,'-',3)"
+            nom_cong = self._congress_ordinal_sql("split_part(t.nomination_id,'-',1)")
+            nom_num = "regexp_replace(regexp_replace(t.nomination_id,'^[0-9]+-pn-',''),'-','/','g')"
+            source_url = f"'https://www.congress.gov/nomination/'||{nom_cong}||'-congress/'||{nom_num}"
             coverage['limits'].append('Pending means a known latest action without confirmed, withdrawn, returned or rejected wording in this snapshot. Missing latest actions remain unknown and are excluded.')
         else:
             key, field = 'event_id', 'meeting_date'

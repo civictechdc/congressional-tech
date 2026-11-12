@@ -24,6 +24,7 @@ test('a live key opens, a retired key redirects or shows a notice, an unknown ke
   assert.deepEqual(await reader.locate(expected.redirect.key), {index: expected.live.index, redirectedFrom: expected.redirect.key});
   // A removal notice lists the other editions published at the same address.
   assert.deepEqual(await reader.locate(expected.removed.key), {removed: {key: expected.removed.key, successor: null,
-    lastRelease: expected.removed.last_release_id, lastFilename: expected.removed.last_filename, versions: expected.removed.versions}});
+    lastRelease: expected.removed.last_release_id, lastFilename: expected.removed.last_filename, versions: expected.removed.versions,
+    versionItems: expected.removed.version_items}});
   assert.equal(await reader.locate('00000000000000ff'), null);
 });

@@ -73,7 +73,9 @@ def test_reader_redirects_retired_keys_and_shows_removal_notices(tmp_path):
     manifest = build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
         scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
     links = pq.read_table(release / 'links.parquet').to_pylist()
+    list_rows = pq.read_table(release / 'list.parquet', columns=['filename']).to_pylist()
     live = links[0]
+    live_label = list_rows[live['list_row']]['filename']
     rows = [dict(link_key=b'\xaa' * 8, successor_key=live['link_key'], last_release_id='d' * 64, last_filename='old.pdf'),
             dict(link_key=b'\xbb' * 8, successor_key=None, last_release_id='e' * 64, last_filename='gone.pdf',
                  address_versions=[live['link_key']])]
@@ -86,7 +88,8 @@ def test_reader_redirects_retired_keys_and_shows_removal_notices(tmp_path):
     (release / 'manifest.json').write_text(json.dumps(manifest))
     (release / 'retired-expected.json').write_text(json.dumps(dict(
         live=dict(key=live['link_key'].hex(), index=live['list_row']), redirect=dict(key='aa' * 8),
-        removed=dict(key='bb' * 8, last_release_id='e' * 64, last_filename='gone.pdf', versions=[live['link_key'].hex()]))))
+        removed=dict(key='bb' * 8, last_release_id='e' * 64, last_filename='gone.pdf', versions=[live['link_key'].hex()],
+                     version_items=[dict(key=live['link_key'].hex(), label=live_label)]))))
     result = subprocess.run(['node', '--test', str(ROOT / 'apps/site/scripts/archive-retired.test.mjs')],
         cwd=ROOT / 'apps/site', env=dict(os.environ, ARCHIVE_FIXTURE=str(release)),
         capture_output=True, text=True, timeout=90)

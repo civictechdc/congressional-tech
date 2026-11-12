@@ -83,6 +83,16 @@ def phase2(tmp_path_factory):
         write('witness_key_map', """SELECT 'old-appearance-1' AS old_key,'appearance-1' AS witness_key,
             'unambiguous' AS status,'occurrence' AS basis,[]::VARCHAR[] AS candidate_keys,
             'meeting:1' AS occasion,'senate_page' AS source""")
+        write('people', """SELECT 'aa11bb22cc33dd44' AS person_key,NULL::VARCHAR AS bioguide_id,'Alex Smith' AS name,
+            ['Alex Smith','A. Smith'] AS name_variants,'Transit Lab' AS organization,
+            ['Transit Lab'] AS organizations,['Director'] AS positions,['Lt. Gen.'] AS ranks,'name_organization' AS grouping_basis,
+            2::INTEGER AS appearance_count,2::INTEGER AS hearing_count,DATE '2025-01-10' AS first_seen_date,
+            DATE '2025-02-10' AS last_seen_date,['appearance-1','appearance-2'] AS witness_keys
+            UNION ALL
+            SELECT 'A000001','A000001','Sam Example',['The Honorable Sam Example'],NULL::VARCHAR,
+            []::VARCHAR[],[]::VARCHAR[],[]::VARCHAR[],'bioguide',1::INTEGER,1::INTEGER,DATE '2025-03-01',DATE '2025-03-01',['member-appearance-1']""")
+        write('person_aliases', """SELECT '0011223344556677' AS old_person_key,'aa11bb22cc33dd44' AS person_key,
+            'unambiguous' AS status,'regrouped' AS kind,NULL::VARCHAR AS decision_id,repeat('0',64) AS last_release_id,[]::VARCHAR[] AS candidate_keys""")
         write('recordings', """SELECT 'youtube:abc' AS video_key,[118001::BIGINT, 335321::BIGINT] AS event_ids,
             [struct_pack(body:=unhex(repeat('55',32)),suffix:='.gz',format:='vtt',language:='en',production:='automatic')] AS tracks""")
         write('caption_resources', """SELECT NULL::VARCHAR AS video_key,NULL::BLOB AS track_body,NULL::BIGINT AS ordinal,

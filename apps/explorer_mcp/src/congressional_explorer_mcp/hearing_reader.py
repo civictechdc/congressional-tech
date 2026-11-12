@@ -22,12 +22,27 @@ class HearingReader:
     def meeting_captions(self, alias):
         """Say whether a meeting's captions are archived or only advertised, so an empty transcript list explains itself.
 
-        archived counts the meeting's own retained caption tracks (meetings.transcripts source='captions');
-        advertised is the published meeting_coverage captions state 'present' (videos.has_caption or a recording
-        track); basis is retained_track, advertised_not_archived, or that coverage row's reason or state (ct-7jv1).
+        archived counts the meeting's own retained caption tracks (meetings.transcripts source='captions') that have
+        readable cue text in this release (direct vtt/srt/ttml or m3u8 backed by caption_resources); advertised is the
+        published meeting_coverage captions state 'present' (videos.has_caption or a recording track); basis is
+        retained_track, advertised_not_archived, or that coverage row's reason or state (ct-7jv1, P0-2).
         """
-        archived = (f"len(list_filter({alias}.transcripts,lambda x:x.source='captions'))"
-                    if 'source' in self.schemas['meetings'].get('transcripts', '') else 'NULL::BIGINT')
+        transcripts_type = self.schemas['meetings'].get('transcripts', '')
+        if 'source' not in transcripts_type:
+            archived = 'NULL::BIGINT'
+        elif 'formats' in transcripts_type:
+            if 'caption_resources' in self.schemas:
+                has_cues = (
+                    "EXISTS (SELECT 1 FROM caption_resources cr "
+                    "WHERE cr.video_key=x.video_key AND cr.ordinal>0 AND cr.body IS NOT NULL "
+                    "AND cr.format IN ('vtt','srt','ttml'))"
+                )
+                pred = f"x.source='captions' AND (list_has_any(x.formats,['vtt','srt','ttml']) OR (list_contains(x.formats,'m3u8') AND {has_cues}))"
+            else:
+                pred = "x.source='captions' AND list_has_any(x.formats,['vtt','srt','ttml'])"
+            archived = f"(SELECT count(*) FROM unnest({alias}.transcripts) u(x) WHERE {pred})"
+        else:
+            archived = f"len(list_filter({alias}.transcripts,lambda x:x.source='captions'))"
         retained = f"CASE WHEN {archived}>0 THEN 'retained_track' "
         fallback = f"struct_pack(advertised:=NULL::BOOLEAN,archived:={archived},basis:={retained}ELSE 'coverage_unavailable' END)"
         if 'meeting_coverage' not in self.schemas:
@@ -58,6 +73,15 @@ class HearingReader:
             observations = '''UNION ALL SELECT rm.video_key,ml.scope,ml.basis
               FROM recording_matches rm,unnest(rm.meeting_links) u(ml),parameters p
               WHERE ml.event_id=p.event_id AND rm.video_key IS NOT NULL'''
+        if 'caption_resources' in self.schemas:
+            track_filter = (
+                "(t.format IN ('vtt','srt','ttml') OR (t.format='m3u8' AND EXISTS ("
+                "SELECT 1 FROM caption_resources cr "
+                "WHERE cr.video_key=r.video_key AND cr.track_body=t.body AND cr.ordinal>0 "
+                "AND cr.body IS NOT NULL AND cr.format IN ('vtt','srt','ttml'))))"
+            )
+        else:
+            track_filter = "t.format IN ('vtt','srt','ttml')"
         captions = '''SELECT 'captions' AS kind,NULL::VARCHAR AS package_id,NULL::VARCHAR AS link_key,
           lower(hex(t.body)) AS saved_body,t.suffix AS saved_suffix,t.format,NULL::VARCHAR AS filename,
           NULL::VARCHAR AS title,'original' AS saved_kind,NULL::VARCHAR AS saved_media_type,
@@ -72,7 +96,7 @@ class HearingReader:
         ), caption_tracks AS (
           SELECT r.video_key,t.*,a.scope,a.basis FROM associations a JOIN recordings r USING(video_key),unnest(r.tracks) u(t)
           WHERE t.body IS NOT NULL AND lower(hex(t.body))<>'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
-            AND t.format IN ('vtt','srt','ttml','m3u8')
+            AND {track_filter}
         )'''
         if selected_kind == 'captions':
             return f'WITH parameters AS (SELECT ?::BIGINT AS event_id), {caption_ctes} SELECT DISTINCT * FROM ({captions})'
@@ -93,6 +117,7 @@ class HearingReader:
             sql = 'SELECT * FROM ('+sql+') WHERE '+' AND '.join(conditions)
         result = self.rows(sql+' ORDER BY kind,source_id OFFSET ?', [*args, offset], limit=limit)
         result.pop('columns')
+        self._canonicalize_witness_keys(result['rows'])
         for row in result['rows']:
             row['reference'] = dict(release_id=self.release_id,event_id=query.event_id,kind=row['kind'],source_id=row['source_id'])
             if row['link_key']:
@@ -186,6 +211,7 @@ class HearingReader:
             result['sections'][name]=page
 
         if 'meeting' in query.include:
+            self._annotate_listing_notes([meeting])
             result['sections']['meeting']=dict(state='present',rows=[meeting],has_more=False)
         section('committees','committees', '''SELECT c.*,mc.role FROM meetings m,unnest(m.committees) u(mc),committees c
             WHERE m.event_id=? AND mc.system_code=c.system_code ORDER BY c.system_code,mc.role''',[query.event_id])
@@ -194,8 +220,11 @@ class HearingReader:
         witness_roster = "AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement','record_material')" if (
             'witness_type' in self.schemas.get('witnesses',{})
         ) else ''
-        section('witnesses','witnesses', f'''SELECT * FROM witnesses WHERE event_id=? AND superseded_by IS NULL
+        witness_cols = self.entity_columns('witnesses') if 'witnesses' in self.schemas else '*'
+        section('witnesses','witnesses', f'''SELECT {witness_cols} FROM witnesses WHERE event_id=? AND superseded_by IS NULL
             {witness_roster} ORDER BY panel_order NULLS LAST,display_order NULLS LAST,witness_key''',[query.event_id])
+        if 'witnesses' in result['sections']:
+            self._annotate_listing_notes(result['sections']['witnesses']['rows'])
         section('prepared_testimony','documents', '''SELECT '''+self.document_summary+''',l.witness_keys FROM "list" l JOIN detail d USING(list_row)
             WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,cast(? AS VARCHAR))
               AND list_has_any(l.document_kind,?)
@@ -203,6 +232,7 @@ class HearingReader:
             kind_words(self.selection['controls']['schema'],'witness-statement') or EARLIER_TESTIMONY_KINDS])
         if 'prepared_testimony' in result['sections']:
             self.document_rows(result['sections']['prepared_testimony'])
+            self._canonicalize_witness_keys(result['sections']['prepared_testimony']['rows'])
         for name,kind in [('official_transcripts','official'),('committee_transcripts','committee'),('captions','captions')]:
             if name in query.include:
                 page=self._source_page(TranscriptQuery(event_id=query.event_id,kind=kind),offset=query.offsets.get(name,0),limit=query.limit)
@@ -213,9 +243,16 @@ class HearingReader:
                     page['next']=dict(event_id=query.event_id,release_id=self.release_id,include=[name],limit=query.limit,offsets={name:page['next_offset']})
                 result['sections'][name]=page
         if 'recordings' in query.include:
-            if 'meeting_links' in self.schemas.get('recording_matches',{}):
-                section('recordings','recording_matches', '''SELECT * REPLACE(list_filter(meeting_links,lambda l:l.event_id=?) AS meeting_links)
-                    FROM recording_matches WHERE list_contains(list_transform(meeting_links,lambda l:l.event_id),?) ORDER BY match_id''',[query.event_id,query.event_id])
+            rm_cols = self.schemas.get('recording_matches', {})
+            if 'meeting_links' in rm_cols:
+                url_guard = "AND (video_key IS NOT NULL OR NOT regexp_matches(lower(coalesce(url,'')),'congress\\.gov/event/'))" if 'url' in rm_cols else ''
+                score_order = 'score DESC NULLS LAST, match_id ASC' if 'score' in rm_cols else 'match_id ASC'
+                section('recordings','recording_matches', f'''SELECT * FROM (
+                    SELECT * REPLACE(list_filter(meeting_links,lambda l:l.event_id=?) AS meeting_links)
+                    FROM recording_matches
+                    WHERE list_contains(list_transform(meeting_links,lambda l:l.event_id),?) {url_guard}
+                    QUALIFY row_number() OVER (PARTITION BY coalesce(video_key, match_id) ORDER BY {score_order}) = 1
+                ) ORDER BY match_id''',[query.event_id,query.event_id])
             else:
                 result['sections']['recordings']=dict(state='unavailable',reason='Published meeting associations are unavailable; original observations remain in recording_matches',rows=[])
         section('coverage','meeting_coverage','SELECT * FROM meeting_coverage WHERE event_id=? ORDER BY aspect',[query.event_id])

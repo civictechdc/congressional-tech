@@ -359,6 +359,12 @@ def result(tmp_path_factory):
     ]
     sql = lambda name: (ROOT / 'model/sql' / (name + '.sql')).read_text()
     steps = [
+        dict(name='person_nicknames', sql=sql('person-nicknames'), materialize=True),
+        dict(name='appearance_people', sql='SELECT cast(NULL AS VARCHAR) AS given WHERE false', materialize=True),
+        dict(name='selected_appearance_records', sql="""SELECT 'completed' AS status,
+            make_array(named_struct('name',name,'name_key',cast(NULL AS VARCHAR))) AS appearances
+            FROM appearance_rows""", materialize=True),
+        dict(name='person_given_matches', sql=sql('person-given-matches'), materialize=True),
         dict(name='meetings_resolved', sql='SELECT event_id,cast(meeting_date AS DATE) AS meeting_date,title,committees FROM meetings_input',
              materialize=True),
         dict(name='appearance_records_resolved', sql="""SELECT witness_key,
@@ -368,7 +374,8 @@ def result(tmp_path_factory):
             cast(NULL AS VARCHAR) AS rank,cast(NULL AS VARCHAR) AS credentials,honorific,position,organization,
             cast(NULL AS VARCHAR) AS on_behalf_of,cast(NULL AS VARCHAR) AS location,cast(NULL AS VARCHAR) AS panel,
             cast(NULL AS SMALLINT) AS panel_order,cast(NULL AS SMALLINT) AS display_order,witness_type,cast(NULL AS BOOLEAN) AS testified,
-            bioguide_id FROM appearance_rows""", materialize=True),
+            bioguide_id,'listed' AS listing_status,cast(NULL AS DATE) AS last_listed_on,cast(NULL AS DATE) AS unlisted_since,
+            cast(NULL AS VARCHAR) AS unlisted_by_record_sha FROM appearance_rows""", materialize=True),
         dict(name='witness_precedence', sql='SELECT witness_key,superseded_by FROM precedence_rows', materialize=True),
         dict(name='captures', sql="""SELECT arrow_cast(decode(sha,'hex'),'FixedSizeBinary(32)') AS sha256,'fetch' AS mode,true AS complete,
             'stored' AS outcome,200 AS http_status,url,url AS requested_url,url AS context_url,member_path FROM capture_rows""",
@@ -377,6 +384,7 @@ def result(tmp_path_factory):
             'v' AS parser_version,'completed' AS status,cast(NULL AS VARCHAR) AS error_type,'gpo_html' AS source,entries
             FROM heading_rows""", materialize=True),
         *transcript_steps(),
+        dict(name='witness_people', sql='SELECT cast(NULL AS VARCHAR) AS witness_key,cast(NULL AS VARCHAR) AS person_key WHERE false', materialize=True),
         *[dict(name=STEP_NAMES.get(n, n.replace('-', '_')), sql=sql(n), materialize=True) for n in STEPS],
     ]
     return run_job(work, engine, inputs=inputs, steps=steps, outputs=[], queries=[

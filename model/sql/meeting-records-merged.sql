@@ -33,7 +33,9 @@ WITH event_keys AS (
        WHEN c.committees_state='present' THEN c.committees END AS raw_committees,
   h.subject_keys AS house_subjects,
   c.subject_keys AS congress_subjects,
-  c.document_references,
+  cr.retained_subject_keys AS congress_retained_subjects,
+  cr.unlisted_subjects,
+  cr.document_references,
   CASE WHEN h.jackets_state='present' THEN h.transcript_jackets
        WHEN h.jackets_state IN ('empty','unrecognized') THEN NULL
        WHEN c.jackets_state='present' THEN c.transcript_jackets END AS raw_jackets,
@@ -43,6 +45,7 @@ WITH event_keys AS (
  FROM event_keys k
  LEFT JOIN meeting_records_current h ON k.event_id=h.event_id AND h.source='house_xml'
  LEFT JOIN meeting_records_current c ON k.event_id=c.event_id AND c.source='congress_gov'
+ LEFT JOIN congress_gov_retained_items cr ON k.event_id=cr.event_id
  LEFT JOIN meeting_status_conflicts sc ON k.event_id=sc.event_id
   AND try_cast(sc.held_date AS DATE)=coalesce(h.meeting_date,c.meeting_date)
 )

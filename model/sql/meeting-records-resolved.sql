@@ -219,6 +219,9 @@ WITH sitting_rows AS (
  SELECT event_id,lower(trim(unnest(congress_subjects))) AS subject_key
  FROM meeting_records_merged WHERE congress_subjects IS NOT NULL AND coalesce(array_length(congress_subjects),0)>0
  UNION ALL
+ SELECT event_id,lower(trim(unnest(congress_retained_subjects))) AS subject_key
+ FROM meeting_records_merged WHERE congress_retained_subjects IS NOT NULL AND coalesce(array_length(congress_retained_subjects),0)>0
+ UNION ALL
  SELECT event_id,subject_key FROM activity_subject_rows
  UNION ALL
  SELECT event_id,subject_key FROM orig_bill_subject_rows
@@ -254,6 +257,9 @@ WITH sitting_rows AS (
  FROM video_matched GROUP BY event_id
 )
 SELECT m.event_id,m.chamber,m.congress,m.session,m.updated,m.congress_gov_updated,m.house_xml_updated,m.congress_gov_meeting_type,m.access,m.access_basis,m.not_held,m.title_key,m.reschedule_candidate,ck.committee_key,m.title,m.meeting_date,m.meeting_type,m.status,m.document_references,
+ coalesce(m.unlisted_subjects,array_slice(make_array(named_struct(
+  'subject_key',cast(NULL AS VARCHAR),'last_listed_on',cast(NULL AS DATE),
+  'unlisted_since',cast(NULL AS DATE),'unlisted_by_record_sha',cast(NULL AS VARCHAR))),1,0)) AS unlisted_subjects,
  coalesce(sa.sittings,array_slice(make_array(named_struct(
   'start',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
   'end',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),

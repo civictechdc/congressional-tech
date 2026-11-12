@@ -266,7 +266,7 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
     and states a new meeting for the first time; verify `require_release_gates` passes unattended."""
     from archive_job_fixture import spicy_input
     from viewer_publication.archive_model import build_release
-    from viewer_publication.release_gate import automatic_causes, require_release_gates
+    from viewer_publication.release_gate import automatic_causes, prior_links, require_release_gates
 
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     live_key = 'receipts/congress/2026-10-27/base.jsonl.gz'
@@ -368,9 +368,12 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
 
     cand_env = _stage_receipts_fixture(tmp_path / 'cand-stage', engine, {live_key: live_specs, new_key: new_specs})
     cand_dir = tmp_path / 'cand-release'
+    prior, retired = prior_links(base_dir, (), tmp_path / 'cand-ledger')
+    base_id = json.loads((base_dir / 'manifest.json').read_text())['release_id']
     build_release(**cand_env['staged'], engine=engine, output=cand_dir, scratch=tmp_path / 'cand-model',
                   spicy_regs=spicy, meeting_records=[mr_1v1, mr_2, mr_1v2, mr_3],
-                  appearance_records=[ar_1v1, ar_2, ar_1v2, ar_3], **explorer_kw)
+                  appearance_records=[ar_1v1, ar_2, ar_1v2, ar_3],
+                  prior_links=prior, base_retired=retired, base_release_id=base_id, **explorer_kw)
 
     # Confirm doc_a and doc_b swapped list_row when 115538 rescheduled from 2023-05-10 past 2023-05-12 to 2023-05-17.
     base_dates = [str(d) for d in pq.read_table(base_dir / 'list.parquet', columns=['document_date'])['document_date'].to_pylist()]

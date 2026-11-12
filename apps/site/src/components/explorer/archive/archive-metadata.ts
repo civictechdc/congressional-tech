@@ -1155,10 +1155,10 @@ export function congressGovNominationUrl(nomOrKey: any): string | null {
   const key = typeof nomOrKey === 'object'
     ? String(nomOrKey.subject_key ?? nomOrKey.nomination_id ?? '')
     : String(nomOrKey);
-  const match = /^(\d+)-pn-([0-9-]+)$/i.exec(key.trim());
+  const match = /^(\d+)-pn-([0-9]+)(?:-([0-9]+))?$/i.exec(key.trim());
   if (match) {
     const congress = Number(match[1]);
-    const number = match[2];
+    const number = match[3] ? `${match[2]}/${match[3]}` : match[2];
     if (congress > 0) {
       return `https://www.congress.gov/nomination/${ordinal(congress)}-congress/${number}`;
     }
@@ -1226,6 +1226,11 @@ export function cleanDisplayFilename(filename: any): string {
   const raw = String(filename ?? '').trim();
   if (!raw || !/[0-9a-z]/i.test(raw)) return '';
   return raw.replace(/^[0-9a-f]{64}\./i, '');
+}
+
+export function isBareUuidFilename(filename: any): boolean {
+  const clean = cleanDisplayFilename(filename);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\.[a-z0-9]{2,5})?$/i.test(clean);
 }
 
 function urlFallbackLabel(url: any): string {
@@ -1365,9 +1370,13 @@ export function presentDocument(
     .replace(/\s*[»›]+$/, '')
     .trim();
   const cleanFile = cleanDisplayFilename(document?.filename);
+  const bareUuidFile = isBareUuidFilename(cleanFile);
   const validTitle = !isGenericTitle(rawTitle) ? rawTitle : '';
   const sourceUrl = document?.source_url || sources?.[0]?.url || recoveries?.[0]?.recovered_url || '';
-  const urlLabel = (!validTitle && !cleanFile) ? urlFallbackLabel(sourceUrl) : '';
+  const rawUrlLabel = (!validTitle && (!cleanFile || bareUuidFile)) ? urlFallbackLabel(sourceUrl) : '';
+  const urlLabel = rawUrlLabel && !isBareUuidFilename(rawUrlLabel) && !/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawUrlLabel)
+    ? rawUrlLabel
+    : '';
   const kindLabels = Array.isArray(document?.document_kind)
     ? document.document_kind.map(documentKindLabel).filter(Boolean)
     : [];
@@ -1397,8 +1406,15 @@ export function presentDocument(
   const fallbackKind = kindLabels[0]
     || (document?.saved_kind === 'recovery' ? `Recovered ${effFmt.toLowerCase()} record` : `Archived ${effFmt.toLowerCase()} record`);
   const fallbackSuffix = committees[0] ? ` — ${committees[0]}` : '';
+  const rawDocDate = document?.document_date ? String(document.document_date).slice(0, 10) : '';
+  const docYear = /^\d{4}-\d{2}-\d{2}$/.test(rawDocDate) ? Number(rawDocDate.slice(0, 4)) : 0;
+  const uuidContextTitle = bareUuidFile
+    ? `${kindLabels[0]
+        ? `${kindLabels[0]}${committees[0] ? ` — ${committees[0]}` : ''}`
+        : (committees[0] ? `${committees[0]} ${fmt} document` : `${fallbackKind}${fallbackSuffix}`)}${docYear >= 1950 && docYear <= 2100 ? ` (${rawDocDate})` : ''}`
+    : '';
 
-  const title = validTitle || cleanFile || urlLabel || `${fallbackKind}${fallbackSuffix}`;
+  const title = validTitle || (!bareUuidFile ? cleanFile : '') || urlLabel || uuidContextTitle || `${fallbackKind}${fallbackSuffix}`;
   const subtitle = cleanFile && cleanFile !== title ? cleanFile : '';
   const contextParts = [
     congress,

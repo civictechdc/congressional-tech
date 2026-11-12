@@ -32,17 +32,7 @@ WITH rows AS (
   CASE WHEN particle AND n>=3 THEN t[1] WHEN NOT particle AND n>=2 THEN t[1] END AS given
  FROM parted
 )
-SELECT record_sha_hex,source,event_id,print_id AS package_id,ordinal,
- coalesce(witness_type IN ('statement_for_record','member_statement','record_material'),false) AS statement,
- family,given,
- CASE given
-  WHEN 'bob' THEN 'robert' WHEN 'bobby' THEN 'robert' WHEN 'rob' THEN 'robert' WHEN 'bill' THEN 'william' WHEN 'billy' THEN 'william'
-  WHEN 'will' THEN 'william' WHEN 'dick' THEN 'richard' WHEN 'rick' THEN 'richard' WHEN 'rich' THEN 'richard'
-  WHEN 'ted' THEN 'edward' WHEN 'ned' THEN 'edward' WHEN 'ed' THEN 'edward' WHEN 'eddie' THEN 'edward'
-  WHEN 'liz' THEN 'elizabeth' WHEN 'beth' THEN 'elizabeth' WHEN 'betsy' THEN 'elizabeth' WHEN 'betty' THEN 'elizabeth' WHEN 'libby' THEN 'elizabeth'
-  WHEN 'peggy' THEN 'margaret' WHEN 'maggie' THEN 'margaret' WHEN 'meg' THEN 'margaret'
-  WHEN 'jim' THEN 'james' WHEN 'jimmy' THEN 'james' WHEN 'mike' THEN 'michael' WHEN 'tom' THEN 'thomas' WHEN 'tommy' THEN 'thomas'
-  WHEN 'chuck' THEN 'charles' WHEN 'jack' THEN 'john' WHEN 'hank' THEN 'henry' WHEN 'joe' THEN 'joseph' WHEN 'tony' THEN 'anthony'
-  WHEN 'larry' THEN 'lawrence' WHEN 'harry' THEN 'harold' WHEN 'jerry' THEN 'gerald' WHEN 'sandy' THEN 'sandra' WHEN 'kathy' THEN 'katherine'
-  ELSE given END AS given_canon
-FROM named
+SELECT n.record_sha_hex,n.source,n.event_id,n.print_id AS package_id,n.ordinal,
+ coalesce(n.witness_type IN ('statement_for_record','member_statement','record_material'),false) AS statement,
+ n.family,n.given,coalesce(k.formal,n.given) AS given_canon
+FROM person_nicknames k RIGHT JOIN named n ON k.nick=n.given

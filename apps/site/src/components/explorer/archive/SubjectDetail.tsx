@@ -49,9 +49,19 @@ export function SubjectDetail({
   const congressUrl=isNom?congressGovNominationUrl(subject):congressGovBillUrl(subject);
   const gpoUrl=isNom?null:gpoBillUrl(subject);
   const regsUrl=spicyRegsUrl(label);
-  const committees:any[]=Array.isArray(subject.committees)?subject.committees:[];
-  const committeeActivityGroups:any[]=Array.isArray(subject.committee_activities)?subject.committee_activities:[];
-  const activities=isNom?[]:committeeActivityGroups;
+  const explicitCommittees:any[]=Array.isArray(subject.committees)?subject.committees:[];
+  const rawCommitteeActivities:any[]=Array.isArray(subject.committee_activities)?subject.committee_activities:[];
+  const nominationActivityGroups:any[]=isNom?rawCommitteeActivities.map((group:any)=>{
+    if(group&&('activities' in group))return group;
+    return {
+      system_code:group?.system_code??group?.committee_key??'',
+      activities:group?.activity||group?.name?[{name:group.activity??group.name,date:group.date??null}]:[],
+    };
+  }):[];
+  const billActivities:any[]=isNom?[]:rawCommitteeActivities;
+  const committees:any[]=explicitCommittees.length>0
+    ?explicitCommittees
+    :[...new Set(rawCommitteeActivities.map((g:any)=>String(g?.system_code??g?.committee_key??'').toLowerCase()).filter(Boolean))];
   const cboEstimates:any[]=Array.isArray(subject.cbo_estimates)?subject.cbo_estimates:[];
   const votes:any[]=Array.isArray(subject.votes)?subject.votes:Array.isArray(subject.floor_votes)?subject.floor_votes:[];
   const amendments:any[]=Array.isArray(subject.amendments)?subject.amendments:[];
@@ -126,7 +136,7 @@ export function SubjectDetail({
       </ul>
     </div>}
 
-    {(committees.length>0||activities.length>0)&&<div className="archive-entity-section">
+    {(committees.length>0||billActivities.length>0)&&<div className="archive-entity-section">
       <h3>Committees &amp; Activities</h3>
       {committees.length>0&&<div className="archive-pill-list">
         {committees.map((c:any,i:number)=>{
@@ -137,8 +147,8 @@ export function SubjectDetail({
             :<span key={code||i} className="archive-measure-pill">{cLabel}</span>;
         })}
       </div>}
-      {!compact&&activities.length>0&&<ul className="archive-entity-list">
-        {activities.map((act:any,i:number)=>{
+      {!compact&&billActivities.length>0&&<ul className="archive-entity-list">
+        {billActivities.map((act:any,i:number)=>{
           const code=String(act.committee_key??act.system_code??'').toLowerCase();
           return <li key={i}>
             <strong>{act.activity||act.name||'Activity'}</strong>
@@ -149,18 +159,19 @@ export function SubjectDetail({
       </ul>}
     </div>}
 
-    {isNom&&!compact&&<div className="archive-entity-section">
+    {isNom&&(!compact||nominationActivityGroups.length>0)&&<div className="archive-entity-section">
       <h3>Committee activities</h3>
       {subject.committee_activities===undefined?<p>This release does not include nomination committee activities.</p>
         :subject.committee_activities===null?<p>The source did not supply readable committee activities.</p>
-        :!committeeActivityGroups.length?<p>The source lists no committee activity groups.</p>
-        :committeeActivityGroups.map((group:any,i:number)=>{
+        :!nominationActivityGroups.length?<p>The source lists no committee activity groups.</p>
+        :(compact?nominationActivityGroups.slice(0,3):nominationActivityGroups).map((group:any,i:number)=>{
           const code=String(group.system_code??'').toLowerCase();
+          const groupActivities=Array.isArray(group.activities)&&(compact?group.activities.slice(0,4):group.activities);
           return <div key={i}>
             <h4>{code?committeeLabel(code,committeesCatalog,subject.congress):'Committee not stated'}</h4>
             {group.activities==null?<p>The source did not supply readable activities for this committee.</p>
               :!group.activities.length?<p>The source lists no activities for this committee.</p>
-              :<ul className="archive-entity-list">{group.activities.map((activity:any,j:number)=><li key={j}>
+              :<ul className="archive-entity-list">{(groupActivities as any[]).map((activity:any,j:number)=><li key={j}>
                 <strong>{activity.name??'Activity name not stated'}</strong>
                 <span className="archive-source-meta"> · {activity.date?activity.date:'Date not stated'}</span>
               </li>)}</ul>}

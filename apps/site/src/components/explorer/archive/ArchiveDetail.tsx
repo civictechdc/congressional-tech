@@ -17,6 +17,7 @@ import {ArchiveRows, PublicLink, day, siteBase} from './ArchiveRows.tsx';
 import {HearingDetail} from './HearingDetail.tsx';
 import {CommitteeDetail} from './CommitteeDetail.tsx';
 import {WitnessDetail} from './WitnessDetail.tsx';
+import {PersonDetail} from './PersonDetail.tsx';
 import {MemberDetail} from './MemberDetail.tsx';
 import {SubjectDetail} from './SubjectDetail.tsx';
 
@@ -25,6 +26,7 @@ export {
   HearingDetail,
   CommitteeDetail,
   WitnessDetail,
+  PersonDetail,
   MemberDetail,
   SubjectDetail,
   siteBase,

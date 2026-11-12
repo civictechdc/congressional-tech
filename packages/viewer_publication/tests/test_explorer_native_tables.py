@@ -85,7 +85,7 @@ def tables(tmp_path_factory):
         # A linked print's rows tied to no meeting: 1016's names only a Senator (as Bennet's for 337704), 1017's two
         # Representatives (as Smith's and Walz's for 104324), 1018's a Member and an outside witness, and 1019's only the
         # Senator introducing a nominee.
-        dict(name='witnesses_export', sql="""SELECT cast(1001 AS BIGINT) AS event_id,'Jane' AS name,cast(NULL AS VARCHAR) AS package_id,
+        dict(name='witnesses_export', sql="""SELECT *,'listed' AS listing_status FROM (SELECT cast(1001 AS BIGINT) AS event_id,'Jane' AS name,cast(NULL AS VARCHAR) AS package_id,
             cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
             UNION ALL SELECT 1001 AS event_id,'Jane' AS name,'CHRG-x' AS package_id,cast(NULL AS VARCHAR) AS witness_type,'abc' AS superseded_by
             UNION ALL SELECT 1001 AS event_id,'Letter of support' AS name,'CHRG-x' AS package_id,'statement_for_record' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
@@ -101,7 +101,7 @@ def tables(tmp_path_factory):
             UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Hon. Hal Rep' AS name,'CHRG-reps-only' AS package_id,'member_appearance' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
             UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Hon. Ivy Member' AS name,'CHRG-member-and-outside' AS package_id,'member_appearance' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
             UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Jon Outside' AS name,'CHRG-member-and-outside' AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
-            UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Senator Kay Introducer' AS name,'CHRG-introducer-only' AS package_id,'member_appearance' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by""", materialize=True),
+            UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Senator Kay Introducer' AS name,'CHRG-introducer-only' AS package_id,'member_appearance' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by)""", materialize=True),
         dict(name='recordings_export', sql="SELECT 'youtube:unmatched' AS video_key,make_array(1) AS tracks,'unknown' AS recording_scope", materialize=True),
         dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
     ]
@@ -573,7 +573,7 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
         dict(name='package_mods_facts', sql="SELECT cast(NULL AS VARCHAR) AS package_id,arrow_cast(NULL,'List(Int64)') AS named_meetings WHERE false", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false", materialize=True),
         dict(name='ordered', sql="SELECT arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
-        dict(name='witnesses_export', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by WHERE false", materialize=True),
+        dict(name='witnesses_export', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by,cast(NULL AS VARCHAR) AS listing_status WHERE false", materialize=True),
         dict(name='selected_appearance_records', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS status,cast(NULL AS VARCHAR) AS collection_state,arrow_cast(NULL,'List(Utf8)') AS appearances WHERE false", materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='recordings_export', sql=archive_model.recordings_export_sql(root=ROOT, explorer_inputs=True), materialize=True),
@@ -644,7 +644,8 @@ def test_meetings_transcripts_and_video_aliases_follow_recordings_export_and_ign
                    ELSE array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0) END AS videos,
               arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))') AS congress_gov_updated,cast(NULL AS VARCHAR) AS house_xml_updated,
               'Hearing' AS congress_gov_meeting_type,'open' AS access,'inferred_open' AS access_basis,
-              array_slice(make_array(named_struct('url',cast(NULL AS VARCHAR))),1,0) AS document_references
+              array_slice(make_array(named_struct('url',cast(NULL AS VARCHAR))),1,0) AS document_references,
+              array_slice(make_array(named_struct('subject_key',cast(NULL AS VARCHAR),'last_listed_on',cast(NULL AS DATE),'unlisted_since',cast(NULL AS DATE),'unlisted_by_record_sha',cast(NULL AS VARCHAR))),1,0) AS unlisted_subjects
             FROM (VALUES
               (2001,'house','Oversight of Farm Credit','2025-05-10','oversight farm credit','hsag00',cast(NULL AS VARCHAR),cast(NULL AS VARCHAR)),
               (2002,'house','Clean Water Hearing','2025-05-11','clean water','hsag00',NULL,NULL),
@@ -710,7 +711,7 @@ def test_meetings_transcripts_and_video_aliases_follow_recordings_export_and_ign
         dict(name='details', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS INT) AS list_row,cast(NULL AS VARCHAR) AS format,array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates,arrow_cast(NULL,'FixedSizeBinary(8)') AS link_key WHERE false", materialize=True),
         dict(name='formats', sql="SELECT 'preference' AS kind,'pdf' AS value,cast(1 AS INT) AS rank", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false", materialize=True),
-        dict(name='appearance_records_resolved', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS source WHERE false", materialize=True),
+        dict(name='appearance_records_resolved', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS source,cast(NULL AS VARCHAR) AS listing_status WHERE false", materialize=True),
         dict(name='spicy_nominations', sql="SELECT cast(NULL AS INT) AS congress,cast(NULL AS VARCHAR) AS number,cast(NULL AS VARCHAR) AS part_number,cast(NULL AS VARCHAR) AS hearings_json WHERE false", materialize=True),
         dict(name='meeting_detail_observations', sql=EMPTY_OBSERVATIONS, materialize=True),
         dict(name='meeting_records_observed', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source,cast(NULL AS VARCHAR) AS status,cast(NULL AS DATE) AS meeting_date,cast(NULL AS VARCHAR) AS record_sha_hex,arrow_cast(NULL,'Timestamp(Microsecond, Some(\"UTC\"))') AS retrieved_at WHERE false", materialize=True),

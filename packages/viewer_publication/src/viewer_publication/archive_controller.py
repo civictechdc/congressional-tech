@@ -375,8 +375,13 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             base_release,prior,retired,history=held_base()
         held=work/'base-release-record.json'
         if base_release is not None:
-            record['base_release']=dict(release_id=pointer['release_id'],link_history=list(link_history),
+            base_rec=dict(release_id=pointer['release_id'],link_history=list(link_history),
                 prior_links=file_pin(prior))
+            for name in ('prior_witnesses','base_witness_key_map','prior_people','base_person_aliases'):
+                sibling=Path(prior).with_name(f'{name}.parquet')
+                if sibling.is_file():
+                    base_rec[name]=file_pin(sibling)
+            record['base_release']=base_rec
             _save_continuation(held,record['base_release'])
         elif held.is_file():
             # The published input record named this base; a resume after the flip writes it unchanged.

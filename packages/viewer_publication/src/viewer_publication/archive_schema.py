@@ -224,7 +224,7 @@ def validate_parquet_fields(schema, paths):
                 raise ValueError(f'Published key/reference type differs: {name}.{field}: {actual.get(field)} != {expected[field]}')
 
 
-def publication_checks(schema, auxiliary, published=None, *, keyed_documents=True, ordered_keys=None):
+def publication_checks(schema, auxiliary, published=None, *, keyed_documents=True, ordered_keys=None, input_names=None):
     """Check required columns, new entity keys and nested references in the native job.
 
     Core row positions, source/recovery ordinals, distinct lookup pairs and link
@@ -303,14 +303,47 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
         # An earlier key is never also published, every key it resolves to is, and the status says which
         # columns are set (ct-kb4w). One pass over each export: every key a map row names, published
         # exactly when it is not the row's old key.
-        checks.append('''(SELECT count(*) FROM (SELECT m.old_key,unnest(array_concat(make_array(m.old_key),
+        checks.append('''(SELECT count(*) FROM witnesses_export w RIGHT JOIN (SELECT m.old_key,unnest(array_concat(make_array(m.old_key),
                 CASE WHEN m.witness_key IS NULL THEN m.candidate_keys ELSE array_append(m.candidate_keys,m.witness_key) END)) AS key
-            FROM witness_key_map_export m) refs LEFT JOIN witnesses_export w ON w.witness_key=refs.key
+            FROM witness_key_map_export m) refs ON w.witness_key=refs.key
             WHERE (refs.key=refs.old_key)=(w.witness_key IS NOT NULL)) AS misplaced_witness_key_map_key''')
         checks.append('''(SELECT count(*) FROM witness_key_map_export
             WHERE (status='unambiguous') <> (witness_key IS NOT NULL) OR (status='unresolved') <> (basis IS NULL)
             OR (status='ambiguous') <> (coalesce(cardinality(candidate_keys),0)>1)
             OR status NOT IN ('unambiguous','ambiguous','unresolved')) AS inconsistent_witness_key_map''')
+        if input_names and 'prior_witnesses' in input_names:
+            prior_wk_sql = 'SELECT witness_key AS wk FROM prior_witnesses WHERE witness_key IS NOT NULL'
+            if 'base_witness_key_map' in input_names:
+                prior_wk_sql += ' UNION SELECT old_key AS wk FROM base_witness_key_map WHERE old_key IS NOT NULL'
+            checks.append(f'''(SELECT count(*) FROM witness_key_map_export m RIGHT ANTI JOIN (
+                witnesses_export w RIGHT ANTI JOIN ({prior_wk_sql}) pw ON w.witness_key=pw.wk
+            ) ON m.old_key=pw.wk) AS lost_witness_keys''')
+    if 'people' in auxiliary and 'witnesses' in auxiliary:
+        checks.append('''(SELECT count(*) FROM people_export p RIGHT ANTI JOIN witnesses_export w ON p.person_key=w.person_key
+            WHERE w.person_key IS NOT NULL) AS missing_witness_person''')
+        checks.append('''(SELECT count(*) FROM witnesses_export w RIGHT ANTI JOIN (
+            SELECT unnest(witness_keys) AS wk FROM people_export WHERE witness_keys IS NOT NULL
+        ) pk ON w.witness_key=pk.wk WHERE pk.wk IS NOT NULL) AS missing_person_witness''')
+    if 'people' in auxiliary and 'members' in auxiliary:
+        checks.append('''(SELECT count(*) FROM members_export m RIGHT ANTI JOIN people_export p ON m.bioguide_id=p.bioguide_id
+            WHERE p.bioguide_id IS NOT NULL) AS missing_person_member''')
+    if 'people' in auxiliary and 'person_aliases' in auxiliary:
+        checks.append('''(SELECT count(*) FROM people_export p RIGHT JOIN (SELECT a.old_person_key,unnest(array_concat(make_array(a.old_person_key),
+                CASE WHEN a.person_key IS NULL THEN a.candidate_keys ELSE array_append(a.candidate_keys,a.person_key) END)) AS key
+            FROM person_aliases_export a) refs ON p.person_key=refs.key
+            WHERE (refs.key=refs.old_person_key)=(p.person_key IS NOT NULL)) AS misplaced_person_alias_key''')
+        checks.append('''(SELECT count(*) FROM person_aliases_export
+            WHERE (status='unambiguous') <> (person_key IS NOT NULL)
+            OR (status='unresolved') <> (kind IS NULL)
+            OR (status='ambiguous') <> (coalesce(cardinality(candidate_keys),0)>1)
+            OR status NOT IN ('unambiguous','ambiguous','unresolved')) AS inconsistent_person_aliases''')
+        if input_names and 'prior_people' in input_names:
+            prior_pk_sql = 'SELECT person_key AS pk FROM prior_people WHERE person_key IS NOT NULL'
+            if 'base_person_aliases' in input_names:
+                prior_pk_sql += ' UNION SELECT old_person_key AS pk FROM base_person_aliases WHERE old_person_key IS NOT NULL'
+            checks.append(f'''(SELECT count(*) FROM person_aliases_export a RIGHT ANTI JOIN (
+                people_export p RIGHT ANTI JOIN ({prior_pk_sql}) pp ON p.person_key=pp.pk
+            ) ON a.old_person_key=pp.pk) AS lost_person_keys''')
     counts = ' CROSS JOIN '.join(f'({sql}) required_{i}' for i, sql in enumerate(required_counts))
     sql = 'SELECT ' + ',\n'.join(checks) + (' FROM ' + counts if counts else '')
     return [dict(name='relationship_invariants', sql=sql)] if checks else []

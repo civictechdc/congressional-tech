@@ -32,6 +32,13 @@ def exact_scalar(value, column_type, field):
             return value.strip().lower()
         if name in {'bioguide_id', 'sponsor_bioguide_id', 'sponsor_bioguide'}:
             return value.strip().upper()
+        if name in {'person_key', 'old_person_key'}:
+            stripped = value.strip()
+            if re.fullmatch(r'[a-zA-Z][0-9]{6}', stripped):
+                return stripped.upper()
+            if re.fullmatch(r'[a-fA-F0-9]{16}', stripped):
+                return stripped.lower()
+            return stripped
     elif column_type == 'BOOLEAN' and type(value) is not bool:
         raise ExplorerError(f'{field} requires a boolean (true or false)')
     return value

@@ -15,7 +15,8 @@ def caption_source_id(video_key,body_hex,language=None,production=None):
 def validate_witness_claim(target, witness_key=None, claimed=None):
     """Check an occurrence and attribution against the published source association."""
     witnesses = target.get('witness_keys') or []
-    if witness_key is not None and witness_key not in witnesses:
+    prior = target.get('prior_witness_keys') or []
+    if witness_key is not None and witness_key not in witnesses and witness_key not in prior:
         raise ExplorerError('Witness occurrence is not associated with this source')
     attribution = 'source_association' if witness_key else ('ambiguous' if len(witnesses) > 1 else 'unavailable')
     if claimed is not None and claimed != attribution:
