@@ -4,7 +4,7 @@
   "candidate_release_id": "21fc049940bbe4ef75ab774b3cc74a5e746fb9f023afb9a896059d595f5fa381",
   "groups": [
     {
-      "id": "bills.parquet|changed bytes, no key or value difference found",
+      "id": "bills.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 52,280 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer schema marks 6 non-null top-level column(s) required (amendments, cbo_estimates, committee_activities, committees, floor_votes, related_bills; 0 nulls verified in pin-footer-evidence.json and ol_expected_flag_changes.tsv) because docspec-rs 46a2765 derives export/materialize schemas from the optimized plan.",
@@ -40,7 +40,7 @@
       ]
     },
     {
-      "id": "capture_profile.json|changed file without a comparison",
+      "id": "capture_profile.json|changed file without a comparison|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1): capture_profile.json differs from live release 46ebbdf8dcaf in one field only, engine_revision (b0342a7368fa1e2c7e957f228c12f74cd1117f65 -> ae12bbd404902bc8fe22a4bdfa357a23fef9e319); every capture count, receipt count, and status breakdown is identical (pin-footer-evidence.json).",
@@ -76,7 +76,7 @@
       ]
     },
     {
-      "id": "committees.parquet|changed bytes, no key or value difference found",
+      "id": "committees.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 819 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer schema marks 1 non-null top-level column(s) required (names; 0 nulls verified in pin-footer-evidence.json and ol_expected_flag_changes.tsv) because docspec-rs 46a2765 derives export/materialize schemas from the optimized plan.",
@@ -112,7 +112,7 @@
       ]
     },
     {
-      "id": "detail.parquet|changed bytes, no key or value difference found",
+      "id": "detail.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 323,087 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer schema marks 4 non-null top-level column(s) required (document_family, facts, page_metadata, publisher_labels; 0 nulls verified in pin-footer-evidence.json and ol_expected_flag_changes.tsv) because docspec-rs 46a2765 derives export/materialize schemas from the optimized plan. Parquet footer carries source Iceberg column metadata on 2 lake-derived column(s): in_archive_since (PARQUET:field_id=36), saved_bytes (PARQUET:field_id=21) (owner decision 2026-11-11: accept source field ids; ct-exlx tracks deliberate field-id assignment).",
@@ -149,7 +149,7 @@
       ]
     },
     {
-      "id": "list.parquet|changed bytes, no key or value difference found",
+      "id": "list.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 323,087 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer schema marks 1 non-null top-level column(s) required (document_family; 0 nulls verified in pin-footer-evidence.json and ol_expected_flag_changes.tsv) because docspec-rs 46a2765 derives export/materialize schemas from the optimized plan.",
@@ -185,7 +185,7 @@
       ]
     },
     {
-      "id": "meetings.parquet|changed bytes, no key or value difference found",
+      "id": "meetings.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 18,708 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer schema marks 6 non-null top-level column(s) required (committees, publisher_status_observations, sittings, subject_keys, transcripts, videos; 0 nulls verified in pin-footer-evidence.json and ol_expected_flag_changes.tsv) because docspec-rs 46a2765 derives export/materialize schemas from the optimized plan.",
@@ -221,7 +221,7 @@
       ]
     },
     {
-      "id": "members.parquet|changed bytes, no key or value difference found",
+      "id": "members.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 12,770 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer schema marks 1 non-null top-level column(s) required (terms; 0 nulls verified in pin-footer-evidence.json and ol_expected_flag_changes.tsv) because docspec-rs 46a2765 derives export/materialize schemas from the optimized plan.",
@@ -257,7 +257,7 @@
       ]
     },
     {
-      "id": "nominations.parquet|changed bytes, no key or value difference found",
+      "id": "nominations.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 783 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer schema marks 3 non-null top-level column(s) required (committees, floor_votes, transcripts; 0 nulls verified in pin-footer-evidence.json and ol_expected_flag_changes.tsv) because docspec-rs 46a2765 derives export/materialize schemas from the optimized plan.",
@@ -293,7 +293,7 @@
       ]
     },
     {
-      "id": "recording_matches.parquet|changed bytes, no key or value difference found",
+      "id": "recording_matches.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 32,126 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer carries source Iceberg column metadata on 2 lake-derived column(s): event_id (PARQUET:field_id=8), subject_id (PARQUET:field_id=8) (field_id 8 originates from nested meeting_records.meetings.element.event_id in real-lake-metadata-2/meeting_records.metadata.json, carried through meeting_records_observed and meetings_resolved) (owner decision 2026-11-11: accept source field ids; ct-exlx tracks deliberate field-id assignment).",
@@ -330,7 +330,7 @@
       ]
     },
     {
-      "id": "recordings.parquet|changed bytes, no key or value difference found",
+      "id": "recordings.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 12,360 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer schema marks 2 non-null top-level column(s) required (event_ids, tracks; 0 nulls verified in pin-footer-evidence.json and ol_expected_flag_changes.tsv) because docspec-rs 46a2765 derives export/materialize schemas from the optimized plan.",
@@ -366,7 +366,7 @@
       ]
     },
     {
-      "id": "url_state.parquet|changed bytes, no key or value difference found",
+      "id": "url_state.parquet|changed bytes, no key or value difference found|unexplained",
       "count": 0,
       "disposition": "explained",
       "cause": "Engine pin move b0342a73 -> ae12bbd4 (ct-x00f, commit f81c9cf1; identical candidate release_id 21fc049940bb across post-MODS step-4 proof build candidate-build-2 and nightly/20261112T002603.002845Z): all 1,200,936 rows, keys, and cell values equal live release 46ebbdf8dcaf (0 value differences across all 46 Parquet outputs in ol_pin_step5-2.json and Gate 1). Parquet footer carries source Iceberg column metadata on 1 lake-derived column(s): requested_url (PARQUET:field_id=8) (owner decision 2026-11-11: accept source field ids; ct-exlx tracks deliberate field-id assignment).",
