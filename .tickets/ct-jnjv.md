@@ -1,6 +1,6 @@
 ---
 id: ct-jnjv
-status: open
+status: closed
 deps: []
 links: [ct-0hay, ct-m878, ct-m704, ct-chc4]
 created: 2026-11-09T23:14:53Z
@@ -31,3 +31,14 @@ Do this before or alongside the full-corpus run only if the measured probe cost 
 **2026-11-11T14:40:09Z**
 
 validated 2026-11-11, left open: not done. lake/body_text.py:236 still pins an MD5-less remote read with _observed_etag (line 246), the one-byte probe; no listing input exists for body_text. Scope stays the credentialed production route.
+
+**2026-11-12T04:30:00Z**
+
+Closed on `claude/ct-wave-6-bodytext-prep`:
+- Added `body_listing` input to `lake/body_text.py` (`plan()`, `run()`, `write_body_listing()` credentialed R2 `list_objects_v2` helper) and `cli/body_text.py` (`OPTIONAL`), sharing `copy_selection_steps(with_listing=...)` between `plan()` and the listing join rather than duplicating copy-selection SQL.
+- When `body_listing` is supplied, MD5-less remote reads pin directly by `stored_bytes` and listed strong `ETag` with **zero** `bytes=0-0` probe GETs (`_observed_etag` is never called; kept intact when `body_listing` is omitted on the uncredentialed public-origin route).
+- All refusal cases preserved and tested in `test_body_text_producer.py` and `test_body_text_origin.py`: weak ETag (`W/...`), listed `size != stored_bytes`, missing key in listing, listed ETag conflicting with captured MD5, duplicate/invalid listing rows, origin ignoring `Range` (`200` on ranged read), and `If-Match` `412` when an object changes after listing.
+- Request-count measurements (`.cache/archive-release/investigations/wave6-bodytext-prep-20261112/ct_jnjv_request_counts.json`):
+  - **1/16 Slice (`37,616` MD5-less + `133` MD5-pinned fetched; `65,958` bucket objects in prefix `0`):** Before = `75,365` requests (`37,616` probes + `37,749` GETs = **`2.0`** reqs/MD5-less body); After = `37,815` requests (`0` probes + `37,749` GETs + `66` LISTs = **`1.0` GET** / **`1.001755` total** reqs/MD5-less body; **`37,550` requests saved**).
+  - **Full Corpus (`605,564` MD5-less + `1,864` MD5-pinned fetched; `1,056,494` bucket objects):** Before = `1,212,992` requests (**`2.0`** reqs/MD5-less body); After = `608,485` requests (`0` probes + `607,428` GETs + `1,057` LISTs = **`1.0` GET** / **`1.001745` total** reqs/MD5-less body; **`604,507` requests saved**).
+  - **Empirical 30-body Loopback (`25` MD5-less + `5` MD5-pinned):** `50` GETs (`2.0`/MD5-less body) before vs `25` GETs + `0` probes + `1` LIST (`1.0` GET, `1.04` total/MD5-less body) after.

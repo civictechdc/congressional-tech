@@ -27,3 +27,12 @@ The 7 page_deadline decisions are superseded and the bodies read; the 7 memory_l
 **2026-11-11T14:41:00Z**
 
 validated 2026-11-11, left open: only the cause of the 7 page_deadline decisions for new batches is gone (the driver no longer pauses). Checked on origin/main: parsers/body_text.py:174 still uses signal.ITIMER_REAL (wall clock), lake/body_text.py:54 still takes WORKER_MEMORY_BYTES from readings (1 GiB); the 14 wrong decisions are not superseded.
+
+**2026-11-12T04:30:00Z**
+
+Wave 6 prep landed on `claude/ct-wave-6-bodytext-prep` (left open solely for the post-OCR `--apply` pass once `bt_full_driver.py` drains):
+- `parsers/body_text.py:page_deadline` switched from wall-clock `signal.ITIMER_REAL` (`SIGALRM`) to process user-CPU `signal.ITIMER_VIRTUAL` (`SIGVTALRM`), restoring any prior handler and virtual timer; tested across CPU burn, wall-clock sleep, and `SIGSTOP`+`SIGCONT`.
+- `lake/body_text.py:WORKER_MEMORY_BYTES` raised to `2 << 30` (`2 GiB`) with dedicated pool budget `PARSER_MEMORY_BYTES = 32 << 30` (`32 GiB`, plus `--parser-memory-bytes` / `parser_memory_bytes` in `cli/body_text.py`) so `engine.limits` (`14 GiB`) does not cap workers to 7; `pdf_text` (`2980a4db...`), `html_text` (`e1928f25...`), and `xml_text` (`ed9eb0e2...`) versions are unchanged.
+- `lake/body_text.py`, `retention/provenance.py`, and `viewer_publication/body_text_export.py` support `reason='withdrawn'` unreadable records (`supersedes=<id>` required) so superseded wrong decisions reopen at the same `pdf_text` version.
+- Read-only inventory (`.cache/archive-release/investigations/wave6-bodytext-prep-20261112/ct_a73a_unreadable_inventory.json`): 16 JSONL files in `body-text-slice-20261109/unreadable-store/provenance/unreadable/` hold **31 active `pdf_text` records**: the **7 `page_deadline`** bodies from chunk-0014 (`20261109T190000+0000-e9771666...jsonl`) plus **24 `memory_limit`** bodies accumulated at 1 GiB.
+- Post-OCR retry script `.cache/archive-release/investigations/wave6-bodytext-prep-20261112/retry_unreadable_ct_a73a.py` verified read-only with `--dry-run` (`0 -> 31` targeted work items, `703,570,634` stored bytes; refuses `--apply` while `bt_full_driver.py` is alive). Run `--apply` once `bt_full_driver.py` finishes draining.

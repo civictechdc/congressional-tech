@@ -1,6 +1,6 @@
 ---
 id: ct-0hay
-status: open
+status: closed
 deps: []
 links: [ct-m878, ct-jnjv, ct-m704, ct-chc4]
 created: 2026-11-09T23:15:13Z
@@ -35,3 +35,11 @@ To settle first: for a document recovered from a WARC, which body does `detail.s
 **2026-11-11T14:40:59Z**
 
 validated 2026-11-11, left open: the corpus-wide comparison planned in the 03:26Z note has not been run (the full body-text run is still in progress; OCR chunk-0085 running at 14:29Z), and warc is still read and counted (lake/body_text.py:50 FORMAT_PARSERS, body_text_export.py:186 warc_unwrapped; no commit touches ct-0hay since b3c937a8). Remains: compare every envelope's payload text with the html_text row of the saved body at the same URL, then drop warc from FORMAT_PARSERS and warc_unwrapped from the pointer, or key the leftovers by payload.
+
+**2026-11-12T04:30:00Z**
+
+Closed on `claude/ct-wave-6-bodytext-prep` after complete read-only slice + corpus comparison (`.cache/archive-release/investigations/wave6-bodytext-prep-20261112/ct_0hay_warc_comparison.{json,md}`):
+- **Recovery documents (`saved_kind='recovery'`):** All `6,219` rows (`5,964` distinct `saved_body` SHAs: `4,432` `pdf`, `1,403` `html`, `346` `xml`, `19` `other`, `17` `docx`, `2` `doc`) in `release-20261112-pin/detail.parquet` have non-envelope `saved_body`s; **`0`** WARC envelope SHAs appear in `detail.saved_body`, `detail.alternates`, or `recoveries.body`.
+- **Full-corpus WARC sniff population (`1,768` bodies, `external/provider-responses`):** **`1,736`** map to published documents in `release-20261112-pin/detail.parquet` and **`1,736 / 1,736` (`100%`)** already have a separate non-envelope `detail.saved_body` (`saved_kind='original'`: `1,706` `html`, `30` `xml`, `1` `pdf`; `0` missing `saved_body`). The remaining **`32`** (`31` `edlabor.house.gov/download/...` + `1` `science.house.gov/download/johnson-amendment-to-hr-4372`) are ~7.3 KB CMS `"Download File / Please wait..."` interstitial HTML redirect shells (`url_state`: `capture_disposition='eligible'`, `capture_reason='no_satisfying_recovery'`), intentionally excluded from `detail.saved_body`.
+- **Slice `96` WARC rows accounted for:** `95` map to published documents with `unwrapped_payload_sha256 == detail.saved_body` (`9` in slice prefix `0` all match `html_text` byte-for-byte with `0` diffs; `86` outside prefix `0` pending the HTML phase); `1` (`0e6a917afb58...`, `https://edlabor.house.gov/download/shalalaa2`) is one of the 32 unpublished CMS redirect shells.
+- **Code changes:** Dropped `'warc'` from `FORMAT_PARSERS` in `lake/body_text.py` and `"parsers"` in `model/jobs/body-text-export.json`, and removed `warc_unwrapped` from `pointer['coverage']` in `viewer_publication/body_text_export.py` (retaining `parsers/body_text.py` unwrap and `reading_versions.py` `'warc'` declaration for historical rows).
