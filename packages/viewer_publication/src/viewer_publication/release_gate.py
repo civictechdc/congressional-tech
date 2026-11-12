@@ -905,22 +905,17 @@ def meeting_updates(report, base_dir, candidate_dir):
         check_targets = ({m['witness_key'] for m in cand_map.values() if m.get('status') == 'unambiguous' and m.get('witness_key') in published}
                          | {k for keys in current_by_event.values() for k in keys})
         if check_targets and (candidate_dir / 'witness_key_map.parquet').exists() and (candidate_dir / 'witnesses.parquet').exists():
-            prior = []
-            if (base_dir / 'witnesses.parquet').exists():
-                prior.append(f"SELECT witness_key AS old_key,'w:'||witness_key AS base_key FROM read_parquet('{base_dir / 'witnesses.parquet'}')")
-            if (base_dir / 'witness_key_map.parquet').exists() and {'old_key', 'witness_key', 'status'} <= set(pq.read_schema(base_dir / 'witness_key_map.parquet').names):
-                prior.append(f"""SELECT old_key,CASE WHEN status='unambiguous' AND witness_key IS NOT NULL
-                    THEN 'w:'||witness_key ELSE 'm:'||old_key END AS base_key FROM read_parquet('{base_dir / 'witness_key_map.parquet'}')""")
-            if prior:
-                surviving = (f"UNION SELECT rc.witness_key,'w:'||s.witness_key FROM rc JOIN read_parquet('{base_dir / 'witnesses.parquet'}') s USING(witness_key)"
-                             if (base_dir / 'witnesses.parquet').exists() else '')
-                collisions = {r[0] for r in con.execute(f"""WITH rc AS (SELECT m.old_key,m.witness_key
-                      FROM read_parquet('{candidate_dir / 'witness_key_map.parquet'}') m
-                      JOIN read_parquet('{candidate_dir / 'witnesses.parquet'}') w USING(witness_key)
-                      WHERE m.status='unambiguous' AND m.witness_key IN ({quote(check_targets)})),
-                    prior AS ({' UNION '.join(prior)}),
-                    held AS (SELECT rc.witness_key,p.base_key FROM rc JOIN prior p USING(old_key) {surviving})
-                  SELECT witness_key FROM held GROUP BY 1 HAVING count(*)>1""").fetchall()}
+            from viewer_publication.release_comparison import witness_collision_sql
+            con.execute(f"""CREATE TEMP VIEW rc_targets AS SELECT m.old_key,m.witness_key
+              FROM read_parquet('{candidate_dir / 'witness_key_map.parquet'}') m
+              JOIN read_parquet('{candidate_dir / 'witnesses.parquet'}') w USING(witness_key)
+              WHERE m.status='unambiguous' AND m.witness_key IN ({quote(check_targets)})""")
+            bw_rel = f"read_parquet('{base_dir / 'witnesses.parquet'}')" if (base_dir / 'witnesses.parquet').exists() else None
+            bm_path = base_dir / 'witness_key_map.parquet'
+            bm_ok = bm_path.exists() and {'old_key', 'witness_key', 'status'} <= set(pq.read_schema(bm_path).names)
+            bm_rel = f"read_parquet('{bm_path}')" if bm_ok else None
+            collisions = {r[0] for r in con.execute(witness_collision_sql(
+                rc_rel='rc_targets', base_witnesses_rel=bw_rel, base_map_rel=bm_rel, has_base_map_cols=bm_ok)).fetchall()}
         for key, event, label, was_unambiguous in tracked:
             on_event = current_by_event.get(event, set())
             if key in on_event:

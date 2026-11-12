@@ -1508,6 +1508,101 @@ def rescheduled_twin_case(*, kind='update_points_to_twin'):
     return base, cand
 
 
+def held_document_update_case(kind='date_title_meta_and_reorder'):
+    """Held one-to-one documents whose meeting-derived metadata and list_row order move on an update."""
+    comm_type = pa.list_(pa.struct([('system_code', pa.string()), ('role', pa.string())]))
+    def with_meta(m_table, rows_meta):
+        t = m_table
+        t = t.append_column('chamber', pa.array([m['chamber'] for m in rows_meta], pa.string()))
+        t = t.append_column('congress', pa.array([m['congress'] for m in rows_meta], pa.int16()))
+        t = t.append_column('committees', pa.array([m['committees'] for m in rows_meta], comm_type))
+        return t
+
+    list_schema = pa.schema([
+        ('filename', pa.string()), ('title', pa.string()), ('committee_keys', pa.list_(pa.string())),
+        ('chambers', pa.list_(pa.string())), ('congress', pa.int16()), ('document_date', pa.date32()),
+        ('meeting_keys', pa.list_(pa.string())), ('witness_keys', pa.list_(pa.string()))])
+    detail_schema = pa.schema([
+        ('link_key', pa.binary(8)), ('saved_body', pa.binary(32)), ('document_date_source', pa.string()),
+        ('document_date_status', pa.string()),
+        *list_schema])
+
+    def doc_tables(rows):
+        list_rows = [{f.name: r[f.name] for f in list_schema} for r in rows]
+        detail_rows = [dict(link_key=K(r['key']), saved_body=K(r['key']) + bytes(24),
+                            document_date_source=r['document_date_source'],
+                            document_date_status=r['document_date_status'],
+                            **{f.name: r[f.name] for f in list_schema}) for r in rows]
+        urls = pa.table({'lookup_key': pa.array([K(r['key'].lower()) for r in rows], pa.binary(8)),
+                         'list_row': pa.array(list(range(len(rows))), pa.int32())})
+        sources = pa.table({'list_row': pa.array(list(range(len(rows))), pa.int32()),
+                            'url': pa.array([f"https://docs.house.gov/{r['key']}.pdf" for r in rows], pa.string()),
+                            'member_path': pa.array([None] * len(rows), pa.string())})
+        return dict(list=pa.Table.from_pylist(list_rows, schema=list_schema),
+                    detail=pa.Table.from_pylist(detail_rows, schema=detail_schema),
+                    urls=urls, sources=sources, url_state=url_states(REQUEST, 1).slice(0, 0))
+
+    if kind == 'matched_meeting_links_witness_doc':
+        base = base_tables()
+        cand = cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3))
+        base['meetings'] = with_meta(base['meetings'], [dict(chamber='house', congress=119,
+                                                             committees=[dict(system_code='hsag00', role='primary')])])
+        cand['meetings'] = with_meta(cand['meetings'], [dict(chamber='house', congress=119,
+                                                             committees=[dict(system_code='hsag00', role='primary')])])
+        b_doc = dict(key='A', filename='statement.pdf', title=None, committee_keys=[], chambers=[], congress=None,
+                     document_date=None, document_date_source=None, document_date_status=None, meeting_keys=[], witness_keys=[])
+        c_doc = dict(key='A', filename='statement.pdf', title='Witness Statement - Cy Diaz', committee_keys=['hsag00'],
+                     chambers=['house'], congress=119, document_date=HEARD, document_date_source='meeting',
+                     document_date_status='accepted', meeting_keys=['118340'], witness_keys=['n3'])
+        return {**base, **doc_tables([b_doc])}, {**cand, **doc_tables([c_doc])}
+
+    moved_date = HEARD + timedelta(days=7)
+    mid_date = HEARD + timedelta(days=3)
+    base, _ = meeting_row(base_tables(), 999999, read=False)
+    base = edit(base, 'meetings', lambda r: r[1].update(meeting_date=mid_date))
+    untouched = base['meetings'].to_pylist()[1]
+    cand = cand_tables(date=moved_date, panel=(('Anna Lee', 'GAO'), PANEL[1]),
+                       mapped=[('k1', 'n1', 'locator'), ('w1', 'n1', 'locator'),
+                               ('w2', 'n2', 'content'), ('v1', 'n1', 'locator')],
+                       statuses=[LIVE_STATUS, ('congress_gov', 'Scheduled', moved_date, NEW_RECORD.hex(), SEEN_AGAIN)])
+    cand = {**cand, 'meetings': pa.Table.from_pylist([*cand['meetings'].to_pylist(), untouched], schema=MEETINGS)}
+    b_meta = [dict(chamber='house', congress=118, committees=[dict(system_code='hsag00', role='primary')]),
+              dict(chamber='senate', congress=119, committees=[dict(system_code='ssfi00', role='primary')])]
+    c_comms = ([dict(system_code='hsag00', role='primary')] if kind == 'unrelated_committee'
+               else [dict(system_code='hsag00', role='primary'), dict(system_code='hsif00', role='subcommittee')])
+    c_meta = [dict(chamber='joint', congress=119, committees=c_comms),
+              dict(chamber='senate', congress=119, committees=[dict(system_code='ssfi00', role='primary')])]
+    base['meetings'] = with_meta(base['meetings'], b_meta)
+    cand['meetings'] = with_meta(cand['meetings'], c_meta)
+
+    a_base = dict(key='A', filename='testimony.pdf',
+                  title='Oversight Report - Ann Lee' if kind == 'non_generic_title' else 'Testimony - Ann Lee',
+                  committee_keys=['hsag00'], chambers=['house'], congress=118, document_date=HEARD,
+                  document_date_source='filename' if kind == 'filename_date' else 'meeting',
+                  document_date_status='accepted', meeting_keys=['118340'], witness_keys=['w1'])
+    a_cand = dict(key='A', filename='testimony.pdf',
+                  title='Oversight Report - Anna Lee' if kind == 'non_generic_title' else 'Testimony - Anna Lee',
+                  committee_keys=['hsag00', 'ssfi00'] if kind == 'unrelated_committee' else ['hsag00', 'hsif00'],
+                  chambers=['joint'], congress=119, document_date=moved_date,
+                  document_date_source='filename' if kind == 'filename_date' else 'meeting',
+                  document_date_status='accepted', meeting_keys=['118340'], witness_keys=['n1'])
+    b_row = dict(key='B', filename='testimony.pdf', title='Prepared Statement - Pat Roe',
+                 committee_keys=['ssfi00'], chambers=['senate'], congress=119, document_date=mid_date,
+                 document_date_source='meeting', document_date_status='accepted', meeting_keys=['999999'], witness_keys=[])
+    if kind == 'unexplained_swap':
+        c_row = dict(b_row, key='C', document_date=HEARD + timedelta(days=20))
+        a_early_b = dict(a_base, document_date=HEARD - timedelta(days=20))
+        a_early_c = dict(a_cand, document_date=HEARD - timedelta(days=19))
+        base = edit(base, 'meetings', lambda r: r[0].update(meeting_date=HEARD - timedelta(days=20)))
+        cand = edit(cand, 'meetings', lambda r: r[0].update(meeting_date=HEARD - timedelta(days=19)))
+        return ({**base, **doc_tables([a_early_b, b_row, c_row])},
+                {**cand, **doc_tables([a_early_c, c_row, b_row])},
+                None, (), (['A', 'B', 'C'], ['A', 'C', 'B']))
+    return ({**base, **doc_tables([a_base, b_row])},
+            {**cand, **doc_tables([b_row, a_cand])},
+            None, (), (['A', 'B'], ['B', 'A']))
+
+
 def mods_beside(tables, body, keys, mapped=()):
     """`tables` plus MODS witnesses `keys` on meeting 118340 from `body`, and MODS map rows `mapped` (old, new)."""
     out = edit(tables, 'witnesses', lambda rows: rows.extend(other_witness(k, 'mods', body, i + 1, *PANEL[i % 2]) for i, k in enumerate(keys)))
@@ -1617,6 +1712,8 @@ CASES = {
     'rescheduled_meeting_moves_recheck_dates_and_bands': (rescheduled_url_state_case, True),
     'postponed_update_points_to_later_twin': (rescheduled_twin_case, True),
     'unchanged_postponed_meeting_gains_first_stated_twin': (lambda: rescheduled_twin_case(kind='unchanged_points_to_first_stated'), True),
+    'held_documents_follow_updated_meeting_date_title_meta_and_reorder': (held_document_update_case, True),
+    'matched_updated_meeting_links_held_witness_document': (lambda: held_document_update_case(kind='matched_meeting_links_witness_doc'), True),
     'house_xml_unchanged_recheck_beside_an_update': (lambda: (
         base_tables(), cand_tables(),
         [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
@@ -1805,6 +1902,11 @@ CASES = {
     'rescheduled_meeting_unrelated_url_recheck_date_moved': (lambda: rescheduled_url_state_case(kind='unrelated_url'), 'changed with no new line'),
     'rescheduled_meeting_url_recheck_date_not_the_new_date': (lambda: rescheduled_url_state_case(kind='wrong_date'), 'recheck_meeting_date changed on an address'),
     'unrelated_meeting_rescheduled_to_changed_beside_an_update': (lambda: rescheduled_twin_case(kind='unrelated_pair'), 'meetings.parquet|changed rescheduled_to'),
+    'held_document_non_generic_title_edited_on_an_update': (lambda: held_document_update_case(kind='non_generic_title'), 'changed title'),
+    'held_document_filename_date_moved_on_an_update': (lambda: held_document_update_case(kind='filename_date'), 'changed document_date'),
+    'held_document_gains_unrelated_committee_on_an_update': (lambda: held_document_update_case(kind='unrelated_committee'), 'changed committee_keys'),
+    'held_document_unexplained_row_swap_on_unchanged_pair_beside_update': (
+        lambda: held_document_update_case(kind='unexplained_swap'), 'changed bytes, no key or value difference found'),
     # R4: a first stated meeting that claims an existing document.
     'first_stated_meeting_claims_an_existing_document': (lambda: ({**first_stated()[0], **document_names((), ())}, {**first_stated()[1], **document_names((), ('118340',))}),
                                                          'changed meeting_keys'),

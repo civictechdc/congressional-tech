@@ -264,6 +264,25 @@ def documents(d: Diff):
     return out, shape
 
 
+def witness_collision_sql(*, rc_rel, base_witnesses_rel=None, base_map_rel=None, has_base_map_cols=False):
+    """SQL query returning `witness_key` values in `rc_rel(old_key, witness_key)` (unambiguous published
+    re-key rows) that collapse two or more distinct base occurrences (live witnesses or base map keys,
+    including a witness whose key survives directly)."""
+    if not base_witnesses_rel and not (base_map_rel and has_base_map_cols):
+        return f'SELECT witness_key FROM {rc_rel} WHERE false'
+    prior = []
+    if base_witnesses_rel:
+        prior.append(f"SELECT witness_key AS old_key,'w:'||witness_key AS base_key FROM {base_witnesses_rel}")
+    if base_map_rel and has_base_map_cols:
+        prior.append(f"""SELECT old_key,CASE WHEN status='unambiguous' AND witness_key IS NOT NULL
+          THEN 'w:'||witness_key ELSE 'm:'||old_key END AS base_key FROM {base_map_rel}""")
+    surviving = (f"UNION SELECT r.witness_key,'w:'||s.witness_key FROM {rc_rel} r JOIN {base_witnesses_rel} s USING(witness_key)"
+                 if base_witnesses_rel else '')
+    return f"""WITH prior AS ({' UNION '.join(prior)}),
+      held AS (SELECT r.witness_key,p.base_key FROM {rc_rel} r JOIN prior p USING(old_key) {surviving})
+      SELECT witness_key FROM held GROUP BY 1 HAVING count(*)>1"""
+
+
 def rekeyed(d: Diff):
     """The candidate's unambiguous witness_key_map rows (ct-kb4w) as table `witness_rekey`; False when
     the candidate publishes no map.
@@ -278,17 +297,13 @@ def rekeyed(d: Diff):
             d.table('witness_rekey_candidates', """SELECT m.old_key,m.witness_key
               FROM candidate_witness_key_map m JOIN candidate_witnesses w USING(witness_key)
               WHERE m.status='unambiguous'""")
-            collisions = 'SELECT witness_key FROM witness_rekey_candidates WHERE false'
-            if d.has('base', 'witnesses'):
-                prior = ["SELECT witness_key AS old_key,'w:'||witness_key AS base_key FROM base_witnesses"]
-                if d.has('base', 'witness_key_map') and {'old_key', 'witness_key', 'status'} <= set(d.columns('base', 'witness_key_map')):
-                    prior.append("""SELECT old_key,CASE WHEN status='unambiguous' AND witness_key IS NOT NULL
-                      THEN 'w:'||witness_key ELSE 'm:'||old_key END FROM base_witness_key_map""")
-                collisions = f"""WITH prior AS ({' UNION '.join(prior)}),
-                  held AS (SELECT r.witness_key,p.base_key FROM witness_rekey_candidates r JOIN prior p USING(old_key)
-                    UNION SELECT r.witness_key,'w:'||s.witness_key FROM witness_rekey_candidates r
-                      JOIN base_witnesses s USING(witness_key))
-                  SELECT witness_key FROM held GROUP BY 1 HAVING count(*)>1"""
+            has_map = (d.has('base', 'witness_key_map')
+                       and {'old_key', 'witness_key', 'status'} <= set(d.columns('base', 'witness_key_map')))
+            collisions = witness_collision_sql(
+                rc_rel='witness_rekey_candidates',
+                base_witnesses_rel='base_witnesses' if d.has('base', 'witnesses') else None,
+                base_map_rel='base_witness_key_map' if d.has('base', 'witness_key_map') else None,
+                has_base_map_cols=has_map)
             d.table('witness_rekey_collisions', collisions)
             d.table('witness_rekey', """SELECT r.* FROM witness_rekey_candidates r
               ANTI JOIN witness_rekey_collisions USING(witness_key)""")
@@ -522,6 +537,178 @@ def rekeyed_lists(d: Diff, relation, row, column):
     return name
 
 
+GENERIC_DOC_TITLE_RE = (
+    r'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement'
+    r'|testimony|biography|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$'
+)
+DOC_UPDATE_COLS = {'meeting_keys', 'title', 'document_date', 'document_date_source', 'document_date_status',
+                   'committee_keys', 'chambers', 'congress'}
+
+
+def _document_meeting_updates(d: Diff, table, join, shared, compare, clean_w_rel, out):
+    """Split held one-to-one document columns that moved solely because a linked Congress.gov meeting
+    updated (`meeting_keys` on a matched meeting's newly added witness, `document_date` with source
+    `meeting`, `committee_keys`, `chambers`, `congress`, and generic witness-derived `title`, ct-rhqw)."""
+    import pyarrow as pa
+    changed_cols = {g['group'].removeprefix('changed ') for g in out
+                    if g.get('value') and g['cause'] == 'value differs on matched key'}
+    if not (changed_cols & DOC_UPDATE_COLS) or not updated_meetings(d):
+        return out
+    empty = 'CAST([] AS VARCHAR[])'
+    clean_mk_rel = f'{table}_clean_mk'
+    has_clean_mk = False
+    counts = {}
+    if 'meeting_keys' in shared and 'witness_keys' in shared and updated_witnesses(d) and 'meeting_keys' in changed_cols:
+        left_w_arr = (f"coalesce(pw.witness_keys,p.witness_keys,{empty})" if compare
+                      else f"coalesce(p.witness_keys,{empty})")
+        w_ok = (f'(p.witness_keys IS NOT DISTINCT FROM l.witness_keys OR p.file_row_number IN (SELECT pr FROM {clean_w_rel}))'
+                if clean_w_rel else 'p.witness_keys IS NOT DISTINCT FROM l.witness_keys')
+        d.table(clean_mk_rel, f"""WITH cand AS (
+              SELECT p.file_row_number AS pr,l.file_row_number AS lr,
+                coalesce(p.meeting_keys,{empty}) AS pmk,coalesce(l.meeting_keys,{empty}) AS lmk,
+                {left_w_arr} AS pwk,coalesce(l.witness_keys,{empty}) AS lwk
+              FROM {join} WHERE p.meeting_keys IS DISTINCT FROM l.meeting_keys AND {w_ok}
+                AND list_has_all(coalesce(l.meeting_keys,{empty}),coalesce(p.meeting_keys,{empty}))),
+            bad AS (
+              SELECT pr FROM (SELECT pr,pmk,pwk,lwk,unnest(lmk) AS mk FROM cand)
+              WHERE NOT list_contains(pmk,mk)
+                AND (try_cast(mk AS BIGINT) IS NULL
+                  OR try_cast(mk AS BIGINT) NOT IN (SELECT event_id FROM meeting_update WHERE NOT added)
+                  OR NOT EXISTS (SELECT 1 FROM witness_update_candidate wc
+                    WHERE wc.occasion='meeting:'||mk AND list_contains(lwk,wc.witness_key)
+                      AND NOT list_contains(pwk,wc.witness_key))))
+            SELECT pr,lr FROM cand WHERE pr NOT IN (SELECT pr FROM bad)""")
+        has_clean_mk = True
+        counts['meeting_keys'] = d.one(f'SELECT count(*) FROM {clean_mk_rel}')
+
+    m_both = d.has('base', 'meetings') and d.has('candidate', 'meetings')
+    m_shared = set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings')) if m_both else set()
+    if 'meeting_keys' in shared and 'event_id' in m_shared:
+        mk_same_upd = f"""(p.meeting_keys IS NOT DISTINCT FROM l.meeting_keys
+            AND EXISTS (SELECT 1 FROM unnest(coalesce(l.meeting_keys,{empty})) t(mk)
+              WHERE try_cast(mk AS BIGINT) IN (SELECT event_id FROM meeting_update WHERE NOT added)))"""
+        mk_ok = f'({mk_same_upd} OR p.file_row_number IN (SELECT pr FROM {clean_mk_rel}))' if has_clean_mk else mk_same_upd
+        upd_rel = f'{table}_upd_docs'
+        d.table(upd_rel, f'SELECT p.file_row_number AS pr,l.file_row_number AS lr FROM {join} WHERE {mk_ok}')
+        if d.one(f'SELECT count(*) FROM {upd_rel}'):
+            upd_join = f'{upd_rel} u JOIN base_{table} p ON p.file_row_number=u.pr JOIN candidate_{table} l ON l.file_row_number=u.lr'
+            if changed_cols & {'document_date', 'document_date_source', 'document_date_status'} and 'meeting_date' in m_shared and 'document_date' in shared:
+                p_md = f"(SELECT min(m.meeting_date) FROM base_meetings m WHERE list_contains(coalesce(p.meeting_keys,{empty}),CAST(m.event_id AS VARCHAR)))"
+                l_md = f"(SELECT min(m.meeting_date) FROM candidate_meetings m WHERE list_contains(coalesce(l.meeting_keys,{empty}),CAST(m.event_id AS VARCHAR)))"
+                non_upd_md = f"""NOT EXISTS (SELECT 1 FROM base_meetings bm JOIN candidate_meetings cm USING(event_id)
+                    WHERE list_contains(coalesce(p.meeting_keys,{empty}),CAST(bm.event_id AS VARCHAR))
+                      AND bm.event_id NOT IN (SELECT event_id FROM meeting_update WHERE NOT added)
+                      AND bm.meeting_date IS DISTINCT FROM cm.meeting_date)"""
+                date_join = upd_join
+                if 'document_date_source' in shared:
+                    src_ok = (f" AND p.document_date_source IS NOT DISTINCT FROM (CASE WHEN {p_md} IS NOT NULL THEN 'meeting' END)"
+                              f" AND l.document_date_source IS NOT DISTINCT FROM (CASE WHEN {l_md} IS NOT NULL THEN 'meeting' END)")
+                elif (d.has('base', 'detail') and d.has('candidate', 'detail')
+                      and 'document_date_source' in set(d.columns('base', 'detail')) & set(d.columns('candidate', 'detail'))):
+                    date_join += ' JOIN base_detail bd ON bd.file_row_number=u.pr JOIN candidate_detail cd ON cd.file_row_number=u.lr'
+                    src_ok = (f" AND bd.document_date_source IS NOT DISTINCT FROM (CASE WHEN {p_md} IS NOT NULL THEN 'meeting' END)"
+                              f" AND cd.document_date_source IS NOT DISTINCT FROM (CASE WHEN {l_md} IS NOT NULL THEN 'meeting' END)")
+                else:
+                    src_ok = ''
+                date_where = f'p.document_date IS NOT DISTINCT FROM {p_md} AND l.document_date IS NOT DISTINCT FROM {l_md} AND {non_upd_md}{src_ok}'
+                for col in ('document_date', 'document_date_source'):
+                    if col in changed_cols and col in shared:
+                        counts[col] = d.one(f'SELECT count(*) FROM {date_join} WHERE p."{col}" IS DISTINCT FROM l."{col}" AND {date_where}')
+                if 'document_date_status' in changed_cols and 'document_date_status' in shared:
+                    st_where = (f"{date_where} AND p.document_date_status IS NOT DISTINCT FROM (CASE WHEN p.document_date IS NOT NULL THEN 'accepted' END)"
+                                f" AND l.document_date_status IS NOT DISTINCT FROM (CASE WHEN l.document_date IS NOT NULL THEN 'accepted' END)")
+                    counts['document_date_status'] = d.one(
+                        f'SELECT count(*) FROM {date_join} WHERE p.document_date_status IS DISTINCT FROM l.document_date_status AND {st_where}')
+
+            if 'congress' in changed_cols and 'congress' in shared and 'congress' in m_shared:
+                p_cg = f"(SELECT min(m.congress) FROM base_meetings m WHERE list_contains(coalesce(p.meeting_keys,{empty}),CAST(m.event_id AS VARCHAR)))"
+                l_cg = f"(SELECT min(m.congress) FROM candidate_meetings m WHERE list_contains(coalesce(l.meeting_keys,{empty}),CAST(m.event_id AS VARCHAR)))"
+                non_upd_cg = f"""NOT EXISTS (SELECT 1 FROM base_meetings bm JOIN candidate_meetings cm USING(event_id)
+                    WHERE list_contains(coalesce(p.meeting_keys,{empty}),CAST(bm.event_id AS VARCHAR))
+                      AND bm.event_id NOT IN (SELECT event_id FROM meeting_update WHERE NOT added)
+                      AND bm.congress IS DISTINCT FROM cm.congress)"""
+                counts['congress'] = d.one(
+                    f'SELECT count(*) FROM {upd_join} WHERE p.congress IS DISTINCT FROM l.congress '
+                    f'AND p.congress IS NOT DISTINCT FROM {p_cg} AND l.congress IS NOT DISTINCT FROM {l_cg} AND {non_upd_cg}')
+
+            def set_follow_count(col, side_list_sql, non_upd_same_sql):
+                pc, lc = f'coalesce(p."{col}",{empty})', f'coalesce(l."{col}",{empty})'
+                up = side_list_sql('base', 'p.meeting_keys', 'IN')
+                ul = side_list_sql('candidate', 'l.meeting_keys', 'IN')
+                kp = side_list_sql('base', 'p.meeting_keys', 'NOT IN')
+                return d.one(f"""WITH s AS (
+                      SELECT {pc} AS pc,{lc} AS lc,{up} AS up,{ul} AS ul,{kp} AS kp
+                      FROM {upd_join} WHERE p."{col}" IS DISTINCT FROM l."{col}" AND {non_upd_same_sql})
+                    SELECT count(*) FROM s
+                    WHERE list_has_all(pc,up) AND list_has_all(lc,ul) AND list_has_all(pc,kp) AND list_has_all(lc,kp)
+                      AND len(list_filter(pc,lambda x: NOT list_contains(lc,x) AND (NOT list_contains(up,x) OR list_contains(ul,x) OR list_contains(kp,x))))=0
+                      AND len(list_filter(lc,lambda x: NOT list_contains(pc,x) AND (NOT list_contains(ul,x) OR list_contains(up,x) OR list_contains(kp,x))))=0""")
+
+            if 'chambers' in changed_cols and 'chambers' in shared and 'chamber' in m_shared:
+                ch_list = lambda side, mk_col, op: (
+                    f"coalesce((SELECT list_distinct(list_filter(list(nullif(lower(trim(m.chamber)),'')),lambda v: v IS NOT NULL)) "
+                    f"FROM {side}_meetings m WHERE list_contains(coalesce({mk_col},{empty}),CAST(m.event_id AS VARCHAR)) "
+                    f"AND m.event_id {op} (SELECT event_id FROM meeting_update WHERE NOT added)),{empty})")
+                non_upd_ch = f"""NOT EXISTS (SELECT 1 FROM base_meetings bm JOIN candidate_meetings cm USING(event_id)
+                    WHERE list_contains(coalesce(p.meeting_keys,{empty}),CAST(bm.event_id AS VARCHAR))
+                      AND bm.event_id NOT IN (SELECT event_id FROM meeting_update WHERE NOT added)
+                      AND nullif(lower(trim(bm.chamber)),'') IS DISTINCT FROM nullif(lower(trim(cm.chamber)),''))"""
+                counts['chambers'] = set_follow_count('chambers', ch_list, non_upd_ch)
+
+            comm_type = d.arrow_types('base', 'meetings').get('committees') if 'committees' in m_shared else None
+            if ('committee_keys' in changed_cols and 'committee_keys' in shared and comm_type is not None
+                    and comm_type == d.arrow_types('candidate', 'meetings').get('committees')
+                    and (pa.types.is_list(comm_type) or pa.types.is_large_list(comm_type))
+                    and pa.types.is_struct(comm_type.value_type) and comm_type.value_type.get_field_index('system_code') >= 0):
+                cm_list = lambda side, mk_col, op: (
+                    f"coalesce((SELECT list_distinct(list_filter(list(nullif(lower(trim(mc.c.system_code)),'')),lambda v: v IS NOT NULL)) "
+                    f"FROM (SELECT event_id,unnest(committees) AS c FROM {side}_meetings WHERE committees IS NOT NULL) mc "
+                    f"WHERE list_contains(coalesce({mk_col},{empty}),CAST(mc.event_id AS VARCHAR)) "
+                    f"AND mc.event_id {op} (SELECT event_id FROM meeting_update WHERE NOT added)),{empty})")
+                non_upd_cm = f"""NOT EXISTS (SELECT 1 FROM base_meetings bm JOIN candidate_meetings cm USING(event_id)
+                    WHERE list_contains(coalesce(p.meeting_keys,{empty}),CAST(bm.event_id AS VARCHAR))
+                      AND bm.event_id NOT IN (SELECT event_id FROM meeting_update WHERE NOT added)
+                      AND bm.committees IS DISTINCT FROM cm.committees)"""
+                counts['committee_keys'] = set_follow_count('committee_keys', cm_list, non_upd_cm)
+
+    w_both = d.has('base', 'witnesses') and d.has('candidate', 'witnesses')
+    w_shared = set(d.columns('base', 'witnesses')) & set(d.columns('candidate', 'witnesses')) if w_both else set()
+    if 'title' in changed_cols and {'title', 'witness_keys'} <= shared and {'witness_key', 'name'} <= w_shared and updated_witnesses(d):
+        not_sup = lambda alias: f'{alias}.superseded_by IS NULL' if 'superseded_by' in w_shared else 'true'
+        wname_sql = lambda side, wk_expr: f"""(SELECT CASE
+            WHEN count(DISTINCT w.witness_key) FILTER (WHERE {not_sup('w')})=1 THEN min(w.name) FILTER (WHERE {not_sup('w')})
+            WHEN count(DISTINCT w.witness_key)=1 THEN min(w.name) END
+          FROM {side}_witnesses w WHERE list_contains(coalesce({wk_expr},{empty}),w.witness_key))"""
+        has_fn_p = "coalesce(p.filename,'')<>''" if 'filename' in shared else 'true'
+        has_fn_l = "coalesce(l.filename,'')<>''" if 'filename' in shared else 'true'
+        w_row_ok = [f'p.file_row_number IN (SELECT pr FROM {clean_w_rel})'] if clean_w_rel else []
+        sup_touch = (" OR cw.superseded_by IN (SELECT witness_key FROM witness_update_candidate)"
+                     if 'superseded_by' in w_shared else '')
+        w_row_ok.append(f"""(p.witness_keys IS NOT DISTINCT FROM l.witness_keys
+            AND EXISTS (SELECT 1 FROM candidate_witnesses cw
+              WHERE list_contains(coalesce(l.witness_keys,{empty}),cw.witness_key)
+                AND (cw.witness_key IN (SELECT witness_key FROM witness_update_candidate){sup_touch})))""")
+        mk_guard = (f' AND p.file_row_number IN (SELECT pr FROM {table}_upd_docs)'
+                    if 'meeting_keys' in shared and 'event_id' in m_shared else '')
+        counts['title'] = d.one(f"""WITH t AS (
+              SELECT p.title AS pt,l.title AS lt,{has_fn_p} AS pfn,{has_fn_l} AS lfn,
+                {wname_sql('base', 'p.witness_keys')} AS pw,{wname_sql('candidate', 'l.witness_keys')} AS lw
+              FROM {join} WHERE p.title IS DISTINCT FROM l.title AND ({' OR '.join(w_row_ok)}){mk_guard})
+            SELECT count(*) FROM t WHERE pw IS DISTINCT FROM lw AND (
+              (pw IS NOT NULL AND lw IS NOT NULL AND pt IS NOT NULL AND lt IS NOT NULL
+                AND ends_with(pt,' - '||pw) AND ends_with(lt,' - '||lw)
+                AND left(pt,length(pt)-length(' - '||pw))=left(lt,length(lt)-length(' - '||lw))
+                AND regexp_matches(trim(left(pt,length(pt)-length(' - '||pw))),'{GENERIC_DOC_TITLE_RE}'))
+              OR (pw IS NULL AND lw IS NOT NULL AND lt IS NOT NULL AND ends_with(lt,' - '||lw)
+                AND regexp_matches(trim(left(lt,length(lt)-length(' - '||lw))),'{GENERIC_DOC_TITLE_RE}')
+                AND ((pt IS NULL AND pfn) OR (pt=left(lt,length(lt)-length(' - '||lw)) AND NOT pfn)))
+              OR (pw IS NOT NULL AND lw IS NULL AND pt IS NOT NULL AND ends_with(pt,' - '||pw)
+                AND regexp_matches(trim(left(pt,length(pt)-length(' - '||pw))),'{GENERIC_DOC_TITLE_RE}')
+                AND ((lt IS NULL AND lfn) OR (lt=left(pt,length(pt)-length(' - '||pw)) AND NOT lfn))))""")
+
+    return refetch_split(out, counts, MEETING_UPDATE) if counts else out
+
+
 def document_file(table):
     def run(d: Diff):
         groups, shape = d.documents
@@ -540,6 +727,7 @@ def document_file(table):
             if n:
                 rekeys = [dict(group('changed witness_keys', 're-keyed through witness_key_map', n, 'verified'), value=True)]
         out = [*groups, *rekeys, *d.changed(table, join, compare, exclude=OFFSETS | {'file_row_number'})]
+        clean_w_rel = None
         if 'witness_keys' in shared and updated_witnesses(d):
             # ct-rhqw: a document whose list gained or lost only witnesses of its own updated meetings.
             empty = 'CAST([] AS VARCHAR[])'
@@ -557,16 +745,19 @@ def document_file(table):
                 mk_cols, mk_sel = '', ''
                 rem_ok = 'k IN (SELECT witness_key FROM witness_update_base)'
                 add_ok = 'k IN (SELECT witness_key FROM witness_update_candidate)'
-            moved, value = d.rows(f"""WITH r AS (SELECT p.file_row_number AS pr,{left_w} IS NOT DISTINCT FROM {right_w} AS mapped,
+            clean_w_rel = f'{table}_clean_w'
+            d.table(clean_w_rel, f"""WITH r AS (SELECT p.file_row_number AS pr,{left_w} IS NOT DISTINCT FROM {right_w} AS mapped,
                   coalesce(p.witness_keys,{empty}) AS pk,coalesce(l.witness_keys,{empty}) AS lk{mk_cols}
                   FROM {join} WHERE p.witness_keys IS DISTINCT FROM l.witness_keys),
                 keys AS (SELECT pr,pk,lk{mk_sel},unnest(list_concat(pk,lk)) AS k FROM r),
                 outside AS (SELECT DISTINCT pr FROM keys WHERE (list_contains(pk,k) AND NOT list_contains(lk,k) AND NOT ({rem_ok}))
                   OR (list_contains(lk,k) AND NOT list_contains(pk,k) AND NOT ({add_ok})))
-              SELECT count(*) FILTER (WHERE mapped),count(*) FILTER (WHERE NOT mapped) FROM r WHERE pr NOT IN (SELECT pr FROM outside)""")[0]
+              SELECT pr,mapped FROM r WHERE pr NOT IN (SELECT pr FROM outside)""")
+            moved, value = d.rows(f'SELECT count(*) FILTER (WHERE mapped),count(*) FILTER (WHERE NOT mapped) FROM {clean_w_rel}')[0]
             if compare:
                 out = split_group(out, 'changed witness_keys', 're-keyed through witness_key_map', moved, f're-keyed through witness_key_map; {MEETING_UPDATE}')
             out = refetch_split(out, {'witness_keys': value}, MEETING_UPDATE)
+        out = _document_meeting_updates(d, table, join, shared, compare, clean_w_rel, out)
         return out, shape if table == 'list' else {}
     return run
 
@@ -1575,7 +1766,46 @@ def account(d: Diff):
             groups.append(group('residual', 'unexplained', residual))
         report[name] = {'rows': rows, 'delta': delta, 'digest_identical': same, 'groups': groups, **notes,
                         'check': {'sum': delta - residual if residual else rowsum, 'ok': not residual}}
+    _mark_list_row_reorders(d, report)
     return report
+
+
+def _mark_list_row_reorders(d: Diff, report):
+    """Mark byte-only `list_row` permutations in document-indexed tables when `list.parquet` re-sorted
+    one-to-one rows solely because a Congress.gov meeting update moved `document_date` (ct-rhqw)."""
+    list_entry = report.get('list.parquet')
+    if not (d.meeting_update and list_entry and list_entry['groups']):
+        return
+    if not (d.documents[1]['one_to_one_rows'] == list_entry['rows']['base'] == list_entry['rows']['candidate']):
+        return
+    if not all(g['status'] == 'verified' and g.get('refetch_only') for g in list_entry['groups']):
+        return
+    if not any(g['group'] == 'changed document_date' for g in list_entry['groups']):
+        return
+    if 'document_date' not in set(d.columns('base', 'list')) & set(d.columns('candidate', 'list')):
+        return
+    if not d.one('SELECT count(*) FROM one_to_one WHERE pr<>lr'):
+        return
+    bad_inversion = d.one("""SELECT count(*) FROM
+        one_to_one a JOIN base_list pa ON pa.file_row_number=a.pr JOIN candidate_list la ON la.file_row_number=a.lr,
+        one_to_one b JOIN base_list pb ON pb.file_row_number=b.pr JOIN candidate_list lb ON lb.file_row_number=b.lr
+      WHERE a.pr<b.pr AND a.lr>b.lr
+        AND pa.document_date IS NOT DISTINCT FROM la.document_date
+        AND pb.document_date IS NOT DISTINCT FROM lb.document_date""")
+    if bad_inversion:
+        return
+    if d.has('base', 'links') and d.has('candidate', 'links') and d.one(
+            'SELECT count(*) FROM (SELECT link_key,list_row FROM candidate_links '
+            'EXCEPT SELECT p.link_key,o.lr FROM base_links p JOIN one_to_one o ON o.pr=p.list_row)'):
+        return
+    unexplained = flag('changed bytes, no key or value difference found', 'unexplained')
+    verified_reorder = dict(flag('changed bytes, no key or value difference found',
+                                 f'release-local list_row order followed list.parquet; {MEETING_UPDATE}', 'verified'),
+                            refetch_only=True)
+    for stem in ('links', 'urls', 'sources', 'recoveries', 'detail'):
+        entry = report.get(f'{stem}.parquet')
+        if entry and entry['groups'] == [unexplained]:
+            entry['groups'] = [dict(verified_reorder)]
 
 
 def digest(path):
