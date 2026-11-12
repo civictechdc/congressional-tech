@@ -12,7 +12,6 @@ import importlib.util
 import errno
 import os
 import shutil
-import signal
 import subprocess
 import sys
 import time
@@ -202,51 +201,62 @@ def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_b
     if any(p.exists() for p in (report,partial,log)):raise FileExistsError('Batch measurement paths must be fresh')
     sampler=_sampler()
     memory=sampler.MemorySamples(sampler)
-    def interrupted(number,_frame):raise InterruptedError('Batch monitor received signal '+str(number))
-    old={number:signal.getsignal(number) for number in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP)}
-    for number in old:signal.signal(number,interrupted)
     started=time.monotonic();peak=0;physical_peak=0;samples=0;failure=None;child=None;disk_next=started
-    primary_error=None;cleanup_errors=[]
-    try:
-        with log.open('x') as output:
-            child=sampler.start_owned(command,stdout=output,stderr=subprocess.STDOUT)
-            try:
-                while child.poll() is None:
-                    observed=memory.sample(child.pid)
-                    if observed is not None:
-                        rss,physical=observed
-                        peak=max(peak,rss);physical_peak=max(physical_peak,physical);samples+=1
-                    value=dict(status='running_unaccepted',monitor_pid=os.getpid(),owned_pgid=child.pid,
-                        seconds=time.monotonic()-started,samples=samples,sampled_peak_tree_rss=peak,
-                        sampled_peak_tree_physical_footprint=physical_peak,
-                        consecutive_sample_failures=memory.consecutive_failures)
-                    temporary=partial.with_suffix('.tmp');temporary.write_text(json.dumps(value)+'\n');temporary.replace(partial)
-                    with (work/'timeline.jsonl').open('a') as timeline_f:
-                        timeline_f.write(json.dumps(dict(seconds=round(time.monotonic()-started,3),
-                            rss=rss if observed is not None else 0,physical=physical if observed is not None else 0,samples=samples))+'\n')
-                    if observed is not None and physical>physical_limit:
-                        raise RuntimeError('Batch exceeded its physical memory limit')
-                    if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
-                    if time.monotonic()>=disk_next:
-                        check_scratch(scratch_root,work,min_free_bytes=min_free_bytes,
-                                      max_owned_scratch_bytes=max_owned_scratch_bytes)
-                        disk_next=time.monotonic()+5
-                    if time.monotonic()-started>timeout:raise RuntimeError('Batch exceeded its time limit')
-                    time.sleep(.5)
-            except Exception as error:
-                primary_error=error
-                failure=dict(type=type(error).__name__,message=str(error))
-                cleanup_errors=sampler.stop_owned(child)
-            result=dict(returncode=child.poll(),seconds=time.monotonic()-started,
-                monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
-                sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,
-                physical_limit=physical_limit,failure=failure,
-                cleanup_errors=cleanup_errors,
-                physical_basis='macOS charged physical footprint' if sys.platform=='darwin' else 'Linux RSS plus swap conservative proxy',
-                qualification='sampled owned tree; not continuous or a Linux production bound')
-            report.write_text(json.dumps(result,indent=2)+'\n')
-    finally:
-        for number,handler in old.items():signal.signal(number,handler)
+    primary_error=None;cleanup_errors=[];stopped=False
+    with sampler.SignalRecorder(clock=time) as signals:
+        def check_signal():
+            if signals.first is not None:
+                raise InterruptedError('Batch monitor received signal '+str(signals.first))
+
+        try:
+            with log.open('x') as output:
+                child=sampler.start_owned(command,stdout=output,stderr=subprocess.STDOUT)
+                try:
+                    check_signal()
+                    while child.poll() is None:
+                        check_signal()
+                        observed=memory.sample(child.pid)
+                        if observed is not None:
+                            rss,physical=observed
+                            peak=max(peak,rss);physical_peak=max(physical_peak,physical);samples+=1
+                        value=dict(status='running_unaccepted',monitor_pid=os.getpid(),owned_pgid=child.pid,
+                            seconds=time.monotonic()-started,samples=samples,sampled_peak_tree_rss=peak,
+                            sampled_peak_tree_physical_footprint=physical_peak,
+                            consecutive_sample_failures=memory.consecutive_failures)
+                        temporary=partial.with_suffix('.tmp');temporary.write_text(json.dumps(value)+'\n');temporary.replace(partial)
+                        with (work/'timeline.jsonl').open('a') as timeline_f:
+                            timeline_f.write(json.dumps(dict(seconds=round(time.monotonic()-started,3),
+                                rss=rss if observed is not None else 0,physical=physical if observed is not None else 0,samples=samples))+'\n')
+                        check_signal()
+                        if observed is not None and physical>physical_limit:
+                            raise RuntimeError('Batch exceeded its physical memory limit')
+                        if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
+                        if time.monotonic()>=disk_next:
+                            check_scratch(scratch_root,work,min_free_bytes=min_free_bytes,
+                                          max_owned_scratch_bytes=max_owned_scratch_bytes)
+                            disk_next=time.monotonic()+5
+                        if time.monotonic()-started>timeout:raise RuntimeError('Batch exceeded its time limit')
+                        if signals.sleep(.5):
+                            check_signal()
+                    check_signal()
+                except Exception as error:
+                    if signals.first is not None and not isinstance(error,InterruptedError):
+                        error=InterruptedError('Batch monitor received signal '+str(signals.first))
+                    primary_error=error
+                    failure=dict(type=type(error).__name__,message=str(error))
+                    stopped=True
+                    cleanup_errors=sampler.stop_owned(child)
+                result=dict(returncode=child.poll(),seconds=time.monotonic()-started,
+                    monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
+                    sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,
+                    physical_limit=physical_limit,failure=failure,
+                    cleanup_errors=cleanup_errors,
+                    physical_basis='macOS charged physical footprint' if sys.platform=='darwin' else 'Linux RSS plus swap conservative proxy',
+                    qualification='sampled owned tree; not continuous or a Linux production bound')
+                report.write_text(json.dumps(result,indent=2)+'\n')
+        finally:
+            if child is not None and not stopped and child.poll() is None:
+                sampler.stop_owned(child)
     if primary_error is not None:raise primary_error
     if result['returncode']!=0:raise RuntimeError('Batch exited '+str(result['returncode'])+'; see '+str(log))
     return result

@@ -170,3 +170,130 @@ def test_cleanup_records_ps_and_wait_errors_and_still_attempts_kill():
     errors=_cleanup_child(Child(),send)
     assert sent==[signal.SIGTERM,signal.SIGKILL]
     assert [row['type'] for row in errors]==['CalledProcessError','InterruptedError','TimeoutExpired']
+
+
+def test_signal_delivered_during_sampler_select_is_recorded_and_stops_batch(tmp_path, monkeypatch):
+    """ct-752r: selectors.PollSelector.select swallows an InterruptedError raised by a signal handler.
+
+    Plant SIGTERM inside the selector poll used by subprocess.run(['ps', ...], capture_output=True)
+    once the batch child is running. Before SignalRecorder, PollSelector.select swallowed the
+    handler's InterruptedError and monitor_command ran until timeout instead of stopping on SIGTERM.
+    """
+    import os
+    import signal
+    import subprocess
+
+    if sys.platform not in {'darwin', 'linux'}:
+        pytest.skip('Supported process accounting platform')
+    marker = tmp_path / 'ready'
+    fired = []
+    real_selector = subprocess._PopenSelector
+
+    class PlantedSelector(real_selector):
+        def __init__(self):
+            super().__init__()
+            inner = self._selector
+
+            class Inner:
+                def __getattr__(self, name):
+                    return getattr(inner, name)
+
+                def poll(self, timeout=None):
+                    if not fired and marker.exists():
+                        fired.append(int(signal.SIGTERM))
+                        os.kill(os.getpid(), signal.SIGTERM)
+                    return inner.poll(timeout)
+
+            self._selector = Inner()
+
+    monkeypatch.setattr(subprocess, '_PopenSelector', PlantedSelector)
+    work = tmp_path / 'monitor'
+    code = f'import pathlib,time;pathlib.Path({str(marker)!r}).write_text("ok");time.sleep(10)'
+    with pytest.raises(InterruptedError, match=f'Batch monitor received signal {int(signal.SIGTERM)}'):
+        run(work, code, timeout=2)
+    assert fired == [int(signal.SIGTERM)], 'the signal was never planted inside selector.poll'
+    result = json.loads((work / 'measurement.json').read_text())
+    assert result['failure'] == {
+        'type': 'InterruptedError',
+        'message': f'Batch monitor received signal {int(signal.SIGTERM)}',
+    }
+    assert result['seconds'] < 1.5
+    assert not _live_group(result['owned_pgid'])
+
+
+def test_signal_wakes_backfill_sleep_within_slice_and_overrides_reader_failure(tmp_path, monkeypatch):
+    """ct-752r: backfill shares SignalRecorder slice sleep and reports the signal when a group signal kills ps."""
+    import signal
+    import types
+
+    real_sampler = capture_backfill._sampler()
+
+    def run_fake(signal_during, *, sample_fails=False):
+        clock, slept, stopped = [0.0], [], []
+
+        class Child:
+            pid = 42
+            calls = 0
+
+            def poll(self):
+                self.calls += 1
+                return None if self.calls <= 3 else 0
+
+        class FakeMemory:
+            consecutive_failures = 0
+
+            def __init__(self, sampler):
+                self.sampler = sampler
+
+            def sample(self, pid):
+                return self.sampler.resident_tree(pid), self.sampler.physical_tree(pid)
+
+        class FakeSampler:
+            SignalRecorder = real_sampler.SignalRecorder
+            MemorySamples = FakeMemory if sample_fails else real_sampler.MemorySamples
+
+            @staticmethod
+            def start_owned(_command, **_kwargs):
+                return Child()
+
+            @staticmethod
+            def stop_owned(_child):
+                stopped.append(clock[0])
+                return []
+
+            @staticmethod
+            def resident_tree(_pid):
+                if signal_during == 'sample':
+                    signal.getsignal(signal.SIGTERM)(int(signal.SIGTERM), None)
+                if sample_fails:
+                    raise RuntimeError('ps reader died with group')
+                return 1024
+
+            @staticmethod
+            def physical_tree(_pid):
+                return 2048
+
+        def sleep(seconds):
+            if signal_during == 'sleep' and not slept:
+                signal.getsignal(signal.SIGTERM)(int(signal.SIGTERM), None)
+            slept.append(seconds)
+            clock[0] += seconds
+
+        monkeypatch.setattr(capture_backfill, '_sampler', lambda: FakeSampler)
+        monkeypatch.setattr(capture_backfill, 'time', types.SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+        work = tmp_path / f'{signal_during}-{sample_fails}'
+        with pytest.raises(InterruptedError, match=f'Batch monitor received signal {int(signal.SIGTERM)}'):
+            capture_backfill.monitor_command(['batch'], work=work)
+        report = json.loads((work / 'measurement.json').read_text())
+        return report, slept, stopped
+
+    report, slept, stopped = run_fake('sleep')
+    assert slept == [real_sampler.WAKE_SECONDS] and stopped == [real_sampler.WAKE_SECONDS]
+    assert report['failure']['type'] == 'InterruptedError'
+
+    # A fatal RuntimeError from sample() when a group signal has landed reports InterruptedError instead:
+    report_group, slept_group, stopped_group = run_fake('sample', sample_fails=True)
+    assert slept_group == [] and stopped_group == [0.0]
+    assert report_group['failure']['type'] == 'InterruptedError'
+
+

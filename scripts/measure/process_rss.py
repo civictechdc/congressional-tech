@@ -10,7 +10,60 @@ import errno
 import os
 import signal
 import sys
+import time
 from pathlib import Path
+
+STOP_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+# The longest a sampling loop sleeps before checking a recorded stop signal again:
+# PEP 475 restarts time.sleep after a non-raising handler returns, so waits run in slices.
+WAKE_SECONDS = 0.05
+
+
+class SignalRecorder:
+    """Record stop signals without raising into arbitrary code on the main thread.
+
+    Raising inside a signal handler can leave Popen._waitpid_lock held forever (ct-psb5)
+    or be swallowed as EINTR inside selectors.PollSelector.select during subprocess output
+    capture (ct-752r). The handler only appends the signal number; loops act at safe points.
+    """
+
+    def __init__(self, signals=STOP_SIGNALS, *, clock=time, wake_seconds=WAKE_SECONDS):
+        self.signals = tuple(signals)
+        self.clock = clock
+        self.wake_seconds = wake_seconds
+        self.received = []
+        self._previous = {}
+
+    def _record(self, number, _frame):
+        self.received.append(number)
+
+    def __enter__(self):
+        installed = {}
+        try:
+            for number in self.signals:
+                installed[number] = signal.signal(number, self._record)
+        except Exception:
+            for number, handler in installed.items():
+                signal.signal(number, handler)
+            raise
+        self._previous = installed
+        return self
+
+    def __exit__(self, *_exc):
+        for number, handler in self._previous.items():
+            signal.signal(number, handler)
+
+    @property
+    def first(self):
+        return self.received[0] if self.received else None
+
+    def sleep(self, duration):
+        """Sleep up to duration in wake_seconds slices, returning True once a signal arrives."""
+        waking = self.clock.monotonic() + duration
+        while not self.received and (left := waking - self.clock.monotonic()) > 0:
+            self.clock.sleep(min(left, self.wake_seconds))
+        return bool(self.received)
+
 
 
 def process_tree(pid):

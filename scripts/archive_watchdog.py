@@ -38,7 +38,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import signal
 import subprocess
 import sys
 import time
@@ -46,9 +45,6 @@ import time
 STOPPED = 99
 REFUSED = 98
 RAMP_SECONDS = 120
-# The longest the loop sleeps before it looks for a recorded signal again. A sleep resumes after a handler that
-# returns, so the wait between passes is taken in slices: 20 wake-ups a second, and nothing for a handler to lock.
-WAKE_SECONDS = 0.05
 # How long this file waits for vm_stat or ps to answer: the limit the sampler gives its own ps calls.
 READER_SECONDS = 5
 HERE = Path(__file__).resolve().parent
@@ -63,6 +59,8 @@ def _load(name, path):
 
 
 sampler = _load('archive_watchdog_sampler', HERE / 'measure/process_rss.py')
+SignalRecorder = sampler.SignalRecorder
+WAKE_SECONDS = sampler.WAKE_SECONDS
 
 
 class ReadingFailed(Exception):
@@ -264,71 +262,61 @@ def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval
     returned, so the watchdog hung with its job running and no report (ct-psb5). A
     signal during the stop itself is recorded and changes nothing.
     """
-    received = []
+    with SignalRecorder(clock=time, wake_seconds=WAKE_SECONDS) as signals:
+        def signalled():
+            return f'Interrupted: watchdog received signal {signals.first}' if signals.received else None
 
-    def record(number, _frame):
-        received.append(number)
-
-    def signalled():
-        return f'Interrupted: watchdog received signal {received[0]}' if received else None
-
-    old = {number: signal.signal(number, record) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
-    memory = sampler.MemorySamples(sampler)
-    blind = 0  # passes in a row without a free-memory reading
-    peak = physical_peak = 0.0
-    started = time.monotonic()
-    process = None
-    try:
-        # The owned group holds this descriptor until parent-death cleanup ends.
-        pass_fds = () if hold_fd is None else (hold_fd,)
-        process = sampler.start_owned(command, pass_fds=pass_fds)
-        while process.poll() is None:
-            reading = time.monotonic()
-            observed = memory.sample(process.pid)
-            rss, physical = (value / 2**30 for value in observed) if observed else (0.0, 0.0)
-            peak, physical_peak = max(peak, rss), max(physical_peak, physical)
-            free_disk = shutil.disk_usage(disk_root).free / 2**30
-            if timeline is not None:
-                now = time.monotonic()
-                timeline.write(json.dumps(dict(seconds=round(now - started, 3), epoch=round(time.time(), 3),
-                    read_seconds=round(now - reading, 3), rss_gb=round(rss, 3), physical_gb=round(physical, 3),
-                    free_disk_gb=round(free_disk, 1))) + '\n')
-                timeline.flush()
-            reason = None
-            if max(rss, physical) > rss_gb:
-                reason = f'process tree RSS {rss:.1f} GiB / physical {physical:.1f} GiB over the {rss_gb} GiB limit'
-            elif free_disk < min_disk_gb:
-                reason = f'free disk under {min_disk_gb} GiB'
-            else:
-                try:
-                    available = available_gb()
-                    squeezed = available is not None and available < min_available_gb and youngest()
-                    blind = 0
-                except ReadingFailed as error:
-                    # A gap for this pass, as sampler.MemorySamples treats a failed sample; the third in a row stops the job.
-                    blind += 1
-                    if blind >= 3:
-                        raise RuntimeError(f'Three consecutive readings of free memory failed, the last {error}') from error
-                    squeezed = False
-                if squeezed:
-                    reason = (f'machine memory available {available:.1f} GiB under {min_available_gb} GiB; '
-                              'the youngest running job stops first')
-            if reason:
-                return STOPPED, peak, physical_peak, reason, time.monotonic() - started
-            waking = time.monotonic() + interval
-            while not received and (left := waking - time.monotonic()) > 0:
-                time.sleep(min(left, WAKE_SECONDS))
-            if received:
-                return STOPPED, peak, physical_peak, signalled(), time.monotonic() - started
-        return process.returncode, peak, physical_peak, None, time.monotonic() - started
-    except Exception as error:  # the finally stops the job
-        # A signal to the whole group also kills the reader this pass had running; the signal is the reason.
-        return STOPPED, peak, physical_peak, signalled() or f'{type(error).__name__}: {error}', time.monotonic() - started
-    finally:
-        if process is not None:
-            sampler.stop_owned(process)
-        for number, handler in old.items():
-            signal.signal(number, handler)
+        memory = sampler.MemorySamples(sampler)
+        blind = 0  # passes in a row without a free-memory reading
+        peak = physical_peak = 0.0
+        started = time.monotonic()
+        process = None
+        try:
+            # The owned group holds this descriptor until parent-death cleanup ends.
+            pass_fds = () if hold_fd is None else (hold_fd,)
+            process = sampler.start_owned(command, pass_fds=pass_fds)
+            while process.poll() is None:
+                reading = time.monotonic()
+                observed = memory.sample(process.pid)
+                rss, physical = (value / 2**30 for value in observed) if observed else (0.0, 0.0)
+                peak, physical_peak = max(peak, rss), max(physical_peak, physical)
+                free_disk = shutil.disk_usage(disk_root).free / 2**30
+                if timeline is not None:
+                    now = time.monotonic()
+                    timeline.write(json.dumps(dict(seconds=round(now - started, 3), epoch=round(time.time(), 3),
+                        read_seconds=round(now - reading, 3), rss_gb=round(rss, 3), physical_gb=round(physical, 3),
+                        free_disk_gb=round(free_disk, 1))) + '\n')
+                    timeline.flush()
+                reason = None
+                if max(rss, physical) > rss_gb:
+                    reason = f'process tree RSS {rss:.1f} GiB / physical {physical:.1f} GiB over the {rss_gb} GiB limit'
+                elif free_disk < min_disk_gb:
+                    reason = f'free disk under {min_disk_gb} GiB'
+                else:
+                    try:
+                        available = available_gb()
+                        squeezed = available is not None and available < min_available_gb and youngest()
+                        blind = 0
+                    except ReadingFailed as error:
+                        # A gap for this pass, as sampler.MemorySamples treats a failed sample; the third in a row stops the job.
+                        blind += 1
+                        if blind >= 3:
+                            raise RuntimeError(f'Three consecutive readings of free memory failed, the last {error}') from error
+                        squeezed = False
+                    if squeezed:
+                        reason = (f'machine memory available {available:.1f} GiB under {min_available_gb} GiB; '
+                                  'the youngest running job stops first')
+                if reason:
+                    return STOPPED, peak, physical_peak, reason, time.monotonic() - started
+                if signals.sleep(interval):
+                    return STOPPED, peak, physical_peak, signalled(), time.monotonic() - started
+            return process.returncode, peak, physical_peak, None, time.monotonic() - started
+        except Exception as error:  # the finally stops the job
+            # A signal to the whole group also kills the reader this pass had running; the signal is the reason.
+            return STOPPED, peak, physical_peak, signalled() or f'{type(error).__name__}: {error}', time.monotonic() - started
+        finally:
+            if process is not None:
+                sampler.stop_owned(process)
 
 
 def main(argv=None):
