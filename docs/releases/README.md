@@ -187,35 +187,34 @@ non-Congress.gov sightings, `house_xml_updated`, `transcripts` or single-meeting
 - the `unambiguous` key-map rows resolving through `witness_rekey` to one of an updated or first
   stated meeting's Congress.gov witnesses (added where `old_key` belonged to that meeting's live
   Congress.gov witnesses or is absent from base witnesses as a `free_context_key` prior, or with a
-  changed value on that meeting); held single-meeting documents (`list.parquet`, `detail.parquet`)
-  whose `witness_keys` gained or lost only witnesses of that document's own updated meeting, whose
+  changed value on that meeting); held documents (`list.parquet`, `detail.parquet`) whose
+  `witness_keys` gained or lost only witnesses of that document's own updated meetings, whose
   `meeting_keys` linked an unlinked held document to a matched updated meeting via a newly added
   witness, or whose meeting-derived `document_date` (with `document_date_source` /
   `document_date_status`), `congress`, `chambers`, `committee_keys` or generic witness-statement
-  `title` moved solely from that meeting's update (together with any resulting `list_row`
-  permutation across `list`, `detail`, `links`, `urls` and `sources` whose order inversions all
-  involve a moved-date document); added `nominations` and `bills` newly introduced in
+  `title` moved solely from its linked meetings' updates (together with any resulting `list_row`
+  permutation across `list`, `detail`, `links`, `urls`, `sources` and `recoveries` whose untouched
+  rows keep relative order); added `nominations` and `bills` newly introduced in
   `new_update_subjects` (plus 1-hop `related_bills` neighbors of newly introduced bills);
-  `publisher_link` rows of `recording_matches` matching `meetings.videos` (plus `video_states_event_id`
-  rows resolving from `unresolved` to `asserted` when a held video's `stated_event_ids` matches a
-  first stated meeting) and the corresponding publisher-video rows and `event_ids` changes of
-  `recordings`; `meeting_coverage` (every coverage row of a first stated meeting, and on a matched
-  updated meeting its `witnesses` aspect with unchanged non-caption transcripts, `recording` and
-  `captions` when moved by `meetings.videos` without non-`publisher_link` match or caption/track
-  changes, zero-count `transcript` jacket status with unchanged non-caption transcripts, and
-  zero-count `documents` status, including un-cancellation `not_applicable` to `expected` flips);
-  and `url_state` rescheduled `recheck_meeting_date` and recomputed `next_attempt_at` bands on URLs
-  linked via `sources`, `meetings.document_references` or House meeting URL patterns.
+  `publisher_link` rows of `recording_matches` matching `meetings.videos` (plus `claimed`
+  `video_states_event_id` rows resolving `event_id`, `score`, `note` and `meeting_links` when a
+  held video's `stated_event_ids` matches a first stated meeting) and the corresponding
+  `meetings.videos` rows and `event_ids` changes of `recordings`; `meeting_coverage` (every coverage
+  row of a first stated meeting, and on a matched updated meeting its `witnesses` aspect with
+  unchanged non-caption transcripts, `recording` and `captions` when moved by `meetings.videos`
+  without non-`publisher_link` match or caption/track changes, zero-count `transcript` jacket status
+  with unchanged non-caption transcripts, and zero-count `documents` status); and `url_state`
+  rescheduled `recheck_meeting_date` and recomputed `next_attempt_at` bands on URLs linked via
+  `sources`, `meetings.document_references` or House meeting URL patterns.
 
 Still stopping: anything the link rule refuses (a lost or changed link or lookup key, a removed
 meeting); a removed witness key with no map row, an `ambiguous` or `unresolved` map row (lost keys
 until dropped witnesses are kept as "no longer listed"), a map row whose successor is not published,
 not on that meeting or not Congress.gov, or that turns `ambiguous` or `unresolved`, a map that
 collapses distinct base occurrences; a first stated meeting claiming an existing unlinked base
-document, a multi-meeting held document whose meeting-derived metadata moves, a non-generic held
-document title edit, or a rescheduled non-document `url_state` address linked only through
-`publisher_links` / `capture_source_contexts`; any row of another source (MODS, House XML, Senate
-pages, aside from `superseded_by` pointing to an updated Congress.gov witness) or of a meeting not
+document, a non-generic held document title edit, or a rescheduled non-document `url_state` address
+linked only through `publisher_links` / `capture_source_contexts`; any row of another source (MODS,
+House XML, Senate pages, aside from `superseded_by` pointing to an updated Congress.gov witness) or of a meeting not
 updated (aside from an unchanged twin's `rescheduled_to` / `rescheduled_basis` to or from an updated
 meeting); a column another source moves (GovInfo or committee `transcripts`, `house_xml_updated`, or
 `subject_keys` carrying a single-meeting document's `measure_keys` or a non-caption transcript

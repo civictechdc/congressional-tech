@@ -1327,33 +1327,51 @@ def recordings(d: Diff):
     tracks = {'tracks': 'list_transform(X.{c},t->t.body)'}
     join = 'base_recordings p JOIN candidate_recordings l USING(video_key)'
     groups += d.changed('recordings', join, tracks, set())
+    import pyarrow as pa
     r_shared = set(d.columns('base', 'recordings')) & cand_cols if updated_meetings(d) else set()
-    if {'video_key', 'event_ids', 'tracks'} <= r_shared:
+    m_shared = (set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
+                if r_shared and d.has('base', 'meetings') and d.has('candidate', 'meetings') else set())
+    vt = d.arrow_types('base', 'meetings').get('videos') if 'videos' in m_shared else None
+    videos_ok = (vt is not None and vt == d.arrow_types('candidate', 'meetings').get('videos')
+                 and (pa.types.is_list(vt) or pa.types.is_large_list(vt))
+                 and pa.types.is_struct(vt.value_type) and 'video_key' in {f.name for f in vt.value_type})
+    if {'video_key', 'event_ids', 'tracks'} <= r_shared and videos_ok:
+        def in_m_videos(side, ev_expr, vk_expr):
+            return (f"EXISTS (SELECT 1 FROM (SELECT unnest(m.videos) AS v FROM {side}_meetings m "
+                    f"WHERE m.event_id={ev_expr} AND m.videos IS NOT NULL) WHERE nullif(trim(v.video_key),'')={vk_expr})")
         flips = ("EXISTS (SELECT 1 FROM flips f WHERE f.b_real AND NOT f.a_real AND split_part(l.video_key,':',2)<>'' AND contains(f.address,split_part(l.video_key,':',2)))"
                  if d.link_causes else 'false')
         first_rec = d.one(f"""SELECT count(*) FROM (SELECT * FROM candidate_recordings ANTI JOIN base_recordings USING(video_key)) l
           WHERE NOT ({flips}) AND coalesce(len(l.tracks),0)=0 AND coalesce(len(l.event_ids),0)>0
-            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(l.event_ids) AS e) WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE added))""")
+            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(l.event_ids) AS e)
+              WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE added) OR NOT {in_m_videos('candidate', 'e', 'l.video_key')})""")
         upd_rec = d.one(f"""SELECT count(*) FROM (SELECT * FROM candidate_recordings ANTI JOIN base_recordings USING(video_key)) l
           WHERE NOT ({flips}) AND coalesce(len(l.tracks),0)=0 AND coalesce(len(l.event_ids),0)>0
-            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(l.event_ids) AS e) WHERE e NOT IN (SELECT event_id FROM meeting_update))
+            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(l.event_ids) AS e)
+              WHERE e NOT IN (SELECT event_id FROM meeting_update) OR NOT {in_m_videos('candidate', 'e', 'l.video_key')}
+                OR {in_m_videos('base', 'e', 'l.video_key')})
             AND EXISTS (SELECT 1 FROM (SELECT unnest(l.event_ids) AS e) WHERE e IN (SELECT event_id FROM meeting_update WHERE NOT added))""")
-        rem_rec = d.one("""SELECT count(*) FROM (SELECT * FROM base_recordings ANTI JOIN candidate_recordings USING(video_key)) p
+        rem_rec = d.one(f"""SELECT count(*) FROM (SELECT * FROM base_recordings ANTI JOIN candidate_recordings USING(video_key)) p
           WHERE coalesce(len(p.tracks),0)=0 AND coalesce(len(p.event_ids),0)>0
-            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(p.event_ids) AS e) WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE NOT added))""")
+            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(p.event_ids) AS e)
+              WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE NOT added) OR NOT {in_m_videos('base', 'e', 'p.video_key')}
+                OR {in_m_videos('candidate', 'e', 'p.video_key')})""")
         groups = split_group(groups, 'added keys', 'with event_ids; source not traced', first_rec, f'with event_ids; {FIRST_STATED}')
         groups = split_group(groups, 'added keys', 'with event_ids; source not traced', upd_rec, f'with event_ids; {MEETING_UPDATE}')
         groups = split_group(groups, 'removed keys', 'unexplained', rem_rec, MEETING_UPDATE)
         ev_groups = [g for g in groups if g['group'] == 'changed event_ids']
         if ev_groups:
-            ev_where = """list_transform(p.tracks,t->t.body) IS NOT DISTINCT FROM list_transform(l.tracks,t->t.body)
+            l_diff = 'SELECT unnest(coalesce(l.event_ids,CAST([] AS BIGINT[]))) AS e EXCEPT SELECT unnest(coalesce(p.event_ids,CAST([] AS BIGINT[])))'
+            p_diff = 'SELECT unnest(coalesce(p.event_ids,CAST([] AS BIGINT[]))) AS e EXCEPT SELECT unnest(coalesce(l.event_ids,CAST([] AS BIGINT[])))'
+            ev_where = f"""list_transform(p.tracks,t->t.body) IS NOT DISTINCT FROM list_transform(l.tracks,t->t.body)
               AND (coalesce(len(l.event_ids),0)>0 OR coalesce(len(p.tracks),0)>0)
-              AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(coalesce(l.event_ids,CAST([] AS BIGINT[]))) AS e
-                  EXCEPT SELECT unnest(coalesce(p.event_ids,CAST([] AS BIGINT[]))))
-                WHERE e NOT IN (SELECT event_id FROM meeting_update))
-              AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(coalesce(p.event_ids,CAST([] AS BIGINT[]))) AS e
-                  EXCEPT SELECT unnest(coalesce(l.event_ids,CAST([] AS BIGINT[]))))
-                WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE NOT added))"""
+              AND (EXISTS ({l_diff}) OR EXISTS ({p_diff}))
+              AND NOT EXISTS (SELECT 1 FROM ({l_diff})
+                WHERE e NOT IN (SELECT event_id FROM meeting_update) OR NOT {in_m_videos('candidate', 'e', 'l.video_key')}
+                  OR {in_m_videos('base', 'e', 'l.video_key')})
+              AND NOT EXISTS (SELECT 1 FROM ({p_diff})
+                WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE NOT added) OR NOT {in_m_videos('base', 'e', 'p.video_key')}
+                  OR {in_m_videos('candidate', 'e', 'p.video_key')})"""
             groups = refetch_split(groups, changed_counts(d, join, ev_groups, ev_where, tracks), MEETING_UPDATE)
     return groups, {}
 
@@ -1772,7 +1790,7 @@ def account(d: Diff):
 
 def _mark_list_row_reorders(d: Diff, report):
     """Mark byte-only `list_row` permutations in document-indexed tables when `list.parquet` re-sorted
-    one-to-one rows solely because a Congress.gov meeting update moved `document_date` (ct-rhqw)."""
+    one-to-one rows solely because a Congress.gov meeting update moved `document_date` or `title` (ct-rhqw)."""
     list_entry = report.get('list.parquet')
     if not (d.meeting_update and list_entry and list_entry['groups']):
         return
@@ -1780,18 +1798,20 @@ def _mark_list_row_reorders(d: Diff, report):
         return
     if not all(g['status'] == 'verified' and g.get('refetch_only') for g in list_entry['groups']):
         return
-    if not any(g['group'] == 'changed document_date' for g in list_entry['groups']):
-        return
-    if 'document_date' not in set(d.columns('base', 'list')) & set(d.columns('candidate', 'list')):
+    shared_list = set(d.columns('base', 'list')) & set(d.columns('candidate', 'list'))
+    order_cols = [c for c in ('document_date', 'title') if c in shared_list]
+    if not order_cols or not any(g['group'] in {f'changed {c}' for c in order_cols} for g in list_entry['groups']):
         return
     if not d.one('SELECT count(*) FROM one_to_one WHERE pr<>lr'):
         return
-    bad_inversion = d.one("""SELECT count(*) FROM
-        one_to_one a JOIN base_list pa ON pa.file_row_number=a.pr JOIN candidate_list la ON la.file_row_number=a.lr,
-        one_to_one b JOIN base_list pb ON pb.file_row_number=b.pr JOIN candidate_list lb ON lb.file_row_number=b.lr
-      WHERE a.pr<b.pr AND a.lr>b.lr
-        AND pa.document_date IS NOT DISTINCT FROM la.document_date
-        AND pb.document_date IS NOT DISTINCT FROM lb.document_date""")
+    same_order = ' AND '.join(f'pa."{c}" IS NOT DISTINCT FROM la."{c}"' for c in order_cols)
+    bad_inversion = d.one(f"""SELECT count(*) FROM (
+        SELECT a.lr, lag(a.lr) OVER (ORDER BY a.pr) AS prev_lr
+        FROM one_to_one a
+        JOIN base_list pa ON pa.file_row_number=a.pr
+        JOIN candidate_list la ON la.file_row_number=a.lr
+        WHERE {same_order}
+    ) WHERE prev_lr > lr""")
     if bad_inversion:
         return
     if d.has('base', 'links') and d.has('candidate', 'links') and d.one(

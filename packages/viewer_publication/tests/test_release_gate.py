@@ -1304,7 +1304,8 @@ RECORDINGS = pa.schema([
                                    ('language', pa.string()), ('production', pa.string())])))])
 
 
-def publisher_video_matches_case(*, first=False, curated=False, non_updated_event=False, extra_track=False, bad_rec_event=False):
+def publisher_video_matches_case(*, first=False, curated=False, non_updated_event=False, extra_track=False,
+                                 bad_rec_event=False, html_page_recording=False, html_page_shared_event=False):
     v1_url, v2_url = 'https://www.youtube.com/watch?v=v1', 'https://www.youtube.com/watch?v=v2'
     vs_url = 'https://www.youtube.com/watch?v=vs'
     ev_url = 'https://www.congress.gov/event/119th-Congress/house-event/118340'
@@ -1330,6 +1331,12 @@ def publisher_video_matches_case(*, first=False, curated=False, non_updated_even
     vs_events = [118340, 338820, 999999] if bad_rec_event else [118340, 999999]
     cand_rec = [dict(video_key='youtube:v2', event_ids=[118340], tracks=track),
                 dict(video_key='youtube:vs', event_ids=vs_events, tracks=[])]
+    if html_page_recording:
+        cand_rec.append(dict(video_key='youtube:html_page_only', event_ids=[118340], tracks=[]))
+    if html_page_shared_event:
+        cand = edit(cand, 'meetings', lambda r: r[0].update(videos=[dict(name='v2', url=v2_url, video_key='youtube:v2'),
+                                                                    dict(name='ev', url=ev_url, video_key=None)]))
+        cand_rm = [m for m in cand_rm if not (m['event_id'] == 118340 and m['video_key'] == 'youtube:vs')]
     if curated:
         cand_rm.append(publisher_match(118340, 'youtube:c1', None, basis='curated', decision='found', score=None,
                                        recording_scope='full', status='decided', source_ref='recording_decisions:rd-1'))
@@ -1589,6 +1596,27 @@ def held_document_update_case(kind='date_title_meta_and_reorder'):
     b_row = dict(key='B', filename='testimony.pdf', title='Prepared Statement - Pat Roe',
                  committee_keys=['ssfi00'], chambers=['senate'], congress=119, document_date=mid_date,
                  document_date_source='meeting', document_date_status='accepted', meeting_keys=['999999'], witness_keys=[])
+    if kind == 'title_only_reorder':
+        base, _ = meeting_row(base_tables(panel=(('Zachary Lee', 'GAO'), PANEL[1])), 999999, read=False)
+        untouched = base['meetings'].to_pylist()[1]
+        cand = cand_tables(panel=(('Anna Lee', 'GAO'), PANEL[1]),
+                           mapped=[('k1', 'n1', 'locator'), ('w1', 'n1', 'locator'),
+                                   ('w2', 'n2', 'content'), ('v1', 'n1', 'locator')])
+        cand = {**cand, 'meetings': pa.Table.from_pylist([*cand['meetings'].to_pylist(), untouched], schema=MEETINGS)}
+        meta = [dict(chamber='house', congress=119, committees=[dict(system_code='hsag00', role='primary')]),
+                dict(chamber='senate', congress=119, committees=[dict(system_code='ssfi00', role='primary')])]
+        base['meetings'] = with_meta(base['meetings'], meta)
+        cand['meetings'] = with_meta(cand['meetings'], meta)
+        a_b = dict(key='A', filename='testimony.pdf', title='Testimony - Zachary Lee',
+                   committee_keys=['hsag00'], chambers=['house'], congress=119, document_date=HEARD,
+                   document_date_source='meeting', document_date_status='accepted', meeting_keys=['118340'], witness_keys=['w1'])
+        a_c = dict(a_b, title='Testimony - Anna Lee', witness_keys=['n1'])
+        b_same = dict(key='B', filename='testimony.pdf', title='Testimony - Mid Person',
+                      committee_keys=['ssfi00'], chambers=['senate'], congress=119, document_date=HEARD,
+                      document_date_source='meeting', document_date_status='accepted', meeting_keys=['999999'], witness_keys=[])
+        return ({**base, **doc_tables([b_same, a_b])},
+                {**cand, **doc_tables([a_c, b_same])},
+                None, (), (['B', 'A'], ['A', 'B']))
     if kind == 'unexplained_swap':
         c_row = dict(b_row, key='C', document_date=HEARD + timedelta(days=20))
         a_early_b = dict(a_base, document_date=HEARD - timedelta(days=20))
@@ -1713,6 +1741,7 @@ CASES = {
     'postponed_update_points_to_later_twin': (rescheduled_twin_case, True),
     'unchanged_postponed_meeting_gains_first_stated_twin': (lambda: rescheduled_twin_case(kind='unchanged_points_to_first_stated'), True),
     'held_documents_follow_updated_meeting_date_title_meta_and_reorder': (held_document_update_case, True),
+    'held_document_title_only_reorder_passes': (lambda: held_document_update_case(kind='title_only_reorder'), True),
     'matched_updated_meeting_links_held_witness_document': (lambda: held_document_update_case(kind='matched_meeting_links_witness_doc'), True),
     'house_xml_unchanged_recheck_beside_an_update': (lambda: (
         base_tables(), cand_tables(),
@@ -1877,6 +1906,8 @@ CASES = {
     'publisher_video_match_on_non_updated_meeting_beside_an_update': (lambda: publisher_video_matches_case(non_updated_event=True), 'recording_matches.parquet|added keys|no evidence given'),
     'added_recording_carries_new_caption_tracks_on_an_update': (lambda: publisher_video_matches_case(extra_track=True), 'recordings.parquet|added keys'),
     'recording_event_ids_gains_non_updated_meeting_beside_update': (lambda: publisher_video_matches_case(bad_rec_event=True), 'recordings.parquet|changed event_ids'),
+    'html_page_recording_added_on_an_update': (lambda: publisher_video_matches_case(html_page_recording=True), 'recordings.parquet|added keys'),
+    'html_page_event_added_to_shared_recording_on_an_update': (lambda: publisher_video_matches_case(html_page_shared_event=True), 'recordings.parquet|changed event_ids'),
     'uncanceled_to_held_without_evidence_on_an_update': (lambda: (
         base_tables(status='Canceled', held=('canceled', 'publisher_cancellation', OLD_RECORD.hex()),
                     statuses=[('congress_gov', 'Canceled', HEARD, OLD_RECORD.hex(), FIRST_SEEN)]),
