@@ -62,55 +62,55 @@
       "type": "string"
     },
     {
-      "id": 14,
+      "id": 10,
       "name": "context_url",
       "required": false,
       "type": "string"
     },
     {
-      "id": 15,
+      "id": 11,
       "name": "member_path",
       "required": false,
       "type": "string"
     },
     {
-      "id": 42,
+      "id": 12,
       "name": "original_path",
       "required": false,
       "type": "string"
     },
     {
-      "id": 17,
+      "id": 13,
       "name": "h_content_disposition",
       "required": false,
       "type": "string"
     },
     {
-      "id": 38,
+      "id": 14,
       "name": "attempt",
       "required": false,
       "type": "int"
     },
     {
-      "id": 11,
+      "id": 15,
       "name": "http_status",
       "required": false,
       "type": "int"
     },
     {
-      "id": 13,
+      "id": 16,
       "name": "complete",
       "required": false,
       "type": "boolean"
     },
     {
-      "id": 39,
+      "id": 17,
       "name": "fetch_http_status",
       "required": false,
       "type": "int"
     },
     {
-      "id": 40,
+      "id": 18,
       "name": "fetch_outcome",
       "required": false,
       "type": "string"
@@ -164,13 +164,13 @@
       "type": "boolean"
     },
     {
-      "id": 16,
+      "id": 27,
       "name": "expansion",
       "required": false,
       "type": "string"
     },
     {
-      "id": 27,
+      "id": 28,
       "name": "stored_suffix",
       "required": false,
       "type": "string"
@@ -182,61 +182,61 @@
       "type": "long"
     },
     {
-      "id": 28,
+      "id": 30,
       "name": "stored_md5",
       "required": false,
       "type": "fixed[16]"
     },
     {
-      "id": 30,
+      "id": 31,
       "name": "recovery_category",
       "required": false,
       "type": "string"
     },
     {
-      "id": 31,
+      "id": 32,
       "name": "original_url",
       "required": false,
       "type": "string"
     },
     {
-      "id": 32,
+      "id": 33,
       "name": "recovered_url",
       "required": false,
       "type": "string"
     },
     {
-      "id": 33,
+      "id": 34,
       "name": "match_basis",
       "required": false,
       "type": "string"
     },
     {
-      "id": 34,
+      "id": 35,
       "name": "evidence_sha256",
       "required": false,
       "type": "fixed[32]"
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "imported_at",
       "required": false,
       "type": "timestamptz"
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "writer_job",
       "required": false,
       "type": "string"
     },
     {
-      "id": 37,
+      "id": 38,
       "name": "writer_commit",
       "required": false,
       "type": "string"
     },
     {
-      "id": 41,
+      "id": 39,
       "name": "mapping_version",
       "required": false,
       "type": "string"

@@ -67,126 +67,126 @@
       "required": true,
       "type": {
         "type": "list",
-        "element-id": 11,
+        "element-id": 16,
         "element-required": true,
         "element": {
           "type": "struct",
           "fields": [
             {
-              "id": 12,
+              "id": 17,
               "name": "source_locator",
               "required": true,
               "type": "string"
             },
             {
-              "id": 13,
+              "id": 18,
               "name": "name_key",
               "required": false,
               "type": "string"
             },
             {
-              "id": 14,
+              "id": 19,
               "name": "name",
               "required": false,
               "type": "string"
             },
             {
-              "id": 15,
+              "id": 20,
               "name": "honorific",
               "required": false,
               "type": "string"
             },
             {
-              "id": 16,
+              "id": 21,
               "name": "given",
               "required": false,
               "type": "string"
             },
             {
-              "id": 17,
+              "id": 22,
               "name": "middle",
               "required": false,
               "type": "string"
             },
             {
-              "id": 18,
+              "id": 23,
               "name": "family",
               "required": false,
               "type": "string"
             },
             {
-              "id": 19,
+              "id": 24,
               "name": "suffix",
               "required": false,
               "type": "string"
             },
             {
-              "id": 20,
+              "id": 25,
               "name": "position",
               "required": false,
               "type": "string"
             },
             {
-              "id": 21,
+              "id": 26,
               "name": "organization",
               "required": false,
               "type": "string"
             },
             {
-              "id": 22,
+              "id": 27,
               "name": "on_behalf_of",
               "required": false,
               "type": "string"
             },
             {
-              "id": 23,
+              "id": 28,
               "name": "location",
               "required": false,
               "type": "string"
             },
             {
-              "id": 24,
+              "id": 29,
               "name": "panel",
               "required": false,
               "type": "string"
             },
             {
-              "id": 25,
+              "id": 30,
               "name": "panel_order",
               "required": false,
               "type": "int"
             },
             {
-              "id": 26,
+              "id": 31,
               "name": "display_order",
               "required": false,
               "type": "int"
             },
             {
-              "id": 27,
+              "id": 32,
               "name": "witness_type",
               "required": false,
               "type": "string"
             },
             {
-              "id": 28,
+              "id": 33,
               "name": "testified",
               "required": false,
               "type": "boolean"
             },
             {
-              "id": 29,
+              "id": 34,
               "name": "bioguide_id",
               "required": false,
               "type": "string"
             },
             {
-              "id": 30,
+              "id": 35,
               "name": "document_links",
               "required": true,
               "type": {
                 "type": "list",
-                "element-id": 31,
+                "element-id": 36,
                 "element-required": true,
                 "element": "string"
               }
@@ -196,31 +196,8 @@
       }
     },
     {
-      "id": 32,
+      "id": 11,
       "name": "held_dates",
-      "required": false,
-      "type": {
-        "type": "list",
-        "element-id": 33,
-        "element-required": true,
-        "element": "string"
-      }
-    },
-    {
-      "id": 34,
-      "name": "title",
-      "required": false,
-      "type": "string"
-    },
-    {
-      "id": 35,
-      "name": "created",
-      "required": false,
-      "type": "string"
-    },
-    {
-      "id": 36,
-      "name": "committees",
       "required": false,
       "type": {
         "type": "list",
@@ -230,7 +207,30 @@
       }
     },
     {
-      "id": 38,
+      "id": 12,
+      "name": "title",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 13,
+      "name": "created",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 14,
+      "name": "committees",
+      "required": false,
+      "type": {
+        "type": "list",
+        "element-id": 38,
+        "element-required": true,
+        "element": "string"
+      }
+    },
+    {
+      "id": 15,
       "name": "committee_members",
       "required": false,
       "type": {

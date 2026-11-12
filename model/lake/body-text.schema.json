@@ -37,7 +37,7 @@
       "required": true,
       "type": {
         "type": "list",
-        "element-id": 101,
+        "element-id": 9,
         "element-required": true,
         "element": "int"
       }
@@ -48,7 +48,7 @@
       "required": true,
       "type": {
         "type": "list",
-        "element-id": 102,
+        "element-id": 10,
         "element-required": true,
         "element": "int"
       }

@@ -109,7 +109,7 @@
       "required": true,
       "type": {
         "type": "list",
-        "element-id": 101,
+        "element-id": 21,
         "element-required": true,
         "element": "long"
       }
@@ -120,61 +120,61 @@
       "required": true,
       "type": {
         "type": "list",
-        "element-id": 102,
+        "element-id": 22,
         "element-required": true,
         "element": {
           "type": "struct",
           "fields": [
             {
-              "id": 110,
+              "id": 23,
               "name": "href",
               "required": true,
               "type": "string"
             },
             {
-              "id": 111,
+              "id": 24,
               "name": "text",
               "required": true,
               "type": "string"
             },
             {
-              "id": 112,
+              "id": 25,
               "name": "tag",
               "required": true,
               "type": "string"
             },
             {
-              "id": 113,
+              "id": 26,
               "name": "basis",
               "required": true,
               "type": "string"
             },
             {
-              "id": 114,
+              "id": 27,
               "name": "group_path",
               "required": false,
               "type": "string"
             },
             {
-              "id": 115,
+              "id": 28,
               "name": "doc_type",
               "required": false,
               "type": "string"
             },
             {
-              "id": 116,
+              "id": 29,
               "name": "add_date",
               "required": false,
               "type": "string"
             },
             {
-              "id": 117,
+              "id": 30,
               "name": "publish_date",
               "required": false,
               "type": "string"
             },
             {
-              "id": 118,
+              "id": 31,
               "name": "remove_date",
               "required": false,
               "type": "string"
@@ -195,19 +195,19 @@
       "required": true,
       "type": {
         "type": "list",
-        "element-id": 103,
+        "element-id": 32,
         "element-required": true,
         "element": {
           "type": "struct",
           "fields": [
             {
-              "id": 120,
+              "id": 33,
               "name": "field",
               "required": true,
               "type": "string"
             },
             {
-              "id": 121,
+              "id": 34,
               "name": "value",
               "required": true,
               "type": "string"

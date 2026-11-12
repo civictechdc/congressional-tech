@@ -8,14 +8,14 @@
     {"id": 3, "name": "status", "required": true, "type": "string"},
     {"id": 4, "name": "error_type", "required": false, "type": "string"},
     {"id": 5, "name": "source", "required": true, "type": "string"},
-    {"id": 6, "name": "channels", "required": true, "type": {"type": "list", "element-id": 7, "element-required": true, "element": {"type": "struct", "fields": [
-      {"id": 8, "name": "handle", "required": true, "type": "string"},
-      {"id": 9, "name": "channel_id", "required": false, "type": "string"},
-      {"id": 10, "name": "title", "required": false, "type": "string"},
-      {"id": 11, "name": "custom_url", "required": false, "type": "string"},
-      {"id": 12, "name": "uploads_scan_complete", "required": false, "type": "boolean"}
+    {"id": 6, "name": "channels", "required": true, "type": {"type": "list", "element-id": 8, "element-required": true, "element": {"type": "struct", "fields": [
+      {"id": 9, "name": "handle", "required": true, "type": "string"},
+      {"id": 10, "name": "channel_id", "required": false, "type": "string"},
+      {"id": 11, "name": "title", "required": false, "type": "string"},
+      {"id": 12, "name": "custom_url", "required": false, "type": "string"},
+      {"id": 13, "name": "uploads_scan_complete", "required": false, "type": "boolean"}
     ]}}},
-    {"id": 13, "name": "videos", "required": true, "type": {"type": "list", "element-id": 14, "element-required": true, "element": {"type": "struct", "fields": [
+    {"id": 7, "name": "videos", "required": true, "type": {"type": "list", "element-id": 14, "element-required": true, "element": {"type": "struct", "fields": [
       {"id": 15, "name": "handle", "required": true, "type": "string"},
       {"id": 16, "name": "video_id", "required": true, "type": "string"},
       {"id": 17, "name": "channel_id", "required": false, "type": "string"},

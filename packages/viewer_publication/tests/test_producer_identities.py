@@ -10,7 +10,15 @@ import re
 
 import pytest
 
-from congress_api.lake import appearance_records, committee_records, filenames, meeting_records, versions
+from congress_api.lake import (
+    appearance_records,
+    committee_records,
+    filenames,
+    meeting_records,
+    playlist_records,
+    versions,
+    video_records,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 PUBLISHED = json.loads((ROOT / 'model/jobs/publish-model.json').read_text())
@@ -24,11 +32,26 @@ def identities(root=ROOT):
     return result
 
 
+def all_identities(root=ROOT):
+    result = identities(root=root)
+    result.update({f'playlist_records.{s}': v for s, v in playlist_records.current_versions(root=root).items()})
+    result.update({f'video_records.{s}': v for s, v in video_records.current_versions(root=root).items()})
+    return result
+
+
 def published():
     pins = PUBLISHED['parser_versions']
     result = {f'{table}.{s}': v for table in ('appearance_records', 'meeting_records', 'committee_records')
               for s, v in pins[table].items()}
     result['filename_readings'] = PUBLISHED['catalog_version']
+    return result
+
+
+def all_published():
+    pins = PUBLISHED['parser_versions']
+    result = published()
+    for table in ('playlist_records', 'video_records'):
+        result.update({f'{table}.{s}': v for s, v in pins[table].items()})
     return result
 
 
@@ -45,14 +68,14 @@ def bumped_checkout(tmp_path, package):
 
 
 def test_current_identities_are_the_published_pins():
-    assert identities() == published()
+    assert all_identities() == all_published()
 
 
 # aiohttp, pyasn1, urllib3, certifi and pillow were the pending security patches
 # (ct-680z). pypdf feeds only readings, which carry declared versions.
 @pytest.mark.parametrize('package', ['aiohttp', 'pyasn1', 'urllib3', 'certifi', 'pillow', 'pypdf', 'boto3'])
 def test_an_unrelated_locked_package_leaves_every_identity(tmp_path, package):
-    assert identities(bumped_checkout(tmp_path, package)) == published()
+    assert all_identities(bumped_checkout(tmp_path, package)) == all_published()
 
 
 @pytest.mark.parametrize('package,moved', [
@@ -64,7 +87,7 @@ def test_an_unrelated_locked_package_leaves_every_identity(tmp_path, package):
     ('pyarrow', set(published())),
 ])
 def test_an_imported_package_moves_exactly_its_importers(tmp_path, package, moved):
-    before, after = published(), identities(bumped_checkout(tmp_path, package))
+    before, after = all_published(), all_identities(bumped_checkout(tmp_path, package))
     assert {name for name in before if after[name] != before[name]} == moved
     assert all(after[name] not in versions._REVIEWED_PRODUCER_VERSIONS.values() for name in moved)
 
@@ -72,9 +95,9 @@ def test_an_imported_package_moves_exactly_its_importers(tmp_path, package, move
 def test_each_reviewed_entry_is_a_current_fingerprint_of_its_published_pin(monkeypatch):
     reviewed = dict(versions._REVIEWED_PRODUCER_VERSIONS)
     monkeypatch.setattr(versions, '_REVIEWED_PRODUCER_VERSIONS', {})
-    fingerprints = identities()
+    fingerprints = all_identities()
     # A producer whose published pin is its own fingerprint (a deliberate bump since ct-an6o) needs no entry.
-    assert reviewed == {fingerprints[name]: pin for name, pin in published().items() if fingerprints[name] != pin}
+    assert reviewed == {fingerprints[name]: pin for name, pin in all_published().items() if fingerprints[name] != pin}
 
 
 @pytest.mark.parametrize('name', ['meeting_records.house_xml', 'filename_readings'])
