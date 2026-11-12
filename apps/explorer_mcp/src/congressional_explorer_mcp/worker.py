@@ -69,6 +69,9 @@ def _run(connection, selection, scratch):
             finished.set()
 
 
+WARM_TIMEOUT = 60.0
+
+
 class Worker:
     def __init__(self, selection, *, timeout=10.0):
         if not 0 < timeout <= 120:
@@ -95,7 +98,8 @@ class Worker:
         await self._stop()
         raise ExplorerError('Query exceeded its deadline; the query process was stopped')
 
-    async def _start(self):
+    async def _start(self, *, timeout=None):
+        budget = self.timeout if timeout is None else timeout
         context = multiprocessing.get_context('spawn')
         self.scratch = TemporaryDirectory(prefix='congress-mcp-query-')
         self.connection, child = context.Pipe()
@@ -103,7 +107,7 @@ class Worker:
         try:
             self.process.start()
             child.close()
-            await self._receive(time.monotonic() + self.timeout)
+            await self._receive(time.monotonic() + budget)
         except BaseException:
             child.close()
             await self._stop()
@@ -126,7 +130,7 @@ class Worker:
         if scratch:
             scratch.cleanup()
 
-    async def call(self, method, query):
+    async def _execute(self, method, query, *, timeout):
         if self.closed:
             raise ExplorerError('Server is closing')
         if self.pending >= 5:
@@ -138,9 +142,9 @@ class Worker:
                     raise ExplorerError('Server is closing')
                 try:
                     if self.process is None:
-                        await self._start()
+                        await self._start(timeout=timeout)
                     self.connection.send((method, query))
-                    return (await self._receive(time.monotonic() + self.timeout))['result']
+                    return (await self._receive(time.monotonic() + timeout))['result']
                 except asyncio.CancelledError:
                     await asyncio.shield(self._stop())
                     raise
@@ -149,6 +153,15 @@ class Worker:
                     raise ExplorerError('Query process disconnected; retry the query') from error
         finally:
             self.pending -= 1
+
+    async def call(self, method, query):
+        return await self._execute(method, query, timeout=self.timeout)
+
+    async def warm(self, *, timeout=None):
+        budget = max(self.timeout, WARM_TIMEOUT) if timeout is None else timeout
+        if not 0 < budget <= 120:
+            raise ExplorerError('Warm timeout must be greater than zero and at most 120 seconds')
+        return await self._execute('warm', {}, timeout=budget)
 
     async def close(self):
         self.closed = True

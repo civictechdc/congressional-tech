@@ -18,15 +18,30 @@ from .release import PUBLICATION, encoded, load_selection, prepare
 from .hearing_models import HearingBundleQuery, TranscriptQuery
 
 
-def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION):
+def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION, warm_on_start=False):
     if selection is None and data_dir is None:
         raise ValueError('A selected release or data directory is required')
     worker = Worker(selection, timeout=timeout)
     setup_lock = anyio.Lock()
 
+    async def ensure_selection():
+        if worker.selection is None:
+            async with setup_lock:
+                if worker.selection is None:
+                    # Keep MCP initialization fast. The host may cancel a tool,
+                    # but keep this lock until the preparer's thread finishes.
+                    loader = partial(load_selection, data_dir) if (data_dir / 'selection.json').exists() else partial(prepare, data_dir, publication)
+                    worker.selection = await anyio.to_thread.run_sync(loader)
+
+    async def warm():
+        await ensure_selection()
+        return await worker.warm()
+
     @asynccontextmanager
     async def lifespan(server):
         try:
+            if warm_on_start:
+                await warm()
             yield
         finally:
             await worker.close()
@@ -45,12 +60,10 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.custom_route('/ready', methods=['GET'])
     async def ready(request):
-        """Open the exact selected data and its index before reporting readiness."""
+        """Open and warm the exact selected data and its index before reporting readiness."""
         from starlette.responses import JSONResponse
         try:
-            result = await call('overview', {})
-            if worker.selection['manifest'].get('text_index'):
-                await call('search_text', dict(text='CongressExplorerReadinessProbe', limit=1))
+            result = await warm()
             return JSONResponse(dict(status='ready', version=__version__, release_id=result['release_id']),
                                 headers={'Cache-Control': 'no-store'})
         except Exception:
@@ -59,13 +72,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     async def call(method, query):
         try:
-            if worker.selection is None:
-                async with setup_lock:
-                    if worker.selection is None:
-                        # Keep MCP initialization fast. The host may cancel a tool,
-                        # but keep this lock until the preparer's thread finishes.
-                        loader = partial(load_selection, data_dir) if (data_dir / 'selection.json').exists() else partial(prepare, data_dir, publication)
-                        worker.selection = await anyio.to_thread.run_sync(loader)
+            await ensure_selection()
             return await worker.call(method, query)
         except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
             raise ToolError(str(error)) from error

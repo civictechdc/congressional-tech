@@ -114,3 +114,45 @@ def test_http_tools_and_stateless_clients_match_local(tmp_path, phase2, lazy):
                     ])
                     assert [result.data['rows'] for result in results] == [[{'n': 0}], [{'n': 1}]]
         asyncio.run(run())
+
+
+def test_http_warm_startup_warms_replica_before_accepting_requests(tmp_path, phase2):
+    start_script = (Path(__file__).parents[1] / 'cloudflare/start.sh').read_text()
+    assert '--warm' in start_script
+    root = tmp_path / 'warm-http-data'
+    selected = prepare(root, phase2)
+    with socket.socket() as listener:
+        listener.bind(('127.0.0.1', 0))
+        port = listener.getsockname()[1]
+    args = [sys.executable, '-m', 'congressional_explorer_mcp.cli', 'serve',
+            '--transport', 'http', '--warm', '--host', '127.0.0.1', '--port', str(port),
+            '--data-dir', str(root)]
+    url = f'http://127.0.0.1:{port}/mcp'
+    with (tmp_path / f'http-warm-{port}.log').open('w+') as log:
+        process = subprocess.Popen(args, stdout=log, stderr=log)
+        try:
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline and process.poll() is None:
+                try:
+                    if httpx.get(url, timeout=.5).status_code == 405:
+                        break
+                except httpx.TransportError:
+                    pass
+                time.sleep(.05)
+            else:
+                log.seek(0)
+                pytest.fail(f'Warm HTTP server did not become ready: {log.read()}')
+
+            async def run():
+                # Direct /mcp traffic (without calling /ready first) reaches an already-warmed replica.
+                async with Client(url) as client:
+                    ballots = (await client.call_tool('get_member_ballots', {'query': {'limit': 1}})).data
+                    assert ballots['release_id'] == selected['release_id']
+                    assert len(ballots['rows']) == 1
+            asyncio.run(run())
+            ready = httpx.get(url.removesuffix('/mcp') + '/ready')
+            assert ready.status_code == 200
+            assert ready.json() == dict(status='ready', version=__version__, release_id=selected['release_id'])
+        finally:
+            process.terminate()
+            process.wait(timeout=10)

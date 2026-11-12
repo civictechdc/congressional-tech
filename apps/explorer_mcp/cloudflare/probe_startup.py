@@ -63,7 +63,7 @@ def main():
     url = f'http://127.0.0.1:{port}'
     with (args.work / 'server.log').open('w') as log:
         process = sampler.start_owned([*cli, 'serve', '--data-dir', str(data), '--transport', 'http',
-            '--host', '127.0.0.1', '--port', str(port)], stdout=log, stderr=log)
+            '--warm', '--host', '127.0.0.1', '--port', str(port)], stdout=log, stderr=log)
         try:
             deadline = start + args.timeout_seconds
             while process.poll() is None and time.monotonic() < deadline:

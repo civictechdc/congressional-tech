@@ -315,3 +315,42 @@ def test_review_regressions_through_normal_stdio(tmp_path,phase2):
             votes=[row for row in linked['rows'] if row['event_type']=='roll_call']
             assert len(votes)==1 and votes[0]['event_key']=='119-h-1' and votes[0]['subject_id'] is None
     asyncio.run(run())
+
+
+def test_unfiltered_ballot_date_buckets_and_scoped_transcript_sql(tmp_path, phase2):
+    root = tmp_path / 'display-dates'
+    shutil.copytree(phase2.parent, root)
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    table = pq.read_table(root / 'member_votes.parquet')
+    rows = table.to_pylist()
+    expanded = []
+    for index, literal in enumerate(('23-Jan-1990', '6-Feb-1990', '9-May-1990')):
+        for row in rows:
+            expanded.append({**row, 'vote_id': f'101-house-2-{index + 1}', 'vote_date': literal})
+    pq.write_table(pa.Table.from_pylist(expanded, schema=table.schema), root / 'member_votes.parquet')
+    selected = prepare(tmp_path / 'selected-display', manifest(root))
+    reader = Reader(selected)
+    try:
+        warm = reader.warm()
+        assert warm['warmed'] is True
+        assert 'member_votes' in warm['tables']
+        assert reader.warm()['warmed'] is False
+        buckets, total = reader._member_vote_date_buckets()
+        assert buckets == [] and total == 0
+        expected = reader.page(
+            MemberBallots(limit=2),
+            'SELECT t.* FROM member_votes t',
+            [],
+            order='try_cast(t.vote_date AS DATE) ASC NULLS LAST,t.vote_id,t.member_key',
+        )
+        observed = reader.get_member_ballots({'limit': 2})
+        assert observed['rows'] == expected['rows']
+        assert observed['next_cursor'] == expected['next_cursor']
+        # Transcript SQL scopes document vs caption branches when kind is specified.
+        official_sql = reader._transcript_sql('official')
+        assert 'recording_matches' not in official_sql
+        captions_sql = reader._transcript_sql('captions')
+        assert 'JOIN detail' not in captions_sql
+    finally:
+        reader.close()

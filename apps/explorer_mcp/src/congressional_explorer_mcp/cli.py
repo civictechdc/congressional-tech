@@ -42,8 +42,9 @@ def serve(args, selection=None):
         # does not strand a client's MCP session on a particular process.
         options = dict(host=args.host, port=args.port, path='/mcp',
                        stateless_http=True, json_response=True)
+    warm_on_start = bool(args.warm or (args.transport == 'http' and selection is not None))
     create_server(selection, data_dir=args.data_dir, publication=args.publication,
-                  timeout=args.query_timeout).run(
+                  timeout=args.query_timeout, warm_on_start=warm_on_start).run(
         transport=args.transport, show_banner=False, **options)
 
 
@@ -73,6 +74,8 @@ def main(argv=None):
             command.add_argument('--host', default='127.0.0.1', help='HTTP listen address')
             command.add_argument('--port', type=int, default=8080, help='HTTP listen port')
             command.add_argument('--query-timeout', type=float, default=10.0)
+            command.add_argument('--warm', action='store_true',
+                help='Warm the query worker and large tables before accepting requests')
             command.add_argument('--prepare-if-missing', action='store_true',
                 help='Prepare data on the first tool call if no snapshot has been selected')
             command.add_argument('--publication', default=PUBLICATION,

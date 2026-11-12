@@ -83,9 +83,42 @@ class Reader(HearingReader, LegislativeReader):
             self.document_summary = DOCUMENT_SUMMARY_COLUMNS + (
                 ',d.document_date_status' if 'document_date_status' in self.schemas['detail'] else '')
             self.entity_keys, self.document_links = published_entities(selection['controls']['schema'])
+            self._ballot_date_buckets = None
+            self._warmed = False
+            self._warmed_tables = []
         except BaseException:
             self.close()
             raise
+
+    def warm(self, query=None):
+        """Prime large Parquet footers, ballot-date buckets, and text index once per worker."""
+        if self._warmed:
+            return dict(release_id=self.release_id, warmed=False, tables=list(self._warmed_tables))
+        self.overview({})
+        warmed = []
+        if 'documents' in self.schemas:
+            self.search_documents(dict(limit=1))
+            warmed.append('documents')
+        if 'bill_actions' in self.schemas:
+            self.get_bill_actions(dict(limit=1))
+            warmed.append('bill_actions')
+        if 'roll_call_votes' in self.schemas:
+            self.get_roll_calls(dict(limit=1))
+            warmed.append('roll_call_votes')
+        if 'member_votes' in self.schemas:
+            self.get_member_ballots(dict(limit=1))
+            warmed.append('member_votes')
+        if 'meetings' in self.schemas:
+            sample = self.db.execute('SELECT event_id FROM meetings LIMIT 1').fetchall()
+            if sample:
+                self.get_hearing_bundle(dict(event_id=sample[0][0], limit=1))
+            warmed.append('meetings')
+        if self.selection['manifest'].get('text_index'):
+            self.search_text(dict(text='CongressExplorerReadinessProbe', limit=1))
+            warmed.append('text_index')
+        self._warmed = True
+        self._warmed_tables = warmed
+        return dict(release_id=self.release_id, warmed=True, tables=list(warmed))
 
     def close(self):
         self.db.close()

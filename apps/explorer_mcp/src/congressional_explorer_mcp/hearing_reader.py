@@ -37,24 +37,33 @@ class HearingReader:
                 f"WHEN c.state='present' THEN 'advertised_not_archived' ELSE {stated} END) "
                 f"FROM meeting_coverage c WHERE c.event_id={alias}.event_id AND c.aspect='captions'),{fallback}) AS captions")
 
-    def _transcript_sql(self):
+    def _transcript_sql(self, selected_kind=None):
         labelled = 'source' in self.schemas['meetings'].get('transcripts', '')
         kind = "CASE t.source WHEN 'printed_hearing' THEN 'official' WHEN 'committee_transcript' THEN 'committee' END" if labelled else "'official'"
-        document = f'''SELECT {kind} AS kind,d.package_id,lower(hex(d.link_key)) AS link_key,
+        wanted_cte = f'''wanted AS MATERIALIZED (
+          SELECT {kind} AS kind,t.list_row
+          FROM meetings m,unnest(m.transcripts) u(t),parameters p
+          WHERE m.event_id=p.event_id
+        )'''
+        document = '''SELECT w.kind AS kind,d.package_id,lower(hex(d.link_key)) AS link_key,
           lower(hex(d.saved_body)) AS saved_body,d.saved_suffix,l.format,l.filename,l.title,l.saved_kind,
           d.saved_media_type,d.saved_bytes,l.witness_keys,NULL::VARCHAR AS video_key,NULL::VARCHAR AS language,
           NULL::VARCHAR AS production,'event' AS association_scope,'meetings.transcripts' AS association_basis
-          FROM meetings m,unnest(m.transcripts) u(t),parameters p,"list" l JOIN detail d USING(list_row)
-          WHERE m.event_id=p.event_id AND t.list_row=l.list_row AND NOT coalesce(l.hidden,false)
-            AND {kind} IS NOT NULL'''
-        if 'recordings' not in self.schemas:
-            return f'WITH parameters AS (SELECT ?::BIGINT AS event_id) SELECT DISTINCT * FROM ({document})'
+          FROM wanted w JOIN "list" l USING(list_row) JOIN detail d USING(list_row)
+          WHERE NOT coalesce(l.hidden,false) AND w.kind IS NOT NULL'''
+        if 'recordings' not in self.schemas or selected_kind in ('official', 'committee'):
+            return f'WITH parameters AS (SELECT ?::BIGINT AS event_id), {wanted_cte} SELECT DISTINCT * FROM ({document})'
         observations = ''
         if 'meeting_links' in self.schemas.get('recording_matches', {}):
             observations = '''UNION ALL SELECT rm.video_key,ml.scope,ml.basis
               FROM recording_matches rm,unnest(rm.meeting_links) u(ml),parameters p
               WHERE ml.event_id=p.event_id AND rm.video_key IS NOT NULL'''
-        return f'''WITH parameters AS (SELECT ?::BIGINT AS event_id),related AS (
+        captions = '''SELECT 'captions' AS kind,NULL::VARCHAR AS package_id,NULL::VARCHAR AS link_key,
+          lower(hex(t.body)) AS saved_body,t.suffix AS saved_suffix,t.format,NULL::VARCHAR AS filename,
+          NULL::VARCHAR AS title,'original' AS saved_kind,NULL::VARCHAR AS saved_media_type,
+          NULL::BIGINT AS saved_bytes,[]::VARCHAR[] AS witness_keys,t.video_key,t.language,t.production,
+          t.scope AS association_scope,t.basis AS association_basis FROM caption_tracks t'''
+        caption_ctes = f'''related AS (
           SELECT r.video_key,'event' AS scope,'recordings.event_ids' AS basis FROM recordings r,parameters p
           WHERE list_contains(r.event_ids,p.event_id) {observations}
         ), associations AS (
@@ -64,16 +73,17 @@ class HearingReader:
           SELECT r.video_key,t.*,a.scope,a.basis FROM associations a JOIN recordings r USING(video_key),unnest(r.tracks) u(t)
           WHERE t.body IS NOT NULL AND lower(hex(t.body))<>'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
             AND t.format IN ('vtt','srt','ttml','m3u8')
-        ), sources AS ({document} UNION ALL
-          SELECT 'captions',NULL,NULL,lower(hex(t.body)),t.suffix,t.format,NULL,NULL,'original',NULL,NULL,
-            []::VARCHAR[],t.video_key,t.language,t.production,t.scope,t.basis FROM caption_tracks t
-        ) SELECT DISTINCT * FROM sources'''
+        )'''
+        if selected_kind == 'captions':
+            return f'WITH parameters AS (SELECT ?::BIGINT AS event_id), {caption_ctes} SELECT DISTINCT * FROM ({captions})'
+        return (f'WITH parameters AS (SELECT ?::BIGINT AS event_id), {wanted_cte}, {caption_ctes}, '
+                f'sources AS ({document} UNION ALL {captions}) SELECT DISTINCT * FROM sources')
 
     def _source_page(self, query, *, offset=0, limit=25):
         # Source identity uses the published body and occurrence, never a title/name guess.
         sql = '''SELECT *,sha256(CASE WHEN kind='captions' THEN
             'captions:'||video_key||':'||saved_body||':'||coalesce(language,'')||':'||coalesce(production,'')
-            ELSE kind||':'||link_key END) AS source_id FROM ('''+self._transcript_sql()+')'
+            ELSE kind||':'||link_key END) AS source_id FROM ('''+self._transcript_sql(query.kind)+')'
         conditions, args = [], [query.event_id]
         if query.kind:
             conditions.append('kind=?'); args.append(query.kind)

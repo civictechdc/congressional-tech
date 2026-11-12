@@ -63,6 +63,32 @@ class LegislativeReader:
             matches.append("(e.source_table='roll_call_votes' AND e.event_key IN ("+' UNION ALL '.join(votes)+'))')
         return matches
 
+    def _member_vote_date_buckets(self):
+        shadowed = bool(self.db.execute(
+            "SELECT 1 FROM duckdb_views() WHERE database_name='temp' AND view_name='member_votes' "
+            "UNION ALL SELECT 1 FROM duckdb_tables() WHERE database_name='temp' AND table_name='member_votes' LIMIT 1"
+        ).fetchall())
+        if not shadowed and getattr(self, '_ballot_date_buckets', None) is not None:
+            return self._ballot_date_buckets
+        # Avoid a WHERE clause here: DuckDB otherwise pushes TRY_CAST below GROUP BY
+        # onto all 10M+ ballot rows instead of evaluating it once per distinct string.
+        grouped = self.db.execute(
+            'SELECT vote_date,try_cast(vote_date AS DATE) IS NOT NULL,count(*) AS n '
+            'FROM member_votes GROUP BY vote_date'
+        ).fetchall()
+        dated = [dict(v=literal, n=int(count)) for literal, parseable, count in grouped if parseable]
+        rows = self.db.execute(
+            'SELECT list(item.v ORDER BY item.v),sum(item.n)::BIGINT '
+            'FROM unnest(?::STRUCT(v VARCHAR,n BIGINT)[]) u(item) '
+            'GROUP BY try_cast(item.v AS DATE) ORDER BY try_cast(item.v AS DATE) ASC',
+            [dated],
+        ).fetchall() if dated else []
+        buckets = [(list(literals), int(count)) for literals, count in rows]
+        value = (buckets, sum(count for _, count in buckets))
+        if not shadowed:
+            self._ballot_date_buckets = value
+        return value
+
     def legislative_page(self, query, table, date_field, identity):
         query.window()
         coverage = self.research_coverage([table], query.since, query.until)
@@ -101,19 +127,47 @@ class LegislativeReader:
         sql = 'SELECT t.* FROM '+source+(' WHERE '+' AND '.join(terms) if terms else '')
         expand = None
         if table == 'member_votes' and not terms and self.entity_keys.get(table) == identity:
-            # Cast each distinct literal once, retaining TRY_CAST's exact meaning.
-            # Select narrow page keys before fetching the published primary-key rows.
-            sql = '''WITH ballot_dates AS MATERIALIZED (
-                SELECT vote_date,try_cast(vote_date AS DATE) AS parsed_date
-                FROM (SELECT DISTINCT vote_date FROM member_votes))
-                SELECT t.vote_id,t.member_key,d.parsed_date FROM member_votes t
-                JOIN ballot_dates d ON t.vote_date IS NOT DISTINCT FROM d.vote_date'''
-            order = 'd.parsed_date ASC NULLS LAST,t.vote_id,t.member_key'
+            buckets, dated_total = self._member_vote_date_buckets()
+            if not buckets:
+                # Every literal ballot date casts to NULL; primary-key Top-N order
+                # preserves TRY_CAST(... ASC NULLS LAST) and prunes Parquet row groups.
+                sql = 'SELECT t.vote_id,t.member_key FROM member_votes t'
+                order = 't.vote_id,t.member_key'
 
-            def expand(selected):
-                return 'WITH ballot_page AS MATERIALIZED ('+selected+''')
-                    SELECT t.* FROM ballot_page p JOIN member_votes t USING(vote_id,member_key)
-                    ORDER BY p.parsed_date ASC NULLS LAST,t.vote_id,t.member_key'''
+                def expand(selected):
+                    return ('WITH ballot_page AS MATERIALIZED ('+selected+') '
+                            'SELECT t.* FROM ballot_page p JOIN member_votes t USING(vote_id,member_key) '
+                            'ORDER BY t.vote_id,t.member_key')
+            else:
+                prefix_literals, covered = [], 0
+                if not query.cursor and dated_total >= query.limit + 1:
+                    for literals, count in buckets:
+                        prefix_literals.extend(literals)
+                        covered += count
+                        if covered >= query.limit + 1:
+                            break
+                if prefix_literals and covered >= query.limit + 1 and len(prefix_literals) <= 500:
+                    placeholders = ','.join('?' for _ in prefix_literals)
+                    sql = f'''WITH ballot_dates AS MATERIALIZED (
+                        SELECT vote_date,try_cast(vote_date AS DATE) AS parsed_date
+                        FROM unnest([{placeholders}]::VARCHAR[]) u(vote_date))
+                        SELECT t.vote_id,t.member_key,d.parsed_date FROM member_votes t
+                        JOIN ballot_dates d ON t.vote_date=d.vote_date'''
+                    args = list(prefix_literals)
+                else:
+                    # Cast each distinct literal once, retaining TRY_CAST's exact meaning.
+                    # Select narrow page keys before fetching the published primary-key rows.
+                    sql = '''WITH ballot_dates AS MATERIALIZED (
+                        SELECT vote_date,try_cast(vote_date AS DATE) AS parsed_date
+                        FROM (SELECT DISTINCT vote_date FROM member_votes))
+                        SELECT t.vote_id,t.member_key,d.parsed_date FROM member_votes t
+                        JOIN ballot_dates d ON t.vote_date IS NOT DISTINCT FROM d.vote_date'''
+                order = 'd.parsed_date ASC NULLS LAST,t.vote_id,t.member_key'
+
+                def expand(selected):
+                    return 'WITH ballot_page AS MATERIALIZED ('+selected+''')
+                        SELECT t.* FROM ballot_page p JOIN member_votes t USING(vote_id,member_key)
+                        ORDER BY p.parsed_date ASC NULLS LAST,t.vote_id,t.member_key'''
 
         result = self.page(query, sql, args,order=order,expand=expand)
         if table == 'bill_actions':

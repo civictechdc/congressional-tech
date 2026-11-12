@@ -25,22 +25,27 @@ receives tool results. Logs retain request and runtime diagnostics.
   the release's SQLite text index, up to 128 MiB of extracted document text, and
   up to 512 MiB of DuckDB scratch space. Capacity must include the image and reserve.
 - Each fresh container downloads and verifies the immutable release in
-  `wrangler.jsonc` before accepting requests. Readiness allows up to 90 seconds;
-  cold connections are slower than warm connections. Clients should retry a
-  temporary `503` using its `Retry-After` header.
+  `wrangler.jsonc` and warms the DuckDB query worker and large Parquet tables
+  (`member_votes`, `bill_actions`, `roll_call_votes`, `documents`, `meetings`)
+  before opening its HTTP listener or reporting ready. Readiness allows up to
+  90 seconds; cold connections are slower than warm connections. Clients should
+  retry a temporary `503` using its `Retry-After` header.
 - The gateway accepts at most 64 KiB per request. Cloudflare rate limiting allows
   approximately 60 requests per minute per client IP at each Cloudflare location.
   This is not a global quota; clients behind one proxy share an IP limit.
 - The existing query process retains its 10-second query timeout, 512 MiB DuckDB
-  memory limit, read-only file access, output limits, and bounded queue.
+  memory limit, read-only file access, output limits, and bounded queue. Startup
+  and `/ready` warm-up use a 60-second startup budget within the container's
+  90-second port readiness allowance.
 - Containers are usage-billed under the existing paid Cloudflare account.
   Instance count and idle shutdown bound resource use, not a monthly spend cap.
   See [Container pricing](https://developers.cloudflare.com/containers/platform/pricing/).
 
 The root URL describes the service and configured publication. `GET /ready`
-opens the selected worker and its text index, then reports its software version
-and exact release ID. A starting or unusable instance returns `503`.
-`smoke.py` checks readiness, actual MCP initialization and data reads.
+opens and warms the selected worker, large Parquet tables, and text index, then
+reports its software version and exact release ID. A starting or unusable
+instance returns `503`. `smoke.py` checks readiness, actual MCP initialization
+and data reads.
 
 ## Build and deploy
 

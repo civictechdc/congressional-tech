@@ -41,6 +41,32 @@ def test_timeout_cancellation_restart_and_spill_cleanup(selection):
     asyncio.run(run())
 
 
+def test_worker_warm_uses_startup_deadline_and_idempotently_warms_large_tables(selection):
+    async def run():
+        # A cold replica can take longer than the 10s user-query deadline to start
+        # its Python/DuckDB process and touch large Parquet footers during startup.
+        worker = Worker(selection, timeout=0.02)
+        try:
+            first = await worker.warm()
+            assert first['release_id'] == selection['release_id']
+            assert first['warmed'] is True
+            assert {'member_votes', 'documents', 'meetings'} <= set(first['tables'])
+            first_pid = worker.process.pid
+            second = await worker.warm()
+            assert second['warmed'] is False
+            assert second['tables'] == first['tables']
+            assert worker.process.pid == first_pid
+            with pytest.raises(ExplorerError, match='deadline'):
+                await worker.call('query_sql', {'sql': 'SELECT sum(sin(i::DOUBLE)) FROM range(1000000000) t(i)'})
+            assert worker.process is None
+            third = await worker.warm()
+            assert third['warmed'] is True
+            assert worker.process.pid != first_pid
+        finally:
+            await worker.close()
+    asyncio.run(run())
+
+
 def test_bounded_queue_and_closed_worker(selection):
     async def run():
         worker=Worker(selection)
