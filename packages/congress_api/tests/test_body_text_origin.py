@@ -278,9 +278,10 @@ def test_body_listing_pins_md5_less_reads_with_zero_probe_gets_and_preserves_ref
         report = body_text.run(**args, origin=origin.url, body_listing=listing_path, work=tmp_path / 'run', execute=True)
 
     assert report['status'] == 'pending'
-    # 4 refused before any GET (weak, resized, unlisted, md5_conflict) + 1 no_range + 1 412 = 6 pending reads.
+    # 4 refused before any GET (weak, resized, md5_conflict as changed_input; unlisted as missing_remote) + 1 no_range + 1 412.
     assert report['pending_read_reasons'] == dict(
-        changed_input=4,
+        changed_input=3,
+        missing_remote=1,
         raw_range_ClientError=1,
         raw_range_ValueError=1,
     )
@@ -326,4 +327,95 @@ def test_body_listing_pins_md5_less_reads_with_zero_probe_gets_and_preserves_ref
     )))
     with pytest.raises(SystemExit):
         command.main(['--spec', str(spec_path), '--plan'])
+
+
+def test_cli_write_body_listing_streams_atomically_and_shares_listing_schema(tmp_path, capsys):
+    """[WARNING-1] CLI --write-body-listing streams pages via LISTING_SCHEMA and leaves no partial file on failure."""
+    from pathlib import Path
+    from congress_api.cli import body_text as command
+
+    assert isinstance(body_text.LISTING_SCHEMA, pa.Schema)
+    entries = [
+        {'Key': f'bodies/sha256/{i:02x}/' + (f'{i:02x}' * 32) + '.gz', 'Size': 200 + i, 'ETag': f'"{i:032x}"'}
+        for i in range(4)
+    ]
+    client = PagedListClient(entries, page_size=2)
+    out = tmp_path / 'cli-listing.parquet'
+    assert command.main(['--write-body-listing', str(out)], r2_client=client) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload['rows'] == 4 and Path(payload['path']) == out.resolve()
+    assert pq.read_schema(out).equals(body_text.LISTING_SCHEMA)
+
+    bad_entries = [*entries, {'Key': 'bodies/sha256/../bad-key', 'Size': 10, 'ETag': '"00"'}]
+    bad_out = tmp_path / 'bad-listing.parquet'
+    with pytest.raises(ValueError):
+        body_text.write_body_listing(PagedListClient(bad_entries, page_size=2), out=bad_out)
+    assert not bad_out.exists()
+    assert list(tmp_path.glob('*.tmp')) == [] and list(tmp_path.glob('.*.tmp')) == []
+
+
+@pytest.mark.loopback
+def test_body_listing_prefers_listed_fallback_copy_refuses_sizeless_and_cleans_conflict_work_list(tmp_path, monkeypatch):
+    """[WARNING-1] Multi-copy prefers listed .gz over unlisted '', sizeless stays missing_pins, conflict leaves no work-list."""
+    import gzip
+
+    bodies = dict(
+        multicopy=(HTML, 'html'),
+        sizeless=(b'<doc>sizeless</doc>', 'xml'),
+    )
+    args, names = lake(tmp_path, bodies, gzip_stored={'multicopy'})
+    digests = {name: digest for digest, name in names.items()}
+    raw, captures = args.pop('local_root'), args['captures']
+    file_of = lambda name: next(raw.glob(f'bodies/sha256/*/{digests[name].hex()}*'))
+    rel_key = lambda name: file_of(name).relative_to(raw).as_posix()
+
+    # Add a higher-priority '' capture row for multicopy that is NOT in the bucket listing,
+    # while keeping the .gz capture row that IS in the bucket listing (both MD5-less).
+    cap_table = pq.read_table(captures)
+    cap_rows = cap_table.to_pylist()
+    for row in cap_rows:
+        row['stored_md5'] = None
+        if row['sha256'] == digests['sizeless']:
+            row['stored_bytes'] = None
+    gz_row = next(r for r in cap_rows if r['sha256'] == digests['multicopy'])
+    plain_missing_row = dict(
+        gz_row,
+        receipt_key='receipts/unlisted-plain.jsonl',
+        stored_suffix='',
+        stored_bytes=len(HTML),
+    )
+    pq.write_table(pa.Table.from_pylist([*cap_rows, plain_missing_row], schema=cap_table.schema), captures)
+
+    # Listing contains multicopy's .gz object AND sizeless's object (even though captures had stored_bytes=None).
+    gz_bytes = file_of('multicopy').read_bytes()
+    sz_bytes = file_of('sizeless').read_bytes()
+    listing_rows = [
+        {'key': rel_key('multicopy'), 'size': len(gz_bytes), 'etag': '"' + hashlib.md5(gz_bytes).hexdigest() + '"'},
+        {'key': rel_key('sizeless'), 'size': len(sz_bytes), 'etag': '"' + hashlib.md5(sz_bytes).hexdigest() + '"'},
+    ]
+    listing_path = tmp_path / 'listing.parquet'
+    pq.write_table(pa.Table.from_pylist(listing_rows, schema=body_text.LISTING_SCHEMA), listing_path)
+
+    monkeypatch.setattr(body_text, '_observed_etag', lambda *_a, **_k: (_ for _ in ()).throw(AssertionError('probed')))
+
+    with Origin(raw) as origin:
+        report = body_text.run(**args, origin=origin.url, body_listing=listing_path, work=tmp_path / 'run', execute=True)
+
+    assert report['status'] == 'pending'
+    [batch] = report['batches']
+    # multicopy succeeded via .gz fallback; sizeless refused as missing_pins (not fetched!)
+    assert batch['body_text_rows'] == 1
+    assert batch['missing_pins'] == 1
+    assert batch['pending_reads'] == 0
+    assert [req for req, _ in origin.requests] == ['/' + rel_key('multicopy')]
+
+    # Conflict in body_listing must NOT leave work-list.parquet behind!
+    dup_path = tmp_path / 'dup.parquet'
+    pq.write_table(pa.Table.from_pylist([listing_rows[0], listing_rows[0]], schema=body_text.LISTING_SCHEMA), dup_path)
+    conflict_work = tmp_path / 'conflict-plan'
+    with pytest.raises(ValueError, match='body_listing'):
+        body_text.plan(captures=captures, engine=args['engine'], work=conflict_work,
+                       decided_at=args['decided_at'], body_listing=dup_path)
+    assert not (conflict_work / 'work-list.parquet').exists()
+
 

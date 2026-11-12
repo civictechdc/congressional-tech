@@ -437,3 +437,17 @@ def parquet_records(path):
     with pq.ParquetFile(path) as source:
         for batch in source.iter_batches(batch_size=1024):
             yield from batch.to_pylist()
+
+
+def active_unreadable_where(table='unreadable', alias='u'):
+    """SQL predicate for non-withdrawn, non-superseded unreadable records."""
+    return (f"coalesce({alias}.reason,'')<>'withdrawn' "
+            f"AND NOT EXISTS (SELECT 1 FROM {table} s WHERE s.supersedes={alias}.id)")
+
+
+def active_unreadable_rows(rows):
+    """Filter validated unreadable dicts to active (non-withdrawn, non-superseded) decisions."""
+    items = list(rows)
+    superseded = {row.get('supersedes') for row in items if row.get('supersedes')}
+    return [row for row in items if row['id'] not in superseded and row.get('reason') != 'withdrawn']
+

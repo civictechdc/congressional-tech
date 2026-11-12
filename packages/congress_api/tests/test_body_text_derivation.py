@@ -168,6 +168,32 @@ def test_page_deadline_interrupts_cpu_work_and_restores_prior_virtual_timer_and_
         signal.signal(signal.SIGVTALRM, prev)
 
 
+def test_nested_page_deadline_subtracts_elapsed_user_cpu_from_outer_timer():
+    """[WARNING-2] Nested page_deadline subtracts spent user CPU when restoring an outer virtual timer."""
+    import resource
+
+    def outer_handler(*_):
+        pass
+
+    prev = signal.signal(signal.SIGVTALRM, outer_handler)
+    try:
+        signal.setitimer(signal.ITIMER_VIRTUAL, 2.0, 0.0)
+        with bt.page_deadline(5.0, 1):
+            target_utime = resource.getrusage(resource.RUSAGE_SELF).ru_utime + 0.22
+            acc = 0
+            while resource.getrusage(resource.RUSAGE_SELF).ru_utime < target_utime:
+                for i in range(25_000):
+                    acc += i
+            assert acc > 0
+        remaining, interval = signal.getitimer(signal.ITIMER_VIRTUAL)
+        assert signal.getsignal(signal.SIGVTALRM) is outer_handler
+        assert interval == 0.0
+        assert 0.0 < remaining < 1.85
+    finally:
+        signal.setitimer(signal.ITIMER_VIRTUAL, 0)
+        signal.signal(signal.SIGVTALRM, prev)
+
+
 def test_page_deadline_does_not_advance_across_sleep_or_sigstop():
     import os
     import subprocess

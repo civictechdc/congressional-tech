@@ -69,6 +69,8 @@ class ParserWorker:
         self.parser, self.version, self.callable_path = parser, version, callable_path
         self.timeout_seconds, self.memory_bytes = timeout_seconds, memory_bytes
         self.max_input_bytes, self.max_output_bytes = max_input_bytes, max_output_bytes
+        self.last_peak_rss_bytes = None
+        self._attempt_peak_rss = 0
         self._directory = self._process = None
         self._buffer = bytearray()
 
@@ -115,11 +117,20 @@ class ParserWorker:
             self._stop()
             raise RuntimeError('Parser startup failed') from exc
 
+    def _sample_rss(self):
+        if self._process is None:
+            return 0
+        rss = resident_bytes(self._process.pid)
+        if rss > self._attempt_peak_rss:
+            self._attempt_peak_rss = rss
+        return rss
+
     def _response(self, deadline):
         with selectors.DefaultSelector() as selector:
             selector.register(self._process.stdout, selectors.EVENT_READ)
             while True:
                 if b'\n' in self._buffer:
+                    self._sample_rss()
                     line, _, rest = self._buffer.partition(b'\n')
                     self._buffer = bytearray(rest)
                     try:
@@ -129,7 +140,7 @@ class ParserWorker:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise _Failure('timeout')
-                if resident_bytes(self._process.pid) > self.memory_bytes:
+                if self._sample_rss() > self.memory_bytes:
                     raise _Failure('memory_limit')
                 for key, _ in selector.select(min(remaining, .05)):
                     chunk = os.read(key.fd, min(65536, self.max_output_bytes + 1 - len(self._buffer)))
@@ -145,20 +156,25 @@ class ParserWorker:
             raise RuntimeError('Parser worker requires an open context')
         if not input_id or not isinstance(payload, bytes):
             raise ValueError('A named input and bytes are required')
+        self.last_peak_rss_bytes = None
         if len(payload) > self.max_input_bytes:
             return {'status': 'size_limit'}
         path = Path(self._directory.name) / 'input'
         path.write_bytes(payload)
+        peak_rss = 0
         try:
             for attempt in range(2):
+                self._attempt_peak_rss = 0
                 if self._process is None:
                     self._start()
                 try:
+                    self._sample_rss()
                     (Path(self._directory.name) / 'phase').unlink(missing_ok=True)
                     # One tiny command, one input in flight: never block on input bytes.
                     if os.write(self._process.stdin.fileno(), b'parse\n') != 6:
                         raise _Failure('parser_crash')
                     response = self._response(time.monotonic() + self.timeout_seconds)
+                    peak_rss = max(peak_rss, self._attempt_peak_rss)
                     if not isinstance(response, dict):
                         raise _Failure('parser_crash')
                     if response.get('failure')=='transport_exhausted':
@@ -174,6 +190,7 @@ class ParserWorker:
                     reason = 'parser_crash'
                 except _Failure as exc:
                     reason = str(exc)
+                peak_rss = max(peak_rss, self._attempt_peak_rss)
                 self._stop()
                 reading = (Path(self._directory.name) / 'phase').exists()
                 if reading:
@@ -184,6 +201,7 @@ class ParserWorker:
             self._stop()
             raise
         finally:
+            self.last_peak_rss_bytes = peak_rss or None
             path.unlink(missing_ok=True)
 
 

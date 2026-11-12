@@ -350,3 +350,46 @@ def test_html_reread_set_is_the_readers_own_rule(tmp_path):
             steps=[],outputs=[],queries=[dict(name='keys',sql=HTML_REREAD_SQL.format(readings='readings'))])
     assert {bytes.fromhex(row['body_sha']) if isinstance(row['body_sha'],str) else row['body_sha']
             for row in result['keys']}==expected
+
+
+def test_withdrawn_unreadable_reopens_readings_filenames_and_dispositions_until_retried(tmp_path):
+    """[BLOCKER-1] A withdrawn unreadable decision reopens readings, filenames, record producers, and XML dispositions."""
+    from viewer_publication import archive_house_xml_dispositions as dispositions
+    from viewer_publication import archive_house_xml_transition as transition
+    from congress_api.retention.provenance import file_pin
+
+    args, digest = setup(tmp_path)
+    ver = readings.current_version('html')
+    u1 = dict(id='a' * 64, body_sha256=digest.hex(), parser='html', parser_version=ver,
+              reason='timeout', decided_by='readings', decided_at='2026-11-10T00:00:00Z', supersedes=None)
+    u2 = dict(id='b' * 64, body_sha256=digest.hex(), parser='html', parser_version=ver,
+              reason='withdrawn', decided_by='ct-a73a', decided_at='2026-11-11T00:00:00Z', supersedes=u1['id'])
+    u3 = dict(id='c' * 64, body_sha256=digest.hex(), parser='html', parser_version=ver,
+              reason='parser_crash', decided_by='readings', decided_at='2026-11-12T00:00:00Z', supersedes=None)
+    path = tmp_path / 'unreadable.jsonl'
+
+    path.write_text(json.dumps(u1) + '\n')
+    pins = [dict(key='provenance/unreadable/one.jsonl', path=str(path))]
+    assert pq.ParquetFile(stage(args, tmp_path / 'blocked', unreadable_files=pins)['work_list']).metadata.num_rows == 0
+
+    path.write_text(json.dumps(u1) + '\n' + json.dumps(u2) + '\n')
+    reopened = stage(args, tmp_path / 'reopened', unreadable_files=pins)
+    assert pq.ParquetFile(reopened['work_list']).metadata.num_rows == 1
+    assert pq.ParquetFile(reopened['readings']).metadata.num_rows == 1
+
+    path.write_text(json.dumps(u1) + '\n' + json.dumps(u2) + '\n' + json.dumps(u3) + '\n')
+    assert pq.ParquetFile(stage(args, tmp_path / 'reblocked', unreadable_files=pins)['work_list']).metadata.num_rows == 0
+
+    # Also verify archive_house_xml_dispositions and archive_house_xml_transition drop withdrawn rows.
+    xml_u1 = dict(id='1' * 64, record_sha='9' * 64, parser='meeting_records.house_xml',
+                  parser_version=transition.OLD['house_xml'], reason='timeout',
+                  decided_by='meeting_records', decided_at='2026-11-10T00:00:00Z', supersedes=None)
+    xml_u2 = dict(id='2' * 64, record_sha='9' * 64, parser='meeting_records.house_xml',
+                  parser_version=transition.OLD['house_xml'], reason='withdrawn',
+                  decided_by='ct-a73a', decided_at='2026-11-11T00:00:00Z', supersedes=xml_u1['id'])
+    xml_path = tmp_path / 'xml-unreadable.jsonl'
+    xml_path.write_text(json.dumps(xml_u1) + '\n' + json.dumps(xml_u2) + '\n')
+    xml_pin = [dict(path=str(xml_path), **file_pin(xml_path))]
+    assert dispositions._decisions(xml_pin) == []
+    assert transition._unreadable_counts(xml_pin)['active'] == 0
+

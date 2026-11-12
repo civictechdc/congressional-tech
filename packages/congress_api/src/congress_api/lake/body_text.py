@@ -34,14 +34,19 @@ import os
 from pathlib import Path
 import shutil
 import stat
+from tempfile import NamedTemporaryFile
+
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from congress_api.lake import readings
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_keys import body_object_digest
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.parser_worker import ParserWorker, ParserWorkerPool, reading_input
-from congress_api.retention.provenance import (field, finish_stage, import_unreadable, instant, json_input,
-    parquet_output, parquet_records, run_job)
+from congress_api.retention.process_resources import resident_bytes
+from congress_api.retention.provenance import (active_unreadable_where, field, finish_stage, import_unreadable,
+    instant, json_input, parquet_output, parquet_records, run_job)
 from congress_api.retention.r2_edge_rules import PUBLIC_BUCKET, PUBLIC_HOSTNAME
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -76,41 +81,61 @@ def worker_limits():
                 max_input_bytes=65536, max_output_bytes=8 << 20)
 
 
-def _listing_schema():
-    import pyarrow as pa
-    return pa.schema([('key', pa.string()), ('size', pa.int64()), ('etag', pa.string())])
+LISTING_SCHEMA = pa.schema([('key', pa.string()), ('size', pa.int64()), ('etag', pa.string())])
+
+
+def _register_body_listing(body_listing):
+    source = table_input('body_listing', body_listing)
+    if source['kind'] == 'parquet':
+        observed = pq.read_schema(source['path'])
+        expected = {f.name: f.type for f in LISTING_SCHEMA}
+        actual = {f.name: f.type for f in observed if f.name in expected}
+        if set(actual) != set(expected) or actual != expected:
+            raise ValueError('body_listing Parquet must match LISTING_SCHEMA (key: string, size: int64, etag: string)')
+    return source
 
 
 def write_body_listing(client, *, bucket=PUBLIC_BUCKET, out, prefix='bodies/sha256/'):
     """Write one credentialed ``list_objects_v2`` pass under ``prefix`` as ``(key, size, etag)`` Parquet.
 
-    One LIST request per 1,000 objects, streamed in bounded row batches; preserves quoted ETags so
-    weak ETags (``W/...``) remain distinguishable from strong ones.
+    One LIST request per 1,000 objects, streamed page-by-page to a temporary file in ``out.parent``
+    and atomically replaced on completion; preserves quoted ETags so weak ETags (``W/...``) remain
+    distinguishable from strong ones.
     """
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from congress_api.retention.body_store import R2Source
-
     out = Path(out).resolve()
-    schema = _listing_schema()
-    rows, total = [], 0
-    with pq.ParquetWriter(out, schema, compression='zstd') as writer:
-        for entry in R2Source(client, bucket).listing(prefix, preserve_etags=True):
-            validate_key(entry['key'])
-            if type(entry['size']) is not int or entry['size'] < 0:
-                raise ValueError('Invalid body listing object size')
-            rows.append(entry)
-            total += 1
-            if len(rows) >= 16384:
-                writer.write_table(pa.Table.from_pylist(rows, schema=schema))
-                rows = []
-        if rows or total == 0:
-            writer.write_table(pa.Table.from_pylist(rows, schema=schema))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    paginator = client.get_paginator('list_objects_v2')
+    keys, sizes, etags, total = [], [], [], 0
+    with NamedTemporaryFile(dir=out.parent, prefix=f'.{out.name}.', suffix='.tmp', delete=False) as handle:
+        tmp = Path(handle.name)
+    try:
+        with pq.ParquetWriter(tmp, LISTING_SCHEMA, compression='zstd') as writer:
+            for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+                for obj in page.get('Contents', ()):
+                    key, size, etag = obj['Key'], obj['Size'], obj['ETag']
+                    validate_key(key)
+                    if type(size) is not int or size < 0 or not isinstance(etag, str):
+                        raise ValueError('Invalid body listing object metadata')
+                    keys.append(key)
+                    sizes.append(size)
+                    etags.append(etag)
+                    total += 1
+                    if len(keys) >= 16384:
+                        writer.write_table(pa.Table.from_pydict(
+                            {'key': keys, 'size': sizes, 'etag': etags}, schema=LISTING_SCHEMA))
+                        keys, sizes, etags = [], [], []
+            if keys or total == 0:
+                writer.write_table(pa.Table.from_pydict(
+                    {'key': keys, 'size': sizes, 'etag': etags}, schema=LISTING_SCHEMA))
+        os.replace(tmp, out)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     return dict(path=out, rows=total)
 
 
 def copy_selection_steps(*, with_listing=False):
-    """The candidate bodies' chosen captured copies, joined to ``body_listing`` when supplied."""
+    """The candidate bodies' chosen captured copies, joined to ``body_listing`` before ranking when supplied."""
     steps = [
         # Captures grouped only after the semi-join to the candidates (AGENTS.md pushdown rule).
         dict(name='body_storage', materialize=True, sql="""SELECT c.sha256 AS body_sha,
@@ -123,23 +148,33 @@ def copy_selection_steps(*, with_listing=False):
                 OR min(encode(c.stored_md5,'hex'))<>max(encode(c.stored_md5,'hex')) AS conflict
             FROM candidates k RIGHT SEMI JOIN captures c ON k.body_sha=c.sha256
             GROUP BY c.sha256,coalesce(c.stored_suffix,'.gz')"""),
-        dict(name='selected_copies', materialize=True, sql='''SELECT * FROM (SELECT *,row_number() OVER (
-            PARTITION BY body_sha ORDER BY stored_bytes IS NULL,
-                CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
-            FROM body_storage) WHERE choice=1'''),
     ]
     if with_listing:
-        steps.append(dict(name='body_copies', materialize=True, sql=f'''SELECT s.*,
+        steps.append(dict(name='copy_candidates', materialize=True, sql=f'''SELECT s.*,
             nullif(l.etag,'') AS listed_etag,
-            CASE WHEN s.physical_key IS NULL OR (s.stored_bytes IS NOT NULL AND s.stored_bytes>{MAX_STORED_BYTES}) THEN NULL
-                 WHEN l.key IS NULL OR nullif(l.etag,'') IS NULL OR starts_with(l.etag,'W/') THEN 'changed_input'
-                 WHEN s.stored_bytes IS NOT NULL AND l.size<>s.stored_bytes THEN 'changed_input'
+            CASE WHEN s.physical_key IS NULL OR s.stored_bytes IS NULL OR s.stored_bytes>{MAX_STORED_BYTES} THEN NULL
+                 WHEN l.key IS NULL THEN 'missing_remote'
+                 WHEN nullif(l.etag,'') IS NULL OR starts_with(l.etag,'W/') THEN 'changed_input'
+                 WHEN l.size<>s.stored_bytes THEN 'changed_input'
                  WHEN s.stored_md5 IS NOT NULL AND lower(trim(BOTH '"' FROM l.etag))<>s.stored_md5 THEN 'changed_input'
-                 END AS listing_refusal
-            FROM selected_copies s LEFT JOIN body_listing l ON s.physical_key=l.key'''))
+                 END AS listing_refusal,
+            s.stored_bytes IS NOT NULL AND NOT coalesce(s.conflict,false) AND l.key IS NOT NULL
+                AND nullif(l.etag,'') IS NOT NULL AND NOT starts_with(l.etag,'W/')
+                AND l.size=s.stored_bytes
+                AND (s.stored_md5 IS NULL OR lower(trim(BOTH '"' FROM l.etag))=s.stored_md5) AS copy_usable
+            FROM body_storage s LEFT JOIN body_listing l ON s.physical_key=l.key'''))
     else:
-        steps.append(dict(name='body_copies', sql='''SELECT *,cast(NULL AS VARCHAR) AS listed_etag,
-            cast(NULL AS VARCHAR) AS listing_refusal FROM selected_copies'''))
+        steps.append(dict(name='copy_candidates', sql='''SELECT s.*,
+            cast(NULL AS VARCHAR) AS listed_etag,
+            cast(NULL AS VARCHAR) AS listing_refusal,
+            s.stored_bytes IS NOT NULL AND NOT coalesce(s.conflict,false) AS copy_usable
+            FROM body_storage s'''))
+    steps.append(dict(name='body_copies', materialize=True, sql='''SELECT * FROM (
+        SELECT *,row_number() OVER (
+            PARTITION BY body_sha
+            ORDER BY copy_usable DESC,stored_bytes IS NULL,
+                CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
+        FROM copy_candidates) WHERE choice=1'''))
     return steps
 
 
@@ -172,7 +207,7 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
               compatible_versions.accepted_versions_input(work, sniff_entries, pins={'sniff': pins['sniff']}),
               table_input('captures', captures)]
     if body_listing is not None:
-        inputs.append(table_input('body_listing', body_listing))
+        inputs.append(_register_body_listing(body_listing))
     if unreadable_files:
         inputs.append(dict(name='unreadable', kind='json_lines', files=list(unreadable_files),
             schema=dict(fields=[field(k, v) for k, v in unreadable_schema.items()], metadata={})))
@@ -197,9 +232,7 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
         *compatible_versions.selected_readings_steps(sniff_entries, parsers=('sniff',)),
         *[dict(name=name.replace('-', '_'), sql=(ROOT / 'model/sql' / (name + '.sql')).read_text())
           for name in ['pinned-readings', 'sniff-observations', 'sniff-conflicts', 'sniff-facts']],
-        dict(name='active_unreadable', sql='''SELECT u.* FROM unreadable u
-            WHERE coalesce(u.reason,'')<>'withdrawn'
-              AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)'''),
+        dict(name='active_unreadable', sql=f'SELECT u.* FROM unreadable u WHERE {active_unreadable_where()}'),
         # Body-text rows at their declared versions: the three (parser, version) partitions only.
         dict(name='settled', materialize=True, sql='''SELECT r.body_sha,r.parser FROM parser_versions v
             JOIN readings r ON r.parser=v.parser AND r.parser_version=v.version WHERE v.parser<>'sniff' '''),
@@ -246,13 +279,19 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
         queries.append(dict(name='listing_conflicts', sql='''SELECT count(*) AS n FROM (
             SELECT key FROM body_listing WHERE key IS NULL OR size IS NULL OR size<0
             UNION ALL SELECT key FROM body_listing GROUP BY key HAVING count(*)>1)'''))
+    staged_work_list = work / 'work-list.staged.parquet'
     checks = run_job(work, engine, inputs=inputs, steps=steps,
-        outputs=[parquet_output(work, 'work-list', 'SELECT * FROM pending_bodies', ['position'])],
+        outputs=[parquet_output(work, 'work-list.staged', 'SELECT * FROM pending_bodies', ['position'])],
         queries=queries)
-    if checks['conflicts'][0]['n']:
-        raise ValueError('Conflicting sniff facts or captured copies for body-text work')
-    if body_listing is not None and checks['listing_conflicts'][0]['n']:
-        raise ValueError('Invalid or duplicate keys in body_listing')
+    try:
+        if checks['conflicts'][0]['n']:
+            raise ValueError('Conflicting sniff facts or captured copies for body-text work')
+        if body_listing is not None and checks['listing_conflicts'][0]['n']:
+            raise ValueError('Invalid or duplicate keys in body_listing')
+        os.replace(staged_work_list, work / 'work-list.parquet')
+    except BaseException:
+        staged_work_list.unlink(missing_ok=True)
+        raise
     return dict(status='planned', work=work, work_list=work / 'work-list.parquet', versions=versions,
                 work_items=checks['work_items'][0]['n'], with_congress=checks['work_items'][0]['with_congress'],
                 by_parser=checks['by_parser'],
@@ -376,9 +415,10 @@ def parse_payload(payload):
     try:
         data = _read_decoded(request)
     except (OSError, EOFError) as error:
-        return dict(read_error=_read_reason(error))
+        return dict(read_error=_read_reason(error), error=f'{type(error).__name__}: {error}')
     if data is None:
-        return dict(row=dict(status='error', error_type='decoded_size_limit'))
+        return dict(row=dict(status='error', error_type='decoded_size_limit'),
+                    peak_rss_bytes=resident_bytes(os.getpid()))
     spec = request['strategy']
     if spec not in _STRATEGIES:  # one strategy object per worker process, reused across bodies
         _STRATEGIES[spec] = derivation.load_page_rule(spec)
@@ -387,11 +427,12 @@ def parse_payload(payload):
             page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
             max_bytes=MAX_DECODED_BYTES)
     except derivation.OcrRequired:
-        return dict(pending='ocr_required')
+        return dict(pending='ocr_required', peak_rss_bytes=resident_bytes(os.getpid()))
     except derivation.PageDeadline:
-        return dict(retry='page_deadline')
+        return dict(retry='page_deadline', peak_rss_bytes=resident_bytes(os.getpid()))
+    child_rss = resident_bytes(os.getpid())
     del data
-    value = dict(row=reading.row())
+    value = dict(row=reading.row(), peak_rss_bytes=child_rss)
     if reading.text is not None:
         encoded = reading.text.encode()
         target = Path(request['texts']) / (request['body_sha'] + '.txt')
@@ -463,32 +504,50 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         raise ValueError('Body text reads need a local raw root or an origin')
     bodies_dir = work / 'bodies'  # each remote body's range cache, removed once its reading returns
     counters = dict(work_items=0, pending_reads=0, missing_pins=0, ocr_pending=0, unreadable=0, ocr_pages=0)
-    rows, texts, decisions, reasons = [], {}, [], {}
+    rows, texts, decisions, reasons, body_outcomes = [], {}, [], {}, []
 
     def pending_read(reason):  # no verdict: the body stays listed, counted under what stopped its read
         counters['pending_reads'] += 1
         reasons[reason] = reasons.get(reason, 0) + 1
 
+    def record_outcome(body_hex, parser, version, status, *, reading_status=None, reason=None,
+                       error=None, peak_rss_bytes=None):
+        body_outcomes.append(dict(
+            body_sha256=body_hex,
+            parser=parser,
+            parser_version=version,
+            status=status,
+            reading_status=reading_status,
+            reason=reason,
+            error=error,
+            peak_rss_bytes=peak_rss_bytes,
+        ))
+
     def jobs():
         for item in items:
             counters['work_items'] += 1
             body_hex = item['body_sha'].hex()
+            parser, version = item['parser'], item['parser_version']
             if item['physical_key'] is None:
                 pending_read('no_captured_copy')
+                record_outcome(body_hex, parser, version, 'pending', reason='no_captured_copy', error='no_captured_copy')
                 continue
             validate_key(item['physical_key'])
             relative = Path(item['relative_path'])
             if relative.is_absolute() or '..' in relative.parts or body_object_digest(item['physical_key']) != body_hex:
                 raise ValueError('Body copy path or key does not name its body')
-            request = dict(body_sha=body_hex, parser=item['parser'], stored_bytes=item['stored_bytes'],
+            request = dict(body_sha=body_hex, parser=parser, stored_bytes=item['stored_bytes'],
                            texts=str(texts_dir), strategy=strategy, page_deadline_seconds=page_deadline_seconds)
             if origin is not None:
                 oversize = item['stored_bytes'] is not None and item['stored_bytes'] > MAX_STORED_BYTES
                 if not oversize and item['stored_bytes'] is None:
                     counters['missing_pins'] += 1  # a ranged read needs the captured size
+                    record_outcome(body_hex, parser, version, 'pending', reason='missing_pins', error='missing_pins')
                     continue
                 if not oversize and item.get('listing_refusal'):
                     pending_read(item['listing_refusal'])
+                    record_outcome(body_hex, parser, version, 'pending',
+                                   reason=item['listing_refusal'], error=item['listing_refusal'])
                     continue
                 remote = dict(origin=origin, bucket=PUBLIC_BUCKET, key=item['physical_key'], md5=item.get('stored_md5'))
                 if remote['md5'] is None and item.get('listed_etag'):
@@ -501,7 +560,10 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
                 try:
                     request.update(stored_bytes=(raw / relative).stat().st_size, unpinned=True)
                 except OSError as error:
-                    pending_read(_read_reason(error))
+                    reason = _read_reason(error)
+                    pending_read(reason)
+                    record_outcome(body_hex, parser, version, 'pending',
+                                   reason=reason, error=f'{type(error).__name__}: {error}')
                     continue
             yield item, request
 
@@ -509,13 +571,22 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         item, request = job
         if request['stored_bytes'] > MAX_STORED_BYTES:
             return item, request, dict(status='completed', value=dict(
-                row=dict(status='size_limit', error_type='stored_size_limit')))
+                row=dict(status='size_limit', error_type='stored_size_limit'))), None
+        peak = 0
         try:
             for attempt in range(2):  # §6: a page past its deadline is a resource failure, retried once
                 outcome = worker.parse(request['body_sha'], json.dumps(request, separators=(',', ':')).encode())
+                sup_rss = outcome.get('peak_rss_bytes') if isinstance(outcome, dict) else None
+                if sup_rss is None:
+                    sup_rss = getattr(worker, 'last_peak_rss_bytes', None)
+                child_rss = (outcome.get('value', {}).get('peak_rss_bytes')
+                             if isinstance(outcome, dict) and isinstance(outcome.get('value'), dict) else None)
+                for candidate in (sup_rss, child_rss):
+                    if isinstance(candidate, int) and candidate > peak:
+                        peak = candidate
                 if outcome['status'] != 'completed' or 'retry' not in outcome['value']:
-                    return item, request, outcome
-            return item, request, dict(status='unreadable', reason=outcome['value']['retry'])
+                    return item, request, outcome, (peak or None)
+            return item, request, dict(status='unreadable', reason=outcome['value']['retry']), (peak or None)
         finally:
             if 'cache' in request:
                 shutil.rmtree(request['cache'], ignore_errors=True)
@@ -523,31 +594,46 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
     with ParserWorkerPool('body_text', json.dumps(planned['versions'], sort_keys=True),
             'congress_api.lake.body_text:parse_payload', workers=parser_workers,
             memory_budget=parser_memory_bytes, worker_factory=worker_factory, **worker_limits()) as pool:
-        for item, request, outcome in pool.map(invoke, jobs()):
+        for item, request, outcome, peak_rss in pool.map(invoke, jobs()):
             body_hex, parser, version = request['body_sha'], item['parser'], item['parser_version']
             if outcome['status'] == 'read_error':
                 pending_read(outcome['reason'])
+                record_outcome(body_hex, parser, version, 'pending', reason=outcome['reason'],
+                               error=outcome.get('error') or outcome['reason'], peak_rss_bytes=peak_rss)
                 continue
             if outcome['status'] == 'unreadable':
                 identity = json.dumps([body_hex, parser, version, decided_at], separators=(',', ':'))
                 decisions.append(dict(id=sha256(identity.encode()).hexdigest(), body_sha256=body_hex,
                     parser=parser, parser_version=version, reason=outcome['reason'],
                     decided_by='body_text', decided_at=decided_at, supersedes=None))
+                err_msg = outcome.get('error') or (
+                    f"{outcome['reason']} (peak_rss_bytes={peak_rss})" if peak_rss else outcome['reason']
+                )
+                record_outcome(body_hex, parser, version, 'unreadable', reason=outcome['reason'],
+                               error=err_msg, peak_rss_bytes=peak_rss)
                 continue
             if outcome['status'] != 'completed':
                 raise ValueError('Invalid body-text worker outcome')
             value = outcome['value']
             if value.get('read_error'):
                 pending_read(value['read_error'])
+                record_outcome(body_hex, parser, version, 'pending', reason=value['read_error'],
+                               error=value.get('error') or value['read_error'], peak_rss_bytes=peak_rss)
                 continue
             if value.get('pending'):
                 counters['ocr_pending'] += 1
+                record_outcome(body_hex, parser, version, 'pending', reason=value['pending'],
+                               error=value.get('error') or value['pending'], peak_rss_bytes=peak_rss)
                 continue
             if value['row']['status'] == 'completed':
                 if 'text' not in value:
                     raise ValueError('A completed body-text reading must name its text file')
                 texts[(body_hex, parser, version)] = value
                 counters['ocr_pages'] += len(value['ocr_pages'])
+            row_status = value['row']['status']
+            row_err = value['row'].get('error_type')
+            record_outcome(body_hex, parser, version, 'read', reading_status=row_status,
+                           reason=row_err, error=value.get('error') or row_err, peak_rss_bytes=peak_rss)
             row = dict(value['row'], body_hex=body_hex, parser=parser, parser_version=version,
                        named_meetings=[], links=[])
             row['fingerprint_hex'] = row.pop('fingerprint', None)
@@ -564,7 +650,8 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
     staged = dict(readings=work / 'readings.parquet', body_text=work / 'body-text.parquet',
                   readings_rows=len(rows), body_text_rows=text_rows, versions=planned['versions'],
                   unreadable_key=None, unreadable_pending=False, unreadable_stage=None,
-                  pending_read_reasons=dict(sorted(reasons.items())), **counters)
+                  pending_read_reasons=dict(sorted(reasons.items())),
+                  body_outcomes=sorted(body_outcomes, key=lambda o: o['body_sha256']), **counters)
     if decisions:
         counters['unreadable'] = staged['unreadable'] = len(decisions)
         path = parsed / 'unreadable.jsonl'

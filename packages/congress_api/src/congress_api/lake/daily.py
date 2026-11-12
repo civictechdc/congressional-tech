@@ -738,7 +738,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     scope_work=work/'delta'
     scope_work.mkdir(parents=True,exist_ok=False)
     inputs=[tables.table_input('captures',heads['captures']),tables.table_input('baseline',baseline)]
-    schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',supersedes='Utf8')
+    schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',reason='Utf8',supersedes='Utf8')
     files=unreadable_snapshot.files()
     inputs.append(dict(name='unreadable',kind='json_lines',files=files,
         schema=dict(fields=[field(k,v) for k,v in schema.items()],metadata={})) if files
@@ -747,6 +747,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
         dict(name='reconsidered_shas',materialize=True,sql='''
             SELECT decode(u.body_sha256,'hex') AS body_sha FROM unreadable u
             WHERE u.parser='html_metadata' AND u.body_sha256 IS NOT NULL
+                AND coalesce(u.reason,'')<>'withdrawn'
                 AND EXISTS (SELECT 1 FROM unreadable newer WHERE newer.supersedes=u.id)'''),
         # Baseline captures repeat a body for each capture occurrence. Membership
         # needs one key, otherwise anti/semi joins repeat duplicate match work.

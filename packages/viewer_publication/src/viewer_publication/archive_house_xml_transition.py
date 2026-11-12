@@ -39,10 +39,10 @@ def _pinned_bytes(item):
 
 
 def _unreadable_counts(files):
+    from congress_api.retention.provenance import active_unreadable_rows
     rows = [validate_provenance('unreadable', json.loads(line)) for item in files
             for line in _pinned_bytes(item).splitlines()]
-    superseded = {row.get('supersedes') for row in rows}
-    active = [row for row in rows if row['id'] not in superseded]
+    active = active_unreadable_rows(rows)
     old_house = sum(row['parser'] in {'meeting_records', 'meetings', 'meeting_records.house_xml'}
                     and row['parser_version'] == OLD['house_xml'] for row in active)
     if old_house:

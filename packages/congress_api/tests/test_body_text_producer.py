@@ -282,3 +282,131 @@ def test_withdrawn_unreadable_decision_reopens_the_body_at_the_same_parser_versi
     assert row['parser'] == 'pdf_text' and row['parser_version'] == wrong['parser_version']
     assert row['text'] == PAGE_ONE + '\n' + PAGE_TWO
 
+
+def test_stage_records_per_body_peak_rss_and_error_outcomes(tmp_path):
+    """[BLOCKER-2] stage() records per-body status, reason, error, and measured peak_rss_bytes."""
+    args, names = lake(tmp_path, dict(pdf=(two_page_pdf(), 'pdf'), broken=(b'<x><y>', 'xml')))
+    planned = body_text.plan(captures=args['captures'], engine=args['engine'], work=tmp_path / 'plan',
+                             decided_at=STAMP, local_root=args['local_root'])
+    staged = body_text.stage(planned, pq.read_table(planned['work_list']).to_pylist(),
+                             engine=args['engine'], work=tmp_path / 'stage',
+                             unreadable_store=args['unreadable_store'])
+    by_name = {names[bytes.fromhex(o['body_sha256'])]: o for o in staged['body_outcomes']}
+    assert set(by_name) == {'pdf', 'broken'}
+    assert by_name['pdf']['status'] == 'read' and by_name['pdf']['reading_status'] == 'completed'
+    assert isinstance(by_name['pdf']['peak_rss_bytes'], int) and by_name['pdf']['peak_rss_bytes'] > 0
+    assert by_name['broken']['status'] == 'read' and by_name['broken']['reading_status'] == 'error'
+    assert by_name['broken']['error'] is not None
+    assert isinstance(by_name['broken']['peak_rss_bytes'], int) and by_name['broken']['peak_rss_bytes'] > 0
+
+
+def test_retry_unreadable_script_dry_run_live_guard_and_idempotent_resume(tmp_path, monkeypatch):
+    """[BLOCKER-2] scripts/retry_unreadable_body_text.py handles dry-run, live-writer guard, and idempotent resume."""
+    import importlib.util
+    from pathlib import Path
+    import subprocess
+    from congress_api.retention.provenance import import_unreadable
+
+    script_path = Path(__file__).resolve().parents[3] / 'scripts' / 'retry_unreadable_body_text.py'
+    assert script_path.is_file(), f'Missing {script_path}'
+    spec = importlib.util.spec_from_file_location('retry_unreadable_body_text', script_path)
+    retry_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(retry_mod)
+
+    args, names = lake(tmp_path, dict(a=(two_page_pdf(), 'pdf'), b=(HTML, 'html')))
+    digests = {name: digest.hex() for digest, name in names.items()}
+    vers = body_text.current_versions()
+    wrong_rows = [
+        dict(id='1' * 64, body_sha256=digests['a'], parser='pdf_text', parser_version=vers['pdf_text'],
+             reason='page_deadline', decided_by='body_text', decided_at='2026-11-09T19:00:00Z', supersedes=None),
+        dict(id='2' * 64, body_sha256=digests['b'], parser='html_text', parser_version=vers['html_text'],
+             reason='memory_limit', decided_by='body_text', decided_at='2026-11-09T19:00:00Z', supersedes=None),
+    ]
+    wrong_jsonl = tmp_path / 'wrong.jsonl'
+    wrong_jsonl.write_text(''.join(json.dumps(r) + '\n' for r in wrong_rows))
+    import_unreadable(args['unreadable_store'], wrong_jsonl, decided_at='2026-11-09T19:00:00Z')
+
+    unr_root = tmp_path / 'raw-provenance'
+    common = [
+        '--unreadable-root', str(unr_root),
+        '--catalog-root', str(args['catalog_root']),
+        '--captures', str(args['captures']),
+        '--local-root', str(args['local_root']),
+        '--strategy', 'congress_api.parsers.body_text:native_only',
+    ]
+
+    # 1. Dry-run leaves unreadable-store untouched and proves 0 -> 2 targeted items.
+    dry_dir = tmp_path / 'dry-work'
+    assert retry_mod.main([*common, '--dry-run', '--work-dir', str(dry_dir)]) == 0
+    dry_summary = json.loads((dry_dir / 'dry-run-summary.json').read_text())
+    assert dry_summary['targeted_work_items_before_withdraw'] == 0
+    assert dry_summary['targeted_work_items_after_withdraw'] == 2
+    assert len(list((unr_root / 'provenance/unreadable').glob('*.jsonl'))) == 1
+
+    # 2. Live-writer preflight refuses --apply when a writer is active unless --allow-concurrent is passed.
+    real_run = subprocess.run
+    pgrep_stdout = '55948 python bt_full_driver.py\n'
+
+    def fake_pgrep(cmd, *p_args, **p_kwargs):
+        if cmd and cmd[0] == 'pgrep':
+            return subprocess.CompletedProcess(cmd, 0 if pgrep_stdout else 1, stdout=pgrep_stdout, stderr='')
+        return real_run(cmd, *p_args, **p_kwargs)
+
+    monkeypatch.setattr(subprocess, 'run', fake_pgrep)
+    with pytest.raises(RuntimeError, match='bt_full_driver'):
+        retry_mod.main([*common, '--apply', '--work-dir', str(tmp_path / 'blocked-apply')])
+
+    # Also verify --body-listing passthrough in remote --dry-run mode.
+    import pyarrow as pa
+    listing_rows = []
+    for digest_hex in digests.values():
+        f = next(args['local_root'].glob(f'bodies/sha256/*/{digest_hex}*'))
+        raw_bytes = f.read_bytes()
+        listing_rows.append({
+            'key': f.relative_to(args['local_root']).as_posix(),
+            'size': len(raw_bytes),
+            'etag': '"' + hashlib.md5(raw_bytes).hexdigest() + '"',
+        })
+    listing_path = tmp_path / 'listing.parquet'
+    pq.write_table(pa.Table.from_pylist(listing_rows, schema=body_text.LISTING_SCHEMA), listing_path)
+    remote_dry_dir = tmp_path / 'remote-dry-work'
+    assert retry_mod.main([
+        '--unreadable-root', str(unr_root),
+        '--catalog-root', str(args['catalog_root']),
+        '--captures', str(args['captures']),
+        '--origin', 'https://example.invalid',
+        '--body-listing', str(listing_path),
+        '--dry-run',
+        '--work-dir', str(remote_dry_dir),
+    ]) == 0
+    assert json.loads((remote_dry_dir / 'dry-run-summary.json').read_text())['targeted_work_items_after_withdraw'] == 2
+
+    # 3. Partial --apply (body 'b' missing on disk -> pending_reads == 1) then idempotent resume on same --work-dir!
+    pgrep_stdout = ''
+    b_file = next(args['local_root'].glob(f"bodies/sha256/*/{digests['b']}*"))
+    saved_b_bytes = b_file.read_bytes()
+    b_file.unlink()
+
+    apply_dir = tmp_path / 'apply-work'
+    assert retry_mod.main([*common, '--apply', '--workers', '1', '--decided-at', '2026-11-12T01:00:00Z',
+                           '--work-dir', str(apply_dir)]) == 0
+    first = json.loads((apply_dir / 'apply-summary.json').read_text())
+    by_sha_1 = {o['body_sha256']: o for o in first['outcomes']}
+    assert by_sha_1[digests['a']]['status'] == 'read'
+    assert by_sha_1[digests['a']]['peak_rss_bytes'] > 0
+    assert by_sha_1[digests['b']]['status'] == 'pending'
+
+    # Restore body 'b' and re-run --apply on the EXACT SAME --work-dir (also checking --allow-concurrent when pgrep is non-empty):
+    pgrep_stdout = '55948 python bt_full_driver.py\n'
+    b_file.write_bytes(saved_b_bytes)
+    assert retry_mod.main([*common, '--apply', '--allow-concurrent', '--workers', '1',
+                           '--decided-at', '2026-11-12T01:05:00Z', '--work-dir', str(apply_dir)]) == 0
+    second = json.loads((apply_dir / 'apply-summary.json').read_text())
+    assert second['withdrawn_count'] == 0
+    by_sha_2 = {o['body_sha256']: o for o in second['outcomes']}
+    assert by_sha_2[digests['a']]['status'] == 'read'
+    assert by_sha_2[digests['a']]['peak_rss_bytes'] > 0
+    assert by_sha_2[digests['b']]['status'] == 'read'
+    assert by_sha_2[digests['b']]['peak_rss_bytes'] > 0
+
+

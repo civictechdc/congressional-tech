@@ -17,7 +17,7 @@ from ._record_producer import (
     GOOD_FETCH_CAPTURE_SQL, PK, append_record_table, build_record_table,
     create_record_table, normalize_record_sha, source_ast_digest, stage_record_table,
 )
-from .versions import version_digest
+from .versions import reviewed_producer_version, version_digest
 from .video_records import NO_INLINE_SQL
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -50,11 +50,11 @@ FROM captures c WHERE {GOOD_FETCH_CAPTURE_SQL} AND {PLAYLIST_CAPTURE_SQL} GROUP 
 def current_versions(*, root: Path = ROOT) -> dict[str, str]:
     package = Path(__file__).resolve().parents[1]
     # Only the playlist reader's own definition, so other caption code can change without a re-read.
-    return {SOURCE: version_digest(packages={}, files={
+    return {SOURCE: reviewed_producer_version(version_digest(packages={}, files={
         "producer": Path(__file__),
         "shared_producer": package / "lake/_record_producer.py",
         "schema": Path(root) / "model/lake/playlist-records.schema.json",
-    }, values={"source": SOURCE, "parser": source_ast_digest(package / "parsers/captions.py", ["playlist_uris"])})}
+    }, values={"source": SOURCE, "parser": source_ast_digest(package / "parsers/captions.py", ["playlist_uris"])}))}
 
 
 def build_row(record_sha: str | bytes, source: str, payload: bytes | str, *, parser_version: str) -> dict[str, Any]:

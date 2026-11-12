@@ -18,7 +18,7 @@ from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.body_keys import body_object_digest
 from congress_api.retention.parser_worker import ParserWorker, ParserWorkerPool, reading_input
-from congress_api.retention.provenance import (field, instant, json_input, list_of,
+from congress_api.retention.provenance import (active_unreadable_where, field, instant, json_input, list_of,
     parquet_output, parquet_records, run_job, struct, finish_stage, import_unreadable,
     imported_unreadable_provenance)
 
@@ -303,7 +303,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         inputs.append(dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve())))
     if body_listing is not None:
         inputs.append(dict(name='body_listing',kind='parquet',path=str(Path(body_listing).resolve())))
-    unreadable_schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
+    unreadable_schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',parser_version='Utf8',reason='Utf8',supersedes='Utf8')
     if unreadable_files:
         inputs.append(dict(name='unreadable',kind='json_lines',files=list(unreadable_files),
             schema=dict(fields=[field(k,v) for k,v in unreadable_schema.items()],metadata={})))
@@ -374,8 +374,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         *[dict(name=name.replace('-','_'),sql=(ROOT/'model/sql'/(name+'.sql')).read_text())
           for name in ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts']],
         dict(name='known_formats',sql='SELECT body_sha,format FROM sniff_facts'),
-        dict(name='active_unreadable',sql='''SELECT u.* FROM unreadable u
-            WHERE NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)''')])
+        dict(name='active_unreadable',sql=f"SELECT u.* FROM unreadable u WHERE {active_unreadable_where()}")])
     if combined:
         steps.append(writer_admission_step())
     candidate=(f"NOT EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha)" if parser=='sniff' else

@@ -1233,7 +1233,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         if playlist_records is None:
             prelude.append(dict(name='playlist_records',sql=PLAYLIST_RECORDS_UNAVAILABLE,materialize=True))
         prelude.append(selected_record_step('playlist_records','playlist_records',root=root))
-    prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
+    from congress_api.retention.provenance import active_unreadable_where
+    prelude += [dict(name='active_unreadable',sql=f"SELECT u.* FROM unreadable_records u WHERE {active_unreadable_where('unreadable_records','u')}",materialize=True)]
     from congress_api.models.archive_profile import build_capture_profile
     capture_profile=build_capture_profile(engine_revision=engine.source_revision,
         url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),

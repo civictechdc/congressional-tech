@@ -95,6 +95,7 @@ def _keys(rows):
 
 
 def _decisions(files):
+    from congress_api.retention.provenance import active_unreadable_rows
     by_id = {}
     for pin in files:
         for line in _verified(pin).read_bytes().splitlines():
@@ -102,8 +103,7 @@ def _decisions(files):
             if row['id'] in by_id and by_id[row['id']] != row:
                 raise ValueError('Conflicting unreadable decision identity')
             by_id[row['id']] = row
-    superseded = {row['supersedes'] for row in by_id.values()}
-    return [row for row in by_id.values() if row['id'] not in superseded]
+    return active_unreadable_rows(by_id.values())
 
 
 def _refusals(name, decisions, version):

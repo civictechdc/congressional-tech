@@ -31,6 +31,7 @@ import hashlib
 import importlib
 import io
 import platform
+import resource
 import signal
 import subprocess
 import threading
@@ -162,26 +163,32 @@ def load_page_rule(spec):
 def page_deadline(seconds, page_number):
     """Raise :class:`PageDeadline` in this thread after ``seconds`` of user CPU; off outside the main thread.
 
-    ``ITIMER_VIRTUAL`` advances only while the process runs in user space, so a stop (``SIGSTOP``)
-    or sleep never spends the deadline. ``SIGVTALRM`` reaches Python only between bytecodes, so one
-    long native call runs to its end (the supervisor's document deadline bounds that). Any previous
-    virtual timer and handler are always restored.
+    ``ITIMER_VIRTUAL`` measures process user-mode CPU time only, so a stop (``SIGSTOP``) or sleep
+    never spends the deadline, while ``ParserWorker``'s outer 1,800 s ``time.monotonic()`` deadline
+    bounds wall-clock and XPC/Vision stalls. Any previous virtual timer (less user CPU spent here)
+    and handler are always restored.
     """
     if not seconds or threading.current_thread() is not threading.main_thread():
         yield
         return
     def expire(*_):
         raise PageDeadline(page_number)
+    # ITIMER_VIRTUAL counts process user-mode CPU; ParserWorker's 1,800s time.monotonic() bounds wall/XPC stalls.
+    started_utime = resource.getrusage(resource.RUSAGE_SELF).ru_utime
     previous_handler = signal.signal(signal.SIGVTALRM, expire)
     previous_timer = (0.0, 0.0)
     try:
         previous_timer = signal.setitimer(signal.ITIMER_VIRTUAL, seconds)
         yield
     finally:
+        signal.signal(signal.SIGVTALRM, signal.SIG_IGN)
         signal.setitimer(signal.ITIMER_VIRTUAL, 0)
         signal.signal(signal.SIGVTALRM, previous_handler)
         if any(previous_timer):
-            signal.setitimer(signal.ITIMER_VIRTUAL, *previous_timer)
+            spent = max(0.0, resource.getrusage(resource.RUSAGE_SELF).ru_utime - started_utime)
+            delay = max(0.001, previous_timer[0] - spent) if previous_timer[0] > 0 else 0.0
+            if delay > 0 or previous_timer[1] > 0:
+                signal.setitimer(signal.ITIMER_VIRTUAL, delay or previous_timer[1], previous_timer[1])
 
 
 class _PageRun:

@@ -196,7 +196,7 @@ def completeness_checks(*,catalog_version,include_entities=False,
     Run completeness_steps first. Inputs are captures, readings, filename_readings, parser_versions,
     accepted_versions, the selected_readings step, source_files, sniff_facts, body_admissions and
     active_unreadable.
-    The latter is already reduced by supersession, with nullable body_sha256
+    The latter is already reduced by supersession and withdrawal, with nullable body_sha256
     and record_sha string identities. Existing error/size_limit rows settle
     work; missing storage creates neither a row nor an unreadable decision.
     """

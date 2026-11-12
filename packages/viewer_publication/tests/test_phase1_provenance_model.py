@@ -157,3 +157,60 @@ def test_model_admission_refuses_bad_recovery_registry_selectors(tmp_path):
             queries=admission_checks(parser_versions=value['parser_versions'],catalog_version=value['catalog_version']))
         assert {name:reports['model_invariants'][0][name] for name in case['expected']}==case['expected']
         assert not (tmp_path/'release').exists()
+
+
+def test_archive_model_completeness_treats_withdrawn_unreadable_as_unsettled_until_retried(tmp_path):
+    """[BLOCKER-1] archive_model active_unreadable must not count a withdrawn decision as settled unreadable."""
+    import json
+    import pyarrow.parquet as pq
+    from archive_job_fixture import real_model_spec
+    from viewer_publication.archive_model import prepare_model_inputs, admission_checks
+
+    value, _, _ = real_model_spec(tmp_path)
+    engine = NativeDatasets.from_config(value['engine_config'])
+    readings_path = value['readings']['path']
+    table = pq.read_table(readings_path)
+    rows = table.to_pylist()
+    target = next(r for r in rows if r['parser'] in ('html', 'xml', 'json'))
+    trimmed = [r for r in rows if not (r['body_sha'] == target['body_sha'] and r['parser'] == target['parser'])]
+    trimmed_path = tmp_path / 'readings-trimmed.parquet'
+    import pyarrow as pa
+    pq.write_table(pa.Table.from_pylist(trimmed, schema=table.schema), trimmed_path)
+
+    body_hex = target['body_sha'].hex()
+    p_name = target['parser']
+    p_ver = value['parser_versions'][p_name]
+    u1 = dict(id='1' * 64, body_sha256=body_hex, parser=p_name, parser_version=p_ver,
+              reason='timeout', decided_by='readings', decided_at='2026-11-10T00:00:00Z', supersedes=None)
+    u2 = dict(id='2' * 64, body_sha256=body_hex, parser=p_name, parser_version=p_ver,
+              reason='withdrawn', decided_by='ct-a73a', decided_at='2026-11-11T00:00:00Z', supersedes=u1['id'])
+    u3 = dict(id='3' * 64, body_sha256=body_hex, parser=p_name, parser_version=p_ver,
+              reason='parser_crash', decided_by='readings', decided_at='2026-11-12T00:00:00Z', supersedes=None)
+
+    def check_missing_pages(name, records):
+        unr_path = tmp_path / f'{name}.jsonl'
+        unr_path.write_text(''.join(json.dumps(r) + '\n' for r in records))
+        prepared = prepare_model_inputs(
+            captures=value['captures']['path'],
+            readings=str(trimmed_path),
+            filename_readings=value['filename_readings']['path'],
+            parser_versions=value['parser_versions'],
+            catalog_version=value['catalog_version'],
+            engine=engine,
+            scratch=tmp_path / f'prep-{name}',
+            unreadable_files=[dict(key=f'provenance/unreadable/{name}.jsonl', path=str(unr_path))],
+        )
+        reports = run_job(
+            tmp_path / f'job-{name}',
+            engine,
+            inputs=prepared['inputs'],
+            steps=prepared['steps'],
+            outputs=[],
+            queries=admission_checks(parser_versions=value['parser_versions'], catalog_version=value['catalog_version']),
+        )
+        return reports['profile_completeness'][0]['missing_pages']
+
+    assert check_missing_pages('settled-u1', [u1]) == 0
+    assert check_missing_pages('withdrawn-u2', [u1, u2]) == 1
+    assert check_missing_pages('retried-failed-u3', [u1, u2, u3]) == 0
+

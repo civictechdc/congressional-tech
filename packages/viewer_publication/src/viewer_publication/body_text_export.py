@@ -110,10 +110,10 @@ def coverage_queries(versions, *, with_readings, with_unreadable):
             (SELECT body_sha,parser,status FROM readings WHERE {_at_versions(versions)}) r ON s.saved_body=r.body_sha
             GROUP BY r.parser,r.status ORDER BY r.parser,r.status'''))
     if with_unreadable:
+        from congress_api.retention.provenance import active_unreadable_where
         queries.append(dict(name='unreadable', sql=f'''SELECT u.parser,count(*) AS n FROM saved s RIGHT SEMI JOIN
             (SELECT decode(body_sha256,'hex') AS body_sha,parser FROM unreadable a
-             WHERE {_at_versions(versions, 'a.')} AND coalesce(a.reason,'')<>'withdrawn'
-               AND NOT EXISTS (SELECT 1 FROM unreadable b WHERE b.supersedes=a.id)) u
+             WHERE {_at_versions(versions, 'a.')} AND {active_unreadable_where('unreadable', 'a')}) u
             ON s.saved_body=u.body_sha GROUP BY u.parser ORDER BY u.parser'''))
     return queries
 
