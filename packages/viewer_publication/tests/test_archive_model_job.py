@@ -701,3 +701,32 @@ def test_a_control_build_fails_naming_both_ids_when_its_release_differs(tmp_path
         assert code==0 and not err
     else:
         assert code==1 and built in err and expected in err
+
+
+def test_retire_build_cli_plans_and_retires_model_only_build_folder(tmp_path,capsys):
+    """archive_model_job --retire-build routes model-only build cleanup through archive_disk (ct-arlk)."""
+    from viewer_publication.archive_model_job import main
+    arm=tmp_path/'arm'
+    (arm/'archive-release').mkdir(parents=True)
+    (arm/'archive-model/evidence').mkdir(parents=True)
+    (arm/'workspace').mkdir()
+    (arm/'model-spec.json').write_text(json.dumps(dict(
+        output=str(arm/'archive-release'),
+        scratch=str(arm/'archive-model'),
+        engine_config=str(arm/'runtime.json'),
+    )))
+    (arm/'runtime.json').write_text(json.dumps(dict(workspace=str(arm/'workspace'))))
+    (arm/'archive-release/manifest.json').write_text(json.dumps(dict(release_id='cd'*16)))
+    (arm/'archive-release/detail.parquet').write_bytes(b'detail')
+    (arm/'archive-model/evidence/ev.parquet').write_bytes(b'ev')
+
+    assert main(['--retire-build',str(arm),'--plan'])==0
+    planned=json.loads(capsys.readouterr().out)
+    assert planned['status']=='dry-run' and planned['release_id']=='cd'*16
+    assert (arm/'archive-release').exists()
+
+    assert main(['--retire-build',str(arm),'--execute'])==0
+    retired=json.loads(capsys.readouterr().out)
+    assert retired['status']=='retired' and retired['release_id']=='cd'*16
+    assert not (arm/'archive-release').exists() and not (arm/'archive-model').exists() and not (arm/'workspace').exists()
+    assert (arm/'model-spec.json').is_file() and (arm/'runtime.json').is_file() and (arm/'retired-build-digests.json').is_file()

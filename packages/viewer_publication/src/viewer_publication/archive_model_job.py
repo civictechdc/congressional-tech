@@ -446,8 +446,10 @@ def main(argv=None):
     source.add_argument('--spec',type=Path)
     source.add_argument('--from-candidate',type=Path,metavar='CANDIDATE',
         help='a completed daily candidate (archive-daily, archive-daily-provenance, archive-publish) to bind into --build')
-    parser.add_argument('--build',type=Path,help='fresh folder for the spec, runtime copy, workspace, ledger, output and scratch; '
-                        'nothing removes it (a full build leaves about 1.6 GiB)')
+    source.add_argument('--retire-build',type=Path,metavar='BUILD',
+        help='record release/evidence digests and retire output, scratch, workspace and ledger of a model-only build')
+    parser.add_argument('--build',type=Path,help='fresh folder for the spec, runtime copy, workspace, ledger, output and scratch '
+                        '(retire heavy output/scratch after comparison with --retire-build <folder> --execute)')
     parser.add_argument('--runtime',type=Path,help='the engine runtime file the build copies, its workspace moved into --build')
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
     ledger=parser.add_mutually_exclusive_group()
@@ -455,6 +457,18 @@ def main(argv=None):
     ledger.add_argument('--ledger-base',type=Path,help='release folder carrying retired_links.parquet to derive the ledger from')
     parser.add_argument('--expect-release-id',help='fail unless the built release id starts with these 12 to 64 hex characters')
     args=parser.parse_args(argv)
+    if args.retire_build is not None:
+        if args.build or args.runtime or args.ledger or args.ledger_base or args.expect_release_id:
+            parser.error('--retire-build takes only --plan or --execute')
+        import runpy
+        from viewer_publication.archive_publish_job import ROOT
+        disk=runpy.run_path(str(ROOT/'scripts/archive_disk.py'))
+        try:
+            result=disk['retire_model_build'](args.retire_build,execute=args.execute)
+        except (ValueError,OSError) as error:
+            parser.error(str(error))
+        print(json.dumps(result,sort_keys=True))
+        return 0
     if args.from_candidate is None and (args.build or args.runtime) or args.from_candidate and not (args.build and args.runtime):
         parser.error('--from-candidate needs --build and --runtime, and --spec takes neither')
     if not args.execute and (args.ledger or args.ledger_base or args.expect_release_id):

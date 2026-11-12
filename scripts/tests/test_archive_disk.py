@@ -312,3 +312,84 @@ def test_a_previous_attempt_that_is_not_resumed_leaves_its_engine_logs_and_a_pub
     kept = {path.relative_to(nightly_work).parts[1:]: path.read_bytes() for path in nightly_work.rglob('engine.log')}
     assert kept == {('previous-candidate', 'producer-proof', 'captures', 'q', 'engine.log'): b'Error: query: source open failed\n'}
 
+
+def _model_only_build(tmp_path):
+    arm = tmp_path / 'build-arm'
+    (arm / 'archive-release').mkdir(parents=True)
+    (arm / 'archive-model/evidence').mkdir(parents=True)
+    (arm / 'workspace').mkdir()
+    (arm / 'ledger').mkdir()
+    (arm / 'model-spec.json').write_text(json.dumps(dict(
+        output=str(arm / 'archive-release'),
+        scratch=str(arm / 'archive-model'),
+        engine_config=str(arm / 'runtime.json'),
+    )))
+    (arm / 'runtime.json').write_text(json.dumps(dict(workspace=str(arm / 'workspace'))))
+    (arm / 'watchdog.json').write_text(json.dumps(dict(status='completed')))
+    (arm / 'comparison.json').write_text(json.dumps(dict(verdict='PASS')))
+    (arm / 'archive-release/manifest.json').write_text(json.dumps(dict(release_id='ab' * 16)))
+    (arm / 'archive-release/list.parquet').write_bytes(b'parquet-release-bytes')
+    (arm / 'archive-model/evidence/captures.parquet').write_bytes(b'evidence-parquet-bytes')
+    (arm / 'archive-model/job.json').write_text(json.dumps(dict(steps=[])))
+    (arm / 'archive-model/result.json').write_text(json.dumps(dict(ok=True)))
+    (arm / 'archive-model/steps.jsonl').write_text('{"event":"step","name":"captures","rows":5}\n')
+    (arm / 'ledger/prior_links.parquet').write_bytes(b'ledger-bytes')
+    return arm
+
+
+def test_retire_model_build_records_digests_and_removes_heavy_folders_only_on_execute(tmp_path):
+    """Model-only build retirement keeps spec, runtime, logs, steps and sha256 digests while removing output/scratch (ct-arlk)."""
+    from hashlib import sha256
+
+    arm = _model_only_build(tmp_path)
+    plan = disk.retire_model_build(arm, execute=False)
+    assert plan['status'] == 'dry-run'
+    assert plan['release_id'] == 'ab' * 16
+    assert set(plan['paths']) == {
+        str(arm / 'archive-model'),
+        str(arm / 'archive-release'),
+        str(arm / 'ledger'),
+        str(arm / 'workspace'),
+    }
+    assert plan['reclaimable_bytes'] > 0
+    assert (arm / 'archive-release').exists() and not (arm / 'retired-build-digests.json').exists()
+
+    retired = disk.retire_model_build(arm, execute=True)
+    assert retired['status'] == 'retired'
+    assert not (arm / 'archive-model').exists()
+    assert not (arm / 'archive-release').exists()
+    assert not (arm / 'workspace').exists()
+    assert not (arm / 'ledger').exists()
+    assert (arm / 'model-spec.json').is_file()
+    assert (arm / 'runtime.json').is_file()
+    assert (arm / 'watchdog.json').is_file()
+    assert (arm / 'comparison.json').is_file()
+    assert (arm / 'steps.jsonl').read_text() == '{"event":"step","name":"captures","rows":5}\n'
+    digests = json.loads((arm / 'retired-build-digests.json').read_text())
+    assert digests['release_id'] == 'ab' * 16
+    assert digests['archive_release']['list.parquet']['sha256'] == sha256(b'parquet-release-bytes').hexdigest()
+    assert digests['evidence']['captures.parquet']['sha256'] == sha256(b'evidence-parquet-bytes').hexdigest()
+    assert digests['artifacts']['result.json']['bytes'] > 0
+
+    again = disk.retire_model_build(arm, execute=True)
+    assert again['status'] == 'retired' and again['paths'] == [] and again['reclaimable_bytes'] == 0
+    assert json.loads((arm / 'retired-build-digests.json').read_text()) == digests
+
+
+def test_retire_model_build_refuses_publish_candidates_and_symlinks(tmp_path):
+    """retire_model_build must never touch a publish/daily candidate or follow symlinks (ct-arlk)."""
+    cand = _model_only_build(tmp_path)
+    (cand / 'archive-publish').mkdir()
+    with pytest.raises(ValueError, match='publish|candidate'):
+        disk.retire_model_build(cand, execute=True)
+    assert (cand / 'archive-release').exists()
+
+    arm = _model_only_build(tmp_path / 'sub')
+    outside = tmp_path / 'outside.parquet'
+    outside.write_bytes(b'secret')
+    (arm / 'archive-model/evidence/link.parquet').symlink_to(outside)
+    with pytest.raises(ValueError, match='symlink'):
+        disk.retire_model_build(arm, execute=True)
+    assert (arm / 'archive-model').exists() and outside.exists()
+
+

@@ -1,6 +1,6 @@
 ---
 id: ct-arlk
-status: open
+status: closed
 deps: []
 links: [ct-b7bv, ct-ucwm]
 created: 2026-11-11T00:44:38Z
@@ -23,3 +23,10 @@ Model-only build folders have an owner and an end condition through the existing
 **2026-11-11T14:31:18Z**
 
 validated 2026-11-11, left open: nothing removes model-only build folders yet; archive_model_job --from-candidate still leaves output and scratch, and release-next/ still holds build-final-2, build-final-3, build-main-control and build-release-b. Needs an owner and end condition (cleanup facility or a measured budget under ct-ucwm).
+
+**2026-11-12T05:19:00Z**
+
+resolved on `claude/ct-wave-1ab-safety`:
+1. Added `retire_model_build(build, *, execute=False)` to the existing disk-cleanup facility (`scripts/archive_disk.py`) and wired `--retire-build <folder> [--plan | --execute]` into `viewer_publication.archive_model_job`.
+2. Before deleting `archive-model`, `archive-release`, `workspace`, and `ledger`, `retire_model_build` verifies `build` is a private model-only build (refusing symlinks and any folder containing `archive-publish` or `archive-daily`), copies `steps.jsonl` to `build/steps.jsonl` if absent, and atomically writes `retired-build-digests.json` recording `release_id` and the `sha256` + byte count of every `archive-release` and `archive-model/evidence` file plus `job.json`/`result.json`. Covered by unit tests in `scripts/tests/test_archive_disk.py` and `packages/viewer_publication/tests/test_archive_model_job.py`.
+3. Retired the four superseded 2026-11-10 `release-next` builds (`build-final-2`, `build-final-3`, `build-main-control`, `build-release-b`, `6,790,668,071` logical bytes across `archive-model`/`archive-release`/`ledger`/`workspace`, zero open `lsof` handles). Measured `/System/Volumes/Data` free disk before and after (`df -k` / `df -h`): `67,690,324 KiB` (`65Gi`) -> `73,538,928 KiB` (`70Gi`).

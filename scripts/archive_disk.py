@@ -4,6 +4,7 @@ Budgets are operator-qualified whole-operation measurements, never inferred from
 engine limits or a watchdog floor. Admission does not allocate space or exclude
 unrelated writers; the runtime disk floor remains necessary.
 """
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
@@ -248,3 +249,119 @@ def retire_spill(candidate, *, execute=False):
         for path in targets:
             shutil.rmtree(path)
     return dict(status='retired' if execute else 'dry-run', paths=[str(path) for path in targets])
+
+
+def _file_digest(path):
+    digest = sha256()
+    size = 0
+    with path.open('rb') as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+            size += len(chunk)
+    return dict(sha256=digest.hexdigest(), bytes=size)
+
+
+def _tree_digests(folder):
+    entries = {}
+    if not folder.is_dir():
+        return entries
+    for directory, _dirs, files in os.walk(folder, followlinks=False):
+        parent = Path(directory)
+        for name in sorted(files):
+            item = parent / name
+            entries[item.relative_to(folder).as_posix()] = _file_digest(item)
+    return dict(sorted(entries.items()))
+
+
+def retire_model_build(build, *, execute=False):
+    """Record release/evidence digests and remove private output/scratch of a model-only build (ct-arlk)."""
+    raw = Path(build)
+    if raw.is_symlink() or not raw.is_dir():
+        raise ValueError(f'Expected an existing model-only build directory, not a symlink: {build}')
+    build = Path(os.path.abspath(raw))
+    if build.is_symlink() or any(p.is_symlink() for p in build.parents):
+        raise ValueError(f'Model-only build path contains a symlink: {build}')
+    for forbidden in ('archive-publish', 'archive-daily'):
+        entry = build / forbidden
+        if entry.exists() or entry.is_symlink():
+            raise ValueError(f'Expected a model-only build folder, not a publish or daily candidate: {build}')
+    spec_path = private_path(build / 'model-spec.json', build)
+    if not spec_path.is_file():
+        raise ValueError(f'Model-only build folder lacks model-spec.json: {build}')
+    spec = metadata(spec_path)
+    if (
+        not isinstance(spec.get('output'), str)
+        or not isinstance(spec.get('scratch'), str)
+        or private_path(spec['output'], build) != build / 'archive-release'
+        or private_path(spec['scratch'], build) != build / 'archive-model'
+    ):
+        raise ValueError(f'model-spec.json does not own archive-release and archive-model inside {build}')
+
+    targets = []
+    reclaimable = 0
+    for name in ('archive-model', 'archive-release', 'ledger', 'workspace'):
+        target = build / name
+        if target.is_symlink():
+            raise ValueError(f'Model build target is a symlink: {target}')
+        if not target.exists():
+            continue
+        if not target.is_dir():
+            raise ValueError(f'Expected a directory in model build: {target}')
+        for directory, dirs, files in os.walk(target, followlinks=False):
+            parent = Path(directory)
+            for child in dirs + files:
+                member = parent / child
+                if member.is_symlink():
+                    raise ValueError(f'Model build contains a symlink: {member}')
+            for child in files:
+                reclaimable += (parent / child).stat().st_size
+        targets.append(target)
+
+    digest_path = private_path(build / 'retired-build-digests.json', build)
+    prior = metadata(digest_path) if digest_path.is_file() else {}
+    release_dir = build / 'archive-release'
+    model_dir = build / 'archive-model'
+    release_id = prior.get('release_id')
+    if (release_dir / 'manifest.json').is_file():
+        manifest = metadata(private_path(release_dir / 'manifest.json', build))
+        release_id = manifest.get('release_id', release_id)
+
+    keep_steps = (model_dir / 'steps.jsonl').is_file() and not (build / 'steps.jsonl').exists()
+    if keep_steps:
+        reclaimable = max(0, reclaimable - (model_dir / 'steps.jsonl').stat().st_size)
+
+    if execute and targets:
+        record = dict(
+            version=1,
+            release_id=release_id,
+            archive_release=_tree_digests(release_dir) if release_dir.is_dir() else prior.get('archive_release', {}),
+            evidence=_tree_digests(model_dir / 'evidence') if (model_dir / 'evidence').is_dir() else prior.get('evidence', {}),
+            artifacts={
+                name: _file_digest(model_dir / name)
+                for name in ('job.json', 'result.json')
+                if (model_dir / name).is_file()
+            } or prior.get('artifacts', {}),
+        )
+        if keep_steps:
+            steps_dst = private_path(build / 'steps.jsonl', build)
+            shutil.copy2(model_dir / 'steps.jsonl', steps_dst)
+        fd, tmp_name = tempfile.mkstemp(prefix='.retired-build-', suffix='.json', dir=build)
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+                json.dump(record, handle, indent=2, sort_keys=True)
+                handle.write('\n')
+            os.replace(tmp_name, digest_path)
+        except Exception:
+            Path(tmp_name).unlink(missing_ok=True)
+            raise
+        for target in targets:
+            shutil.rmtree(target)
+
+    return dict(
+        status='retired' if execute else 'dry-run',
+        build=str(build),
+        release_id=release_id,
+        paths=[str(path) for path in targets],
+        reclaimable_bytes=reclaimable,
+        digests=str(digest_path) if digest_path.is_file() else None,
+    )
