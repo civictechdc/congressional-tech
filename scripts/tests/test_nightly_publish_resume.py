@@ -150,3 +150,18 @@ def test_the_morning_report_is_kept_and_its_line_goes_in_the_summary(tmp_path):
     quiet = {}
     nightly.record_meeting_updates(quiet, candidate(tmp_path / 'quiet', {'archive-daily/daily-summary.json': b'{}'})[0])
     assert quiet == {}
+
+
+def test_resumed_candidate_records_the_newest_morning_report_not_the_largest_uuid(tmp_path):
+    import os
+    resumed, _ = candidate(tmp_path / 'resumed', {
+        'archive-publish/candidate-fff000/meeting-updates.json': json.dumps(dict(line='STOPPED old attempt', meetings=[])).encode(),
+        'archive-publish/candidate-111000/meeting-updates.json': json.dumps(dict(line='Cleared the release check', meetings=[])).encode()})
+    old = resumed / 'archive-publish/candidate-fff000/meeting-updates.json'
+    new = resumed / 'archive-publish/candidate-111000/meeting-updates.json'
+    os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+    os.utime(new, ns=(2_000_000_000, 2_000_000_000))
+    summary = {}
+    nightly.record_meeting_updates(summary, resumed)
+    assert summary == {'meeting_updates': 'Cleared the release check'}
+

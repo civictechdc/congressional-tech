@@ -358,6 +358,12 @@ def _epoch_us(moment):
     return ((moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)) - EPOCH) // timedelta(microseconds=1)
 
 
+_HOUSE_XML_EVENT_PATTERNS = (
+    re.compile(r'(?i)^https?://docs[.]house[.]gov/meetings/[^/?#]+/[^/?#]+/[0-9]{8}/(?:hhrg|hmkp|hmtg)?([0-9]+)(?:/|$|[?#])'),
+    re.compile(r'(?i)[?&]eventid=([0-9]+)(?=$|[^0-9])'),
+)
+
+
 def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work, updated_events=(),
                         candidate_receipt_keys=None):
     """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf, ct-rhqw); empty when it can.
@@ -388,41 +394,50 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
         return ['automatic causes: citations moved, but the candidate cites no file or read the live release does not']
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
-    pq.write_table(pa.table({'sha': pa.array(cited, pa.string())}), work / 'cited-files.parquet')
+    cited_hex = [s for s in cited if re.fullmatch('[0-9a-f]{64}', s)]
+    pq.write_table(pa.table({'sha': pa.array(cited_hex, pa.string()),
+                             'sha_bin': pa.array([bytes.fromhex(s) for s in cited_hex], pa.binary(32))}),
+                   work / 'cited-files.parquet')
     pq.write_table(pa.table({f: pa.array([r[f] for r in reads], t) for f, t in
                              (('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()))}),
                    work / 'cited-reads.parquet')
     inputs = [table_input('captures', _captures_source(captures)),
               dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet')),
               dict(name='cited_reads', kind='parquet', path=str(work / 'cited-reads.parquet'))]
+    steps = []
     queries = [dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
-            JOIN captures c ON lower(encode(c.sha256,'hex'))=k.sha WHERE c.sha256 IS NOT NULL ORDER BY 1,2"""),
+            JOIN captures c ON c.sha256=k.sha_bin ORDER BY 1,2"""),
                dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
             c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
             AND c.capture_index=k.capture_index ORDER BY 1,2,3""")]
     if updated_events:
         pq.write_table(pa.table({'receipt_key': pa.array(sorted(held), pa.string())}), work / 'held-receipts.parquet')
         inputs.append(dict(name='held_receipts', kind='parquet', path=str(work / 'held-receipts.parquet')))
+        addr = "lower(coalesce(c.url,c.requested_url,c.context_url,''))"
+        has_sniffed = captures.get('kind') != 'parquet' or 'sniffed_format' in pq.read_schema(captures['path']).names
+        xml_fmt = f"({addr} LIKE '%.xml%' OR c.sniffed_format='xml')" if has_sniffed else f"{addr} LIKE '%.xml%'"
+        hx_pred = f"""c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
+              AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
+              AND coalesce(c.family,'')<>'house/witness-xml' AND {addr} NOT LIKE '%wlist%'
+              AND (c.family IN ('house/meeting-xml','house/Committees')
+                   OR ({addr} LIKE '%docs.house.gov%' AND {xml_fmt}))"""
         if candidate_receipt_keys is not None:
             pq.write_table(pa.table({'receipt_key': pa.array(sorted(set(candidate_receipt_keys) - held), pa.string())}),
                            work / 'new-receipts.parquet')
             inputs.append(dict(name='new_receipts', kind='parquet', path=str(work / 'new-receipts.parquet')))
-            new_filter = 'JOIN new_receipts nr ON nr.receipt_key=hx.receipt_key'
+            new_from = 'FROM new_receipts nr JOIN captures c ON c.receipt_key=nr.receipt_key WHERE'
         else:
-            new_filter = 'LEFT JOIN held_receipts hr ON hr.receipt_key=hx.receipt_key WHERE hr.receipt_key IS NULL'
-        addr = "lower(coalesce(c.url,c.requested_url,c.context_url,''))"
-        queries.append(dict(name='house_xml', sql=f"""WITH hx AS (
-                SELECT lower(encode(c.sha256,'hex')) AS sha,c.receipt_key,{addr} AS addr FROM captures c
-                WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
-                  AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
-                  AND coalesce(c.family,'')<>'house/witness-xml' AND {addr} NOT LIKE '%wlist%'
-                  AND (c.family IN ('house/meeting-xml','house/Committees')
-                       OR ({addr} LIKE '%docs.house.gov%' AND {addr} LIKE '%.xml%'))),
-            live_hx AS (SELECT DISTINCT hx.sha FROM hx JOIN held_receipts hr ON hr.receipt_key=hx.receipt_key)
-            SELECT DISTINCT n.sha,n.receipt_key,n.addr
-            FROM (SELECT hx.sha,hx.receipt_key,hx.addr FROM hx {new_filter}) n
-            LEFT JOIN live_hx l ON l.sha=n.sha WHERE l.sha IS NULL ORDER BY 1,2,3"""))
-    found = run_job(work / 'citations', engine, inputs=inputs, steps=[], outputs=[], queries=queries)
+            new_from = 'FROM held_receipts hr RIGHT JOIN captures c ON c.receipt_key=hr.receipt_key WHERE hr.receipt_key IS NULL AND'
+        steps += [
+            dict(name='new_hx', materialize=True,
+                 sql=f'SELECT DISTINCT c.sha256,c.receipt_key,{addr} AS addr {new_from} {hx_pred}'),
+            dict(name='new_hx_shas', materialize=True, sql='SELECT DISTINCT sha256 FROM new_hx'),
+            dict(name='live_hx', materialize=True,
+                 sql=f'SELECT DISTINCT s.sha256 FROM new_hx_shas s JOIN captures c ON c.sha256=s.sha256 '
+                     f'JOIN held_receipts hr ON hr.receipt_key=c.receipt_key WHERE {hx_pred}')]
+        queries.append(dict(name='house_xml', sql="""SELECT lower(encode(n.sha256,'hex')) AS sha,n.receipt_key,n.addr
+            FROM new_hx n LEFT JOIN live_hx l ON l.sha256=n.sha256 WHERE l.sha256 IS NULL ORDER BY 1,2,3"""))
+    found = run_job(work / 'citations', engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
     receipts = {}
     for row in found['files']:
         receipts.setdefault(row['sha'], []).append(row['receipt_key'])
@@ -461,7 +476,8 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
                 else '/senate/' not in (((r.get('congress_gov_detail_observation') or {}).get('successful_read') or {}).get('source_url') or '').lower()
                 for r in mrows)
         for row in found['house_xml']:
-            ids_in_url = {int(m) for m in re.findall(r'(?:meetings/[^?#]*/|[?&]eventid=)(\d{5,})(?=$|[^0-9])', row['addr'] or '')}
+            addr_val = row['addr'] or ''
+            ids_in_url = {int(m) for pat in _HOUSE_XML_EVENT_PATTERNS for m in pat.findall(addr_val)}
             if (ids_in_url & updated_set) or (not ids_in_url and non_senate_update):
                 reasons.append(
                     f"automatic causes: new House XML body {row['sha'][:16]} ({row['receipt_key']}) accompanies an updated meeting")

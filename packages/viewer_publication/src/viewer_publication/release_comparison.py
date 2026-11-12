@@ -471,8 +471,7 @@ def updated_subjects(d: Diff):
         if 'subject_keys' not in shared:
             return False
         document_subjects(d)
-        same_tx = ('list_transform(p.transcripts,t->t.package_id) IS NOT DISTINCT FROM list_transform(l.transcripts,t->t.package_id)'
-                   if 'transcripts' in shared else 'true')
+        same_tx = _same_transcripts(d)
         empty = 'CAST([] AS VARCHAR[])'
         d.table('clean_subject_meetings', f"""SELECT u.event_id,u.added FROM meeting_update u
           JOIN candidate_meetings l USING(event_id) LEFT JOIN base_meetings p USING(event_id)
@@ -525,7 +524,8 @@ def document_file(table):
         groups, shape = d.documents
         join = f'one_to_one JOIN base_{table} p ON p.file_row_number=pr JOIN candidate_{table} l ON l.file_row_number=lr'
         compare, rekeys = None, []
-        if rekeyed(d) and 'witness_keys' in set(d.columns('base', table)) & set(d.columns('candidate', table)):
+        shared = set(d.columns('base', table)) & set(d.columns('candidate', table))
+        if rekeyed(d) and 'witness_keys' in shared:
             # Keys re-keyed through the candidate's witness_key_map count as the same witness.
             for side, alias in (('base', 'pw'), ('candidate', 'lw')):
                 mapped_keys = rekeyed_lists(d, f'{side}_{table}', 'file_row_number', 'witness_keys')
@@ -537,17 +537,32 @@ def document_file(table):
             if n:
                 rekeys = [dict(group('changed witness_keys', 're-keyed through witness_key_map', n, 'verified'), value=True)]
         out = [*groups, *rekeys, *d.changed(table, join, compare, exclude=OFFSETS | {'file_row_number'})]
-        if compare and updated_witnesses(d):
-            # ct-rhqw: a document whose list gained or lost only witnesses of updated meetings.
+        if 'witness_keys' in shared and updated_witnesses(d):
+            # ct-rhqw: a document whose list gained or lost only witnesses of its own updated meetings.
             empty = 'CAST([] AS VARCHAR[])'
-            moved, value = d.rows(f"""WITH r AS (SELECT p.file_row_number AS pr,{left} IS NOT DISTINCT FROM {right} AS mapped,
-                  coalesce(p.witness_keys,{empty}) AS pk,coalesce(l.witness_keys,{empty}) AS lk
+            left_w, right_w = (
+                (compare['witness_keys'].replace('X', s).format(c='"witness_keys"') for s in 'pl')
+                if compare else ('p."witness_keys"', 'l."witness_keys"'))
+            if 'meeting_keys' in shared:
+                mk_cols = f',coalesce(p.meeting_keys,{empty}) AS pmk,coalesce(l.meeting_keys,{empty}) AS lmk'
+                mk_sel = ',pmk,lmk'
+                rem_ok = 'EXISTS (SELECT 1 FROM witness_update_base wb WHERE wb.witness_key=k AND list_contains(pmk,split_part(wb.occasion,\':\',2)))'
+                add_ok = """EXISTS (SELECT 1 FROM witness_update_candidate wc JOIN meeting_update mu ON wc.occasion='meeting:'||mu.event_id
+                    WHERE wc.witness_key=k AND list_contains(lmk,split_part(wc.occasion,':',2))
+                      AND (NOT mu.added OR list_contains(pmk,split_part(wc.occasion,':',2))))"""
+            else:
+                mk_cols, mk_sel = '', ''
+                rem_ok = 'k IN (SELECT witness_key FROM witness_update_base)'
+                add_ok = 'k IN (SELECT witness_key FROM witness_update_candidate)'
+            moved, value = d.rows(f"""WITH r AS (SELECT p.file_row_number AS pr,{left_w} IS NOT DISTINCT FROM {right_w} AS mapped,
+                  coalesce(p.witness_keys,{empty}) AS pk,coalesce(l.witness_keys,{empty}) AS lk{mk_cols}
                   FROM {join} WHERE p.witness_keys IS DISTINCT FROM l.witness_keys),
-                keys AS (SELECT pr,pk,lk,unnest(list_concat(pk,lk)) AS k FROM r),
-                outside AS (SELECT DISTINCT pr FROM keys WHERE NOT (list_contains(pk,k) AND list_contains(lk,k))
-                  AND k NOT IN (SELECT witness_key FROM witness_update_base UNION SELECT witness_key FROM witness_update_candidate))
+                keys AS (SELECT pr,pk,lk{mk_sel},unnest(list_concat(pk,lk)) AS k FROM r),
+                outside AS (SELECT DISTINCT pr FROM keys WHERE (list_contains(pk,k) AND NOT list_contains(lk,k) AND NOT ({rem_ok}))
+                  OR (list_contains(lk,k) AND NOT list_contains(pk,k) AND NOT ({add_ok})))
               SELECT count(*) FILTER (WHERE mapped),count(*) FILTER (WHERE NOT mapped) FROM r WHERE pr NOT IN (SELECT pr FROM outside)""")[0]
-            out = split_group(out, 'changed witness_keys', 're-keyed through witness_key_map', moved, f're-keyed through witness_key_map; {MEETING_UPDATE}')
+            if compare:
+                out = split_group(out, 'changed witness_keys', 're-keyed through witness_key_map', moved, f're-keyed through witness_key_map; {MEETING_UPDATE}')
             out = refetch_split(out, {'witness_keys': value}, MEETING_UPDATE)
         return out, shape if table == 'list' else {}
     return run
@@ -669,7 +684,37 @@ def key_file(table, key):
     return run
 
 
-MEETING_COMPARE = {'transcripts': 'list_transform(X.{c},t->t.package_id)'}  # transcript list_row is release-local
+def _transcript_compare_expr(d: Diff, alias='X', col='{c}'):
+    """Compare `meetings.transcripts` across all non-`list_row` struct fields (`list_row` is release-local)."""
+    import pyarrow as pa
+    bt = d.arrow_types('base', 'meetings').get('transcripts') if d.has('base', 'meetings') else None
+    ct = d.arrow_types('candidate', 'meetings').get('transcripts') if d.has('candidate', 'meetings') else None
+    if (bt is not None and bt == ct and (pa.types.is_list(bt) or pa.types.is_large_list(bt))
+            and pa.types.is_struct(bt.value_type)):
+        fields = [f.name for f in bt.value_type if f.name != 'list_row']
+        if not fields:
+            return f'coalesce(len({alias}.{col}),0)'
+        packed = ','.join(f'"{name}":=t."{name}"' for name in fields)
+        return f'list_transform({alias}.{col},t->struct_pack({packed}))'
+    return None
+
+
+def _meeting_compare(d: Diff):
+    expr = _transcript_compare_expr(d)
+    return {'transcripts': expr} if expr is not None else {}
+
+
+def _same_transcripts(d: Diff, left='p', right='l'):
+    if not (d.has('base', 'meetings') and d.has('candidate', 'meetings')):
+        return 'true'
+    if 'transcripts' not in set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings')):
+        return 'true'
+    lp, rp = _transcript_compare_expr(d, left, 'transcripts'), _transcript_compare_expr(d, right, 'transcripts')
+    if lp is None or rp is None:
+        return f'{left}.transcripts IS NOT DISTINCT FROM {right}.transcripts' if d.arrow_types('base', 'meetings').get('transcripts') == d.arrow_types('candidate', 'meetings').get('transcripts') else 'false'
+    return f'{lp} IS NOT DISTINCT FROM {rp}'
+
+
 # ct-uywf: the columns a new read of a meeting's Congress.gov detail record moves on an unchanged
 # meeting, and the fields of a read that say where and when it happened.
 DETAIL, UPDATED, STATUSES = 'congress_gov_detail_observation', 'congress_gov_updated', 'publisher_status_observations'
@@ -714,7 +759,8 @@ def refetched_meetings(d: Diff):
         has_both = d.has('base', 'meetings') and d.has('candidate', 'meetings')
         shared = set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings')) if has_both else set()
         resched_skip = set(RESCHEDULED) if updated_meetings(d) and set(RESCHEDULED) <= shared else set()
-        same = has_both and _equal_except(d, 'meetings', {'event_id', DETAIL, UPDATED, STATUSES, *resched_skip}, MEETING_COMPARE)
+        m_cmp = _meeting_compare(d) if has_both else {}
+        same = has_both and _equal_except(d, 'meetings', {'event_id', DETAIL, UPDATED, STATUSES, *resched_skip}, m_cmp)
         kind = d.arrow_types('base', 'meetings').get(DETAIL) if same else None
         leaves = set(_leaves(kind)) if kind is not None and pa.types.is_struct(kind) else set()
         moving = {(*read, f) for read in READS for f in READ_LOCATOR} | {('latest_attempt', 'outcome')}
@@ -767,16 +813,17 @@ def meetings(d: Diff):
     moves (`refetched_meetings`, ct-uywf). The updated meetings are listed in the report
     (`congress_gov_updates`) for the morning report."""
     join = 'base_meetings p JOIN candidate_meetings l USING(event_id)'
+    m_cmp = _meeting_compare(d)
     groups, notes = key_file('meetings', 'event_id')(d)[0], {}
-    groups += d.changed('meetings', join, MEETING_COMPARE, set())
+    groups += d.changed('meetings', join, m_cmp, set())
     elsewhere = 'true'
     if updated_meetings(d):
         updated = 'event_id IN (SELECT event_id FROM meeting_update WHERE NOT added)'
-        counts = changed_counts(d, join, groups, updated, MEETING_COMPARE)
+        counts = changed_counts(d, join, groups, updated, m_cmp)
         if 'subject_keys' in counts and updated_subjects(d):
             counts['subject_keys'] = changed_counts(
                 d, join, [g for g in groups if g['group'] == 'changed subject_keys'],
-                'event_id IN (SELECT event_id FROM clean_subject_meetings WHERE NOT added)', MEETING_COMPARE).get('subject_keys', 0)
+                'event_id IN (SELECT event_id FROM clean_subject_meetings WHERE NOT added)', m_cmp).get('subject_keys', 0)
         shared = set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
         outcome, resched = {}, {}
         if {'outcome_basis', 'outcome_source_reference'} <= shared:
@@ -787,15 +834,14 @@ def meetings(d: Diff):
         resched_groups = [g for g in groups if g['group'].removeprefix('changed ') in RESCHEDULED]
         if resched_groups and set(RESCHEDULED) <= shared:
             refetched_meetings(d)
-            same_strict = _equal_except(d, 'meetings', {'event_id', *RESCHEDULED}, MEETING_COMPARE)
-            same_refetch = _equal_except(d, 'meetings', {'event_id', *(shared & {DETAIL, UPDATED, STATUSES}), *RESCHEDULED}, MEETING_COMPARE)
+            same_strict = _equal_except(d, 'meetings', {'event_id', *RESCHEDULED}, m_cmp)
+            same_refetch = _equal_except(d, 'meetings', {'event_id', *(shared & {DETAIL, UPDATED, STATUSES}), *RESCHEDULED}, m_cmp)
             if same_strict and same_refetch:
                 in_refetch = 'event_id IN (SELECT event_id FROM meeting_refetch)' if d.meeting_refetch else 'false'
                 d.table('unchanged_twins', f"""SELECT event_id FROM base_meetings p JOIN candidate_meetings l USING(event_id)
                   WHERE ({same_strict}) OR ({in_refetch} AND ({same_refetch}))""")
                 twin_ok = '(SELECT event_id FROM meeting_update UNION SELECT event_id FROM unchanged_twins)'
-                same_tx = ('list_transform(p.transcripts,t->t.package_id) IS NOT DISTINCT FROM list_transform(l.transcripts,t->t.package_id)'
-                           if 'transcripts' in shared else 'true')
+                same_tx = _same_transcripts(d)
                 bases = "','".join(RESCHEDULED_BASES)
                 resched = changed_counts(d, join, resched_groups, f"""(p.rescheduled_basis IS NULL OR p.rescheduled_basis IN ('{bases}'))
                   AND (l.rescheduled_basis IS NULL OR l.rescheduled_basis IN ('{bases}'))
@@ -804,7 +850,7 @@ def meetings(d: Diff):
                   AND ((event_id IN (SELECT event_id FROM meeting_update WHERE NOT added) AND {same_tx})
                     OR (event_id IN (SELECT event_id FROM unchanged_twins)
                         AND (p.rescheduled_to IN (SELECT event_id FROM meeting_update)
-                             OR l.rescheduled_to IN (SELECT event_id FROM meeting_update))))""", MEETING_COMPARE)
+                             OR l.rescheduled_to IN (SELECT event_id FROM meeting_update))))""", m_cmp)
         counts = {**{c: n for c, n in counts.items() if c in UPDATE_COLUMNS}, **outcome, **resched}
         groups = refetch_split(groups, counts, MEETING_UPDATE)
         groups = split_group(groups, 'added keys', 'unexplained', d.one('SELECT count(*) FROM meeting_update WHERE added'), FIRST_STATED)
@@ -905,8 +951,7 @@ def meeting_coverage(d: Diff):
         groups = split_group(groups, 'added keys', 'no evidence given', first, FIRST_STATED)
         m_shared = (set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
                     if d.has('base', 'meetings') and d.has('candidate', 'meetings') else set())
-        same_tx = ('list_transform(pm.transcripts,t->t.package_id) IS NOT DISTINCT FROM list_transform(lm.transcripts,t->t.package_id)'
-                   if 'transcripts' in m_shared else 'true')
+        same_tx = _same_transcripts(d, 'pm', 'lm')
         w_basis = " AND p.basis='appearance_records' AND l.basis='appearance_records'" if 'basis' in cov_shared else ''
         arms = [f"(p.aspect='witnesses'{w_basis} AND {same_tx})"]
         if {'state', 'basis', 'count', 'reason'} <= cov_shared:

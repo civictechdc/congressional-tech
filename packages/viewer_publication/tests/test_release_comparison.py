@@ -826,3 +826,23 @@ def test_a_live_address_that_still_reaches_its_file_passes(tmp_path, prev, live)
 ])
 def test_a_live_address_that_reaches_another_file_is_named(tmp_path, prev, live, lookups, addresses):
     assert addresses_changed(tmp_path, prev, live) == (lookups, addresses)
+
+
+def test_non_package_transcript_changes_are_detected_while_list_row_shifts_are_ignored(tmp_path):
+    tx_struct = pa.struct([('source', S), ('package_id', S), ('list_row', I), ('formats', pa.list_(S)),
+                           ('video_key', S), ('language', S), ('production', S)])
+    schemas = {**SCHEMAS, 'meetings': [('event_id', pa.int64()), ('subject_keys', pa.list_(S)), ('transcripts', pa.list_(tx_struct))]}
+    ct = lambda row: {'source': 'committee_transcript', 'package_id': None, 'list_row': row, 'formats': ['pdf'],
+                      'video_key': None, 'language': None, 'production': None}
+    cap = lambda vk: {'source': 'captions', 'package_id': None, 'list_row': None, 'formats': ['vtt'],
+                      'video_key': vk, 'language': 'en', 'production': 'auto'}
+    prev = release(tmp_path / 'prev', schemas=schemas, documents=['A'],
+                   meetings=[{'event_id': 1, 'subject_keys': [], 'transcripts': [ct(0)]},
+                             {'event_id': 2, 'subject_keys': [], 'transcripts': [cap('youtube:v1')]}])
+    live = release(tmp_path / 'live', schemas=schemas, documents=['A'],
+                   meetings=[{'event_id': 1, 'subject_keys': [], 'transcripts': [ct(9)]},
+                             {'event_id': 2, 'subject_keys': [], 'transcripts': [ct(4)]}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert counts(result, 'meetings') == {('changed transcripts', 'value differs on matched key'): 1}
+

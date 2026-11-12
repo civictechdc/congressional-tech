@@ -582,7 +582,7 @@ def url_states(url, attempts, pages=(K('P'),)):
 CAPTURES = pa.schema([('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()),
                       ('sha256', pa.binary(32)), ('requested_url', pa.string()), ('url', pa.string()),
                       ('context_url', pa.string()), ('member_path', pa.string()), ('expansion', pa.string()),
-                      ('family', pa.string()), ('mode', pa.string()),
+                      ('family', pa.string()), ('sniffed_format', pa.string()), ('mode', pa.string()),
                       ('complete', pa.bool_()), ('attempt', pa.int32()), ('outcome', pa.string()),
                       ('http_status', pa.int32()), ('fetch_outcome', pa.string()), ('fetch_http_status', pa.int32()),
                       ('retrieved_at', TS)])
@@ -590,8 +590,8 @@ CAPTURES = pa.schema([('receipt_key', pa.string()), ('receipt_line', pa.int32())
 
 def write_captures(rows, path):
     """The lake captures table's columns that the gate reads, with a fetch's usual defaults."""
-    defaults = dict(capture_index=0, url=None, context_url=None, member_path=None, expansion=None, family='documents', fetch_outcome=None,
-                    fetch_http_status=None, retrieved_at=FETCHED)
+    defaults = dict(capture_index=0, url=None, context_url=None, member_path=None, expansion=None, family='documents',
+                    sniffed_format=None, fetch_outcome=None, fetch_http_status=None, retrieved_at=FETCHED)
     pq.write_table(pa.Table.from_pylist([{**defaults, **row} for row in rows], schema=CAPTURES), path)
 
 
@@ -1579,6 +1579,27 @@ CASES = {
         [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
          dict(capture_line(RELIST, OTHER_BODY, SEEN_AGAIN, url=HOUSE_MEETING_XML, receipt_line=2), family='house/meeting-xml')]),
         'new House XML body'),
+    'house_xml_eventless_url_captured_on_an_update': (lambda: (
+        base_tables(), cand_tables(title='Renamed by House XML'),
+        [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+         dict(capture_line(RELIST, OTHER_BODY, SEEN_AGAIN,
+                           url='https://docs.house.gov/meetings/AS/AS00/20250612/HHRG-119-AS00-20250612.xml', receipt_line=2),
+              family='house/meeting-xml')]),
+        'new House XML body'),
+    'house_xml_numeric_filename_captured_on_an_update': (lambda: (
+        base_tables(), cand_tables(title='Renamed by House XML'),
+        [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+         dict(capture_line(RELIST, OTHER_BODY, SEEN_AGAIN,
+                           url='https://docs.house.gov/meetings/AS/AS00/20250612/118340/20250612.xml', receipt_line=2),
+              family='house/meeting-xml')]),
+        'new House XML body'),
+    'house_xml_sniffed_without_extension_captured_on_an_update': (lambda: (
+        base_tables(), cand_tables(title='Renamed by House XML'),
+        [capture_line(RELIST, NEW_RECORD, SEEN_AGAIN), capture_line(FIRST_READ, OLD_RECORD, FIRST_SEEN),
+         dict(capture_line(RELIST, OTHER_BODY, SEEN_AGAIN,
+                           url='https://docs.house.gov/meetings/AS/AS00/20250612/118340/feed', receipt_line=2),
+              family='documents', sniffed_format='xml')]),
+        'new House XML body'),
     'first_stated_meeting_with_house_xml_stamp': (lambda: (first_stated()[0], cand_tables(mapped=[], house_xml='2026-11-08')),
                                                   'meetings.parquet|added keys|unexplained'),
     'first_stated_meeting_with_house_xml_status': (lambda: (first_stated()[0], cand_tables(mapped=[], statuses=[SEEN_IN_THE_NEW_BODY, HOUSE_SEEN_AGAIN])),
@@ -1660,6 +1681,10 @@ CASES = {
     # R4: a first stated meeting that claims an existing document.
     'first_stated_meeting_claims_an_existing_document': (lambda: ({**first_stated()[0], **document_names((), ())}, {**first_stated()[1], **document_names((), ('118340',))}),
                                                          'changed meeting_keys'),
+    'document_of_another_meeting_gains_updated_witness': (lambda: (
+        {**base_tables(), **document_names((), ('999999',))},
+        {**cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3)), **document_names(('n3',), ('999999',))}),
+        'list.parquet|changed witness_keys|value differs on matched key'),
     # D1: a document key the map moves that no update moved (here a stale key the live document listed).
     'document_lists_a_key_no_update_moved': (lambda: ({**base_tables(), **documents(('v1', 'w2'))}, {**cand_tables(), **documents(('n1', 'n2'))}),
                                              'list.parquet|changed witness_keys|re-keyed through witness_key_map (1) is not an addition'),

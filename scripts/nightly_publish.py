@@ -226,7 +226,8 @@ def record_meeting_updates(summary, candidate):
     """The morning report's line (ct-rhqw): the Congress.gov meeting updates the release check cleared
     or stopped, from `meeting-updates.json` beside the gate report. The plain report
     (`meeting-updates.txt`) is kept with the run's evidence."""
-    for path in sorted(candidate.glob('archive-publish/candidate-*/meeting-updates.json')):
+    for path in sorted(candidate.glob('archive-publish/candidate-*/meeting-updates.json'),
+                       key=lambda p: (p.stat().st_mtime_ns, p.name)):
         summary['meeting_updates'] = json.loads(path.read_text()).get('line')
 
 
